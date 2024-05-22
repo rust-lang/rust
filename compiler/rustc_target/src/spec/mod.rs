@@ -1317,6 +1317,34 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {
+    // Taken from LLVM's sanitizer compatibility logic:
+    // https://github.com/llvm/llvm-project/blob/release/18.x/clang/lib/Driver/SanitizerArgs.cpp#L512
+    const MUTUALLY_EXCLUSIVE: &'static [(SanitizerSet, SanitizerSet)] = &[
+        (SanitizerSet::ADDRESS, SanitizerSet::MEMORY),
+        (SanitizerSet::ADDRESS, SanitizerSet::THREAD),
+        (SanitizerSet::ADDRESS, SanitizerSet::HWADDRESS),
+        (SanitizerSet::ADDRESS, SanitizerSet::MEMTAG),
+        (SanitizerSet::ADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::ADDRESS, SanitizerSet::SAFESTACK),
+        (SanitizerSet::LEAK, SanitizerSet::MEMORY),
+        (SanitizerSet::LEAK, SanitizerSet::THREAD),
+        (SanitizerSet::LEAK, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::LEAK, SanitizerSet::SAFESTACK),
+        (SanitizerSet::MEMORY, SanitizerSet::THREAD),
+        (SanitizerSet::MEMORY, SanitizerSet::HWADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::SAFESTACK),
+        (SanitizerSet::THREAD, SanitizerSet::HWADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::SAFESTACK),
+        (SanitizerSet::HWADDRESS, SanitizerSet::MEMTAG),
+        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::HWADDRESS, SanitizerSet::SAFESTACK),
+        (SanitizerSet::CFI, SanitizerSet::KCFI),
+        (SanitizerSet::MEMTAG, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::SAFESTACK),
+    ];
+
     /// Return sanitizer's name
     ///
     /// Returns none if the flags is a set of sanitizers numbering not exactly one.
@@ -1336,6 +1364,13 @@ impl SanitizerSet {
             SanitizerSet::HWADDRESS => "hwaddress",
             _ => return None,
         })
+    }
+
+    pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
+        Self::MUTUALLY_EXCLUSIVE
+            .into_iter()
+            .find(|&(a, b)| self.contains(*a) && self.contains(*b))
+            .copied()
     }
 }
 

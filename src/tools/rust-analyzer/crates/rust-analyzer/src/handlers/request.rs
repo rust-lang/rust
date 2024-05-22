@@ -27,7 +27,7 @@ use lsp_types::{
     SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use paths::Utf8PathBuf;
-use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
+use project_model::{ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
@@ -99,10 +99,7 @@ pub(crate) fn handle_analyzer_status(
         format_to!(
             buf,
             "Workspace root folders: {:?}",
-            snap.workspaces
-                .iter()
-                .map(|ws| ws.workspace_definition_path())
-                .collect::<Vec<&AbsPath>>()
+            snap.workspaces.iter().map(|ws| ws.manifest_or_root()).collect::<Vec<&AbsPath>>()
         );
     }
     buf.push_str("\nAnalysis:\n");
@@ -228,7 +225,7 @@ pub(crate) fn handle_run_test(
     };
     let mut handles = vec![];
     for ws in &*state.workspaces {
-        if let ProjectWorkspace::Cargo { cargo, .. } = ws {
+        if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
             let handle = flycheck::CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
@@ -769,8 +766,11 @@ pub(crate) fn handle_parent_module(
             let links: Vec<LocationLink> = snap
                 .workspaces
                 .iter()
-                .filter_map(|ws| match ws {
-                    ProjectWorkspace::Cargo { cargo, .. } => cargo.parent_manifests(&manifest_path),
+                .filter_map(|ws| match &ws.kind {
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+                        cargo.parent_manifests(&manifest_path)
+                    }
                     _ => None,
                 })
                 .flatten()
@@ -855,10 +855,14 @@ pub(crate) fn handle_runnables(
     let config = snap.config.runnables();
     match cargo_spec {
         Some(spec) => {
-            let all_targets = !snap.analysis.is_crate_no_std(spec.crate_id)?;
-            for cmd in ["check", "test"] {
+            let is_crate_no_std = snap.analysis.is_crate_no_std(spec.crate_id)?;
+            for cmd in ["check", "run", "test"] {
+                if cmd == "run" && spec.target_kind != TargetKind::Bin {
+                    continue;
+                }
                 let mut cargo_args =
                     vec![cmd.to_owned(), "--package".to_owned(), spec.package.clone()];
+                let all_targets = cmd != "run" && !is_crate_no_std;
                 if all_targets {
                     cargo_args.push("--all-targets".to_owned());
                 }
@@ -930,16 +934,18 @@ pub(crate) fn handle_related_tests(
 
 pub(crate) fn handle_completion(
     snap: GlobalStateSnapshot,
-    params: lsp_types::CompletionParams,
+    lsp_types::CompletionParams { text_document_position, context,.. }: lsp_types::CompletionParams,
 ) -> anyhow::Result<Option<lsp_types::CompletionResponse>> {
     let _p = tracing::span!(tracing::Level::INFO, "handle_completion").entered();
-    let text_document_position = params.text_document_position.clone();
-    let position = from_proto::file_position(&snap, params.text_document_position)?;
+    let mut position = from_proto::file_position(&snap, text_document_position.clone())?;
+    let line_index = snap.file_line_index(position.file_id)?;
     let completion_trigger_character =
-        params.context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
+        context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
 
     let source_root = snap.analysis.source_root(position.file_id)?;
     let completion_config = &snap.config.completion(Some(source_root));
+    // FIXME: We should fix up the position when retrying the cancelled request instead
+    position.offset = position.offset.min(line_index.index.len());
     let items = match snap.analysis.completions(
         completion_config,
         position,
@@ -948,10 +954,14 @@ pub(crate) fn handle_completion(
         None => return Ok(None),
         Some(items) => items,
     };
-    let line_index = snap.file_line_index(position.file_id)?;
 
-    let items =
-        to_proto::completion_items(&snap.config, &line_index, text_document_position, items);
+    let items = to_proto::completion_items(
+        &snap.config,
+        &line_index,
+        snap.file_version(position.file_id),
+        text_document_position,
+        items,
+    );
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
@@ -970,16 +980,16 @@ pub(crate) fn handle_completion_resolve(
         .into());
     }
 
-    let data = match original_completion.data.take() {
-        Some(it) => it,
-        None => return Ok(original_completion),
-    };
+    let Some(data) = original_completion.data.take() else { return Ok(original_completion) };
 
     let resolve_data: lsp_ext::CompletionResolveData = serde_json::from_value(data)?;
 
     let file_id = from_proto::file_id(&snap, &resolve_data.position.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let offset = from_proto::offset(&line_index, resolve_data.position.position)?;
+    // FIXME: We should fix up the position when retrying the cancelled request instead
+    let Ok(offset) = from_proto::offset(&line_index, resolve_data.position.position) else {
+        return Ok(original_completion);
+    };
     let source_root = snap.analysis.source_root(file_id)?;
 
     let additional_edits = snap
@@ -1236,8 +1246,11 @@ pub(crate) fn handle_code_action(
         frange,
     )?;
     for (index, assist) in assists.into_iter().enumerate() {
-        let resolve_data =
-            if code_action_resolve_cap { Some((index, params.clone())) } else { None };
+        let resolve_data = if code_action_resolve_cap {
+            Some((index, params.clone(), snap.file_version(file_id)))
+        } else {
+            None
+        };
         let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
 
         // Check if the client supports the necessary `ResourceOperation`s.
@@ -1276,12 +1289,14 @@ pub(crate) fn handle_code_action_resolve(
     mut code_action: lsp_ext::CodeAction,
 ) -> anyhow::Result<lsp_ext::CodeAction> {
     let _p = tracing::span!(tracing::Level::INFO, "handle_code_action_resolve").entered();
-    let params = match code_action.data.take() {
-        Some(it) => it,
-        None => return Err(invalid_params_error("code action without data".to_owned()).into()),
+    let Some(params) = code_action.data.take() else {
+        return Err(invalid_params_error("code action without data".to_owned()).into());
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
+    if snap.file_version(file_id) != params.version {
+        return Err(invalid_params_error("stale code action".to_owned()).into());
+    }
     let line_index = snap.file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.code_action_params.range)?;
     let frange = FileRange { file_id, range };
@@ -1407,12 +1422,11 @@ pub(crate) fn handle_code_lens(
 
 pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
-    code_lens: CodeLens,
+    mut code_lens: CodeLens,
 ) -> anyhow::Result<CodeLens> {
-    if code_lens.data.is_none() {
-        return Ok(code_lens);
-    }
-    let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else {
+    let Some(data) = code_lens.data.take() else { return Ok(code_lens) };
+    let resolve = serde_json::from_value::<lsp_ext::CodeLensResolveData>(data)?;
+    let Some(annotation) = from_proto::annotation(&snap, code_lens.range, resolve)? else {
         return Ok(code_lens);
     };
     let annotation = snap.analysis.resolve_annotation(annotation)?;
@@ -1491,6 +1505,10 @@ pub(crate) fn handle_inlay_hints(
     )?;
     let line_index = snap.file_line_index(file_id)?;
     let source_root = snap.analysis.source_root(file_id)?;
+    let range = TextRange::new(
+        range.start().min(line_index.index.len()),
+        range.end().min(line_index.index.len()),
+    );
 
     let inlay_hints_config = snap.config.inlay_hints(Some(source_root));
     Ok(Some(
@@ -1518,8 +1536,12 @@ pub(crate) fn handle_inlay_hints_resolve(
 
     let Some(data) = original_hint.data.take() else { return Ok(original_hint) };
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-    let Some(hash) = resolve_data.hash.parse().ok() else { return Ok(original_hint) };
     let file_id = FileId::from_raw(resolve_data.file_id);
+    if resolve_data.version != snap.file_version(file_id) {
+        tracing::warn!("Inlay hint resolve data is outdated");
+        return Ok(original_hint);
+    }
+    let Some(hash) = resolve_data.hash.parse().ok() else { return Ok(original_hint) };
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
@@ -1758,12 +1780,13 @@ pub(crate) fn handle_open_docs(
     let _p = tracing::span!(tracing::Level::INFO, "handle_open_docs").entered();
     let position = from_proto::file_position(&snap, params)?;
 
-    let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match ws {
-        ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((cargo, sysroot.as_ref().ok())),
-        ProjectWorkspace::Json { .. } => None,
-        ProjectWorkspace::DetachedFile { cargo_script, sysroot, .. } => {
-            cargo_script.as_ref().zip(Some(sysroot.as_ref().ok()))
+    let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match &ws.kind {
+        ProjectWorkspaceKind::Cargo { cargo, .. }
+        | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+            Some((cargo, ws.sysroot.as_ref().ok()))
         }
+        ProjectWorkspaceKind::Json { .. } => None,
+        ProjectWorkspaceKind::DetachedFile { .. } => None,
     });
 
     let (cargo, sysroot) = match ws_and_sysroot {
@@ -1836,7 +1859,7 @@ pub(crate) fn handle_view_recursive_memory_layout(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> anyhow::Result<Option<lsp_ext::RecursiveMemoryLayout>> {
-    let _p = tracing::span!(tracing::Level::INFO, "view_recursive_memory_layout").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "handle_view_recursive_memory_layout").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
     let offset = from_proto::offset(&line_index, params.position)?;

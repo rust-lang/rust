@@ -50,8 +50,6 @@ envs:
   production:
     &production
     DEPLOY_BUCKET: rust-lang-ci2
-    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
-    TOOLSTATE_PUBLISH: 1
     # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
     # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
     # rotate them in a single branch while keeping the old key in another
@@ -108,66 +106,66 @@ auto:
     <<: *job-aarch64-linux
 
   - image: arm-android
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: armhf-gnu
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-android
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-arm-linux
-    <<: *job-linux-16c
+    <<: *job-linux-8c
 
   - image: dist-armhf-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-armv7-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-i586-gnu-i586-i686-musl
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-i686-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-loongarch64-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-ohos
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-powerpc-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-powerpc64-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-powerpc64le-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-riscv64-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-s390x-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-various-1
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-various-2
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-freebsd
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-illumos
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-linux
     env:
@@ -186,7 +184,7 @@ auto:
     <<: *job-linux-8c
 
   - image: dist-x86_64-netbsd
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: i686-gnu
     <<: *job-linux-8c
@@ -198,7 +196,7 @@ auto:
     <<: *job-linux-4c
 
   - image: test-various
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: x86_64-gnu
     <<: *job-linux-4c
@@ -229,7 +227,7 @@ auto:
     <<: *job-linux-8c
 
   - image: x86_64-gnu-debug
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: x86_64-gnu-distcheck
     <<: *job-linux-8c

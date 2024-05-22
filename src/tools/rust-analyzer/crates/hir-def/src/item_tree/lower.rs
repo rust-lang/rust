@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 
 use hir_expand::{mod_path::path, name, name::AsName, span_map::SpanMapRef, HirFileId};
 use la_arena::Arena;
+use rustc_hash::FxHashMap;
 use span::{AstIdMap, SyntaxContextId};
 use syntax::{
     ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
@@ -16,11 +17,11 @@ use crate::{
     generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
     item_tree::{
         AssocItem, AttrOwner, Const, Either, Enum, ExternBlock, ExternCrate, Field, FieldAstId,
-        Fields, FileItemTreeId, FnFlags, Function, GenericArgs, Idx, IdxRange, Impl, ImportAlias,
-        Interned, ItemTree, ItemTreeData, ItemTreeNode, Macro2, MacroCall, MacroRules, Mod,
-        ModItem, ModKind, ModPath, Mutability, Name, Param, ParamAstId, Path, Range, RawAttrs,
-        RawIdx, RawVisibilityId, Static, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union,
-        Use, UseTree, UseTreeKind, Variant,
+        Fields, FileItemTreeId, FnFlags, Function, GenericArgs, GenericModItem, Idx, IdxRange,
+        Impl, ImportAlias, Interned, ItemTree, ItemTreeData, ItemTreeNode, Macro2, MacroCall,
+        MacroRules, Mod, ModItem, ModKind, ModPath, Mutability, Name, Param, ParamAstId, Path,
+        Range, RawAttrs, RawIdx, RawVisibilityId, Static, Struct, StructKind, Trait, TraitAlias,
+        TypeAlias, Union, Use, UseTree, UseTreeKind, Variant,
     },
     path::AssociatedTypeBinding,
     type_ref::{LifetimeRef, TraitBoundModifier, TraitRef, TypeBound, TypeRef},
@@ -36,6 +37,8 @@ pub(super) struct Ctx<'a> {
     db: &'a dyn DefDatabase,
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
+    generic_param_attr_buffer:
+        FxHashMap<Either<LocalTypeOrConstParamId, LocalLifetimeParamId>, RawAttrs>,
     body_ctx: crate::lower::LowerCtx<'a>,
 }
 
@@ -44,6 +47,7 @@ impl<'a> Ctx<'a> {
         Self {
             db,
             tree: ItemTree::default(),
+            generic_param_attr_buffer: FxHashMap::default(),
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::lower::LowerCtx::new(db, file),
         }
@@ -56,6 +60,7 @@ impl<'a> Ctx<'a> {
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
         self.tree.top_level =
             item_owner.items().flat_map(|item| self.lower_mod_item(&item)).collect();
+        assert!(self.generic_param_attr_buffer.is_empty());
         self.tree
     }
 
@@ -89,6 +94,7 @@ impl<'a> Ctx<'a> {
             }
         }
 
+        assert!(self.generic_param_attr_buffer.is_empty());
         self.tree
     }
 
@@ -117,6 +123,7 @@ impl<'a> Ctx<'a> {
             }
         }
 
+        assert!(self.generic_param_attr_buffer.is_empty());
         self.tree
     }
 
@@ -185,10 +192,12 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt);
         let fields = self.lower_fields(&strukt.kind());
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, strukt);
         let res = Struct { name, visibility, generic_params, fields, ast_id };
-        Some(id(self.data().structs.alloc(res)))
+        let id = id(self.data().structs.alloc(res));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_fields(&mut self, strukt_kind: &ast::StructKind) -> Fields {
@@ -252,28 +261,32 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union);
         let fields = match union.record_field_list() {
             Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
             None => Fields::Record(IdxRange::new(self.next_field_idx()..self.next_field_idx())),
         };
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, union);
         let res = Union { name, visibility, generic_params, fields, ast_id };
-        Some(id(self.data().unions.alloc(res)))
+        let id = id(self.data().unions.alloc(res));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<FileItemTreeId<Enum>> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(enum_);
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
             None => {
                 FileItemTreeId(self.next_variant_idx())..FileItemTreeId(self.next_variant_idx())
             }
         };
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
-        Some(id(self.data().enums.alloc(res)))
+        let id = id(self.data().enums.alloc(res));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_variants(&mut self, variants: &ast::VariantList) -> Range<FileItemTreeId<Variant>> {
@@ -414,7 +427,9 @@ impl<'a> Ctx<'a> {
             flags,
         };
 
-        Some(id(self.data().functions.alloc(res)))
+        let id = id(self.data().functions.alloc(res));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_type_alias(
@@ -428,7 +443,9 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
-        Some(id(self.data().type_aliases.alloc(res)))
+        let id = id(self.data().type_aliases.alloc(res));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_static(&mut self, static_: &ast::Static) -> Option<FileItemTreeId<Static>> {
@@ -475,8 +492,6 @@ impl<'a> Ctx<'a> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let generic_params =
-            self.lower_generic_params(HasImplicitSelf::Yes(trait_def.type_bound_list()), trait_def);
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
 
@@ -487,8 +502,12 @@ impl<'a> Ctx<'a> {
             .filter_map(|item_node| self.lower_assoc_item(&item_node))
             .collect();
 
+        let generic_params =
+            self.lower_generic_params(HasImplicitSelf::Yes(trait_def.type_bound_list()), trait_def);
         let def = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
-        Some(id(self.data().traits.alloc(def)))
+        let id = id(self.data().traits.alloc(def));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_trait_alias(
@@ -504,19 +523,18 @@ impl<'a> Ctx<'a> {
         );
 
         let alias = TraitAlias { name, visibility, generic_params, ast_id };
-        Some(id(self.data().trait_aliases.alloc(alias)))
+        let id = id(self.data().trait_aliases.alloc(alias));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
-        // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
-        // type alias rather than a type parameter, so this is handled by the resolver.
-        let generic_params = self.lower_generic_params(HasImplicitSelf::No, impl_def);
         // FIXME: If trait lowering fails, due to a non PathType for example, we treat this impl
         // as if it was an non-trait impl. Ideally we want to create a unique missing ref that only
         // equals itself.
-        let target_trait = impl_def.trait_().and_then(|tr| self.lower_trait_ref(&tr));
         let self_ty = self.lower_type_ref(&impl_def.self_ty()?);
+        let target_trait = impl_def.trait_().and_then(|tr| self.lower_trait_ref(&tr));
         let is_negative = impl_def.excl_token().is_some();
         let is_unsafe = impl_def.unsafe_token().is_some();
 
@@ -527,9 +545,14 @@ impl<'a> Ctx<'a> {
             .flat_map(|it| it.assoc_items())
             .filter_map(|item| self.lower_assoc_item(&item))
             .collect();
+        // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
+        // type alias rather than a type parameter, so this is handled by the resolver.
+        let generic_params = self.lower_generic_params(HasImplicitSelf::No, impl_def);
         let res =
             Impl { generic_params, target_trait, self_ty, is_negative, is_unsafe, items, ast_id };
-        Some(id(self.data().impls.alloc(res)))
+        let id = id(self.data().impls.alloc(res));
+        self.write_generic_params_attributes(id.into());
+        Some(id)
     }
 
     fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Use>> {
@@ -616,11 +639,30 @@ impl<'a> Ctx<'a> {
         id(self.data().extern_blocks.alloc(res))
     }
 
+    fn write_generic_params_attributes(&mut self, parent: GenericModItem) {
+        self.generic_param_attr_buffer.drain().for_each(|(idx, attrs)| {
+            self.tree.attrs.insert(
+                match idx {
+                    Either::Left(id) => AttrOwner::TypeOrConstParamData(parent, id),
+                    Either::Right(id) => AttrOwner::LifetimeParamData(parent, id),
+                },
+                attrs,
+            );
+        })
+    }
+
     fn lower_generic_params(
         &mut self,
         has_implicit_self: HasImplicitSelf,
         node: &dyn ast::HasGenericParams,
     ) -> Interned<GenericParams> {
+        debug_assert!(self.generic_param_attr_buffer.is_empty(),);
+        let add_param_attrs = |item: Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
+                               param| {
+            let attrs = RawAttrs::new(self.db.upcast(), &param, self.body_ctx.span_map());
+            debug_assert!(self.generic_param_attr_buffer.insert(item, attrs).is_none());
+        };
+        self.body_ctx.take_impl_traits_bounds();
         let mut generics = GenericParamsCollector::default();
 
         if let HasImplicitSelf::Yes(bounds) = has_implicit_self {
@@ -635,28 +677,13 @@ impl<'a> Ctx<'a> {
             );
             // add super traits as bounds on Self
             // i.e., `trait Foo: Bar` is equivalent to `trait Foo where Self: Bar`
-            let self_param = TypeRef::Path(name![Self].into());
-            generics.fill_bounds(&self.body_ctx, bounds, Either::Left(self_param));
+            generics.fill_bounds(
+                &self.body_ctx,
+                bounds,
+                Either::Left(TypeRef::Path(name![Self].into())),
+            );
         }
 
-        let add_param_attrs = |item: Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
-                               param| {
-            let attrs = RawAttrs::new(self.db.upcast(), &param, self.body_ctx.span_map());
-            // This is identical to the body of `Ctx::add_attrs()` but we can't call that here
-            // because it requires `&mut self` and the call to `generics.fill()` below also
-            // references `self`.
-            match self.tree.attrs.entry(match item {
-                Either::Right(id) => id.into(),
-                Either::Left(id) => id.into(),
-            }) {
-                Entry::Occupied(mut entry) => {
-                    *entry.get_mut() = entry.get().merge(attrs);
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(attrs);
-                }
-            }
-        };
         generics.fill(&self.body_ctx, node, add_param_attrs);
 
         Interned::new(generics.finish())

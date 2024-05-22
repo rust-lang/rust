@@ -1,4 +1,6 @@
-use crate::{ConstVid, InferCtxtLike, Interner, TyVid, UniverseIndex};
+use crate::{
+    ConstVid, EffectVid, FloatVid, InferCtxtLike, IntVid, Interner, RegionVid, TyVid, UniverseIndex,
+};
 
 use core::fmt;
 use std::marker::PhantomData;
@@ -16,7 +18,7 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn universe_of_lt(&self, _lt: I::InferRegion) -> Option<UniverseIndex> {
+    fn universe_of_lt(&self, _lt: RegionVid) -> Option<UniverseIndex> {
         None
     }
 
@@ -24,27 +26,31 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         None
     }
 
-    fn root_ty_var(&self, vid: TyVid) -> TyVid {
-        vid
+    fn opportunistic_resolve_ty_var(&self, vid: TyVid) -> I::Ty {
+        panic!("cannot resolve {vid:?}")
     }
 
-    fn probe_ty_var(&self, _vid: TyVid) -> Option<I::Ty> {
-        None
+    fn opportunistic_resolve_int_var(&self, vid: IntVid) -> I::Ty {
+        panic!("cannot resolve {vid:?}")
     }
 
-    fn opportunistic_resolve_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
-        None
+    fn opportunistic_resolve_float_var(&self, vid: FloatVid) -> I::Ty {
+        panic!("cannot resolve {vid:?}")
     }
 
-    fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
-        vid
+    fn opportunistic_resolve_ct_var(&self, vid: ConstVid, _: I::Ty) -> I::Const {
+        panic!("cannot resolve {vid:?}")
     }
 
-    fn probe_ct_var(&self, _vid: ConstVid) -> Option<I::Const> {
-        None
+    fn opportunistic_resolve_effect_var(&self, vid: EffectVid, _: I::Ty) -> I::Const {
+        panic!("cannot resolve {vid:?}")
     }
 
-    fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes {
+    fn opportunistic_resolve_lt_var(&self, vid: crate::RegionVid) -> I::Region {
+        panic!("cannot resolve {vid:?}")
+    }
+
+    fn defining_opaque_types(&self) -> I::DefiningOpaqueTypes {
         Default::default()
     }
 }

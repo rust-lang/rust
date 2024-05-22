@@ -1429,7 +1429,7 @@ impl<'v> RootCollector<'_, 'v> {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
-                    && self.tcx.generics_of(id.owner_id).count() == 0
+                    && self.tcx.generics_of(id.owner_id).is_empty()
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 

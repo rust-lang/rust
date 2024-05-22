@@ -55,9 +55,6 @@ ast_passes_const_without_body =
 ast_passes_constraint_on_negative_bound =
     associated type constraints not allowed on negative bounds
 
-ast_passes_deprecated_where_clause_location =
-    where clause not allowed here
-
 ast_passes_equality_in_where = equality constraints are not yet supported in `where` clauses
     .label = not supported
     .suggestion = if `{$ident}` is an associated type you're trying to set, use the associated type binding syntax
@@ -79,8 +76,6 @@ ast_passes_extern_keyword_link = for more information, visit https://doc.rust-la
 ast_passes_extern_types_cannot = `type`s inside `extern` blocks cannot have {$descr}
     .suggestion = remove the {$remove_descr}
     .label = `extern` block begins here
-
-ast_passes_extern_without_abi = extern declarations without an explicit ABI are deprecated
 
 ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$channel} release channel
     .suggestion = remove the attribute

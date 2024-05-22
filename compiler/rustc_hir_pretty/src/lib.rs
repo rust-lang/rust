@@ -1454,7 +1454,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at `}`
-                self.cbox(INDENT_UNIT);
+                self.cbox(0);
                 // head-box, will be closed by print-block after `{`
                 self.ibox(0);
                 self.print_block(blk);

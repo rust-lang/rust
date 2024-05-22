@@ -10,6 +10,7 @@ use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, Symbol};
 
@@ -176,37 +177,26 @@ fn emit_malformed_attribute(
     };
 
     let error_msg = format!("malformed `{name}` attribute input");
-    let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
-    let mut first = true;
     let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
-        first = false;
-        let code = format!("#{inner}[{name}]");
-        msg.push_str(&format!("`{code}`"));
-        suggestions.push(code);
+        suggestions.push(format!("#{inner}[{name}]"));
     }
     if let Some(descr) = template.list {
-        if !first {
-            msg.push_str(" or ");
-        }
-        first = false;
-        let code = format!("#{inner}[{name}({descr})]");
-        msg.push_str(&format!("`{code}`"));
-        suggestions.push(code);
+        suggestions.push(format!("#{inner}[{name}({descr})]"));
     }
     if let Some(descr) = template.name_value_str {
-        if !first {
-            msg.push_str(" or ");
-        }
-        let code = format!("#{inner}[{name} = \"{descr}\"]");
-        msg.push_str(&format!("`{code}`"));
-        suggestions.push(code);
+        suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
     }
-    suggestions.sort();
     if should_warn(name) {
-        psess.buffer_lint(ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
+        psess.buffer_lint(
+            ILL_FORMED_ATTRIBUTE_INPUT,
+            span,
+            ast::CRATE_NODE_ID,
+            BuiltinLintDiag::IllFormedAttributeInput { suggestions: suggestions.clone() },
+        );
     } else {
+        suggestions.sort();
         psess
             .dcx
             .struct_span_err(span, error_msg)

@@ -11,6 +11,7 @@ use rustc_expand::base::{
     resolve_path, DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult,
 };
 use rustc_expand::module::DirOwnership;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
@@ -147,7 +148,7 @@ pub(crate) fn expand_include<'cx>(
                     INCOMPLETE_INCLUDE,
                     self.p.token.span,
                     self.node_id,
-                    "include macro expected single expression in source",
+                    BuiltinLintDiag::IncompleteInclude,
                 );
             }
             Some(expr)

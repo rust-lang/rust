@@ -1,5 +1,6 @@
 //! Conversion of internal Rust compiler `mir` items to stable ones.
 
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::alloc_range;
 use rustc_middle::mir::mono::MonoItem;
@@ -183,16 +184,21 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 op.stable(tables),
                 ty.stable(tables),
             ),
-            BinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::BinaryOp(
-                bin_op.stable(tables),
-                ops.0.stable(tables),
-                ops.1.stable(tables),
-            ),
-            CheckedBinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::CheckedBinaryOp(
-                bin_op.stable(tables),
-                ops.0.stable(tables),
-                ops.1.stable(tables),
-            ),
+            BinaryOp(bin_op, ops) => {
+                if let Some(bin_op) = bin_op.overflowing_to_wrapping() {
+                    stable_mir::mir::Rvalue::CheckedBinaryOp(
+                        bin_op.stable(tables),
+                        ops.0.stable(tables),
+                        ops.1.stable(tables),
+                    )
+                } else {
+                    stable_mir::mir::Rvalue::BinaryOp(
+                        bin_op.stable(tables),
+                        ops.0.stable(tables),
+                        ops.1.stable(tables),
+                    )
+                }
+            }
             NullaryOp(null_op, ty) => {
                 stable_mir::mir::Rvalue::NullaryOp(null_op.stable(tables), ty.stable(tables))
             }
@@ -485,10 +491,13 @@ impl<'tcx> Stable<'tcx> for mir::BinOp {
         match self {
             BinOp::Add => stable_mir::mir::BinOp::Add,
             BinOp::AddUnchecked => stable_mir::mir::BinOp::AddUnchecked,
+            BinOp::AddWithOverflow => bug!("AddWithOverflow should have been translated already"),
             BinOp::Sub => stable_mir::mir::BinOp::Sub,
             BinOp::SubUnchecked => stable_mir::mir::BinOp::SubUnchecked,
+            BinOp::SubWithOverflow => bug!("AddWithOverflow should have been translated already"),
             BinOp::Mul => stable_mir::mir::BinOp::Mul,
             BinOp::MulUnchecked => stable_mir::mir::BinOp::MulUnchecked,
+            BinOp::MulWithOverflow => bug!("AddWithOverflow should have been translated already"),
             BinOp::Div => stable_mir::mir::BinOp::Div,
             BinOp::Rem => stable_mir::mir::BinOp::Rem,
             BinOp::BitXor => stable_mir::mir::BinOp::BitXor,

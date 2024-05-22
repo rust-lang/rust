@@ -376,7 +376,7 @@ If you're running Neovim 0.10 or later, you can enable inlay hints via `on_attac
 ----
 lspconfig.rust_analyzer.setup({
     on_attach = function(client, bufnr)
-        vim.lsp.inlay_hint.enable(bufnr)
+        vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
     end
 })
 ----
@@ -786,8 +786,6 @@ There are three ways to feed `rust-project.json` to rust-analyzer:
 * Specify `"rust-analyzer.linkedProjects": [ { "roots": [...], "crates": [...] }]` inline.
 
 Relative paths are interpreted relative to `rust-project.json` file location or (for inline JSON) relative to `rootUri`.
-
-See https://github.com/rust-analyzer/rust-project.json-example for a small example.
 
 You can set the `RA_LOG` environment variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 

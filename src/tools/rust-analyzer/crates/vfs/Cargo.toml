@@ -13,6 +13,7 @@ doctest = false
 
 [dependencies]
 rustc-hash.workspace = true
+tracing.workspace = true
 fst = "0.4.7"
 indexmap.workspace = true
 nohash-hasher.workspace = true

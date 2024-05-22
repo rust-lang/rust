@@ -13,7 +13,7 @@ mod version;
 
 use base_db::Env;
 use indexmap::IndexSet;
-use paths::AbsPathBuf;
+use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use span::Span;
 use std::{
@@ -54,6 +54,7 @@ pub struct ProcMacroServer {
     ///
     /// Therefore, we just wrap the `ProcMacroProcessSrv` in a mutex here.
     process: Arc<Mutex<ProcMacroProcessSrv>>,
+    path: AbsPathBuf,
 }
 
 pub struct MacroDylib {
@@ -113,15 +114,22 @@ pub struct MacroPanic {
 impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn spawn(
-        process_path: AbsPathBuf,
+        process_path: &AbsPath,
         env: &FxHashMap<String, String>,
     ) -> io::Result<ProcMacroServer> {
         let process = ProcMacroProcessSrv::run(process_path, env)?;
-        Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
+        Ok(ProcMacroServer {
+            process: Arc::new(Mutex::new(process)),
+            path: process_path.to_owned(),
+        })
+    }
+
+    pub fn path(&self) -> &AbsPath {
+        &self.path
     }
 
     pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = tracing::span!(tracing::Level::INFO, "ProcMacroClient::load_dylib").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "ProcMacroServer::load_dylib").entered();
         let macros =
             self.process.lock().unwrap_or_else(|e| e.into_inner()).find_proc_macros(&dylib.path)?;
 

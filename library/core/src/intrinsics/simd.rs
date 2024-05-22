@@ -569,6 +569,13 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_ctlz<T>(x: T) -> T;
 
+    /// Count the number of ones in each element.
+    ///
+    /// `T` must be a vector of integers.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn simd_ctpop<T>(x: T) -> T;
+
     /// Count the trailing zeros of each element.
     ///
     /// `T` must be a vector of integers.

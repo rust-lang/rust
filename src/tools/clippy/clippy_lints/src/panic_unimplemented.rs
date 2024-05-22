@@ -1,8 +1,14 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_in_test;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
+
+#[derive(Clone)]
+pub struct PanicUnimplemented {
+    pub allow_panic_in_tests: bool,
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -77,7 +83,7 @@ declare_clippy_lint! {
     "usage of the `unreachable!` macro"
 }
 
-declare_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
+impl_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -85,7 +91,9 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
             return;
         };
         if is_panic(cx, macro_call.def_id) {
-            if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+            if cx.tcx.hir().is_inside_const_context(expr.hir_id)
+                || self.allow_panic_in_tests && is_in_test(cx.tcx, expr.hir_id)
+            {
                 return;
             }
 

@@ -48,7 +48,7 @@
 //! One consequence of this difference is that safe/sound Rust allows for more operations on atomic locations
 //! than the C++20 atomic API was intended to allow, such as non-atomically accessing
 //! a previously atomically accessed location, or accessing previously atomically accessed locations with a differently sized operation
-//! (such as accessing the top 16 bits of an AtomicU32). These scenarios are generally undiscussed in formalisations of C++ memory model.
+//! (such as accessing the top 16 bits of an AtomicU32). These scenarios are generally undiscussed in formalizations of C++ memory model.
 //! In Rust, these operations can only be done through a `&mut AtomicFoo` reference or one derived from it, therefore these operations
 //! can only happen after all previous accesses on the same locations. This implementation is adapted to allow these operations.
 //! A mixed atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.

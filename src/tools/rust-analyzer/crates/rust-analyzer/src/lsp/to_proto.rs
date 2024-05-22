@@ -225,13 +225,14 @@ pub(crate) fn snippet_text_edit_vec(
 pub(crate) fn completion_items(
     config: &Config,
     line_index: &LineIndex,
+    version: Option<i32>,
     tdpp: lsp_types::TextDocumentPositionParams,
     items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
     let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
-        completion_item(&mut res, config, line_index, &tdpp, max_relevance, item);
+        completion_item(&mut res, config, line_index, version, &tdpp, max_relevance, item);
     }
 
     if let Some(limit) = config.completion(None).limit {
@@ -246,6 +247,7 @@ fn completion_item(
     acc: &mut Vec<lsp_types::CompletionItem>,
     config: &Config,
     line_index: &LineIndex,
+    version: Option<i32>,
     tdpp: &lsp_types::TextDocumentPositionParams,
     max_relevance: u32,
     item: CompletionItem,
@@ -328,7 +330,7 @@ fn completion_item(
             })
             .collect::<Vec<_>>();
         if !imports.is_empty() {
-            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
+            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports, version };
             lsp_item.data = Some(to_value(data).unwrap());
         }
     }
@@ -483,6 +485,7 @@ pub(crate) fn inlay_hint(
             to_value(lsp_ext::InlayHintResolveData {
                 file_id: file_id.index(),
                 hash: hash.to_string(),
+                version: snap.file_version(file_id),
             })
             .unwrap(),
         ),
@@ -1318,7 +1321,7 @@ pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
 pub(crate) fn code_action(
     snap: &GlobalStateSnapshot,
     assist: Assist,
-    resolve_data: Option<(usize, lsp_types::CodeActionParams)>,
+    resolve_data: Option<(usize, lsp_types::CodeActionParams, Option<i32>)>,
 ) -> Cancellable<lsp_ext::CodeAction> {
     let mut res = lsp_ext::CodeAction {
         title: assist.label.to_string(),
@@ -1336,10 +1339,11 @@ pub(crate) fn code_action(
 
     match (assist.source_change, resolve_data) {
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
-        (None, Some((index, code_action_params))) => {
+        (None, Some((index, code_action_params, version))) => {
             res.data = Some(lsp_ext::CodeActionData {
                 id: format!("{}:{}:{index}", assist.id.0, assist.id.1.name()),
                 code_action_params,
+                version,
             });
         }
         (None, None) => {

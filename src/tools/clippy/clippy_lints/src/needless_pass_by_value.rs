@@ -133,7 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         // function body.
         let MovedVariablesCtxt { moved_vars } = {
             let mut ctx = MovedVariablesCtxt::default();
-            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx).consume_body(body).into_ok();
+            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
+                .consume_body(body)
+                .into_ok();
             ctx
         };
 

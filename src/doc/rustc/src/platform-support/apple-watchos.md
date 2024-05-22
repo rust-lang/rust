@@ -1,58 +1,65 @@
-# *-apple-watchos
-- arm64_32-apple-watchos
-- armv7k-apple-watchos
-- aarch64-apple-watchos
-- aarch64-apple-watchos-sim
-- x86_64-apple-watchos-sim
+# `*-apple-watchos`
+
+Apple watchOS targets.
 
 **Tier: 3**
 
-Apple WatchOS targets:
-- Apple WatchOS on Arm 64_32
-- Apple WatchOS on Arm v7k
-- Apple WatchOS on Arm 64
-- Apple WatchOS Simulator on arm64
-- Apple WatchOS Simulator on x86_64
+- `aarch64-apple-watchos`: Apple WatchOS on ARM64.
+- `aarch64-apple-watchos-sim`: Apple WatchOS Simulator on ARM64.
+- `x86_64-apple-watchos-sim`: Apple WatchOS Simulator on 64-bit x86.
+- `arm64_32-apple-watchos`: Apple WatchOS on Arm 64_32.
+- `armv7k-apple-watchos`: Apple WatchOS on Armv7k.
 
 ## Target maintainers
 
-* [@deg4uss3r](https://github.com/deg4uss3r)
-* [@vladimir-ea](https://github.com/vladimir-ea)
-* [@leohowell](https://github.com/leohowell)
+- [@deg4uss3r](https://github.com/deg4uss3r)
+- [@vladimir-ea](https://github.com/vladimir-ea)
+- [@leohowell](https://github.com/leohowell)
+- [@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
-These targets are cross-compiled.
-To build these targets Xcode 12 or higher on macOS is required.
+These targets are cross-compiled, and require the corresponding watchOS SDK
+(`WatchOS.sdk` or `WatchSimulator.sdk`), as provided by Xcode. To build the
+ARM64 targets, Xcode 12 or higher is required.
+
+The path to the SDK can be passed to `rustc` using the common `SDKROOT`
+environment variable.
+
+### OS version
+
+The minimum supported version is watchOS 5.0.
+
+This can be raised per-binary by changing the deployment target. `rustc`
+respects the common environment variables used by Xcode to do so, in this
+case `WATCHOS_DEPLOYMENT_TARGET`.
 
 ## Building the target
 
-The targets can be built by enabling them for a `rustc` build, for example:
+The targets can be built by enabling them for a `rustc` build in
+`config.toml`, by adding, for example:
 
 ```toml
 [build]
 build-stage = 1
-target = ["aarch64-apple-watchos-sim"]
+target = ["aarch64-apple-watchos", "aarch64-apple-watchos-sim"]
 ```
+
+Using the unstable `-Zbuild-std` with a nightly Cargo may also work.
 
 ## Building Rust programs
 
-*Note: Building for this target requires the corresponding WatchOS SDK, as provided by Xcode 12+.*
+Rust programs can be built for these targets by specifying `--target`, if
+`rustc` has been built with support for them. For example:
 
-Rust programs can be built for these targets, if `rustc` has been built with support for them, for example:
-
-```text
-rustc --target aarch64-apple-watchos-sim your-code.rs
+```console
+$ rustc --target aarch64-apple-watchos-sim your-code.rs
 ```
 
 ## Testing
 
-There is no support for running the Rust testsuite on WatchOS or the simulators.
+There is no support for running the Rust or standard library testsuite at the
+moment. Testing has mostly been done manually with builds of static libraries
+embedded into applications called from Xcode or a simulator.
 
-There is no easy way to run simple programs on WatchOS or the WatchOS simulators. Static library builds can be embedded into WatchOS applications.
-
-## Cross-compilation toolchains and C code
-
-This target can be cross-compiled from x86_64 or aarch64 macOS hosts.
-
-Other hosts are not supported for cross-compilation, but might work when also providing the required Xcode SDK.
+It hopefully will be possible to improve this in the future.

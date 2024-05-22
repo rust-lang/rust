@@ -1,7 +1,8 @@
 [package]
 name = "rust-analyzer"
 version = "0.0.0"
-homepage = "https://github.com/rust-analyzer/rust-analyzer"
+homepage = "https://rust-analyzer.github.io/"
+repository = "https://github.com/rust-analyzer/rust-analyzer"
 description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
 autobins = false
@@ -69,7 +70,7 @@ vfs.workspace = true
 paths.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-winapi = "0.3.9"
+windows-sys = { version = "0.52", features = ["Win32_System_Threading"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version = "0.5.0", package = "tikv-jemallocator", optional = true }

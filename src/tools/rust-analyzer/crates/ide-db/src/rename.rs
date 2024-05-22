@@ -196,11 +196,12 @@ impl Definition {
                         .and_then(syn_ctx_is_root)
                 }
             }
-            Definition::BuiltinType(_) => return None,
-            Definition::SelfType(_) => return None,
-            Definition::BuiltinAttr(_) => return None,
-            Definition::ToolModule(_) => return None,
-            Definition::TupleField(_) => return None,
+            Definition::BuiltinType(_)
+            | Definition::BuiltinLifetime(_)
+            | Definition::BuiltinAttr(_)
+            | Definition::SelfType(_)
+            | Definition::ToolModule(_)
+            | Definition::TupleField(_) => return None,
             // FIXME: This should be doable in theory
             Definition::DeriveHelper(_) => return None,
         };

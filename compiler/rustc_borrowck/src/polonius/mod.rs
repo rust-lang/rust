@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 
 use crate::borrow_set::BorrowSet;
-use crate::facts::AllFacts;
+use crate::facts::{AllFacts, PoloniusRegionVid};
 use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -137,7 +137,9 @@ fn emit_universal_region_facts(
     //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
     //   added to the existing number of loans, as if they succeeded them in the set.
     //
-    all_facts.universal_region.extend(universal_regions.universal_regions());
+    all_facts
+        .universal_region
+        .extend(universal_regions.universal_regions().map(PoloniusRegionVid::from));
     let borrow_count = borrow_set.len();
     debug!(
         "emit_universal_region_facts: polonius placeholders, num_universals={}, borrow_count={}",
@@ -148,7 +150,7 @@ fn emit_universal_region_facts(
     for universal_region in universal_regions.universal_regions() {
         let universal_region_idx = universal_region.index();
         let placeholder_loan_idx = borrow_count + universal_region_idx;
-        all_facts.placeholder.push((universal_region, placeholder_loan_idx.into()));
+        all_facts.placeholder.push((universal_region.into(), placeholder_loan_idx.into()));
     }
 
     // 2: the universal region relations `outlives` constraints are emitted as
@@ -160,7 +162,7 @@ fn emit_universal_region_facts(
                      fr1={:?}, fr2={:?}",
                 fr1, fr2
             );
-            all_facts.known_placeholder_subset.push((fr1, fr2));
+            all_facts.known_placeholder_subset.push((fr1.into(), fr2.into()));
         }
     }
 }

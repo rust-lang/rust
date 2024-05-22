@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.76"
+rust-version = "1.78"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -85,10 +85,10 @@ tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.44.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.44.0", default-features = false }
-ra-ap-rustc_index = { version = "0.44.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.44.0", default-features = false }
+ra-ap-rustc_lexer = { version = "0.53.0", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.53.0", default-features = false }
+ra-ap-rustc_index = { version = "0.53.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.53.0", default-features = false }
 ra-ap-rustc_pattern_analysis = { version = "0.44.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.

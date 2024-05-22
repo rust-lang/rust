@@ -3,10 +3,7 @@ use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 use log::LevelFilter;
-use std::io::Cursor;
-use std::time::Duration;
 use utils::io;
-use zip::ZipArchive;
 
 use crate::environment::{Environment, EnvironmentBuilder};
 use crate::exec::{cmd, Bootstrap};
@@ -17,9 +14,9 @@ use crate::training::{
     rustc_benchmarks,
 };
 use crate::utils::artifact_size::print_binary_sizes;
-use crate::utils::io::{copy_directory, move_directory, reset_directory};
+use crate::utils::io::{copy_directory, reset_directory};
 use crate::utils::{
-    clear_llvm_files, format_env_variables, print_free_disk_space, retry_action, with_log_group,
+    clear_llvm_files, format_env_variables, print_free_disk_space, with_log_group,
     write_timer_to_summary,
 };
 
@@ -69,7 +66,12 @@ enum EnvironmentCmd {
         #[arg(long, default_value = "opt-artifacts")]
         artifact_dir: Utf8PathBuf,
 
-        /// Checkout directory of `rustc-perf`, it will be fetched automatically if unspecified.
+        /// Checkout directory of `rustc-perf`.
+        ///
+        /// If unspecified, defaults to the rustc-perf submodule in the rustc checkout dir
+        /// (`src/tools/rustc-perf`), which should have been initialized when building this tool.
+        // FIXME: Move update_submodule into build_helper, that way we can also ensure the submodule
+        // is updated when _running_ opt-dist, rather than building.
         #[arg(long)]
         rustc_perf_checkout_dir: Option<Utf8PathBuf>,
 
@@ -146,8 +148,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .host_llvm_dir(Utf8PathBuf::from("/rustroot"))
                 .artifact_dir(Utf8PathBuf::from("/tmp/tmp-multistage/opt-artifacts"))
                 .build_dir(checkout_dir.join("obj"))
-                // /tmp/rustc-perf comes from the x64 dist Dockerfile
-                .prebuilt_rustc_perf(Some(Utf8PathBuf::from("/tmp/rustc-perf")))
                 .shared_llvm(true)
                 .use_bolt(true)
                 .skipped_tests(vec![
@@ -191,9 +191,12 @@ fn execute_pipeline(
 ) -> anyhow::Result<()> {
     reset_directory(&env.artifact_dir())?;
 
-    with_log_group("Building rustc-perf", || match env.prebuilt_rustc_perf() {
-        Some(dir) => copy_rustc_perf(env, &dir),
-        None => download_rustc_perf(env),
+    with_log_group("Building rustc-perf", || {
+        let rustc_perf_checkout_dir = match env.prebuilt_rustc_perf() {
+            Some(dir) => dir,
+            None => env.checkout_path().join("src").join("tools").join("rustc-perf"),
+        };
+        copy_rustc_perf(env, &rustc_perf_checkout_dir)
     })?;
 
     // Stage 1: Build PGO instrumented rustc
@@ -406,36 +409,6 @@ fn main() -> anyhow::Result<()> {
 // Copy rustc-perf from the given path into the environment and build it.
 fn copy_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
     copy_directory(dir, &env.rustc_perf_dir())?;
-    build_rustc_perf(env)
-}
-
-// Download and build rustc-perf into the given environment.
-fn download_rustc_perf(env: &Environment) -> anyhow::Result<()> {
-    reset_directory(&env.rustc_perf_dir())?;
-
-    // FIXME: add some mechanism for synchronization of this commit SHA with
-    // Linux (which builds rustc-perf in a Dockerfile)
-    // rustc-perf version from 2023-10-22
-    const PERF_COMMIT: &str = "4f313add609f43e928e98132358e8426ed3969ae";
-
-    let url = format!("https://ci-mirrors.rust-lang.org/rustc/rustc-perf-{PERF_COMMIT}.zip");
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(60 * 2))
-        .connect_timeout(Duration::from_secs(60 * 2))
-        .build()?;
-    let response = retry_action(
-        || Ok(client.get(&url).send()?.error_for_status()?.bytes()?.to_vec()),
-        "Download rustc-perf archive",
-        5,
-    )?;
-
-    let mut archive = ZipArchive::new(Cursor::new(response))?;
-    archive.extract(env.rustc_perf_dir())?;
-    move_directory(
-        &env.rustc_perf_dir().join(format!("rustc-perf-{PERF_COMMIT}")),
-        &env.rustc_perf_dir(),
-    )?;
-
     build_rustc_perf(env)
 }
 

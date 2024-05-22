@@ -1,6 +1,7 @@
 //@ run-pass
 //@ aux-build:sigpipe-utils.rs
 //@ compile-flags: -Zon-broken-pipe=kill
+//@ only-unix because SIGPIPE is a unix thing
 
 #![feature(rustc_attrs)]
 

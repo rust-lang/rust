@@ -99,7 +99,7 @@ fn recursive_vars() {
             24..31 'unknown': {unknown}
             37..44 '[y, &y]': [{unknown}; 2]
             38..39 'y': {unknown}
-            41..43 '&y': &{unknown}
+            41..43 '&y': &'? {unknown}
             42..43 'y': {unknown}
         "#]],
     );
@@ -117,19 +117,19 @@ fn recursive_vars_2() {
         "#,
         expect![[r#"
             10..79 '{     ...x)]; }': ()
-            20..21 'x': &{unknown}
-            24..31 'unknown': &{unknown}
+            20..21 'x': &'? {unknown}
+            24..31 'unknown': &'? {unknown}
             41..42 'y': {unknown}
             45..52 'unknown': {unknown}
-            58..76 '[(x, y..., &x)]': [(&{unknown}, {unknown}); 2]
-            59..65 '(x, y)': (&{unknown}, {unknown})
-            60..61 'x': &{unknown}
+            58..76 '[(x, y..., &x)]': [(&'? {unknown}, {unknown}); 2]
+            59..65 '(x, y)': (&'? {unknown}, {unknown})
+            60..61 'x': &'? {unknown}
             63..64 'y': {unknown}
-            67..75 '(&y, &x)': (&{unknown}, {unknown})
-            68..70 '&y': &{unknown}
+            67..75 '(&y, &x)': (&'? {unknown}, {unknown})
+            68..70 '&y': &'? {unknown}
             69..70 'y': {unknown}
-            72..74 '&x': &&{unknown}
-            73..74 'x': &{unknown}
+            72..74 '&x': &'? &'? {unknown}
+            73..74 'x': &'? {unknown}
         "#]],
     );
 }
@@ -166,7 +166,7 @@ fn infer_std_crash_1() {
             59..136 'match ...     }': ()
             65..82 'someth...nknown': Maybe<{unknown}>
             93..123 'Maybe:...thing)': Maybe<{unknown}>
-            105..122 'ref mu...ething': &mut {unknown}
+            105..122 'ref mu...ething': &'? mut {unknown}
             127..129 '()': ()
         "#]],
     );
@@ -183,7 +183,7 @@ fn infer_std_crash_2() {
         "#,
         expect![[r#"
             22..52 '{     ...n']; }': ()
-            28..49 '&[0, b...b'\n']': &[u8; 4]
+            28..49 '&[0, b...b'\n']': &'? [u8; 4]
             29..49 '[0, b'...b'\n']': [u8; 4]
             30..31 '0': u8
             33..38 'b'\n'': u8
@@ -269,8 +269,8 @@ fn infer_std_crash_5() {
             32..320 'for co...     }': {unknown}
             32..320 'for co...     }': !
             32..320 'for co...     }': {unknown}
-            32..320 'for co...     }': &mut {unknown}
-            32..320 'for co...     }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            32..320 'for co...     }': &'? mut {unknown}
+            32..320 'for co...     }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
             32..320 'for co...     }': Option<{unknown}>
             32..320 'for co...     }': ()
             32..320 'for co...     }': ()
@@ -278,22 +278,22 @@ fn infer_std_crash_5() {
             36..43 'content': {unknown}
             47..60 'doesnt_matter': {unknown}
             61..320 '{     ...     }': ()
-            75..79 'name': &{unknown}
-            82..166 'if doe...     }': &{unknown}
+            75..79 'name': &'? {unknown}
+            82..166 'if doe...     }': &'? {unknown}
             85..98 'doesnt_matter': bool
-            99..128 '{     ...     }': &{unknown}
-            113..118 'first': &{unknown}
-            134..166 '{     ...     }': &{unknown}
-            148..156 '&content': &{unknown}
+            99..128 '{     ...     }': &'? {unknown}
+            113..118 'first': &'? {unknown}
+            134..166 '{     ...     }': &'? {unknown}
+            148..156 '&content': &'? {unknown}
             149..156 'content': {unknown}
-            181..188 'content': &{unknown}
-            191..313 'if ICE...     }': &{unknown}
+            181..188 'content': &'? {unknown}
+            191..313 'if ICE...     }': &'? {unknown}
             194..231 'ICE_RE..._VALUE': {unknown}
             194..247 'ICE_RE...&name)': bool
-            241..246 '&name': &&{unknown}
-            242..246 'name': &{unknown}
-            248..276 '{     ...     }': &{unknown}
-            262..266 'name': &{unknown}
+            241..246 '&name': &'? &'? {unknown}
+            242..246 'name': &'? {unknown}
+            248..276 '{     ...     }': &'? {unknown}
+            262..266 'name': &'? {unknown}
             282..313 '{     ...     }': {unknown}
             296..303 'content': {unknown}
         "#]],
@@ -318,7 +318,7 @@ fn infer_nested_generics_crash() {
         expect![[r#"
             91..105 'query_response': Canonical<QueryResponse<R>>
             136..166 '{     ...lue; }': ()
-            142..163 '&query....value': &QueryResponse<R>
+            142..163 '&query....value': &'? QueryResponse<R>
             143..157 'query_response': Canonical<QueryResponse<R>>
             143..163 'query_....value': QueryResponse<R>
         "#]],
@@ -465,12 +465,12 @@ fn issue_3999_slice() {
         }
         "#,
         expect![[r#"
-            7..13 'params': &[usize]
+            7..13 'params': &'? [usize]
             25..80 '{     ...   } }': ()
             31..78 'match ...     }': ()
-            37..43 'params': &[usize]
+            37..43 'params': &'? [usize]
             54..66 '[ps @ .., _]': [usize]
-            55..62 'ps @ ..': &[usize]
+            55..62 'ps @ ..': &'? [usize]
             60..62 '..': [usize]
             64..65 '_': usize
             70..72 '{}': ()
@@ -523,13 +523,13 @@ fn issue_4235_name_conflicts() {
         "#,
         expect![[r#"
             31..37 'FOO {}': FOO
-            63..67 'self': &FOO
+            63..67 'self': &'? FOO
             69..71 '{}': ()
             85..119 '{     ...o(); }': ()
-            95..96 'a': &FOO
-            99..103 '&FOO': &FOO
+            95..96 'a': &'? FOO
+            99..103 '&FOO': &'? FOO
             100..103 'FOO': FOO
-            109..110 'a': &FOO
+            109..110 'a': &'? FOO
             109..116 'a.foo()': ()
         "#]],
     );
@@ -715,12 +715,12 @@ fn issue_4885() {
         }
         "#,
         expect![[r#"
-            70..73 'key': &K
+            70..73 'key': &'? K
             132..148 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
-            138..141 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
+            138..141 'bar': fn bar<R, K>(&'? K) -> impl Future<Output = <K as Foo<R>>::Bar>
             138..146 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
-            142..145 'key': &K
-            162..165 'key': &K
+            142..145 'key': &'? K
+            162..165 'key': &'? K
             224..227 '{ }': ()
         "#]],
     );
@@ -771,11 +771,11 @@ fn issue_4800() {
         }
         "#,
         expect![[r#"
-            379..383 'self': &mut PeerSet<D>
+            379..383 'self': &'? mut PeerSet<D>
             401..424 '{     ...     }': dyn Future<Output = ()>
             411..418 'loop {}': !
             416..418 '{}': ()
-            575..579 'self': &mut Self
+            575..579 'self': &'? mut Self
         "#]],
     );
 }
@@ -815,19 +815,19 @@ fn issue_4966() {
             225..229 'iter': T
             244..246 '{}': Vec<A>
             258..402 '{     ...r(); }': ()
-            268..273 'inner': Map<impl Fn(&f64) -> f64>
-            276..300 'Map { ... 0.0 }': Map<impl Fn(&f64) -> f64>
-            285..298 '|_: &f64| 0.0': impl Fn(&f64) -> f64
-            286..287 '_': &f64
+            268..273 'inner': Map<impl Fn(&'? f64) -> f64>
+            276..300 'Map { ... 0.0 }': Map<impl Fn(&'? f64) -> f64>
+            285..298 '|_: &f64| 0.0': impl Fn(&'? f64) -> f64
+            286..287 '_': &'? f64
             295..298 '0.0': f64
-            311..317 'repeat': Repeat<Map<impl Fn(&f64) -> f64>>
-            320..345 'Repeat...nner }': Repeat<Map<impl Fn(&f64) -> f64>>
-            338..343 'inner': Map<impl Fn(&f64) -> f64>
-            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
-            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>, Repeat<Map<impl Fn(&f64) -> f64>>>(Repeat<Map<impl Fn(&f64) -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
-            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
-            372..378 'repeat': Repeat<Map<impl Fn(&f64) -> f64>>
-            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            311..317 'repeat': Repeat<Map<impl Fn(&'? f64) -> f64>>
+            320..345 'Repeat...nner }': Repeat<Map<impl Fn(&'? f64) -> f64>>
+            338..343 'inner': Map<impl Fn(&'? f64) -> f64>
+            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
+            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>, Repeat<Map<impl Fn(&'? f64) -> f64>>>(Repeat<Map<impl Fn(&'? f64) -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
+            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
+            372..378 'repeat': Repeat<Map<impl Fn(&'? f64) -> f64>>
+            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
             386..399 'vec.foo_bar()': {unknown}
         "#]],
     );
@@ -850,10 +850,10 @@ fn main() {
 }
 "#,
         expect![[r#"
-            40..44 'self': &S<T>
+            40..44 'self': &'? S<T>
             46..48 '_t': T
             53..55 '{}': ()
-            81..85 'self': &S<T>
+            81..85 'self': &'? S<T>
             87..89 '_f': F
             94..96 '{}': ()
             109..160 '{     ...10); }': ()
@@ -862,8 +862,8 @@ fn main() {
             123..126 'S()': S<i32>
             132..133 's': S<i32>
             132..144 's.g(|_x| {})': ()
-            136..143 '|_x| {}': impl FnOnce(&i32)
-            137..139 '_x': &i32
+            136..143 '|_x| {}': impl FnOnce(&'? i32)
+            137..139 '_x': &'? i32
             141..143 '{}': ()
             150..151 's': S<i32>
             150..157 's.f(10)': ()
@@ -895,14 +895,14 @@ fn flush(&self) {
 }
 "#,
         expect![[r#"
-            123..127 'self': &Mutex<T>
-            150..152 '{}': MutexGuard<'{error}, T>
-            234..238 'self': &{unknown}
+            123..127 'self': &'? Mutex<T>
+            150..152 '{}': MutexGuard<'?, T>
+            234..238 'self': &'? {unknown}
             240..290 '{     ...()); }': ()
-            250..251 'w': &Mutex<BufWriter>
+            250..251 'w': &'? Mutex<BufWriter>
             276..287 '*(w.lock())': BufWriter
-            278..279 'w': &Mutex<BufWriter>
-            278..286 'w.lock()': MutexGuard<'{error}, BufWriter>
+            278..279 'w': &'? Mutex<BufWriter>
+            278..286 'w.lock()': MutexGuard<'?, BufWriter>
         "#]],
     );
 }
@@ -1023,20 +1023,20 @@ fn cfg_tail() {
         expect![[r#"
             14..53 '{     ...)] 9 }': ()
             20..31 '{ "first" }': ()
-            22..29 '"first"': &str
+            22..29 '"first"': &'static str
             72..190 '{     ...] 13 }': ()
             78..88 '{ "fake" }': ()
-            80..86 '"fake"': &str
+            80..86 '"fake"': &'static str
             93..103 '{ "fake" }': ()
-            95..101 '"fake"': &str
+            95..101 '"fake"': &'static str
             108..120 '{ "second" }': ()
-            110..118 '"second"': &str
+            110..118 '"second"': &'static str
             210..273 '{     ... 15; }': ()
             216..227 '{ "third" }': ()
-            218..225 '"third"': &str
+            218..225 '"third"': &'static str
             293..357 '{     ...] 15 }': ()
-            299..311 '{ "fourth" }': &str
-            301..309 '"fourth"': &str
+            299..311 '{ "fourth" }': &'static str
+            301..309 '"fourth"': &'static str
         "#]],
     )
 }
@@ -1238,8 +1238,8 @@ fn test() {
             16..66 'for _ ...     }': IntoIterator::IntoIter<()>
             16..66 'for _ ...     }': !
             16..66 'for _ ...     }': IntoIterator::IntoIter<()>
-            16..66 'for _ ...     }': &mut IntoIterator::IntoIter<()>
-            16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
+            16..66 'for _ ...     }': &'? mut IntoIterator::IntoIter<()>
+            16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&'? mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
             16..66 'for _ ...     }': Option<IntoIterator::Item<()>>
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
@@ -1600,85 +1600,6 @@ fn f(s: S) {
 }
 
 #[test]
-fn rust_161_option_clone() {
-    check_types(
-        r#"
-//- minicore: option, drop
-
-fn test(o: &Option<i32>) {
-    o.my_clone();
-  //^^^^^^^^^^^^ Option<i32>
-}
-
-pub trait MyClone: Sized {
-    fn my_clone(&self) -> Self;
-}
-
-impl<T> const MyClone for Option<T>
-where
-    T: ~const MyClone + ~const Drop + ~const Destruct,
-{
-    fn my_clone(&self) -> Self {
-        match self {
-            Some(x) => Some(x.my_clone()),
-            None => None,
-        }
-    }
-}
-
-impl const MyClone for i32 {
-    fn my_clone(&self) -> Self {
-        *self
-    }
-}
-
-pub trait Destruct {}
-
-impl<T: ?Sized> const Destruct for T {}
-"#,
-    );
-}
-
-#[test]
-fn rust_162_option_clone() {
-    check_types(
-        r#"
-//- minicore: option, drop
-
-fn test(o: &Option<i32>) {
-    o.my_clone();
-  //^^^^^^^^^^^^ Option<i32>
-}
-
-pub trait MyClone: Sized {
-    fn my_clone(&self) -> Self;
-}
-
-impl<T> const MyClone for Option<T>
-where
-    T: ~const MyClone + ~const Destruct,
-{
-    fn my_clone(&self) -> Self {
-        match self {
-            Some(x) => Some(x.my_clone()),
-            None => None,
-        }
-    }
-}
-
-impl const MyClone for i32 {
-    fn my_clone(&self) -> Self {
-        *self
-    }
-}
-
-#[lang = "destruct"]
-pub trait Destruct {}
-"#,
-    );
-}
-
-#[test]
 fn tuple_struct_pattern_with_unmatched_args_crash() {
     check_infer(
         r#"
@@ -1727,7 +1648,7 @@ fn dyn_with_unresolved_trait() {
         r#"
 fn foo(a: &dyn DoesNotExist) {
     a.bar();
-  //^&{unknown}
+  //^&'? {unknown}
 }
         "#,
     );
@@ -1851,9 +1772,9 @@ fn foo() {
     match &E::A {
         b @ (x @ E::A | x) => {
             b;
-          //^ &E
+          //^ &'? E
             x;
-          //^ &E
+          //^ &'? E
         }
     }
 }",
@@ -2039,4 +1960,42 @@ fn main() {
 }
 "#,
     )
+}
+
+#[test]
+fn cfg_first_trait_param_16141() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized, coerce_unsized
+trait Bar {
+    fn bar(&self) {}
+}
+
+impl<#[cfg(feature = "a-feature")] A> Bar for (){}
+"#,
+    )
+}
+
+#[test]
+fn nested_anon_generics_and_where_bounds_17173() {
+    check_types(
+        r#"
+//- minicore: sized, fn
+pub trait Lookup {
+    type Data;
+    fn lookup(&self) -> Self::Data;
+}
+pub trait ItemTreeLoc {
+    type Id;
+}
+fn id_to_generics(id: impl Lookup<Data = impl ItemTreeLoc<Id = ()>>,
+                //^^ impl Lookup<Data = impl ItemTreeLoc<Id = ()>>
+                enabled_params: impl Fn(),
+              //^^^^^^^^^^^^^^  impl Fn()
+                )
+where
+    (): Sized,
+{}
+"#,
+    );
 }

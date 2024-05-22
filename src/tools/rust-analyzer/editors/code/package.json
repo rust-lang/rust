@@ -534,6 +534,12 @@
                         "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
                     ]
                 },
+                "rust-analyzer.assist.termSearch.fuel": {
+                    "markdownDescription": "Term search fuel in \"units of work\" for assists (Defaults to 400).",
+                    "default": 400,
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "rust-analyzer.cachePriming.enable": {
                     "markdownDescription": "Warm up caches on project load.",
                     "default": true,
@@ -798,7 +804,7 @@
                     ]
                 },
                 "rust-analyzer.check.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the futureg.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the future.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -929,6 +935,12 @@
                     "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
                     "default": false,
                     "type": "boolean"
+                },
+                "rust-analyzer.completion.termSearch.fuel": {
+                    "markdownDescription": "Term search fuel in \"units of work\" for autocompletion (Defaults to 200).",
+                    "default": 200,
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "rust-analyzer.diagnostics.disabled": {
                     "markdownDescription": "List of rust-analyzer diagnostics to disable.",
@@ -1145,9 +1157,18 @@
                         }
                     ]
                 },
-                "rust-analyzer.hover.show.structFields": {
-                    "markdownDescription": "How many fields of a struct to display when hovering a struct.",
-                    "default": null,
+                "rust-analyzer.hover.show.enumVariants": {
+                    "markdownDescription": "How many variants of an enum to display when hovering on. Show none if empty.",
+                    "default": 5,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
+                "rust-analyzer.hover.show.fields": {
+                    "markdownDescription": "How many fields of a struct, variant or union to display when hovering on. Show none if empty.",
+                    "default": 5,
                     "type": [
                         "null",
                         "integer"
@@ -1495,7 +1516,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.linkedProjects": {
-                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set\nof projects.\n\nElements must be paths pointing to `Cargo.toml`,\n`rust-project.json`, or JSON objects in `rust-project.json` format.",
+                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set\nof projects.\n\nElements must be paths pointing to `Cargo.toml`,\n`rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON\nobjects in `rust-project.json` format.",
                     "default": [],
                     "type": "array",
                     "items": {

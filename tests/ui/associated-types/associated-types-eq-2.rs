@@ -4,7 +4,7 @@
 struct Bar;
 struct Qux;
 
-// Tests for a a non generic trait
+// Tests for a non generic trait
 pub trait Tr1 {
     type A;
     fn boo(&self) -> <Self as Tr1>::A;

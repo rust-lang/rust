@@ -1591,31 +1591,28 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
-                        let parent_id = fcx.tcx.parent_hir_id(blk_id);
                         err = self.report_return_mismatched_types(
                             cause,
                             expected,
                             found,
                             coercion_error,
                             fcx,
-                            parent_id,
+                            blk_id,
                             expression,
-                            Some(blk_id),
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }
-                    ObligationCauseCode::ReturnValue(id) => {
+                    ObligationCauseCode::ReturnValue(return_expr_id) => {
                         err = self.report_return_mismatched_types(
                             cause,
                             expected,
                             found,
                             coercion_error,
                             fcx,
-                            id,
+                            return_expr_id,
                             expression,
-                            None,
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
@@ -1809,13 +1806,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         found: Ty<'tcx>,
         ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
-        id: hir::HirId,
+        block_or_return_id: hir::HirId,
         expression: Option<&'tcx hir::Expr<'tcx>>,
-        blk_id: Option<hir::HirId>,
     ) -> Diag<'a> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
-        let parent_id = fcx.tcx.parent_hir_id(id);
+        let due_to_block = matches!(fcx.tcx.hir_node(block_or_return_id), hir::Node::Block(..));
+
+        let parent_id = fcx.tcx.parent_hir_id(block_or_return_id);
         let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
             && let hir::Node::Expr(hir::Expr {
@@ -1829,72 +1827,64 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
-        let fn_decl = if let (Some(expr), Some(blk_id)) = (expression, blk_id) {
+        if let Some(expr) = expression
+            && due_to_block
+        {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, false);
-            let pointing_at_return_type =
-                fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
-            if let (Some(cond_expr), true, false) = (
-                fcx.tcx.hir().get_if_cause(expr.hir_id),
-                expected.is_unit(),
-                pointing_at_return_type,
-            )
+            let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
+                &mut err,
+                expr,
+                expected,
+                found,
+                block_or_return_id,
+            );
+            if let Some(cond_expr) = fcx.tcx.hir().get_if_cause(expr.hir_id)
+                && expected.is_unit()
+                && !pointing_at_return_type
                 // If the block is from an external macro or try (`?`) desugaring, then
                 // do not suggest adding a semicolon, because there's nowhere to put it.
                 // See issues #81943 and #87051.
                 && matches!(
                     cond_expr.span.desugaring_kind(),
                     None | Some(DesugaringKind::WhileLoop)
-                ) && !in_external_macro(fcx.tcx.sess, cond_expr.span)
-                    && !matches!(
-                        cond_expr.kind,
-                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
-                    )
+                )
+                && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                && !matches!(
+                    cond_expr.kind,
+                    hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
+                )
             {
                 err.span_label(cond_expr.span, "expected this to be `()`");
                 if expr.can_have_side_effects() {
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
-            fcx.get_node_fn_decl(parent)
-                .map(|(fn_id, fn_decl, _, is_main)| (fn_id, fn_decl, is_main))
-        } else {
-            fcx.get_fn_decl(parent_id)
         };
 
-        if let Some((fn_id, fn_decl, can_suggest)) = fn_decl {
-            if blk_id.is_none() {
-                fcx.suggest_missing_return_type(
-                    &mut err,
-                    fn_decl,
-                    expected,
-                    found,
-                    can_suggest,
-                    fn_id,
-                );
-            }
+        // If this is due to an explicit `return`, suggest adding a return type.
+        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(parent_id)
+            && !due_to_block
+        {
+            fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, can_suggest, fn_id);
         }
 
-        let mut parent_id = fcx.tcx.hir().get_parent_item(id).def_id;
-        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id);
-        // When suggesting return, we need to account for closures and async blocks, not just items.
-        for (_, node) in fcx.tcx.hir().parent_iter(id) {
-            match node {
-                hir::Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::Closure(hir::Closure { def_id, .. }),
-                    ..
-                }) => {
-                    parent_item = node;
-                    parent_id = *def_id;
-                    break;
-                }
-                hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => break,
-                _ => {}
-            }
-        }
-
-        if let (Some(expr), Some(_), Some(fn_decl)) = (expression, blk_id, parent_item.fn_decl()) {
+        // If this is due to a block, then maybe we forgot a `return`/`break`.
+        if due_to_block
+            && let Some(expr) = expression
+            && let Some((parent_fn_decl, parent_id)) = fcx
+                .tcx
+                .hir()
+                .parent_iter(block_or_return_id)
+                .find_map(|(_, node)| Some((node.fn_decl()?, node.associated_body()?.0)))
+        {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err, expr, fn_decl, expected, found, id, parent_id,
+                &mut err,
+                expr,
+                parent_fn_decl,
+                expected,
+                found,
+                block_or_return_id,
+                parent_id,
             );
         }
 

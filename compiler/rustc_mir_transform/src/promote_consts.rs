@@ -470,7 +470,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
@@ -539,10 +539,13 @@ impl<'tcx> Validator<'_, 'tcx> {
                     | BinOp::Offset
                     | BinOp::Add
                     | BinOp::AddUnchecked
+                    | BinOp::AddWithOverflow
                     | BinOp::Sub
                     | BinOp::SubUnchecked
+                    | BinOp::SubWithOverflow
                     | BinOp::Mul
                     | BinOp::MulUnchecked
+                    | BinOp::MulWithOverflow
                     | BinOp::BitXor
                     | BinOp::BitAnd
                     | BinOp::BitOr

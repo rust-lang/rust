@@ -380,7 +380,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             source: CandidateSource::Impl(impl_def_id),
             result: _,
         } = candidate.kind()
-            && goal.infcx().tcx.has_attr(impl_def_id, sym::do_not_recommend)
+            && goal
+                .infcx()
+                .tcx
+                .has_attrs_with_path(impl_def_id, &[sym::diagnostic, sym::do_not_recommend])
         {
             return ControlFlow::Break(self.obligation.clone());
         }

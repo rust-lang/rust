@@ -368,7 +368,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
     krate: CrateId,
     fp: TyFingerprint,
 ) -> SmallVec<[CrateId; 2]> {
-    let _p = tracing::span!(tracing::Level::INFO, "inherent_impl_crates_query").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "incoherent_inherent_impl_crates").entered();
     let mut res = SmallVec::new();
     let crate_graph = db.crate_graph();
 

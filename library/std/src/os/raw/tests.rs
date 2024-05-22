@@ -1,3 +1,5 @@
+#![cfg(not(all(windows, target_env = "msvc")))]
+
 use crate::any::TypeId;
 
 macro_rules! ok {

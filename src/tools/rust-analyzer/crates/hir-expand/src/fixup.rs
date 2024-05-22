@@ -1,6 +1,7 @@
 //! To make attribute macros work reliably when typing, we need to take care to
 //! fix up syntax errors in the code we're passing to them.
 
+use mbe::DocCommentDesugarMode;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use span::{ErasedFileAstId, Span, SpanAnchor, FIXUP_ERASED_FILE_AST_ID_MARKER};
@@ -49,6 +50,7 @@ pub(crate) fn fixup_syntax(
     span_map: SpanMapRef<'_>,
     node: &SyntaxNode,
     call_site: Span,
+    mode: DocCommentDesugarMode,
 ) -> SyntaxFixups {
     let mut append = FxHashMap::<SyntaxElement, _>::default();
     let mut remove = FxHashSet::<SyntaxElement>::default();
@@ -70,7 +72,7 @@ pub(crate) fn fixup_syntax(
         if can_handle_error(&node) && has_error_to_handle(&node) {
             remove.insert(node.clone().into());
             // the node contains an error node, we have to completely replace it by something valid
-            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site);
+            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site, mode);
             let idx = original.len() as u32;
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
@@ -360,6 +362,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
 mod tests {
     use base_db::FileId;
     use expect_test::{expect, Expect};
+    use mbe::DocCommentDesugarMode;
     use syntax::TextRange;
     use triomphe::Arc;
 
@@ -402,6 +405,7 @@ mod tests {
             span_map.as_ref(),
             &parsed.syntax_node(),
             span_map.span_for_range(TextRange::empty(0.into())),
+            DocCommentDesugarMode::Mbe,
         );
         let mut tt = mbe::syntax_node_to_token_tree_modified(
             &parsed.syntax_node(),
@@ -409,6 +413,7 @@ mod tests {
             fixups.append,
             fixups.remove,
             span_map.span_for_range(TextRange::empty(0.into())),
+            DocCommentDesugarMode::Mbe,
         );
 
         let actual = format!("{tt}\n");
@@ -436,6 +441,7 @@ mod tests {
             &parsed.syntax_node(),
             span_map.as_ref(),
             span_map.span_for_range(TextRange::empty(0.into())),
+            DocCommentDesugarMode::Mbe,
         );
         assert!(
             check_subtree_eq(&tt, &original_as_tt),

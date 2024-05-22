@@ -24,7 +24,7 @@ use toolchain::Tool;
 
 use crate::{
     cfg::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
-    InvocationStrategy, Package, Sysroot, TargetKind,
+    InvocationStrategy, ManifestPath, Package, Sysroot, TargetKind,
 };
 
 /// Output of the build script and proc-macro building steps for a workspace.
@@ -63,9 +63,11 @@ impl WorkspaceBuildScripts {
     fn build_command(
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
-        workspace_root: &AbsPathBuf,
+        manifest_path: &ManifestPath,
+        toolchain: Option<&Version>,
         sysroot: Option<&Sysroot>,
     ) -> io::Result<Command> {
+        const RUST_1_75: Version = Version::new(1, 75, 0);
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
@@ -79,7 +81,7 @@ impl WorkspaceBuildScripts {
                 cmd.args(&config.extra_args);
 
                 cmd.arg("--manifest-path");
-                cmd.arg(workspace_root.join("Cargo.toml"));
+                cmd.arg(manifest_path.as_ref());
 
                 if let Some(target_dir) = &config.target_dir {
                     cmd.arg("--target-dir").arg(target_dir);
@@ -116,6 +118,14 @@ impl WorkspaceBuildScripts {
                     }
                 }
 
+                if manifest_path.is_rust_manifest() {
+                    cmd.arg("-Zscript");
+                }
+
+                if toolchain.map_or(false, |it| *it >= RUST_1_75) {
+                    cmd.arg("--keep-going");
+                }
+
                 cmd
             }
         };
@@ -138,11 +148,9 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
-        toolchain: &Option<Version>,
+        toolchain: Option<&Version>,
         sysroot: Option<&Sysroot>,
     ) -> io::Result<WorkspaceBuildScripts> {
-        const RUST_1_75: Version = Version::new(1, 75, 0);
-
         let current_dir = match &config.invocation_location {
             InvocationLocation::Root(root) if config.run_build_script_command.is_some() => {
                 root.as_path()
@@ -152,37 +160,14 @@ impl WorkspaceBuildScripts {
         .as_ref();
 
         let allowed_features = workspace.workspace_features();
-
-        match Self::run_per_ws(
-            Self::build_command(
-                config,
-                &allowed_features,
-                &workspace.workspace_root().to_path_buf(),
-                sysroot,
-            )?,
-            workspace,
-            current_dir,
-            progress,
-        ) {
-            Ok(WorkspaceBuildScripts { error: Some(error), .. })
-                if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_75) =>
-            {
-                // building build scripts failed, attempt to build with --keep-going so
-                // that we potentially get more build data
-                let mut cmd = Self::build_command(
-                    config,
-                    &allowed_features,
-                    &workspace.workspace_root().to_path_buf(),
-                    sysroot,
-                )?;
-
-                cmd.args(["--keep-going"]);
-                let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
-                res.error = Some(error);
-                Ok(res)
-            }
-            res => res,
-        }
+        let cmd = Self::build_command(
+            config,
+            &allowed_features,
+            workspace.manifest_path(),
+            toolchain,
+            sysroot,
+        )?;
+        Self::run_per_ws(cmd, workspace, current_dir, progress)
     }
 
     /// Runs the build scripts by invoking the configured command *once*.
@@ -204,7 +189,14 @@ impl WorkspaceBuildScripts {
                 ))
             }
         };
-        let cmd = Self::build_command(config, &Default::default(), workspace_root, None)?;
+        let cmd = Self::build_command(
+            config,
+            &Default::default(),
+            // This is not gonna be used anyways, so just construct a dummy here
+            &ManifestPath::try_from(workspace_root.clone()).unwrap(),
+            None,
+            None,
+        )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.

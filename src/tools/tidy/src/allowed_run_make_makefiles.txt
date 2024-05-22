@@ -177,7 +177,6 @@ run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-builtins-lto/Makefile
 run-make/no-duplicate-libs/Makefile
-run-make/no-intermediate-extras/Makefile
 run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
 run-make/optimization-remarks-dir/Makefile
@@ -235,12 +234,8 @@ run-make/rmeta-preferred/Makefile
 run-make/rustc-macro-dep-files/Makefile
 run-make/rustdoc-io-error/Makefile
 run-make/rustdoc-scrape-examples-macros/Makefile
-run-make/rustdoc-scrape-examples-multiple/Makefile
-run-make/rustdoc-scrape-examples-test/Makefile
-run-make/rustdoc-scrape-examples-whitespace/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-output-option/Makefile
-run-make/rustdoc-with-short-out-dir-option/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile

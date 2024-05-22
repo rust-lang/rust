@@ -1,9 +1,3 @@
-/*!
-
-Rust MIR: a lowered representation of Rust.
-
-*/
-
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![feature(rustdoc_internals)]

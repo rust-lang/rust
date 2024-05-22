@@ -831,23 +831,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 // on both operands for side effect.
                 let lhs = lhs?;
                 let rhs = rhs?;
-                if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
-                    return Some(value);
+
+                if let Some(op) = op.overflowing_to_wrapping() {
+                    if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
+                        return Some(value);
+                    }
+                    Value::CheckedBinaryOp(op, lhs, rhs)
+                } else {
+                    if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
+                        return Some(value);
+                    }
+                    Value::BinaryOp(op, lhs, rhs)
                 }
-                Value::BinaryOp(op, lhs, rhs)
-            }
-            Rvalue::CheckedBinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
-                let ty = lhs.ty(self.local_decls, self.tcx);
-                let lhs = self.simplify_operand(lhs, location);
-                let rhs = self.simplify_operand(rhs, location);
-                // Only short-circuit options after we called `simplify_operand`
-                // on both operands for side effect.
-                let lhs = lhs?;
-                let rhs = rhs?;
-                if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
-                    return Some(value);
-                }
-                Value::CheckedBinaryOp(op, lhs, rhs)
             }
             Rvalue::UnaryOp(op, ref mut arg) => {
                 let arg = self.simplify_operand(arg, location)?;

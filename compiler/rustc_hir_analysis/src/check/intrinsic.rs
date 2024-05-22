@@ -607,6 +607,7 @@ pub fn check_intrinsic_type(
             | sym::simd_bitreverse
             | sym::simd_ctlz
             | sym::simd_cttz
+            | sym::simd_ctpop
             | sym::simd_fsqrt
             | sym::simd_fsin
             | sym::simd_fcos

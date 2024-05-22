@@ -1,18 +1,16 @@
 Function name: inline::display::<char>
-Raw bytes (33): 0x[01, 01, 02, 01, 05, 03, 05, 05, 01, 29, 01, 00, 22, 05, 01, 09, 00, 0a, 03, 00, 0e, 00, 10, 05, 00, 11, 02, 06, 06, 03, 05, 01, 02]
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 29, 01, 00, 22, 05, 01, 09, 00, 0a, 03, 00, 0e, 00, 10, 05, 00, 11, 02, 06, 01, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
+Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Expression(0, Add), rhs = Counter(1)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 41, 1) to (start + 0, 34)
 - Code(Counter(1)) at (prev + 1, 9) to (start + 0, 10)
 - Code(Expression(0, Add)) at (prev + 0, 14) to (start + 0, 16)
     = (c0 + c1)
 - Code(Counter(1)) at (prev + 0, 17) to (start + 2, 6)
-- Code(Expression(1, Sub)) at (prev + 3, 5) to (start + 1, 2)
-    = ((c0 + c1) - c1)
+- Code(Counter(0)) at (prev + 3, 5) to (start + 1, 2)
 
 Function name: inline::error
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 31, 01, 01, 14]

@@ -18,3 +18,11 @@ deprecated  = "allow"
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 similar_names = { level = "allow", priority = -1 }
+
+[workspace.lints.rust]
+rust_2018_idioms = "warn"
+bare_trait_objects = "allow"
+
+[workspace.lints.clippy]
+pedantic = "warn"
+similar_names = "allow"

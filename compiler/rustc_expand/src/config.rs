@@ -14,6 +14,7 @@ use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::Features;
 use rustc_feature::{ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -248,7 +249,6 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
@@ -262,7 +262,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`#[cfg_attr]` does not expand to any attributes",
+                BuiltinLintDiag::CfgAttrNoAttributes,
             );
         }
 
@@ -283,7 +283,6 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn expand_cfg_attr_item(
         &self,
         attr: &Attribute,
@@ -346,7 +345,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`crate_type` within an `#![cfg_attr] attribute is deprecated`",
+                BuiltinLintDiag::CrateTypeInCfgAttr,
             );
         }
         if attr.has_name(sym::crate_name) {
@@ -354,7 +353,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`crate_name` within an `#![cfg_attr] attribute is deprecated`",
+                BuiltinLintDiag::CrateNameInCfgAttr,
             );
         }
         attr

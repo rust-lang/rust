@@ -505,6 +505,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
             is_marker: self.is_marker,
             is_coinductive: self.is_coinductive,
             skip_array_during_method_dispatch: self.skip_array_during_method_dispatch,
+            skip_boxed_slice_during_method_dispatch: self.skip_boxed_slice_during_method_dispatch,
             specialization_kind: self.specialization_kind.stable(tables),
             must_implement_one_of: self
                 .must_implement_one_of

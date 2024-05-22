@@ -5,8 +5,9 @@
 
 #![allow(dead_code)] // runtime init functions not used during testing
 
-use crate::ffi::OsString;
+use crate::ffi::{CStr, OsString};
 use crate::fmt;
+use crate::os::unix::ffi::OsStringExt;
 use crate::vec;
 
 /// One-time global initialization.
@@ -16,7 +17,46 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 
 /// Returns the command line arguments
 pub fn args() -> Args {
-    imp::args()
+    let (argc, argv) = imp::argc_argv();
+
+    let mut vec = Vec::with_capacity(argc as usize);
+
+    for i in 0..argc {
+        // SAFETY: `argv` is non-null if `argc` is positive, and it is
+        // guaranteed to be at least as long as `argc`, so reading from it
+        // should be safe.
+        let ptr = unsafe { argv.offset(i).read() };
+
+        // Some C commandline parsers (e.g. GLib and Qt) are replacing already
+        // handled arguments in `argv` with `NULL` and move them to the end.
+        //
+        // Since they can't directly ensure updates to `argc` as well, this
+        // means that `argc` might be bigger than the actual number of
+        // non-`NULL` pointers in `argv` at this point.
+        //
+        // To handle this we simply stop iterating at the first `NULL`
+        // argument. `argv` is also guaranteed to be `NULL`-terminated so any
+        // non-`NULL` arguments after the first `NULL` can safely be ignored.
+        if ptr.is_null() {
+            // NOTE: On Apple platforms, `-[NSProcessInfo arguments]` does not
+            // stop iterating here, but instead `continue`, always iterating
+            // up until it reached `argc`.
+            //
+            // This difference will only matter in very specific circumstances
+            // where `argc`/`argv` have been modified, but in unexpected ways,
+            // so it likely doesn't really matter which option we choose.
+            // See the following PR for further discussion:
+            // <https://github.com/rust-lang/rust/pull/125225>
+            break;
+        }
+
+        // SAFETY: Just checked that the pointer is not NULL, and arguments
+        // are otherwise guaranteed to be valid C strings.
+        let cstr = unsafe { CStr::from_ptr(ptr) };
+        vec.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
+    }
+
+    Args { iter: vec.into_iter() }
 }
 
 pub struct Args {
@@ -75,9 +115,7 @@ impl DoubleEndedIterator for Args {
     target_os = "hurd",
 ))]
 mod imp {
-    use super::Args;
-    use crate::ffi::{CStr, OsString};
-    use crate::os::unix::prelude::*;
+    use crate::ffi::c_char;
     use crate::ptr;
     use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
 
@@ -126,162 +164,78 @@ mod imp {
         init_wrapper
     };
 
-    pub fn args() -> Args {
-        Args { iter: clone().into_iter() }
-    }
+    pub fn argc_argv() -> (isize, *const *const c_char) {
+        // Load ARGC and ARGV, which hold the unmodified system-provided
+        // argc/argv, so we can read the pointed-to memory without atomics or
+        // synchronization.
+        //
+        // If either ARGC or ARGV is still zero or null, then either there
+        // really are no arguments, or someone is asking for `args()` before
+        // initialization has completed, and we return an empty list.
+        let argv = ARGV.load(Ordering::Relaxed);
+        let argc = if argv.is_null() { 0 } else { ARGC.load(Ordering::Relaxed) };
 
-    fn clone() -> Vec<OsString> {
-        unsafe {
-            // Load ARGC and ARGV, which hold the unmodified system-provided
-            // argc/argv, so we can read the pointed-to memory without atomics
-            // or synchronization.
-            //
-            // If either ARGC or ARGV is still zero or null, then either there
-            // really are no arguments, or someone is asking for `args()`
-            // before initialization has completed, and we return an empty
-            // list.
-            let argv = ARGV.load(Ordering::Relaxed);
-            let argc = if argv.is_null() { 0 } else { ARGC.load(Ordering::Relaxed) };
-            let mut args = Vec::with_capacity(argc as usize);
-            for i in 0..argc {
-                let ptr = *argv.offset(i) as *const libc::c_char;
-
-                // Some C commandline parsers (e.g. GLib and Qt) are replacing already
-                // handled arguments in `argv` with `NULL` and move them to the end. That
-                // means that `argc` might be bigger than the actual number of non-`NULL`
-                // pointers in `argv` at this point.
-                //
-                // To handle this we simply stop iterating at the first `NULL` argument.
-                //
-                // `argv` is also guaranteed to be `NULL`-terminated so any non-`NULL` arguments
-                // after the first `NULL` can safely be ignored.
-                if ptr.is_null() {
-                    break;
-                }
-
-                let cstr = CStr::from_ptr(ptr);
-                args.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
-            }
-
-            args
-        }
+        // Cast from `*mut *const u8` to `*const *const c_char`
+        (argc, argv.cast())
     }
 }
 
+// Use `_NSGetArgc` and `_NSGetArgv` on Apple platforms.
+//
+// Even though these have underscores in their names, they've been available
+// since since the first versions of both macOS and iOS, and are declared in
+// the header `crt_externs.h`.
+//
+// NOTE: This header was added to the iOS 13.0 SDK, which has been the source
+// of a great deal of confusion in the past about the availability of these
+// APIs.
+//
+// NOTE(madsmtm): This has not strictly been verified to not cause App Store
+// rejections; if this is found to be the case, the previous implementation
+// of this used `[[NSProcessInfo processInfo] arguments]`.
 #[cfg(target_vendor = "apple")]
 mod imp {
-    use super::Args;
-    use crate::ffi::CStr;
+    use crate::ffi::{c_char, c_int};
 
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-    #[cfg(target_os = "macos")]
-    pub fn args() -> Args {
-        use crate::os::unix::prelude::*;
-        extern "C" {
-            // These functions are in crt_externs.h.
-            fn _NSGetArgc() -> *mut libc::c_int;
-            fn _NSGetArgv() -> *mut *mut *mut libc::c_char;
-        }
-
-        let vec = unsafe {
-            let (argc, argv) =
-                (*_NSGetArgc() as isize, *_NSGetArgv() as *const *const libc::c_char);
-            (0..argc as isize)
-                .map(|i| {
-                    let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
-                    OsStringExt::from_vec(bytes)
-                })
-                .collect::<Vec<_>>()
-        };
-        Args { iter: vec.into_iter() }
+    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+        // No need to initialize anything in here, `libdyld.dylib` has already
+        // done the work for us.
     }
 
-    // As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
-    // and use underscores in their names - they're most probably
-    // are considered private and therefore should be avoided.
-    // Here is another way to get arguments using the Objective-C
-    // runtime.
-    //
-    // In general it looks like:
-    // res = Vec::new()
-    // let args = [[NSProcessInfo processInfo] arguments]
-    // for i in (0..[args count])
-    //      res.push([args objectAtIndex:i])
-    // res
-    #[cfg(not(target_os = "macos"))]
-    pub fn args() -> Args {
-        use crate::ffi::{c_char, c_void, OsString};
-        use crate::mem;
-        use crate::str;
-
-        type Sel = *const c_void;
-        type NsId = *const c_void;
-        type NSUInteger = usize;
-
+    pub fn argc_argv() -> (isize, *const *const c_char) {
         extern "C" {
-            fn sel_registerName(name: *const c_char) -> Sel;
-            fn objc_getClass(class_name: *const c_char) -> NsId;
-
-            // This must be transmuted to an appropriate function pointer type before being called.
-            fn objc_msgSend();
+            // These functions are in crt_externs.h.
+            fn _NSGetArgc() -> *mut c_int;
+            fn _NSGetArgv() -> *mut *mut *mut c_char;
         }
 
-        const MSG_SEND_PTR: unsafe extern "C" fn() = objc_msgSend;
-        const MSG_SEND_NO_ARGUMENTS_RETURN_PTR: unsafe extern "C" fn(NsId, Sel) -> *const c_void =
-            unsafe { mem::transmute(MSG_SEND_PTR) };
-        const MSG_SEND_NO_ARGUMENTS_RETURN_NSUINTEGER: unsafe extern "C" fn(
-            NsId,
-            Sel,
-        ) -> NSUInteger = unsafe { mem::transmute(MSG_SEND_PTR) };
-        const MSG_SEND_NSINTEGER_ARGUMENT_RETURN_PTR: unsafe extern "C" fn(
-            NsId,
-            Sel,
-            NSUInteger,
-        )
-            -> *const c_void = unsafe { mem::transmute(MSG_SEND_PTR) };
+        // SAFETY: The returned pointer points to a static initialized early
+        // in the program lifetime by `libdyld.dylib`, and as such is always
+        // valid.
+        //
+        // NOTE: Similar to `_NSGetEnviron`, there technically isn't anything
+        // protecting us against concurrent modifications to this, and there
+        // doesn't exist a lock that we can take. Instead, it is generally
+        // expected that it's only modified in `main` / before other code
+        // runs, so reading this here should be fine.
+        let argc = unsafe { _NSGetArgc().read() };
+        // SAFETY: Same as above.
+        let argv = unsafe { _NSGetArgv().read() };
 
-        let mut res = Vec::new();
-
-        unsafe {
-            let process_info_sel = sel_registerName(c"processInfo".as_ptr());
-            let arguments_sel = sel_registerName(c"arguments".as_ptr());
-            let count_sel = sel_registerName(c"count".as_ptr());
-            let object_at_index_sel = sel_registerName(c"objectAtIndex:".as_ptr());
-            let utf8string_sel = sel_registerName(c"UTF8String".as_ptr());
-
-            let klass = objc_getClass(c"NSProcessInfo".as_ptr());
-            // `+[NSProcessInfo processInfo]` returns an object with +0 retain count, so no need to manually `retain/release`.
-            let info = MSG_SEND_NO_ARGUMENTS_RETURN_PTR(klass, process_info_sel);
-
-            // `-[NSProcessInfo arguments]` returns an object with +0 retain count, so no need to manually `retain/release`.
-            let args = MSG_SEND_NO_ARGUMENTS_RETURN_PTR(info, arguments_sel);
-
-            let cnt = MSG_SEND_NO_ARGUMENTS_RETURN_NSUINTEGER(args, count_sel);
-            for i in 0..cnt {
-                // `-[NSArray objectAtIndex:]` returns an object whose lifetime is tied to the array, so no need to manually `retain/release`.
-                let ns_string =
-                    MSG_SEND_NSINTEGER_ARGUMENT_RETURN_PTR(args, object_at_index_sel, i);
-                // The lifetime of this pointer is tied to the NSString, as well as the current autorelease pool, which is why we heap-allocate the string below.
-                let utf_c_str: *const c_char =
-                    MSG_SEND_NO_ARGUMENTS_RETURN_PTR(ns_string, utf8string_sel).cast();
-                let bytes = CStr::from_ptr(utf_c_str).to_bytes();
-                res.push(OsString::from(str::from_utf8(bytes).unwrap()))
-            }
-        }
-
-        Args { iter: res.into_iter() }
+        // Cast from `*mut *mut c_char` to `*const *const c_char`
+        (argc as isize, argv.cast())
     }
 }
 
 #[cfg(any(target_os = "espidf", target_os = "vita"))]
 mod imp {
-    use super::Args;
+    use crate::ffi::c_char;
+    use crate::ptr;
 
     #[inline(always)]
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-    pub fn args() -> Args {
-        Args { iter: Vec::new().into_iter() }
+    pub fn argc_argv() -> (isize, *const *const c_char) {
+        (0, ptr::null())
     }
 }

@@ -1,19 +1,19 @@
-error[E0432]: unresolved import `libc`
+error[E0432]: unresolved import `test`
   --> $DIR/issue-37887.rs:3:9
    |
-LL |     use libc::*;
-   |         ^^^^ maybe a missing crate `libc`?
+LL |     use test::*;
+   |         ^^^^ maybe a missing crate `test`?
    |
-   = help: consider adding `extern crate libc` to use the `libc` crate
+   = help: consider adding `extern crate test` to use the `test` crate
 
-error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
+error[E0658]: use of unstable library feature 'test'
   --> $DIR/issue-37887.rs:2:5
    |
-LL |     extern crate libc;
+LL |     extern crate test;
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
-   = help: add `#![feature(rustc_private)]` to the crate attributes to enable
+   = note: see issue #50297 <https://github.com/rust-lang/rust/issues/50297> for more information
+   = help: add `#![feature(test)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors

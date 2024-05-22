@@ -31,11 +31,7 @@ miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
 addr2line = { version = "0.21.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "=0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
-
-# Pin libc (pending https://github.com/rust-lang/rust/pull/124560)
-[target.'cfg(all(windows, target_env = "msvc"))'.dependencies]
-libc = { version = "=0.2.153", default-features = false }
+libc = { version = "0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
 object = { version = "0.32.0", default-features = false, optional = true, features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive'] }
@@ -82,6 +78,8 @@ system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 
 # Make panics and failed asserts immediately abort without formatting any message
 panic_immediate_abort = ["core/panic_immediate_abort", "alloc/panic_immediate_abort"]
+# Choose algorithms that are optimized for binary size instead of runtime performance
+optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml

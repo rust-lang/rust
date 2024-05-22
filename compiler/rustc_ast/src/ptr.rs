@@ -184,7 +184,7 @@ impl<'a, T> IntoIterator for &'a P<[T]> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
-        self.ptr.into_iter()
+        self.ptr.iter()
     }
 }
 

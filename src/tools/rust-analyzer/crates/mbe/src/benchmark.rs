@@ -10,7 +10,7 @@ use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanMap, DUMMY,
+    syntax_node_to_token_tree, DeclarativeMacro, DocCommentDesugarMode, DummyTestSpanMap, DUMMY,
 };
 
 #[test]
@@ -78,6 +78,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
                 rule.token_tree().unwrap().syntax(),
                 DummyTestSpanMap,
                 DUMMY,
+                DocCommentDesugarMode::Mbe,
             );
             (id, def_tt)
         })

@@ -49,6 +49,7 @@ impl Evaluator<'_> {
         if self.not_special_fn_cache.borrow().contains(&def) {
             return Ok(false);
         }
+
         let function_data = self.db.function_data(def);
         let is_intrinsic = match &function_data.abi {
             Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
@@ -131,9 +132,7 @@ impl Evaluator<'_> {
             return Ok(true);
         }
         if let Some(it) = self.detect_lang_function(def) {
-            let arg_bytes =
-                args.iter().map(|it| Ok(it.get(self)?.to_owned())).collect::<Result<Vec<_>>>()?;
-            let result = self.exec_lang_item(it, generic_args, &arg_bytes, locals, span)?;
+            let result = self.exec_lang_item(it, generic_args, args, locals, span)?;
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
@@ -311,16 +310,20 @@ impl Evaluator<'_> {
 
     fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
         use LangItem::*;
-        let candidate = self.db.lang_attr(def.into())?;
+        let attrs = self.db.attrs(def.into());
+
+        if attrs.by_key("rustc_const_panic_str").exists() {
+            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
+            return Some(LangItem::BeginPanic);
+        }
+
+        let candidate = attrs.by_key("lang").string_value().and_then(LangItem::from_str)?;
         // We want to execute these functions with special logic
         // `PanicFmt` is not detected here as it's redirected later.
         if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
             return Some(candidate);
         }
-        if self.db.attrs(def.into()).by_key("rustc_const_panic_str").exists() {
-            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
-            return Some(LangItem::BeginPanic);
-        }
+
         None
     }
 
@@ -328,18 +331,52 @@ impl Evaluator<'_> {
         &mut self,
         it: LangItem,
         generic_args: &Substitution,
-        args: &[Vec<u8>],
+        args: &[IntervalAndTy],
         locals: &Locals,
         span: MirSpan,
     ) -> Result<Vec<u8>> {
         use LangItem::*;
         let mut args = args.iter();
         match it {
-            BeginPanic => Err(MirEvalError::Panic("<unknown-panic-payload>".to_owned())),
+            BeginPanic => {
+                let mut arg = args
+                    .next()
+                    .ok_or(MirEvalError::InternalError(
+                        "argument of BeginPanic is not provided".into(),
+                    ))?
+                    .clone();
+                while let TyKind::Ref(_, _, ty) = arg.ty.kind(Interner) {
+                    if ty.is_str() {
+                        let (pointee, metadata) = arg.interval.get(self)?.split_at(self.ptr_size());
+                        let len = from_bytes!(usize, metadata);
+
+                        return {
+                            Err(MirEvalError::Panic(
+                                std::str::from_utf8(
+                                    self.read_memory(Address::from_bytes(pointee)?, len)?,
+                                )
+                                .unwrap()
+                                .to_owned(),
+                            ))
+                        };
+                    }
+                    let size = self.size_of_sized(ty, locals, "begin panic arg")?;
+                    let pointee = arg.interval.get(self)?;
+                    arg = IntervalAndTy {
+                        interval: Interval::new(Address::from_bytes(pointee)?, size),
+                        ty: ty.clone(),
+                    };
+                }
+                Err(MirEvalError::Panic(format!(
+                    "unknown-panic-payload: {:?}",
+                    arg.ty.kind(Interner)
+                )))
+            }
             SliceLen => {
                 let arg = args.next().ok_or(MirEvalError::InternalError(
                     "argument of <[T]>::len() is not provided".into(),
                 ))?;
+                let arg = arg.get(self)?;
                 let ptr_size = arg.len() / 2;
                 Ok(arg[ptr_size..].into())
             }
@@ -353,6 +390,7 @@ impl Evaluator<'_> {
                 let arg = args.next().ok_or(MirEvalError::InternalError(
                     "argument of drop_in_place is not provided".into(),
                 ))?;
+                let arg = arg.interval.get(self)?.to_owned();
                 self.run_drop_glue_deep(
                     ty.clone(),
                     locals,

@@ -910,6 +910,19 @@ impl From<&CStr> for Rc<CStr> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl Default for Rc<CStr> {
+    /// Creates an empty CStr inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        let c_str: &CStr = Default::default();
+        Rc::from(c_str)
+    }
+}
+
 #[cfg(not(test))]
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<CStr> {

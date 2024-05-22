@@ -1781,7 +1781,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // FIXME(generic-associated-types): This only detects one layer of inference,
             // which is probably not what we actually want, but fixing it causes some ambiguity:
             // <https://github.com/rust-lang/rust/issues/125196>.
-            if !generics.own_params.is_empty()
+            if !generics.is_own_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
                     p.has_non_region_infer()
                         && match p.unpack() {

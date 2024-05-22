@@ -8,7 +8,7 @@ mod input;
 use std::panic;
 
 use salsa::Durability;
-use syntax::{ast, Parse, SourceFile};
+use syntax::{ast, Parse, SourceFile, SyntaxError};
 use triomphe::Arc;
 
 pub use crate::{
@@ -51,6 +51,7 @@ pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<str>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
+    /// Crates whose root's source root is the same as the source root of `file_id`
     fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
 }
 
@@ -60,6 +61,9 @@ pub trait FileLoader {
 pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// Parses the file into the syntax tree.
     fn parse(&self, file_id: FileId) -> Parse<ast::SourceFile>;
+
+    /// Returns the set of errors obtained from parsing the file including validation errors.
+    fn parse_errors(&self, file_id: FileId) -> Option<Arc<[SyntaxError]>>;
 
     /// The crate graph.
     #[salsa::input]
@@ -81,10 +85,18 @@ fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseC
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
-    let _p = tracing::span!(tracing::Level::INFO, "parse_query", ?file_id).entered();
+    let _p = tracing::span!(tracing::Level::INFO, "parse", ?file_id).entered();
     let text = db.file_text(file_id);
     // FIXME: Edition based parsing
     SourceFile::parse(&text, span::Edition::CURRENT)
+}
+
+fn parse_errors(db: &dyn SourceDatabase, file_id: FileId) -> Option<Arc<[SyntaxError]>> {
+    let errors = db.parse(file_id).errors();
+    match &*errors {
+        [] => None,
+        [..] => Some(errors.into()),
+    }
 }
 
 /// We don't want to give HIR knowledge of source roots, hence we extract these
@@ -104,6 +116,7 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
+    /// Crates whose root fool is in `id`.
     fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
 }
 

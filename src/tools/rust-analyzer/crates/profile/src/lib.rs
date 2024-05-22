@@ -26,7 +26,7 @@ thread_local!(static IN_SCOPE: RefCell<bool> = const { RefCell::new(false) });
 /// A wrapper around google_cpu_profiler.
 ///
 /// Usage:
-/// 1. Install gpref_tools (<https://github.com/gperftools/gperftools>), probably packaged with your Linux distro.
+/// 1. Install gperf_tools (<https://github.com/gperftools/gperftools>), probably packaged with your Linux distro.
 /// 2. Build with `cpu_profiler` feature.
 /// 3. Run the code, the *raw* output would be in the `./out.profile` file.
 /// 4. Install pprof for visualization (<https://github.com/google/pprof>).

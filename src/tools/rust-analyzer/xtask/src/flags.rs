@@ -14,16 +14,16 @@ xflags::xflags! {
         cmd install {
             /// Install only VS Code plugin.
             optional --client
-            /// One of 'code', 'code-exploration', 'code-insiders', 'codium', or 'code-oss'.
+            /// One of `code`, `code-exploration`, `code-insiders`, `codium`, or `code-oss`.
             optional --code-bin name: String
 
             /// Install only the language server.
             optional --server
-            /// Use mimalloc allocator for server
+            /// Use mimalloc allocator for server.
             optional --mimalloc
-            /// Use jemalloc allocator for server
+            /// Use jemalloc allocator for server.
             optional --jemalloc
-            /// build in release with debug info set to 2
+            /// build in release with debug info set to 2.
             optional --dev-rel
         }
 
@@ -32,9 +32,21 @@ xflags::xflags! {
         cmd release {
             optional --dry-run
         }
-        cmd promote {
-            optional --dry-run
+
+        cmd rustc-pull {
+            /// rustc commit to pull.
+            optional --commit refspec: String
         }
+
+        cmd rustc-push {
+            /// rust local path, e.g. `../rust-rust-analyzer`.
+            required --rust-path rust_path: String
+            /// rust fork name, e.g.  `matklad/rust`.
+            required --rust-fork rust_fork: String
+            /// branch name.
+            optional --branch branch: String
+        }
+
         cmd dist {
             /// Use mimalloc allocator for server
             optional --mimalloc
@@ -77,7 +89,8 @@ pub enum XtaskCmd {
     Install(Install),
     FuzzTests(FuzzTests),
     Release(Release),
-    Promote(Promote),
+    RustcPull(RustcPull),
+    RustcPush(RustcPush),
     Dist(Dist),
     PublishReleaseNotes(PublishReleaseNotes),
     Metrics(Metrics),
@@ -104,8 +117,15 @@ pub struct Release {
 }
 
 #[derive(Debug)]
-pub struct Promote {
-    pub dry_run: bool,
+pub struct RustcPull {
+    pub commit: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct RustcPush {
+    pub rust_path: String,
+    pub rust_fork: String,
+    pub branch: Option<String>,
 }
 
 #[derive(Debug)]

@@ -652,7 +652,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
 
                     // FIXME: We make sure that this is a normal top-level binding,
-                    // but we could suggest `todo!()` for all uninitialized bindings in the pattern pattern
+                    // but we could suggest `todo!()` for all uninitialized bindings in the pattern
                     if let hir::StmtKind::Let(hir::LetStmt { span, ty, init: None, pat, .. }) =
                         &ex.kind
                         && let hir::PatKind::Binding(..) = pat.kind
@@ -3343,6 +3343,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if string.starts_with("gen") {
                     // `gen` is 3 chars long
                     Some(3)
+                } else if string.starts_with("static") {
+                    // `static` is 6 chars long
+                    // This is used for `!Unpin` coroutines
+                    Some(6)
                 } else {
                     None
                 };

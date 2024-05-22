@@ -261,7 +261,7 @@ where
         | Rvalue::Cast(_, operand, _)
         | Rvalue::ShallowInitBox(operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
-        Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
+        Rvalue::BinaryOp(_, box (lhs, rhs)) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
         }
 

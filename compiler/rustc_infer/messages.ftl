@@ -164,7 +164,10 @@ infer_label_bad = {$bad_kind ->
 infer_lf_bound_not_satisfied = lifetime bound not satisfied
 infer_lifetime_mismatch = lifetime mismatch
 
-infer_lifetime_param_suggestion = consider introducing a named lifetime parameter{$is_impl ->
+infer_lifetime_param_suggestion = consider {$is_reuse ->
+    [true] reusing
+    *[false] introducing
+} a named lifetime parameter{$is_impl ->
     [true] {" "}and update trait if needed
     *[false] {""}
 }

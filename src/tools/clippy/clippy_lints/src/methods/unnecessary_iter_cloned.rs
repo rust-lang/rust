@@ -3,10 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait};
-use clippy_utils::{fn_def_id, get_parent_expr};
+use clippy_utils::visitors::for_each_expr;
+use clippy_utils::{can_mut_borrow_both, fn_def_id, get_parent_expr, path_to_local};
+use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Symbol};
 
@@ -40,6 +42,53 @@ pub fn check_for_loop_iter(
         && !clone_or_copy_needed
         && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
     {
+        // Issue 12098
+        // https://github.com/rust-lang/rust-clippy/issues/12098
+        // if the assignee have `mut borrow` conflict with the iteratee
+        // the lint should not execute, former didn't consider the mut case
+
+        // check whether `expr` is mutable
+        fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+            if let Some(hir_id) = path_to_local(expr)
+                && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
+            {
+                matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))
+            } else {
+                true
+            }
+        }
+
+        fn is_caller_or_fields_change(cx: &LateContext<'_>, body: &Expr<'_>, caller: &Expr<'_>) -> bool {
+            let mut change = false;
+            if let ExprKind::Block(block, ..) = body.kind {
+                for_each_expr(block, |e| {
+                    match e.kind {
+                        ExprKind::Assign(assignee, _, _) | ExprKind::AssignOp(_, assignee, _) => {
+                            change |= !can_mut_borrow_both(cx, caller, assignee);
+                        },
+                        _ => {},
+                    }
+                    // the return value has no effect but the function need one return value
+                    ControlFlow::<()>::Continue(())
+                });
+            }
+            change
+        }
+
+        if let ExprKind::Call(_, [child, ..]) = expr.kind {
+            // filter first layer of iterator
+            let mut child = child;
+            // get inner real caller requests for clone
+            while let ExprKind::MethodCall(_, caller, _, _) = child.kind {
+                child = caller;
+            }
+            if is_mutable(cx, child) && is_caller_or_fields_change(cx, body, child) {
+                // skip lint
+                return true;
+            }
+        };
+
+        // the lint should not be executed if no violation happens
         let snippet = if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind
             && maybe_iter_method_name.ident.name == sym::iter
             && let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator)

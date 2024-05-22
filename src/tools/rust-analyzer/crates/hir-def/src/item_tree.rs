@@ -29,6 +29,7 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
+#![allow(unexpected_cfgs)]
 
 mod lower;
 mod pretty;
@@ -57,21 +58,21 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
+    generics::GenericParams,
     path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::{RawVisibility, VisibilityExplicitness},
-    BlockId, Lookup,
+    BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct RawVisibilityId(u32);
 
 impl RawVisibilityId {
-    pub const PUB: Self = RawVisibilityId(u32::max_value());
-    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::max_value() - 1);
-    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::max_value() - 2);
-    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 3);
+    pub const PUB: Self = RawVisibilityId(u32::MAX);
+    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::MAX - 1);
+    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::MAX - 2);
+    pub const PUB_CRATE: Self = RawVisibilityId(u32::MAX - 3);
 }
 
 impl fmt::Debug for RawVisibilityId {
@@ -293,8 +294,8 @@ pub enum AttrOwner {
     Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
-    TypeOrConstParamData(Idx<TypeOrConstParamData>),
-    LifetimeParamData(Idx<LifetimeParamData>),
+    TypeOrConstParamData(GenericModItem, LocalTypeOrConstParamId),
+    LifetimeParamData(GenericModItem, LocalLifetimeParamId),
 }
 
 macro_rules! from_attrs {
@@ -314,8 +315,6 @@ from_attrs!(
     Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
-    TypeOrConstParamData(Idx<TypeOrConstParamData>),
-    LifetimeParamData(Idx<LifetimeParamData>),
 );
 
 /// Trait implemented by all nodes in the item tree.
@@ -465,12 +464,49 @@ macro_rules! mod_items {
             )+
         }
 
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+        pub enum GenericModItem {
+            $(
+                $(
+                    #[cfg_attr(ignore_fragment, $generic_params)]
+                    $typ(FileItemTreeId<$typ>),
+                )?
+            )+
+        }
+
+        impl From<GenericModItem> for ModItem {
+            fn from(id: GenericModItem) -> ModItem {
+                match id {
+                    $(
+                        $(
+                            #[cfg_attr(ignore_fragment, $generic_params)]
+                            GenericModItem::$typ(id) => ModItem::$typ(id),
+                        )?
+                    )+
+                }
+            }
+        }
+
+        impl From<GenericModItem> for AttrOwner {
+            fn from(t: GenericModItem) -> AttrOwner {
+                AttrOwner::ModItem(t.into())
+            }
+        }
+
         $(
             impl From<FileItemTreeId<$typ>> for ModItem {
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)
                 }
             }
+            $(
+                #[cfg_attr(ignore_fragment, $generic_params)]
+                impl From<FileItemTreeId<$typ>> for GenericModItem {
+                    fn from(id: FileItemTreeId<$typ>) -> GenericModItem {
+                        GenericModItem::$typ(id)
+                    }
+                }
+            )?
         )+
 
         $(

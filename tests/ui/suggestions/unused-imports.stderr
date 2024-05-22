@@ -1,4 +1,4 @@
-warning: unused imports: `A`, `C`
+warning: unused imports: `A` and `C`
   --> $DIR/unused-imports.rs:22:14
    |
 LL | use nested::{A, B, C};
@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-warning: unused imports: `D`, `E`, `G`
+warning: unused imports: `D`, `E`, and `G`
   --> $DIR/unused-imports.rs:26:5
    |
 LL |     D,

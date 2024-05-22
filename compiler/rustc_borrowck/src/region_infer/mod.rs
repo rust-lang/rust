@@ -1506,7 +1506,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         subset_errors.sort();
         subset_errors.dedup();
 
-        for (longer_fr, shorter_fr) in subset_errors.into_iter() {
+        for &(longer_fr, shorter_fr) in subset_errors.into_iter() {
             debug!(
                 "check_polonius_subset_errors: subset_error longer_fr={:?},\
                  shorter_fr={:?}",
@@ -1514,14 +1514,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             );
 
             let propagated = self.try_propagate_universal_region_error(
-                *longer_fr,
-                *shorter_fr,
+                longer_fr.into(),
+                shorter_fr.into(),
                 &mut propagated_outlives_requirements,
             );
             if propagated == RegionRelationCheckResult::Error {
                 errors_buffer.push(RegionErrorKind::RegionError {
-                    longer_fr: *longer_fr,
-                    shorter_fr: *shorter_fr,
+                    longer_fr: longer_fr.into(),
+                    shorter_fr: shorter_fr.into(),
                     fr_origin: NllRegionVariableOrigin::FreeRegion,
                     is_reported: true,
                 });

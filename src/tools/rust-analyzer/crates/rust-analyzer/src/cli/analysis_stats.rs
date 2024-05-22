@@ -986,6 +986,7 @@ impl flags::AnalysisStats {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     style_lints: false,
+                    term_search_fuel: 400,
                 },
                 ide::AssistResolveStrategy::All,
                 file_id,

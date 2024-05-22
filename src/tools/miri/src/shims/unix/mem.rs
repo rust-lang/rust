@@ -11,7 +11,7 @@
 //! calls to munmap, but for a very different reason. In principle, according to the man pages, it
 //! is possible to unmap arbitrary regions of address space. But in a high-level language like Rust
 //! this amounts to partial deallocation, which LLVM does not support. So any attempt to call our
-//! munmap shim which would partily unmap a region of address space previously mapped by mmap will
+//! munmap shim which would partially unmap a region of address space previously mapped by mmap will
 //! report UB.
 
 use crate::*;
