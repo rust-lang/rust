@@ -745,7 +745,6 @@ pub(crate) unsafe fn codegen(
             }
 
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                {
                     let _timer = cgcx.prof.generic_activity_with_arg(
                         "LLVM_module_codegen_emit_bitcode",
                         &*module.name,
@@ -753,7 +752,6 @@ pub(crate) unsafe fn codegen(
                     if let Err(err) = fs::write(&bc_out, data) {
                         dcx.emit_err(WriteBytecode { path: &bc_out, err });
                     }
-                }
             }
 
             if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
