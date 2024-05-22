@@ -16,6 +16,7 @@ use rustc_macros::{Decodable, Encodable};
 use std::fs;
 use std::io::{self, BorrowedBuf, Read};
 use std::path;
+use tracing::{debug, instrument, trace};
 
 #[cfg(test)]
 mod tests;
