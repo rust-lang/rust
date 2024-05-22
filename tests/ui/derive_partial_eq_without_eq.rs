@@ -1,3 +1,4 @@
+#![feature(lint_reasons)]
 #![allow(unused)]
 #![warn(clippy::derive_partial_eq_without_eq)]
 
@@ -10,6 +11,22 @@ pub struct NotPartialEq {
 // Eq can be derived but is missing
 #[derive(Debug, PartialEq)]
 pub struct MissingEq {
+    foo: u32,
+    bar: String,
+}
+
+// Check that we honor the `allow` attribute
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Debug, PartialEq)]
+pub struct AllowedMissingEq {
+    foo: u32,
+    bar: String,
+}
+
+// Check that we honor the `expect` attribute
+#[expect(clippy::derive_partial_eq_without_eq)]
+#[derive(Debug, PartialEq)]
+pub struct ExpectedMissingEq {
     foo: u32,
     bar: String,
 }
