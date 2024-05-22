@@ -295,7 +295,7 @@ impl BorrowKind {
 }
 
 impl BinOp {
-    pub fn to_hir_binop(self) -> hir::BinOpKind {
+    pub(crate) fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
             BinOp::Add => hir::BinOpKind::Add,
             BinOp::Sub => hir::BinOpKind::Sub,
