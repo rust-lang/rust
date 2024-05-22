@@ -2332,6 +2332,7 @@ impl Step for RustDev {
         tarball.permit_symlinks(true);
 
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
+        builder.ensure(crate::core::build_steps::gcc::Gcc { target });
 
         // We want to package `lld` to use it with `download-ci-llvm`.
         builder.ensure(crate::core::build_steps::llvm::Lld { target });
@@ -2364,6 +2365,10 @@ impl Step for RustDev {
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
         tarball.add_dir(builder.llvm_out(target).join("include"), "include");
+
+        tarball.add_dir(builder.gcc_out(target).join("install/lib/libgccjit.so"), "libgccjit.so");
+        tarball
+            .add_dir(builder.gcc_out(target).join("install/lib/libgccjit.so.0"), "libgccjit.so.0");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
