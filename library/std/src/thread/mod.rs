@@ -502,9 +502,6 @@ impl Builder {
         });
         let their_packet = my_packet.clone();
 
-        let output_capture = crate::io::set_output_capture(None);
-        crate::io::set_output_capture(output_capture.clone());
-
         // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
         // See <https://github.com/rust-lang/rust/issues/101983> for more details.
         // To prevent leaks we use a wrapper that drops its contents.
@@ -542,7 +539,6 @@ impl Builder {
                 imp::Thread::set_name(name);
             }
 
-            crate::io::set_output_capture(output_capture);
             for hook in hooks {
                 hook();
             }
