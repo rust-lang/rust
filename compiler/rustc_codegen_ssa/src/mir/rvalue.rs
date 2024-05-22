@@ -7,7 +7,6 @@ use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
@@ -896,9 +895,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::BinOp::Le
             | mir::BinOp::Ge => {
                 if is_float {
-                    bx.fcmp(base::bin_op_to_fcmp_predicate(op.to_hir_binop()), lhs, rhs)
+                    bx.fcmp(base::bin_op_to_fcmp_predicate(op), lhs, rhs)
                 } else {
-                    bx.icmp(base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed), lhs, rhs)
+                    bx.icmp(base::bin_op_to_icmp_predicate(op, is_signed), lhs, rhs)
                 }
             }
             mir::BinOp::Cmp => {
@@ -912,16 +911,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // `PartialOrd`, so only use it in debug for now. Once LLVM can handle it
                     // better (see <https://github.com/llvm/llvm-project/issues/73417>), it'll
                     // be worth trying it in optimized builds as well.
-                    let is_gt = bx.icmp(pred(hir::BinOpKind::Gt), lhs, rhs);
+                    let is_gt = bx.icmp(pred(mir::BinOp::Gt), lhs, rhs);
                     let gtext = bx.zext(is_gt, bx.type_i8());
-                    let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
+                    let is_lt = bx.icmp(pred(mir::BinOp::Lt), lhs, rhs);
                     let ltext = bx.zext(is_lt, bx.type_i8());
                     bx.unchecked_ssub(gtext, ltext)
                 } else {
                     // These operations are those expected by `tests/codegen/integer-cmp.rs`,
                     // from <https://github.com/rust-lang/rust/pull/63767>.
-                    let is_lt = bx.icmp(pred(hir::BinOpKind::Lt), lhs, rhs);
-                    let is_ne = bx.icmp(pred(hir::BinOpKind::Ne), lhs, rhs);
+                    let is_lt = bx.icmp(pred(mir::BinOp::Lt), lhs, rhs);
+                    let is_ne = bx.icmp(pred(mir::BinOp::Ne), lhs, rhs);
                     let ge = bx.select(
                         is_ne,
                         bx.cx().const_i8(Ordering::Greater as i8),
