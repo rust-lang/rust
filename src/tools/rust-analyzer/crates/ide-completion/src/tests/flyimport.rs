@@ -473,6 +473,47 @@ fn main() {
 }
 
 #[test]
+fn trait_completions_handle_associated_types() {
+    let fixture = r#"
+//- /foo.rs crate:foo
+pub trait NotInScope {
+    fn not_in_scope(&self);
+}
+
+pub trait Wrapper {
+    type Inner: NotInScope;
+    fn inner(&self) -> Self::Inner;
+}
+
+//- /main.rs crate:main deps:foo
+use foo::Wrapper;
+
+fn completion<T: Wrapper>(whatever: T) {
+    whatever.inner().$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+        me not_in_scope() (use foo::NotInScope) fn(&self)
+    "#]],
+    );
+
+    check_edit(
+        "not_in_scope",
+        fixture,
+        r#"
+use foo::{NotInScope, Wrapper};
+
+fn completion<T: Wrapper>(whatever: T) {
+    whatever.inner().not_in_scope()$0
+}
+"#,
+    );
+}
+
+#[test]
 fn trait_method_fuzzy_completion_aware_of_unit_type() {
     let fixture = r#"
 //- /test_trait.rs crate:test_trait
