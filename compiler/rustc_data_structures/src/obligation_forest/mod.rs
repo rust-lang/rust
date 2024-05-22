@@ -146,7 +146,25 @@ pub enum ProcessResult<O, E> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct ObligationTreeId(usize);
 
-type ObligationTreeIdGenerator = impl Iterator<Item = ObligationTreeId>;
+use uwu::*;
+
+mod uwu {
+    use super::*;
+    pub type ObligationTreeIdGenerator = impl Iterator<Item = ObligationTreeId>;
+
+    impl<O: ForestObligation> ObligationForest<O> {
+        pub fn new() -> ObligationForest<O> {
+            ObligationForest {
+                nodes: vec![],
+                done_cache: Default::default(),
+                active_cache: Default::default(),
+                reused_node_vec: vec![],
+                obligation_tree_id_generator: (0..).map(ObligationTreeId),
+                error_cache: Default::default(),
+            }
+        }
+    }
+}
 
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to [Self::process_obligations],
@@ -311,17 +329,6 @@ pub struct Error<O, E> {
 }
 
 impl<O: ForestObligation> ObligationForest<O> {
-    pub fn new() -> ObligationForest<O> {
-        ObligationForest {
-            nodes: vec![],
-            done_cache: Default::default(),
-            active_cache: Default::default(),
-            reused_node_vec: vec![],
-            obligation_tree_id_generator: (0..).map(ObligationTreeId),
-            error_cache: Default::default(),
-        }
-    }
-
     /// Returns the total number of nodes in the forest that have not
     /// yet been fully resolved.
     pub fn len(&self) -> usize {
