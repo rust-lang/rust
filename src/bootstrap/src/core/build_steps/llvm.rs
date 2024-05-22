@@ -1242,17 +1242,17 @@ fn supported_sanitizers(
     }
 }
 
-struct HashStamp {
-    path: PathBuf,
-    hash: Option<Vec<u8>>,
+pub(super) struct HashStamp {
+    pub(super) path: PathBuf,
+    pub(super) hash: Option<Vec<u8>>,
 }
 
 impl HashStamp {
-    fn new(path: PathBuf, hash: Option<&str>) -> Self {
+    pub(super) fn new(path: PathBuf, hash: Option<&str>) -> Self {
         HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
     }
 
-    fn is_done(&self) -> bool {
+    pub(super) fn is_done(&self) -> bool {
         match fs::read(&self.path) {
             Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
             Err(e) if e.kind() == io::ErrorKind::NotFound => false,
@@ -1262,7 +1262,7 @@ impl HashStamp {
         }
     }
 
-    fn remove(&self) -> io::Result<()> {
+    pub(super) fn remove(&self) -> io::Result<()> {
         match fs::remove_file(&self.path) {
             Ok(()) => Ok(()),
             Err(e) => {
@@ -1275,7 +1275,7 @@ impl HashStamp {
         }
     }
 
-    fn write(&self) -> io::Result<()> {
+    pub(super) fn write(&self) -> io::Result<()> {
         fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
     }
 }
