@@ -381,7 +381,7 @@ impl Query {
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
                         continue;
                     }
-                    if !self.include_hidden && symbol.name.starts_with("__") {
+                    if self.should_hide_query(&symbol) {
                         continue;
                     }
                     if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
@@ -390,6 +390,11 @@ impl Query {
                 }
             }
         }
+    }
+
+    fn should_hide_query(&self, symbol: &FileSymbol) -> bool {
+        // Hide symbols that start with `__` unless the query starts with `__`
+        !self.include_hidden && symbol.name.starts_with("__") && !self.query.starts_with("__")
     }
 
     fn matches_assoc_mode(&self, is_trait_assoc_item: bool) -> bool {
