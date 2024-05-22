@@ -16,17 +16,12 @@ LL | |     }
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/issue-95829.rs:4:14
+  --> $DIR/issue-95829.rs:4:5
    |
 LL | extern {
    | ------ in this `extern` block
 LL |     async fn L() {
-   |              ^
-   |
-help: remove the qualifiers
-   |
-LL |     fn L() {
-   |     ~~
+   |     ^^^^^ help: remove this qualifier
 
 error: aborting due to 2 previous errors
 

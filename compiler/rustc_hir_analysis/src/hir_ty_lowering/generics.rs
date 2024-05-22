@@ -196,7 +196,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
     let mut args: SmallVec<[ty::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
     // Iterate over each segment of the path.
     while let Some((def_id, defs)) = stack.pop() {
-        let mut params = defs.params.iter().peekable();
+        let mut params = defs.own_params.iter().peekable();
 
         // If we have already computed the generic arguments for parents,
         // we can use those directly.
@@ -228,8 +228,8 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
         // Check whether this segment takes generic arguments and the user has provided any.
         let (generic_args, infer_args) = ctx.args_for_def_id(def_id);
 
-        let args_iter = generic_args.iter().flat_map(|generic_args| generic_args.args.iter());
-        let mut args_iter = args_iter.clone().peekable();
+        let mut args_iter =
+            generic_args.iter().flat_map(|generic_args| generic_args.args.iter()).peekable();
 
         // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
         // If we later encounter a lifetime, we know that the arguments were provided in the
@@ -312,7 +312,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                                 // We're going to iterate over the parameters to sort them out, and
                                 // show that order to the user as a possible order for the parameters
                                 let mut param_types_present = defs
-                                    .params
+                                    .own_params
                                     .iter()
                                     .map(|param| (param.kind.to_ord(), param.clone()))
                                     .collect::<Vec<(ParamKindOrd, GenericParamDef)>>();
@@ -435,13 +435,13 @@ pub(crate) fn check_generic_arg_count(
     // Subtracting from param count to ensure type params synthesized from `impl Trait`
     // cannot be explicitly specified.
     let synth_type_param_count = gen_params
-        .params
+        .own_params
         .iter()
         .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. }))
         .count();
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
     let synth_const_param_count = gen_params
-        .params
+        .own_params
         .iter()
         .filter(|param| {
             matches!(param.kind, ty::GenericParamDefKind::Const { is_host_effect: true, .. })
@@ -454,7 +454,7 @@ pub(crate) fn check_generic_arg_count(
     if gen_pos != GenericArgPosition::Type
         && let Some(b) = gen_args.bindings.first()
     {
-        prohibit_assoc_item_binding(tcx, b.span, None);
+        prohibit_assoc_item_binding(tcx, b, None);
     }
 
     let explicit_late_bound =

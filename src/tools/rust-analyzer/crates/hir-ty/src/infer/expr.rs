@@ -23,6 +23,7 @@ use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},
     consteval,
     db::{InternedClosure, InternedCoroutine},
+    error_lifetime,
     infer::{
         coerce::{CoerceMany, CoercionCause},
         find_continuable,
@@ -562,6 +563,7 @@ impl InferenceContext<'_> {
                                                 InferenceDiagnostic::NoSuchField {
                                                     field: field.expr.into(),
                                                     private: true,
+                                                    variant: def,
                                                 },
                                             );
                                         }
@@ -571,6 +573,7 @@ impl InferenceContext<'_> {
                                         self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                             field: field.expr.into(),
                                             private: false,
+                                            variant: def,
                                         });
                                         None
                                     }
@@ -630,7 +633,7 @@ impl InferenceContext<'_> {
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 match rawness {
                     Rawness::RawPtr => TyKind::Raw(mutability, inner_ty),
-                    Rawness::Ref => TyKind::Ref(mutability, static_lifetime(), inner_ty),
+                    Rawness::Ref => TyKind::Ref(mutability, error_lifetime(), inner_ty),
                 }
                 .intern(Interner)
             }
@@ -1039,18 +1042,12 @@ impl InferenceContext<'_> {
 
                 (
                     elem_ty,
-                    if let Some(g_def) = self.owner.as_generic_def_id() {
-                        let generics = generics(self.db.upcast(), g_def);
-                        consteval::eval_to_const(
-                            repeat,
-                            ParamLoweringMode::Placeholder,
-                            self,
-                            || generics,
-                            DebruijnIndex::INNERMOST,
-                        )
-                    } else {
-                        consteval::usize_const(self.db, None, krate)
-                    },
+                    consteval::eval_to_const(
+                        repeat,
+                        ParamLoweringMode::Placeholder,
+                        self,
+                        DebruijnIndex::INNERMOST,
+                    ),
                 )
             }
         };
@@ -1851,7 +1848,7 @@ impl InferenceContext<'_> {
                             ty,
                             c,
                             ParamLoweringMode::Placeholder,
-                            || generics(this.db.upcast(), this.resolver.generic_def().unwrap()),
+                            || this.generics(),
                             DebruijnIndex::INNERMOST,
                         )
                     },

@@ -1,6 +1,6 @@
 //! NOTE: Keep these constants in sync with `library/std/src/sys/pal/unix/mod.rs`!
 
-/// The default value if `#[unix_sigpipe]` is not specified. This resolves
+/// The default value if `-Zon-broken-pipe=...` is not specified. This resolves
 /// to `SIG_IGN` in `library/std/src/sys/pal/unix/mod.rs`.
 ///
 /// Note that `SIG_IGN` has been the Rust default since 2014. See

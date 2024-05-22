@@ -1,10 +1,8 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::unix::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fs::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
 pub fn is_dyn_sym(_name: &str) -> bool {
     false
@@ -18,7 +16,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
@@ -75,15 +73,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Environment related shims
             "_NSGetEnviron" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_pointer(
-                    this.machine
-                        .env_vars
-                        .environ
-                        .as_ref()
-                        .expect("machine must be initialized")
-                        .ptr(),
-                    dest,
-                )?;
+                let environ = this.machine.env_vars.unix().environ();
+                this.write_pointer(environ, dest)?;
             }
 
             // Time related shims
@@ -183,9 +174,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         };
 
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

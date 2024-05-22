@@ -1,6 +1,5 @@
 //@ check-pass
 #![deny(improper_ctypes)]
-#![feature(generic_nonzero)]
 
 pub struct Error(std::num::NonZero<u32>);
 

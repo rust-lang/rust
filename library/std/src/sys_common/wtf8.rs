@@ -468,6 +468,12 @@ impl Wtf8Buf {
         let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
         Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
+
+    /// Part of a hack to make PathBuf::push/pop more efficient.
+    #[inline]
+    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
+        &mut self.bytes
+    }
 }
 
 /// Creates a new WTF-8 string from an iterator of code points.

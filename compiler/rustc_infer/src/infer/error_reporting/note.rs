@@ -357,21 +357,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Subtype(box ref trace)
                 if matches!(
                     &trace.cause.code().peel_derives(),
-                    ObligationCauseCode::BindingObligation(..)
-                        | ObligationCauseCode::ExprBindingObligation(..)
+                    ObligationCauseCode::WhereClause(..)
+                        | ObligationCauseCode::WhereClauseInExpr(..)
                 ) =>
             {
                 // Hack to get around the borrow checker because trace.cause has an `Rc`.
-                if let ObligationCauseCode::BindingObligation(_, span)
-                | ObligationCauseCode::ExprBindingObligation(_, span, ..) =
+                if let ObligationCauseCode::WhereClause(_, span)
+                | ObligationCauseCode::WhereClauseInExpr(_, span, ..) =
                     &trace.cause.code().peel_derives()
+                    && !span.is_dummy()
                 {
                     let span = *span;
                     self.report_concrete_failure(placeholder_origin, sub, sup)
                         .with_span_note(span, "the lifetime requirement is introduced here")
                 } else {
                     unreachable!(
-                        "control flow ensures we have a `BindingObligation` or `ExprBindingObligation` here..."
+                        "control flow ensures we have a `BindingObligation` or `WhereClauseInExpr` here..."
                     )
                 }
             }

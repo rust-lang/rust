@@ -5,12 +5,12 @@
 #![no_core]
 
 #[lang = "sized"]
-//~^ ERROR: language items are subject to change [E0658]
+//~^ ERROR: lang items are subject to change [E0658]
 trait Sized {}
 
 #[lang = "fn"]
-//~^ ERROR: language items are subject to change [E0658]
-//~| ERROR: `fn` language item must be applied to a trait with 1 generic argument
+//~^ ERROR: lang items are subject to change [E0658]
+//~| ERROR: `fn` lang item must be applied to a trait with 1 generic argument
 trait Fn {
     fn call(export_name);
     //~^ ERROR: expected type

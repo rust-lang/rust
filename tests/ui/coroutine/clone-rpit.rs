@@ -11,6 +11,7 @@
 // witness types, which we don't know until after borrowck. When we later check
 // the goal for correctness, we want to be able to bind the `impl Clone` opaque.
 pub fn foo<'a, 'b>() -> impl Clone {
+    #[coroutine]
     move |_: ()| {
         let () = yield ();
     }

@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{HasDataLayout, Size};
@@ -70,8 +71,8 @@ pub enum ConstValue<'tcx> {
     },
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstValue<'_>, 24);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
@@ -87,7 +88,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.to_bits(size).ok()
+        self.try_to_scalar_int()?.try_to_bits(size).ok()
     }
 
     pub fn try_to_bool(&self) -> Option<bool> {
@@ -238,12 +239,28 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    /// Determines whether we need to add this const to `required_consts`. This is the case if and
+    /// only if evaluating it may error.
+    #[inline]
+    pub fn is_required_const(&self) -> bool {
+        match self {
+            Const::Ty(c) => match c.kind() {
+                ty::ConstKind::Value(_) => false, // already a value, cannot error
+                _ => true,
+            },
+            Const::Val(..) => false, // already a value, cannot error
+            Const::Unevaluated(..) => true,
+        }
+    }
+
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Value(valtree) if c.ty().is_primitive() => {
                     // A valtree of a type where leaves directly represent the scalar const value.
+                    // Just checking whether it is a leaf is insufficient as e.g. references are leafs
+                    // but the leaf value is the value they point to, not the reference itself!
                     Some(valtree.unwrap_leaf().into())
                 }
                 _ => None,
@@ -255,12 +272,22 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        self.try_to_scalar()?.try_to_int().ok()
+        // This is equivalent to `self.try_to_scalar()?.try_to_int().ok()`, but measurably faster.
+        match self {
+            Const::Val(ConstValue::Scalar(Scalar::Int(x)), _) => Some(x),
+            Const::Ty(c) => match c.kind() {
+                ty::ConstKind::Value(valtree) if c.ty().is_primitive() => {
+                    Some(valtree.unwrap_leaf())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     #[inline]
     pub fn try_to_bits(self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.to_bits(size).ok()
+        self.try_to_scalar_int()?.try_to_bits(size).ok()
     }
 
     #[inline]
@@ -334,7 +361,7 @@ impl<'tcx> Const<'tcx> {
         let int = self.try_eval_scalar_int(tcx, param_env)?;
         let size =
             tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
-        int.to_bits(size).ok()
+        int.try_to_bits(size).ok()
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.

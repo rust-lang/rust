@@ -186,3 +186,33 @@ fn#0:1@45..47#0# foo#0:1@48..51#0#(#0:1@51..52#0#&#0:1@52..53#0#self#0:1@53..57#
 }#0:1@76..77#0#"#]],
     );
 }
+
+#[test]
+fn attribute_macro_doc_desugaring() {
+    check(
+        r#"
+//- proc_macros: identity
+#[proc_macros::identity]
+/// doc string \n with newline
+/**
+     MultiLines Doc
+     MultiLines Doc
+*/
+#[doc = "doc attr"]
+struct S;
+"#,
+        expect![[r##"
+#[proc_macros::identity]
+/// doc string \n with newline
+/**
+     MultiLines Doc
+     MultiLines Doc
+*/
+#[doc = "doc attr"]
+struct S;
+
+#[doc = " doc string \\n with newline"]
+#[doc = "\n     MultiLines Doc\n     MultiLines Doc\n"]
+#[doc = "doc attr"] struct S;"##]],
+    );
+}

@@ -18,6 +18,7 @@ fn fn_mut() -> _ {
     //~| NOTE for more information on `Fn` traits and closure types
     let x = String::new();
     //~^ HELP: consider changing this to be mutable
+    //~| NOTE binding `x` declared here
     |c| { //~ NOTE: value captured here
         x.push(c);
         //~^ ERROR: does not live long enough

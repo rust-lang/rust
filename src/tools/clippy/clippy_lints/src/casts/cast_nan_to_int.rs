@@ -12,7 +12,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             cx,
             CAST_NAN_TO_INT,
             expr.span,
-            &format!("casting a known NaN to {to_ty}"),
+            format!("casting a known NaN to {to_ty}"),
             None,
             "this always evaluates to 0",
         );

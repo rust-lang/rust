@@ -352,6 +352,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 TraitObject,
                 Typeof,
                 Infer,
+                Pat,
                 Err
             ]
         );
@@ -388,7 +389,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: HirId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", Id::None, p);
         hir_visit::walk_use(self, p, hir_id)
@@ -461,7 +462,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'v>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'v>, _id: HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
@@ -497,7 +498,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             (self, i, i.kind, Id::None, ast, ForeignItem, ForeignItemKind),
             [Static, Fn, TyAlias, MacCall]
         );
-        ast_visit::walk_foreign_item(self, i)
+        ast_visit::walk_item(self, i)
     }
 
     fn visit_item(&mut self, i: &'v ast::Item) {
@@ -521,7 +522,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Impl,
                 MacCall,
                 MacroDef,
-                Delegation
+                Delegation,
+                DelegationMac
             ]
         );
         ast_visit::walk_item(self, i)
@@ -611,6 +613,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 AnonStruct,
                 AnonUnion,
                 Path,
+                Pat,
                 TraitObject,
                 ImplTrait,
                 Paren,
@@ -648,7 +651,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         record_variants!(
             (self, i, i.kind, Id::None, ast, AssocItem, AssocItemKind),
-            [Const, Fn, Type, MacCall, Delegation]
+            [Const, Fn, Type, MacCall, Delegation, DelegationMac]
         );
         ast_visit::walk_assoc_item(self, i, ctxt);
     }

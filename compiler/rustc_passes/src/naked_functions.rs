@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, InlineAsmOperand, StmtKind};
+use rustc_hir::{ExprKind, HirIdSet, InlineAsmOperand, StmtKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
@@ -83,8 +83,7 @@ fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: Abi) {
 fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
     for param in params {
         match param.pat.kind {
-            hir::PatKind::Wild
-            | hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, _, None) => {}
+            hir::PatKind::Wild | hir::PatKind::Binding(hir::BindingMode::NONE, _, _, None) => {}
             _ => {
                 tcx.dcx().emit_err(NoPatterns { span: param.pat.span });
             }
@@ -94,7 +93,7 @@ fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
 
 /// Checks that function parameters aren't used in the function body.
 fn check_no_parameters_use<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>) {
-    let mut params = hir::HirIdSet::default();
+    let mut params = HirIdSet::default();
     for param in body.params {
         param.pat.each_binding(|_binding_mode, hir_id, _span, _ident| {
             params.insert(hir_id);
@@ -105,7 +104,7 @@ fn check_no_parameters_use<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>)
 
 struct CheckParameters<'tcx> {
     tcx: TyCtxt<'tcx>,
-    params: hir::HirIdSet,
+    params: HirIdSet,
 }
 
 impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {

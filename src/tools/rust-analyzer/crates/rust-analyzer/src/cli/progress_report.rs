@@ -92,11 +92,11 @@ impl<'a> ProgressReport<'a> {
 
         let _ = io::stdout().write(output.as_bytes());
         let _ = io::stdout().flush();
-        self.text = text.to_owned();
+        text.clone_into(&mut self.text);
     }
 
     fn set_value(&mut self, value: f32) {
-        self.curr = f32::max(0.0, f32::min(1.0, value));
+        self.curr = value.clamp(0.0, 1.0);
     }
 
     fn clear(&mut self) {

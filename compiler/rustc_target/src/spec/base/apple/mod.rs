@@ -17,14 +17,9 @@ pub enum Arch {
     Arm64e,
     Arm64_32,
     I386,
-    I386_sim,
     I686,
     X86_64,
     X86_64h,
-    X86_64_sim,
-    X86_64_macabi,
-    Arm64_macabi,
-    Arm64_sim,
 }
 
 impl Arch {
@@ -32,12 +27,12 @@ impl Arch {
         match self {
             Armv7k => "armv7k",
             Armv7s => "armv7s",
-            Arm64 | Arm64_macabi | Arm64_sim => "arm64",
+            Arm64 => "arm64",
             Arm64e => "arm64e",
             Arm64_32 => "arm64_32",
-            I386 | I386_sim => "i386",
+            I386 => "i386",
             I686 => "i686",
-            X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+            X86_64 => "x86_64",
             X86_64h => "x86_64h",
         }
     }
@@ -45,63 +40,73 @@ impl Arch {
     pub fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
-            Arm64 | Arm64e | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
-            I386 | I386_sim | I686 => "x86",
-            X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
+            Arm64 | Arm64e | Arm64_32 => "aarch64",
+            I386 | I686 => "x86",
+            X86_64 | X86_64h => "x86_64",
         })
     }
 
-    fn target_abi(self) -> &'static str {
-        match self {
-            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
-            X86_64_macabi | Arm64_macabi => "macabi",
-            I386_sim | Arm64_sim | X86_64_sim => "sim",
-        }
-    }
-
-    fn target_cpu(self) -> &'static str {
+    fn target_cpu(self, abi: TargetAbi) -> &'static str {
         match self {
             Armv7k => "cortex-a8",
             Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
-            Arm64 => "apple-a7",
+            Arm64 => match abi {
+                TargetAbi::Normal => "apple-a7",
+                TargetAbi::Simulator => "apple-a12",
+                TargetAbi::MacCatalyst => "apple-a12",
+            },
             Arm64e => "apple-a12",
             Arm64_32 => "apple-s4",
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
             // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
-            I386 | I386_sim | I686 => "penryn",
-            X86_64 | X86_64_sim => "penryn",
-            X86_64_macabi => "penryn",
+            I386 | I686 => "penryn",
+            X86_64 => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
             // comments (and disabled features) in `x86_64h_apple_darwin` for
             // details. It is a higher baseline then `penryn` however.
             X86_64h => "core-avx2",
-            Arm64_macabi => "apple-a12",
-            Arm64_sim => "apple-a12",
         }
     }
 
     fn stack_probes(self) -> StackProbeType {
         match self {
             Armv7k | Armv7s => StackProbeType::None,
-            Arm64 | Arm64e | Arm64_32 | I386 | I386_sim | I686 | X86_64 | X86_64h | X86_64_sim
-            | X86_64_macabi | Arm64_macabi | Arm64_sim => StackProbeType::Inline,
+            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => StackProbeType::Inline,
         }
     }
 }
 
-fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
+#[derive(Copy, Clone, PartialEq)]
+pub enum TargetAbi {
+    Normal,
+    Simulator,
+    MacCatalyst,
+}
+
+impl TargetAbi {
+    fn target_abi(self) -> &'static str {
+        match self {
+            Self::Normal => "",
+            Self::MacCatalyst => "macabi",
+            Self::Simulator => "sim",
+        }
+    }
+}
+
+fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
-        "sim" => format!("{os}-simulator").into(),
-        "macabi" => "mac-catalyst".into(),
-        _ => os.into(),
+        TargetAbi::Normal => os.into(),
+        TargetAbi::Simulator => format!("{os}-simulator").into(),
+        TargetAbi::MacCatalyst => "mac-catalyst".into(),
     };
 
     let min_version: StaticCow<str> = {
         let (major, minor) = match os {
-            "ios" => ios_deployment_target(arch, abi),
+            "ios" => ios_deployment_target(arch, abi.target_abi()),
             "tvos" => tvos_deployment_target(),
             "watchos" => watchos_deployment_target(),
+            "visionos" => visionos_deployment_target(),
             "macos" => macos_deployment_target(arch),
             _ => unreachable!(),
         };
@@ -118,7 +123,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         [platform_name, min_version, sdk_version].into_iter(),
     );
-    if abi != "macabi" {
+    if abi != TargetAbi::MacCatalyst {
         add_link_args(
             &mut args,
             LinkerFlavor::Darwin(Cc::Yes, Lld::No),
@@ -135,13 +140,11 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     args
 }
 
-pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
-    let abi = arch.target_abi();
-
+pub fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
     TargetOptions {
-        abi: abi.into(),
+        abi: abi.target_abi().into(),
         os: os.into(),
-        cpu: arch.target_cpu().into(),
+        cpu: arch.target_cpu(abi).into(),
         link_env_remove: link_env_remove(os),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
@@ -202,6 +205,8 @@ pub fn sdk_version(platform: u32) -> Option<(u32, u32)> {
         | object::macho::PLATFORM_TVOSSIMULATOR
         | object::macho::PLATFORM_MACCATALYST => Some((16, 2)),
         object::macho::PLATFORM_WATCHOS | object::macho::PLATFORM_WATCHOSSIMULATOR => Some((9, 1)),
+        // FIXME: Upgrade to `object-rs` 0.33+ implementation with visionOS platform definition
+        11 | 12 => Some((1, 0)),
         _ => None,
     }
 }
@@ -216,6 +221,9 @@ pub fn platform(target: &Target) -> Option<u32> {
         ("watchos", _) => object::macho::PLATFORM_WATCHOS,
         ("tvos", "sim") => object::macho::PLATFORM_TVOSSIMULATOR,
         ("tvos", _) => object::macho::PLATFORM_TVOS,
+        // FIXME: Upgrade to `object-rs` 0.33+ implementation with visionOS platform definition
+        ("visionos", "sim") => 12,
+        ("visionos", _) => 11,
         _ => return None,
     })
 }
@@ -240,6 +248,7 @@ pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
         }
         "watchos" => watchos_deployment_target(),
         "tvos" => tvos_deployment_target(),
+        "visionos" => visionos_deployment_target(),
         _ => return None,
     };
 
@@ -256,14 +265,14 @@ fn from_set_deployment_target(var_name: &str) -> Option<(u32, u32)> {
 
 fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
     match arch {
-        // Note: Arm64_sim is not included since macOS has no simulator.
-        Arm64 | Arm64e | Arm64_macabi => (11, 0),
+        Arm64 | Arm64e => (11, 0),
         _ => (10, 12),
     }
 }
 
 fn macos_deployment_target(arch: Arch) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc/platform-support docs.
     from_set_deployment_target("MACOSX_DEPLOYMENT_TARGET")
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
@@ -290,6 +299,8 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
                 || sdkroot.contains("AppleTVSimulator.platform")
                 || sdkroot.contains("WatchOS.platform")
                 || sdkroot.contains("WatchSimulator.platform")
+                || sdkroot.contains("XROS.platform")
+                || sdkroot.contains("XRSimulator.platform")
             {
                 env_remove.push("SDKROOT".into())
             }
@@ -299,6 +310,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
         env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
         env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
+        env_remove.push("XROS_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
@@ -309,6 +321,7 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
 
 fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc/platform-support docs.
     let (major, minor) = match (arch, abi) {
         (Arm64e, _) => (14, 0),
         // Mac Catalyst defaults to 13.1 in Clang.
@@ -341,6 +354,7 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 
 fn tvos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
     from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
@@ -356,10 +370,32 @@ pub fn tvos_sim_llvm_target(arch: Arch) -> String {
 
 fn watchos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
+}
+
+pub fn watchos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = watchos_deployment_target();
+    format!("{}-apple-watchos{}.{}.0", arch.target_name(), major, minor)
 }
 
 pub fn watchos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = watchos_deployment_target();
     format!("{}-apple-watchos{}.{}.0-simulator", arch.target_name(), major, minor)
+}
+
+fn visionos_deployment_target() -> (u32, u32) {
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
+    from_set_deployment_target("XROS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
+}
+
+pub fn visionos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = visionos_deployment_target();
+    format!("{}-apple-visionos{}.{}.0", arch.target_name(), major, minor)
+}
+
+pub fn visionos_sim_llvm_target(arch: Arch) -> String {
+    let (major, minor) = visionos_deployment_target();
+    format!("{}-apple-visionos{}.{}.0-simulator", arch.target_name(), major, minor)
 }

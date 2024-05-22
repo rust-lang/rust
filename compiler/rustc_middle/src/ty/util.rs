@@ -2,10 +2,10 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::{IntoQueryParam, Providers};
-use crate::ty::layout::IntegerExt;
+use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast,
 };
 use crate::ty::{GenericArgKind, GenericArgsRef};
 use rustc_apfloat::Float as _;
@@ -17,12 +17,12 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_macros::HashStable;
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
+use rustc_target::abi::{Float, Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::{fmt, iter};
 
 #[derive(Copy, Clone, Debug)]
@@ -245,6 +245,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 ty::Tuple(_) => break,
 
+                ty::Pat(inner, _) => {
+                    f();
+                    ty = inner;
+                }
+
                 ty::Alias(..) => {
                     let normalized = normalize(ty);
                     if ty == normalized {
@@ -427,19 +432,19 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
-                        ty::ReEarlyParam(ref ebr) => {
+                        ty::ReEarlyParam(ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
                         // Error: not a region param
                         _ => false,
                     },
-                    GenericArgKind::Type(ty) => match ty.kind() {
-                        ty::Param(ref pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
+                    GenericArgKind::Type(ty) => match *ty.kind() {
+                        ty::Param(pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
                         // Error: not a type param
                         _ => false,
                     },
                     GenericArgKind::Const(ct) => match ct.kind() {
-                        ty::ConstKind::Param(ref pc) => {
+                        ty::ConstKind::Param(pc) => {
                             !impl_generics.const_param(pc, self).pure_wrt_drop
                         }
                         // Error: not a const param
@@ -1081,7 +1086,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         {
             p.kind()
                 .rebind(ty::ProjectionPredicate {
-                    projection_ty: projection_pred.projection_ty.fold_with(self),
+                    projection_term: projection_pred.projection_term.fold_with(self),
                     // Don't fold the term on the RHS of the projection predicate.
                     // This is because for default trait methods with RPITITs, we
                     // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
@@ -1089,7 +1094,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
                     // anything that requires `ParamEnv::with_reveal_all_normalized`.
                     term: projection_pred.term,
                 })
-                .to_predicate(self.tcx)
+                .upcast(self.tcx)
         } else {
             p.super_fold_with(self)
         }
@@ -1125,7 +1130,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !ct.ty().has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
             return ct;
         }
         ct.super_fold_with(self)
@@ -1140,8 +1145,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Char => Size::from_bytes(4),
             ty::Int(ity) => Integer::from_int_ty(&tcx, ity).size(),
             ty::Uint(uty) => Integer::from_uint_ty(&tcx, uty).size(),
-            ty::Float(ty::FloatTy::F32) => Primitive::F32.size(&tcx),
-            ty::Float(ty::FloatTy::F64) => Primitive::F64.size(&tcx),
+            ty::Float(fty) => Float::from_float_ty(fty).size(),
             _ => bug!("non primitive type"),
         }
     }
@@ -1242,7 +1246,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(_) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
-            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
+            ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_freeze(),
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)
@@ -1282,7 +1286,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(_) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
-            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
+            ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)
@@ -1295,6 +1299,98 @@ impl<'tcx> Ty<'tcx> {
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+        }
+    }
+
+    /// Checks whether values of this type `T` implements the `AsyncDrop`
+    /// trait.
+    pub fn has_surface_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.could_have_surface_async_drop() && tcx.has_surface_async_drop_raw(param_env.and(self))
+    }
+
+    /// Fast path helper for testing if a type has `AsyncDrop`
+    /// implementation.
+    ///
+    /// Returning `false` means the type is known to not have `AsyncDrop`
+    /// implementation. Returning `true` means nothing -- could be
+    /// `AsyncDrop`, might not be.
+    fn could_have_surface_async_drop(self) -> bool {
+        !self.is_async_destructor_trivially_noop()
+            && !matches!(
+                self.kind(),
+                ty::Tuple(_)
+                    | ty::Slice(_)
+                    | ty::Array(_, _)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+            )
+    }
+
+    /// Checks whether values of this type `T` implements the `Drop`
+    /// trait.
+    pub fn has_surface_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.could_have_surface_drop() && tcx.has_surface_drop_raw(param_env.and(self))
+    }
+
+    /// Fast path helper for testing if a type has `Drop` implementation.
+    ///
+    /// Returning `false` means the type is known to not have `Drop`
+    /// implementation. Returning `true` means nothing -- could be
+    /// `Drop`, might not be.
+    fn could_have_surface_drop(self) -> bool {
+        !self.is_async_destructor_trivially_noop()
+            && !matches!(
+                self.kind(),
+                ty::Tuple(_)
+                    | ty::Slice(_)
+                    | ty::Array(_, _)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+            )
+    }
+
+    /// Checks whether values of this type `T` implement has noop async destructor.
+    //
+    // FIXME: implement optimization to make ADTs, which do not need drop,
+    // to skip fields or to have noop async destructor.
+    pub fn is_async_destructor_noop(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        self.is_async_destructor_trivially_noop()
+            || if let ty::Adt(adt_def, _) = self.kind() {
+                (adt_def.is_union() || adt_def.is_payloadfree())
+                    && !self.has_surface_async_drop(tcx, param_env)
+                    && !self.has_surface_drop(tcx, param_env)
+            } else {
+                false
+            }
+    }
+
+    /// Fast path helper for testing if a type has noop async destructor.
+    ///
+    /// Returning `true` means the type is known to have noop async destructor
+    /// implementation. Returning `true` means nothing -- could be
+    /// `Drop`, might not be.
+    fn is_async_destructor_trivially_noop(self) -> bool {
+        match self.kind() {
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Bool
+            | ty::Char
+            | ty::Str
+            | ty::Never
+            | ty::Ref(..)
+            | ty::RawPtr(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(_) => true,
+            ty::Tuple(tys) => tys.is_empty(),
+            ty::Adt(adt_def, _) => adt_def.is_manually_drop(),
+            _ => false,
         }
     }
 
@@ -1398,7 +1494,7 @@ impl<'tcx> Ty<'tcx> {
             //
             // Because this function is "shallow", we return `true` for these composites regardless
             // of the type(s) contained within.
-            ty::Ref(..) | ty::Array(..) | ty::Slice(_) | ty::Tuple(..) => true,
+            ty::Pat(..) | ty::Ref(..) | ty::Array(..) | ty::Slice(_) | ty::Tuple(..) => true,
 
             // Raw pointers use bitwise comparison.
             ty::RawPtr(_, _) | ty::FnPtr(_) => true,
@@ -1528,7 +1624,7 @@ pub fn needs_drop_components<'tcx>(
 
         ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
-        ty::Slice(ty) => needs_drop_components(tcx, ty),
+        ty::Pat(ty, _) | ty::Slice(ty) => needs_drop_components(tcx, ty),
         ty::Array(elem_ty, size) => {
             match needs_drop_components(tcx, elem_ty) {
                 Ok(v) if v.is_empty() => Ok(v),
@@ -1597,7 +1693,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         | ty::CoroutineWitness(..)
         | ty::Adt(..) => false,
 
-        ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
+        ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => is_trivially_const_drop(ty),
 
         ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty)),
     }
@@ -1608,16 +1704,18 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
 /// folder.tcx().intern_*(&v)
 /// ```
-pub fn fold_list<'tcx, F, T>(
-    list: &'tcx ty::List<T>,
+pub fn fold_list<'tcx, F, L, T>(
+    list: L,
     folder: &mut F,
-    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
-) -> Result<&'tcx ty::List<T>, F::Error>
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> L,
+) -> Result<L, F::Error>
 where
     F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    L: AsRef<[T]>,
     T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
-    let mut iter = list.iter();
+    let slice = list.as_ref();
+    let mut iter = slice.iter().copied();
     // Look for the first element that changed
     match iter.by_ref().enumerate().find_map(|(i, t)| match t.try_fold_with(folder) {
         Ok(new_t) if new_t == t => None,
@@ -1625,8 +1723,8 @@ where
     }) {
         Some((i, Ok(new_t))) => {
             // An element changed, prepare to intern the resulting list
-            let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());
-            new_list.extend_from_slice(&list[..i]);
+            let mut new_list = SmallVec::<[_; 8]>::with_capacity(slice.len());
+            new_list.extend_from_slice(&slice[..i]);
             new_list.push(new_t);
             for t in iter {
                 new_list.push(t.try_fold_with(folder)?)
@@ -1647,8 +1745,8 @@ pub struct AlwaysRequiresDrop;
 /// with their underlying types.
 pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    val: &'tcx ty::List<ty::Clause<'tcx>>,
-) -> &'tcx ty::List<ty::Clause<'tcx>> {
+    val: ty::Clauses<'tcx>,
+) -> ty::Clauses<'tcx> {
     let mut visitor = OpaqueTypeExpander {
         seen_opaque_tys: FxHashSet::default(),
         expanded_cache: FxHashMap::default(),
@@ -1677,10 +1775,15 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
 }
 
-/// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute)
+/// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).
+///
+/// We double check the feature gate here because whether a function may be defined as an intrinsic causes
+/// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
+/// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
-        || tcx.has_attr(def_id, sym::rustc_intrinsic)
+    if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
+        && tcx.features().intrinsics)
+        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs)
     {
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),

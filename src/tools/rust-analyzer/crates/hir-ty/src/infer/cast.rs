@@ -19,10 +19,6 @@ impl CastCheck {
         let expr_ty = table.resolve_ty_shallow(&self.expr_ty);
         let cast_ty = table.resolve_ty_shallow(&self.cast_ty);
 
-        if expr_ty.contains_unknown() || cast_ty.contains_unknown() {
-            return;
-        }
-
         if table.coerce(&expr_ty, &cast_ty).is_ok() {
             return;
         }

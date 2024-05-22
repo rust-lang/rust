@@ -283,7 +283,11 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
     HIDE_PANICS_DURING_EXPANSION.call_once(|| {
         let prev = panic::take_hook();
         panic::set_hook(Box::new(move |info| {
-            if force_show_panics || !is_available() {
+            // We normally report panics by catching unwinds and passing the payload from the
+            // unwind back to the compiler, but if the panic doesn't unwind we'll abort before
+            // the compiler has a chance to print an error. So we special-case PanicInfo where
+            // can_unwind is false.
+            if force_show_panics || !is_available() || !info.can_unwind() {
                 prev(info)
             }
         }));

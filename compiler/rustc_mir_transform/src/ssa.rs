@@ -2,15 +2,18 @@
 //! 1/ They are only assigned-to once, either as a function parameter, or in an assign statement;
 //! 2/ This single assignment dominates all uses;
 //!
-//! As a consequence of rule 2, we consider that borrowed locals are not SSA, even if they are
-//! `Freeze`, as we do not track that the assignment dominates all uses of the borrow.
+//! As we do not track indirect assignments, a local that has its address taken (either by
+//! AddressOf or by borrowing) is considered non-SSA. However, it is UB to modify through an
+//! immutable borrow of a `Freeze` local. Those can still be considered to be SSA.
 
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::bug;
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 
 pub struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.
@@ -24,6 +27,8 @@ pub struct SsaLocals {
     /// Number of "direct" uses of each local, ie. uses that are not dereferences.
     /// We ignore non-uses (Storage statements, debuginfo).
     direct_uses: IndexVec<Local, u32>,
+    /// Set of SSA locals that are immutably borrowed.
+    borrowed_locals: BitSet<Local>,
 }
 
 pub enum AssignedValue<'a, 'tcx> {
@@ -33,15 +38,22 @@ pub enum AssignedValue<'a, 'tcx> {
 }
 
 impl SsaLocals {
-    pub fn new<'tcx>(body: &Body<'tcx>) -> SsaLocals {
+    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ParamEnv<'tcx>) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
         let dominators = body.basic_blocks.dominators();
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
-        let mut visitor =
-            SsaVisitor { body, assignments, assignment_order, dominators, direct_uses };
+        let borrowed_locals = BitSet::new_empty(body.local_decls.len());
+        let mut visitor = SsaVisitor {
+            body,
+            assignments,
+            assignment_order,
+            dominators,
+            direct_uses,
+            borrowed_locals,
+        };
 
         for local in body.args_iter() {
             visitor.assignments[local] = Set1::One(DefLocation::Argument);
@@ -58,6 +70,16 @@ impl SsaLocals {
             visitor.visit_var_debug_info(var_debug_info);
         }
 
+        // The immutability of shared borrows only works on `Freeze` locals. If the visitor found
+        // borrows, we need to check the types. For raw pointers and mutable borrows, the locals
+        // have already been marked as non-SSA.
+        debug!(?visitor.borrowed_locals);
+        for local in visitor.borrowed_locals.iter() {
+            if !body.local_decls[local].ty.is_freeze(tcx, param_env) {
+                visitor.assignments[local] = Set1::Many;
+            }
+        }
+
         debug!(?visitor.assignments);
         debug!(?visitor.direct_uses);
 
@@ -70,6 +92,7 @@ impl SsaLocals {
             assignments: visitor.assignments,
             assignment_order: visitor.assignment_order,
             direct_uses: visitor.direct_uses,
+            borrowed_locals: visitor.borrowed_locals,
             // This is filled by `compute_copy_classes`.
             copy_classes: IndexVec::default(),
         };
@@ -174,6 +197,11 @@ impl SsaLocals {
         &self.copy_classes
     }
 
+    /// Set of SSA locals that are immutably borrowed.
+    pub fn borrowed_locals(&self) -> &BitSet<Local> {
+        &self.borrowed_locals
+    }
+
     /// Make a property uniform on a copy equivalence class by removing elements.
     pub fn meet_copy_equivalence(&self, property: &mut BitSet<Local>) {
         // Consolidate to have a local iff all its copies are.
@@ -208,6 +236,8 @@ struct SsaVisitor<'tcx, 'a> {
     assignments: IndexVec<Local, Set1<DefLocation>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
+    // Track locals that are immutably borrowed, so we can check their type is `Freeze` later.
+    borrowed_locals: BitSet<Local>,
 }
 
 impl SsaVisitor<'_, '_> {
@@ -232,15 +262,17 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'tcx, '_> {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => bug!(),
             // Anything can happen with raw pointers, so remove them.
-            // We do not verify that all uses of the borrow dominate the assignment to `local`,
-            // so we have to remove them too.
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::FakeBorrow
-                | NonMutatingUseContext::AddressOf,
-            )
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
             | PlaceContext::MutatingUse(_) => {
                 self.assignments[local] = Set1::Many;
+            }
+            // Immutable borrows are ok, but we need to delay a check that the type is `Freeze`.
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::FakeBorrow,
+            ) => {
+                self.borrowed_locals.insert(local);
+                self.check_dominates(local, loc);
+                self.direct_uses[local] += 1;
             }
             PlaceContext::NonMutatingUse(_) => {
                 self.check_dominates(local, loc);

@@ -4,17 +4,17 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
     debug x => _1;
     debug b => _2;
     let mut _0: u32;
-    let mut _3: bool;
+    let mut _3: &i32;
     let mut _4: bool;
     let mut _5: bool;
     let mut _6: bool;
-    let mut _7: &i32;
+    let mut _7: bool;
     let mut _8: bool;
 
     bb0: {
         PlaceMention(_1);
-        _5 = Le(const 0_i32, _1);
-        switchInt(move _5) -> [0: bb3, otherwise: bb8];
+        _6 = Le(const 0_i32, _1);
+        switchInt(move _6) -> [0: bb3, otherwise: bb8];
     }
 
     bb1: {
@@ -23,16 +23,16 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
     }
 
     bb2: {
-        falseEdge -> [real: bb9, imaginary: bb4];
+        falseEdge -> [real: bb9, imaginary: bb3];
     }
 
     bb3: {
-        _3 = Le(const 10_i32, _1);
-        switchInt(move _3) -> [0: bb5, otherwise: bb7];
+        _4 = Le(const 10_i32, _1);
+        switchInt(move _4) -> [0: bb5, otherwise: bb7];
     }
 
     bb4: {
-        falseEdge -> [real: bb12, imaginary: bb6];
+        falseEdge -> [real: bb12, imaginary: bb5];
     }
 
     bb5: {
@@ -44,17 +44,17 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
     }
 
     bb7: {
-        _4 = Le(_1, const 20_i32);
-        switchInt(move _4) -> [0: bb5, otherwise: bb4];
+        _5 = Le(_1, const 20_i32);
+        switchInt(move _5) -> [0: bb5, otherwise: bb4];
     }
 
     bb8: {
-        _6 = Lt(_1, const 10_i32);
-        switchInt(move _6) -> [0: bb3, otherwise: bb2];
+        _7 = Lt(_1, const 10_i32);
+        switchInt(move _7) -> [0: bb3, otherwise: bb2];
     }
 
     bb9: {
-        _7 = &fake _1;
+        _3 = &fake shallow _1;
         StorageLive(_8);
         _8 = _2;
         switchInt(move _8) -> [0: bb11, otherwise: bb10];
@@ -62,14 +62,14 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
 
     bb10: {
         StorageDead(_8);
-        FakeRead(ForMatchGuard, _7);
+        FakeRead(ForMatchGuard, _3);
         _0 = const 0_u32;
         goto -> bb14;
     }
 
     bb11: {
         StorageDead(_8);
-        falseEdge -> [real: bb1, imaginary: bb4];
+        falseEdge -> [real: bb1, imaginary: bb3];
     }
 
     bb12: {

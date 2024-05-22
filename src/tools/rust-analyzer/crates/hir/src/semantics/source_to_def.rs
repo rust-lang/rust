@@ -118,10 +118,10 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
-        let _p = tracing::span!(tracing::Level::INFO, "SourceBinder::file_to_module_def");
+        let _p = tracing::span!(tracing::Level::INFO, "SourceToDefCtx::file_to_def").entered();
         let mut mods = SmallVec::new();
         for &crate_id in self.db.relevant_crates(file).iter() {
-            // FIXME: inner items
+            // Note: `mod` declarations in block modules cannot be supported here
             let crate_def_map = self.db.crate_def_map(crate_id);
             mods.extend(
                 crate_def_map
@@ -129,11 +129,14 @@ impl SourceToDefCtx<'_, '_> {
                     .map(|local_id| crate_def_map.module_id(local_id)),
             )
         }
+        if mods.is_empty() {
+            // FIXME: detached file
+        }
         mods
     }
 
     pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
-        let _p = tracing::span!(tracing::Level::INFO, "module_to_def");
+        let _p = tracing::span!(tracing::Level::INFO, "module_to_def").entered();
         let parent_declaration = src
             .syntax()
             .ancestors_with_macros_skip_attr_item(self.db.upcast())
@@ -158,7 +161,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn source_file_to_def(&self, src: InFile<ast::SourceFile>) -> Option<ModuleId> {
-        let _p = tracing::span!(tracing::Level::INFO, "source_file_to_def");
+        let _p = tracing::span!(tracing::Level::INFO, "source_file_to_def").entered();
         let file_id = src.file_id.original_file(self.db.upcast());
         self.file_to_def(file_id).first().copied()
     }

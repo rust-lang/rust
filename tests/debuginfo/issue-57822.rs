@@ -3,7 +3,7 @@
 
 // Require a gdb that can read DW_TAG_variant_part.
 //@ min-gdb-version: 8.2
-
+//@ min-lldb-version: 1800
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -24,9 +24,9 @@
 // lldbg-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
 
 // lldb-command:v b
-// lldbg-check:(issue_57822::main::{coroutine_env#3}) b =
+// lldbg-check:(issue_57822::main::{coroutine_env#3}) b = { value = { a = { value = { y = 2 } $discr$ = '\x02' } } $discr$ = '\x02' }
 
-#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
+#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![omit_gdb_pretty_printer_section]
 
 use std::ops::Coroutine;
@@ -38,11 +38,13 @@ fn main() {
     let g = move || f();
 
     let mut y = 2;
-    let mut a = move || {
+    let mut a = #[coroutine]
+    move || {
         y += 1;
         yield;
     };
-    let mut b = move || {
+    let mut b = #[coroutine]
+    move || {
         Pin::new(&mut a).resume(());
         yield;
     };

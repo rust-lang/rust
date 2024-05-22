@@ -13,7 +13,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
                 cx,
                 CROSSPOINTER_TRANSMUTE,
                 e.span,
-                &format!("transmute from a type (`{from_ty}`) to the type that it points to (`{to_ty}`)"),
+                format!("transmute from a type (`{from_ty}`) to the type that it points to (`{to_ty}`)"),
             );
             true
         },
@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
                 cx,
                 CROSSPOINTER_TRANSMUTE,
                 e.span,
-                &format!("transmute from a type (`{from_ty}`) to a pointer to that type (`{to_ty}`)"),
+                format!("transmute from a type (`{from_ty}`) to a pointer to that type (`{to_ty}`)"),
             );
             true
         },

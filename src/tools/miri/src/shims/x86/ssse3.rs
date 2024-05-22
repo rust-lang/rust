@@ -2,9 +2,8 @@ use rustc_middle::mir;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::horizontal_bin_op;
+use super::{horizontal_bin_op, int_abs, pmulhrsw, psign};
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -16,7 +15,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "ssse3")?;
         // Prefix should have already been checked.
@@ -28,20 +27,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             "pabs.b.128" | "pabs.w.128" | "pabs.d.128" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(op_len, dest_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Converting to a host "i128" works since the input is always signed.
-                    let res = op.to_int(dest.layout.size)?.unsigned_abs();
-
-                    this.write_scalar(Scalar::from_uint(res, dest.layout.size), &dest)?;
-                }
+                int_abs(this, op, dest)?;
             }
             // Used to implement the _mm_shuffle_epi8 intrinsic.
             // Shuffles bytes from `left` using `right` as pattern.
@@ -136,30 +122,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i16()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i16()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = (i32::from(left).checked_mul(right.into()).unwrap() >> 14)
-                        .checked_add(1)
-                        .unwrap()
-                        >> 1;
-
-                    // The result of this operation can overflow a signed 16-bit integer.
-                    // When `left` and `right` are -0x8000, the result is 0x8000.
-                    #[allow(clippy::cast_possible_truncation)]
-                    let res = res as i16;
-
-                    this.write_scalar(Scalar::from_i16(res), &dest)?;
-                }
+                pmulhrsw(this, left, right, dest)?;
             }
             // Used to implement the _mm_sign_epi{8,16,32} functions.
             // Negates elements from `left` when the corresponding element in
@@ -170,31 +133,10 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let right = this
-                        .read_scalar(&this.project_index(&right, i)?)?
-                        .to_int(dest.layout.size)?;
-
-                    let res = this.wrapping_binary_op(
-                        mir::BinOp::Mul,
-                        &left,
-                        &ImmTy::from_int(right.signum(), dest.layout),
-                    )?;
-
-                    this.write_immediate(*res, &dest)?;
-                }
+                psign(this, left, right, dest)?;
             }
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

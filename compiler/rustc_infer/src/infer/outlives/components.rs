@@ -93,6 +93,7 @@ fn compute_components<'tcx>(
                 }
             }
 
+            ty::Pat(element, _) |
             ty::Array(element, _) => {
                 // Don't look into the len const as it doesn't affect regions
                 compute_components(tcx, element, out, visited);

@@ -1,4 +1,4 @@
-//@ unit-test: LowerSliceLenCalls
+//@ test-mir-pass: LowerSliceLenCalls
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR lower_slice_len.bound.LowerSliceLenCalls.diff

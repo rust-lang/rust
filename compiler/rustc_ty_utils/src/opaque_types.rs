@@ -2,12 +2,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
 use rustc_hir::{intravisit, CRATE_HIR_ID};
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
-use rustc_trait_selection::traits::check_args_compatible;
 
 use crate::errors::{DuplicateArg, NotParam};
 
@@ -131,7 +131,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         TaitInBodyFinder { collector: self }.visit_expr(body);
     }
 
-    fn visit_opaque_ty(&mut self, alias_ty: &ty::AliasTy<'tcx>) {
+    fn visit_opaque_ty(&mut self, alias_ty: ty::AliasTy<'tcx>) {
         if !self.seen.insert(alias_ty.def_id.expect_local()) {
             return;
         }
@@ -206,7 +206,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         t.super_visit_with(self);
-        match t.kind() {
+        match *t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
             }
@@ -250,7 +250,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
-                            if check_args_compatible(self.tcx, assoc, impl_args) {
+                            if self.tcx.check_args_compatible(assoc.def_id, impl_args) {
                                 self.tcx
                                     .type_of(assoc.def_id)
                                     .instantiate(self.tcx, impl_args)
@@ -280,7 +280,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     // assumption to the `param_env` of the default method. We also separately
                     // rely on that assumption here.
                     let ty = self.tcx.type_of(alias_ty.def_id).instantiate(self.tcx, alias_ty.args);
-                    let ty::Alias(ty::Opaque, alias_ty) = ty.kind() else { bug!("{ty:?}") };
+                    let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!("{ty:?}") };
                     self.visit_opaque_ty(alias_ty);
                 }
             }

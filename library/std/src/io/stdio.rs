@@ -15,6 +15,7 @@ use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
 use crate::sys::stdio;
+use crate::thread::AccessError;
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
 
@@ -451,6 +452,9 @@ impl Read for Stdin {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
     }
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_exact(cursor)
+    }
 }
 
 #[stable(feature = "read_shared_stdin", since = "1.78.0")]
@@ -476,6 +480,9 @@ impl Read for &Stdin {
     }
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
+    }
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_exact(cursor)
     }
 }
 
@@ -516,6 +523,10 @@ impl Read for StdinLock<'_> {
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.inner.read_exact(buf)
+    }
+
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_exact(cursor)
     }
 }
 
@@ -1054,12 +1065,31 @@ impl fmt::Debug for StderrLock<'_> {
 )]
 #[doc(hidden)]
 pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
+    try_set_output_capture(sink).expect(
+        "cannot access a Thread Local Storage value \
+         during or after destruction",
+    )
+}
+
+/// Tries to set the thread-local output capture buffer and returns the old one.
+/// This may fail once thread-local destructors are called. It's used in panic
+/// handling instead of `set_output_capture`.
+#[unstable(
+    feature = "internal_output_capture",
+    reason = "this function is meant for use in the test crate \
+    and may disappear in the future",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub fn try_set_output_capture(
+    sink: Option<LocalStream>,
+) -> Result<Option<LocalStream>, AccessError> {
     if sink.is_none() && !OUTPUT_CAPTURE_USED.load(Ordering::Relaxed) {
         // OUTPUT_CAPTURE is definitely None since OUTPUT_CAPTURE_USED is false.
-        return None;
+        return Ok(None);
     }
     OUTPUT_CAPTURE_USED.store(true, Ordering::Relaxed);
-    OUTPUT_CAPTURE.with(move |slot| slot.replace(sink))
+    OUTPUT_CAPTURE.try_with(move |slot| slot.replace(sink))
 }
 
 /// Write `args` to the capture buffer if enabled and possible, or `global_s`
@@ -1131,7 +1161,41 @@ pub trait IsTerminal: crate::sealed::Sealed {
     /// starting with `msys-` or `cygwin-` and ending in `-pty` will be considered terminals.
     /// Note that this [may change in the future][changes].
     ///
+    /// # Examples
+    ///
+    /// An example of a type for which `IsTerminal` is implemented is [`Stdin`]:
+    ///
+    /// ```no_run
+    /// use std::io::{self, IsTerminal, Write};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let stdin = io::stdin();
+    ///
+    ///     // Indicate that the user is prompted for input, if this is a terminal.
+    ///     if stdin.is_terminal() {
+    ///         print!("> ");
+    ///         io::stdout().flush()?;
+    ///     }
+    ///
+    ///     let mut name = String::new();
+    ///     let _ = stdin.read_line(&mut name)?;
+    ///
+    ///     println!("Hello {}", name.trim_end());
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// The example can be run in two ways:
+    ///
+    /// - If you run this example by piping some text to it, e.g. `echo "foo" | path/to/executable`
+    ///   it will print: `Hello foo`.
+    /// - If you instead run the example interactively by running the executable directly, it will
+    ///   panic with the message "Expected input to be piped to the process".
+    ///
+    ///
     /// [changes]: io#platform-specific-behavior
+    /// [`Stdin`]: crate::io::Stdin
     #[stable(feature = "is_terminal", since = "1.70.0")]
     fn is_terminal(&self) -> bool;
 }

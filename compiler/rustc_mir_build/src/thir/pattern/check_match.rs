@@ -1,30 +1,27 @@
-use rustc_pattern_analysis::errors::Uncovered;
-use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, MatchArm, RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport,
-    WitnessPat,
-};
-
 use crate::errors::*;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, HirId};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
+use rustc_middle::bug;
 use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::rustc::{
+    Constructor, DeconstructedPat, MatchArm, RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport,
+    WitnessPat,
+};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
-use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
 
@@ -62,10 +59,6 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         }
     }
     visitor.error
-}
-
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> Diag<'_> {
-    struct_span_code_err!(sess.dcx(), sp, E0004, "{}", &error_message)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -674,6 +667,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         if let Some(span) = sp
             && self.tcx.sess.source_map().is_span_accessible(span)
             && interpreted_as_const.is_none()
+            && scrut.is_some()
         {
             let mut bindings = vec![];
             pat.each_binding(|name, _, _, _| bindings.push(name));
@@ -838,7 +832,7 @@ fn check_for_bindings_named_same_as_variants(
 ) {
     if let PatKind::Binding {
         name,
-        mode: BindingAnnotation(ByRef::No, Mutability::Not),
+        mode: BindingMode(ByRef::No, Mutability::Not),
         subpattern: None,
         ty,
         ..
@@ -974,10 +968,11 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     // FIXME: migration of this diagnostic will require list support
     let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-    let mut err = create_e0004(
-        cx.tcx.sess,
+    let mut err = struct_span_code_err!(
+        cx.tcx.dcx(),
         sp,
-        format!("non-exhaustive patterns: {joined_patterns} not covered"),
+        E0004,
+        "non-exhaustive patterns: {joined_patterns} not covered"
     );
     err.span_label(
         sp,

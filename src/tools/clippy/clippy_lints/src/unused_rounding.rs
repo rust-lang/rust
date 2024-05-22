@@ -55,8 +55,8 @@ impl EarlyLintPass for UnusedRounding {
                 cx,
                 UNUSED_ROUNDING,
                 expr.span,
-                &format!("used the `{method_name}` method with a whole number float"),
-                &format!("remove the `{method_name}` method call"),
+                format!("used the `{method_name}` method with a whole number float"),
+                format!("remove the `{method_name}` method call"),
                 float,
                 Applicability::MachineApplicable,
             );

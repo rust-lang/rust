@@ -2,6 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use rustc_errors::{codes::*, struct_span_code_err, Diag, DiagCtxt};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 

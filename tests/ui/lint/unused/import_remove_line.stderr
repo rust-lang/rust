@@ -1,4 +1,4 @@
-warning: unused imports: `Duration`, `Instant`
+warning: unused imports: `Duration` and `Instant`
   --> $DIR/import_remove_line.rs:7:17
    |
 LL | use std::time::{Duration, Instant};

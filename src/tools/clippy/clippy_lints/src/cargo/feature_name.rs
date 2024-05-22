@@ -56,13 +56,13 @@ fn lint(cx: &LateContext<'_>, feature: &str, substring: &str, is_prefix: bool) {
             REDUNDANT_FEATURE_NAMES
         },
         DUMMY_SP,
-        &format!(
+        format!(
             "the \"{substring}\" {} in the feature name \"{feature}\" is {}",
             if is_prefix { "prefix" } else { "suffix" },
             if is_negative { "negative" } else { "redundant" }
         ),
         None,
-        &format!(
+        format!(
             "consider renaming the feature to \"{}\"{}",
             if is_prefix {
                 feature.strip_prefix(substring)

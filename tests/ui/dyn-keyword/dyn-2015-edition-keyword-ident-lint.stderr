@@ -11,6 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(keyword_idents)]
    |         ^^^^^^^^^^^^^^
+   = note: `#[deny(keyword_idents_2018)]` implied by `#[deny(keyword_idents)]`
 
 error: `dyn` is a keyword in the 2018 edition
   --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:17:20

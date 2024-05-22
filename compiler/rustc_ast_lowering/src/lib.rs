@@ -37,17 +37,14 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
 
-#[macro_use]
-extern crate tracing;
-
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
-
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -56,7 +53,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{
-    ConstArg, GenericArg, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
+    ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -68,6 +65,7 @@ use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
+use tracing::{debug, instrument, trace};
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -107,7 +105,7 @@ struct LoweringContext<'a, 'hir> {
 
     /// When inside an `async` context, this is the `HirId` of the
     /// `task_context` local bound to the resume argument of the coroutine.
-    task_context: Option<hir::HirId>,
+    task_context: Option<HirId>,
 
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
@@ -393,7 +391,7 @@ fn index_crate<'a>(
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
-            visit::walk_foreign_item(self, item);
+            visit::walk_item(self, item);
         }
     }
 }
@@ -661,18 +659,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
+    fn lower_node_id(&mut self, ast_node_id: NodeId) -> HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
         match self.node_id_to_local_id.entry(ast_node_id) {
-            Entry::Occupied(o) => {
-                hir::HirId { owner: self.current_hir_id_owner, local_id: *o.get() }
-            }
+            Entry::Occupied(o) => HirId { owner: self.current_hir_id_owner, local_id: *o.get() },
             Entry::Vacant(v) => {
                 // Generate a new `HirId`.
                 let owner = self.current_hir_id_owner;
                 let local_id = self.item_local_id_counter;
-                let hir_id = hir::HirId { owner, local_id };
+                let hir_id = HirId { owner, local_id };
 
                 v.insert(local_id);
                 self.item_local_id_counter.increment_by(1);
@@ -693,12 +689,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Generate a new `HirId` without a backing `NodeId`.
     #[instrument(level = "debug", skip(self), ret)]
-    fn next_id(&mut self) -> hir::HirId {
+    fn next_id(&mut self) -> HirId {
         let owner = self.current_hir_id_owner;
         let local_id = self.item_local_id_counter;
         assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.item_local_id_counter.increment_by(1);
-        hir::HirId { owner, local_id }
+        HirId { owner, local_id }
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -706,7 +702,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
             let local_id = self.node_id_to_local_id.get(&id).copied().ok_or(())?;
-            Ok(hir::HirId { owner, local_id })
+            Ok(HirId { owner, local_id })
         });
         trace!(?res);
 
@@ -889,7 +885,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: hir::HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
+    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
         if attrs.is_empty() {
             None
         } else {
@@ -921,7 +917,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
     }
 
-    fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
+    fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
         debug_assert_eq!(id.owner, self.current_hir_id_owner);
         debug_assert_eq!(target_id.owner, self.current_hir_id_owner);
         if let Some(&a) = self.attrs.get(&target_id.local_id) {
@@ -1182,14 +1178,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     tokens: None,
                                 };
 
-                                let ct = self.with_new_scopes(span, |this| hir::AnonConst {
-                                    def_id,
-                                    hir_id: this.lower_node_id(node_id),
-                                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
+                                let ct = self.with_new_scopes(span, |this| {
+                                    self.arena.alloc(hir::AnonConst {
+                                        def_id,
+                                        hir_id: this.lower_node_id(node_id),
+                                        body: this
+                                            .lower_const_body(path_expr.span, Some(&path_expr)),
+                                        span,
+                                    })
                                 });
                                 return GenericArg::Const(ConstArg {
                                     value: ct,
-                                    span,
                                     is_desugared_from_effects: false,
                                 });
                             }
@@ -1201,7 +1200,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
                 value: self.lower_anon_const(ct),
-                span: self.lower_span(ct.value.span),
                 is_desugared_from_effects: false,
             }),
         }
@@ -1285,7 +1283,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fields.iter().enumerate().map(|f| this.lower_field_def(f)),
                     );
                     let span = t.span;
-                    let variant_data = hir::VariantData::Struct { fields, recovered: false };
+                    let variant_data =
+                        hir::VariantData::Struct { fields, recovered: ast::Recovered::No };
                     // FIXME: capture the generics from the outer adt.
                     let generics = hir::Generics::empty();
                     let kind = match t.kind {
@@ -1325,7 +1324,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
                 hir::TyKind::BareFn(self.arena.alloc(hir::BareFnTy {
                     generic_params,
-                    unsafety: self.lower_unsafety(f.unsafety),
+                    safety: self.lower_safety(f.safety),
                     abi: self.lower_extern(f.ext),
                     decl: self.lower_fn_decl(&f.decl, t.id, t.span, FnDeclKind::Pointer, None),
                     param_names: self.lower_fn_params_to_names(&f.decl),
@@ -1398,7 +1397,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 });
                 hir::TyKind::TraitObject(bounds, lifetime_bound, *kind)
             }
-            TyKind::ImplTrait(def_node_id, bounds) => {
+            TyKind::ImplTrait(def_node_id, bounds, precise_capturing) => {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::OpaqueTy { origin, fn_kind } => self.lower_opaque_impl_trait(
@@ -1408,8 +1407,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         bounds,
                         fn_kind,
                         itctx,
+                        precise_capturing.as_deref().map(|(args, span)| (args.as_slice(), *span)),
                     ),
                     ImplTraitContext::Universal => {
+                        if let Some(&(_, span)) = precise_capturing.as_deref() {
+                            self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnApit { span });
+                        };
                         let span = t.span;
 
                         // HACK: pprust breaks strings with newlines when the type
@@ -1463,7 +1466,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-            TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
+            TyKind::Pat(ty, pat) => hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_pat(pat)),
+            TyKind::MacCall(_) => {
+                span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
+            }
             TyKind::CVarArgs => {
                 let guar = self.dcx().span_delayed_bug(
                     t.span,
@@ -1517,6 +1523,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds: &GenericBounds,
         fn_kind: Option<FnDeclKind>,
         itctx: ImplTraitContext,
+        precise_capturing_args: Option<(&[PreciseCapturingArg], Span)>,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1525,42 +1532,59 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let captured_lifetimes_to_duplicate = match origin {
-            hir::OpaqueTyOrigin::TyAlias { .. } => {
-                // type alias impl trait and associated type position impl trait were
-                // decided to capture all in-scope lifetimes, which we collect for
-                // all opaques during resolution.
-                self.resolver
-                    .take_extra_lifetime_params(opaque_ty_node_id)
-                    .into_iter()
-                    .map(|(ident, id, _)| Lifetime { id, ident })
+        let captured_lifetimes_to_duplicate =
+            if let Some((precise_capturing, _)) = precise_capturing_args {
+                // We'll actually validate these later on; all we need is the list of
+                // lifetimes to duplicate during this portion of lowering.
+                precise_capturing
+                    .iter()
+                    .filter_map(|arg| match arg {
+                        PreciseCapturingArg::Lifetime(lt) => Some(*lt),
+                        PreciseCapturingArg::Arg(..) => None,
+                    })
+                    // Add in all the lifetimes mentioned in the bounds. We will error
+                    // them out later, but capturing them here is important to make sure
+                    // they actually get resolved in resolve_bound_vars.
+                    .chain(lifetime_collector::lifetimes_in_bounds(self.resolver, bounds))
                     .collect()
-            }
-            hir::OpaqueTyOrigin::FnReturn(..) => {
-                if matches!(
-                    fn_kind.expect("expected RPITs to be lowered with a FnKind"),
-                    FnDeclKind::Impl | FnDeclKind::Trait
-                ) || self.tcx.features().lifetime_capture_rules_2024
-                    || span.at_least_rust_2024()
-                {
-                    // return-position impl trait in trait was decided to capture all
-                    // in-scope lifetimes, which we collect for all opaques during resolution.
-                    self.resolver
-                        .take_extra_lifetime_params(opaque_ty_node_id)
-                        .into_iter()
-                        .map(|(ident, id, _)| Lifetime { id, ident })
-                        .collect()
-                } else {
-                    // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
-                    // example, we only need to duplicate lifetimes that appear in the
-                    // bounds, since those are the only ones that are captured by the opaque.
-                    lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
+            } else {
+                match origin {
+                    hir::OpaqueTyOrigin::TyAlias { .. } => {
+                        // type alias impl trait and associated type position impl trait were
+                        // decided to capture all in-scope lifetimes, which we collect for
+                        // all opaques during resolution.
+                        self.resolver
+                            .take_extra_lifetime_params(opaque_ty_node_id)
+                            .into_iter()
+                            .map(|(ident, id, _)| Lifetime { id, ident })
+                            .collect()
+                    }
+                    hir::OpaqueTyOrigin::FnReturn(..) => {
+                        if matches!(
+                            fn_kind.expect("expected RPITs to be lowered with a FnKind"),
+                            FnDeclKind::Impl | FnDeclKind::Trait
+                        ) || self.tcx.features().lifetime_capture_rules_2024
+                            || span.at_least_rust_2024()
+                        {
+                            // return-position impl trait in trait was decided to capture all
+                            // in-scope lifetimes, which we collect for all opaques during resolution.
+                            self.resolver
+                                .take_extra_lifetime_params(opaque_ty_node_id)
+                                .into_iter()
+                                .map(|(ident, id, _)| Lifetime { id, ident })
+                                .collect()
+                        } else {
+                            // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
+                            // example, we only need to duplicate lifetimes that appear in the
+                            // bounds, since those are the only ones that are captured by the opaque.
+                            lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
+                        }
+                    }
+                    hir::OpaqueTyOrigin::AsyncFn(..) => {
+                        unreachable!("should be using `lower_async_fn_ret_ty`")
+                    }
                 }
-            }
-            hir::OpaqueTyOrigin::AsyncFn(..) => {
-                unreachable!("should be using `lower_async_fn_ret_ty`")
-            }
-        };
+            };
         debug!(?captured_lifetimes_to_duplicate);
 
         self.lower_opaque_inner(
@@ -1570,6 +1594,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             captured_lifetimes_to_duplicate,
             span,
             opaque_ty_span,
+            precise_capturing_args,
             |this| this.lower_param_bounds(bounds, itctx),
         )
     }
@@ -1579,9 +1604,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_node_id: NodeId,
         origin: hir::OpaqueTyOrigin,
         in_trait: bool,
-        captured_lifetimes_to_duplicate: Vec<Lifetime>,
+        captured_lifetimes_to_duplicate: FxIndexSet<Lifetime>,
         span: Span,
         opaque_ty_span: Span,
+        precise_capturing_args: Option<(&[PreciseCapturingArg], Span)>,
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.create_def(
@@ -1668,8 +1694,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Install the remapping from old to new (if any). This makes sure that
             // any lifetimes that would have resolved to the def-id of captured
             // lifetimes are remapped to the new *synthetic* lifetimes of the opaque.
-            let bounds = this
-                .with_remapping(captured_to_synthesized_mapping, |this| lower_item_bounds(this));
+            let (bounds, precise_capturing_args) =
+                this.with_remapping(captured_to_synthesized_mapping, |this| {
+                    (
+                        lower_item_bounds(this),
+                        precise_capturing_args.map(|(precise_capturing, span)| {
+                            (
+                                this.lower_precise_capturing_args(precise_capturing),
+                                this.lower_span(span),
+                            )
+                        }),
+                    )
+                });
 
             let generic_params =
                 this.arena.alloc_from_iter(synthesized_lifetime_definitions.iter().map(
@@ -1714,6 +1750,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 origin,
                 lifetime_mapping,
                 in_trait,
+                precise_capturing_args,
             };
 
             // Generate an `type Foo = impl Trait;` declaration.
@@ -1744,6 +1781,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             generic_args,
             in_trait,
         )
+    }
+
+    fn lower_precise_capturing_args(
+        &mut self,
+        precise_capturing_args: &[PreciseCapturingArg],
+    ) -> &'hir [hir::PreciseCapturingArg<'hir>] {
+        self.arena.alloc_from_iter(precise_capturing_args.iter().map(|arg| match arg {
+            PreciseCapturingArg::Lifetime(lt) => {
+                hir::PreciseCapturingArg::Lifetime(self.lower_lifetime(lt))
+            }
+            PreciseCapturingArg::Arg(path, id) => {
+                let [segment] = path.segments.as_slice() else {
+                    panic!();
+                };
+                let res = self.resolver.get_partial_res(*id).map_or(Res::Err, |partial_res| {
+                    partial_res.full_res().expect("no partial res expected for precise capture arg")
+                });
+                hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
+                    hir_id: self.lower_node_id(*id),
+                    ident: self.lower_ident(segment.ident),
+                    res: self.lower_res(res),
+                })
+            }
+        }))
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
@@ -1837,7 +1898,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = matches!(
                     arg.pat.kind,
-                    PatKind::Ident(hir::BindingAnnotation(_, Mutability::Mut), ..)
+                    PatKind::Ident(hir::BindingMode(_, Mutability::Mut), ..)
                 );
 
                 match &arg.ty.kind {
@@ -1886,7 +1947,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_span =
             self.mark_span_with_reason(DesugaringKind::Async, span, allowed_features);
 
-        let captured_lifetimes: Vec<_> = self
+        let captured_lifetimes = self
             .resolver
             .take_extra_lifetime_params(opaque_ty_node_id)
             .into_iter()
@@ -1900,6 +1961,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             captured_lifetimes,
             span,
             opaque_ty_span,
+            None,
             |this| {
                 let bound = this.lower_coroutine_fn_output_type_to_bound(
                     output,
@@ -2259,7 +2321,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
+    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer {
@@ -2282,12 +2344,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
-        self.with_new_scopes(c.value.span, |this| hir::AnonConst {
+    fn lower_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
+        self.arena.alloc(self.with_new_scopes(c.value.span, |this| hir::AnonConst {
             def_id: this.local_def_id(c.id),
             hir_id: this.lower_node_id(c.id),
             body: this.lower_const_body(c.value.span, Some(&c.value)),
-        })
+            span: this.lower_span(c.value.span),
+        }))
     }
 
     fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
@@ -2418,20 +2481,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat(span, hir::PatKind::Struct(qpath, fields, false))
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, hir::HirId) {
-        self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::NONE)
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, HirId) {
+        self.pat_ident_binding_mode(span, ident, hir::BindingMode::NONE)
     }
 
-    fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, hir::HirId) {
-        self.pat_ident_binding_mode_mut(span, ident, hir::BindingAnnotation::NONE)
+    fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, HirId) {
+        self.pat_ident_binding_mode_mut(span, ident, hir::BindingMode::NONE)
     }
 
     fn pat_ident_binding_mode(
         &mut self,
         span: Span,
         ident: Ident,
-        bm: hir::BindingAnnotation,
-    ) -> (&'hir hir::Pat<'hir>, hir::HirId) {
+        bm: hir::BindingMode,
+    ) -> (&'hir hir::Pat<'hir>, HirId) {
         let (pat, hir_id) = self.pat_ident_binding_mode_mut(span, ident, bm);
         (self.arena.alloc(pat), hir_id)
     }
@@ -2440,8 +2503,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         ident: Ident,
-        bm: hir::BindingAnnotation,
-    ) -> (hir::Pat<'hir>, hir::HirId) {
+        bm: hir::BindingMode,
+    ) -> (hir::Pat<'hir>, HirId) {
         let hir_id = self.next_id();
 
         (
@@ -2473,12 +2536,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn ty_path(
-        &mut self,
-        mut hir_id: hir::HirId,
-        span: Span,
-        qpath: hir::QPath<'hir>,
-    ) -> hir::Ty<'hir> {
+    fn ty_path(&mut self, mut hir_id: HirId, span: Span, qpath: hir::QPath<'hir>) -> hir::Ty<'hir> {
         let kind = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
@@ -2599,8 +2657,7 @@ impl<'hir> GenericArgsCtor<'hir> {
 
         lcx.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         self.args.push(hir::GenericArg::Const(hir::ConstArg {
-            value: hir::AnonConst { def_id, hir_id, body },
-            span,
+            value: lcx.arena.alloc(hir::AnonConst { def_id, hir_id, body, span }),
             is_desugared_from_effects: true,
         }))
     }

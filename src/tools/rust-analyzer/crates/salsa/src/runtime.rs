@@ -1,4 +1,3 @@
-//!
 use crate::durability::Durability;
 use crate::hash::FxIndexSet;
 use crate::plumbing::CycleRecoveryStrategy;
@@ -605,7 +604,7 @@ impl ActiveQuery {
     pub(crate) fn take_inputs_from(&mut self, cycle_query: &ActiveQuery) {
         self.changed_at = cycle_query.changed_at;
         self.durability = cycle_query.durability;
-        self.dependencies = cycle_query.dependencies.clone();
+        self.dependencies.clone_from(&cycle_query.dependencies);
     }
 }
 

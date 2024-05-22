@@ -18,7 +18,6 @@ because that's clearly a non-descriptive name.
     - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
   - [Testing manually](#testing-manually)
-  - [Running directly](#running-directly)
   - [Lint declaration](#lint-declaration)
   - [Lint registration](#lint-registration)
   - [Lint passes](#lint-passes)
@@ -176,23 +175,26 @@ the tests.
 
 Manually testing against an example file can be useful if you have added some
 `println!`s and the test suite output becomes unreadable. To try Clippy with
-your local modifications, run
+your local modifications, run the following from the Clippy directory:
 
-```
+```bash
 cargo dev lint input.rs
 ```
 
-from the working copy root. With tests in place, let's have a look at
-implementing our lint now.
+To run Clippy on an existing project rather than a single file you can use
 
-## Running directly
+```bash
+cargo dev lint /path/to/project
+```
 
-While it's easier to just use `cargo dev lint`, it might be desirable to get
-`target/release/cargo-clippy` and `target/release/clippy-driver` to work as well in some cases.
-By default, they don't work because clippy dynamically links rustc. To help them find rustc,
-add the path printed by`rustc --print target-libdir` (ran inside this workspace so that the rustc version matches)
-to your library search path.
-On linux, this can be done by setting the `LD_LIBRARY_PATH` environment variable to that path.
+Or set up a rustup toolchain that points to the local Clippy binaries
+
+```bash
+cargo dev setup toolchain
+
+# Then in `/path/to/project` you can run
+cargo +clippy clippy
+```
 
 ## Lint declaration
 
@@ -297,10 +299,10 @@ This is good, because it makes writing this particular lint less complicated.
 We have to make this decision with every new Clippy lint. It boils down to using
 either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
-In short, the `LateLintPass` has access to type information while the
-`EarlyLintPass` doesn't. If you don't need access to type information, use the
-`EarlyLintPass`. The `EarlyLintPass` is also faster. However, linting speed
-hasn't really been a concern with Clippy so far.
+In short, the `EarlyLintPass` runs before type checking and
+[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering and the `LateLintPass`
+has access to type information. Consider using the `LateLintPass` unless you need
+something specific from the `EarlyLintPass`.
 
 Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were

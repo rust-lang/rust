@@ -127,7 +127,8 @@ fn on_opening_bracket_typed(
     if !stdx::always!(range.len() == TextSize::of(opening_bracket)) {
         return None;
     }
-    let file = file.reparse(&Indel::delete(range));
+    // FIXME: Edition
+    let file = file.reparse(&Indel::delete(range), span::Edition::CURRENT);
 
     if let Some(edit) = bracket_expr(&file.tree(), offset, opening_bracket, closing_bracket) {
         return Some(edit);
@@ -411,7 +412,7 @@ mod tests {
         let (offset, mut before) = extract_offset(before);
         let edit = TextEdit::insert(offset, char_typed.to_string());
         edit.apply(&mut before);
-        let parse = SourceFile::parse(&before);
+        let parse = SourceFile::parse(&before, span::Edition::CURRENT);
         on_char_typed_inner(&parse, offset, char_typed).map(|it| {
             it.apply(&mut before);
             before.to_string()

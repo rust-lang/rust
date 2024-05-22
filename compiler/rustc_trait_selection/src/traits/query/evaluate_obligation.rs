@@ -1,8 +1,11 @@
-use rustc_infer::traits::{TraitEngine, TraitEngineExt};
+use rustc_macros::extension;
+use rustc_middle::span_bug;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
+use crate::traits::{
+    EvaluationResult, ObligationCtxt, OverflowError, PredicateObligation, SelectionContext,
+};
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -66,21 +69,22 @@ impl<'tcx> InferCtxt<'tcx> {
 
         if self.next_trait_solver() {
             self.probe(|snapshot| {
-                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new(self);
-                fulfill_cx.register_predicate_obligation(self, obligation.clone());
-                // True errors
-                // FIXME(-Znext-solver): Overflows are reported as ambig here, is that OK?
-                if !fulfill_cx.select_where_possible(self).is_empty() {
-                    Ok(EvaluationResult::EvaluatedToErr)
-                } else if !fulfill_cx.select_all_or_error(self).is_empty() {
-                    Ok(EvaluationResult::EvaluatedToAmbig)
-                } else if self.opaque_types_added_in_snapshot(snapshot) {
-                    Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
-                } else if self.region_constraints_added_in_snapshot(snapshot) {
-                    Ok(EvaluationResult::EvaluatedToOkModuloRegions)
-                } else {
-                    Ok(EvaluationResult::EvaluatedToOk)
+                let ocx = ObligationCtxt::new(self);
+                ocx.register_obligation(obligation.clone());
+                let mut result = EvaluationResult::EvaluatedToOk;
+                for error in ocx.select_all_or_error() {
+                    if error.is_true_error() {
+                        return Ok(EvaluationResult::EvaluatedToErr);
+                    } else {
+                        result = result.max(EvaluationResult::EvaluatedToAmbig);
+                    }
                 }
+                if self.opaque_types_added_in_snapshot(snapshot) {
+                    result = result.max(EvaluationResult::EvaluatedToOkModuloOpaqueTypes);
+                } else if self.region_constraints_added_in_snapshot(snapshot) {
+                    result = result.max(EvaluationResult::EvaluatedToOkModuloRegions);
+                }
+                Ok(result)
             })
         } else {
             assert!(!self.intercrate);

@@ -31,11 +31,10 @@ use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
 };
-use crate::html::layout::Page;
+use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{highlight, static_files};
 
 use askama::Template;
 use itertools::Itertools;
@@ -157,8 +156,6 @@ struct PathComponent {
 #[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
-    static_root_path: &'a str,
-    clipboard_svg: &'static static_files::StaticFile,
     typ: &'a str,
     name: &'a str,
     item_type: &'a str,
@@ -178,12 +175,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
     len_before != buffer.len()
 }
 
-pub(super) fn print_item(
-    cx: &mut Context<'_>,
-    item: &clean::Item,
-    buf: &mut Buffer,
-    page: &Page<'_>,
-) {
+pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     debug_assert!(!item.is_stripped());
     let typ = match *item.kind {
         clean::ModuleItem(_) => {
@@ -222,8 +214,6 @@ pub(super) fn print_item(
         &mut stability_since_raw,
         item.stable_since(cx.tcx()),
         item.const_stability(cx.tcx()),
-        None,
-        None,
     );
     let stability_since_raw: String = stability_since_raw.into_inner();
 
@@ -252,8 +242,6 @@ pub(super) fn print_item(
     };
 
     let item_vars = ItemVars {
-        static_root_path: &page.get_static_root_path(),
-        clipboard_svg: &static_files::STATIC_FILES.clipboard_svg,
         typ,
         name: item.name.as_ref().unwrap().as_str(),
         item_type: &item.type_().to_string(),
@@ -504,7 +492,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 let unsafety_flag = match *myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
-                        if myitem.fn_header(tcx).unwrap().unsafety == hir::Unsafety::Unsafe =>
+                        if myitem.fn_header(tcx).unwrap().safety == hir::Safety::Unsafe =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }
@@ -628,7 +616,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
     let tcx = cx.tcx();
     let header = it.fn_header(tcx).expect("printing a function which isn't a function");
     let constness = print_constness_with_space(&header.constness, it.const_stability(tcx));
-    let unsafety = header.unsafety.print_with_space();
+    let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
     let visibility = visibility_print_with_space(it, cx).to_string();
@@ -639,7 +627,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + visibility.len()
         + constness.len()
         + asyncness.len()
-        + unsafety.len()
+        + safety.len()
         + abi.len()
         + name.as_str().len()
         + generics_len;
@@ -650,13 +638,13 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         w.reserve(header_len);
         write!(
             w,
-            "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
+            "{attrs}{vis}{constness}{asyncness}{safety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
             attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility,
             constness = constness,
             asyncness = asyncness,
-            unsafety = unsafety,
+            safety = safety,
             abi = abi,
             name = name,
             generics = f.generics.print(cx),
@@ -686,10 +674,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     wrap_item(w, |mut w| {
         write!(
             w,
-            "{attrs}{vis}{unsafety}{is_auto}trait {name}{generics}{bounds}",
+            "{attrs}{vis}{safety}{is_auto}trait {name}{generics}{bounds}",
             attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility_print_with_space(it, cx),
-            unsafety = t.unsafety(tcx).print_with_space(),
+            safety = t.safety(tcx).print_with_space(),
             is_auto = if t.is_auto(tcx) { "auto " } else { "" },
             name = it.name.unwrap(),
             generics = t.generics.print(cx),
@@ -835,7 +823,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
         write!(w, "<section id=\"{id}\" class=\"method\">");
-        render_rightside(w, cx, m, t, RenderMode::Normal);
+        render_rightside(w, cx, m, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
             w,
@@ -1237,22 +1225,18 @@ fn item_opaque_ty(
 }
 
 fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
-    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
-        wrap_item(w, |w| {
-            write!(
-                w,
-                "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
-                attrs = render_attributes_in_pre(it, "", cx),
-                vis = visibility_print_with_space(it, cx),
-                name = it.name.unwrap(),
-                generics = t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
-                type_ = t.type_.print(cx),
-            );
-        });
-    }
-
-    write_content(w, cx, it, t);
+    wrap_item(w, |w| {
+        write!(
+            w,
+            "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
+            attrs = render_attributes_in_pre(it, "", cx),
+            vis = visibility_print_with_space(it, cx),
+            name = it.name.unwrap(),
+            generics = t.generics.print(cx),
+            where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
+            type_ = t.type_.print(cx),
+        );
+    });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
@@ -1700,8 +1684,6 @@ fn item_variants(
             w,
             variant.stable_since(tcx),
             variant.const_stability(tcx),
-            it.stable_since(tcx),
-            it.const_stable_since(tcx),
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");

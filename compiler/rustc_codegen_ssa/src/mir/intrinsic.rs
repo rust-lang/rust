@@ -1,4 +1,4 @@
-use super::operand::{OperandRef, OperandValue};
+use super::operand::OperandRef;
 use super::place::PlaceRef;
 use super::FunctionCx;
 use crate::errors;
@@ -9,6 +9,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{sym, Span};
 use rustc_target::abi::{
@@ -92,9 +93,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // into the (unoptimized) direct swapping implementation, so we disable it.
                 || bx.sess().target.arch == "spirv"
             {
-                let x_place = PlaceRef::new_sized(args[0].immediate(), pointee_layout);
-                let y_place = PlaceRef::new_sized(args[1].immediate(), pointee_layout);
-                bx.typed_place_swap(x_place, y_place);
+                let align = pointee_layout.align.abi;
+                let x_place = args[0].val.deref(align);
+                let y_place = args[1].val.deref(align);
+                bx.typed_place_swap(x_place, y_place, pointee_layout);
                 return Ok(());
             }
         }
@@ -112,15 +114,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::va_end => bx.va_end(args[0].immediate()),
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                let meta =
-                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (_, meta) = args[0].val.pointer_parts();
                 let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
                 llsize
             }
             sym::min_align_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                let meta =
-                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (_, meta) = args[0].val.pointer_parts();
                 let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
                 llalign
             }
@@ -387,9 +387,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let success = bx.from_immediate(success);
 
                             let dest = result.project_field(bx, 0);
-                            bx.store(val, dest.llval, dest.align);
+                            bx.store_to_place(val, dest.val);
                             let dest = result.project_field(bx, 1);
-                            bx.store(success, dest.llval, dest.align);
+                            bx.store_to_place(success, dest.val);
                         } else {
                             invalid_monomorphization(ty);
                         }
@@ -511,7 +511,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast { .. } = &fn_abi.ret.mode {
-                bx.store(llval, result.llval, result.align);
+                bx.store_to_place(llval, result.val);
             } else {
                 OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
                     .val

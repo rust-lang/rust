@@ -1,6 +1,7 @@
 use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
+use hir::def::Namespace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
@@ -10,6 +11,8 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 // `pretty` is a separate module only for organization.
 mod pretty;
 pub use self::pretty::*;
+
+use super::Lift;
 
 pub type PrintError = std::fmt::Error;
 
@@ -157,7 +160,7 @@ pub trait Printer<'tcx>: Sized {
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.
                         _ => {
-                            if !generics.params.is_empty() && args.len() >= generics.count() {
+                            if !generics.is_own_empty() && args.len() >= generics.count() {
                                 let args = generics.own_args_no_defaults(self.tcx(), args);
                                 return self.path_generic_args(
                                     |cx| cx.print_def_path(def_id, parent_args),
@@ -259,7 +262,7 @@ fn characteristic_def_id_of_type_cached<'a>(
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
 
-        ty::Array(subty, _) | ty::Slice(subty) => {
+        ty::Pat(subty, _) | ty::Array(subty, _) | ty::Slice(subty) => {
             characteristic_def_id_of_type_cached(subty, visited)
         }
 
@@ -332,5 +335,23 @@ pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> Str
         "top-level module".to_string()
     } else {
         format!("module `{}`", tcx.def_path_str(def_id))
+    }
+}
+
+impl<T> rustc_type_ir::ir_print::IrPrint<T> for TyCtxt<'_>
+where
+    T: Copy + for<'a, 'tcx> Lift<TyCtxt<'tcx>, Lifted: Print<'tcx, FmtPrinter<'a, 'tcx>>>,
+{
+    fn print(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        ty::tls::with(|tcx| {
+            let mut cx = FmtPrinter::new(tcx, Namespace::TypeNS);
+            tcx.lift(*t).expect("could not lift for printing").print(&mut cx)?;
+            fmt.write_str(&cx.into_buffer())?;
+            Ok(())
+        })
+    }
+
+    fn print_debug(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        with_no_trimmed_paths!(Self::print(t, fmt))
     }
 }

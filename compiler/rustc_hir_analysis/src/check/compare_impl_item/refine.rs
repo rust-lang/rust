@@ -3,6 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{outlives::env::OutlivesEnvironment, TyCtxtInferExt};
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
+use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,

@@ -88,7 +88,7 @@ impl UnnecessaryBoxReturns {
                 cx,
                 UNNECESSARY_BOX_RETURNS,
                 return_ty_hir.span,
-                format!("boxed return of the sized type `{boxed_ty}`").as_str(),
+                format!("boxed return of the sized type `{boxed_ty}`"),
                 |diagnostic| {
                     diagnostic.span_suggestion(
                         return_ty_hir.span,

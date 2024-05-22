@@ -118,7 +118,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(generic_nonzero, iter_advance_by)]
+    /// #![feature(iter_advance_by)]
+    ///
     /// use std::num::NonZero;
     ///
     /// let a = [3, 4, 5, 6];

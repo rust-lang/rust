@@ -667,3 +667,24 @@ fn test_non_rs_unknown_directive_not_checked() {
     );
     assert!(!poisoned);
 }
+
+#[test]
+fn test_trailing_directive() {
+    let mut poisoned = false;
+    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86 only-arm");
+    assert!(poisoned);
+}
+
+#[test]
+fn test_trailing_directive_with_comment() {
+    let mut poisoned = false;
+    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
+    assert!(poisoned);
+}
+
+#[test]
+fn test_not_trailing_directive() {
+    let mut poisoned = false;
+    run_path(&mut poisoned, Path::new("a.rs"), b"//@ revisions: incremental");
+    assert!(!poisoned);
+}

@@ -1,11 +1,12 @@
 use std::mem;
 
 use super::StructurallyRelateAliases;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
+use crate::infer::type_variable::TypeVariableValue;
 use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -101,7 +102,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         // instead create a new inference variable `?normalized_source`, emitting
                         // `Projection(normalized_source, ?ty_normalized)` and `?normalized_source <: generalized_ty`.
                         relation.register_predicates([ty::ProjectionPredicate {
-                            projection_ty: data,
+                            projection_term: data.into(),
                             term: generalized_ty.into(),
                         }]);
                     }
@@ -350,11 +351,14 @@ impl<'tcx> Generalizer<'_, 'tcx> {
         &mut self,
         alias: ty::AliasTy<'tcx>,
     ) -> Result<Ty<'tcx>, TypeError<'tcx>> {
-        if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() {
-            return Ok(self.infcx.next_ty_var_in_universe(
-                TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span: self.span },
-                self.for_universe,
-            ));
+        // We do not eagerly replace aliases with inference variables if they have
+        // escaping bound vars, see the method comment for details. However, when we
+        // are inside of an alias with escaping bound vars replacing nested aliases
+        // with inference variables can cause incorrect ambiguity.
+        //
+        // cc trait-system-refactor-initiative#110
+        if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() && !self.in_alias {
+            return Ok(self.infcx.next_ty_var_in_universe(self.span, self.for_universe));
         }
 
         let is_nested_alias = mem::replace(&mut self.in_alias, true);
@@ -374,13 +378,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     }
 
                     debug!("generalization failure in alias");
-                    Ok(self.infcx.next_ty_var_in_universe(
-                        TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: self.span,
-                        },
-                        self.for_universe,
-                    ))
+                    Ok(self.infcx.next_ty_var_in_universe(self.span, self.for_universe))
                 }
             }
         };
@@ -495,9 +493,30 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             let origin = inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
-                            let u = Ty::new_var(self.tcx(), new_var_id);
-                            debug!("replacing original vid={:?} with new={:?}", vid, u);
-                            Ok(u)
+                            // If we're in the new solver and create a new inference
+                            // variable inside of an alias we eagerly constrain that
+                            // inference variable to prevent unexpected ambiguity errors.
+                            //
+                            // This is incomplete as it pulls down the universe of the
+                            // original inference variable, even though the alias could
+                            // normalize to a type which does not refer to that type at
+                            // all. I don't expect this to cause unexpected errors in
+                            // practice.
+                            //
+                            // We only need to do so for type and const variables, as
+                            // region variables do not impact normalization, and will get
+                            // correctly constrained by `AliasRelate` later on.
+                            //
+                            // cc trait-system-refactor-initiative#108
+                            if self.infcx.next_trait_solver()
+                                && !self.infcx.intercrate
+                                && self.in_alias
+                            {
+                                inner.type_variables().equate(vid, new_var_id);
+                            }
+
+                            debug!("replacing original vid={:?} with new={:?}", vid, new_var_id);
+                            Ok(Ty::new_var(self.tcx(), new_var_id))
                         }
                     }
                 }
@@ -617,6 +636,15 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                     universe: self.for_universe,
                                 })
                                 .vid;
+
+                            // See the comment for type inference variables
+                            // for more details.
+                            if self.infcx.next_trait_solver()
+                                && !self.infcx.intercrate
+                                && self.in_alias
+                            {
+                                variable_table.union(vid, new_var_id);
+                            }
                             Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
                         }
                     }

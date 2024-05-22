@@ -91,6 +91,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -121,7 +122,7 @@ impl<'tcx> MirPass<'tcx> for GVN {
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(body);
+    let ssa = SsaLocals::new(tcx, body, param_env);
     // Clone dominators as we need them while mutating the body.
     let dominators = body.basic_blocks.dominators().clone();
 
@@ -594,7 +595,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = place.ty(self.local_decls, self.tcx).ty;
                 if let Some(Mutability::Not) = ty.ref_mutability()
                     && let Some(pointee_ty) = ty.builtin_deref(true)
-                    && pointee_ty.ty.is_freeze(self.tcx, self.param_env)
+                    && pointee_ty.is_freeze(self.tcx, self.param_env)
                 {
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
@@ -724,6 +725,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // Invariant: `value` holds the value up-to the `index`th projection excluded.
         let mut value = self.locals[place.local]?;
         for (index, proj) in place.projection.iter().enumerate() {
+            if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
+                && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
+                && let AddressKind::Ref(BorrowKind::Shared) = kind
+                && let Some(v) = self.simplify_place_value(&mut pointee, location)
+            {
+                value = v;
+                place_ref = pointee.project_deeper(&place.projection[index..], self.tcx).as_ref();
+            }
             if let Some(local) = self.try_as_local(value, location) {
                 // Both `local` and `Place { local: place.local, projection: projection[..index] }`
                 // hold the same value. Therefore, following place holds the value in the original
@@ -735,6 +744,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             value = self.project(base, value, proj)?;
         }
 
+        if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
+            && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
+            && let AddressKind::Ref(BorrowKind::Shared) = kind
+            && let Some(v) = self.simplify_place_value(&mut pointee, location)
+        {
+            value = v;
+            place_ref = pointee.project_deeper(&[], self.tcx).as_ref();
+        }
         if let Some(new_local) = self.try_as_local(value, location) {
             place_ref = PlaceRef { local: new_local, projection: &[] };
         }
@@ -814,23 +831,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 // on both operands for side effect.
                 let lhs = lhs?;
                 let rhs = rhs?;
-                if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
-                    return Some(value);
+
+                if let Some(op) = op.overflowing_to_wrapping() {
+                    if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
+                        return Some(value);
+                    }
+                    Value::CheckedBinaryOp(op, lhs, rhs)
+                } else {
+                    if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
+                        return Some(value);
+                    }
+                    Value::BinaryOp(op, lhs, rhs)
                 }
-                Value::BinaryOp(op, lhs, rhs)
-            }
-            Rvalue::CheckedBinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
-                let ty = lhs.ty(self.local_decls, self.tcx);
-                let lhs = self.simplify_operand(lhs, location);
-                let rhs = self.simplify_operand(rhs, location);
-                // Only short-circuit options after we called `simplify_operand`
-                // on both operands for side effect.
-                let lhs = lhs?;
-                let rhs = rhs?;
-                if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
-                    return Some(value);
-                }
-                Value::CheckedBinaryOp(op, lhs, rhs)
             }
             Rvalue::UnaryOp(op, ref mut arg) => {
                 let arg = self.simplify_operand(arg, location)?;
@@ -885,6 +897,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 AggregateKind::Adt(did, ..) => tcx.def_kind(did) != DefKind::Enum,
                 // Coroutines are never ZST, as they at least contain the implicit states.
                 AggregateKind::Coroutine(..) => false,
+                AggregateKind::RawPtr(..) => bug!("MIR for RawPtr aggregate must have 2 fields"),
             };
 
             if is_zst {
@@ -910,6 +923,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
+            // FIXME: Do the extra work to GVN `from_raw_parts`
+            AggregateKind::RawPtr(..) => return None,
         };
 
         let fields: Option<Vec<_>> = fields
@@ -1114,9 +1129,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
             && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
             && let Some(from) = from.builtin_deref(true)
-            && let ty::Array(_, len) = from.ty.kind()
+            && let ty::Array(_, len) = from.kind()
             && let Some(to) = to.builtin_deref(true)
-            && let ty::Slice(..) = to.ty.kind()
+            && let ty::Slice(..) = to.kind()
         {
             return self.insert_constant(Const::from_ty_const(*len, self.tcx));
         }
@@ -1202,7 +1217,7 @@ impl<'tcx> VnState<'_, 'tcx> {
             // not give the same value as the former mention.
             && value.is_deterministic()
         {
-            return Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_: value });
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
         let op = self.evaluated[index].as_ref()?;
@@ -1219,7 +1234,7 @@ impl<'tcx> VnState<'_, 'tcx> {
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
-        Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
+        Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,

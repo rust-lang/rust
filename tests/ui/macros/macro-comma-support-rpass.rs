@@ -51,6 +51,7 @@ fn assert_ne() {
 }
 
 #[test]
+#[allow(unexpected_cfgs)]
 fn cfg() {
     let _ = cfg!(pants);
     let _ = cfg!(pants,);

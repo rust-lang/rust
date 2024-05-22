@@ -124,8 +124,8 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 // above.
 
 /// The underlying implementation of core's `panic!` macro when no formatting is used.
-// never inline unless panic_immediate_abort to avoid code
-// bloat at the call sites as much as possible
+// Never inline unless panic_immediate_abort to avoid code
+// bloat at the call sites as much as possible.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
@@ -138,6 +138,11 @@ pub const fn panic(expr: &'static str) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_const may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
+    // However, this optimization only works for `'static` strings: `new_const` also makes this
+    // message return `Some` from `Arguments::as_str`, which means it can become part of the panic
+    // payload without any allocation or copying. Shorter-lived strings would become invalid as
+    // stack frames get popped during unwinding, and couldn't be directly referenced from the
+    // payload.
     panic_fmt(fmt::Arguments::new_const(&[expr]));
 }
 
@@ -151,7 +156,6 @@ pub const fn panic(expr: &'static str) -> ! {
 // reducing binary size impact.
 macro_rules! panic_const {
     ($($lang:ident = $message:expr,)+) => {
-        #[cfg(not(bootstrap))]
         pub mod panic_const {
             use super::*;
 
@@ -223,14 +227,6 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ true);
 }
 
-#[inline]
-#[track_caller]
-#[rustc_diagnostic_item = "panic_str"]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
-pub const fn panic_str(expr: &str) -> ! {
-    panic_display(&expr);
-}
-
 #[track_caller]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
@@ -244,6 +240,16 @@ pub const fn panic_explicit() -> ! {
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
 pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
+}
+
+/// This exists solely for the 2015 edition `panic!` macro to trigger
+/// a lint on `panic!(my_str_variable);`.
+#[inline]
+#[track_caller]
+#[rustc_diagnostic_item = "panic_str_2015"]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+pub const fn panic_str_2015(expr: &str) -> ! {
+    panic_display(&expr);
 }
 
 #[inline]

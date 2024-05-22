@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `B<T>`
+error[E0282]: type annotations needed for `B<_>`
   --> $DIR/issue-17551.rs:6:9
    |
 LL |     let foo = B(marker::PhantomData);

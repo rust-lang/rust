@@ -158,6 +158,8 @@ pub(crate) unsafe fn codegen(
         config.emit_obj != EmitObj::None,
         cgcx.target_can_use_split_dwarf && cgcx.split_debuginfo == SplitDebuginfo::Unpacked,
         config.emit_bc,
+        config.emit_asm,
+        config.emit_ir,
         &cgcx.output_filenames,
     ))
 }

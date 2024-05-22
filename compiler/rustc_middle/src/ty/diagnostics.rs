@@ -5,13 +5,13 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque, PolyTraitPredicate,
-    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque,
+    PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg};
+use rustc_errors::{into_diag_arg_using_display, Applicability, Diag, DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -19,10 +19,9 @@ use rustc_hir::{PredicateOrigin, WherePredicate};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
-impl<'tcx> IntoDiagArg for Ty<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
-    }
+into_diag_arg_using_display! {
+    Ty<'_>,
+    ty::Region<'_>,
 }
 
 impl<'tcx> Ty<'tcx> {
@@ -280,24 +279,29 @@ pub fn suggest_constraining_type_params<'a>(
         constraint.sort();
         constraint.dedup();
         let constraint = constraint.join(" + ");
-        let mut suggest_restrict = |span, bound_list_non_empty| {
-            suggestions.push((
-                span,
-                if span_to_replace.is_some() {
-                    constraint.clone()
-                } else if constraint.starts_with('<') {
-                    constraint.to_string()
-                } else if bound_list_non_empty {
-                    format!(" + {constraint}")
-                } else {
-                    format!(" {constraint}")
-                },
-                SuggestChangingConstraintsMessage::RestrictBoundFurther,
-            ))
+        let mut suggest_restrict = |span, bound_list_non_empty, open_paren_sp| {
+            let suggestion = if span_to_replace.is_some() {
+                constraint.clone()
+            } else if constraint.starts_with('<') {
+                constraint.to_string()
+            } else if bound_list_non_empty {
+                format!(" + {constraint}")
+            } else {
+                format!(" {constraint}")
+            };
+
+            use SuggestChangingConstraintsMessage::RestrictBoundFurther;
+
+            if let Some(open_paren_sp) = open_paren_sp {
+                suggestions.push((open_paren_sp, "(".to_string(), RestrictBoundFurther));
+                suggestions.push((span, format!("){suggestion}"), RestrictBoundFurther));
+            } else {
+                suggestions.push((span, suggestion, RestrictBoundFurther));
+            }
         };
 
         if let Some(span) = span_to_replace {
-            suggest_restrict(span, true);
+            suggest_restrict(span, true, None);
             continue;
         }
 
@@ -328,8 +332,8 @@ pub fn suggest_constraining_type_params<'a>(
         //          --
         //          |
         //          replace with: `T: Bar +`
-        if let Some(span) = generics.bounds_span_for_suggestions(param.def_id) {
-            suggest_restrict(span, true);
+        if let Some((span, open_paren_sp)) = generics.bounds_span_for_suggestions(param.def_id) {
+            suggest_restrict(span, true, open_paren_sp);
             continue;
         }
 

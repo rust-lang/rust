@@ -1,7 +1,12 @@
 //@aux-build:proc_macro_attr.rs
 
 #![warn(clippy::blocks_in_conditions)]
-#![allow(unused, clippy::let_and_return, clippy::needless_if)]
+#![allow(
+    unused,
+    clippy::let_and_return,
+    clippy::needless_if,
+    clippy::missing_transmute_annotations
+)]
 #![warn(clippy::nonminimal_bool)]
 
 macro_rules! blocky {

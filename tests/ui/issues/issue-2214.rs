@@ -1,11 +1,8 @@
 //@ run-pass
 //@ ignore-wasm32 wasi-libc does not have lgamma
 //@ ignore-sgx no libc
-#![feature(rustc_private)]
 
-extern crate libc;
-
-use libc::{c_double, c_int};
+use std::ffi::{c_double, c_int};
 use std::mem;
 
 fn to_c_int(v: &mut isize) -> &mut c_int {
@@ -19,8 +16,7 @@ fn lgamma(n: c_double, value: &mut isize) -> c_double {
 }
 
 mod m {
-    use libc::{c_double, c_int};
-
+    use std::ffi::{c_double, c_int};
     extern "C" {
         #[cfg(all(unix, not(target_os = "vxworks")))]
         #[link_name="lgamma_r"]

@@ -259,9 +259,15 @@ fn run_server() -> anyhow::Result<()> {
         config.rediscover_workspaces();
     }
 
-    rust_analyzer::main_loop(config, connection)?;
+    // If the io_threads have an error, there's usually an error on the main
+    // loop too because the channels are closed. Ensure we report both errors.
+    match (rust_analyzer::main_loop(config, connection), io_threads.join()) {
+        (Err(loop_e), Err(join_e)) => anyhow::bail!("{loop_e}\n{join_e}"),
+        (Ok(_), Err(join_e)) => anyhow::bail!("{join_e}"),
+        (Err(loop_e), Ok(_)) => anyhow::bail!("{loop_e}"),
+        (Ok(_), Ok(_)) => {}
+    }
 
-    io_threads.join()?;
     tracing::info!("server did shut down");
     Ok(())
 }

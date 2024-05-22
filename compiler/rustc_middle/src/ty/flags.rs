@@ -35,6 +35,15 @@ impl FlagComputation {
         result
     }
 
+    pub fn for_clauses(clauses: &[ty::Clause<'_>]) -> FlagComputation {
+        let mut result = FlagComputation::new();
+        for c in clauses {
+            result.add_flags(c.as_predicate().flags());
+            result.add_exclusive_binder(c.as_predicate().outer_exclusive_binder());
+        }
+        result
+    }
+
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -209,6 +218,20 @@ impl FlagComputation {
                 self.add_const(len);
             }
 
+            &ty::Pat(ty, pat) => {
+                self.add_ty(ty);
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                        if let Some(start) = start {
+                            self.add_const(start)
+                        }
+                        if let Some(end) = end {
+                            self.add_const(end)
+                        }
+                    }
+                }
+            }
+
             &ty::Slice(tt) => self.add_ty(tt),
 
             &ty::RawPtr(ty, _) => {
@@ -271,10 +294,10 @@ impl FlagComputation {
                 self.add_ty(b);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                projection_ty,
+                projection_term,
                 term,
             })) => {
-                self.add_alias_ty(projection_ty);
+                self.add_alias_term(projection_term);
                 self.add_term(term);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -290,7 +313,7 @@ impl FlagComputation {
             }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
-                self.add_alias_ty(alias);
+                self.add_alias_term(alias);
                 self.add_term(term);
             }
             ty::PredicateKind::AliasRelate(t1, t2, _) => {
@@ -385,6 +408,10 @@ impl FlagComputation {
 
     fn add_alias_ty(&mut self, alias_ty: ty::AliasTy<'_>) {
         self.add_args(alias_ty.args);
+    }
+
+    fn add_alias_term(&mut self, alias_term: ty::AliasTerm<'_>) {
+        self.add_args(alias_term.args);
     }
 
     fn add_args(&mut self, args: &[GenericArg<'_>]) {

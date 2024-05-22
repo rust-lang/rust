@@ -6,15 +6,13 @@
 //@ error-pattern:coroutine resumed after completion
 //@ edition:2018
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
-use std::{
-    ops::Coroutine,
-    pin::Pin,
-};
+use std::{ops::Coroutine, pin::Pin};
 
 fn main() {
-    let mut g = || {
+    let mut g = #[coroutine]
+    || {
         yield;
     };
     Pin::new(&mut g).resume(()); // Yields once.

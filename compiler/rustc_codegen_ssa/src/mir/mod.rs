@@ -2,11 +2,13 @@ use crate::base;
 use crate::traits::*;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::UnwindTerminateReason;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;
@@ -257,20 +259,23 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Apply debuginfo to the newly allocated locals.
     fx.debug_introduce_locals(&mut start_bx);
 
-    let reachable_blocks = mir.reachable_blocks_in_mono(cx.tcx(), instance);
+    // If the backend supports coverage, and coverage is enabled for this function,
+    // do any necessary start-of-function codegen (e.g. locals for MC/DC bitmaps).
+    start_bx.init_coverage(instance);
 
     // The builders will be created separately for each basic block at `codegen_block`.
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
+
+    let reachable_blocks = traversal::mono_reachable_as_bitset(mir, cx.tcx(), instance);
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in traversal::reverse_postorder(mir) {
         if reachable_blocks.contains(bb) {
             fx.codegen_block(bb);
         } else {
-            // This may have references to things we didn't monomorphize, so we
-            // don't actually codegen the body. We still create the block so
-            // terminators in other blocks can reference it without worry.
+            // We want to skip this block, because it's not reachable. But we still create
+            // the block so terminators in other blocks can reference it.
             fx.codegen_block_as_unreachable(bb);
         }
     }
@@ -289,6 +294,12 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
     let mut num_untupled = None;
+
+    let codegen_fn_attrs = bx.tcx().codegen_fn_attrs(fx.instance.def_id());
+    let naked = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED);
+    if naked {
+        return vec![];
+    }
 
     let args = mir
         .args_iter()
@@ -337,7 +348,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if fx.fn_abi.c_variadic && arg_index == fx.fn_abi.args.len() {
                 let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
-                bx.va_start(va_list.llval);
+                bx.va_start(va_list.val.llval);
 
                 return LocalRef::Place(va_list);
             }

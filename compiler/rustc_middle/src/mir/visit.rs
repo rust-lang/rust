@@ -341,7 +341,7 @@ macro_rules! make_mir_visitor {
 
                         ty::InstanceDef::Intrinsic(_def_id) |
                         ty::InstanceDef::VTableShim(_def_id) |
-                        ty::InstanceDef::ReifyShim(_def_id) |
+                        ty::InstanceDef::ReifyShim(_def_id, _) |
                         ty::InstanceDef::Virtual(_def_id, _) |
                         ty::InstanceDef::ThreadLocalShim(_def_id) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
@@ -350,12 +350,14 @@ macro_rules! make_mir_visitor {
                             receiver_by_ref: _,
                         } |
                         ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id } |
+                        ty::InstanceDef::AsyncDropGlueCtorShim(_def_id, None) |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
 
                         ty::InstanceDef::FnPtrShim(_def_id, ty) |
                         ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
                         ty::InstanceDef::CloneShim(_def_id, ty) |
-                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) => {
+                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) |
+                        ty::InstanceDef::AsyncDropGlueCtorShim(_def_id, Some(ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
@@ -653,7 +655,7 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::SharedBorrow
                             ),
-                            BorrowKind::Fake => PlaceContext::NonMutatingUse(
+                            BorrowKind::Fake(_) => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::FakeBorrow
                             ),
                             BorrowKind::Mut { .. } =>
@@ -694,8 +696,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
-                    Rvalue::BinaryOp(_bin_op, box(lhs, rhs))
-                    | Rvalue::CheckedBinaryOp(_bin_op, box(lhs, rhs)) => {
+                    Rvalue::BinaryOp(_bin_op, box(lhs, rhs)) => {
                         self.visit_operand(lhs, location);
                         self.visit_operand(rhs, location);
                     }
@@ -750,6 +751,9 @@ macro_rules! make_mir_visitor {
                                 coroutine_closure_args,
                             ) => {
                                 self.visit_args(coroutine_closure_args, location);
+                            }
+                            AggregateKind::RawPtr(ty, _) => {
+                                self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                             }
                         }
 
@@ -1279,6 +1283,8 @@ pub enum NonMutatingUseContext {
     /// Shared borrow.
     SharedBorrow,
     /// A fake borrow.
+    /// FIXME: do we need to distinguish shallow and deep fake borrows? In fact, do we need to
+    /// distinguish fake and normal deep borrows?
     FakeBorrow,
     /// AddressOf for *const pointer.
     AddressOf,

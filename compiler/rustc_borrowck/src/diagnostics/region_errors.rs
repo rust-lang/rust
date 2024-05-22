@@ -18,6 +18,7 @@ use rustc_infer::infer::{
     error_reporting::unexpected_hidden_region_diagnostic,
     NllRegionVariableOrigin, RelateParamBound,
 };
+use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::GenericArgs;
@@ -26,6 +27,8 @@ use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -810,6 +813,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
         self.suggest_move_on_borrowing_closure(&mut diag);
+        self.suggest_deref_closure_return(&mut diag);
 
         diag
     }
@@ -1037,6 +1041,133 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
 
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
+    }
+
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+    /// When encountering a lifetime error caused by the return type of a closure, check the
+    /// corresponding trait bound and see if dereferencing the closure return value would satisfy
+    /// them. If so, we produce a structured suggestion.
+    fn suggest_deref_closure_return(&self, diag: &mut Diag<'_>) {
+        let tcx = self.infcx.tcx;
+
+        // Get the closure return value and type.
+        let closure_def_id = self.mir_def_id();
+        let hir::Node::Expr(
+            closure_expr @ hir::Expr {
+                kind: hir::ExprKind::Closure(hir::Closure { body, .. }), ..
+            },
+        ) = tcx.hir_node_by_def_id(closure_def_id)
+        else {
+            return;
+        };
+        let ty::Closure(_, args) = *tcx.type_of(closure_def_id).instantiate_identity().kind()
+        else {
+            return;
+        };
+        let args = args.as_closure();
+
+        // Make sure that the parent expression is a method call.
+        let parent_expr_id = tcx.parent_hir_id(self.mir_hir_id());
+        let hir::Node::Expr(
+            parent_expr @ hir::Expr {
+                kind: hir::ExprKind::MethodCall(_, rcvr, call_args, _), ..
+            },
+        ) = tcx.hir_node(parent_expr_id)
+        else {
+            return;
+        };
+        let typeck_results = tcx.typeck(self.mir_def_id());
+
+        // We don't use `ty.peel_refs()` to get the number of `*`s needed to get the root type.
+        let liberated_sig = tcx.liberate_late_bound_regions(closure_def_id.to_def_id(), args.sig());
+        let mut peeled_ty = liberated_sig.output();
+        let mut count = 0;
+        while let ty::Ref(_, ref_ty, _) = *peeled_ty.kind() {
+            peeled_ty = ref_ty;
+            count += 1;
+        }
+        if !self.infcx.type_is_copy_modulo_regions(self.param_env, peeled_ty) {
+            return;
+        }
+
+        // Build a new closure where the return type is an owned value, instead of a ref.
+        let closure_sig_as_fn_ptr_ty = Ty::new_fn_ptr(
+            tcx,
+            ty::Binder::dummy(tcx.mk_fn_sig(
+                liberated_sig.inputs().iter().copied(),
+                peeled_ty,
+                liberated_sig.c_variadic,
+                hir::Safety::Safe,
+                rustc_target::spec::abi::Abi::Rust,
+            )),
+        );
+        let closure_ty = Ty::new_closure(
+            tcx,
+            closure_def_id.to_def_id(),
+            ty::ClosureArgs::new(
+                tcx,
+                ty::ClosureArgsParts {
+                    parent_args: args.parent_args(),
+                    closure_kind_ty: args.kind_ty(),
+                    tupled_upvars_ty: args.tupled_upvars_ty(),
+                    closure_sig_as_fn_ptr_ty,
+                },
+            )
+            .args,
+        );
+
+        let Some((closure_arg_pos, _)) =
+            call_args.iter().enumerate().find(|(_, arg)| arg.hir_id == closure_expr.hir_id)
+        else {
+            return;
+        };
+        // Get the type for the parameter corresponding to the argument the closure with the
+        // lifetime error we had.
+        let Some(method_def_id) = typeck_results.type_dependent_def_id(parent_expr.hir_id) else {
+            return;
+        };
+        let Some(input_arg) = tcx
+            .fn_sig(method_def_id)
+            .skip_binder()
+            .inputs()
+            .skip_binder()
+            // Methods have a `self` arg, so `pos` is actually `+ 1` to match the method call arg.
+            .get(closure_arg_pos + 1)
+        else {
+            return;
+        };
+        // If this isn't a param, then we can't substitute a new closure.
+        let ty::Param(closure_param) = input_arg.kind() else { return };
+
+        // Get the arguments for the found method, only specifying that `Self` is the receiver type.
+        let Some(possible_rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id) else { return };
+        let args = GenericArgs::for_item(tcx, method_def_id, |param, _| {
+            if param.index == 0 {
+                possible_rcvr_ty.into()
+            } else if param.index == closure_param.index {
+                closure_ty.into()
+            } else {
+                self.infcx.var_for_def(parent_expr.span, param)
+            }
+        });
+
+        let preds = tcx.predicates_of(method_def_id).instantiate(tcx, args);
+
+        let ocx = ObligationCtxt::new(&self.infcx);
+        ocx.register_obligations(preds.iter().map(|(pred, span)| {
+            trace!(?pred);
+            Obligation::misc(tcx, span, self.mir_def_id(), self.param_env, pred)
+        }));
+
+        if ocx.select_all_or_error().is_empty() {
+            diag.span_suggestion_verbose(
+                tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
+                "dereference the return value",
+                "*".repeat(count),
+                Applicability::MachineApplicable,
+            );
+        }
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]

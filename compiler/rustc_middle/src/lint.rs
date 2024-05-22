@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, DiagMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
+use rustc_macros::HashStable;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     FutureIncompatibilityReason, Level, Lint, LintId,

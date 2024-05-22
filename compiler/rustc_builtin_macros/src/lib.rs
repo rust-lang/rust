@@ -19,11 +19,7 @@
 
 extern crate proc_macro;
 
-#[macro_use]
-extern crate tracing;
-
 use crate::deriving::*;
-
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::symbol::sym;
@@ -46,16 +42,17 @@ mod format;
 mod format_foreign;
 mod global_allocator;
 mod log_syntax;
+mod pattern_type;
 mod source_util;
 mod test;
 mod trace_macros;
-mod util;
 
 pub mod asm;
 pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
+pub mod util;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -95,6 +92,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
+        pattern_type: pattern_type::expand,
         std_panic: edition_panic::expand_panic,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
@@ -107,8 +105,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
-        derive: derive::Expander(false),
-        derive_const: derive::Expander(true),
+        derive: derive::Expander { is_const: false },
+        derive_const: derive::Expander { is_const: true },
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,

@@ -6,6 +6,7 @@ use rustc_middle::{
     query::Key,
     ty::{self, Ty},
 };
+use rustc_session::{declare_lint, declare_lint_pass};
 
 declare_lint! {
     /// The `map_unit_fn` lint checks for `Iterator::map` receive

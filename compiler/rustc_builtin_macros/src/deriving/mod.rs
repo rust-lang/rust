@@ -20,24 +20,24 @@ macro path_std($($x:tt)*) {
     generic::ty::Path::new( pathvec_std!( $($x)* ) )
 }
 
-pub mod bounds;
-pub mod clone;
-pub mod debug;
-pub mod decodable;
-pub mod default;
-pub mod encodable;
-pub mod hash;
+pub(crate) mod bounds;
+pub(crate) mod clone;
+pub(crate) mod debug;
+pub(crate) mod decodable;
+pub(crate) mod default;
+pub(crate) mod encodable;
+pub(crate) mod hash;
 
 #[path = "cmp/eq.rs"]
-pub mod eq;
+pub(crate) mod eq;
 #[path = "cmp/ord.rs"]
-pub mod ord;
+pub(crate) mod ord;
 #[path = "cmp/partial_eq.rs"]
-pub mod partial_eq;
+pub(crate) mod partial_eq;
 #[path = "cmp/partial_ord.rs"]
-pub mod partial_ord;
+pub(crate) mod partial_ord;
 
-pub mod generic;
+pub(crate) mod generic;
 
 pub(crate) type BuiltinDeriveFn =
     fn(&ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
@@ -123,7 +123,7 @@ fn assert_ty_bounds(
     span: Span,
     assert_path: &[Symbol],
 ) {
-    // Deny anonymous structs or unions to avoid wierd errors.
+    // Deny anonymous structs or unions to avoid weird errors.
     assert!(!ty.kind.is_anon_adt(), "Anonymous structs or unions cannot be type parameters");
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);

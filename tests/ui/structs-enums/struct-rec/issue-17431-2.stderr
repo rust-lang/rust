@@ -11,7 +11,7 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL ~ struct Baz { q: Option<Box<Foo>> }
 LL |
-LL | 
+LL |
 LL ~ struct Foo { q: Option<Box<Baz>> }
    |
 

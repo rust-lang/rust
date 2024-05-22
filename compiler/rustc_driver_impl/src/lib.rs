@@ -11,11 +11,9 @@
 #![allow(internal_features)]
 #![feature(decl_macro)]
 #![feature(let_chains)]
+#![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
-
-#[macro_use]
-extern crate tracing;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
@@ -46,7 +44,6 @@ use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
-
 use std::cmp::max;
 use std::collections::BTreeMap;
 use std::env;
@@ -61,7 +58,8 @@ use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
-use time::{Date, OffsetDateTime, Time};
+use time::OffsetDateTime;
+use tracing::trace;
 
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
@@ -971,7 +969,7 @@ Available lint options:
 
     let lint_store = unerased_lint_store(sess);
     let (loaded, builtin): (Vec<_>, _) =
-        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_loaded);
+        lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_externally_loaded);
     let loaded = sort_lints(sess, loaded);
     let builtin = sort_lints(sess, builtin);
 
@@ -1320,8 +1318,8 @@ pub fn install_ice_hook(
     // by the user. Compiler developers and other rustc users can
     // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
     // (e.g. `RUST_BACKTRACE=1`)
-    if std::env::var_os("RUST_BACKTRACE").is_none() {
-        std::env::set_var("RUST_BACKTRACE", "full");
+    if env::var_os("RUST_BACKTRACE").is_none() {
+        panic::set_backtrace_style(panic::BacktraceStyle::Full);
     }
 
     let using_internal_features = Arc::new(std::sync::atomic::AtomicBool::default());
@@ -1385,9 +1383,6 @@ pub fn install_ice_hook(
     using_internal_features
 }
 
-const DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
-    &time::macros::format_description!("[year]-[month]-[day]");
-
 /// Prints the ICE message, including query stack, but without backtrace.
 ///
 /// The message will point the user at `bug_report_url` to report the ICE.
@@ -1416,33 +1411,14 @@ fn report_ice(
         dcx.emit_err(session_diagnostics::Ice);
     }
 
-    use time::ext::NumericalDuration;
-
-    // Try to hint user to update nightly if applicable when reporting an ICE.
-    // Attempt to calculate when current version was released, and add 12 hours
-    // as buffer. If the current version's release timestamp is older than
-    // the system's current time + 24 hours + 12 hours buffer if we're on
-    // nightly.
-    if let Some("nightly") = option_env!("CFG_RELEASE_CHANNEL")
-        && let Some(version) = option_env!("CFG_VERSION")
-        && let Some(ver_date_str) = option_env!("CFG_VER_DATE")
-        && let Ok(ver_date) = Date::parse(&ver_date_str, DATE_FORMAT)
-        && let ver_datetime = OffsetDateTime::new_utc(ver_date, Time::MIDNIGHT)
-        && let system_datetime = OffsetDateTime::from(SystemTime::now())
-        && system_datetime.checked_sub(36.hours()).is_some_and(|d| d > ver_datetime)
-        && !using_internal_features.load(std::sync::atomic::Ordering::Relaxed)
-    {
-        dcx.emit_note(session_diagnostics::IceBugReportOutdated {
-            version,
-            bug_report_url,
-            note_update: (),
-            note_url: (),
-        });
+    if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
+        dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
     } else {
-        if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-            dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
-        } else {
-            dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+
+        // Only emit update nightly hint for users on nightly builds.
+        if rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
+            dcx.emit_note(session_diagnostics::UpdateNightlyNote);
         }
     }
 
@@ -1522,6 +1498,7 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
 /// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
 /// Making this handler optional lets tools can install a different handler, if they wish.
 pub fn install_ctrlc_handler() {
+    #[cfg(not(target_family = "wasm"))]
     ctrlc::set_handler(move || {
         // Indicate that we have been signaled to stop. If we were already signaled, exit
         // immediately. In our interpreter loop we try to consult this value often, but if for

@@ -13,7 +13,6 @@
 
 use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
-use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
@@ -30,7 +29,7 @@ pub struct CatchUnwindData<'tcx> {
     /// The return place from the original call to `try`.
     dest: MPlaceTy<'tcx, Provenance>,
     /// The return block from the original call to `try`.
-    ret: mir::BasicBlock,
+    ret: Option<mir::BasicBlock>,
 }
 
 impl VisitProvenance for CatchUnwindData<'_> {
@@ -46,25 +45,15 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Handles the special `miri_start_unwind` intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
-    fn handle_miri_start_unwind(
-        &mut self,
-        abi: Abi,
-        link_name: Symbol,
-        args: &[OpTy<'tcx, Provenance>],
-        unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
+    fn handle_miri_start_unwind(&mut self, payload: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         trace!("miri_start_unwind: {:?}", this.frame().instance);
 
-        // Get the raw pointer stored in arg[0] (the panic payload).
-        let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
         let payload = this.read_scalar(payload)?;
         let thread = this.active_thread_mut();
         thread.panic_payloads.push(payload);
 
-        // Jump to the unwind block to begin unwinding.
-        this.unwind_to_block(unwind)?;
         Ok(())
     }
 
@@ -73,7 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-        ret: mir::BasicBlock,
+        ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -103,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             &[data.into()],
             None,
             // Directly return to caller.
-            StackPopCleanup::Goto { ret: Some(ret), unwind: mir::UnwindAction::Continue },
+            StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Continue },
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
@@ -155,7 +144,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 None,
                 // Directly return to caller of `try`.
                 StackPopCleanup::Goto {
-                    ret: Some(catch_unwind.ret),
+                    ret: catch_unwind.ret,
                     unwind: mir::UnwindAction::Continue,
                 },
             )?;

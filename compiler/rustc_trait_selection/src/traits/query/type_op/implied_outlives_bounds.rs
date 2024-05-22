@@ -7,6 +7,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::OutlivesBound;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
@@ -161,8 +162,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
     let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
     let mut wf_args = vec![ty.into()];
 
-    let mut outlives_bounds: Vec<ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>> =
-        vec![];
+    let mut outlives_bounds: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> = vec![];
 
     while let Some(arg) = wf_args.pop() {
         if !checked_wf_args.insert(arg) {

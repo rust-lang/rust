@@ -31,7 +31,7 @@ use rustc_span::Span;
 use rustc_target::abi::{
     self, call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange,
 };
-use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{type_is_pointer, SignType, TypeReflection};
 use crate::context::CodegenCx;
@@ -898,26 +898,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.gcc_checked_binop(oop, typ, lhs, rhs)
     }
 
-    fn alloca(&mut self, ty: Type<'gcc>, align: Align) -> RValue<'gcc> {
-        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
-        // Ideally, we shouldn't need to do this check.
-        let aligned_type = if ty == self.cx.u128_type || ty == self.cx.i128_type {
-            ty
-        } else {
-            ty.get_aligned(align.bytes())
-        };
+    fn alloca(&mut self, size: Size, align: Align) -> RValue<'gcc> {
+        let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.stack_var_count.set(self.stack_var_count.get() + 1);
         self.current_func()
             .new_local(
                 self.location,
-                aligned_type,
+                ty,
                 &format!("stack_var_{}", self.stack_var_count.get()),
             )
             .get_address(self.location)
     }
 
-    fn byte_array_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+    fn dynamic_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -974,7 +968,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         place: PlaceRef<'tcx, RValue<'gcc>>,
     ) -> OperandRef<'tcx, RValue<'gcc>> {
-        assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
+        assert_eq!(place.val.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
             return OperandRef::zero_sized(place.layout);
@@ -999,10 +993,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
         }
 
-        let val = if let Some(llextra) = place.llextra {
-            OperandValue::Ref(place.llval, Some(llextra), place.align)
+        let val = if let Some(_) = place.val.llextra {
+            // FIXME: Merge with the `else` below?
+            OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
-            let load = self.load(place.layout.gcc_type(self), place.llval, place.align);
+            let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
             if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                 scalar_load_metadata(self, load, scalar);
             }
@@ -1012,9 +1007,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
             let mut load = |i, scalar: &abi::Scalar, align| {
                 let llptr = if i == 0 {
-                    place.llval
+                    place.val.llval
                 } else {
-                    self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
+                    self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                 let load = self.load(llty, llptr, align);
@@ -1027,11 +1022,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
 
             OperandValue::Pair(
-                load(0, a, place.align),
-                load(1, b, place.align.restrict_for_offset(b_offset)),
+                load(0, a, place.val.align),
+                load(1, b, place.val.align.restrict_for_offset(b_offset)),
             )
         } else {
-            OperandValue::Ref(place.llval, None, place.align)
+            OperandValue::Ref(place.val)
         };
 
         OperandRef { val, layout: place.layout }
@@ -1045,8 +1040,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(self, zero).llval;
-        let end = dest.project_index(self, count).llval;
+        let start = dest.project_index(self, zero).val.llval;
+        let end = dest.project_index(self, count).val.llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -1064,7 +1059,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cond_br(keep_going, body_bb, next_bb);
 
         self.switch_to_block(body_bb);
-        let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
         let next = self.inbounds_gep(
@@ -1306,19 +1301,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn memmove(
         &mut self,
         dst: RValue<'gcc>,
-        dst_align: Align,
+        _dst_align: Align,
         src: RValue<'gcc>,
-        src_align: Align,
+        _src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
     ) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src.get_type().get_pointee().expect("get_pointee"), src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_size_t(), false);
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
@@ -1340,6 +1329,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _align: Align,
         flags: MemFlags,
     ) {
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
         let memset = self.context.get_builtin_function("memset");
@@ -2348,6 +2338,12 @@ impl<'tcx> HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
 impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.cx.target_spec()
+    }
+}
+
+impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi {
+        self.cx.wasm_c_abi_opt()
     }
 }
 

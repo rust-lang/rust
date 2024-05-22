@@ -189,8 +189,8 @@ impl ChangeFixture {
                     meta.edition,
                     Some(crate_name.clone().into()),
                     version,
-                    meta.cfg.clone(),
-                    Some(meta.cfg),
+                    From::from(meta.cfg.clone()),
+                    Some(From::from(meta.cfg)),
                     meta.env,
                     false,
                     origin,
@@ -209,7 +209,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg.extend(meta.cfg.into_iter());
-                default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
+                default_env.extend_from_other(&meta.env);
             }
 
             source_change.change_file(file_id, Some(text));
@@ -227,8 +227,8 @@ impl ChangeFixture {
                 Edition::CURRENT,
                 Some(CrateName::new("test").unwrap().into()),
                 None,
-                default_cfg.clone(),
-                Some(default_cfg),
+                From::from(default_cfg.clone()),
+                Some(From::from(default_cfg)),
                 default_env,
                 false,
                 CrateOrigin::Local { repo: None, name: None },
@@ -240,7 +240,12 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         from_id,
-                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
+                        Dependency::with_prelude(
+                            CrateName::new(&to).unwrap(),
+                            to_id,
+                            prelude,
+                            false,
+                        ),
                     )
                     .unwrap();
             }
@@ -260,7 +265,7 @@ impl ChangeFixture {
 
             let core_crate = crate_graph.add_crate_root(
                 core_file,
-                Edition::Edition2021,
+                Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name("core".to_owned())),
                 None,
                 Default::default(),
@@ -275,7 +280,15 @@ impl ChangeFixture {
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
+                    .add_dep(
+                        krate,
+                        Dependency::with_prelude(
+                            CrateName::new("core").unwrap(),
+                            core_crate,
+                            true,
+                            true,
+                        ),
+                    )
                     .unwrap();
             }
         }
@@ -299,7 +312,7 @@ impl ChangeFixture {
 
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
-                Edition::Edition2021,
+                Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name("proc_macros".to_owned())),
                 None,
                 Default::default(),

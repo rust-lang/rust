@@ -5,6 +5,7 @@
 use std::ops::Coroutine;
 
 pub fn example() -> impl Coroutine {
+    #[coroutine]
     || yield &1
 }
 

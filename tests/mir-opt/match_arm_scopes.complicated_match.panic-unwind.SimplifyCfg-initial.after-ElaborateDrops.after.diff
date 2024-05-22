@@ -60,11 +60,11 @@
       }
   
 -     bb5: {
--         falseEdge -> [real: bb13, imaginary: bb3];
+-         falseEdge -> [real: bb13, imaginary: bb2];
 -     }
 - 
 -     bb6: {
--         falseEdge -> [real: bb8, imaginary: bb5];
+-         falseEdge -> [real: bb8, imaginary: bb1];
 -     }
 - 
 -     bb7: {
@@ -80,8 +80,8 @@
           _6 = &(_2.1: bool);
           StorageLive(_8);
           _8 = &(_2.2: std::string::String);
--         _3 = &fake (_2.0: bool);
--         _4 = &fake (_2.1: bool);
+-         _3 = &fake shallow (_2.0: bool);
+-         _4 = &fake shallow (_2.1: bool);
           StorageLive(_9);
           StorageLive(_10);
           _10 = _1;
@@ -127,7 +127,7 @@
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb1, imaginary: bb5];
+-         falseEdge -> [real: bb1, imaginary: bb1];
 +         goto -> bb1;
       }
   
@@ -137,8 +137,8 @@
           _6 = &(_2.0: bool);
           StorageLive(_8);
           _8 = &(_2.2: std::string::String);
--         _3 = &fake (_2.0: bool);
--         _4 = &fake (_2.1: bool);
+-         _3 = &fake shallow (_2.0: bool);
+-         _4 = &fake shallow (_2.1: bool);
           StorageLive(_12);
           StorageLive(_13);
           _13 = _1;
@@ -184,7 +184,7 @@
           StorageDead(_12);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb2, imaginary: bb3];
+-         falseEdge -> [real: bb2, imaginary: bb2];
 +         goto -> bb2;
       }
   

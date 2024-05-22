@@ -13,13 +13,14 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_errors::DiagCtxt;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::bug;
+use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
-use rustc_session::lint;
+use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
@@ -61,9 +62,6 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
-
-    /// The interned [StableCrateId]s.
-    pub(crate) stable_crate_ids: StableCrateIdMap,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -165,25 +163,27 @@ impl CStore {
         })
     }
 
-    fn intern_stable_crate_id(&mut self, root: &CrateRoot) -> Result<CrateNum, CrateError> {
-        assert_eq!(self.metas.len(), self.stable_crate_ids.len());
-        let num = CrateNum::new(self.stable_crate_ids.len());
-        if let Some(&existing) = self.stable_crate_ids.get(&root.stable_crate_id()) {
+    fn intern_stable_crate_id<'tcx>(
+        &mut self,
+        root: &CrateRoot,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateError> {
+        assert_eq!(self.metas.len(), tcx.untracked().stable_crate_ids.read().len());
+        let num = tcx.create_crate_num(root.stable_crate_id()).map_err(|existing| {
             // Check for (potential) conflicts with the local crate
             if existing == LOCAL_CRATE {
-                Err(CrateError::SymbolConflictsCurrent(root.name()))
+                CrateError::SymbolConflictsCurrent(root.name())
             } else if let Some(crate_name1) = self.metas[existing].as_ref().map(|data| data.name())
             {
                 let crate_name0 = root.name();
-                Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1))
+                CrateError::StableCrateIdCollision(crate_name0, crate_name1)
             } else {
-                Err(CrateError::NotFound(root.name()))
+                CrateError::NotFound(root.name())
             }
-        } else {
-            self.metas.push(None);
-            self.stable_crate_ids.insert(root.stable_crate_id(), num);
-            Ok(num)
-        }
+        })?;
+
+        self.metas.push(None);
+        Ok(num)
     }
 
     pub fn has_crate_data(&self, cnum: CrateNum) -> bool {
@@ -289,12 +289,7 @@ impl CStore {
         }
     }
 
-    pub fn new(
-        metadata_loader: Box<MetadataLoaderDyn>,
-        local_stable_crate_id: StableCrateId,
-    ) -> CStore {
-        let mut stable_crate_ids = StableCrateIdMap::default();
-        stable_crate_ids.insert(local_stable_crate_id, LOCAL_CRATE);
+    pub fn new(metadata_loader: Box<MetadataLoaderDyn>) -> CStore {
         CStore {
             metadata_loader,
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
@@ -307,7 +302,6 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
-            stable_crate_ids,
             unused_externs: Vec::new(),
         }
     }
@@ -416,7 +410,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let private_dep = self.is_private_dep(name.as_str(), private_dep);
 
         // Claim this crate number and cache it
-        let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
+        let feed = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
+        let cnum = feed.key();
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",
@@ -980,15 +975,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             }
 
             self.sess.psess.buffer_lint(
-                    lint::builtin::UNUSED_CRATE_DEPENDENCIES,
-                    span,
-                    ast::CRATE_NODE_ID,
-                    format!(
-                        "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
-                        name,
-                        self.tcx.crate_name(LOCAL_CRATE),
-                        name),
-                );
+                lint::builtin::UNUSED_CRATE_DEPENDENCIES,
+                span,
+                ast::CRATE_NODE_ID,
+                BuiltinLintDiag::UnusedCrateDependency {
+                    extern_crate: name_interned,
+                    local_crate: self.tcx.crate_name(LOCAL_CRATE),
+                },
+            );
         }
     }
 
@@ -1025,7 +1019,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 lint::builtin::WASM_C_ABI,
                 span,
                 ast::CRATE_NODE_ID,
-                crate::fluent_generated::metadata_wasm_c_abi,
+                BuiltinLintDiag::WasmCAbi,
             );
         }
     }

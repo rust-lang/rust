@@ -150,6 +150,39 @@ pub trait FromIterator<A>: Sized {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
+/// This implementation turns an iterator of tuples into a tuple of types which implement
+/// [`Default`] and [`Extend`].
+///
+/// This is similar to [`Iterator::unzip`], but is also composable with other [`FromIterator`]
+/// implementations:
+///
+/// ```rust
+/// # fn main() -> Result<(), core::num::ParseIntError> {
+/// let string = "1,2,123,4";
+///
+/// let (numbers, lengths): (Vec<_>, Vec<_>) = string
+///     .split(',')
+///     .map(|s| s.parse().map(|n: u32| (n, s.len())))
+///     .collect::<Result<_, _>>()?;
+///
+/// assert_eq!(numbers, [1, 2, 123, 4]);
+/// assert_eq!(lengths, [1, 1, 3, 1]);
+/// # Ok(()) }
+/// ```
+#[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
+impl<A, B, AE, BE> FromIterator<(AE, BE)> for (A, B)
+where
+    A: Default + Extend<AE>,
+    B: Default + Extend<BE>,
+{
+    fn from_iter<I: IntoIterator<Item = (AE, BE)>>(iter: I) -> Self {
+        let mut res = <(A, B)>::default();
+        res.extend(iter);
+
+        res
+    }
+}
+
 /// Conversion into an [`Iterator`].
 ///
 /// By implementing `IntoIterator` for a type, you define how it will be
@@ -235,7 +268,6 @@ pub trait FromIterator<A>: Sized {
 /// }
 /// ```
 #[rustc_diagnostic_item = "IntoIterator"]
-#[rustc_skip_array_during_method_dispatch]
 #[rustc_on_unimplemented(
     on(
         _Self = "core::ops::range::RangeTo<Idx>",
@@ -279,6 +311,8 @@ pub trait FromIterator<A>: Sized {
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
+#[cfg_attr(bootstrap, rustc_skip_array_during_method_dispatch)]
+#[cfg_attr(not(bootstrap), rustc_skip_during_method_dispatch(array, boxed_slice))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.

@@ -29,6 +29,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
+use tracing::{debug, instrument, trace, trace_span};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -78,11 +79,10 @@ impl<'a> ParserAnyMacro<'a> {
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             if is_local {
-                parser.psess.buffer_lint_with_diagnostic(
+                parser.psess.buffer_lint(
                     SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
                     parser.token.span,
                     lint_node_id,
-                    "trailing semicolon in macro used in expression position",
                     BuiltinLintDiag::TrailingMacro(is_trailing_mac, macro_ident),
                 );
             }
@@ -156,8 +156,8 @@ pub(super) trait Tracker<'matcher> {
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
-    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
-    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
+    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
+    /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     /// For tracing.
@@ -166,9 +166,15 @@ pub(super) trait Tracker<'matcher> {
     fn recovery() -> Recovery {
         Recovery::Forbidden
     }
+
+    fn set_expected_token(&mut self, _tok: &'matcher Token) {}
+    fn get_expected_token(&self) -> Option<&'matcher Token> {
+        None
+    }
 }
 
-/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
+/// monomorphization.
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
@@ -445,16 +451,14 @@ pub fn compile_declarative_macro(
                 // For this we need to reclone the macro body as the previous parser consumed it.
                 let retry_parser = create_parser();
 
-                let parse_result = tt_parser.parse_tt(
-                    &mut Cow::Owned(retry_parser),
-                    &argument_gram,
-                    &mut diagnostics::FailureForwarder,
-                );
+                let mut track = diagnostics::FailureForwarder::new();
+                let parse_result =
+                    tt_parser.parse_tt(&mut Cow::Owned(retry_parser), &argument_gram, &mut track);
                 let Failure((token, _, msg)) = parse_result else {
                     unreachable!("matcher returned something other than Failure after retry");
                 };
 
-                let s = parse_failure_msg(&token);
+                let s = parse_failure_msg(&token, track.get_expected_token());
                 let sp = token.span.substitute_dummy(def.span);
                 let mut err = sess.dcx().struct_span_err(sp, s);
                 err.span_label(sp, msg);
@@ -491,7 +495,7 @@ pub fn compile_declarative_macro(
                     .pop()
                     .unwrap();
                     // We don't handle errors here, the driver will abort
-                    // after parsing/expansion. we can report every error in every macro this way.
+                    // after parsing/expansion. We can report every error in every macro this way.
                     check_emission(check_lhs_nt_follows(sess, def, &tt));
                     return tt;
                 }
@@ -527,7 +531,7 @@ pub fn compile_declarative_macro(
         check_emission(check_rhs(sess, rhs));
     }
 
-    // don't abort iteration early, so that errors for multiple lhses can be reported
+    // Don't abort iteration early, so that errors for multiple lhses can be reported.
     for lhs in &lhses {
         check_emission(check_lhs_no_empty_seq(sess, slice::from_ref(lhs)));
     }
@@ -1149,11 +1153,10 @@ fn check_matcher_core<'tt>(
                             name,
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
-                        sess.psess.buffer_lint_with_diagnostic(
+                        sess.psess.buffer_lint(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
-                            "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",
                             BuiltinLintDiag::OrPatternsBackCompat(span, suggestion),
                         );
                     }
@@ -1288,7 +1291,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 // maintain
                 IsInFollow::Yes
             }
-            NonterminalKind::Stmt | NonterminalKind::Expr => {
+            NonterminalKind::Stmt | NonterminalKind::Expr | NonterminalKind::Expr2021 => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {

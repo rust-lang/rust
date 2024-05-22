@@ -34,7 +34,7 @@ use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, 
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -459,28 +459,21 @@ impl HygieneData {
         span
     }
 
-    // We need to walk up and update return span if we meet macro instantiation to be collapsed
-    fn walk_chain_collapsed(
-        &self,
-        mut span: Span,
-        to: Span,
-        collapse_debuginfo_feature_enabled: bool,
-    ) -> Span {
+    fn walk_chain_collapsed(&self, mut span: Span, to: Span) -> Span {
         let orig_span = span;
         let mut ret_span = span;
-
-        debug!(
-            "walk_chain_collapsed({:?}, {:?}), feature_enable={}",
-            span, to, collapse_debuginfo_feature_enabled,
-        );
+        debug!("walk_chain_collapsed({:?}, {:?})", span, to);
         debug!("walk_chain_collapsed: span ctxt = {:?}", span.ctxt());
-        while !span.eq_ctxt(to) && span.from_expansion() {
-            let outer_expn = self.outer_expn(span.ctxt());
+        while let ctxt = span.ctxt()
+            && !ctxt.is_root()
+            && ctxt != to.ctxt()
+        {
+            let outer_expn = self.outer_expn(ctxt);
             debug!("walk_chain_collapsed({:?}): outer_expn={:?}", span, outer_expn);
             let expn_data = self.expn_data(outer_expn);
             debug!("walk_chain_collapsed({:?}): expn_data={:?}", span, expn_data);
             span = expn_data.call_site;
-            if !collapse_debuginfo_feature_enabled || expn_data.collapse_debuginfo {
+            if expn_data.collapse_debuginfo {
                 ret_span = span;
             }
         }
@@ -604,14 +597,13 @@ pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
     HygieneData::with(|data| data.walk_chain(span, to))
 }
 
-pub fn walk_chain_collapsed(
-    span: Span,
-    to: Span,
-    collapse_debuginfo_feature_enabled: bool,
-) -> Span {
-    HygieneData::with(|hdata| {
-        hdata.walk_chain_collapsed(span, to, collapse_debuginfo_feature_enabled)
-    })
+/// In order to have good line stepping behavior in debugger, for the given span we return its
+/// outermost macro call site that still has a `#[collapse_debuginfo(yes)]` property on it.
+/// We also stop walking call sites at the function body level because no line stepping can occur
+/// at the level above that.
+/// The returned span can then be used in emitted debuginfo.
+pub fn walk_chain_collapsed(span: Span, to: Span) -> Span {
+    HygieneData::with(|data| data.walk_chain_collapsed(span, to))
 }
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
@@ -1251,7 +1243,7 @@ struct HygieneDecodeContextInner {
     // global `HygieneData`. When we deserialize a `SyntaxContext`, we need to create
     // a new id in the global `HygieneData`. This map tracks the ID we end up picking,
     // so that multiple occurrences of the same serialized id are decoded to the same
-    // `SyntaxContext`. This only stores `SyntaxContext`s which are completly decoded.
+    // `SyntaxContext`. This only stores `SyntaxContext`s which are completely decoded.
     remapped_ctxts: Vec<Option<SyntaxContext>>,
 
     /// Maps serialized `SyntaxContext` ids that are currently being decoded to a `SyntaxContext`.

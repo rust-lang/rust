@@ -3,9 +3,9 @@ use super::callee::DeferredCallResolution;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::HirIdMap;
+use rustc_hir::{HirId, HirIdMap};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
-use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::span_bug;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
@@ -27,7 +27,7 @@ use std::ops::Deref;
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inference context, will process obligations together,
 /// can access each other's local types (scoping permitted), etc.
-pub struct TypeckRootCtxt<'tcx> {
+pub(crate) struct TypeckRootCtxt<'tcx> {
     pub(super) infcx: InferCtxt<'tcx>,
 
     pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
@@ -53,9 +53,9 @@ pub struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,
 
-    pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, hir::HirId)>>,
+    pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>>,
 
-    pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, hir::HirId)>>,
+    pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
     pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>)>>,
 
@@ -78,11 +78,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
-        let infcx = tcx
-            .infer_ctxt()
-            .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::bind(tcx, def_id))
-            .build();
+        let infcx = tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(def_id).build();
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
         TypeckRootCtxt {

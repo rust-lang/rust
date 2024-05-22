@@ -159,6 +159,9 @@ def StdStrSummaryProvider(valobj, dict):
     # logger = Logger.Logger()
     # logger >> "[StdStrSummaryProvider] for " + str(valobj.GetName())
 
+    # the code below assumes non-synthetic value, this makes sure the assumption holds
+    valobj = valobj.GetNonSyntheticValue()
+
     length = valobj.GetChildMemberWithName("length").GetValueAsUnsigned()
     if length == 0:
         return '""'
@@ -247,6 +250,58 @@ class StructSyntheticProvider:
         # type: () -> bool
         return True
 
+class ClangEncodedEnumProvider:
+    """Pretty-printer for 'clang-encoded' enums support implemented in LLDB"""
+    DISCRIMINANT_MEMBER_NAME = "$discr$"
+    VALUE_MEMBER_NAME = "value"
+
+    def __init__(self, valobj, dict):
+        self.valobj = valobj
+        self.update()
+
+    def has_children(self):
+       return True
+
+    def num_children(self):
+        if self.is_default:
+            return 1
+        return 2
+
+    def get_child_index(self, name):
+        if name == ClangEncodedEnumProvider.VALUE_MEMBER_NAME:
+            return 0
+        if name == ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME:
+            return 1
+        return -1
+
+    def get_child_at_index(self, index):
+        if index == 0:
+            return self.variant.GetChildMemberWithName(ClangEncodedEnumProvider.VALUE_MEMBER_NAME)
+        if index == 1:
+            return self.variant.GetChildMemberWithName(
+                ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME)
+
+
+    def update(self):
+        all_variants = self.valobj.GetChildAtIndex(0)
+        index = self._getCurrentVariantIndex(all_variants)
+        self.variant = all_variants.GetChildAtIndex(index)
+        self.is_default = self.variant.GetIndexOfChildWithName(
+            ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME) == -1
+
+    def _getCurrentVariantIndex(self, all_variants):
+        default_index = 0
+        for i in range(all_variants.GetNumChildren()):
+            variant = all_variants.GetChildAtIndex(i)
+            discr = variant.GetChildMemberWithName(
+                ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME)
+            if discr.IsValid():
+                discr_unsigned_value = discr.GetValueAsUnsigned()
+                if variant.GetName() == f"$variant${discr_unsigned_value}":
+                    return i
+            else:
+                default_index = i
+        return default_index
 
 class TupleSyntheticProvider:
     """Pretty-printer for tuples and tuple enum variants"""

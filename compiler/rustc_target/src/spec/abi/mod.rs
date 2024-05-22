@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 

@@ -38,7 +38,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns on any exported `structs`s that are not tagged `#[non_exhaustive]`
+    /// Warns on any exported `struct`s that are not tagged `#[non_exhaustive]`
     ///
     /// ### Why is this bad?
     /// Exhaustive structs are typically fine, but a project which does

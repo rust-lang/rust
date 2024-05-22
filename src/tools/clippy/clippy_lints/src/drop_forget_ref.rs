@@ -129,9 +129,9 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 cx,
                 lint,
                 expr.span,
-                &msg,
+                msg,
                 note_span,
-                &format!("argument has type `{arg_ty}`"),
+                format!("argument has type `{arg_ty}`"),
             );
         }
     }

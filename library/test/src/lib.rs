@@ -17,7 +17,6 @@
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
 #![doc(rust_logo)]
-#![feature(generic_nonzero)]
 #![feature(rustdoc_internals)]
 #![feature(internal_output_capture)]
 #![feature(staged_api)]
@@ -140,7 +139,10 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             });
             panic::set_hook(hook);
         }
-        match console::run_tests_console(&opts, tests) {
+        let res = console::run_tests_console(&opts, tests);
+        // Prevent Valgrind from reporting reachable blocks in users' unit tests.
+        drop(panic::take_hook());
+        match res {
             Ok(true) => {}
             Ok(false) => process::exit(ERROR_EXIT_CODE),
             Err(e) => {
@@ -587,7 +589,9 @@ pub fn run_test(
             // If the platform is single-threaded we're just going to run
             // the test synchronously, regardless of the concurrency
             // level.
-            let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
+            let supports_threads = !cfg!(target_os = "emscripten")
+                && !cfg!(target_family = "wasm")
+                && !cfg!(target_os = "zkvm");
             if supports_threads {
                 let cfg = thread::Builder::new().name(name.as_slice().to_owned());
                 let mut runtest = Arc::new(Mutex::new(Some(runtest)));

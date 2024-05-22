@@ -8,6 +8,7 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
 
@@ -40,7 +41,7 @@ fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
 
 fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
     // Skip items with no generics - there's nothing to infer in them.
-    if tcx.generics_of(item_def_id).count() == 0 {
+    if tcx.generics_of(item_def_id).is_empty() {
         return &[];
     }
 
@@ -133,7 +134,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         let mut generics = generics;
         while let Some(def_id) = generics.parent {
             generics = tcx.generics_of(def_id);
-            for param in &generics.params {
+            for param in &generics.own_params {
                 match param.kind {
                     ty::GenericParamDefKind::Lifetime => {
                         variances[param.index as usize] = ty::Bivariant;
@@ -166,7 +167,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 }
             }
             ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy { args, .. },
+                projection_term: ty::AliasTerm { args, .. },
                 term,
             }) => {
                 for arg in &args[1..] {

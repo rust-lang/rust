@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
+use clippy_utils::mir::PossibleBorrowerMap;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{expr_use_ctxt, peel_n_hir_expr_refs, DefinedTy, ExprUseNode};
@@ -11,9 +11,8 @@ use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, List, ParamTy, ProjectionPredicate, Ty,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
@@ -23,7 +22,7 @@ use std::collections::VecDeque;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for borrow operations (`&`) that used as a generic argument to a
+    /// Checks for borrow operations (`&`) that are used as a generic argument to a
     /// function when the borrowed value could be used.
     ///
     /// ### Why is this bad?
@@ -106,7 +105,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             }
             && let count = needless_borrow_count(
                 cx,
-                &mut self.possible_borrowers,
                 fn_id,
                 cx.typeck_results().node_args(hir_id),
                 i,
@@ -155,13 +153,11 @@ fn path_has_args(p: &QPath<'_>) -> bool {
 /// The following constraints will be checked:
 /// * The borrowed expression meets all the generic type's constraints.
 /// * The generic type appears only once in the functions signature.
-/// * The borrowed value will not be moved if it is used later in the function.
-#[expect(clippy::too_many_arguments)]
+/// * The borrowed value is Copy itself OR not a variable (created by a function call)
 fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
-    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     fn_id: DefId,
-    callee_args: &'tcx List<GenericArg<'tcx>>,
+    callee_args: ty::GenericArgsRef<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
@@ -234,9 +230,9 @@ fn needless_borrow_count<'tcx>(
 
         let referent_ty = cx.typeck_results().expr_ty(referent);
 
-        if !is_copy(cx, referent_ty)
-            && (referent_ty.has_significant_drop(cx.tcx, cx.param_env)
-                || !referent_used_exactly_once(cx, possible_borrowers, reference))
+        if (!is_copy(cx, referent_ty) && !referent_ty.is_ref())
+            && let ExprKind::AddrOf(_, _, inner) = reference.kind
+            && !matches!(inner.kind, ExprKind::Call(..) | ExprKind::MethodCall(..))
         {
             return false;
         }
@@ -320,11 +316,11 @@ fn is_mixed_projection_predicate<'tcx>(
         && (term_param_ty.index as usize) < generics.parent_count
     {
         // The inner-most self type is a type parameter from the current function.
-        let mut projection_ty = projection_predicate.projection_ty;
+        let mut projection_term = projection_predicate.projection_term;
         loop {
-            match projection_ty.self_ty().kind() {
+            match *projection_term.self_ty().kind() {
                 ty::Alias(ty::Projection, inner_projection_ty) => {
-                    projection_ty = *inner_projection_ty;
+                    projection_term = inner_projection_ty.into();
                 },
                 ty::Param(param_ty) => {
                     return (param_ty.index as usize) >= generics.parent_count;
@@ -334,37 +330,6 @@ fn is_mixed_projection_predicate<'tcx>(
                 },
             }
         }
-    } else {
-        false
-    }
-}
-
-fn referent_used_exactly_once<'tcx>(
-    cx: &LateContext<'tcx>,
-    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
-    reference: &Expr<'tcx>,
-) -> bool {
-    if let Some(mir) = enclosing_mir(cx.tcx, reference.hir_id)
-        && let Some(local) = expr_local(cx.tcx, reference)
-        && let [location] = *local_assignments(mir, local).as_slice()
-        && let block_data = &mir.basic_blocks[location.block]
-        && let Some(statement) = block_data.statements.get(location.statement_index)
-        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
-        && !place.is_indirect_first_projection()
-    {
-        let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
-        if possible_borrowers
-            .last()
-            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
-        {
-            possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
-        }
-        let possible_borrower = &mut possible_borrowers.last_mut().unwrap().1;
-        // If `only_borrowers` were used here, the `copyable_iterator::warn` test would fail. The reason is
-        // that `PossibleBorrowerVisitor::visit_terminator` considers `place.local` a possible borrower of
-        // itself. See the comment in that method for an explanation as to why.
-        possible_borrower.bounded_borrowers(&[local], &[local, place.local], place.local, location)
-            && used_exactly_once(mir, place.local).unwrap_or(false)
     } else {
         false
     }
@@ -381,7 +346,7 @@ fn replace_types<'tcx>(
     fn_sig: FnSig<'tcx>,
     arg_index: usize,
     projection_predicates: &[ProjectionPredicate<'tcx>],
-    args: &mut [ty::GenericArg<'tcx>],
+    args: &mut [GenericArg<'tcx>],
 ) -> bool {
     let mut replaced = BitSet::new_empty(args.len());
 
@@ -399,22 +364,23 @@ fn replace_types<'tcx>(
             return false;
         }
 
-        args[param_ty.index as usize] = ty::GenericArg::from(new_ty);
+        args[param_ty.index as usize] = GenericArg::from(new_ty);
 
         // The `replaced.insert(...)` check provides some protection against infinite loops.
         if replaced.insert(param_ty.index) {
             for projection_predicate in projection_predicates {
-                if projection_predicate.projection_ty.self_ty() == param_ty.to_ty(cx.tcx)
+                if projection_predicate.projection_term.self_ty() == param_ty.to_ty(cx.tcx)
                     && let Some(term_ty) = projection_predicate.term.ty()
                     && let ty::Param(term_param_ty) = term_ty.kind()
                 {
-                    let projection = cx.tcx.mk_ty_from_kind(ty::Alias(
-                        ty::Projection,
-                        projection_predicate.projection_ty.with_self_ty(cx.tcx, new_ty),
-                    ));
+                    let projection = projection_predicate
+                        .projection_term
+                        .with_self_ty(cx.tcx, new_ty)
+                        .expect_ty(cx.tcx)
+                        .to_ty(cx.tcx);
 
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
-                        && args[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)
+                        && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));
                     }

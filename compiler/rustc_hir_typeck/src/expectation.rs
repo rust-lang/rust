@@ -1,4 +1,3 @@
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
@@ -110,8 +109,6 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// Like `only_has_type`, but instead of returning `None` if no
     /// hard constraint exists, creates a fresh type variable.
     pub(super) fn coercion_target_type(self, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> Ty<'tcx> {
-        self.only_has_type(fcx).unwrap_or_else(|| {
-            fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span })
-        })
+        self.only_has_type(fcx).unwrap_or_else(|| fcx.next_ty_var(span))
     }
 }

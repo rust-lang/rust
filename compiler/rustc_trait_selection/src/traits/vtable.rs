@@ -4,13 +4,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_infer::traits::ImplSource;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt, Upcast, VtblEntry};
 use rustc_span::{sym, Span};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Debug;
 use std::ops::ControlFlow;
@@ -86,7 +87,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
     let mut emit_vptr_on_new_entry = false;
     let mut visited = PredicateSet::new(tcx);
-    let predicate = trait_ref.to_predicate(tcx);
+    let predicate = trait_ref.upcast(tcx);
     let mut stack: SmallVec<[(ty::PolyTraitRef<'tcx>, _, _); 5]> =
         smallvec![(trait_ref, emit_vptr_on_new_entry, maybe_iter(None))];
     visited.insert(predicate);
@@ -129,7 +130,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
             // Find an unvisited supertrait
             match direct_super_traits_iter
-                .find(|&super_trait| visited.insert(super_trait.to_predicate(tcx)))
+                .find(|&super_trait| visited.insert(super_trait.upcast(tcx)))
             {
                 // Push it to the stack for the next iteration of 'diving_in to pick up
                 Some(unvisited_super_trait) => {
@@ -164,7 +165,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             }
 
             if let Some(next_inner_most_trait_ref) =
-                siblings.find(|&sibling| visited.insert(sibling.to_predicate(tcx)))
+                siblings.find(|&sibling| visited.insert(sibling.upcast(tcx)))
             {
                 // We're throwing away potential constness of super traits here.
                 // FIXME: handle ~const super traits
@@ -320,16 +321,11 @@ fn vtable_entries<'tcx>(
 }
 
 /// Find slot base for trait methods within vtable entries of another trait
-// FIXME(@lcnr): This isn't a query, so why does it take a tuple as its argument.
 pub(super) fn vtable_trait_first_method_offset<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (
-        ty::PolyTraitRef<'tcx>, // trait_to_be_found
-        ty::PolyTraitRef<'tcx>, // trait_owning_vtable
-    ),
+    trait_to_be_found: ty::PolyTraitRef<'tcx>,
+    trait_owning_vtable: ty::PolyTraitRef<'tcx>,
 ) -> usize {
-    let (trait_to_be_found, trait_owning_vtable) = key;
-
     // #90177
     let trait_to_be_found_erased = tcx.erase_regions(trait_to_be_found);
 

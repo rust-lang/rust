@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: NormalizeArrayLen
+//@ test-mir-pass: NormalizeArrayLen
 //@ compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
 
 // EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff

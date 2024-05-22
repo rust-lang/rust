@@ -14,6 +14,12 @@ LL |         drop(x1);
 ...
 LL |     borrow(&*p1);
    |            ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let p1 = &x1;
+LL +     let p1 = x1.clone();
+   |
 
 error[E0505]: cannot move out of `x2` because it is borrowed
   --> $DIR/borrowck-multiple-captures.rs:12:19
@@ -30,6 +36,12 @@ LL |         drop(x2);
 ...
 LL |     borrow(&*p2);
    |            ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let p2 = &x2;
+LL +     let p2 = x2.clone();
+   |
 
 error[E0382]: use of moved value: `x1`
   --> $DIR/borrowck-multiple-captures.rs:27:19
@@ -93,6 +105,12 @@ LL |         drop(x);
 ...
 LL |     borrow(&*p);
    |            --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let p = &x;
+LL +     let p = x.clone();
+   |
 
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-multiple-captures.rs:52:14

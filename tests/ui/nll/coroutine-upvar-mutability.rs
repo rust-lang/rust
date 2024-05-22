@@ -4,6 +4,8 @@
 
 fn mutate_upvar() {
     let x = 0;
+
+    #[coroutine]
     move || {
         x = 1;
         //~^ ERROR

@@ -1,4 +1,4 @@
-error[E0283]: type annotations needed for `Foo<i32, &str, W, Z>`
+error[E0283]: type annotations needed for `Foo<i32, &str, _, _>`
   --> $DIR/erase-type-params-in-label.rs:2:9
    |
 LL |     let foo = foo(1, "");
@@ -15,7 +15,7 @@ help: consider giving `foo` an explicit type, where the type for type parameter 
 LL |     let foo: Foo<i32, &str, W, Z> = foo(1, "");
    |            ++++++++++++++++++++++
 
-error[E0283]: type annotations needed for `Bar<i32, &str, Z>`
+error[E0283]: type annotations needed for `Bar<i32, &str, _>`
   --> $DIR/erase-type-params-in-label.rs:5:9
    |
 LL |     let bar = bar(1, "");

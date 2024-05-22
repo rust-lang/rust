@@ -29,5 +29,5 @@ where
 
 fn main() {
     let mut list = RcNode::<i32>::new();
-    //~^ ERROR trait bounds were not satisfied
+    //~^ ERROR the variant or associated item `new` exists for enum `Node<i32, RcFamily>`, but its trait bounds were not satisfied
 }

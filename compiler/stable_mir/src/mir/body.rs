@@ -1,3 +1,4 @@
+use crate::compiler_interface::with;
 use crate::mir::pretty::function_body;
 use crate::ty::{
     AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
@@ -337,42 +338,7 @@ impl BinOp {
     /// Return the type of this operation for the given input Ty.
     /// This function does not perform type checking, and it currently doesn't handle SIMD.
     pub fn ty(&self, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
-        match self {
-            BinOp::Add
-            | BinOp::AddUnchecked
-            | BinOp::Sub
-            | BinOp::SubUnchecked
-            | BinOp::Mul
-            | BinOp::MulUnchecked
-            | BinOp::Div
-            | BinOp::Rem
-            | BinOp::BitXor
-            | BinOp::BitAnd
-            | BinOp::BitOr => {
-                assert_eq!(lhs_ty, rhs_ty);
-                assert!(lhs_ty.kind().is_primitive());
-                lhs_ty
-            }
-            BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => {
-                assert!(lhs_ty.kind().is_primitive());
-                assert!(rhs_ty.kind().is_primitive());
-                lhs_ty
-            }
-            BinOp::Offset => {
-                assert!(lhs_ty.kind().is_raw_ptr());
-                assert!(rhs_ty.kind().is_integral());
-                lhs_ty
-            }
-            BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
-                assert_eq!(lhs_ty, rhs_ty);
-                let lhs_kind = lhs_ty.kind();
-                assert!(lhs_kind.is_primitive() || lhs_kind.is_raw_ptr() || lhs_kind.is_fn_ptr());
-                Ty::bool_ty()
-            }
-            BinOp::Cmp => {
-                unimplemented!("Should cmp::Ordering be a RigidTy?");
-            }
-        }
+        with(|ctx| ctx.binop_ty(*self, lhs_ty, rhs_ty))
     }
 }
 
@@ -636,6 +602,7 @@ impl Rvalue {
                 AggregateKind::Coroutine(def, ref args, mov) => {
                     Ok(Ty::new_coroutine(def, args.clone(), mov))
                 }
+                AggregateKind::RawPtr(ty, mutability) => Ok(Ty::new_ptr(ty, mutability)),
             },
             Rvalue::ShallowInitBox(_, ty) => Ok(Ty::new_box(*ty)),
             Rvalue::CopyForDeref(place) => place.ty(locals),
@@ -651,6 +618,7 @@ pub enum AggregateKind {
     Closure(ClosureDef, GenericArgs),
     // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
+    RawPtr(Ty, Mutability),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -899,11 +867,9 @@ pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
 
-    /// The immediately borrowed place must be immutable, but projections from
-    /// it don't need to be. This is used to prevent match guards from replacing
-    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
-    /// conflict with a mutable borrow of `a.b.c`.
-    Fake,
+    /// An immutable, aliasable borrow that is discarded after borrow-checking. Can behave either
+    /// like a normal shared borrow or like a special shallow borrow (see [`FakeBorrowKind`]).
+    Fake(FakeBorrowKind),
 
     /// Data is mutable and not aliasable.
     Mut {
@@ -918,7 +884,7 @@ impl BorrowKind {
             BorrowKind::Mut { .. } => Mutability::Mut,
             BorrowKind::Shared => Mutability::Not,
             // FIXME: There's no type corresponding to a shallow borrow, so use `&` as an approximation.
-            BorrowKind::Fake => Mutability::Not,
+            BorrowKind::Fake(_) => Mutability::Not,
         }
     }
 }
@@ -930,6 +896,17 @@ pub enum MutBorrowKind {
     ClosureCapture,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum FakeBorrowKind {
+    /// A shared (deep) borrow. Data must be immutable and is aliasable.
+    Deep,
+    /// The immediately borrowed place must be immutable, but projections from
+    /// it don't need to be. This is used to prevent match guards from replacing
+    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
+    /// conflict with a mutable borrow of `a.b.c`.
+    Shallow,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Mutability {
     Not,
@@ -938,8 +915,8 @@ pub enum Mutability {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Safety {
+    Safe,
     Unsafe,
-    Normal,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -993,7 +970,7 @@ pub enum NullOp {
     AlignOf,
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
-    /// cfg!(debug_assertions), but at codegen time
+    /// cfg!(ub_checks), but at codegen time
     UbChecks,
 }
 

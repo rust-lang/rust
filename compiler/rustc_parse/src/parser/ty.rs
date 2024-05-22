@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle, TokenType, Trailing};
+use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
@@ -14,7 +14,7 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, FnRetTy, GenericBound,
     GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability, PolyTraitRef,
-    TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind, DUMMY_NODE_ID,
+    PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind, DUMMY_NODE_ID,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -82,7 +82,7 @@ enum AllowCVariadic {
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
 fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
-    t == &token::ModSep || t == &token::Lt || t == &token::BinOp(token::Shl)
+    t == &token::PathSep || t == &token::Lt || t == &token::BinOp(token::Shl)
 }
 
 fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
                             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
                         }
                         (TyKind::TraitObject(bounds, _), kw::Impl) => {
-                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
+                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, None)
                         }
                         _ => return Err(err),
                     };
@@ -590,7 +590,7 @@ impl<'a> Parser<'a> {
             tokens: None,
         };
         let span_start = self.token.span;
-        let ast::FnHeader { ext, unsafety, constness, coroutine_kind } =
+        let ast::FnHeader { ext, safety, constness, coroutine_kind } =
             self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
         if self.may_recover() && self.token.kind == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
@@ -608,7 +608,7 @@ impl<'a> Parser<'a> {
         }
         // FIXME(gen_blocks): emit a similar error for `gen fn()`
         let decl_span = span_start.to(self.token.span);
-        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
+        Ok(TyKind::BareFn(P(BareFnTy { ext, safety, generic_params: params, decl, decl_span })))
     }
 
     /// Recover from function pointer types with a generic parameter list (e.g. `fn<'a>(&'a str)`).
@@ -655,7 +655,6 @@ impl<'a> Parser<'a> {
 
     /// Parses an `impl B0 + ... + Bn` type.
     fn parse_impl_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
-        // Always parse bounds greedily for better error recovery.
         if self.token.is_lifetime() {
             self.look_ahead(1, |t| {
                 if let token::Ident(sym, _) = t.kind {
@@ -669,9 +668,55 @@ impl<'a> Parser<'a> {
                 }
             })
         }
+
+        // parse precise captures, if any. This is `use<'lt, 'lt, P, P>`; a list of
+        // lifetimes and ident params (including SelfUpper). These are validated later
+        // for order, duplication, and whether they actually reference params.
+        let precise_capturing = if self.eat_keyword(kw::Use) {
+            let use_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::precise_capturing, use_span);
+            let (args, args_span) = self.parse_precise_capturing_args()?;
+            Some(P((args, use_span.to(args_span))))
+        } else {
+            None
+        };
+
+        // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
+
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
-        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
+
+        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, precise_capturing))
+    }
+
+    fn parse_precise_capturing_args(
+        &mut self,
+    ) -> PResult<'a, (ThinVec<PreciseCapturingArg>, Span)> {
+        let lo = self.token.span;
+        let (args, _) = self.parse_unspanned_seq(
+            &TokenKind::Lt,
+            &TokenKind::Gt,
+            SeqSep::trailing_allowed(token::Comma),
+            |self_| {
+                if self_.check_keyword(kw::SelfUpper) {
+                    self_.bump();
+                    Ok(PreciseCapturingArg::Arg(
+                        ast::Path::from_ident(self_.prev_token.ident().unwrap().0),
+                        DUMMY_NODE_ID,
+                    ))
+                } else if self_.check_ident() {
+                    Ok(PreciseCapturingArg::Arg(
+                        ast::Path::from_ident(self_.parse_ident()?),
+                        DUMMY_NODE_ID,
+                    ))
+                } else if self_.check_lifetime() {
+                    Ok(PreciseCapturingArg::Lifetime(self_.expect_lifetime()))
+                } else {
+                    self_.unexpected_any()
+                }
+            },
+        )?;
+        Ok((args, lo.to(self.prev_token.span)))
     }
 
     /// Is a `dyn B0 + ... + Bn` type allowed here?
@@ -957,7 +1002,7 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         )
                     }
-                    TyKind::ImplTrait(_, bounds)
+                    TyKind::ImplTrait(_, bounds, None)
                         if let [GenericBound::Trait(tr, ..), ..] = bounds.as_slice() =>
                     {
                         (

@@ -2,7 +2,7 @@ use cranelift_module::{DataId, FuncId};
 use cranelift_object::ObjectProduct;
 use gimli::SectionId;
 use object::write::{Relocation, StandardSegment};
-use object::{RelocationEncoding, SectionKind};
+use object::{RelocationEncoding, RelocationFlags, SectionKind};
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
@@ -72,9 +72,11 @@ impl WriteDebugInfo for ObjectProduct {
                 Relocation {
                     offset: u64::from(reloc.offset),
                     symbol,
-                    kind: reloc.kind,
-                    encoding: RelocationEncoding::Generic,
-                    size: reloc.size * 8,
+                    flags: RelocationFlags::Generic {
+                        kind: reloc.kind,
+                        encoding: RelocationEncoding::Generic,
+                        size: reloc.size * 8,
+                    },
                     addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
                 },
             )

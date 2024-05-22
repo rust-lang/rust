@@ -3,8 +3,8 @@ use rustc_errors::{
     codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level,
     SubdiagMessageOp, Subdiagnostic,
 };
-use rustc_macros::Diagnostic;
-use rustc_middle::ty::{self, ClosureKind, PolyTraitRef, Ty};
+use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_middle::ty::{self, print::PrintTraitRefExt as _, ClosureKind, PolyTraitRef, Ty};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -104,7 +104,7 @@ impl Subdiagnostic for AdjustSignatureBorrow {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {

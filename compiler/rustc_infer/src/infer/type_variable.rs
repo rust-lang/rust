@@ -1,8 +1,8 @@
 use rustc_data_structures::undo_log::Rollback;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyVid};
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use crate::infer::InferCtxtUndoLogs;
@@ -37,30 +37,11 @@ pub struct TypeVariableTable<'a, 'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct TypeVariableOrigin {
-    pub kind: TypeVariableOriginKind,
     pub span: Span,
-}
-
-/// Reasons to create a type inference variable
-#[derive(Copy, Clone, Debug)]
-pub enum TypeVariableOriginKind {
-    MiscVariable,
-    NormalizeProjectionType,
-    TypeInference,
-    TypeParameterDefinition(Symbol, DefId),
-
-    /// One of the upvars or closure kind parameters in a `ClosureArgs`
-    /// (before it has been determined).
-    // FIXME(eddyb) distinguish upvar inference variables from the rest.
-    ClosureSynthetic,
-    AutoDeref,
-    AdjustmentType,
-
-    /// In type check, when we are type checking a function that
-    /// returns `-> dyn Foo`, we instantiate a type variable with the
-    /// return type for diagnostic purposes.
-    DynReturnFn,
-    LatticeVariable,
+    /// `DefId` of the type parameter this was instantiated for, if any.
+    ///
+    /// This should only be used for diagnostics.
+    pub param_def_id: Option<DefId>,
 }
 
 #[derive(Clone)]

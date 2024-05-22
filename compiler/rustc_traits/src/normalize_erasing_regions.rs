@@ -4,6 +4,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
+use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {

@@ -28,7 +28,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
-pub use generic_args::*;
+pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
@@ -45,16 +45,19 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
-use rustc_macros::HashStable;
+use rustc_macros::{
+    extension, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
+    TypeVisitable,
+};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{hygiene, ExpnId, ExpnKind, Span};
+use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -77,9 +80,10 @@ pub use rustc_type_ir::ConstKind::{
 pub use rustc_type_ir::*;
 
 pub use self::closure::{
-    is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
-    RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
+    analyze_coroutine_closure_captures, is_ancestor_or_same_capture, place_to_string_for_capture,
+    BorrowKind, CaptureInfo, CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap,
+    MinCaptureList, RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath,
+    CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
     Const, ConstData, ConstInt, ConstKind, Expr, ScalarInt, UnevaluatedConst, ValTree,
@@ -88,17 +92,18 @@ pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
     TyCtxt, TyCtxtFeed,
 };
-pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
-pub use self::list::List;
+pub use self::instance::{Instance, InstanceDef, ReifyReason, ShortInstance, UnusedGenericParams};
+pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::parameterized::ParameterizedOverTcx;
+pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    Clause, ClauseKind, CoercePredicate, ExistentialPredicate, ExistentialProjection,
-    ExistentialTraitRef, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
-    PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitPredicate,
-    TraitRef, TypeOutlivesPredicate,
+    AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
+    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef, NormalizesTo,
+    OutlivesPredicate, PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
+    PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesPredicate, Predicate,
+    PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
+    TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,
@@ -130,6 +135,7 @@ pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
+pub mod pattern;
 pub mod print;
 pub mod relate;
 pub mod trait_def;
@@ -221,8 +227,15 @@ pub struct ResolverAstLowering {
     pub lint_buffer: Steal<LintBuffer>,
 
     /// Information about functions signatures for delegation items expansion
-    pub has_self: LocalDefIdSet,
-    pub fn_parameter_counts: LocalDefIdMap<usize>,
+    pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+}
+
+#[derive(Debug)]
+pub struct DelegationFnSig {
+    pub header: ast::FnHeader,
+    pub param_count: usize,
+    pub has_self: bool,
+    pub c_variadic: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -254,68 +267,13 @@ pub struct ImplHeader<'tcx> {
 pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::EarlyBinder<ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
-    pub unsafety: hir::Unsafety,
+    pub safety: hir::Safety,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
     Inherent(Ty<'tcx>),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub enum ImplPolarity {
-    /// `impl Trait for Type`
-    Positive,
-    /// `impl !Trait for Type`
-    Negative,
-    /// `#[rustc_reservation_impl] impl Trait for Type`
-    ///
-    /// This is a "stability hack", not a real Rust feature.
-    /// See #64631 for details.
-    Reservation,
-}
-
-impl fmt::Display for ImplPolarity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Positive => f.write_str("positive"),
-            Self::Negative => f.write_str("negative"),
-            Self::Reservation => f.write_str("reservation"),
-        }
-    }
-}
-
-/// Polarity for a trait predicate. May either be negative or positive.
-/// Distinguished from [`ImplPolarity`] since we never compute goals with
-/// "reservation" level.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub enum PredicatePolarity {
-    /// `Type: Trait`
-    Positive,
-    /// `Type: !Trait`
-    Negative,
-}
-
-impl PredicatePolarity {
-    /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
-    pub fn flip(&self) -> PredicatePolarity {
-        match self {
-            PredicatePolarity::Positive => PredicatePolarity::Negative,
-            PredicatePolarity::Negative => PredicatePolarity::Positive,
-        }
-    }
-}
-
-impl fmt::Display for PredicatePolarity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Positive => f.write_str("positive"),
-            Self::Negative => f.write_str("negative"),
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -518,7 +476,7 @@ pub struct CReaderCacheKey {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
-impl<'tcx> IntoKind for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
@@ -564,6 +522,14 @@ pub struct Term<'tcx> {
     marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Term<'tcx> {
+    type Kind = TermKind<'tcx>;
+
+    fn kind(self) -> Self::Kind {
+        self.unpack()
+    }
+}
+
 #[cfg(parallel_compiler)]
 unsafe impl<'tcx> rustc_data_structures::sync::DynSend for Term<'tcx> where
     &'tcx (Ty<'tcx>, Const<'tcx>): rustc_data_structures::sync::DynSend
@@ -579,14 +545,10 @@ unsafe impl<'tcx> Sync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Sync 
 
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data = if let Some(ty) = self.ty() {
-            format!("Term::Ty({ty:?})")
-        } else if let Some(ct) = self.ct() {
-            format!("Term::Ct({ct:?})")
-        } else {
-            unreachable!()
-        };
-        f.write_str(&data)
+        match self.unpack() {
+            TermKind::Ty(ty) => write!(f, "Term::Ty({ty:?})"),
+            TermKind::Const(ct) => write!(f, "Term::Const({ct:?})"),
+        }
     }
 }
 
@@ -613,13 +575,19 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(self.unpack().try_fold_with(folder)?.pack())
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
+            ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+        }
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        self.unpack().visit_with(visitor)
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.visit_with(visitor),
+            ty::TermKind::Const(ct) => ct.visit_with(visitor),
+        }
     }
 }
 
@@ -672,15 +640,14 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    /// This function returns the inner `AliasTy` for a `ty::Alias` or `ConstKind::Unevaluated`.
-    pub fn to_alias_ty(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+    pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.unpack() {
             TermKind::Ty(ty) => match *ty.kind() {
-                ty::Alias(_kind, alias_ty) => Some(alias_ty),
+                ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(AliasTy::new(tcx, uv.def, uv.args)),
+                ConstKind::Unevaluated(uv) => Some(uv.into()),
                 _ => None,
             },
         }
@@ -698,13 +665,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const CONST_TAG: usize = 0b01;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
-pub enum TermKind<'tcx> {
-    Ty(Ty<'tcx>),
-    Const(Const<'tcx>),
-}
-
+#[extension(pub trait TermKindPackExt<'tcx>)]
 impl<'tcx> TermKind<'tcx> {
     #[inline]
     fn pack(self) -> Term<'tcx> {
@@ -969,7 +930,7 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
-impl PlaceholderLike for PlaceholderRegion {
+impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -989,7 +950,7 @@ impl PlaceholderLike for PlaceholderRegion {
 
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-impl PlaceholderLike for PlaceholderType {
+impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderType {
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -1016,7 +977,7 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
-impl PlaceholderLike for PlaceholderConst {
+impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -1031,6 +992,18 @@ impl PlaceholderLike for PlaceholderConst {
 
     fn new(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: var }
+    }
+}
+
+pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
+
+impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        (**self).flags()
+    }
+
+    fn outer_exclusive_binder(&self) -> DebruijnIndex {
+        (**self).outer_exclusive_binder()
     }
 }
 
@@ -1053,7 +1026,7 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All`.
     ///
     /// Note: This is packed, use the reveal() method to access it.
-    packed: CopyTaggedPtr<&'tcx List<Clause<'tcx>>, ParamTag, true>,
+    packed: CopyTaggedPtr<Clauses<'tcx>, ParamTag, true>,
 }
 
 #[derive(Copy, Clone)]
@@ -1061,7 +1034,7 @@ struct ParamTag {
     reveal: traits::Reveal,
 }
 
-impl_tag! {
+rustc_data_structures::impl_tag! {
     impl Tag for ParamTag;
     ParamTag { reveal: traits::Reveal::UserFacing },
     ParamTag { reveal: traits::Reveal::All },
@@ -1112,11 +1085,11 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing)
+        Self::new(ListWithCachedTypeInfo::empty(), Reveal::UserFacing)
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> &'tcx List<Clause<'tcx>> {
+    pub fn caller_bounds(self) -> Clauses<'tcx> {
         self.packed.pointer()
     }
 
@@ -1134,12 +1107,12 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All)
+        Self::new(ListWithCachedTypeInfo::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: &'tcx List<Clause<'tcx>>, reveal: Reveal) -> Self {
+    pub fn new(caller_bounds: Clauses<'tcx>, reveal: Reveal) -> Self {
         ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
     }
 
@@ -1168,7 +1141,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Returns this same environment but with no caller bounds.
     #[inline]
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(List::empty(), self.reveal())
+        Self::new(ListWithCachedTypeInfo::empty(), self.reveal())
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1200,7 +1173,7 @@ pub struct Destructor {
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantFlags(u8);
-bitflags! {
+bitflags::bitflags! {
     impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
@@ -1479,14 +1452,14 @@ pub enum ImplOverlapKind {
         /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
         marker: bool,
     },
-    /// These impls are allowed to overlap, but that raises
-    /// an issue #33140 future-compatibility warning.
+    /// These impls are allowed to overlap, but that raises an
+    /// issue #33140 future-compatibility warning (tracked in #56484).
     ///
     /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
     /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
     ///
-    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
-    /// that difference, making what reduces to the following set of impls:
+    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied on
+    /// that difference, doing what reduces to the following set of impls:
     ///
     /// ```compile_fail,(E0119)
     /// trait Trait {}
@@ -1511,7 +1484,7 @@ pub enum ImplOverlapKind {
     /// 4. Neither of the impls can have any where-clauses.
     ///
     /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
-    Issue33140,
+    FutureCompatOrderDepTraitObjects,
 }
 
 /// Useful source information about where a desugared associated type for an
@@ -1706,27 +1679,26 @@ impl<'tcx> TyCtxt<'tcx> {
             | (ImplPolarity::Negative, ImplPolarity::Negative) => {}
         };
 
-        let is_marker_overlap = {
-            let is_marker_impl =
-                |trait_ref: TraitRef<'_>| -> bool { self.trait_def(trait_ref.def_id).is_marker };
-            is_marker_impl(trait_ref1) && is_marker_impl(trait_ref2)
-        };
+        let is_marker_impl = |trait_ref: TraitRef<'_>| self.trait_def(trait_ref.def_id).is_marker;
+        let is_marker_overlap = is_marker_impl(trait_ref1) && is_marker_impl(trait_ref2);
 
         if is_marker_overlap {
-            Some(ImplOverlapKind::Permitted { marker: true })
-        } else {
-            if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
-                if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
-                    if self_ty1 == self_ty2 {
-                        return Some(ImplOverlapKind::Issue33140);
-                    } else {
-                        debug!("found {self_ty1:?} != {self_ty2:?}");
-                    }
-                }
-            }
-
-            None
+            return Some(ImplOverlapKind::Permitted { marker: true });
         }
+
+        if let Some(self_ty1) =
+            self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id1)
+            && let Some(self_ty2) =
+                self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id2)
+        {
+            if self_ty1 == self_ty2 {
+                return Some(ImplOverlapKind::FutureCompatOrderDepTraitObjects);
+            } else {
+                debug!("found {self_ty1:?} != {self_ty2:?}");
+            }
+        }
+
+        None
     }
 
     /// Returns `ty::VariantDef` if `res` refers to a struct,
@@ -1782,7 +1754,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
+            | ty::InstanceDef::FnPtrAddrShim(..)
+            | ty::InstanceDef::AsyncDropGlueCtorShim(..) => self.mir_shims(instance),
         }
     }
 
@@ -1839,6 +1812,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
         self.get_attrs(did, attr).next().is_some()
+    }
+
+    /// Determines whether an item is annotated with a multi-segement attribute
+    pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
+        self.get_attrs_by_path(did.into(), attrs).next().is_some()
     }
 
     /// Returns `true` if this is an `auto trait`.
@@ -1988,22 +1966,6 @@ impl<'tcx> TyCtxt<'tcx> {
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
             .unwrap_or_else(|| self.parent_module(block).to_def_id());
         (ident, scope)
-    }
-
-    /// Returns corrected span if the debuginfo for `span` should be collapsed to the outermost
-    /// expansion site (with collapse_debuginfo attribute if the corresponding feature enabled).
-    /// Only applies when `Span` is the result of macro expansion.
-    ///
-    /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
-    ///   and only when a (some enclosing) macro definition is annotated with `#[collapse_debuginfo]`.
-    /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
-    ///
-    /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.
-    pub fn collapsed_debuginfo(self, span: Span, upto: Span) -> Span {
-        if self.sess.opts.unstable_opts.debug_macros || !span.from_expansion() {
-            return span;
-        }
-        hygiene::walk_chain_collapsed(span, upto, self.features().collapse_debuginfo)
     }
 
     #[inline]
@@ -2168,7 +2130,7 @@ pub struct DestructuredConst<'tcx> {
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

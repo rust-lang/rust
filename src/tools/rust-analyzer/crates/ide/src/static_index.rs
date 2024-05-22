@@ -167,7 +167,8 @@ impl StaticIndex<'_> {
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
             max_trait_assoc_items_count: None,
-            max_struct_field_count: None,
+            max_fields_count: Some(5),
+            max_enum_variants_count: Some(5),
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -188,7 +189,14 @@ impl StaticIndex<'_> {
             } else {
                 let it = self.tokens.insert(TokenStaticData {
                     documentation: documentation_for_definition(&sema, def, &node),
-                    hover: Some(hover_for_definition(&sema, file_id, def, &node, &hover_config)),
+                    hover: Some(hover_for_definition(
+                        &sema,
+                        file_id,
+                        def,
+                        &node,
+                        None,
+                        &hover_config,
+                    )),
                     definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),

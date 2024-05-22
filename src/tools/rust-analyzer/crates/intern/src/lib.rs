@@ -174,6 +174,7 @@ pub struct InternStorage<T: ?Sized> {
     map: OnceLock<InternMap<T>>,
 }
 
+#[allow(clippy::new_without_default)] // this a const fn, so it can't be default
 impl<T: ?Sized> InternStorage<T> {
     pub const fn new() -> Self {
         Self { map: OnceLock::new() }

@@ -63,7 +63,7 @@ pub(super) fn check(
     let help_message = format!("used `{method}()` on `{constructor}` value");
     let suggestion_message = format!("remove the `{constructor}` and `{method}()`");
 
-    span_lint_and_then(cx, UNNECESSARY_LITERAL_UNWRAP, expr.span, &help_message, |diag| {
+    span_lint_and_then(cx, UNNECESSARY_LITERAL_UNWRAP, expr.span, help_message, |diag| {
         let suggestions = match (constructor, method, ty) {
             ("None", "unwrap", _) => Some(vec![(expr.span, "panic!()".to_string())]),
             ("None", "expect", _) => Some(vec![

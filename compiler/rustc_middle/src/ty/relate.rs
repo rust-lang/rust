@@ -5,13 +5,17 @@
 //! subtyping, type equality, etc.
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
-use crate::ty::{GenericArg, GenericArgKind, GenericArgsRef};
+use crate::ty::{
+    self, ExistentialPredicate, ExistentialPredicateStableCmpExt as _, Expr, GenericArg,
+    GenericArgKind, GenericArgsRef, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_macros::TypeVisitable;
 use rustc_target::spec::abi;
 use std::iter;
+
+use super::Pattern;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
@@ -142,7 +146,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
         if a.c_variadic != b.c_variadic {
             return Err(TypeError::VariadicMismatch(expected_found(a.c_variadic, b.c_variadic)));
         }
-        let unsafety = relation.relate(a.unsafety, b.unsafety)?;
+        let safety = relation.relate(a.safety, b.safety)?;
         let abi = relation.relate(a.abi, b.abi)?;
 
         if a.inputs().len() != b.inputs().len() {
@@ -177,7 +181,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
         Ok(ty::FnSig {
             inputs_and_output: tcx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
-            unsafety,
+            safety,
             abi,
         })
     }
@@ -193,13 +197,13 @@ impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     }
 }
 
-impl<'tcx> Relate<'tcx> for hir::Unsafety {
+impl<'tcx> Relate<'tcx> for hir::Safety {
     fn relate<R: TypeRelation<'tcx>>(
         _relation: &mut R,
-        a: hir::Unsafety,
-        b: hir::Unsafety,
-    ) -> RelateResult<'tcx, hir::Unsafety> {
-        if a != b { Err(TypeError::UnsafetyMismatch(expected_found(a, b))) } else { Ok(a) }
+        a: hir::Safety,
+        b: hir::Safety,
+    ) -> RelateResult<'tcx, hir::Safety> {
+        if a != b { Err(TypeError::SafetyMismatch(expected_found(a, b))) } else { Ok(a) }
     }
 }
 
@@ -222,8 +226,8 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
         } else {
-            let args = match relation.tcx().def_kind(a.def_id) {
-                DefKind::OpaqueTy => relate_args_with_variances(
+            let args = match a.kind(relation.tcx()) {
+                ty::Opaque => relate_args_with_variances(
                     relation,
                     a.def_id,
                     relation.tcx().variances_of(a.def_id),
@@ -231,12 +235,42 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
-                DefKind::AssocTy | DefKind::AssocConst | DefKind::TyAlias => {
+                ty::Projection | ty::Weak | ty::Inherent => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
-                def => bug!("unknown alias DefKind: {def:?}"),
             };
             Ok(ty::AliasTy::new(relation.tcx(), a.def_id, args))
+        }
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ty::AliasTerm<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::AliasTerm<'tcx>,
+        b: ty::AliasTerm<'tcx>,
+    ) -> RelateResult<'tcx, ty::AliasTerm<'tcx>> {
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(a.def_id, b.def_id)))
+        } else {
+            let args = match a.kind(relation.tcx()) {
+                ty::AliasTermKind::OpaqueTy => relate_args_with_variances(
+                    relation,
+                    a.def_id,
+                    relation.tcx().variances_of(a.def_id),
+                    a.args,
+                    b.args,
+                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                )?,
+                ty::AliasTermKind::ProjectionTy
+                | ty::AliasTermKind::WeakTy
+                | ty::AliasTermKind::InherentTy
+                | ty::AliasTermKind::UnevaluatedConst
+                | ty::AliasTermKind::ProjectionConst => {
+                    relate_args_invariantly(relation, a.args, b.args)?
+                }
+            };
+            Ok(ty::AliasTerm::new(relation.tcx(), a.def_id, args))
         }
     }
 }
@@ -348,6 +382,36 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         relation.tys(a, b)
+    }
+}
+
+impl<'tcx> Relate<'tcx> for Pattern<'tcx> {
+    #[inline]
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        match (&*a, &*b) {
+            (
+                &ty::PatternKind::Range { start: start_a, end: end_a, include_end: inc_a },
+                &ty::PatternKind::Range { start: start_b, end: end_b, include_end: inc_b },
+            ) => {
+                // FIXME(pattern_types): make equal patterns equal (`0..=` is the same as `..=`).
+                let mut relate_opt_const = |a, b| match (a, b) {
+                    (None, None) => Ok(None),
+                    (Some(a), Some(b)) => relation.relate(a, b).map(Some),
+                    // FIXME(pattern_types): report a better error
+                    _ => Err(TypeError::Mismatch),
+                };
+                let start = relate_opt_const(start_a, start_b)?;
+                let end = relate_opt_const(end_a, end_b)?;
+                if inc_a != inc_b {
+                    todo!()
+                }
+                Ok(relation.tcx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
+            }
+        }
     }
 }
 
@@ -533,6 +597,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_alias(tcx, a_kind, alias_ty))
         }
 
+        (&ty::Pat(a_ty, a_pat), &ty::Pat(b_ty, b_pat)) => {
+            let ty = relation.relate(a_ty, b_ty)?;
+            let pat = relation.relate(a_pat, b_pat)?;
+            Ok(Ty::new_pat(tcx, ty, pat))
+        }
+
         _ => Err(TypeError::Sorts(expected_found(a, b))),
     }
 }
@@ -663,14 +733,21 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
         }
 
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
-            use crate::ty::ExistentialPredicate::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
-                (Trait(a), Trait(b)) => Ok(ep_a
-                    .rebind(Trait(relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder()))),
-                (Projection(a), Projection(b)) => Ok(ep_a.rebind(Projection(
-                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
-                ))),
-                (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
+                (ExistentialPredicate::Trait(a), ExistentialPredicate::Trait(b)) => Ok(ep_a
+                    .rebind(ExistentialPredicate::Trait(
+                        relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
+                    ))),
+                (ExistentialPredicate::Projection(a), ExistentialPredicate::Projection(b)) => {
+                    Ok(ep_a.rebind(ExistentialPredicate::Projection(
+                        relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
+                    )))
+                }
+                (ExistentialPredicate::AutoTrait(a), ExistentialPredicate::AutoTrait(b))
+                    if a == b =>
+                {
+                    Ok(ep_a.rebind(ExistentialPredicate::AutoTrait(a)))
+                }
                 _ => Err(TypeError::ExistentialMismatch(expected_found(a, b))),
             }
         });

@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/yield-subtype.rs:11:5
+  --> $DIR/yield-subtype.rs:11:18
    |
-LL | /     || {
+LL |       #[coroutine] || {
+   |  __________________^
 LL | |         yield a;
 LL | |         yield b;
 LL | |     };

@@ -10,6 +10,7 @@
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
@@ -49,7 +50,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = self.erase_regions(value);
         debug!(?value);
 
-        if !value.has_projections() {
+        if !value.has_aliases() {
             value
         } else {
             value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
@@ -81,7 +82,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = self.erase_regions(value);
         debug!(?value);
 
-        if !value.has_projections() {
+        if !value.has_aliases() {
             Ok(value)
         } else {
             let mut folder = TryNormalizeAfterErasingRegionsFolder::new(self, param_env);
@@ -99,8 +100,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// codegen, we need to normalize the contents.
     // FIXME(@lcnr): This method should not be necessary, we now normalize
     // inside of binders. We should be able to only use
-    // `tcx.instantiate_bound_regions_with_erased`. Same for the `try_X`
-    // variant.
+    // `tcx.instantiate_bound_regions_with_erased`.
     #[tracing::instrument(level = "debug", skip(self, param_env))]
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
@@ -112,26 +112,6 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let value = self.instantiate_bound_regions_with_erased(value);
         self.normalize_erasing_regions(param_env, value)
-    }
-
-    /// If you have a `Binder<'tcx, T>`, you can do this to strip out the
-    /// late-bound regions and then normalize the result, yielding up
-    /// a `T` (with regions erased). This is appropriate when the
-    /// binder is being instantiated at the call site.
-    ///
-    /// N.B., currently, higher-ranked type bounds inhibit
-    /// normalization. Therefore, each time we erase them in
-    /// codegen, we need to normalize the contents.
-    pub fn try_normalize_erasing_late_bound_regions<T>(
-        self,
-        param_env: ty::ParamEnv<'tcx>,
-        value: ty::Binder<'tcx, T>,
-    ) -> Result<T, NormalizationError<'tcx>>
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        let value = self.instantiate_bound_regions_with_erased(value);
-        self.try_normalize_erasing_regions(param_env, value)
     }
 
     /// Monomorphizes a type from the AST by first applying the

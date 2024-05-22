@@ -10,6 +10,7 @@
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -144,7 +145,12 @@ impl<'tcx> InherentCollect<'tcx> {
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
         let self_ty = self.tcx.type_of(id).instantiate_identity();
-        let self_ty = self.tcx.peel_off_weak_alias_tys(self_ty);
+        let mut self_ty = self.tcx.peel_off_weak_alias_tys(self_ty);
+        // We allow impls on pattern types exactly when we allow impls on the base type.
+        // FIXME(pattern_types): Figure out the exact coherence rules we want here.
+        while let ty::Pat(base, _) = *self_ty.kind() {
+            self_ty = base;
+        }
         match *self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),
@@ -154,6 +160,7 @@ impl<'tcx> InherentCollect<'tcx> {
             ty::Dynamic(..) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentDyn { span: item_span }))
             }
+            ty::Pat(_, _) => unreachable!(),
             ty::Bool
             | ty::Char
             | ty::Int(_)

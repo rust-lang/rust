@@ -49,7 +49,7 @@ impl LintConfig {
 
 type LintTable = BTreeMap<Spanned<String>, Spanned<LintConfig>>;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 struct Lints {
     #[serde(default)]
     rust: LintTable,
@@ -57,9 +57,18 @@ struct Lints {
     clippy: LintTable,
 }
 
+#[derive(Deserialize, Debug, Default)]
+struct Workspace {
+    #[serde(default)]
+    lints: Lints,
+}
+
 #[derive(Deserialize, Debug)]
 struct CargoToml {
+    #[serde(default)]
     lints: Lints,
+    #[serde(default)]
+    workspace: Workspace,
 }
 
 #[derive(Default, Debug)]
@@ -102,7 +111,7 @@ fn check_table(cx: &LateContext<'_>, table: LintTable, groups: &FxHashSet<&str>,
                 cx,
                 LINT_GROUPS_PRIORITY,
                 toml_span(group.span(), file),
-                &format!(
+                format!(
                     "lint group `{}` has the same priority ({priority}) as a lint",
                     group.as_ref()
                 ),
@@ -164,5 +173,7 @@ pub fn check(cx: &LateContext<'_>) {
 
         check_table(cx, cargo_toml.lints.rust, &rustc_groups, &file);
         check_table(cx, cargo_toml.lints.clippy, &clippy_groups, &file);
+        check_table(cx, cargo_toml.workspace.lints.rust, &rustc_groups, &file);
+        check_table(cx, cargo_toml.workspace.lints.clippy, &clippy_groups, &file);
     }
 }

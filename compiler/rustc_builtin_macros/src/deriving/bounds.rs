@@ -5,7 +5,7 @@ use rustc_ast::MetaItem;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::Span;
 
-pub fn expand_deriving_copy(
+pub(crate) fn expand_deriving_copy(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
@@ -28,7 +28,7 @@ pub fn expand_deriving_copy(
     trait_def.expand(cx, mitem, item, push);
 }
 
-pub fn expand_deriving_const_param_ty(
+pub(crate) fn expand_deriving_const_param_ty(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,

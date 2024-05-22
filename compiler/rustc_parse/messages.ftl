@@ -230,6 +230,10 @@ parse_expected_struct_field = expected one of `,`, `:`, or `{"}"}`, found `{$tok
 
 parse_expected_trait_in_trait_impl_found_type = expected a trait, found type
 
+parse_expr_rarrow_call = `->` used for field access or method call
+    .suggestion = try using `.` instead
+    .help = the `.` operator will dereference the value if needed
+
 parse_extern_crate_name_with_dashes = crate name using dashes are not valid in `extern crate` statements
     .label = dash-separated idents are not valid
     .suggestion = if the original crate name uses dashes you need to use underscores in the code
@@ -397,10 +401,8 @@ parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
     .use_amp_amp_for_conjunction = use `&&` to perform logical conjunction
     .use_pipe_pipe_for_disjunction = use `||` to perform logical disjunction
 
-parse_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`
-
-parse_invalid_meta_item_unquoted_ident = expected unsuffixed literal, found `{$token}`
-    .suggestion = surround the identifier with quotation marks to parse it as a string
+parse_invalid_meta_item = expected unsuffixed literal, found `{$token}`
+    .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
 
 parse_invalid_offset_of = offset_of expects dot-separated field and variant names
 
@@ -619,6 +621,8 @@ parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not al
 parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
 parse_out_of_range_hex_escape = out of range hex escape
     .label = must be a character in the range [\x00-\x7f]
+
+parse_outer_attr_ambiguous = ambiguous outer attributes
 
 parse_outer_attr_explanation = outer attributes, like `#[test]`, annotate the item following them
 

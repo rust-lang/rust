@@ -24,7 +24,7 @@ use crate::slice::{self, SliceIndex};
 pub mod pattern;
 
 mod lossy;
-#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[stable(feature = "utf8_chunks", since = "1.79.0")]
 pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -721,8 +721,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let s = "Per Martin-Löf";
     ///
     /// let (first, last) = s.split_at_checked(3).unwrap();
@@ -734,7 +732,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -761,8 +759,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_at_checked)]
-    ///
     /// let mut s = "Per Martin-Löf".to_string();
     /// if let Some((first, last)) = s.split_at_mut_checked(3) {
     ///     first.make_ascii_uppercase();
@@ -776,7 +772,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -2535,15 +2531,14 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(byte_slice_trim_ascii)]
-    ///
     /// assert_eq!(" \t \u{3000}hello world\n".trim_ascii_start(), "\u{3000}hello world\n");
     /// assert_eq!("  ".trim_ascii_start(), "");
     /// assert_eq!("".trim_ascii_start(), "");
     /// ```
-    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
+    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trim_ascii_start(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2561,15 +2556,14 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(byte_slice_trim_ascii)]
-    ///
     /// assert_eq!("\r hello world\u{3000}\n ".trim_ascii_end(), "\r hello world\u{3000}");
     /// assert_eq!("  ".trim_ascii_end(), "");
     /// assert_eq!("".trim_ascii_end(), "");
     /// ```
-    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
+    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trim_ascii_end(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2588,15 +2582,14 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(byte_slice_trim_ascii)]
-    ///
     /// assert_eq!("\r hello world\n ".trim_ascii(), "hello world");
     /// assert_eq!("  ".trim_ascii(), "");
     /// assert_eq!("".trim_ascii(), "");
     /// ```
-    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
+    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trim_ascii(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate

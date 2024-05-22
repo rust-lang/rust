@@ -32,7 +32,7 @@ use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*};
 
-pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
+pub(crate) use rustc_session::config::{Options, UnstableOptions};
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -203,8 +203,6 @@ pub(crate) fn create_config(
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
-
-    let input = Input::File(input);
 
     // By default, rustdoc ignores all lints.
     // Specifically unblock lints relevant to documentation or the lint machinery itself.

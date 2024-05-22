@@ -8,7 +8,9 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
-use rustc_macros::HashStable;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable, TypeVisitable,
+};
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Symbol;
@@ -29,6 +31,28 @@ use std::fmt;
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,
     pub args: GenericArgsRef<'tcx>,
+}
+
+/// Describes why a `ReifyShim` was created. This is needed to distingish a ReifyShim created to
+/// adjust for things like `#[track_caller]` in a vtable from a `ReifyShim` created to produce a
+/// function pointer from a vtable entry.
+/// Currently, this is only used when KCFI is enabled, as only KCFI needs to treat those two
+/// `ReifyShim`s differently.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
+pub enum ReifyReason {
+    /// The `ReifyShim` was created to produce a function pointer. This happens when:
+    /// * A vtable entry is directly converted to a function call (e.g. creating a fn ptr from a
+    ///   method on a `dyn` object).
+    /// * A function with `#[track_caller]` is converted to a function pointer
+    /// * If KCFI is enabled, creating a function pointer from a method on an object-safe trait.
+    /// This includes the case of converting `::call`-like methods on closure-likes to function
+    /// pointers.
+    FnPtr,
+    /// This `ReifyShim` was created to populate a vtable. Currently, this happens when a
+    /// `#[track_caller]` mismatch occurs between the implementation of a method and the method.
+    /// This includes the case of `::call`-like methods in closure-likes' vtables.
+    Vtable,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -67,7 +91,13 @@ pub enum InstanceDef<'tcx> {
     /// Because this is a required part of the function's ABI but can't be tracked
     /// as a property of the function pointer, we use a single "caller location"
     /// (the definition of the function itself).
-    ReifyShim(DefId),
+    ///
+    /// The second field encodes *why* this shim was created. This allows distinguishing between
+    /// a `ReifyShim` that appears in a vtable vs one that appears as a function pointer.
+    ///
+    /// This field will only be populated if we are compiling in a mode that needs these shims
+    /// to be separable, currently only when KCFI is enabled.
+    ReifyShim(DefId, Option<ReifyReason>),
 
     /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
     ///
@@ -140,6 +170,12 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
     FnPtrAddrShim(DefId, Ty<'tcx>),
+
+    /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
+    ///
+    /// The `DefId` is for `core::future::async_drop::async_drop_in_place`, the `Ty`
+    /// is the type `T`.
+    AsyncDropGlueCtorShim(DefId, Option<Ty<'tcx>>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -182,7 +218,9 @@ impl<'tcx> Instance<'tcx> {
             InstanceDef::Item(def) => tcx
                 .upstream_monomorphizations_for(def)
                 .and_then(|monos| monos.get(&self.args).cloned()),
-            InstanceDef::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.args),
+            InstanceDef::DropGlue(_, Some(_)) | InstanceDef::AsyncDropGlueCtorShim(_, _) => {
+                tcx.upstream_drop_glue_for(self.args)
+            }
             _ => None,
         }
     }
@@ -194,7 +232,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match self {
             InstanceDef::Item(def_id)
             | InstanceDef::VTableShim(def_id)
-            | InstanceDef::ReifyShim(def_id)
+            | InstanceDef::ReifyShim(def_id, _)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
@@ -207,7 +245,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
-            | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
+            | InstanceDef::FnPtrAddrShim(def_id, _)
+            | InstanceDef::AsyncDropGlueCtorShim(def_id, _) => def_id,
         }
     }
 
@@ -215,9 +254,9 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
         match self {
             ty::InstanceDef::Item(def) => Some(def),
-            ty::InstanceDef::DropGlue(def_id, Some(_)) | InstanceDef::ThreadLocalShim(def_id) => {
-                Some(def_id)
-            }
+            ty::InstanceDef::DropGlue(def_id, Some(_))
+            | InstanceDef::AsyncDropGlueCtorShim(def_id, _)
+            | InstanceDef::ThreadLocalShim(def_id) => Some(def_id),
             InstanceDef::VTableShim(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
@@ -251,6 +290,7 @@ impl<'tcx> InstanceDef<'tcx> {
         let def_id = match *self {
             ty::InstanceDef::Item(def) => def,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+            ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(_)) => return false,
             ty::InstanceDef::ThreadLocalShim(_) => return false,
             _ => return true,
         };
@@ -319,11 +359,13 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ThreadLocalShim(..)
             | InstanceDef::FnPtrAddrShim(..)
             | InstanceDef::FnPtrShim(..)
-            | InstanceDef::DropGlue(_, Some(_)) => false,
+            | InstanceDef::DropGlue(_, Some(_))
+            | InstanceDef::AsyncDropGlueCtorShim(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::ConstructCoroutineInClosureShim { .. }
             | InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
+            | InstanceDef::AsyncDropGlueCtorShim(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ReifyShim(..)
@@ -354,7 +396,9 @@ fn fmt_instance(
     match instance.def {
         InstanceDef::Item(_) => Ok(()),
         InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
-        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::ReifyShim(_, None) => write!(f, " - shim(reify)"),
+        InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => write!(f, " - shim(reify-fnptr)"),
+        InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => write!(f, " - shim(reify-vtable)"),
         InstanceDef::ThreadLocalShim(_) => write!(f, " - shim(tls)"),
         InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
@@ -366,6 +410,8 @@ fn fmt_instance(
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::AsyncDropGlueCtorShim(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::AsyncDropGlueCtorShim(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
     }
 }
 
@@ -476,15 +522,37 @@ impl<'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
         assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
+        let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::FnPtr);
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    resolved.def = InstanceDef::ReifyShim(def);
+                    resolved.def = InstanceDef::ReifyShim(def, reason);
                 }
                 InstanceDef::Virtual(def_id, _) => {
                     debug!(" => fn pointer created for virtual call");
-                    resolved.def = InstanceDef::ReifyShim(def_id);
+                    resolved.def = InstanceDef::ReifyShim(def_id, reason);
+                }
+                // Reify `Trait::method` implementations if KCFI is enabled
+                // FIXME(maurer) only reify it if it is a vtable-safe function
+                _ if tcx.sess.is_sanitizer_kcfi_enabled()
+                    && tcx
+                        .opt_associated_item(def_id)
+                        .and_then(|assoc| assoc.trait_item_def_id)
+                        .is_some() =>
+                {
+                    // If this function could also go in a vtable, we need to `ReifyShim` it with
+                    // KCFI because it can only attach one type per function.
+                    resolved.def = InstanceDef::ReifyShim(resolved.def_id(), reason)
+                }
+                // Reify `::call`-like method implementations if KCFI is enabled
+                _ if tcx.sess.is_sanitizer_kcfi_enabled()
+                    && tcx.is_closure_like(resolved.def_id()) =>
+                {
+                    // Reroute through a reify via the *unresolved* instance. The resolved one can't
+                    // be directly reified because it's closure-like. The reify can handle the
+                    // unresolved instance.
+                    resolved = Instance { def: InstanceDef::ReifyShim(def_id, reason), args }
                 }
                 _ => {}
             }
@@ -508,6 +576,7 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VTableShim(def_id), args })
         } else {
+            let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
             Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
                 match resolved.def {
                     InstanceDef::Item(def) => {
@@ -544,18 +613,18 @@ impl<'tcx> Instance<'tcx> {
                                 // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
                                 // - unlike functions, invoking a closure always goes through a
                                 // trait.
-                                resolved = Instance { def: InstanceDef::ReifyShim(def_id), args };
+                                resolved = Instance { def: InstanceDef::ReifyShim(def_id, reason), args };
                             } else {
                                 debug!(
                                     " => vtable fn pointer created for function with #[track_caller]: {:?}", def
                                 );
-                                resolved.def = InstanceDef::ReifyShim(def);
+                                resolved.def = InstanceDef::ReifyShim(def, reason);
                             }
                         }
                     }
                     InstanceDef::Virtual(def_id, _) => {
                         debug!(" => vtable fn pointer created for virtual call");
-                        resolved.def = InstanceDef::ReifyShim(def_id);
+                        resolved.def = InstanceDef::ReifyShim(def_id, reason)
                     }
                     _ => {}
                 }
@@ -581,6 +650,12 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
+        let args = tcx.mk_args(&[ty.into()]);
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+    }
+
+    pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
     }

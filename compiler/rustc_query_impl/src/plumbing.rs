@@ -2,25 +2,23 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::rustc_middle::dep_graph::DepContext;
-use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
-
 use rustc_index::Idx;
+use rustc_middle::bug;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
-    self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
 use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TyEncoder};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
@@ -783,6 +781,7 @@ macro_rules! define_queries {
         #[allow(nonstandard_style)]
         mod query_callbacks {
             use super::*;
+            use rustc_middle::bug;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
@@ -851,7 +850,7 @@ macro_rules! define_queries {
         }
 
         pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {
-            arena.alloc_from_iter(make_dep_kind_array!(query_callbacks))
+            arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(query_callbacks))
         }
     }
 }

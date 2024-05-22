@@ -1,9 +1,8 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::{conditional_dot_product, round_all, round_first, test_bits_masked};
+use super::{conditional_dot_product, mpsadbw, packusdw, round_all, round_first, test_bits_masked};
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -15,7 +14,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse4.1")?;
         // Prefix should have already been checked.
@@ -68,27 +67,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(dest_len, left_len.checked_mul(2).unwrap());
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i32()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i32()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res =
-                        u16::try_from(left).unwrap_or(if left < 0 { 0 } else { u16::MAX });
-                    let right_res =
-                        u16::try_from(right).unwrap_or(if right < 0 { 0 } else { u16::MAX });
-
-                    this.write_scalar(Scalar::from_u16(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_u16(right_res), &right_dest)?;
-                }
+                packusdw(this, left, right, dest)?;
             }
             // Used to implement the _mm_dp_ps and _mm_dp_pd functions.
             // Conditionally multiplies the packed floating-point elements in
@@ -176,40 +155,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(left_len, dest_len.checked_mul(2).unwrap());
-
-                let imm = this.read_scalar(imm)?.to_u8()?;
-                // Bit 2 of `imm` specifies the offset for indices of `left`.
-                // The offset is 0 when the bit is 0 or 4 when the bit is 1.
-                let left_offset = u64::from((imm >> 2) & 1).checked_mul(4).unwrap();
-                // Bits 0..=1 of `imm` specify the offset for indices of
-                // `right` in blocks of 4 elements.
-                let right_offset = u64::from(imm & 0b11).checked_mul(4).unwrap();
-
-                for i in 0..dest_len {
-                    let left_offset = left_offset.checked_add(i).unwrap();
-                    let mut res: u16 = 0;
-                    for j in 0..4 {
-                        let left = this
-                            .read_scalar(
-                                &this.project_index(&left, left_offset.checked_add(j).unwrap())?,
-                            )?
-                            .to_u8()?;
-                        let right = this
-                            .read_scalar(
-                                &this
-                                    .project_index(&right, right_offset.checked_add(j).unwrap())?,
-                            )?
-                            .to_u8()?;
-                        res = res.checked_add(left.abs_diff(right).into()).unwrap();
-                    }
-                    this.write_scalar(Scalar::from_u16(res), &this.project_index(&dest, i)?)?;
-                }
+                mpsadbw(this, left, right, imm, dest)?;
             }
             // Used to implement the _mm_testz_si128, _mm_testc_si128
             // and _mm_testnzc_si128 functions.
@@ -228,8 +174,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

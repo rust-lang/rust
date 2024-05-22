@@ -69,7 +69,7 @@ pub(super) fn check(
         cx,
         variant.lint(),
         expr.span,
-        &format!("used `{}()` on {kind} value", variant.method_name(is_err)),
+        format!("used `{}()` on {kind} value", variant.method_name(is_err)),
         |diag| {
             diag.note(format!("if this value is {none_prefix}`{none_value}`, it will panic"));
 

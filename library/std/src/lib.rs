@@ -212,16 +212,19 @@
 //! [rust-discord]: https://discord.gg/rust-lang
 //! [array]: prim@array
 //! [slice]: prim@slice
-// To run std tests without x.py without ending up with two copies of std, Miri needs to be
-// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no effect there.
-#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
-// miri-test-libstd also prefers to make std use the sysroot versions of the dependencies.
-#![cfg_attr(feature = "miri-test-libstd", feature(rustc_private))]
-//
+
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
-#![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
-#![cfg_attr(not(bootstrap), rustc_preserve_ub_checks)]
+#![cfg_attr(
+    feature = "restricted-std",
+    unstable(
+        feature = "restricted_std",
+        issue = "none",
+        reason = "You have attempted to use a standard library built for a platform that it doesn't \
+            know how to support. Consider building it for a known environment, disabling it with \
+            `#![no_std]` or overriding this warning by enabling this feature."
+    )
+)]
+#![rustc_preserve_ub_checks]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
@@ -262,7 +265,6 @@
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
-#![cfg_attr(target_os = "xous", feature(slice_ptr_len))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
 #![cfg_attr(
     all(any(target_arch = "x86_64", target_arch = "x86"), target_os = "uefi"),
@@ -275,6 +277,7 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(asm_experimental_arch)]
 #![feature(c_unwind)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
@@ -289,6 +292,8 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
@@ -309,7 +314,6 @@
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
-#![feature(utf8_chunks)]
 // tidy-alphabetical-end
 //
 // Library features (core):
@@ -330,7 +334,6 @@
 #![feature(float_minimum_maximum)]
 #![feature(float_next_up_down)]
 #![feature(fmt_internals)]
-#![feature(generic_nonzero)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(hint_assert_unchecked)]
@@ -353,6 +356,7 @@
 #![feature(str_internals)]
 #![feature(strict_provenance)]
 #![feature(strict_provenance_atomic_ptr)]
+#![feature(ub_checks)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
@@ -403,7 +407,6 @@
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
-#![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
@@ -427,8 +430,12 @@ extern crate test;
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
+
+// Many compiler tests depend on libc being pulled in by std
+// so include it here even if it's unused.
 #[doc(masked)]
 #[allow(unused_extern_crates)]
+#[cfg(not(all(windows, target_env = "msvc")))]
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
@@ -564,6 +571,10 @@ pub use core::u8;
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
 
+#[unstable(feature = "f128", issue = "116909")]
+pub mod f128;
+#[unstable(feature = "f16", issue = "116909")]
+pub mod f16;
 pub mod f32;
 pub mod f64;
 
@@ -582,6 +593,8 @@ pub mod net;
 pub mod num;
 pub mod os;
 pub mod panic;
+#[unstable(feature = "core_pattern_types", issue = "none")]
+pub mod pat;
 pub mod path;
 pub mod process;
 pub mod sync;

@@ -1,0 +1,464 @@
+# This file contains definitions of CI job parameters that are loaded
+# dynamically in CI from ci.yml.
+runners:
+  - &base-job
+    env: { }
+
+  - &job-linux-4c
+    os: ubuntu-20.04-4core-16gb
+    <<: *base-job
+
+  - &job-linux-8c
+    os: ubuntu-20.04-8core-32gb
+    <<: *base-job
+
+  - &job-linux-16c
+    os: ubuntu-20.04-16core-64gb
+    <<: *base-job
+
+  - &job-macos-xl
+    os: macos-13 # We use the standard runner for now
+    <<: *base-job
+
+  - &job-macos-m1
+    os: macos-14
+    <<: *base-job
+
+  - &job-windows-8c
+    os: windows-2022-8core-32gb
+    <<: *base-job
+
+  - &job-windows-16c
+    os: windows-2022-16core-64gb
+    <<: *base-job
+
+  - &job-aarch64-linux
+    os: [ self-hosted, ARM64, linux ]
+
+envs:
+  env-x86_64-apple-tests: &env-x86_64-apple-tests
+    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+    RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+    MACOSX_DEPLOYMENT_TARGET: 10.12
+    MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+    SELECT_XCODE: /Applications/Xcode_14.3.1.app
+    NO_LLVM_ASSERTIONS: 1
+    NO_DEBUG_ASSERTIONS: 1
+    NO_OVERFLOW_CHECKS: 1
+
+  production:
+    &production
+    DEPLOY_BUCKET: rust-lang-ci2
+    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
+    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
+    # rotate them in a single branch while keeping the old key in another
+    # branch, which wouldn't be possible if the key was named with the kind
+    # (caches, artifacts...).
+    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+    AWS_REGION: us-west-1
+
+  try:
+    <<: *production
+    DIST_TRY_BUILD: 1
+
+  auto:
+    <<: *production
+
+  pr:
+    PR_CI_JOB: 1
+
+# Jobs that run on each push to a pull request (PR)
+# These jobs automatically inherit envs.pr, to avoid repeating
+# it in each job definition.
+pr:
+  - image: mingw-check
+    <<: *job-linux-4c
+  - image: mingw-check-tidy
+    continue_on_error: true
+    <<: *job-linux-4c
+  - image: x86_64-gnu-llvm-17
+    env:
+      ENABLE_GCC_CODEGEN: "1"
+    <<: *job-linux-16c
+  - image: x86_64-gnu-tools
+    <<: *job-linux-16c
+
+# Jobs that run when you perform a try build (@bors try)
+# These jobs automatically inherit envs.try, to avoid repeating
+# it in each job definition.
+try:
+  - image: dist-x86_64-linux
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-linux-16c
+
+# Main CI jobs that have to be green to merge a commit into master
+# These jobs automatically inherit envs.auto, to avoid repeating
+# it in each job definition.
+auto:
+  #############################
+  #   Linux/Docker builders   #
+  #############################
+
+  - image: aarch64-gnu
+    <<: *job-aarch64-linux
+
+  - image: arm-android
+    <<: *job-linux-4c
+
+  - image: armhf-gnu
+    <<: *job-linux-4c
+
+  - image: dist-aarch64-linux
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-linux-4c
+
+  - image: dist-android
+    <<: *job-linux-4c
+
+  - image: dist-arm-linux
+    <<: *job-linux-8c
+
+  - image: dist-armhf-linux
+    <<: *job-linux-4c
+
+  - image: dist-armv7-linux
+    <<: *job-linux-4c
+
+  - image: dist-i586-gnu-i586-i686-musl
+    <<: *job-linux-4c
+
+  - image: dist-i686-linux
+    <<: *job-linux-4c
+
+  - image: dist-loongarch64-linux
+    <<: *job-linux-4c
+
+  - image: dist-ohos
+    <<: *job-linux-4c
+
+  - image: dist-powerpc-linux
+    <<: *job-linux-4c
+
+  - image: dist-powerpc64-linux
+    <<: *job-linux-4c
+
+  - image: dist-powerpc64le-linux
+    <<: *job-linux-4c
+
+  - image: dist-riscv64-linux
+    <<: *job-linux-4c
+
+  - image: dist-s390x-linux
+    <<: *job-linux-4c
+
+  - image: dist-various-1
+    <<: *job-linux-4c
+
+  - image: dist-various-2
+    <<: *job-linux-4c
+
+  - image: dist-x86_64-freebsd
+    <<: *job-linux-4c
+
+  - image: dist-x86_64-illumos
+    <<: *job-linux-4c
+
+  - image: dist-x86_64-linux
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-linux-16c
+
+  - image: dist-x86_64-linux-alt
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-linux-16c
+
+  - image: dist-x86_64-musl
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-linux-8c
+
+  - image: dist-x86_64-netbsd
+    <<: *job-linux-4c
+
+  - image: i686-gnu
+    <<: *job-linux-8c
+
+  - image: i686-gnu-nopt
+    <<: *job-linux-8c
+
+  - image: mingw-check
+    <<: *job-linux-4c
+
+  - image: test-various
+    <<: *job-linux-4c
+
+  - image: x86_64-gnu
+    <<: *job-linux-4c
+
+  # This job ensures commits landing on nightly still pass the full
+  # test suite on the stable channel. There are some UI tests that
+  # depend on the channel being built (for example if they include the
+  # channel name on the output), and this builder prevents landing
+  # changes that would result in broken builds after a promotion.
+  - image: x86_64-gnu-stable
+    # Only run this job on the nightly channel. Running this on beta
+    # could cause failures when `dev: 1` in `stage0.txt`, and running
+    # this on stable is useless.
+    only_on_channel: nightly
+    env:
+      IMAGE: x86_64-gnu
+      RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
+    <<: *job-linux-4c
+
+  - image: x86_64-gnu-aux
+    <<: *job-linux-4c
+
+  - image: x86_64-gnu-integration
+    # Only run this job on the nightly channel. Fuchsia requires
+    # nightly features to compile, and this job would fail if
+    # executed on beta and stable.
+    only_on_channel: nightly
+    <<: *job-linux-8c
+
+  - image: x86_64-gnu-debug
+    <<: *job-linux-4c
+
+  - image: x86_64-gnu-distcheck
+    <<: *job-linux-8c
+
+  - image: x86_64-gnu-llvm-18
+    env:
+      RUST_BACKTRACE: 1
+    <<: *job-linux-8c
+
+  - image: x86_64-gnu-llvm-17
+    env:
+      RUST_BACKTRACE: 1
+    <<: *job-linux-8c
+
+  - image: x86_64-gnu-nopt
+    <<: *job-linux-4c
+
+  - image: x86_64-gnu-tools
+    env:
+      DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
+    <<: *job-linux-8c
+
+  ####################
+  #  macOS Builders  #
+  ####################
+
+  - image: dist-x86_64-apple
+    env:
+      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+      RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      MACOSX_DEPLOYMENT_TARGET: 10.12
+      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+      DIST_REQUIRE_ALL_TOOLS: 1
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-macos-xl
+
+  - image: dist-apple-various
+    env:
+      SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+      RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      MACOSX_DEPLOYMENT_TARGET: 10.12
+      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+    <<: *job-macos-xl
+
+  - image: x86_64-apple-1
+    env:
+      <<: *env-x86_64-apple-tests
+    <<: *job-macos-xl
+
+  - image: x86_64-apple-2
+    env:
+      SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps
+      <<: *env-x86_64-apple-tests
+    <<: *job-macos-xl
+
+  # This target only needs to support 11.0 and up as nothing else supports the hardware
+  - image: dist-aarch64-apple
+    env:
+      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --enable-full-tools
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+        --set llvm.ninja=false
+        --set rust.lto=thin
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      USE_XCODE_CLANG: 1
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-macos-m1
+
+  # This target only needs to support 11.0 and up as nothing else supports the hardware
+  - image: aarch64-apple
+    env:
+      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      SELECT_XCODE: /Applications/Xcode_14.3.1.app
+      USE_XCODE_CLANG: 1
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+    <<: *job-macos-m1
+
+  ######################
+  #  Windows Builders  #
+  ######################
+
+  - image: x86_64-msvc
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc
+    <<: *job-windows-8c
+
+  - image: i686-msvc
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+      SCRIPT: make ci-msvc
+    <<: *job-windows-8c
+
+  - image: x86_64-msvc-ext
+    env:
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+    <<: *job-windows-8c
+
+  # 32/64-bit MinGW builds.
+  #
+  # We are using MinGW with POSIX threads since LLVM requires
+  # C++'s std::thread which is disabled in libstdc++ with win32 threads.
+  # FIXME: Libc++ doesn't have this limitation so we can avoid
+  # winpthreads if we switch to it.
+  #
+  # Instead of relying on the MinGW version installed on CI we download
+  # and install one ourselves so we won't be surprised by changes to CI's
+  # build image.
+  #
+  # Finally, note that the downloads below are all in the `rust-lang-ci` S3
+  # bucket, but they clearly didn't originate there! The downloads originally
+  # came from the mingw-w64 SourceForge download site. Unfortunately
+  # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
+
+  - image: i686-mingw
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+      SCRIPT: make ci-mingw
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+      CUSTOM_MINGW: 1
+    <<: *job-windows-8c
+
+  - image: x86_64-mingw
+    env:
+      SCRIPT: make ci-mingw
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-gnu
+        --enable-profiler
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+      CUSTOM_MINGW: 1
+    <<: *job-windows-8c
+
+  - image: dist-x86_64-msvc
+    env:
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-msvc
+        --host=x86_64-pc-windows-msvc
+        --target=x86_64-pc-windows-msvc
+        --enable-full-tools
+        --enable-profiler
+        --set rust.codegen-units=1
+      SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-windows-8c
+
+  - image: dist-i686-msvc
+    env:
+      RUST_CONFIGURE_ARGS: >-
+        --build=i686-pc-windows-msvc
+        --host=i686-pc-windows-msvc
+        --target=i686-pc-windows-msvc,i586-pc-windows-msvc
+        --enable-full-tools
+        --enable-profiler
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-windows-8c
+
+  - image: dist-aarch64-msvc
+    env:
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-msvc
+        --host=aarch64-pc-windows-msvc
+        --enable-full-tools
+        --enable-profiler
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-windows-8c
+
+  - image: dist-i686-mingw
+    env:
+      RUST_CONFIGURE_ARGS: >-
+        --build=i686-pc-windows-gnu
+        --enable-full-tools
+        --enable-profiler
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      CUSTOM_MINGW: 1
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-windows-8c
+
+  - image: dist-x86_64-mingw
+    env:
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-gnu
+        --enable-full-tools
+        --enable-profiler
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+      CUSTOM_MINGW: 1
+      DIST_REQUIRE_ALL_TOOLS: 1
+    <<: *job-windows-8c
+
+  - image: dist-x86_64-msvc-alt
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+    <<: *job-windows-8c

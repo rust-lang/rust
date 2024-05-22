@@ -42,6 +42,18 @@ generated code, but may be slower to compile.
 The default value, if not specified, is 16 for non-incremental builds. For
 incremental builds the default is 256 which allows caching to be more granular.
 
+## collapse-macro-debuginfo
+
+This flag controls whether code locations from a macro definition are collapsed into a single
+location associated with that macro's call site, when generating debuginfo for this crate.
+
+This option, if passed, overrides both default collapsing behavior and `#[collapse_debuginfo]`
+attributes in code.
+
+* `y`, `yes`, `on`, `true`: collapse code locations in debuginfo.
+* `n`, `no`, `off` or `false`: do not collapse code locations in debuginfo.
+* `external`: collapse code locations in debuginfo only if the macro comes from a different crate.
+
 ## control-flow-guard
 
 This flag controls whether LLVM enables the Windows [Control Flow
@@ -479,6 +491,26 @@ then `-C target-feature=+crt-static` "wins" over `-C relocation-model=pic`,
 and the linker is instructed (`-static`) to produce a statically linked
 but not position-independent executable.
 
+## relro-level
+
+This flag controls what level of RELRO (Relocation Read-Only) is enabled. RELRO is an exploit
+mitigation which makes the Global Offset Table (GOT) read-only.
+
+Supported values for this option are:
+
+- `off`: Dynamically linked functions are resolved lazily and the GOT is writable.
+- `partial`: Dynamically linked functions are resolved lazily and written into the Procedure
+  Linking Table (PLT) part of the GOT (`.got.plt`). The non-PLT part of the GOT (`.got`) is made
+  read-only and both are moved to prevent writing from buffer overflows.
+- `full`: Dynamically linked functions are resolved at the start of program execution and the
+  Global Offset Table (`.got`/`.got.plt`) is populated eagerly and then made read-only. The GOT is
+  also moved to prevent writing from buffer overflows. Full RELRO uses more memory and increases
+  process startup time.
+
+This flag is ignored on platforms where RELRO is not supported (targets which do not use the ELF
+binary format), such as Windows or macOS. Each rustc target has its own default for RELRO. rustc
+enables Full RELRO by default on platforms where it is supported.
+
 ## remark
 
 This flag lets you print remarks for optimization passes.
@@ -548,22 +580,23 @@ data from binaries during linking.
 
 Supported values for this option are:
 
-- `none` - debuginfo and symbols (if they exist) are copied to the produced
-  binary or separate files depending on the target (e.g. `.pdb` files in case
-  of MSVC).
+- `none` - debuginfo and symbols are not modified.
 - `debuginfo` - debuginfo sections and debuginfo symbols from the symbol table
-  section are stripped at link time and are not copied to the produced binary
-  or separate files. This should leave backtraces mostly-intact but may make
-  using a debugger like gdb or lldb ineffectual.
-- `symbols` - same as `debuginfo`, but the rest of the symbol table section is stripped as well,
-  depending on platform support. On platforms which depend on this symbol table for backtraces,
-  profiling, and similar, this can affect them so negatively as to make the trace incomprehensible.
-  Programs which may be combined with others, such as CLI pipelines and developer tooling,
-  or even anything which wants crash-reporting, should usually avoid `-Cstrip=symbols`.
+  section are stripped at link time and are not copied to the produced binary.
+  This should leave backtraces mostly-intact but may make using a debugger like
+  gdb or lldb ineffectual. Prior to 1.79, this unintentionally disabled the
+  generation of `*.pdb` files on MSVC, resulting in the absence of symbols.
+- `symbols` - same as `debuginfo`, but the rest of the symbol table section is
+  stripped as well, depending on platform support. On platforms which depend on
+  this symbol table for backtraces, profiling, and similar, this can affect
+  them so negatively as to make the trace incomprehensible. Programs which may
+  be combined with others, such as CLI pipelines and developer tooling, or even
+  anything which wants crash-reporting, should usually avoid `-Cstrip=symbols`.
 
-Note that, at any level, removing debuginfo only necessarily impacts "friendly" introspection.
-`-Cstrip` cannot be relied on as a meaningful security or obfuscation measure, as disassemblers
-and decompilers can extract considerable information even in the absence of symbols.
+Note that, at any level, removing debuginfo only necessarily impacts "friendly"
+introspection. `-Cstrip` cannot be relied on as a meaningful security or
+obfuscation measure, as disassemblers and decompilers can extract considerable
+information even in the absence of symbols.
 
 ## symbol-mangling-version
 

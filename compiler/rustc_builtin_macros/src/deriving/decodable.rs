@@ -10,7 +10,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_rustc_decodable(
+pub(crate) fn expand_deriving_rustc_decodable(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,

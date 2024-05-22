@@ -11,7 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[deny(keyword_idents)]` implied by `#[deny(rust_2018_compatibility)]`
+   = note: `#[deny(keyword_idents_2018)]` implied by `#[deny(rust_2018_compatibility)]`
 
 error: aborting due to 1 previous error
 

@@ -4,6 +4,7 @@ use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
+use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
 use rustc_session::lint;
@@ -457,7 +458,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
                 }
             }
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
+            ty::Pat(..) | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
                 // just integers, so we simply allow them.
                 PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }

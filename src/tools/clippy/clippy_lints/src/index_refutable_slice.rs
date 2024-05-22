@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::HirId;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
@@ -87,17 +88,14 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     extract_msrv_attr!(LateContext);
 }
 
-fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir::HirId, SliceLintInformation> {
-    let mut removed_pat: FxHashSet<hir::HirId> = FxHashSet::default();
-    let mut slices: FxIndexMap<hir::HirId, SliceLintInformation> = FxIndexMap::default();
+fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<HirId, SliceLintInformation> {
+    let mut removed_pat: FxHashSet<HirId> = FxHashSet::default();
+    let mut slices: FxIndexMap<HirId, SliceLintInformation> = FxIndexMap::default();
     pat.walk_always(|pat| {
         // We'll just ignore mut and ref mut for simplicity sake right now
-        if let hir::PatKind::Binding(
-            hir::BindingAnnotation(by_ref, hir::Mutability::Not),
-            value_hir_id,
-            ident,
-            sub_pat,
-        ) = pat.kind && by_ref != hir::ByRef::Yes(hir::Mutability::Mut)
+        if let hir::PatKind::Binding(hir::BindingMode(by_ref, hir::Mutability::Not), value_hir_id, ident, sub_pat) =
+            pat.kind
+            && by_ref != hir::ByRef::Yes(hir::Mutability::Mut)
         {
             // This block catches bindings with sub patterns. It would be hard to build a correct suggestion
             // for them and it's likely that the user knows what they are doing in such a case.
@@ -206,10 +204,10 @@ impl SliceLintInformation {
 
 fn filter_lintable_slices<'tcx>(
     cx: &LateContext<'tcx>,
-    slice_lint_info: FxIndexMap<hir::HirId, SliceLintInformation>,
+    slice_lint_info: FxIndexMap<HirId, SliceLintInformation>,
     max_suggested_slice: u64,
     scope: &'tcx hir::Expr<'tcx>,
-) -> FxIndexMap<hir::HirId, SliceLintInformation> {
+) -> FxIndexMap<HirId, SliceLintInformation> {
     let mut visitor = SliceIndexLintingVisitor {
         cx,
         slice_lint_info,
@@ -223,7 +221,7 @@ fn filter_lintable_slices<'tcx>(
 
 struct SliceIndexLintingVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    slice_lint_info: FxIndexMap<hir::HirId, SliceLintInformation>,
+    slice_lint_info: FxIndexMap<HirId, SliceLintInformation>,
     max_suggested_slice: u64,
 }
 

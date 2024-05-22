@@ -181,7 +181,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                                 cx,
                                 DEFAULT_LINT,
                                 item.span,
-                                &format!("the lint `{}` has the default lint description", item.ident.name),
+                                format!("the lint `{}` has the default lint description", item.ident.name),
                             );
                         }
 
@@ -191,7 +191,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                             cx,
                             DEFAULT_DEPRECATION_REASON,
                             item.span,
-                            &format!("the lint `{}` has the default deprecation reason", item.ident.name),
+                            format!("the lint `{}` has the default deprecation reason", item.ident.name),
                         );
                     }
                 }
@@ -247,7 +247,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     cx,
                     LINT_WITHOUT_LINT_PASS,
                     lint_span,
-                    &format!("the lint `{lint_name}` is not added to any `LintPass`"),
+                    format!("the lint `{lint_name}` is not added to any `LintPass`"),
                 );
             }
         }

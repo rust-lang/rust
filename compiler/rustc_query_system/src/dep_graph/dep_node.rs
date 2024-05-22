@@ -49,6 +49,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
 use rustc_hir::definitions::DefPathHash;
+use rustc_macros::{Decodable, Encodable};
 use std::fmt;
 use std::hash::Hash;
 
@@ -75,8 +76,6 @@ impl DepKind {
     }
 }
 
-static_assert_size!(DepKind, 2);
-
 pub fn default_dep_kind_debug(kind: DepKind, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("DepKind").field("variant", &kind.variant).finish()
 }
@@ -95,15 +94,6 @@ pub struct DepNode {
     pub kind: DepKind,
     pub hash: PackedFingerprint,
 }
-
-// We keep a lot of `DepNode`s in memory during compilation. It's not
-// required that their size stay the same, but we don't want to change
-// it inadvertently. This assert just ensures we're aware of any change.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-static_assert_size!(DepNode, 18);
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-static_assert_size!(DepNode, 24);
 
 impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
@@ -285,8 +275,7 @@ pub struct DepKindStruct<Tcx: DepContext> {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct WorkProductId {
     hash: Fingerprint,
 }
@@ -315,4 +304,18 @@ impl<HCX> ToStableHashKey<HCX> for WorkProductId {
 unsafe impl StableOrd for WorkProductId {
     // Fingerprint can use unstable (just a tuple of `u64`s), so WorkProductId can as well
     const CAN_USE_UNSTABLE_SORT: bool = true;
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(DepKind, 2);
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    static_assert_size!(DepNode, 18);
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    static_assert_size!(DepNode, 24);
+    // tidy-alphabetical-end
 }

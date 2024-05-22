@@ -147,7 +147,7 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
     // rustc_codegen_llvm currently doesn't use this error string, but it might be
-    // useful in the future, and in the mean time this tells LLVM that the
+    // useful in the future, and in the meantime this tells LLVM that the
     // error was not ignored and that it shouldn't abort the process.
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
     return nullptr;
@@ -175,7 +175,7 @@ extern "C" void LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
 extern "C" LLVMRustResult
 LLVMRustWriteArchive(char *Dst, size_t NumMembers,
                      const LLVMRustArchiveMemberRef *NewMembers,
-                     bool WriteSymbtab, LLVMRustArchiveKind RustKind) {
+                     bool WriteSymbtab, LLVMRustArchiveKind RustKind, bool isEC) {
 
   std::vector<NewArchiveMember> Members;
   auto Kind = fromRust(RustKind);
@@ -207,7 +207,7 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
   auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
 #else
   auto SymtabMode = WriteSymbtab ? SymtabWritingMode::NormalSymtab : SymtabWritingMode::NoSymtab;
-  auto Result = writeArchive(Dst, Members, SymtabMode, Kind, true, false);
+  auto Result = writeArchive(Dst, Members, SymtabMode, Kind, true, false, nullptr, isEC);
 #endif
   if (!Result)
     return LLVMRustResult::Success;

@@ -318,18 +318,20 @@ fn f() {
 
     expect![[r#"
         fn f() {
-            $crate::panicking::panic_fmt(
-                builtin#lang(Arguments::new_v1_formatted)(
-                    &[
-                        "cc",
-                    ],
-                    &[],
-                    &[],
-                    unsafe {
-                        builtin#lang(UnsafeArg::new)()
-                    },
-                ),
-            );
+            {
+                $crate::panicking::panic_fmt(
+                    builtin#lang(Arguments::new_v1_formatted)(
+                        &[
+                            "cc",
+                        ],
+                        &[],
+                        &[],
+                        unsafe {
+                            builtin#lang(UnsafeArg::new)()
+                        },
+                    ),
+                );
+            };
         }"#]]
     .assert_eq(&body.pretty_print(&db, def))
 }

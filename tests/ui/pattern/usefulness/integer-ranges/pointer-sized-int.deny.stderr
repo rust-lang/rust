@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:13:11
+  --> $DIR/pointer-sized-int.rs:12:11
    |
 LL |     match 0usize {
    |           ^^^^^^ pattern `usize::MAX..` not covered
@@ -13,7 +13,7 @@ LL +         usize::MAX.. => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:18:11
+  --> $DIR/pointer-sized-int.rs:17:11
    |
 LL |     match 0isize {
    |           ^^^^^^ patterns `..isize::MIN` and `isize::MAX..` not covered
@@ -27,7 +27,7 @@ LL +         ..isize::MIN | isize::MAX.. => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:23:8
+  --> $DIR/pointer-sized-int.rs:22:8
    |
 LL |     m!(0usize, 0..=usize::MAX);
    |        ^^^^^^ pattern `usize::MAX..` not covered
@@ -40,7 +40,7 @@ LL |         match $s { $($t)+ => {}, usize::MAX.. => todo!() }
    |                                +++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:25:8
+  --> $DIR/pointer-sized-int.rs:24:8
    |
 LL |     m!(0usize, 0..5 | 5..=usize::MAX);
    |        ^^^^^^ pattern `usize::MAX..` not covered
@@ -53,7 +53,7 @@ LL |         match $s { $($t)+ => {}, usize::MAX.. => todo!() }
    |                                +++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:27:8
+  --> $DIR/pointer-sized-int.rs:26:8
    |
 LL |     m!(0usize, 0..usize::MAX | usize::MAX);
    |        ^^^^^^ pattern `usize::MAX..` not covered
@@ -66,7 +66,7 @@ LL |         match $s { $($t)+ => {}, usize::MAX.. => todo!() }
    |                                +++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `(usize::MAX.., _)` not covered
-  --> $DIR/pointer-sized-int.rs:29:8
+  --> $DIR/pointer-sized-int.rs:28:8
    |
 LL |     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::MAX, false));
    |        ^^^^^^^^^^^^^^ pattern `(usize::MAX.., _)` not covered
@@ -79,7 +79,7 @@ LL |         match $s { $($t)+ => {}, (usize::MAX.., _) => todo!() }
    |                                ++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:38:8
+  --> $DIR/pointer-sized-int.rs:37:8
    |
 LL |     m!(0isize, isize::MIN..=isize::MAX);
    |        ^^^^^^ patterns `..isize::MIN` and `isize::MAX..` not covered
@@ -92,7 +92,7 @@ LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:40:8
+  --> $DIR/pointer-sized-int.rs:39:8
    |
 LL |     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
    |        ^^^^^^ patterns `..isize::MIN` and `isize::MAX..` not covered
@@ -105,7 +105,7 @@ LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:42:8
+  --> $DIR/pointer-sized-int.rs:41:8
    |
 LL |     m!(0isize, isize::MIN..=-1 | 0 | 1..=isize::MAX);
    |        ^^^^^^ patterns `..isize::MIN` and `isize::MAX..` not covered
@@ -118,7 +118,7 @@ LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
-  --> $DIR/pointer-sized-int.rs:44:8
+  --> $DIR/pointer-sized-int.rs:43:8
    |
 LL |     m!(0isize, isize::MIN..isize::MAX | isize::MAX);
    |        ^^^^^^ patterns `..isize::MIN` and `isize::MAX..` not covered
@@ -131,7 +131,7 @@ LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `(..isize::MIN, _)` and `(isize::MAX.., _)` not covered
-  --> $DIR/pointer-sized-int.rs:47:9
+  --> $DIR/pointer-sized-int.rs:46:9
    |
 LL |         (0isize, true),
    |         ^^^^^^^^^^^^^^ patterns `(..isize::MIN, _)` and `(isize::MAX.., _)` not covered
@@ -144,7 +144,7 @@ LL |         match $s { $($t)+ => {}, (..isize::MIN, _) | (isize::MAX.., _) => t
    |                                ++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `usize` is non-empty
-  --> $DIR/pointer-sized-int.rs:58:11
+  --> $DIR/pointer-sized-int.rs:57:11
    |
 LL |     match 7usize {}
    |           ^^^^^^

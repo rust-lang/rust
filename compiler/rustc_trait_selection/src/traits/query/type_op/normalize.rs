@@ -15,7 +15,7 @@ where
     type QueryResponse = T;
 
     fn try_fast_path(_tcx: TyCtxt<'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
-        if !key.value.value.has_projections() { Some(key.value.value) } else { None }
+        if !key.value.value.has_aliases() { Some(key.value.value) } else { None }
     }
 
     fn perform_query(
@@ -34,7 +34,9 @@ where
     }
 }
 
-pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx> + Copy {
+pub trait Normalizable<'tcx>:
+    fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<TyCtxt<'tcx>> + Copy
+{
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,

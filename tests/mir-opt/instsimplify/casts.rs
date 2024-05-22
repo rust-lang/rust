@@ -1,6 +1,7 @@
-//@ unit-test: InstSimplify
+//@ test-mir-pass: InstSimplify
 //@ compile-flags: -Zinline-mir
 #![crate_type = "lib"]
+#![feature(core_intrinsics)]
 
 #[inline(always)]
 fn generic_cast<T, U>(x: *const T) -> *const U {
@@ -22,4 +23,12 @@ pub fn roundtrip(x: *const u8) -> *const u8 {
     // CHECK: _3 = move _4 as *mut u8 (PtrToPtr);
     // CHECK: _2 = move _3 as *const u8 (PointerCoercion(MutToConstPointer));
     x as *mut u8 as *const u8
+}
+
+// EMIT_MIR casts.roundtrip.InstSimplify.diff
+pub fn cast_thin_via_aggregate(x: *const u8) -> *const () {
+    // CHECK-LABEL: fn cast_thin_via_aggregate(
+    // CHECK: _2 = _1;
+    // CHECK: _0 = move _2 as *const () (PtrToPtr);
+    std::intrinsics::aggregate_raw_ptr(x, ())
 }

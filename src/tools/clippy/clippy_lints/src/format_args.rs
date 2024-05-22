@@ -3,8 +3,8 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
-    find_format_arg_expr, find_format_args, format_arg_removal_span, format_placeholder_format_span, is_assert_macro,
-    is_format_macro, is_panic, root_macro_call, root_macro_call_first_node, FormatParamUsage, MacroCall,
+    find_format_arg_expr, format_arg_removal_span, format_placeholder_format_span, is_assert_macro, is_format_macro,
+    is_panic, matching_root_macro_call, root_macro_call_first_node, FormatArgsStorage, FormatParamUsage, MacroCall,
 };
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
@@ -167,15 +167,18 @@ impl_lint_pass!(FormatArgs => [
     UNUSED_FORMAT_SPECS,
 ]);
 
+#[allow(clippy::struct_field_names)]
 pub struct FormatArgs {
+    format_args: FormatArgsStorage,
     msrv: Msrv,
     ignore_mixed: bool,
 }
 
 impl FormatArgs {
     #[must_use]
-    pub fn new(msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
+    pub fn new(format_args: FormatArgsStorage, msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
         Self {
+            format_args,
             msrv,
             ignore_mixed: allow_mixed_uninlined_format_args,
         }
@@ -186,13 +189,13 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && is_format_macro(cx, macro_call.def_id)
-            && let Some(format_args) = find_format_args(cx, expr, macro_call.expn)
+            && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
             let linter = FormatArgsExpr {
                 cx,
                 expr,
                 macro_call: &macro_call,
-                format_args: &format_args,
+                format_args,
                 ignore_mixed: self.ignore_mixed,
             };
 
@@ -271,9 +274,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     let mut suggest_format = |spec| {
                         let message = format!("for the {spec} to apply consider using `format!()`");
 
-                        if let Some(mac_call) = root_macro_call(arg_span)
-                            && self.cx.tcx.is_diagnostic_item(sym::format_args_macro, mac_call.def_id)
-                        {
+                        if let Some(mac_call) = matching_root_macro_call(self.cx, arg_span, sym::format_args_macro) {
                             diag.span_suggestion(
                                 self.cx.sess().source_map().span_until_char(mac_call.span, '!'),
                                 message,
@@ -401,7 +402,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
             self.cx,
             FORMAT_IN_FORMAT_ARGS,
             self.macro_call.span,
-            &format!("`format!` in `{name}!` args"),
+            format!("`format!` in `{name}!` args"),
             |diag| {
                 diag.help(format!(
                     "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
@@ -431,7 +432,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
                     to_string_span.with_lo(receiver.span.hi()),
-                    &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                    format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                     "remove this",
                     String::new(),
                     Applicability::MachineApplicable,
@@ -441,7 +442,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
                     value.span,
-                    &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                    format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                     "use this",
                     format!(
                         "{}{:*>n_needed_derefs$}{receiver_snippet}",

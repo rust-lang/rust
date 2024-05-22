@@ -25,14 +25,13 @@ mod try_err;
 mod wild_in_or_pats;
 
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::source::{snippet_opt, walk_span_to_context};
-use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, tokenize_with_text};
-use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat};
-use rustc_lexer::TokenKind;
+use clippy_utils::source::walk_span_to_context;
+use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, span_contains_cfg};
+use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SpanData, SyntaxContext};
+use rustc_span::{SpanData, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -1041,7 +1040,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 significant_drop_in_scrutinee::check(cx, expr, ex, arms, source);
             }
 
-            collapsible_match::check_match(cx, arms);
+            collapsible_match::check_match(cx, arms, &self.msrv);
             if !from_expansion {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
@@ -1067,7 +1066,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     needless_match::check_match(cx, ex, arms, expr);
                     match_on_vec_items::check(cx, ex);
                     match_str_case_mismatch::check(cx, ex, arms);
-                    redundant_guards::check(cx, arms);
+                    redundant_guards::check(cx, arms, &self.msrv);
 
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);
@@ -1084,7 +1083,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
         } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
-            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else);
+            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, &self.msrv);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {
                     if self.msrv.meets(msrvs::MATCHES_MACRO) {
@@ -1197,27 +1196,17 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     }
 }
 
-/// Checks if the given span contains a `#[cfg(..)]` attribute
-fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
-    let Some(snip) = snippet_opt(cx, s) else {
-        // Assume true. This would require either an invalid span, or one which crosses file boundaries.
-        return true;
-    };
-    let mut iter = tokenize_with_text(&snip);
-
-    // Search for the token sequence [`#`, `[`, `cfg`]
-    while iter.any(|(t, _)| matches!(t, TokenKind::Pound)) {
-        let mut iter = iter.by_ref().skip_while(|(t, _)| {
-            matches!(
-                t,
-                TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. }
-            )
-        });
-        if matches!(iter.next(), Some((TokenKind::OpenBracket, _)))
-            && matches!(iter.next(), Some((TokenKind::Ident, "cfg")))
-        {
-            return true;
-        }
+/// Checks if `pat` contains OR patterns that cannot be nested due to a too low MSRV.
+fn pat_contains_disallowed_or(pat: &Pat<'_>, msrv: &Msrv) -> bool {
+    if msrv.meets(msrvs::OR_PATTERNS) {
+        return false;
     }
-    false
+
+    let mut result = false;
+    pat.walk(|p| {
+        let is_or = matches!(p.kind, PatKind::Or(_));
+        result |= is_or;
+        !is_or
+    });
+    result
 }

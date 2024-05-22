@@ -1,4 +1,4 @@
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 #![feature(auto_traits)]
 #![feature(negative_impls)]
 
@@ -23,7 +23,7 @@ fn assert_foo<T: Foo>(f: T) {}
 fn main() {
     // Make sure 'static is erased for coroutine interiors so we can't match it in trait selection
     let x: &'static _ = &OnlyFooIfStaticRef(No);
-    let gen = move || {
+    let gen = #[coroutine] move || {
         let x = x;
         yield;
         assert_foo(x);
@@ -33,7 +33,7 @@ fn main() {
 
     // Allow impls which matches any lifetime
     let x = &OnlyFooIfRef(No);
-    let gen = move || {
+    let gen = #[coroutine] move || {
         let x = x;
         yield;
         assert_foo(x);
@@ -41,7 +41,7 @@ fn main() {
     assert_foo(gen); // ok
 
     // Disallow impls which relates lifetimes in the coroutine interior
-    let gen = move || {
+    let gen = #[coroutine] move || {
         let a = A(&mut true, &mut true, No);
         //~^ temporary value dropped while borrowed
         //~| temporary value dropped while borrowed

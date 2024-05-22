@@ -68,7 +68,7 @@ pub(super) fn check(
         cx,
         CAST_LOSSLESS,
         expr.span,
-        &message,
+        message,
         "try",
         format!("{cast_to_fmt}::from({sugg})"),
         app,

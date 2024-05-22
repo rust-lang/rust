@@ -115,53 +115,46 @@ LL |         pub fn opaque_arg(_: impl Trait) -> i32 { 0 }
 LL |     reuse to_reuse::opaque_arg;
    |                     ^^^^^^^^^^
 
-error: delegation to a function with opaque type is not supported yet
-  --> $DIR/not-supported.rs:76:21
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:82:5: 82:24>::{synthetic#0}`
+  --> $DIR/not-supported.rs:83:25
    |
-LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
-   |         --------------------------------- callee defined here
-...
-LL |     reuse to_reuse::opaque_ret;
-   |                     ^^^^^^^^^^
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/not-supported.rs:83:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/not-supported.rs:82:5: 82:24>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/not-supported.rs:82:5: 82:24>` is well-formed
+  --> $DIR/not-supported.rs:82:5
+   |
+LL |     impl ToReuse for u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: delegation to unsafe functions is not supported yet
-  --> $DIR/not-supported.rs:88:21
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:85:5: 85:25>::{synthetic#0}`
+  --> $DIR/not-supported.rs:86:24
    |
-LL |         pub unsafe fn unsafe_fn() {}
-   |         ------------------------- callee defined here
-...
-LL |     reuse to_reuse::unsafe_fn;
-   |                     ^^^^^^^^^
-
-error: delegation to non Rust ABI functions is not supported yet
-  --> $DIR/not-supported.rs:90:21
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
    |
-LL |         pub extern "C" fn extern_fn() {}
-   |         ----------------------------- callee defined here
-...
-LL |     reuse to_reuse::extern_fn;
-   |                     ^^^^^^^^^
-
-error: delegation to variadic functions is not supported yet
-  --> $DIR/not-supported.rs:92:21
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/not-supported.rs:86:24
    |
-LL |         pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) {}
-   |         ------------------------------------------------------------- callee defined here
-...
-LL |     reuse to_reuse::variadic_fn;
-   |                     ^^^^^^^^^^^
-
-error: delegation to const functions is not supported yet
-  --> $DIR/not-supported.rs:94:21
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/not-supported.rs:85:5: 85:25>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/not-supported.rs:85:5: 85:25>` is well-formed
+  --> $DIR/not-supported.rs:85:5
    |
-LL |         pub const fn const_fn() {}
-   |         ----------------------- callee defined here
-...
-LL |     reuse to_reuse::const_fn;
-   |                     ^^^^^^^^
+LL |     impl ToReuse for u16 {
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: recursive delegation is not supported yet
-  --> $DIR/not-supported.rs:107:22
+  --> $DIR/not-supported.rs:99:22
    |
 LL |         pub reuse to_reuse2::foo;
    |                              --- callee defined here
@@ -169,7 +162,7 @@ LL |         pub reuse to_reuse2::foo;
 LL |     reuse to_reuse1::foo;
    |                      ^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 16 previous errors
 
-Some errors have detailed explanations: E0049, E0195.
+Some errors have detailed explanations: E0049, E0195, E0391.
 For more information about an error, try `rustc --explain E0049`.

@@ -65,7 +65,7 @@ impl<'tcx> Subdiagnostic for Overlap<'tcx> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         let Overlap { span, range } = self;
 
@@ -113,7 +113,7 @@ impl<'tcx> Subdiagnostic for GappedRange<'tcx> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         let GappedRange { span, gap, first_range } = self;
 

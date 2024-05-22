@@ -1,6 +1,7 @@
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
 use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, SubdiagMessageOp, Subdiagnostic};
+use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -69,16 +70,8 @@ impl<'a> DescriptionCtx<'a> {
 
             ty::RePlaceholder(_) | ty::ReError(_) => return None,
 
-            // FIXME(#13998) RePlaceholder should probably print like
-            // ReLateParam rather than dumping Debug output on the user.
-            //
-            // We shouldn't really be having unification failures with ReVar
-            // and ReBound though.
-            //
-            // FIXME(@lcnr): figure out why we have to handle `ReBound`
-            // here, this feels somewhat off.
             ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
-                (alt_span, "revar", format!("{region:?}"))
+                bug!("unexpected region for DescriptionCtx: {:?}", region);
             }
         };
         Some(DescriptionCtx { span, kind, arg })
@@ -163,7 +156,7 @@ impl Subdiagnostic for RegionExplanation<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);

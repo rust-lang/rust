@@ -141,8 +141,14 @@ impl StaticKey {
                     panic!("out of TLS indexes");
                 }
 
-                self.key.store(key + 1, Release);
                 register_dtor(self);
+
+                // Release-storing the key needs to be the last thing we do.
+                // This is because in `fn key()`, other threads will do an acquire load of the key,
+                // and if that sees this write then it will entirely bypass the `InitOnce`. We thus
+                // need to establish synchronization through `key`. In particular that acquire load
+                // must happen-after the register_dtor above, to ensure the dtor actually runs!
+                self.key.store(key + 1, Release);
 
                 let r = c::InitOnceComplete(self.once.get(), 0, ptr::null_mut());
                 debug_assert_eq!(r, c::TRUE);
@@ -276,6 +282,7 @@ unsafe fn register_dtor(key: &'static StaticKey) {
 // the address of the symbol to ensure it sticks around.
 
 #[link_section = ".CRT$XLB"]
+#[cfg_attr(miri, used)] // Miri only considers explicitly `#[used]` statics for `lookup_link_section`
 pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD, c::LPVOID) =
     on_tls_callback;
 
@@ -312,8 +319,22 @@ unsafe fn run_dtors() {
         // Use acquire ordering to observe key initialization.
         let mut cur = DTORS.load(Acquire);
         while !cur.is_null() {
-            let key = (*cur).key.load(Relaxed) - 1;
+            let pre_key = (*cur).key.load(Acquire);
             let dtor = (*cur).dtor.unwrap();
+            cur = (*cur).next.load(Relaxed);
+
+            // In StaticKey::init, we register the dtor before setting `key`.
+            // So if one thread's `run_dtors` races with another thread executing `init` on the same
+            // `StaticKey`, we can encounter a key of 0 here. That means this key was never
+            // initialized in this thread so we can safely skip it.
+            if pre_key == 0 {
+                continue;
+            }
+            // If this is non-zero, then via the `Acquire` load above we synchronized with
+            // everything relevant for this key. (It's not clear that this is needed, since the
+            // release-acquire pair on DTORS also establishes synchronization, but better safe than
+            // sorry.)
+            let key = pre_key - 1;
 
             let ptr = c::TlsGetValue(key);
             if !ptr.is_null() {
@@ -321,8 +342,6 @@ unsafe fn run_dtors() {
                 dtor(ptr as *mut _);
                 any_run = true;
             }
-
-            cur = (*cur).next.load(Relaxed);
         }
 
         if !any_run {

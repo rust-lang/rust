@@ -1,9 +1,10 @@
 use crate::solve::EvalCtxt;
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn normalize_anon_const(
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,

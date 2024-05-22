@@ -50,7 +50,7 @@
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = if rust.channel == "dev" { "if-unchanged" } else { false }
+#download-ci-llvm = if rust.channel == "dev" || rust.download-rustc != false { "if-unchanged" } else { false }
 
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
@@ -213,17 +213,17 @@
 # the root of the repository.
 #build-dir = "build"
 
-# Instead of downloading the src/stage0.json version of Cargo specified, use
+# Instead of downloading the src/stage0 version of Cargo specified, use
 # this Cargo binary instead to build all Rust code
 # If you set this, you likely want to set `rustc` as well.
 #cargo = "/path/to/cargo"
 
-# Instead of downloading the src/stage0.json version of the compiler
+# Instead of downloading the src/stage0 version of the compiler
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 # If you set this, you likely want to set `cargo` as well.
 #rustc = "/path/to/rustc"
 
-# Instead of downloading the src/stage0.json version of rustfmt specified,
+# Instead of downloading the src/stage0 version of rustfmt specified,
 # use this rustfmt binary instead as the stage0 snapshot rustfmt.
 #rustfmt = "/path/to/rustfmt"
 
@@ -253,6 +253,10 @@
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
 #gdb = "gdb"
+
+# The path to (or name of) the LLDB executable to use. This is only used for
+# executing the debuginfo test suite.
+#lldb = "lldb"
 
 # The node.js executable to use. Note that this is only used for the emscripten
 # target when running tests, otherwise this can be omitted.
@@ -302,7 +306,7 @@
 
 # Set the bootstrap/download cache path. It is useful when building rust
 # repeatedly in a CI invironment.
-# bootstrap-cache-path = /shared/cache
+#bootstrap-cache-path = /path/to/shared/cache
 
 # Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
@@ -517,11 +521,8 @@
 #overflow-checks-std = rust.overflow-checks (boolean)
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
-# `0` - no debug info
-# `1` - line tables only - sufficient to generate backtraces that include line
-#       information and inlined functions, set breakpoints at source code
-#       locations, and step through execution in a debugger.
-# `2` - full debug info with variable and type information
+# See https://doc.rust-lang.org/rustc/codegen-options/index.html#debuginfo for available options.
+#
 # Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
@@ -652,9 +653,12 @@
 # when no explicit backend is specified.
 #codegen-backends = ["llvm"]
 
-# Indicates whether LLD will be compiled and made available in the sysroot for
-# rustc to execute.
-#lld = false
+# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute, and
+# whether to set it as rustc's default linker on `x86_64-unknown-linux-gnu`. This will also only be
+# when *not* building an external LLVM (so only when using `download-ci-llvm` or building LLVM from
+# the in-tree source): setting `llvm-config` in the `[target.x86_64-unknown-linux-gnu]` section will
+# make this default to false. 
+#lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
 
 # Indicates whether LLD will be used to link Rust crates during bootstrap on
 # supported platforms.

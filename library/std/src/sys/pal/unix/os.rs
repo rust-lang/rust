@@ -63,16 +63,7 @@ extern "C" {
     )]
     #[cfg_attr(any(target_os = "solaris", target_os = "illumos"), link_name = "___errno")]
     #[cfg_attr(target_os = "nto", link_name = "__get_errno_ptr")]
-    #[cfg_attr(
-        any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "freebsd",
-            target_os = "watchos"
-        ),
-        link_name = "__error"
-    )]
+    #[cfg_attr(any(target_os = "freebsd", target_vendor = "apple"), link_name = "__error")]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
     fn errno_location() -> *mut c_int;
@@ -430,7 +421,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(e)))
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(target_vendor = "apple")]
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
@@ -585,12 +576,36 @@ impl Iterator for Env {
     }
 }
 
-#[cfg(target_os = "macos")]
+// Use `_NSGetEnviron` on Apple platforms.
+//
+// `_NSGetEnviron` is the documented alternative (see `man environ`), and has
+// been available since the first versions of both macOS and iOS.
+//
+// Nowadays, specifically since macOS 10.8, `environ` has been exposed through
+// `libdyld.dylib`, which is linked via. `libSystem.dylib`:
+// <https://github.com/apple-oss-distributions/dyld/blob/dyld-1160.6/libdyld/libdyldGlue.cpp#L913>
+//
+// So in the end, it likely doesn't really matter which option we use, but the
+// performance cost of using `_NSGetEnviron` is extremely miniscule, and it
+// might be ever so slightly more supported, so let's just use that.
+//
+// NOTE: The header where this is defined (`crt_externs.h`) was added to the
+// iOS 13.0 SDK, which has been the source of a great deal of confusion in the
+// past about the availability of this API.
+//
+// NOTE(madsmtm): Neither this nor using `environ` has been verified to not
+// cause App Store rejections; if this is found to be the case, an alternative
+// implementation of this is possible using `[NSProcessInfo environment]`
+// - which internally uses `_NSGetEnviron` and a system-wide lock on the
+// environment variables to protect against `setenv`, so using that might be
+// desirable anyhow? Though it also means that we have to link to Foundation.
+#[cfg(target_vendor = "apple")]
 pub unsafe fn environ() -> *mut *const *const c_char {
     libc::_NSGetEnviron() as *mut *const *const c_char
 }
 
-#[cfg(not(target_os = "macos"))]
+// Use the `environ` static which is part of POSIX.
+#[cfg(not(target_vendor = "apple"))]
 pub unsafe fn environ() -> *mut *const *const c_char {
     extern "C" {
         static mut environ: *const *const c_char;
@@ -696,30 +711,26 @@ pub fn home_dir() -> Option<PathBuf> {
 
     #[cfg(any(
         target_os = "android",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        all(target_vendor = "apple", not(target_os = "macos")),
     ))]
     unsafe fn fallback() -> Option<OsString> {
         None
     }
     #[cfg(not(any(
         target_os = "android",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        all(target_vendor = "apple", not(target_os = "macos")),
     )))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {

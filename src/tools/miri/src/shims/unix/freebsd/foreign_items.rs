@@ -1,10 +1,8 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::unix::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fs::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
 pub fn is_dyn_sym(_name: &str) -> bool {
     false
@@ -18,15 +16,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
             // Threading
-            "pthread_attr_get_np" if this.frame_in_std() => {
-                let [_thread, _attr] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_null(dest)?;
-            }
             "pthread_set_name_np" => {
                 let [thread, name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -47,21 +40,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
                 )?;
-            }
-            "getrandom" => {
-                let [ptr, len, flags] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let ptr = this.read_pointer(ptr)?;
-                let len = this.read_target_usize(len)?;
-                let _flags = this.read_scalar(flags)?.to_i32()?;
-                // flags on freebsd does not really matter
-                // in practice, GRND_RANDOM does not particularly draw from /dev/random
-                // since it is the same as to /dev/urandom.
-                // GRND_INSECURE is only an alias of GRND_NONBLOCK, which
-                // does not affect the RNG.
-                // https://man.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2&n=1
-                this.gen_random(ptr, len)?;
-                this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
 
             // File related shims
@@ -91,15 +69,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
-            // errno
+            // Miscellaneous
             "__error" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
+            // These shims are enabled only when the caller is in the standard library.
+            "pthread_attr_get_np" if this.frame_in_std() => {
+                let [_thread, _attr] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.write_null(dest)?;
+            }
+
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

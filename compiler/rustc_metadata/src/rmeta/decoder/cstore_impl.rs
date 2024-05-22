@@ -11,6 +11,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::bug;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
@@ -21,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::hygiene::{ExpnHash, ExpnId};
+use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
@@ -378,6 +379,7 @@ provide! { tcx, def_id, other, cdata,
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
+    provide_cstore_hooks(providers);
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
@@ -628,13 +630,6 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).root.stable_crate_id
     }
 
-    fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum {
-        *self
-            .stable_crate_ids
-            .get(&stable_crate_id)
-            .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"))
-    }
-
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
@@ -649,26 +644,33 @@ impl CrateStore for CStore {
     fn def_path_hash(&self, def: DefId) -> DefPathHash {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
+}
 
-    fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId {
-        let def_index = self.get_crate_data(cnum).def_path_hash_to_def_index(hash);
+fn provide_cstore_hooks(providers: &mut Providers) {
+    providers.hooks.def_path_hash_to_def_id_extern = |tcx, hash, stable_crate_id| {
+        // If this is a DefPathHash from an upstream crate, let the CrateStore map
+        // it to a DefId.
+        let cstore = CStore::from_tcx(tcx.tcx);
+        let cnum = *tcx
+            .untracked()
+            .stable_crate_ids
+            .read()
+            .get(&stable_crate_id)
+            .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"));
+        assert_ne!(cnum, LOCAL_CRATE);
+        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash);
         DefId { krate: cnum, index: def_index }
-    }
+    };
 
-    fn expn_hash_to_expn_id(
-        &self,
-        sess: &Session,
-        cnum: CrateNum,
-        index_guess: u32,
-        hash: ExpnHash,
-    ) -> ExpnId {
-        self.get_crate_data(cnum).expn_hash_to_expn_id(sess, index_guess, hash)
-    }
-
-    fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
-        let cdata = self.get_crate_data(cnum);
+    providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {
+        let cstore = CStore::from_tcx(tcx.tcx);
+        cstore.get_crate_data(cnum).expn_hash_to_expn_id(tcx.sess, index_guess, hash)
+    };
+    providers.hooks.import_source_files = |tcx, cnum| {
+        let cstore = CStore::from_tcx(tcx.tcx);
+        let cdata = cstore.get_crate_data(cnum);
         for file_index in 0..cdata.root.source_map.size() {
-            cdata.imported_source_file(file_index as u32, sess);
+            cdata.imported_source_file(file_index as u32, tcx.sess);
         }
-    }
+    };
 }

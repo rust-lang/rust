@@ -1,11 +1,12 @@
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {
     let mut a = 5;
-    let mut b = || {
+    let mut b = #[coroutine]
+    || {
         let d = 6;
         yield;
         _zzz(); // #break

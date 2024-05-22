@@ -79,6 +79,7 @@ const longItemTypes = [
 
 // used for special search precedence
 const TY_GENERIC = itemTypes.indexOf("generic");
+const TY_IMPORT = itemTypes.indexOf("import");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -785,6 +786,37 @@ function initSearch(rawSearchIndex) {
                 }
                 elems.push(makePrimitiveElement(name, { bindingName, generics }));
             }
+        } else if (parserState.userQuery[parserState.pos] === "&") {
+            if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
+                throw [
+                    "Invalid search type: primitive ",
+                    "&",
+                    " and ",
+                    parserState.typeFilter,
+                    " both specified",
+                ];
+            }
+            parserState.typeFilter = null;
+            parserState.pos += 1;
+            let c = parserState.userQuery[parserState.pos];
+            while (c === " " && parserState.pos < parserState.length) {
+                parserState.pos += 1;
+                c = parserState.userQuery[parserState.pos];
+            }
+            const generics = [];
+            if (parserState.userQuery.slice(parserState.pos, parserState.pos + 3) === "mut") {
+                generics.push(makePrimitiveElement("mut", { typeFilter: "keyword"}));
+                parserState.pos += 3;
+                c = parserState.userQuery[parserState.pos];
+            }
+            while (c === " " && parserState.pos < parserState.length) {
+                parserState.pos += 1;
+                c = parserState.userQuery[parserState.pos];
+            }
+            if (!isEndCharacter(c) && parserState.pos < parserState.length) {
+                getFilteredNextElem(query, parserState, generics, isInGenerics);
+            }
+            elems.push(makePrimitiveElement("reference", { generics }));
         } else {
             const isStringElem = parserState.userQuery[start] === "\"";
             // We handle the strings on their own mostly to make code easier to follow.
@@ -1324,14 +1356,23 @@ function initSearch(rawSearchIndex) {
                     obj.dist = result.dist;
                     const res = buildHrefAndPath(obj);
                     obj.displayPath = pathSplitter(res[0]);
-                    obj.fullPath = obj.displayPath + obj.name;
-                    // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath += "|" + obj.ty;
 
+                    // To be sure than it some items aren't considered as duplicate.
+                    obj.fullPath = res[2] + "|" + obj.ty;
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
+
+                    // Exports are specifically not shown if the items they point at
+                    // are already in the results.
+                    if (obj.ty === TY_IMPORT && duplicates.has(res[2])) {
+                        continue;
+                    }
+                    if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
+                        continue;
+                    }
                     duplicates.add(obj.fullPath);
+                    duplicates.add(res[2]);
 
                     obj.href = res[1];
                     out.push(obj);
@@ -1454,16 +1495,7 @@ function initSearch(rawSearchIndex) {
                 return 0;
             });
 
-            const transformed = transformResults(result_list);
-            const descs = await Promise.all(transformed.map(result => {
-                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
-                    "" :
-                    searchState.loadDesc(result);
-            }));
-            for (const [i, result] of transformed.entries()) {
-                result.desc = descs[i];
-            }
-            return transformed;
+            return transformResults(result_list);
         }
 
         /**
@@ -2085,6 +2117,7 @@ function initSearch(rawSearchIndex) {
                 path: item.path,
                 descShard: item.descShard,
                 descIndex: item.descIndex,
+                exactPath: item.exactPath,
                 ty: item.ty,
                 parent: item.parent,
                 type: item.type,
@@ -2506,6 +2539,16 @@ function initSearch(rawSearchIndex) {
             sorted_others,
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
+        await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
+            const descs = await Promise.all(list.map(result => {
+                return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
+                    "" :
+                    searchState.loadDesc(result);
+            }));
+            for (const [i, result] of list.entries()) {
+                result.desc = descs[i];
+            }
+        }));
         if (parsedQuery.error !== null && ret.others.length !== 0) {
             // It means some doc aliases were found so let's "remove" the error!
             ret.query.error = null;
@@ -2538,6 +2581,7 @@ function initSearch(rawSearchIndex) {
         const type = itemTypes[item.ty];
         const name = item.name;
         let path = item.path;
+        let exactPath = item.exactPath;
 
         if (type === "mod") {
             displayPath = path + "::";
@@ -2559,6 +2603,7 @@ function initSearch(rawSearchIndex) {
             const parentType = itemTypes[myparent.ty];
             let pageType = parentType;
             let pageName = myparent.name;
+            exactPath = `${myparent.exactPath}::${myparent.name}`;
 
             if (parentType === "primitive") {
                 displayPath = myparent.name + "::";
@@ -2587,7 +2632,7 @@ function initSearch(rawSearchIndex) {
             href = ROOT_PATH + item.path.replace(/::/g, "/") +
                 "/" + type + "." + name + ".html";
         }
-        return [displayPath, href];
+        return [displayPath, href, `${exactPath}::${name}`];
     }
 
     function pathSplitter(path) {
@@ -2980,6 +3025,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: pathIndex,
                 ty: TY_GENERIC,
                 path: null,
+                exactPath: null,
                 generics,
                 bindings,
             };
@@ -2989,6 +3035,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: null,
                 ty: null,
                 path: null,
+                exactPath: null,
                 generics,
                 bindings,
             };
@@ -2998,6 +3045,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id: buildTypeMapIndex(item.name, isAssocType),
                 ty: item.ty,
                 path: item.path,
+                exactPath: item.exactPath,
                 generics,
                 bindings,
             };
@@ -3453,6 +3501,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 path: "",
                 descShard,
                 descIndex,
+                exactPath: "",
+                desc: crateCorpus.doc,
                 parent: undefined,
                 type: null,
                 id,
@@ -3478,6 +3528,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // i.e. if indices 4 and 11 are present, but 5-10 and 12-13 are not present,
             // 5-10 will fall back to the path for 4 and 12-13 will fall back to the path for 11
             const itemPaths = new Map(crateCorpus.q);
+            // An array of [(Number) item index, (Number) path index]
+            // Used to de-duplicate inlined and re-exported stuff
+            const itemReexports = new Map(crateCorpus.r);
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
             // a map Number, string for impl disambiguators
@@ -3511,9 +3564,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     path = itemPaths.has(elem[2]) ? itemPaths.get(elem[2]) : lastPath;
                     lastPath = path;
                 }
+                const exactPath = elem.length > 3 ? itemPaths.get(elem[3]) : path;
 
-                lowercasePaths.push({ty: ty, name: name.toLowerCase(), path: path});
-                paths[i] = {ty: ty, name: name, path: path};
+                lowercasePaths.push({ty, name: name.toLowerCase(), path, exactPath});
+                paths[i] = {ty, name, path, exactPath};
             }
 
             // convert `item*` into an object form, and construct word indices.
@@ -3572,6 +3626,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     path,
                     descShard,
                     descIndex,
+                    exactPath: itemReexports.has(i) ? itemPaths.get(itemReexports.get(i)) : path,
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type,
                     id,

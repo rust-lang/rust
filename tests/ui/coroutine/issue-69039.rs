@@ -9,6 +9,7 @@ fn mkstr(my_name: String, my_mood: String) -> String {
 }
 
 fn my_scenario() -> impl Coroutine<String, Yield = &'static str, Return = String> {
+    #[coroutine]
     |_arg: String| {
         let my_name = yield "What is your name?";
         let my_mood = yield "How are you feeling?";

@@ -4,9 +4,9 @@ fn main() -> () {
     let mut _0: ();
     let mut _1: i32;
     let mut _2: std::option::Option<i32>;
-    let mut _3: isize;
+    let mut _3: &std::option::Option<i32>;
     let mut _4: isize;
-    let mut _5: &std::option::Option<i32>;
+    let mut _5: isize;
     let _6: i32;
     let _7: &i32;
     let mut _8: bool;
@@ -38,8 +38,8 @@ fn main() -> () {
         StorageLive(_2);
         _2 = Option::<i32>::Some(const 1_i32);
         PlaceMention(_2);
-        _4 = discriminant(_2);
-        switchInt(move _4) -> [1: bb8, otherwise: bb2];
+        _5 = discriminant(_2);
+        switchInt(move _5) -> [1: bb8, otherwise: bb2];
     }
 
     bb1: {
@@ -48,12 +48,12 @@ fn main() -> () {
     }
 
     bb2: {
-        falseEdge -> [real: bb15, imaginary: bb6];
+        falseEdge -> [real: bb15, imaginary: bb3];
     }
 
     bb3: {
-        _3 = discriminant(_2);
-        switchInt(move _3) -> [1: bb6, otherwise: bb4];
+        _4 = discriminant(_2);
+        switchInt(move _4) -> [1: bb6, otherwise: bb4];
     }
 
     bb4: {
@@ -87,7 +87,7 @@ fn main() -> () {
     bb10: {
         StorageLive(_7);
         _7 = &((_2 as Some).0: i32);
-        _5 = &fake _2;
+        _3 = &fake shallow _2;
         StorageLive(_8);
         _8 = guard() -> [return: bb11, unwind: bb24];
     }
@@ -98,7 +98,7 @@ fn main() -> () {
 
     bb12: {
         StorageDead(_8);
-        FakeRead(ForMatchGuard, _5);
+        FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _7);
         StorageLive(_6);
         _6 = ((_2 as Some).0: i32);
@@ -129,7 +129,7 @@ fn main() -> () {
     bb16: {
         StorageLive(_11);
         _11 = &((_2 as Some).0: i32);
-        _5 = &fake _2;
+        _3 = &fake shallow _2;
         StorageLive(_12);
         StorageLive(_13);
         _13 = (*_11);
@@ -143,7 +143,7 @@ fn main() -> () {
     bb18: {
         StorageDead(_13);
         StorageDead(_12);
-        FakeRead(ForMatchGuard, _5);
+        FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _11);
         StorageLive(_10);
         _10 = ((_2 as Some).0: i32);

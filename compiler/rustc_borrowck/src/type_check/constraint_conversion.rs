@@ -4,6 +4,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
+use rustc_middle::bug;
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
@@ -135,7 +136,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn convert(
         &mut self,
-        predicate: ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+        predicate: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
         constraint_category: ConstraintCategory<'tcx>,
     ) {
         debug!("generate: constraints at: {:#?}", self.locations);
@@ -275,7 +276,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         next_outlives_predicates: &mut Vec<(
-            ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+            ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {

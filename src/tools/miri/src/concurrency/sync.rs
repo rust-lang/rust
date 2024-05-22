@@ -69,12 +69,8 @@ struct Mutex {
     lock_count: usize,
     /// The queue of threads waiting for this mutex.
     queue: VecDeque<ThreadId>,
-    /// Data race handle. This tracks the happens-before
-    /// relationship between each mutex access. It is
-    /// released to during unlock and acquired from during
-    /// locking, and therefore stores the clock of the last
-    /// thread to release this mutex.
-    data_race: VClock,
+    /// Mutex clock. This tracks the moment of the last unlock.
+    clock: VClock,
 }
 
 declare_id!(RwLockId);
@@ -91,7 +87,7 @@ struct RwLock {
     writer_queue: VecDeque<ThreadId>,
     /// The queue of reader threads waiting for this lock.
     reader_queue: VecDeque<ThreadId>,
-    /// Data race handle for writers. Tracks the happens-before
+    /// Data race clock for writers. Tracks the happens-before
     /// ordering between each write access to a rwlock and is updated
     /// after a sequence of concurrent readers to track the happens-
     /// before ordering between the set of previous readers and
@@ -99,8 +95,8 @@ struct RwLock {
     /// Contains the clock of the last thread to release a writer
     /// lock or the joined clock of the set of last threads to release
     /// shared reader locks.
-    data_race: VClock,
-    /// Data race handle for readers. This is temporary storage
+    clock_unlocked: VClock,
+    /// Data race clock for readers. This is temporary storage
     /// for the combined happens-before ordering for between all
     /// concurrent readers and the next writer, and the value
     /// is stored to the main data_race variable once all
@@ -110,30 +106,18 @@ struct RwLock {
     /// add happens-before orderings between shared reader
     /// locks.
     /// This is only relevant when there is an active reader.
-    data_race_reader: VClock,
+    clock_current_readers: VClock,
 }
 
 declare_id!(CondvarId);
-
-#[derive(Debug, Copy, Clone)]
-pub enum RwLockMode {
-    Read,
-    Write,
-}
-
-#[derive(Debug)]
-pub enum CondvarLock {
-    Mutex(MutexId),
-    RwLock { id: RwLockId, mode: RwLockMode },
-}
 
 /// A thread waiting on a conditional variable.
 #[derive(Debug)]
 struct CondvarWaiter {
     /// The thread that is waiting on this variable.
     thread: ThreadId,
-    /// The mutex or rwlock on which the thread is waiting.
-    lock: CondvarLock,
+    /// The mutex on which the thread is waiting.
+    lock: MutexId,
 }
 
 /// The conditional variable state.
@@ -144,8 +128,8 @@ struct Condvar {
     /// between a cond-var signal and a cond-var
     /// wait during a non-spurious signal event.
     /// Contains the clock of the last thread to
-    /// perform a futex-signal.
-    data_race: VClock,
+    /// perform a condvar-signal.
+    clock: VClock,
 }
 
 /// The futex state.
@@ -157,7 +141,7 @@ struct Futex {
     /// during a non-spurious wake event.
     /// Contains the clock of the last thread to
     /// perform a futex-wake.
-    data_race: VClock,
+    clock: VClock,
 }
 
 /// A thread waiting on a futex.
@@ -232,7 +216,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     fn rwlock_dequeue_and_lock_reader(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
         if let Some(reader) = this.machine.threads.sync.rwlocks[id].reader_queue.pop_front() {
-            this.unblock_thread(reader);
+            this.unblock_thread(reader, BlockReason::RwLock(id));
             this.rwlock_reader_lock(id, reader);
             true
         } else {
@@ -246,7 +230,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     fn rwlock_dequeue_and_lock_writer(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
         if let Some(writer) = this.machine.threads.sync.rwlocks[id].writer_queue.pop_front() {
-            this.unblock_thread(writer);
+            this.unblock_thread(writer, BlockReason::RwLock(id));
             this.rwlock_writer_lock(id, writer);
             true
         } else {
@@ -260,7 +244,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     fn mutex_dequeue_and_lock(&mut self, id: MutexId) -> bool {
         let this = self.eval_context_mut();
         if let Some(thread) = this.machine.threads.sync.mutexes[id].queue.pop_front() {
-            this.unblock_thread(thread);
+            this.unblock_thread(thread, BlockReason::Mutex(id));
             this.mutex_lock(id, thread);
             true
         } else {
@@ -321,6 +305,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.mutexes.next_index();
         if let Some(old) = existing(this, next_index)? {
+            if this.machine.threads.sync.mutexes.get(old).is_none() {
+                throw_ub_format!("mutex has invalid ID");
+            }
             Ok(old)
         } else {
             let new_index = this.machine.threads.sync.mutexes.push(Default::default());
@@ -358,7 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         mutex.lock_count = mutex.lock_count.checked_add(1).unwrap();
         if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_acquire(&mutex.data_race, thread);
+            data_race.acquire_clock(&mutex.clock, thread);
         }
     }
 
@@ -385,11 +372,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // The mutex is completely unlocked. Try transferring ownership
                 // to another thread.
                 if let Some(data_race) = &this.machine.data_race {
-                    data_race.validate_lock_release(
-                        &mut mutex.data_race,
-                        current_owner,
-                        current_span,
-                    );
+                    mutex.clock.clone_from(&data_race.release_clock(current_owner, current_span));
                 }
                 this.mutex_dequeue_and_lock(id);
             }
@@ -406,7 +389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
         this.machine.threads.sync.mutexes[id].queue.push_back(thread);
-        this.block_thread(thread);
+        this.block_thread(thread, BlockReason::Mutex(id));
     }
 
     /// Provides the closure with the next RwLockId. Creates that RwLock if the closure returns None,
@@ -419,6 +402,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.rwlocks.next_index();
         if let Some(old) = existing(this, next_index)? {
+            if this.machine.threads.sync.rwlocks.get(old).is_none() {
+                throw_ub_format!("rwlock has invalid ID");
+            }
             Ok(old)
         } else {
             let new_index = this.machine.threads.sync.rwlocks.push(Default::default());
@@ -460,7 +446,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let count = rwlock.readers.entry(reader).or_insert(0);
         *count = count.checked_add(1).expect("the reader counter overflowed");
         if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_acquire(&rwlock.data_race, reader);
+            data_race.acquire_clock(&rwlock.clock_unlocked, reader);
         }
     }
 
@@ -486,20 +472,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         if let Some(data_race) = &this.machine.data_race {
             // Add this to the shared-release clock of all concurrent readers.
-            data_race.validate_lock_release_shared(
-                &mut rwlock.data_race_reader,
-                reader,
-                current_span,
-            );
+            rwlock.clock_current_readers.join(&data_race.release_clock(reader, current_span));
         }
 
         // The thread was a reader. If the lock is not held any more, give it to a writer.
         if this.rwlock_is_locked(id).not() {
             // All the readers are finished, so set the writer data-race handle to the value
-            //  of the union of all reader data race handles, since the set of readers
-            //  happen-before the writers
+            // of the union of all reader data race handles, since the set of readers
+            // happen-before the writers
             let rwlock = &mut this.machine.threads.sync.rwlocks[id];
-            rwlock.data_race.clone_from(&rwlock.data_race_reader);
+            rwlock.clock_unlocked.clone_from(&rwlock.clock_current_readers);
             this.rwlock_dequeue_and_lock_writer(id);
         }
         true
@@ -511,7 +493,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_write_locked(id), "read-queueing on not write locked rwlock");
         this.machine.threads.sync.rwlocks[id].reader_queue.push_back(reader);
-        this.block_thread(reader);
+        this.block_thread(reader, BlockReason::RwLock(id));
     }
 
     /// Lock by setting the writer that owns the lock.
@@ -523,7 +505,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let rwlock = &mut this.machine.threads.sync.rwlocks[id];
         rwlock.writer = Some(writer);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_acquire(&rwlock.data_race, writer);
+            data_race.acquire_clock(&rwlock.clock_unlocked, writer);
         }
     }
 
@@ -542,11 +524,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             trace!("rwlock_writer_unlock: {:?} unlocked by {:?}", id, expected_writer);
             // Release memory to next lock holder.
             if let Some(data_race) = &this.machine.data_race {
-                data_race.validate_lock_release(
-                    &mut rwlock.data_race,
-                    current_writer,
-                    current_span,
-                );
+                rwlock
+                    .clock_unlocked
+                    .clone_from(&*data_race.release_clock(current_writer, current_span));
             }
             // The thread was a writer.
             //
@@ -573,7 +553,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_locked(id), "write-queueing on unlocked rwlock");
         this.machine.threads.sync.rwlocks[id].writer_queue.push_back(writer);
-        this.block_thread(writer);
+        this.block_thread(writer, BlockReason::RwLock(id));
     }
 
     /// Provides the closure with the next CondvarId. Creates that Condvar if the closure returns None,
@@ -589,6 +569,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.condvars.next_index();
         if let Some(old) = existing(this, next_index)? {
+            if this.machine.threads.sync.condvars.get(old).is_none() {
+                throw_ub_format!("condvar has invalid ID");
+            }
             Ok(old)
         } else {
             let new_index = this.machine.threads.sync.condvars.push(Default::default());
@@ -605,7 +588,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Mark that the thread is waiting on the conditional variable.
-    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, lock: CondvarLock) {
+    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, lock: MutexId) {
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.condvars[id].waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
@@ -614,7 +597,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     /// Wake up some thread (if there is any) sleeping on the conditional
     /// variable.
-    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, CondvarLock)> {
+    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, MutexId)> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
         let current_span = this.machine.current_span();
@@ -623,11 +606,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Each condvar signal happens-before the end of the condvar wake
         if let Some(data_race) = data_race {
-            data_race.validate_lock_release(&mut condvar.data_race, current_thread, current_span);
+            condvar.clock.clone_from(&*data_race.release_clock(current_thread, current_span));
         }
         condvar.waiters.pop_front().map(|waiter| {
             if let Some(data_race) = data_race {
-                data_race.validate_lock_acquire(&condvar.data_race, waiter.thread);
+                data_race.acquire_clock(&condvar.clock, waiter.thread);
             }
             (waiter.thread, waiter.lock)
         })
@@ -657,14 +640,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Each futex-wake happens-before the end of the futex wait
         if let Some(data_race) = data_race {
-            data_race.validate_lock_release(&mut futex.data_race, current_thread, current_span);
+            futex.clock.clone_from(&*data_race.release_clock(current_thread, current_span));
         }
 
         // Wake up the first thread in the queue that matches any of the bits in the bitset.
         futex.waiters.iter().position(|w| w.bitset & bitset != 0).map(|i| {
             let waiter = futex.waiters.remove(i).unwrap();
             if let Some(data_race) = data_race {
-                data_race.validate_lock_acquire(&futex.data_race, waiter.thread);
+                data_race.acquire_clock(&futex.clock, waiter.thread);
             }
             waiter.thread
         })

@@ -1,14 +1,14 @@
-use rustc_ast_ir::try_visit;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::Interner;
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
+use crate::inherent::*;
+use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::TyKind::*;
 
@@ -31,7 +31,7 @@ pub enum DynKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
-pub enum AliasKind {
+pub enum AliasTyKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
     Projection,
@@ -46,13 +46,13 @@ pub enum AliasKind {
     Weak,
 }
 
-impl AliasKind {
+impl AliasTyKind {
     pub fn descr(self) -> &'static str {
         match self {
-            AliasKind::Projection => "associated type",
-            AliasKind::Inherent => "inherent associated type",
-            AliasKind::Opaque => "opaque type",
-            AliasKind::Weak => "type alias",
+            AliasTyKind::Projection => "associated type",
+            AliasTyKind::Inherent => "inherent associated type",
+            AliasTyKind::Opaque => "opaque type",
+            AliasTyKind::Weak => "type alias",
         }
     }
 }
@@ -63,7 +63,7 @@ impl AliasKind {
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -88,7 +88,7 @@ pub enum TyKind<I: Interner> {
     /// for `struct List<T>` and the args `[i32]`.
     ///
     /// Note that generic parameters in fields only get lazily instantiated
-    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
+    /// by using something like `adt_def.all_fields().map(|field| field.ty(interner, args))`.
     Adt(I::AdtDef, I::GenericArgs),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
@@ -99,6 +99,13 @@ pub enum TyKind<I: Interner> {
 
     /// An array with the given length. Written as `[T; N]`.
     Array(I::Ty, I::Const),
+
+    /// A pattern newtype. Takes any type and restricts its valid values to its pattern.
+    /// This will also change the layout to take advantage of this restriction.
+    /// Only `Copy` and `Clone` will automatically get implemented for pattern types.
+    /// Auto-traits treat this as if it were an aggregate with a single nested type.
+    /// Only supports integer range patterns for now.
+    Pat(I::Ty, I::Pat),
 
     /// The pointee of an array slice. Written as `[T]`.
     Slice(I::Ty),
@@ -174,9 +181,9 @@ pub enum TyKind<I: Interner> {
     /// Looking at the following example, the witness for this coroutine
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
     ///
-    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
+    /// ```
     /// #![feature(coroutines)]
-    /// |a| {
+    /// #[coroutine] static |a| {
     ///     let x = &vec![3];
     ///     yield a;
     ///     yield x[0];
@@ -194,7 +201,7 @@ pub enum TyKind<I: Interner> {
     /// A projection, opaque type, weak type alias, or inherent associated type.
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasKind, I::AliasTy),
+    Alias(AliasTyKind, AliasTy<I>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -220,7 +227,7 @@ pub enum TyKind<I: Interner> {
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
     ///
-    /// It is conventional to render anonymous placeholer types like `!N` or `!U_N`,
+    /// It is conventional to render anonymous placeholder types like `!N` or `!U_N`,
     /// where `N` is the placeholder variable's anonymous index (which corresponds
     /// to the bound variable's index from the binder from which it was instantiated),
     /// and `U` is the universe index in which it is instantiated, or totally omitted
@@ -273,12 +280,13 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         CoroutineWitness(_, _) => 18,
         Never => 19,
         Tuple(_) => 20,
-        Alias(_, _) => 21,
-        Param(_) => 22,
-        Bound(_, _) => 23,
-        Placeholder(_) => 24,
-        Infer(_) => 25,
-        Error(_) => 26,
+        Pat(_, _) => 21,
+        Alias(_, _) => 22,
+        Param(_) => 23,
+        Bound(_, _) => 24,
+        Placeholder(_) => 25,
+        Infer(_) => 26,
+        Error(_) => 27,
     }
 }
 
@@ -299,6 +307,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
             (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
+            (Pat(a_t, a_c), Pat(b_t, b_c)) => a_t == b_t && a_c == b_c,
             (Slice(a_t), Slice(b_t)) => a_t == b_t,
             (RawPtr(a_t, a_m), RawPtr(b_t, b_m)) => a_t == b_t && a_m == b_m,
             (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
@@ -322,7 +331,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             _ => {
                 debug_assert!(
                     tykind_discriminant(self) != tykind_discriminant(other),
-                    "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                    "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
                 );
                 false
             }
@@ -330,13 +339,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
     }
 }
 
-// This is manually implemented because a derive would require `I: Eq`
-impl<I: Interner> Eq for TyKind<I> {}
-
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
         this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
+        f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match this.data {
             Bool => write!(f, "bool"),
@@ -362,18 +368,10 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
+            Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &this.wrap(t), &this.wrap(p)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(ty, mutbl) => {
-                match mutbl {
-                    Mutability::Mut => write!(f, "*mut "),
-                    Mutability::Not => write!(f, "*const "),
-                }?;
-                write!(f, "{:?}", &this.wrap(ty))
-            }
-            Ref(r, t, m) => match m {
-                Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
-                Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
-            },
+            RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), this.wrap(ty)),
+            Ref(r, t, m) => write!(f, "&{:?} {}{:?}", this.wrap(r), m.prefix_str(), this.wrap(t)),
             FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&this.wrap(s)).finish(),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
             Dynamic(p, r, repr) => match repr {
@@ -421,6 +419,154 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+
+/// Represents the projection of an associated, opaque, or lazy-type-alias type.
+///
+/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
+/// * For an inherent projection, this would be `Ty::N<...>`.
+/// * For an opaque type, there is no explicit syntax.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct AliasTy<I: Interner> {
+    /// The parameters of the associated or opaque type.
+    ///
+    /// For a projection, these are the generic parameters for the trait and the
+    /// GAT parameters, if there are any.
+    ///
+    /// For an inherent projection, they consist of the self type and the GAT parameters,
+    /// if there are any.
+    ///
+    /// For RPIT the generic parameters are for the generics of the function,
+    /// while for TAIT it is used for the generic parameters of the alias.
+    pub args: I::GenericArgs,
+
+    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
+    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
+    /// this is an opaque.
+    ///
+    /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
+    ///
+    /// Note that if this is an associated type, this is not the `DefId` of the
+    /// `TraitRef` containing this associated type, which is in `interner.associated_item(def_id).container`,
+    /// aka. `interner.parent(def_id)`.
+    pub def_id: I::DefId,
+
+    /// This field exists to prevent the creation of `AliasTy` without using
+    /// [AliasTy::new].
+    pub(crate) _use_alias_ty_new_instead: (),
+}
+
+impl<I: Interner> AliasTy<I> {
+    pub fn new(
+        interner: I,
+        def_id: I::DefId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> AliasTy<I> {
+        let args = interner.check_and_mk_args(def_id, args);
+        AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+    }
+
+    pub fn kind(self, interner: I) -> AliasTyKind {
+        interner.alias_ty_kind(self)
+    }
+
+    /// Whether this alias type is an opaque.
+    pub fn is_opaque(self, interner: I) -> bool {
+        matches!(self.kind(interner), AliasTyKind::Opaque)
+    }
+
+    pub fn to_ty(self, interner: I) -> I::Ty {
+        Ty::new_alias(interner, self.kind(interner), self)
+    }
+}
+
+/// The following methods work only with (trait) associated type projections.
+impl<I: Interner> AliasTy<I> {
+    pub fn self_ty(self) -> I::Ty {
+        self.args.type_at(0)
+    }
+
+    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        AliasTy::new(
+            interner,
+            self.def_id,
+            [self_ty.into()].into_iter().chain(self.args.into_iter().skip(1)),
+        )
+    }
+
+    pub fn trait_def_id(self, interner: I) -> I::DefId {
+        assert_eq!(self.kind(interner), AliasTyKind::Projection, "expected a projection");
+        interner.parent(self.def_id)
+    }
+
+    /// Extracts the underlying trait reference and own args from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return a `T: StreamingIterator` trait reference and
+    /// `['a]` as the own args.
+    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::OwnItemArgs) {
+        debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
+        interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
+    }
+
+    /// Extracts the underlying trait reference from this projection.
+    /// For example, if this is a projection of `<T as Iterator>::Item`,
+    /// then this function would return a `T: Iterator` trait reference.
+    ///
+    /// WARNING: This will drop the args for generic associated types
+    /// consider calling [Self::trait_ref_and_own_args] to get those
+    /// as well.
+    pub fn trait_ref(self, interner: I) -> ty::TraitRef<I> {
+        self.trait_ref_and_own_args(interner).0
+    }
+}
+
+/// The following methods work only with inherent associated type projections.
+impl<I: Interner> AliasTy<I> {
+    /// Transform the generic parameters to have the given `impl` args as the base and the GAT args on top of that.
+    ///
+    /// Does the following transformation:
+    ///
+    /// ```text
+    /// [Self, P_0...P_m] -> [I_0...I_n, P_0...P_m]
+    ///
+    ///     I_i impl args
+    ///     P_j GAT args
+    /// ```
+    pub fn rebase_inherent_args_onto_impl(
+        self,
+        impl_args: I::GenericArgs,
+        interner: I,
+    ) -> I::GenericArgs {
+        debug_assert_eq!(self.kind(interner), AliasTyKind::Inherent);
+        interner.mk_args_from_iter(impl_args.into_iter().chain(self.args.into_iter().skip(1)))
+    }
+}
+
+impl<I: Interner> fmt::Debug for AliasTy<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for AliasTy<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        f.debug_struct("AliasTy")
+            .field("args", &this.map(|data| data.args))
+            .field("def_id", &this.data.def_id)
+            .finish()
     }
 }
 
@@ -801,29 +947,124 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
     Debug(bound = "")
 )]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
     pub ty: I::Ty,
     pub mutbl: Mutability,
 }
 
-impl<I: Interner> TypeFoldable<I> for TypeAndMut<I>
-where
-    I::Ty: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(TypeAndMut {
-            ty: self.ty.try_fold_with(folder)?,
-            mutbl: self.mutbl.try_fold_with(folder)?,
-        })
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct FnSig<I: Interner> {
+    pub inputs_and_output: I::Tys,
+    pub c_variadic: bool,
+    pub safety: I::Safety,
+    pub abi: I::Abi,
+}
+
+impl<I: Interner> FnSig<I> {
+    pub fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty) {
+        self.inputs_and_output.split_inputs_and_output()
+    }
+
+    pub fn inputs(self) -> I::FnInputTys {
+        self.split_inputs_and_output().0
+    }
+
+    pub fn output(self) -> I::Ty {
+        self.split_inputs_and_output().1
+    }
+
+    pub fn is_fn_trait_compatible(self) -> bool {
+        let FnSig { safety, abi, c_variadic, .. } = self;
+        !c_variadic && safety.is_safe() && abi.is_rust()
     }
 }
 
-impl<I: Interner> TypeVisitable<I> for TypeAndMut<I>
-where
-    I::Ty: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.ty.visit_with(visitor));
-        self.mutbl.visit_with(visitor)
+impl<I: Interner> ty::Binder<I, FnSig<I>> {
+    #[inline]
+    pub fn inputs(self) -> ty::Binder<I, I::FnInputTys> {
+        self.map_bound(|fn_sig| fn_sig.inputs())
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|fn_sig| fn_sig.inputs()[index])
+    }
+
+    pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {
+        self.map_bound(|fn_sig| fn_sig.inputs_and_output)
+    }
+
+    #[inline]
+    pub fn output(self) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|fn_sig| fn_sig.output())
+    }
+
+    pub fn c_variadic(self) -> bool {
+        self.skip_binder().c_variadic
+    }
+
+    pub fn safety(self) -> I::Safety {
+        self.skip_binder().safety
+    }
+
+    pub fn abi(self) -> I::Abi {
+        self.skip_binder().abi
+    }
+
+    pub fn is_fn_trait_compatible(&self) -> bool {
+        self.skip_binder().is_fn_trait_compatible()
+    }
+}
+
+impl<I: Interner> fmt::Debug for FnSig<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        WithInfcx::with_no_infcx(self).fmt(f)
+    }
+}
+impl<I: Interner> DebugWithInfcx<I> for FnSig<I> {
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        let sig = this.data;
+        let FnSig { inputs_and_output: _, c_variadic, safety, abi } = sig;
+
+        write!(f, "{}", safety.prefix_str())?;
+        if !abi.is_rust() {
+            write!(f, "extern \"{abi:?}\" ")?;
+        }
+
+        write!(f, "fn(")?;
+        let (inputs, output) = sig.split_inputs_and_output();
+        for (i, ty) in inputs.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{:?}", &this.wrap(ty))?;
+        }
+        if *c_variadic {
+            if inputs.is_empty() {
+                write!(f, "...")?;
+            } else {
+                write!(f, ", ...")?;
+            }
+        }
+        write!(f, ")")?;
+
+        match output.kind() {
+            Tuple(list) if list.is_empty() => Ok(()),
+            _ => write!(f, " -> {:?}", &this.wrap(sig.output())),
+        }
     }
 }

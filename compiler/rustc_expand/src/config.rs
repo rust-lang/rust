@@ -14,12 +14,14 @@ use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::Features;
 use rustc_feature::{ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::ThinVec;
+use tracing::instrument;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -98,10 +100,11 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // If the declared feature is unstable, record it.
             if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
                 (f.set_enabled)(&mut features);
-                // When the ICE comes from core, alloc or std (approximation of the standard library), there's a chance
-                // that the person hitting the ICE may be using -Zbuild-std or similar with an untested target.
-                // The bug is probably in the standard library and not the compiler in that case, but that doesn't
-                // really matter - we want a bug report.
+                // When the ICE comes from core, alloc or std (approximation of the standard
+                // library), there's a chance that the person hitting the ICE may be using
+                // -Zbuild-std or similar with an untested target. The bug is probably in the
+                // standard library and not the compiler in that case, but that doesn't really
+                // matter - we want a bug report.
                 if features.internal(name)
                     && ![sym::core, sym::alloc, sym::std].contains(&crate_name)
                 {
@@ -199,10 +202,17 @@ impl<'a> StripUnconfigured<'a> {
                     inner = self.configure_tokens(&inner);
                     Some(AttrTokenTree::Delimited(sp, spacing, delim, inner)).into_iter()
                 }
-                AttrTokenTree::Token(ref token, _)
-                    if let TokenKind::Interpolated(nt) = &token.kind =>
-                {
-                    panic!("Nonterminal should have been flattened at {:?}: {:?}", token.span, nt);
+                AttrTokenTree::Token(
+                    Token {
+                        kind:
+                            TokenKind::NtIdent(..)
+                            | TokenKind::NtLifetime(..)
+                            | TokenKind::Interpolated(..),
+                        ..
+                    },
+                    _,
+                ) => {
+                    panic!("Nonterminal should have been flattened: {:?}", tree);
                 }
                 AttrTokenTree::Token(token, spacing) => {
                     Some(AttrTokenTree::Token(token, spacing)).into_iter()
@@ -239,7 +249,6 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
@@ -253,7 +262,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`#[cfg_attr]` does not expand to any attributes",
+                BuiltinLintDiag::CfgAttrNoAttributes,
             );
         }
 
@@ -274,7 +283,6 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn expand_cfg_attr_item(
         &self,
         attr: &Attribute,
@@ -337,7 +345,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`crate_type` within an `#![cfg_attr] attribute is deprecated`",
+                BuiltinLintDiag::CrateTypeInCfgAttr,
             );
         }
         if attr.has_name(sym::crate_name) {
@@ -345,7 +353,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
                 attr.span,
                 ast::CRATE_NODE_ID,
-                "`crate_name` within an `#![cfg_attr] attribute is deprecated`",
+                BuiltinLintDiag::CrateNameInCfgAttr,
             );
         }
         attr
@@ -373,7 +381,6 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if self.features.is_some_and(|features| !features.stmt_expr_attributes)
@@ -383,11 +390,15 @@ impl<'a> StripUnconfigured<'a> {
                 &self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
-                "attributes on expressions are experimental",
+                crate::fluent_generated::expand_attributes_on_expressions_experimental,
             );
 
             if attr.is_doc_comment() {
-                err.help("`///` is for documentation comments. For a plain comment, use `//`.");
+                err.help(if attr.style == AttrStyle::Outer {
+                    crate::fluent_generated::expand_help_outer_doc
+                } else {
+                    crate::fluent_generated::expand_help_inner_doc
+                });
             }
 
             err.emit();

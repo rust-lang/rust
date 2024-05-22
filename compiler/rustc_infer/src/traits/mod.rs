@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Const, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 
 pub use self::ImplSource::*;
@@ -27,7 +27,7 @@ pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::project::MismatchedProjectionTypes;
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
-    Normalized, NormalizedTy, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
+    Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
     ProjectionCacheStorage, Reveal,
 };
 pub use rustc_middle::traits::*;
@@ -105,15 +105,15 @@ impl<'tcx> PredicateObligation<'tcx> {
 impl<'tcx> PolyTraitObligation<'tcx> {
     pub fn derived_cause(
         &self,
-        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         self.cause.clone().derived_cause(self.predicate, variant)
     }
 }
 
 // `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateObligation<'_>, 48);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(PredicateObligation<'_>, 48);
 
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 
@@ -138,10 +138,10 @@ pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
     Cycle(Vec<PredicateObligation<'tcx>>),
-    SelectionError(SelectionError<'tcx>),
-    ProjectionError(MismatchedProjectionTypes<'tcx>),
-    SubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
-    ConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
+    Select(SelectionError<'tcx>),
+    Project(MismatchedProjectionTypes<'tcx>),
+    Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    ConstEquate(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
     Ambiguity {
         /// Overflow is only `Some(suggest_recursion_limit)` when using the next generation
         /// trait solver `-Znext-solver`. With the old solver overflow is eagerly handled by
@@ -155,7 +155,7 @@ impl<'tcx, O> Obligation<'tcx, O> {
         tcx: TyCtxt<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: impl ToPredicate<'tcx, O>,
+        predicate: impl Upcast<TyCtxt<'tcx>, O>,
     ) -> Obligation<'tcx, O> {
         Self::with_depth(tcx, cause, 0, param_env, predicate)
     }
@@ -173,9 +173,9 @@ impl<'tcx, O> Obligation<'tcx, O> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: impl ToPredicate<'tcx, O>,
+        predicate: impl Upcast<TyCtxt<'tcx>, O>,
     ) -> Obligation<'tcx, O> {
-        let predicate = predicate.to_predicate(tcx);
+        let predicate = predicate.upcast(tcx);
         Obligation { cause, param_env, recursion_depth, predicate }
     }
 
@@ -184,7 +184,7 @@ impl<'tcx, O> Obligation<'tcx, O> {
         span: Span,
         body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: impl ToPredicate<'tcx, O>,
+        trait_ref: impl Upcast<TyCtxt<'tcx>, O>,
     ) -> Obligation<'tcx, O> {
         Obligation::new(tcx, ObligationCause::misc(span, body_id), param_env, trait_ref)
     }
@@ -192,7 +192,7 @@ impl<'tcx, O> Obligation<'tcx, O> {
     pub fn with<P>(
         &self,
         tcx: TyCtxt<'tcx>,
-        value: impl ToPredicate<'tcx, P>,
+        value: impl Upcast<TyCtxt<'tcx>, P>,
     ) -> Obligation<'tcx, P> {
         Obligation::with_depth(tcx, self.cause.clone(), self.recursion_depth, self.param_env, value)
     }
@@ -205,6 +205,18 @@ impl<'tcx> FulfillmentError<'tcx> {
         root_obligation: PredicateObligation<'tcx>,
     ) -> FulfillmentError<'tcx> {
         FulfillmentError { obligation, code, root_obligation }
+    }
+
+    pub fn is_true_error(&self) -> bool {
+        match self.code {
+            FulfillmentErrorCode::Select(_)
+            | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Subtype(_, _)
+            | FulfillmentErrorCode::ConstEquate(_, _) => true,
+            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
+                false
+            }
+        }
     }
 }
 

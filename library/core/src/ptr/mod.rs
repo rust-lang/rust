@@ -63,11 +63,39 @@
 //!
 //! ## Allocated object
 //!
-//! For several operations, such as [`offset`] or field projections (`expr.field`), the notion of an
-//! "allocated object" becomes relevant. An allocated object is a contiguous region of memory.
-//! Common examples of allocated objects include stack-allocated variables (each variable is a
-//! separate allocated object), heap allocations (each allocation created by the global allocator is
-//! a separate allocated object), and `static` variables.
+//! An *allocated object* is a subset of program memory which is addressable
+//! from Rust, and within which pointer arithmetic is possible. Examples of
+//! allocated objects include heap allocations, stack-allocated variables,
+//! statics, and consts. The safety preconditions of some Rust operations -
+//! such as `offset` and field projections (`expr.field`) - are defined in
+//! terms of the allocated objects on which they operate.
+//!
+//! An allocated object has a base address, a size, and a set of memory
+//! addresses. It is possible for an allocated object to have zero size, but
+//! such an allocated object will still have a base address. The base address
+//! of an allocated object is not necessarily unique. While it is currently the
+//! case that an allocated object always has a set of memory addresses which is
+//! fully contiguous (i.e., has no "holes"), there is no guarantee that this
+//! will not change in the future.
+//!
+//! For any allocated object with `base` address, `size`, and a set of
+//! `addresses`, the following are guaranteed:
+//! - For all addresses `a` in `addresses`, `a` is in the range `base .. (base +
+//!   size)` (note that this requires `a < base + size`, not `a <= base + size`)
+//! - `base` is not equal to [`null()`] (i.e., the address with the numerical
+//!   value 0)
+//! - `base + size <= usize::MAX`
+//! - `size <= isize::MAX`
+//!
+//! As a consequence of these guarantees, given any address `a` within the set
+//! of addresses of an allocated object:
+//! - It is guaranteed that `a - base` does not overflow `isize`
+//! - It is guaranteed that `a - base` is non-negative
+//! - It is guaranteed that, given `o = a - base` (i.e., the offset of `a` within
+//!   the allocated object), `base + o` will not wrap around the address space (in
+//!   other words, will not overflow `usize`)
+//!
+//! [`null()`]: null
 //!
 //! # Strict Provenance
 //!
@@ -812,7 +840,7 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    from_raw_parts(data.cast(), len)
+    intrinsics::aggregate_raw_ptr(data, len)
 }
 
 /// Forms a raw mutable slice from a pointer and a length.
@@ -858,7 +886,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    from_raw_parts_mut(data.cast(), len)
+    intrinsics::aggregate_raw_ptr(data, len)
 }
 
 /// Swaps the values at two mutable locations of the same type, without
@@ -1784,15 +1812,6 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
         wrapping_add, wrapping_mul, wrapping_sub,
     };
-    #[cfg(bootstrap)]
-    const unsafe fn unchecked_shl(value: usize, shift: usize) -> usize {
-        value << shift
-    }
-    #[cfg(bootstrap)]
-    const unsafe fn unchecked_shr(value: usize, shift: usize) -> usize {
-        value >> shift
-    }
-    #[cfg(not(bootstrap))]
     use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.

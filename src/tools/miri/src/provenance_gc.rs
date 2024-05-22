@@ -122,7 +122,7 @@ impl VisitProvenance for OpTy<'_, Provenance> {
     }
 }
 
-impl VisitProvenance for Allocation<Provenance, AllocExtra<'_>> {
+impl VisitProvenance for Allocation<Provenance, AllocExtra<'_>, MiriAllocBytes> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         for prov in self.provenance().provenances() {
             prov.visit_provenance(visit);

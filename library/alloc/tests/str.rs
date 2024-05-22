@@ -1848,6 +1848,9 @@ fn to_lowercase() {
     assert_eq!("ΑΣ'Α".to_lowercase(), "ασ'α");
     assert_eq!("ΑΣ''Α".to_lowercase(), "ασ''α");
 
+    // https://github.com/rust-lang/rust/issues/124714
+    assert_eq!("abcdefghijklmnopΣ".to_lowercase(), "abcdefghijklmnopς");
+
     // a really long string that has it's lowercase form
     // even longer. this tests that implementations don't assume
     // an incorrect upper bound on allocations

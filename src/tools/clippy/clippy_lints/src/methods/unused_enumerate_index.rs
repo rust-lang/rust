@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_hir_and_then};
-use clippy_utils::paths::{CORE_ITER_ENUMERATE_METHOD, CORE_ITER_ENUMERATE_STRUCT};
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::{expr_or_init, is_trait_method, match_def_path, pat_is_wild};
+use clippy_utils::{expr_or_init, is_trait_method, pat_is_wild};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, FnDecl, PatKind, TyKind};
 use rustc_lint::LateContext;
@@ -42,7 +41,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
     let recv_ty = cx.typeck_results().expr_ty(recv);
     if let Some(recv_ty_defid) = recv_ty.ty_adt_def().map(AdtDef::did)
         // If we call a method on a `std::iter::Enumerate` instance
-        && match_def_path(cx, recv_ty_defid, &CORE_ITER_ENUMERATE_STRUCT)
+        && cx.tcx.is_diagnostic_item(sym::Enumerate, recv_ty_defid)
         // If we are calling a method of the `Iterator` trait
         && is_trait_method(cx, call_expr, sym::Iterator)
         // And the map argument is a closure
@@ -75,10 +74,10 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         && let ExprKind::MethodCall(_, enumerate_recv, _, enumerate_span) = recv_init_expr.kind
         && let Some(enumerate_defid) = cx.typeck_results().type_dependent_def_id(recv_init_expr.hir_id)
         // Make sure the method call is `std::iter::Iterator::enumerate`.
-        && match_def_path(cx, enumerate_defid, &CORE_ITER_ENUMERATE_METHOD)
+        && cx.tcx.is_diagnostic_item(sym::enumerate_method, enumerate_defid)
     {
         // Check if the tuple type was explicit. It may be the type system _needs_ the type of the element
-        // that would be explicited in the closure.
+        // that would be explicitly in the closure.
         let new_closure_param = match find_elem_explicit_type_span(closure.fn_decl) {
             // We have an explicit type. Get its snippet, that of the binding name, and do `binding: ty`.
             // Fallback to `..` if we fail getting either snippet.

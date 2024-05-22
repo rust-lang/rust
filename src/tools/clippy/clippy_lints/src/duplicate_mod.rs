@@ -119,7 +119,7 @@ impl EarlyLintPass for DuplicateMod {
                 cx,
                 DUPLICATE_MOD,
                 multi_span,
-                &format!("file is loaded as a module multiple times: `{}`", local_path.display()),
+                format!("file is loaded as a module multiple times: `{}`", local_path.display()),
                 None,
                 "replace all but one `mod` item with `use` items",
             );

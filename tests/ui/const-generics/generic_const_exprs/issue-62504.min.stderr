@@ -22,7 +22,7 @@ note: tuple struct defined here
 LL | struct ArrayHolder<const X: usize>([u32; X]);
    |        ^^^^^^^^^^^
 
-error[E0282]: type annotations needed for `ArrayHolder<X>`
+error[E0282]: type annotations needed for `ArrayHolder<_>`
   --> $DIR/issue-62504.rs:26:9
    |
 LL |     let mut array = ArrayHolder::new();

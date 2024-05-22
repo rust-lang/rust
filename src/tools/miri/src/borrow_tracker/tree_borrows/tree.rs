@@ -106,6 +106,8 @@ impl LocationState {
         let old_perm = self.permission;
         let transition = Permission::perform_access(access_kind, rel_pos, old_perm, protected)
             .ok_or(TransitionError::ChildAccessForbidden(old_perm))?;
+        self.initialized |= !rel_pos.is_foreign();
+        self.permission = transition.applied(old_perm).unwrap();
         // Why do only initialized locations cause protector errors?
         // Consider two mutable references `x`, `y` into disjoint parts of
         // the same allocation. A priori, these may actually both be used to
@@ -123,8 +125,6 @@ impl LocationState {
         if protected && self.initialized && transition.produces_disabled() {
             return Err(TransitionError::ProtectedDisabled(old_perm));
         }
-        self.permission = transition.applied(old_perm).unwrap();
-        self.initialized |= !rel_pos.is_foreign();
         Ok(transition)
     }
 
@@ -473,7 +473,7 @@ impl Tree {
         let rperms = {
             let mut perms = UniValMap::default();
             // We manually set it to `Active` on all in-bounds positions.
-            // We also ensure that it is initalized, so that no `Active` but
+            // We also ensure that it is initialized, so that no `Active` but
             // not yet initialized nodes exist. Essentially, we pretend there
             // was a write that initialized these to `Active`.
             perms.insert(root_idx, LocationState::new_init(Permission::new_active()));

@@ -9,6 +9,7 @@ use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
+use rustc_middle::bug;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
@@ -42,7 +43,7 @@ impl<'tcx> InferCtxt<'tcx> {
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (param_env, value) = value.into_parts();
-        let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
+        let mut param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
             query_state,
@@ -58,6 +59,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
             },
         );
+
+        param_env.defining_opaque_types = self.defining_opaque_types;
 
         Canonicalizer::canonicalize_with_base(
             param_env,
@@ -440,6 +443,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             | ty::Tuple(..)
             | ty::Alias(..)
             | ty::Foreign(..)
+            | ty::Pat(..)
             | ty::Param(..) => {
                 if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
@@ -540,6 +544,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             max_universe: ty::UniverseIndex::ROOT,
             variables: List::empty(),
             value: (),
+            defining_opaque_types: infcx.map(|i| i.defining_opaque_types).unwrap_or_default(),
         };
         Canonicalizer::canonicalize_with_base(
             base,
@@ -609,7 +614,15 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .max()
             .unwrap_or(ty::UniverseIndex::ROOT);
 
-        Canonical { max_universe, variables: canonical_variables, value: (base.value, out_value) }
+        assert!(
+            !infcx.is_some_and(|infcx| infcx.defining_opaque_types != base.defining_opaque_types)
+        );
+        Canonical {
+            max_universe,
+            variables: canonical_variables,
+            value: (base.value, out_value),
+            defining_opaque_types: base.defining_opaque_types,
+        }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,
@@ -790,7 +803,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         const_var: ty::Const<'tcx>,
     ) -> ty::Const<'tcx> {
         debug_assert!(
-            !self.infcx.is_some_and(|infcx| const_var != infcx.shallow_resolve(const_var))
+            !self.infcx.is_some_and(|infcx| const_var != infcx.shallow_resolve_const(const_var))
         );
         let var = self.canonical_var(info, const_var.into());
         ty::Const::new_bound(self.tcx, self.binder_index, var, self.fold_ty(const_var.ty()))

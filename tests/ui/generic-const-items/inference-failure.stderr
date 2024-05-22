@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Option<T>`
+error[E0282]: type annotations needed for `Option<_>`
   --> $DIR/inference-failure.rs:8:9
    |
 LL |     let _ = NONE;

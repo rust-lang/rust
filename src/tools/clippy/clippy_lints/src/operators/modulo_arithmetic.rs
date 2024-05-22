@@ -113,7 +113,7 @@ fn check_const_operands<'tcx>(
             cx,
             MODULO_ARITHMETIC,
             expr.span,
-            &format!(
+            format!(
                 "you are using modulo operator on constants with different signs: `{} % {}`",
                 lhs_operand.string_representation.as_ref().unwrap(),
                 rhs_operand.string_representation.as_ref().unwrap()

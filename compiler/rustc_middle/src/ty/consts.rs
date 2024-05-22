@@ -6,9 +6,8 @@ use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_macros::HashStable;
-use rustc_type_ir::ConstKind as IrConstKind;
-use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
 mod int;
 mod kind;
@@ -20,14 +19,18 @@ use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 pub use valtree::*;
 
-pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
+pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
+pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
+
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
 
 /// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>);
 
-impl<'tcx> IntoKind for Const<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Const<'tcx> {
     type Kind = ConstKind<'tcx>;
 
     fn kind(self) -> ConstKind<'tcx> {
@@ -45,12 +48,6 @@ impl<'tcx> rustc_type_ir::visit::Flags for Const<'tcx> {
     }
 }
 
-impl<'tcx> ConstTy<TyCtxt<'tcx>> for Const<'tcx> {
-    fn ty(self) -> Ty<'tcx> {
-        self.ty()
-    }
-}
-
 /// Typed constant value.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable)]
@@ -59,8 +56,8 @@ pub struct ConstData<'tcx> {
     pub kind: ConstKind<'tcx>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstData<'_>, 40);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ConstData<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
@@ -177,7 +174,15 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::new::Const<TyCtxt<'tcx>> for Const<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
+    fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst, ty: Ty<'tcx>) -> Self {
+        Const::new_infer(tcx, infer, ty)
+    }
+
+    fn new_var(tcx: TyCtxt<'tcx>, vid: ty::ConstVid, ty: Ty<'tcx>) -> Self {
+        Const::new_var(tcx, vid, ty)
+    }
+
     fn new_anon_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
@@ -185,6 +190,18 @@ impl<'tcx> rustc_type_ir::new::Const<TyCtxt<'tcx>> for Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Self {
         Const::new_bound(tcx, debruijn, var, ty)
+    }
+
+    fn new_unevaluated(
+        interner: TyCtxt<'tcx>,
+        uv: ty::UnevaluatedConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Const::new_unevaluated(interner, uv, ty)
+    }
+
+    fn ty(self) -> Ty<'tcx> {
+        self.ty()
     }
 }
 
@@ -406,7 +423,7 @@ impl<'tcx> Const<'tcx> {
         let size =
             tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        int.to_bits(size).ok()
+        int.try_to_bits(size).ok()
     }
 
     #[inline]

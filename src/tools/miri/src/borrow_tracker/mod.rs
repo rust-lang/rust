@@ -89,10 +89,10 @@ pub struct GlobalStateInner {
     borrow_tracker_method: BorrowTrackerMethod,
     /// Next unused pointer ID (tag).
     next_ptr_tag: BorTag,
-    /// Table storing the "base" tag for each allocation.
-    /// The base tag is the one used for the initial pointer.
+    /// Table storing the "root" tag for each allocation.
+    /// The root tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    base_ptr_tags: FxHashMap<AllocId, BorTag>,
+    root_ptr_tags: FxHashMap<AllocId, BorTag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
     /// All currently protected tags.
@@ -175,7 +175,7 @@ impl GlobalStateInner {
         GlobalStateInner {
             borrow_tracker_method,
             next_ptr_tag: BorTag::one(),
-            base_ptr_tags: FxHashMap::default(),
+            root_ptr_tags: FxHashMap::default(),
             next_call_id: NonZero::new(1).unwrap(),
             protected_tags: FxHashMap::default(),
             tracked_pointer_tags,
@@ -213,8 +213,8 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn base_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> BorTag {
-        self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
+    pub fn root_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> BorTag {
+        self.root_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
                 machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
@@ -223,14 +223,14 @@ impl GlobalStateInner {
                     None,
                 ));
             }
-            trace!("New allocation {:?} has base tag {:?}", id, tag);
-            self.base_ptr_tags.try_insert(id, tag).unwrap();
+            trace!("New allocation {:?} has rpot tag {:?}", id, tag);
+            self.root_ptr_tags.try_insert(id, tag).unwrap();
             tag
         })
     }
 
     pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
-        self.base_ptr_tags.retain(|id, _| allocs.is_live(*id));
+        self.root_ptr_tags.retain(|id, _| allocs.is_live(*id));
     }
 }
 
@@ -260,7 +260,7 @@ impl GlobalStateInner {
         &mut self,
         id: AllocId,
         alloc_size: Size,
-        kind: MemoryKind<machine::MiriMemoryKind>,
+        kind: MemoryKind,
         machine: &MiriMachine<'_, '_>,
     ) -> AllocState {
         match self.borrow_tracker_method {

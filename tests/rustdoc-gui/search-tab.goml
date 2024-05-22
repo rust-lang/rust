@@ -1,4 +1,5 @@
 // Checking the colors of the search tab headers.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html?search=foo"
 show-text: true
 
@@ -8,9 +9,7 @@ define-function: (
      border_bottom_selected, border_bottom_hover, border_top, border_top_selected,
      border_top_hover],
     block {
-        // Setting the theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         // These two commands are used to be sure the search will be run.
         focus: ".search-input"

@@ -1,8 +1,8 @@
 error[E0658]: compact `cfg(target(..))` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-compact.rs:1:7
    |
-LL | #[cfg(target(os = "x"))]
-   |       ^^^^^^^^^^^^^^^^
+LL | #[cfg(target(os = "linux"))]
+   |       ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #96901 <https://github.com/rust-lang/rust/issues/96901> for more information
    = help: add `#![feature(cfg_target_compact)]` to the crate attributes to enable
@@ -11,8 +11,8 @@ LL | #[cfg(target(os = "x"))]
 error[E0658]: compact `cfg(target(..))` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-compact.rs:4:12
    |
-LL | #[cfg_attr(target(os = "x"), x)]
-   |            ^^^^^^^^^^^^^^^^
+LL | #[cfg_attr(target(os = "linux"), non_exhaustive)]
+   |            ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #96901 <https://github.com/rust-lang/rust/issues/96901> for more information
    = help: add `#![feature(cfg_target_compact)]` to the crate attributes to enable
@@ -21,8 +21,8 @@ LL | #[cfg_attr(target(os = "x"), x)]
 error[E0658]: compact `cfg(target(..))` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-compact.rs:7:19
    |
-LL | #[cfg(not(any(all(target(os = "x")))))]
-   |                   ^^^^^^^^^^^^^^^^
+LL | #[cfg(not(any(all(target(os = "linux")))))]
+   |                   ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #96901 <https://github.com/rust-lang/rust/issues/96901> for more information
    = help: add `#![feature(cfg_target_compact)]` to the crate attributes to enable
@@ -31,8 +31,8 @@ LL | #[cfg(not(any(all(target(os = "x")))))]
 error[E0658]: compact `cfg(target(..))` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-compact.rs:11:10
    |
-LL |     cfg!(target(os = "x"));
-   |          ^^^^^^^^^^^^^^^^
+LL |     cfg!(target(os = "linux"));
+   |          ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #96901 <https://github.com/rust-lang/rust/issues/96901> for more information
    = help: add `#![feature(cfg_target_compact)]` to the crate attributes to enable

@@ -181,7 +181,7 @@ fn emit_min_ident_chars(conf: &MinIdentChars, cx: &impl LintContext, ident: &str
             conf.min_ident_chars_threshold,
         ))
     };
-    span_lint(cx, MIN_IDENT_CHARS, span, &help);
+    span_lint(cx, MIN_IDENT_CHARS, span, help);
 }
 
 /// Attempt to convert the node to an [`ItemKind::Use`] node.

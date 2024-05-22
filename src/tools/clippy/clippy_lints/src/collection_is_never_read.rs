@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::visitors::for_each_expr_with_closures;
+use clippy_utils::visitors::{for_each_expr_with_closures, Visitable};
 use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
-use rustc_hir::{Block, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
+use rustc_hir::{Body, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -70,14 +70,14 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     }
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>, collections: &[rustc_span::Symbol]) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>, collections: &[Symbol]) -> bool {
     let ty = cx.typeck_results().pat_ty(local.pat);
     collections.iter().any(|&sym| is_type_diagnostic_item(cx, ty, sym))
     // String type is a lang item but not a diagnostic item for now so we need a separate check
         || is_type_lang_item(cx, ty, LangItem::String)
 }
 
-fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Block<'tcx>) -> bool {
+fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirId, block: T) -> bool {
     let mut has_access = false;
     let mut has_read_access = false;
 
@@ -109,11 +109,30 @@ fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Bloc
         // traits (identified as local, based on the orphan rule), pessimistically assume that they might
         // have side effects, so consider them a read.
         if let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
-            && let ExprKind::MethodCall(_, receiver, _, _) = parent.kind
+            && let ExprKind::MethodCall(_, receiver, args, _) = parent.kind
             && path_to_local_id(receiver, id)
             && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
             && !method_def_id.is_local()
         {
+            // If this "official" method takes closures,
+            // it has read access if one of the closures has read access.
+            //
+            // items.retain(|item| send_item(item).is_ok());
+            let is_read_in_closure_arg = args.iter().any(|arg| {
+                if let ExprKind::Closure(closure) = arg.kind
+                    // To keep things simple, we only check the first param to see if its read.
+                    && let Body { params: [param, ..], value } = cx.tcx.hir().body(closure.body)
+                {
+                    !has_no_read_access(cx, param.hir_id, *value)
+                } else {
+                    false
+                }
+            });
+            if is_read_in_closure_arg {
+                has_read_access = true;
+                return ControlFlow::Break(());
+            }
+
             // The method call is a statement, so the return value is not used. That's not a read access:
             //
             // id.foo(args);

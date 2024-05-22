@@ -7,7 +7,7 @@ use cranelift_codegen::binemit::CodeOffset;
 use cranelift_codegen::MachSrcLoc;
 use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
 use rustc_span::{
-    FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
+    hygiene, FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
 };
 
 use crate::debuginfo::emit::address_for_func;
@@ -63,11 +63,8 @@ impl DebugContext {
         function_span: Span,
         span: Span,
     ) -> (FileId, u64, u64) {
-        // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
-        // In order to have a good line stepping behavior in debugger, we overwrite debug
-        // locations of macro expansions with that of the outermost expansion site (when the macro is
-        // annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
-        let span = tcx.collapsed_debuginfo(span, function_span);
+        // Match behavior of `FunctionCx::adjusted_span_and_dbg_scope`.
+        let span = hygiene::walk_chain_collapsed(span, function_span);
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {
                 let file_id = self.add_source_file(&file);

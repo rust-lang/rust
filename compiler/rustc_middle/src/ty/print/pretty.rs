@@ -16,6 +16,7 @@ use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
+use rustc_macros::{extension, Lift};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -667,14 +668,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Int(t) => p!(write("{}", t.name_str())),
             ty::Uint(t) => p!(write("{}", t.name_str())),
             ty::Float(t) => p!(write("{}", t.name_str())),
+            ty::Pat(ty, pat) => {
+                p!("(", print(ty), ") is ", write("{pat:?}"))
+            }
             ty::RawPtr(ty, mutbl) => {
-                p!(write(
-                    "*{} ",
-                    match mutbl {
-                        hir::Mutability::Mut => "mut",
-                        hir::Mutability::Not => "const",
-                    }
-                ));
+                p!(write("*{} ", mutbl.ptr_str()));
                 p!(print(ty))
             }
             ty::Ref(r, ty, mutbl) => {
@@ -979,7 +977,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_opaque_impl_type(
         &mut self,
         def_id: DefId,
-        args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        args: ty::GenericArgsRef<'tcx>,
     ) -> Result<(), PrintError> {
         let tcx = self.tcx();
 
@@ -1279,7 +1277,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     fn pretty_print_inherent_projection(
         &mut self,
-        alias_ty: &ty::AliasTy<'tcx>,
+        alias_ty: ty::AliasTerm<'tcx>,
     ) -> Result<(), PrintError> {
         let def_key = self.tcx().def_key(alias_ty.def_id);
         self.path_generic_args(
@@ -2862,10 +2860,9 @@ where
     }
 }
 
-impl<'tcx, T, U, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<T, U>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<'tcx, T>
 where
     T: Print<'tcx, P>,
-    U: Print<'tcx, P>,
 {
     fn print(&self, cx: &mut P) -> Result<(), PrintError> {
         define_scoped_cx!(cx);
@@ -2921,26 +2918,28 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
     }
 }
 
+#[extension(pub trait PrintTraitRefExt<'tcx>)]
 impl<'tcx> ty::TraitRef<'tcx> {
-    pub fn print_only_trait_path(self) -> TraitRefPrintOnlyTraitPath<'tcx> {
+    fn print_only_trait_path(self) -> TraitRefPrintOnlyTraitPath<'tcx> {
         TraitRefPrintOnlyTraitPath(self)
     }
 
-    pub fn print_trait_sugared(self) -> TraitRefPrintSugared<'tcx> {
+    fn print_trait_sugared(self) -> TraitRefPrintSugared<'tcx> {
         TraitRefPrintSugared(self)
     }
 
-    pub fn print_only_trait_name(self) -> TraitRefPrintOnlyTraitName<'tcx> {
+    fn print_only_trait_name(self) -> TraitRefPrintOnlyTraitName<'tcx> {
         TraitRefPrintOnlyTraitName(self)
     }
 }
 
+#[extension(pub trait PrintPolyTraitRefExt<'tcx>)]
 impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
-    pub fn print_only_trait_path(self) -> ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>> {
+    fn print_only_trait_path(self) -> ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>> {
         self.map_bound(|tr| tr.print_only_trait_path())
     }
 
-    pub fn print_trait_sugared(self) -> ty::Binder<'tcx, TraitRefPrintSugared<'tcx>> {
+    fn print_trait_sugared(self) -> ty::Binder<'tcx, TraitRefPrintSugared<'tcx>> {
         self.map_bound(|tr| tr.print_trait_sugared())
     }
 }
@@ -2954,14 +2953,16 @@ impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {
     }
 }
 
+#[extension(pub trait PrintTraitPredicateExt<'tcx>)]
 impl<'tcx> ty::TraitPredicate<'tcx> {
-    pub fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
+    fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
         TraitPredPrintModifiersAndPath(self)
     }
 }
 
+#[extension(pub trait PrintPolyTraitPredicateExt<'tcx>)]
 impl<'tcx> ty::PolyTraitPredicate<'tcx> {
-    pub fn print_modifiers_and_trait_path(
+    fn print_modifiers_and_trait_path(
         self,
     ) -> ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>> {
         self.map_bound(TraitPredPrintModifiersAndPath)
@@ -3014,25 +3015,61 @@ forward_display_to_print! {
     ty::Region<'tcx>,
     Ty<'tcx>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ty::Const<'tcx>,
-
-    // HACK(eddyb) these are exhaustive instead of generic,
-    // because `for<'tcx>` isn't possible yet.
-    ty::PolyExistentialProjection<'tcx>,
-    ty::PolyExistentialTraitRef<'tcx>,
-    ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-    ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
-    ty::Binder<'tcx, TraitRefPrintSugared<'tcx>>,
-    ty::Binder<'tcx, ty::FnSig<'tcx>>,
-    ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
-    ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>>,
-    ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
-    ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
-    ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+    ty::Const<'tcx>
 }
 
 define_print! {
     (self, cx):
+
+    ty::FnSig<'tcx> {
+        p!(write("{}", self.safety.prefix_str()));
+
+        if self.abi != Abi::Rust {
+            p!(write("extern {} ", self.abi));
+        }
+
+        p!("fn", pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
+    }
+
+    ty::TraitRef<'tcx> {
+        p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
+    }
+
+    ty::AliasTy<'tcx> {
+        let alias_term: ty::AliasTerm<'tcx> = (*self).into();
+        p!(print(alias_term))
+    }
+
+    ty::AliasTerm<'tcx> {
+        match self.kind(cx.tcx()) {
+            ty::AliasTermKind::InherentTy => p!(pretty_print_inherent_projection(*self)),
+            ty::AliasTermKind::ProjectionTy
+            | ty::AliasTermKind::WeakTy
+            | ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::UnevaluatedConst
+            | ty::AliasTermKind::ProjectionConst => {
+                // If we're printing verbosely, or don't want to invoke queries
+                // (`is_impl_trait_in_trait`), then fall back to printing the def path.
+                // This is likely what you want if you're debugging the compiler anyways.
+                if !(cx.should_print_verbose() || with_reduced_queries())
+                    && cx.tcx().is_impl_trait_in_trait(self.def_id)
+                {
+                    return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
+                } else {
+                    p!(print_def_path(self.def_id, self.args));
+                }
+            }
+        }
+    }
+
+    ty::TraitPredicate<'tcx> {
+        p!(print(self.trait_ref.self_ty()), ": ");
+        p!(pretty_print_bound_constness(self.trait_ref));
+        if let ty::PredicatePolarity::Negative = self.polarity {
+            p!("!");
+        }
+        p!(print(self.trait_ref.print_trait_sugared()))
+    }
 
     ty::TypeAndMut<'tcx> {
         p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
@@ -3074,13 +3111,15 @@ define_print! {
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }
-}
 
-define_print_and_forward_display! {
-    (self, cx):
-
-    &'tcx ty::List<Ty<'tcx>> {
-        p!("{{", comma_sep(self.iter()), "}}")
+    ty::ExistentialPredicate<'tcx> {
+        match *self {
+            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
+            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
+            ty::ExistentialPredicate::AutoTrait(def_id) => {
+                p!(print_def_path(def_id, &[]));
+            }
+        }
     }
 
     ty::ExistentialTraitRef<'tcx> {
@@ -3095,28 +3134,36 @@ define_print_and_forward_display! {
         p!(write("{} = ", name), print(self.term))
     }
 
-    ty::ExistentialPredicate<'tcx> {
-        match *self {
-            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
-            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
-            ty::ExistentialPredicate::AutoTrait(def_id) => {
-                p!(print_def_path(def_id, &[]));
-            }
-        }
+    ty::ProjectionPredicate<'tcx> {
+        p!(print(self.projection_term), " == ");
+        cx.reset_type_limit();
+        p!(print(self.term))
     }
 
-    ty::FnSig<'tcx> {
-        p!(write("{}", self.unsafety.prefix_str()));
-
-        if self.abi != Abi::Rust {
-            p!(write("extern {} ", self.abi));
-        }
-
-        p!("fn", pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
+    ty::SubtypePredicate<'tcx> {
+        p!(print(self.a), " <: ");
+        cx.reset_type_limit();
+        p!(print(self.b))
     }
 
-    ty::TraitRef<'tcx> {
-        p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
+    ty::CoercePredicate<'tcx> {
+        p!(print(self.a), " -> ");
+        cx.reset_type_limit();
+        p!(print(self.b))
+    }
+
+    ty::NormalizesTo<'tcx> {
+        p!(print(self.alias), " normalizes-to ");
+        cx.reset_type_limit();
+        p!(print(self.term))
+    }
+}
+
+define_print_and_forward_display! {
+    (self, cx):
+
+    &'tcx ty::List<Ty<'tcx>> {
+        p!("{{", comma_sep(self.iter()), "}}")
     }
 
     TraitRefPrintOnlyTraitPath<'tcx> {
@@ -3165,62 +3212,11 @@ define_print_and_forward_display! {
         p!(write("{}", self.name))
     }
 
-    ty::SubtypePredicate<'tcx> {
-        p!(print(self.a), " <: ");
-        cx.reset_type_limit();
-        p!(print(self.b))
-    }
-
-    ty::CoercePredicate<'tcx> {
-        p!(print(self.a), " -> ");
-        cx.reset_type_limit();
-        p!(print(self.b))
-    }
-
-    ty::TraitPredicate<'tcx> {
-        p!(print(self.trait_ref.self_ty()), ": ");
-        p!(pretty_print_bound_constness(self.trait_ref));
-        if let ty::PredicatePolarity::Negative = self.polarity {
-            p!("!");
-        }
-        p!(print(self.trait_ref.print_trait_sugared()))
-    }
-
-    ty::ProjectionPredicate<'tcx> {
-        p!(print(self.projection_ty), " == ");
-        cx.reset_type_limit();
-        p!(print(self.term))
-    }
-
-    ty::NormalizesTo<'tcx> {
-        p!(print(self.alias), " normalizes-to ");
-        cx.reset_type_limit();
-        p!(print(self.term))
-    }
-
     ty::Term<'tcx> {
       match self.unpack() {
         ty::TermKind::Ty(ty) => p!(print(ty)),
         ty::TermKind::Const(c) => p!(print(c)),
       }
-    }
-
-    ty::AliasTy<'tcx> {
-        if let DefKind::Impl { of_trait: false } = cx.tcx().def_kind(cx.tcx().parent(self.def_id)) {
-            p!(pretty_print_inherent_projection(self))
-        } else {
-            // If we're printing verbosely, or don't want to invoke queries
-            // (`is_impl_trait_in_trait`), then fall back to printing the def path.
-            // This is likely what you want if you're debugging the compiler anyways.
-            if !(cx.should_print_verbose() || with_reduced_queries())
-                && cx.tcx().is_impl_trait_in_trait(self.def_id)
-            {
-                return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
-            } else {
-                p!(print_def_path(self.def_id, self.args));
-            }
-
-        }
     }
 
     ty::Predicate<'tcx> {

@@ -2,7 +2,7 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::abi::call::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::abi::{Endian, HasDataLayout, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
@@ -37,7 +37,7 @@ where
             RegKind::Vector => arg.layout.size.bits() == 128,
         };
 
-        valid_unit.then_some(Uniform { unit, total: arg.layout.size })
+        valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
     })
 }
 
@@ -81,7 +81,7 @@ where
             Reg::i64()
         };
 
-        ret.cast_to(Uniform { unit, total: size });
+        ret.cast_to(Uniform::new(unit, size));
         return;
     }
 
@@ -108,18 +108,20 @@ where
     }
 
     let size = arg.layout.size;
-    let (unit, total) = if size.bits() <= 64 {
+    if size.bits() <= 64 {
         // Aggregates smaller than a doubleword should appear in
         // the least-significant bits of the parameter doubleword.
-        (Reg { kind: RegKind::Integer, size }, size)
+        arg.cast_to(Reg { kind: RegKind::Integer, size })
     } else {
-        // Aggregates larger than a doubleword should be padded
-        // at the tail to fill out a whole number of doublewords.
-        let reg_i64 = Reg::i64();
-        (reg_i64, size.align_to(reg_i64.align(cx)))
+        // Aggregates larger than i64 should be padded at the tail to fill out a whole number
+        // of i64s or i128s, depending on the aggregate alignment. Always use an array for
+        // this, even if there is only a single element.
+        let reg = if arg.layout.align.abi.bytes() > 8 { Reg::i128() } else { Reg::i64() };
+        arg.cast_to(Uniform::consecutive(
+            reg,
+            size.align_to(Align::from_bytes(reg.size.bytes()).unwrap()),
+        ))
     };
-
-    arg.cast_to(Uniform { unit, total });
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)

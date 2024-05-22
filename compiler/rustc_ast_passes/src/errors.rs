@@ -31,6 +31,12 @@ pub struct VisibilityNotPermitted {
     pub span: Span,
     #[subdiagnostic]
     pub note: VisibilityNotPermittedNote,
+    #[suggestion(
+        ast_passes_remove_qualifier_sugg,
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub remove_qualifier_sugg: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -270,11 +276,10 @@ pub struct FnBodyInExtern {
 #[diag(ast_passes_extern_fn_qualifiers)]
 pub struct FnQualifierInExtern {
     #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
     #[label]
     pub block: Span,
-    #[suggestion(code = "fn ", applicability = "maybe-incorrect", style = "verbose")]
-    pub sugg_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -377,7 +382,7 @@ impl Subdiagnostic for EmptyLabelManySpans {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.span_labels(self.0, "");
     }
@@ -664,6 +669,7 @@ pub struct ConstAndCVariadic {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_foreign, code = E0130)]
+// FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub struct PatternInForeign {
     #[primary_span]
     #[label]
@@ -672,6 +678,7 @@ pub struct PatternInForeign {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_bodiless, code = E0642)]
+// FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub struct PatternInBodiless {
     #[primary_span]
     #[label]
@@ -746,7 +753,7 @@ impl Subdiagnostic for StableFeature {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _: F,
+        _: &F,
     ) {
         diag.arg("name", self.name);
         diag.arg("since", self.since);

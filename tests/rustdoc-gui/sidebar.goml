@@ -1,4 +1,5 @@
 // Checks multiple things on the sidebar display (width of its elements, colors, etc).
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 show-text: true
@@ -8,11 +9,7 @@ define-function: (
     "check-colors",
     [theme, color, background_color],
     block {
-        set-local-storage: {
-            "rustdoc-theme": |theme|,
-            "rustdoc-use-system-theme": "false",
-        }
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         // Checking results colors.
         assert-css: (".sidebar", {
             "color": |color|,
@@ -46,9 +43,7 @@ call-function: (
     }
 )
 
-set-local-storage: {"rustdoc-theme": "light"}
-// We reload the page so the local storage settings are being used.
-reload:
+call-function: ("switch-theme", {"theme": "light"})
 
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "test_docs")
 // Crate root has no "location" element

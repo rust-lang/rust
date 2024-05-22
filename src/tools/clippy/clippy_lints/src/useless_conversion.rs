@@ -5,7 +5,7 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into()`",
                             sugg.into_owned(),
                             app,
@@ -282,7 +282,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if let Some(id) = path_to_local(recv)
                         && let Node::Pat(pat) = cx.tcx.hir_node(id)
                         && let PatKind::Binding(ann, ..) = pat.kind
-                        && ann != BindingAnnotation::MUT
+                        && ann != BindingMode::MUT
                     {
                         // Do not remove .into_iter() applied to a non-mutable local variable used in
                         // a larger expression context as it would differ in mutability.
@@ -301,7 +301,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into_iter()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -321,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         cx,
                         USELESS_CONVERSION,
                         e.span,
-                        &format!("useless conversion to the same type: `{b}`"),
+                        format!("useless conversion to the same type: `{b}`"),
                         None,
                         "consider removing `.try_into()`",
                     );
@@ -346,9 +346,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{b}`"),
                             None,
-                            &hint,
+                            hint,
                         );
                     }
 
@@ -360,8 +360,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{b}`"),
-                            &sugg_msg,
+                            format!("useless conversion to the same type: `{b}`"),
+                            sugg_msg,
                             sugg.to_string(),
                             app,
                         );

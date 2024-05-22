@@ -77,7 +77,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     ),
     TestCase::build_lib("build.alloc_system", "example/alloc_system.rs", "lib"),
     TestCase::build_bin_and_run("aot.alloc_example", "example/alloc_example.rs", &[]),
-    TestCase::jit_bin("jit.std_example", "example/std_example.rs", ""),
+    TestCase::jit_bin("jit.std_example", "example/std_example.rs", "arg"),
     TestCase::build_bin_and_run("aot.std_example", "example/std_example.rs", &["arg"]),
     TestCase::build_bin_and_run("aot.dst_field_align", "example/dst-field-align.rs", &[]),
     TestCase::build_bin_and_run(
@@ -130,16 +130,10 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
-pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
-    "rust-lang",
-    "portable-simd",
-    "5794c837bc605c4cd9dbb884285976dfdb293cce",
-    "a64d8fdd0ed0d9c4",
-    "portable-simd",
-);
+pub(crate) static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("coretests");
 
 pub(crate) static PORTABLE_SIMD: CargoProject =
-    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable-simd_target");
+    CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
 
 static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests");
 
@@ -221,7 +215,12 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.portable-simd", &|runner| {
-        PORTABLE_SIMD_REPO.patch(&runner.dirs);
+        apply_patches(
+            &runner.dirs,
+            "portable-simd",
+            &runner.stdlib_source.join("library/portable-simd"),
+            &PORTABLE_SIMD_SRC.to_path(&runner.dirs),
+        );
 
         PORTABLE_SIMD.clean(&runner.dirs);
 
@@ -291,7 +290,7 @@ pub(crate) fn run_tests(
         && !skip_tests.contains(&"testsuite.extended_sysroot");
 
     if run_base_sysroot || run_extended_sysroot {
-        let mut target_compiler = build_sysroot::build_sysroot(
+        let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             sysroot_kind,
@@ -300,11 +299,8 @@ pub(crate) fn run_tests(
             rustup_toolchain_name,
             target_triple.clone(),
         );
-        // Rust's build system denies a couple of lints that trigger on several of the test
-        // projects. Changing the code to fix them is not worth it, so just silence all lints.
-        target_compiler.rustflags.push("--cap-lints=allow".to_owned());
 
-        let runner = TestRunner::new(
+        let mut runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
@@ -320,6 +316,9 @@ pub(crate) fn run_tests(
         }
 
         if run_extended_sysroot {
+            // Rust's build system denies a couple of lints that trigger on several of the test
+            // projects. Changing the code to fix them is not worth it, so just silence all lints.
+            runner.target_compiler.rustflags.push("--cap-lints=allow".to_owned());
             runner.run_testsuite(EXTENDED_SYSROOT_SUITE);
         } else {
             eprintln!("[SKIP] extended_sysroot tests");

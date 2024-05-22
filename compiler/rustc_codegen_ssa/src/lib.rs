@@ -4,7 +4,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -17,11 +16,7 @@
 //! have to be implemented by each backend.
 
 #[macro_use]
-extern crate rustc_macros;
-#[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -29,6 +24,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::CrateNum;
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
@@ -79,13 +75,26 @@ impl<M> ModuleCodegen<M> {
         emit_obj: bool,
         emit_dwarf_obj: bool,
         emit_bc: bool,
+        emit_asm: bool,
+        emit_ir: bool,
         outputs: &OutputFilenames,
     ) -> CompiledModule {
         let object = emit_obj.then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
         let dwarf_object = emit_dwarf_obj.then(|| outputs.temp_path_dwo(Some(&self.name)));
         let bytecode = emit_bc.then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
+        let assembly = emit_asm.then(|| outputs.temp_path(OutputType::Assembly, Some(&self.name)));
+        let llvm_ir =
+            emit_ir.then(|| outputs.temp_path(OutputType::LlvmAssembly, Some(&self.name)));
 
-        CompiledModule { name: self.name.clone(), kind: self.kind, object, dwarf_object, bytecode }
+        CompiledModule {
+            name: self.name.clone(),
+            kind: self.kind,
+            object,
+            dwarf_object,
+            bytecode,
+            assembly,
+            llvm_ir,
+        }
     }
 }
 
@@ -96,6 +105,8 @@ pub struct CompiledModule {
     pub object: Option<PathBuf>,
     pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
+    pub assembly: Option<PathBuf>, // --emit=asm
+    pub llvm_ir: Option<PathBuf>,  // --emit=llvm-ir, llvm-bc is in bytecode
 }
 
 pub struct CachedModuleCodegen {

@@ -366,6 +366,12 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     }
 
     #[inline]
+    fn into_inner_with_allocator(this: Self) -> (NonNull<RcBox<T>>, A) {
+        let this = mem::ManuallyDrop::new(this);
+        (this.ptr, unsafe { ptr::read(&this.alloc) })
+    }
+
+    #[inline]
     unsafe fn from_inner_in(ptr: NonNull<RcBox<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
@@ -884,7 +890,10 @@ impl<T, A: Allocator> Rc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn pin_in(value: T, alloc: A) -> Pin<Self> {
+    pub fn pin_in(value: T, alloc: A) -> Pin<Self>
+    where
+        A: 'static,
+    {
         unsafe { Pin::new_unchecked(Rc::new_in(value, alloc)) }
     }
 
@@ -1142,12 +1151,9 @@ impl<T, A: Allocator> Rc<mem::MaybeUninit<T>, A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<T, A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_inner_in(md_self.ptr.cast(), md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Rc<T, A> {
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 
@@ -1186,12 +1192,9 @@ impl<T, A: Allocator> Rc<[mem::MaybeUninit<T>], A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<[T], A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_ptr_in(md_self.ptr.as_ptr() as _, md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Rc<[T], A> {
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_ptr_in(ptr.as_ptr() as _, alloc) }
     }
 }
 
@@ -1351,6 +1354,33 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
         let ptr = Self::as_ptr(&this);
         mem::forget(this);
         ptr
+    }
+
+    /// Consumes the `Rc`, returning the wrapped pointer and allocator.
+    ///
+    /// To avoid a memory leak the pointer must be converted back to an `Rc` using
+    /// [`Rc::from_raw_in`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    /// use std::alloc::System;
+    ///
+    /// let x = Rc::new_in("hello".to_owned(), System);
+    /// let (ptr, alloc) = Rc::into_raw_with_allocator(x);
+    /// assert_eq!(unsafe { &*ptr }, "hello");
+    /// let x = unsafe { Rc::from_raw_in(ptr, alloc) };
+    /// assert_eq!(&*x, "hello");
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(this);
+        let ptr = Self::as_ptr(&this);
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(&this.alloc) };
+        (ptr, alloc)
     }
 
     /// Provides a raw pointer to the data.
@@ -1806,7 +1836,9 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
         // reference to the allocation.
         unsafe { &mut this.ptr.as_mut().value }
     }
+}
 
+impl<T: Clone, A: Allocator> Rc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///
@@ -1842,7 +1874,7 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     }
 }
 
-impl<A: Allocator + Clone> Rc<dyn Any, A> {
+impl<A: Allocator> Rc<dyn Any, A> {
     /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
@@ -1866,10 +1898,8 @@ impl<A: Allocator + Clone> Rc<dyn Any, A> {
     pub fn downcast<T: Any>(self) -> Result<Rc<T, A>, Self> {
         if (*self).is::<T>() {
             unsafe {
-                let ptr = self.ptr.cast::<RcBox<T>>();
-                let alloc = self.alloc.clone();
-                forget(self);
-                Ok(Rc::from_inner_in(ptr, alloc))
+                let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+                Ok(Rc::from_inner_in(ptr.cast(), alloc))
             }
         } else {
             Err(self)
@@ -1906,10 +1936,8 @@ impl<A: Allocator + Clone> Rc<dyn Any, A> {
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T, A> {
         unsafe {
-            let ptr = self.ptr.cast::<RcBox<T>>();
-            let alloc = self.alloc.clone();
-            mem::forget(self);
-            Rc::from_inner_in(ptr, alloc)
+            let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+            Rc::from_inner_in(ptr.cast(), alloc)
         }
     }
 }
@@ -2220,6 +2248,31 @@ impl<T: Default> Default for Rc<T> {
     #[inline]
     fn default() -> Rc<T> {
         Rc::new(Default::default())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl Default for Rc<str> {
+    /// Creates an empty str inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        Rc::from("")
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Rc<[T]> {
+    /// Creates an empty `[T]` inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        let arr: [T; 0] = [];
+        Rc::from(arr)
     }
 }
 
@@ -2658,12 +2711,13 @@ impl From<Rc<str>> for Rc<[u8]> {
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
-    type Error = Rc<[T]>;
+impl<T, A: Allocator, const N: usize> TryFrom<Rc<[T], A>> for Rc<[T; N], A> {
+    type Error = Rc<[T], A>;
 
-    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {
+    fn try_from(boxed_slice: Rc<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            Ok(unsafe { Rc::from_raw(Rc::into_raw(boxed_slice) as *mut [T; N]) })
+            let (ptr, alloc) = Rc::into_inner_with_allocator(boxed_slice);
+            Ok(unsafe { Rc::from_inner_in(ptr.cast(), alloc) })
         } else {
             Err(boxed_slice)
         }
@@ -2997,11 +3051,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         result
     }
 
-    /// Consumes the `Weak<T>` and turns it into a raw pointer.
+    /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.
     ///
     /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
     /// one weak reference (the weak count is not modified by this operation). It can be turned
-    /// back into the `Weak<T>` with [`from_raw`].
+    /// back into the `Weak<T>` with [`from_raw_in`].
     ///
     /// The same restrictions of accessing the target of the pointer as with
     /// [`as_ptr`] apply.
@@ -3009,30 +3063,30 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
     /// use std::rc::{Rc, Weak};
+    /// use std::alloc::System;
     ///
-    /// let strong = Rc::new("hello".to_owned());
+    /// let strong = Rc::new_in("hello".to_owned(), System);
     /// let weak = Rc::downgrade(&strong);
-    /// let raw = weak.into_raw();
+    /// let (raw, alloc) = weak.into_raw_with_allocator();
     ///
     /// assert_eq!(1, Rc::weak_count(&strong));
     /// assert_eq!("hello", unsafe { &*raw });
     ///
-    /// drop(unsafe { Weak::from_raw(raw) });
+    /// drop(unsafe { Weak::from_raw_in(raw, alloc) });
     /// assert_eq!(0, Rc::weak_count(&strong));
     /// ```
     ///
-    /// [`from_raw`]: Weak::from_raw
+    /// [`from_raw_in`]: Weak::from_raw_in
     /// [`as_ptr`]: Weak::as_ptr
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_raw_and_alloc(self) -> (*const T, A)
-    where
-        A: Clone,
-    {
-        let result = self.as_ptr();
-        let alloc = self.alloc.clone();
-        mem::forget(self);
+    pub fn into_raw_with_allocator(self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(self);
+        let result = this.as_ptr();
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(&this.alloc) };
         (result, alloc)
     }
 

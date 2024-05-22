@@ -18,11 +18,11 @@ use triomphe::Arc;
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
     db::HirDatabase,
+    error_lifetime,
     infer::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
         TypeError, TypeMismatch,
     },
-    static_lifetime,
     utils::ClosureSubst,
     Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Solution,
     Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
@@ -427,7 +427,7 @@ impl InferenceTable<'_> {
             // compare those. Note that this means we use the target
             // mutability [1], since it may be that we are coercing
             // from `&mut T` to `&U`.
-            let lt = static_lifetime(); // FIXME: handle lifetimes correctly, see rustc
+            let lt = error_lifetime(); // FIXME: handle lifetimes correctly, see rustc
             let derefd_from_ty = TyKind::Ref(to_mt, lt, referent_ty).intern(Interner);
             match autoderef.table.try_unify(&derefd_from_ty, to_ty) {
                 Ok(result) => {
@@ -621,7 +621,7 @@ impl InferenceTable<'_> {
             (TyKind::Ref(from_mt, _, from_inner), &TyKind::Ref(to_mt, _, _)) => {
                 coerce_mutabilities(*from_mt, to_mt)?;
 
-                let lt = static_lifetime();
+                let lt = error_lifetime();
                 Some((
                     Adjustment { kind: Adjust::Deref(None), target: from_inner.clone() },
                     Adjustment {

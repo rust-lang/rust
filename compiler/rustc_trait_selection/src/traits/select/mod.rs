@@ -8,14 +8,14 @@ use self::SelectionCandidate::*;
 use super::coherence::{self, Conflict};
 use super::const_evaluatable;
 use super::project;
-use super::project::ProjectionTyObligation;
+use super::project::ProjectionTermObligation;
 use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
-    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
-    SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
+    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
+    TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -36,14 +36,16 @@ use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::TraitObligation;
+use rustc_middle::bug;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::_match::MatchAgainstFreshVars;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, PolyProjectionPredicate, ToPredicate};
+use rustc_middle::ty::{self, PolyProjectionPredicate, Upcast};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -59,6 +61,20 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 
 mod candidate_assembly;
 mod confirmation;
+
+/// Whether to consider the binder of higher ranked goals for the `leak_check` when
+/// evaluating higher-ranked goals. See #119820 for more info.
+///
+/// While this is a bit hacky, it is necessary to match the behavior of the new solver:
+/// We eagerly instantiate binders in the new solver, outside of candidate selection, so
+/// the leak check inside of candidates does not consider any bound vars from the higher
+/// ranked goal. However, we do exit the binder once we're completely finished with a goal,
+/// so the leak-check can be used in evaluate by causing nested higher-ranked goals to fail.
+#[derive(Debug, Copy, Clone)]
+enum LeakCheckHigherRankedGoal {
+    No,
+    Yes,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum IntercrateAmbiguityCause<'tcx> {
@@ -384,7 +400,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let mut no_candidates_apply = true;
 
                     for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, c)?.may_apply() {
+                        if self
+                            .evaluate_candidate(stack, c, LeakCheckHigherRankedGoal::No)?
+                            .may_apply()
+                        {
                             no_candidates_apply = false;
                             break;
                         }
@@ -455,7 +474,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // is needed for specialization. Propagate overflow if it occurs.
         let mut candidates = candidates
             .into_iter()
-            .map(|c| match self.evaluate_candidate(stack, &c) {
+            .map(|c| match self.evaluate_candidate(stack, &c, LeakCheckHigherRankedGoal::No) {
                 Ok(eval) if eval.may_apply() => {
                     Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
                 }
@@ -545,7 +564,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         debug_assert!(!self.infcx.next_trait_solver());
-        self.evaluation_probe(|this| {
+        self.evaluation_probe(|this, _outer_universe| {
             let goal =
                 this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
             let mut result = this.evaluate_predicate_recursively(
@@ -554,20 +573,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )?;
             // If the predicate has done any inference, then downgrade the
             // result to ambiguous.
-            if this.infcx.shallow_resolve(goal) != goal {
+            if this.infcx.resolve_vars_if_possible(goal) != goal {
                 result = result.max(EvaluatedToAmbig);
             }
             Ok(result)
         })
     }
 
+    /// Computes the evaluation result of `op`, discarding any constraints.
+    ///
+    /// This also runs for leak check to allow higher ranked region errors to impact
+    /// selection. By default it checks for leaks from all universes created inside of
+    /// `op`, but this can be overwritten if necessary.
     fn evaluation_probe(
         &mut self,
-        op: impl FnOnce(&mut Self) -> Result<EvaluationResult, OverflowError>,
+        op: impl FnOnce(&mut Self, &mut ty::UniverseIndex) -> Result<EvaluationResult, OverflowError>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
-            let outer_universe = self.infcx.universe();
-            let result = op(self)?;
+            let mut outer_universe = self.infcx.universe();
+            let result = op(self, &mut outer_universe)?;
 
             match self.infcx.leak_check(outer_universe, Some(snapshot)) {
                 Ok(()) => {}
@@ -586,9 +610,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
-    /// Evaluates the predicates in `predicates` recursively. Note that
-    /// this applies projections in the predicates, and therefore
+    /// Evaluates the predicates in `predicates` recursively. This may
+    /// guide inference. If this is not desired, run it inside of a
     /// is run within an inference probe.
+    /// `probe`.
     #[instrument(skip(self, stack), level = "debug")]
     fn evaluate_predicates_recursively<'o, I>(
         &mut self,
@@ -714,8 +739,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // stack would be `T: Auto`.
                             let cycle = stack.iter().take_while(|s| s.depth > stack_arg.1);
                             let tcx = self.tcx();
-                            let cycle =
-                                cycle.map(|stack| stack.obligation.predicate.to_predicate(tcx));
+                            let cycle = cycle.map(|stack| stack.obligation.predicate.upcast(tcx));
                             if self.coinductive_match(cycle) {
                                 stack.update_reached_depth(stack_arg.1);
                                 return Ok(EvaluatedToOk);
@@ -784,7 +808,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                     let data = bound_predicate.rebind(data);
                     let project_obligation = obligation.with(self.tcx(), data);
-                    match project::poly_project_and_unify_type(self, &project_obligation) {
+                    match project::poly_project_and_unify_term(self, &project_obligation) {
                         ProjectAndUnifyResult::Holds(mut subobligations) => {
                             'compute_res: {
                                 // If we've previously marked this projection as 'complete', then
@@ -792,7 +816,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 // `EvaluatedToOkModuloRegions`), and skip re-evaluating the
                                 // sub-obligations.
                                 if let Some(key) =
-                                    ProjectionCacheKey::from_poly_projection_predicate(self, data)
+                                    ProjectionCacheKey::from_poly_projection_obligation(
+                                        self,
+                                        &project_obligation,
+                                    )
                                 {
                                     if let Some(cached_res) = self
                                         .infcx
@@ -821,8 +848,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     && (eval_rslt == EvaluatedToOk
                                         || eval_rslt == EvaluatedToOkModuloRegions)
                                     && let Some(key) =
-                                        ProjectionCacheKey::from_poly_projection_predicate(
-                                            self, data,
+                                        ProjectionCacheKey::from_poly_projection_obligation(
+                                            self,
+                                            &project_obligation,
                                         )
                                 {
                                     // If the result is something that we can cache, then mark this
@@ -883,7 +911,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     .trace(c1, c2)
-                                    .eq(DefineOpaqueTypes::No, a.args, b.args)
+                                    // Can define opaque types as this is only reachable with
+                                    // `generic_const_exprs`
+                                    .eq(DefineOpaqueTypes::Yes, a.args, b.args)
                                 {
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,
@@ -896,7 +926,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
-                                    .eq(DefineOpaqueTypes::No, c1, c2)
+                                    // Can define opaque types as this is only reachable with
+                                    // `generic_const_exprs`
+                                    .eq(DefineOpaqueTypes::Yes, c1, c2)
                                 {
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,
@@ -926,7 +958,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
                             match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                                DefineOpaqueTypes::No,
+                                // Can define opaque types as this is only reachable with
+                                // `generic_const_exprs`
+                                DefineOpaqueTypes::Yes,
                                 c1,
                                 c2,
                             ) {
@@ -959,7 +993,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        DefineOpaqueTypes::No,
+                        // Only really excercised by generic_const_exprs
+                        DefineOpaqueTypes::Yes,
                         ct.ty(),
                         ty,
                     ) {
@@ -1030,7 +1065,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // so we will try to normalize the obligation and evaluate again.
             // we will replace it with new solver in the future.
             if EvaluationResult::EvaluatedToErr == result
-                && fresh_trait_pred.has_projections()
+                && fresh_trait_pred.has_aliases()
                 && fresh_trait_pred.is_global()
             {
                 let mut nested_obligations = Vec::new();
@@ -1138,7 +1173,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // if the regions match exactly.
             let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
             let tcx = self.tcx();
-            let cycle = cycle.map(|stack| stack.obligation.predicate.to_predicate(tcx));
+            let cycle = cycle.map(|stack| stack.obligation.predicate.upcast(tcx));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack --> recursive, coinductive");
                 Some(EvaluatedToOk)
@@ -1194,7 +1229,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.candidate_from_obligation(stack) {
-            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
+            Ok(Some(c)) => self.evaluate_candidate(stack, &c, LeakCheckHigherRankedGoal::Yes),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(..) => Ok(EvaluatedToErr),
@@ -1219,6 +1254,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Further evaluates `candidate` to decide whether all type parameters match and whether nested
     /// obligations are met. Returns whether `candidate` remains viable after this further
     /// scrutiny.
+    ///
+    /// Depending on the value of [LeakCheckHigherRankedGoal], we may ignore the binder of the goal
+    /// when eagerly detecting higher ranked region errors via the `leak_check`. See that enum for
+    /// more info.
     #[instrument(
         level = "debug",
         skip(self, stack),
@@ -1229,10 +1268,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidate: &SelectionCandidate<'tcx>,
+        leak_check_higher_ranked_goal: LeakCheckHigherRankedGoal,
     ) -> Result<EvaluationResult, OverflowError> {
-        let mut result = self.evaluation_probe(|this| {
-            let candidate = (*candidate).clone();
-            match this.confirm_candidate(stack.obligation, candidate) {
+        let mut result = self.evaluation_probe(|this, outer_universe| {
+            // We eagerly instantiate higher ranked goals to prevent universe errors
+            // from impacting candidate selection. This matches the behavior of the new
+            // solver. This slightly weakens type inference.
+            //
+            // In case there are no unresolved type or const variables this
+            // should still not be necessary to select a unique impl as any overlap
+            // relying on a universe error from higher ranked goals should have resulted
+            // in an overlap error in coherence.
+            let p = self.infcx.enter_forall_and_leak_universe(stack.obligation.predicate);
+            let obligation = stack.obligation.with(this.tcx(), ty::Binder::dummy(p));
+            match leak_check_higher_ranked_goal {
+                LeakCheckHigherRankedGoal::No => *outer_universe = self.infcx.universe(),
+                LeakCheckHigherRankedGoal::Yes => {}
+            }
+
+            match this.confirm_candidate(&obligation, candidate.clone()) {
                 Ok(selection) => {
                     debug!(?selection);
                     this.evaluate_predicates_recursively(
@@ -1324,7 +1378,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, T>,
     ) -> Result<(), OverflowError>
     where
-        T: ToPredicate<'tcx> + Clone,
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
@@ -1353,7 +1407,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, V>,
     ) -> Result<(), OverflowError>
     where
-        V: ToPredicate<'tcx> + Clone,
+        V: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
@@ -1444,7 +1498,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // bound regions.
         let trait_ref = predicate.skip_binder().trait_ref;
 
-        coherence::trait_ref_is_knowable::<!>(self.tcx(), trait_ref, |ty| Ok(ty)).unwrap()
+        coherence::trait_ref_is_knowable::<!>(self.infcx, trait_ref, |ty| Ok(ty)).unwrap()
     }
 
     /// Returns `true` if the global caches can be used.
@@ -1657,8 +1711,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         stack: &TraitObligationStack<'o, 'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        self.evaluation_probe(|this| {
-            match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
+        self.evaluation_probe(|this, outer_universe| {
+            // Eagerly instantiate higher ranked goals.
+            //
+            // See the comment in `evaluate_candidate` to see why.
+            let p = self.infcx.enter_forall_and_leak_universe(stack.obligation.predicate);
+            let obligation = stack.obligation.with(this.tcx(), ty::Binder::dummy(p));
+            *outer_universe = self.infcx.universe();
+            match this.match_where_clause_trait_ref(&obligation, where_clause_trait_ref) {
                 Ok(obligations) => this.evaluate_predicates_recursively(stack.list(), obligations),
                 Err(()) => Ok(EvaluatedToErr),
             }
@@ -1673,10 +1733,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// in cases like #91762.
     pub(super) fn match_projection_projections(
         &mut self,
-        obligation: &ProjectionTyObligation<'tcx>,
+        obligation: &ProjectionTermObligation<'tcx>,
         env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> ProjectionMatchesProjection {
+        debug_assert_eq!(obligation.predicate.def_id, env_predicate.projection_def_id());
+
         let mut nested_obligations = Vec::new();
         let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
@@ -1690,12 +1752,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    infer_predicate.projection_ty,
+                    infer_predicate.projection_term,
                     &mut nested_obligations,
                 )
             })
         } else {
-            infer_predicate.projection_ty
+            infer_predicate.projection_term
         };
 
         let is_match = self
@@ -1716,10 +1778,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
-            if !generics.params.is_empty()
-                && obligation.predicate.args[generics.parent_count..]
-                    .iter()
-                    .any(|&p| p.has_non_region_infer() && self.infcx.shallow_resolve(p) != p)
+            // FIXME(generic-associated-types): This only detects one layer of inference,
+            // which is probably not what we actually want, but fixing it causes some ambiguity:
+            // <https://github.com/rust-lang/rust/issues/125196>.
+            if !generics.is_own_empty()
+                && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
+                    p.has_non_region_infer()
+                        && match p.unpack() {
+                            ty::GenericArgKind::Const(ct) => {
+                                self.infcx.shallow_resolve_const(ct) != ct
+                            }
+                            ty::GenericArgKind::Type(ty) => self.infcx.shallow_resolve(ty) != ty,
+                            ty::GenericArgKind::Lifetime(_) => false,
+                        }
+                })
             {
                 ProjectionMatchesProjection::Ambiguous
             } else {
@@ -1940,7 +2012,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // any associated items and there are no where-clauses.
                     //
                     // We can just arbitrarily drop one of the impls.
-                    Some(ty::ImplOverlapKind::Issue33140) => {
+                    Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
                         assert_eq!(other.evaluation, victim.evaluation);
                         DropVictim::Yes
                     }
@@ -2085,6 +2157,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
             ),
 
+            ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![*ty])),
+
             ty::Adt(def, args) => {
                 if let Some(sized_crit) = def.sized_constraint(self.tcx()) {
                     // (*) binder moved here
@@ -2143,6 +2217,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Tuple(tys) => {
                 // (*) binder moved here
                 Where(obligation.predicate.rebind(tys.iter().collect()))
+            }
+
+            ty::Pat(ty, _) => {
+                // (*) binder moved here
+                Where(obligation.predicate.rebind(vec![ty]))
             }
 
             ty::Coroutine(coroutine_def_id, args) => {
@@ -2283,7 +2362,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => t.rebind(vec![element_ty]),
 
-            ty::Array(element_ty, _) | ty::Slice(element_ty) => t.rebind(vec![element_ty]),
+            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => t.rebind(vec![ty]),
 
             ty::Tuple(tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
@@ -2373,7 +2452,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     });
 
                 let tcx = self.tcx();
-                let trait_ref = if tcx.generics_of(trait_def_id).params.len() == 1 {
+                let trait_ref = if tcx.generics_of(trait_def_id).own_params.len() == 1 {
                     ty::TraitRef::new(tcx, trait_def_id, [normalized_ty])
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize
@@ -2703,7 +2782,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     cause.clone()
                 } else {
                     cause.clone().derived_cause(parent_trait_pred, |derived| {
-                        ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                        ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
                             derived,
                             impl_or_alias_def_id: def_id,
                             impl_def_predicate_index: Some(index),

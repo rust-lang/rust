@@ -33,8 +33,8 @@ const fn helper_dangling() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (dangling pointer), who doesn't love tests like this.
     Some(&mut *(&mut 42 as *mut i32))
 } }
-const DANGLING: Option<&mut i32> = helper_dangling(); //~ ERROR encountered dangling pointer
-static DANGLING_STATIC: Option<&mut i32> = helper_dangling(); //~ ERROR encountered dangling pointer
+const DANGLING: Option<&mut i32> = helper_dangling(); //~ ERROR it is undefined behavior to use this value
+static DANGLING_STATIC: Option<&mut i32> = helper_dangling(); //~ ERROR it is undefined behavior to use this value
 
 // These are fine! Just statics pointing to mutable statics, nothing fundamentally wrong with this.
 static MUT_STATIC: Option<&mut i32> = helper();

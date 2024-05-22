@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
-use super::abi;
+use super::hermit_abi;
 use super::thread_local_dtor::run_dtors;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZero;
 use crate::ptr;
 use crate::time::Duration;
 
-pub type Tid = abi::Tid;
+pub type Tid = hermit_abi::Tid;
 
 pub struct Thread {
     tid: Tid,
@@ -27,10 +27,10 @@ impl Thread {
         core_id: isize,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
-        let tid = abi::spawn2(
+        let tid = hermit_abi::spawn2(
             thread_start,
             p.expose_provenance(),
-            abi::Priority::into(abi::NORMAL_PRIO),
+            hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
             stack,
             core_id,
         );
@@ -62,7 +62,7 @@ impl Thread {
     #[inline]
     pub fn yield_now() {
         unsafe {
-            abi::yield_now();
+            hermit_abi::yield_now();
         }
     }
 
@@ -71,20 +71,16 @@ impl Thread {
         // nope
     }
 
-    pub fn get_name() -> Option<CString> {
-        None
-    }
-
     #[inline]
     pub fn sleep(dur: Duration) {
         unsafe {
-            abi::usleep(dur.as_micros() as u64);
+            hermit_abi::usleep(dur.as_micros() as u64);
         }
     }
 
     pub fn join(self) {
         unsafe {
-            let _ = abi::join(self.tid);
+            let _ = hermit_abi::join(self.tid);
         }
     }
 
@@ -102,5 +98,5 @@ impl Thread {
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsafe { Ok(NonZero::new_unchecked(abi::get_processor_count())) }
+    unsafe { Ok(NonZero::new_unchecked(hermit_abi::get_processor_count())) }
 }

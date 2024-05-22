@@ -7,7 +7,7 @@
 mod tests;
 
 use super::os::current_exe;
-use crate::ffi::OsString;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::num::NonZero;
@@ -17,6 +17,7 @@ use crate::sys::path::get_long_path;
 use crate::sys::process::ensure_no_nuls;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::wstr::WStrUnits;
+use crate::sys_common::AsInner;
 use crate::vec;
 
 use crate::iter;
@@ -262,16 +263,92 @@ pub(crate) fn append_arg(cmd: &mut Vec<u16>, arg: &Arg, force_quotes: bool) -> i
     Ok(())
 }
 
+fn append_bat_arg(cmd: &mut Vec<u16>, arg: &OsStr, mut quote: bool) -> io::Result<()> {
+    ensure_no_nuls(arg)?;
+    // If an argument has 0 characters then we need to quote it to ensure
+    // that it actually gets passed through on the command line or otherwise
+    // it will be dropped entirely when parsed on the other end.
+    //
+    // We also need to quote the argument if it ends with `\` to guard against
+    // bat usage such as `"%~2"` (i.e. force quote arguments) otherwise a
+    // trailing slash will escape the closing quote.
+    if arg.is_empty() || arg.as_encoded_bytes().last() == Some(&b'\\') {
+        quote = true;
+    }
+    for cp in arg.as_inner().inner.code_points() {
+        if let Some(cp) = cp.to_char() {
+            // Rather than trying to find every ascii symbol that must be quoted,
+            // we assume that all ascii symbols must be quoted unless they're known to be good.
+            // We also quote Unicode control blocks for good measure.
+            // Note an unquoted `\` is fine so long as the argument isn't otherwise quoted.
+            static UNQUOTED: &str = r"#$*+-./:?@\_";
+            let ascii_needs_quotes =
+                cp.is_ascii() && !(cp.is_ascii_alphanumeric() || UNQUOTED.contains(cp));
+            if ascii_needs_quotes || cp.is_control() {
+                quote = true;
+            }
+        }
+    }
+
+    if quote {
+        cmd.push('"' as u16);
+    }
+    // Loop through the string, escaping `\` only if followed by `"`.
+    // And escaping `"` by doubling them.
+    let mut backslashes: usize = 0;
+    for x in arg.encode_wide() {
+        if x == '\\' as u16 {
+            backslashes += 1;
+        } else {
+            if x == '"' as u16 {
+                // Add n backslashes to total 2n before internal `"`.
+                cmd.extend((0..backslashes).map(|_| '\\' as u16));
+                // Appending an additional double-quote acts as an escape.
+                cmd.push(b'"' as u16)
+            } else if x == '%' as u16 || x == '\r' as u16 {
+                // yt-dlp hack: replaces `%` with `%%cd:~,%` to stop %VAR% being expanded as an environment variable.
+                //
+                // # Explanation
+                //
+                // cmd supports extracting a substring from a variable using the following syntax:
+                //     %variable:~start_index,end_index%
+                //
+                // In the above command `cd` is used as the variable and the start_index and end_index are left blank.
+                // `cd` is a built-in variable that dynamically expands to the current directory so it's always available.
+                // Explicitly omitting both the start and end index creates a zero-length substring.
+                //
+                // Therefore it all resolves to nothing. However, by doing this no-op we distract cmd.exe
+                // from potentially expanding %variables% in the argument.
+                cmd.extend_from_slice(&[
+                    '%' as u16, '%' as u16, 'c' as u16, 'd' as u16, ':' as u16, '~' as u16,
+                    ',' as u16,
+                ]);
+            }
+            backslashes = 0;
+        }
+        cmd.push(x);
+    }
+    if quote {
+        // Add n backslashes to total 2n before ending `"`.
+        cmd.extend((0..backslashes).map(|_| '\\' as u16));
+        cmd.push('"' as u16);
+    }
+    Ok(())
+}
+
 pub(crate) fn make_bat_command_line(
     script: &[u16],
     args: &[Arg],
     force_quotes: bool,
 ) -> io::Result<Vec<u16>> {
+    const INVALID_ARGUMENT_ERROR: io::Error =
+        io::const_io_error!(io::ErrorKind::InvalidInput, r#"batch file arguments are invalid"#);
     // Set the start of the command line to `cmd.exe /c "`
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments
     // have been added.
-    let mut cmd: Vec<u16> = "cmd.exe /d /c \"".encode_utf16().collect();
+    // Using /e:ON enables "command extensions" which is essential for the `%` hack to work.
+    let mut cmd: Vec<u16> = "cmd.exe /e:ON /v:OFF /d /c \"".encode_utf16().collect();
 
     // Push the script name surrounded by its quote pair.
     cmd.push(b'"' as u16);
@@ -291,18 +368,22 @@ pub(crate) fn make_bat_command_line(
     // reconstructed by the batch script by default.
     for arg in args {
         cmd.push(' ' as u16);
-        // Make sure to always quote special command prompt characters, including:
-        // * Characters `cmd /?` says require quotes.
-        // * `%` for environment variables, as in `%TMP%`.
-        // * `|<>` pipe/redirect characters.
-        const SPECIAL: &[u8] = b"\t &()[]{}^=;!'+,`~%|<>";
-        let force_quotes = match arg {
-            Arg::Regular(arg) if !force_quotes => {
-                arg.as_encoded_bytes().iter().any(|c| SPECIAL.contains(c))
+        match arg {
+            Arg::Regular(arg_os) => {
+                let arg_bytes = arg_os.as_encoded_bytes();
+                // Disallow \r and \n as they may truncate the arguments.
+                const DISALLOWED: &[u8] = b"\r\n";
+                if arg_bytes.iter().any(|c| DISALLOWED.contains(c)) {
+                    return Err(INVALID_ARGUMENT_ERROR);
+                }
+                append_bat_arg(&mut cmd, arg_os, force_quotes)?;
             }
-            _ => force_quotes,
+            _ => {
+                // Raw arguments are passed on as-is.
+                // It's the user's responsibility to properly handle arguments in this case.
+                append_arg(&mut cmd, arg, force_quotes)?;
+            }
         };
-        append_arg(&mut cmd, arg, force_quotes)?;
     }
 
     // Close the quote we left opened earlier.

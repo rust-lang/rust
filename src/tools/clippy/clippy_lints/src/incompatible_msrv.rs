@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///
     /// To fix this problem, either increase your MSRV or use another item
     /// available in your current MSRV.
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub INCOMPATIBLE_MSRV,
     suspicious,
     "ensures that all items used in the crate are available for the current MSRV"
@@ -104,7 +104,7 @@ impl IncompatibleMsrv {
             cx,
             INCOMPATIBLE_MSRV,
             span,
-            &format!(
+            format!(
                 "current MSRV (Minimum Supported Rust Version) is `{}` but this item is stable since `{version}`",
                 self.msrv
             ),

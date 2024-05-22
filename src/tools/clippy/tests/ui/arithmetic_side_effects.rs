@@ -10,12 +10,12 @@
     arithmetic_overflow,
     unconditional_panic
 )]
-#![feature(const_mut_refs, inline_const)]
+#![feature(const_mut_refs)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;
 
-use core::num::{NonZeroUsize, Saturating, Wrapping};
+use core::num::{NonZero, Saturating, Wrapping};
 
 const ONE: i32 = 1;
 const ZERO: i32 = 0;
@@ -494,15 +494,15 @@ pub fn issue_11262() {
 }
 
 pub fn issue_11392() {
-    fn example_div(unsigned: usize, nonzero_unsigned: NonZeroUsize) -> usize {
+    fn example_div(unsigned: usize, nonzero_unsigned: NonZero<usize>) -> usize {
         unsigned / nonzero_unsigned
     }
 
-    fn example_rem(unsigned: usize, nonzero_unsigned: NonZeroUsize) -> usize {
+    fn example_rem(unsigned: usize, nonzero_unsigned: NonZero<usize>) -> usize {
         unsigned % nonzero_unsigned
     }
 
-    let (unsigned, nonzero_unsigned) = (0, NonZeroUsize::new(1).unwrap());
+    let (unsigned, nonzero_unsigned) = (0, NonZero::new(1).unwrap());
     example_div(unsigned, nonzero_unsigned);
     example_rem(unsigned, nonzero_unsigned);
 }
@@ -519,6 +519,16 @@ pub fn issue_11393() {
     let [x, maybe_zero] = [1, 0].map(Wrapping);
     example_div(x, maybe_zero);
     example_rem(x, maybe_zero);
+}
+
+pub fn issue_12318() {
+    use core::ops::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
+    let mut one: i32 = 1;
+    one.add_assign(1);
+    one.div_assign(1);
+    one.mul_assign(1);
+    one.rem_assign(1);
+    one.sub_assign(1);
 }
 
 fn main() {}

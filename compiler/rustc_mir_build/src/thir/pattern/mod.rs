@@ -11,8 +11,9 @@ use crate::thir::util::UserAnnotatedTyHelpers;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, RangeEnd};
+use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
 use rustc_index::Idx;
+use rustc_lint as lint;
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalId, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{
@@ -20,6 +21,7 @@ use rustc_middle::thir::{
 };
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, Integer};
@@ -30,6 +32,9 @@ struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
+
+    /// Used by the Rust 2024 migration lint.
+    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -38,9 +43,25 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
-    let mut pcx = PatCtxt { tcx, param_env, typeck_results };
+    let mut pcx = PatCtxt {
+        tcx,
+        param_env,
+        typeck_results,
+        rust_2024_migration_suggestion: typeck_results
+            .rust_2024_migration_desugared_pats()
+            .contains(pat.hir_id)
+            .then_some(Rust2024IncompatiblePatSugg { suggestion: Vec::new() }),
+    };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
+    if let Some(sugg) = pcx.rust_2024_migration_suggestion {
+        tcx.emit_node_span_lint(
+            lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
+            pat.hir_id,
+            pat.span,
+            Rust2024IncompatiblePat { sugg },
+        );
+    }
     result
 }
 
@@ -65,18 +86,46 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // we wrap the unadjusted pattern in `PatKind::Deref` repeatedly, consuming the
         // adjustments in *reverse order* (last-in-first-out, so that the last `Deref` inserted
         // gets the least-dereferenced type).
-        let unadjusted_pat = self.lower_pattern_unadjusted(pat);
-        self.typeck_results.pat_adjustments().get(pat.hir_id).unwrap_or(&vec![]).iter().rev().fold(
-            unadjusted_pat,
-            |pat: Box<_>, ref_ty| {
-                debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
-                Box::new(Pat {
-                    span: pat.span,
-                    ty: *ref_ty,
-                    kind: PatKind::Deref { subpattern: pat },
+        let unadjusted_pat = match pat.kind {
+            hir::PatKind::Ref(inner, _)
+                if self.typeck_results.skipped_ref_pats().contains(pat.hir_id) =>
+            {
+                self.lower_pattern(inner)
+            }
+            _ => self.lower_pattern_unadjusted(pat),
+        };
+
+        let adjustments: &[Ty<'tcx>] =
+            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
+        let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
+            debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
+            Box::new(Pat {
+                span: thir_pat.span,
+                ty: *ref_ty,
+                kind: PatKind::Deref { subpattern: thir_pat },
+            })
+        });
+
+        if let Some(s) = &mut self.rust_2024_migration_suggestion
+            && !adjustments.is_empty()
+        {
+            let suggestion_str: String = adjustments
+                .iter()
+                .map(|ref_ty| {
+                    let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
+                        span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
+                    };
+
+                    match mutbl {
+                        ty::Mutability::Not => "&",
+                        ty::Mutability::Mut => "&mut ",
+                    }
                 })
-            },
-        )
+                .collect();
+            s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
+        };
+
+        adjusted_pat
     }
 
     fn lower_pattern_range_endpoint(
@@ -257,13 +306,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Deref(subpattern) => {
-                PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern) }
+                let mutable = self.typeck_results.pat_has_ref_mut_binding(subpattern);
+                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
             hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 
-            hir::PatKind::Slice(prefix, ref slice, suffix) => {
+            hir::PatKind::Slice(prefix, slice, suffix) => {
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }
 
@@ -275,7 +326,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 PatKind::Leaf { subpatterns }
             }
 
-            hir::PatKind::Binding(_, id, ident, ref sub) => {
+            hir::PatKind::Binding(explicit_ba, id, ident, sub) => {
                 if let Some(ident_span) = ident.span.find_ancestor_inside(span) {
                     span = span.with_hi(ident_span.hi());
                 }
@@ -285,6 +336,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .pat_binding_modes()
                     .get(pat.hir_id)
                     .expect("missing binding mode");
+
+                if let Some(s) = &mut self.rust_2024_migration_suggestion
+                    && explicit_ba.0 == ByRef::No
+                    && let ByRef::Yes(mutbl) = mode.0
+                {
+                    let sugg_str = match mutbl {
+                        Mutability::Not => "ref ",
+                        Mutability::Mut => "ref mut ",
+                    };
+                    s.suggestion.push((
+                        pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
+                        sugg_str.to_owned(),
+                    ))
+                }
 
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
@@ -357,10 +422,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(
-        &mut self,
-        pat: &'tcx Option<&'tcx hir::Pat<'tcx>>,
-    ) -> Option<Box<Pat<'tcx>>> {
+    fn lower_opt_pattern(&mut self, pat: Option<&'tcx hir::Pat<'tcx>>) -> Option<Box<Pat<'tcx>>> {
         pat.map(|p| self.lower_pattern(p))
     }
 
@@ -369,7 +431,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         span: Span,
         ty: Ty<'tcx>,
         prefix: &'tcx [hir::Pat<'tcx>],
-        slice: &'tcx Option<&'tcx hir::Pat<'tcx>>,
+        slice: Option<&'tcx hir::Pat<'tcx>>,
         suffix: &'tcx [hir::Pat<'tcx>],
     ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);

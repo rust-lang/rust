@@ -18,8 +18,6 @@ pub fn target() -> Target {
             "/SAFESEH",
         ],
     );
-    // Workaround for #95429
-    base.has_thread_local = false;
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),

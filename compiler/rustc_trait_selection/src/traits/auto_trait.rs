@@ -152,7 +152,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
              with {:?}",
             trait_ref, full_env
         );
-        infcx.clear_caches();
 
         // At this point, we already have all of the bounds we need. FulfillmentContext is used
         // to store all of the necessary region/lifetime bounds in the InferContext, as well as
@@ -176,9 +175,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
-}
 
-impl<'tcx> AutoTraitFinder<'tcx> {
     /// The core logic responsible for computing the bounds for our synthesized impl.
     ///
     /// To calculate the bounds, we call `SelectionContext.select` in a loop. Like
@@ -255,8 +252,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let dummy_cause = ObligationCause::dummy();
 
         while let Some(pred) = predicates.pop_front() {
-            infcx.clear_caches();
-
             if !already_visited.insert(pred) {
                 continue;
             }
@@ -308,7 +303,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.args) {
                         already_visited.remove(&pred);
-                        self.add_user_pred(&mut user_computed_preds, pred.to_predicate(self.tcx));
+                        self.add_user_pred(&mut user_computed_preds, pred.upcast(self.tcx));
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -545,11 +540,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, args: GenericArgsRef<'_>) -> bool {
+    fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
         self.is_of_param(args.type_at(0)) && !args.types().any(|t| t.has_infer_types())
     }
 
-    pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
+    pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
             ty::Alias(ty::Projection, p) => self.is_of_param(p.self_ty()),
@@ -557,9 +552,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
     }
 
-    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
+    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().ty() {
-            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_ty)
+            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
         } else {
             false
         }
@@ -617,7 +612,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // an inference variable.
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
-                    if self.is_param_no_infer(p.skip_binder().projection_ty.args)
+                    if self.is_param_no_infer(p.skip_binder().projection_term.args)
                         && !p.term().skip_binder().has_infer_types()
                         && is_new_pred
                     {
@@ -689,7 +684,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match project::poly_project_and_unify_type(selcx, &obligation.with(self.tcx, p))
+                    match project::poly_project_and_unify_term(selcx, &obligation.with(self.tcx, p))
                     {
                         ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
@@ -789,7 +784,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(DefineOpaqueTypes::No,c1, c2)
+                            match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(DefineOpaqueTypes::Yes,c1, c2)
                             {
                                 Ok(_) => (),
                                 Err(_) => return false,

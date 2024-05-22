@@ -5,7 +5,7 @@ if let StmtKind::Local(local) = stmt.kind
     && match_qpath(qpath, &["char"])
     && let ExprKind::Lit(ref lit) = expr.kind
     && let LitKind::Int(69, LitIntType::Unsuffixed) = lit.node
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "x"
 {
     // report your lint here

@@ -39,13 +39,6 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
 
-cfg_if::cfg_if! {
-    if #[cfg(not(target_feature = "atomics"))] {
-        #[path = "../unsupported/thread_parking.rs"]
-        pub mod thread_parking;
-    }
-}
-
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]

@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
+use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source, is_local_used};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::{walk_body, Visitor};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::{in_external_macro, is_from_async_await};
@@ -75,9 +76,50 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
                         let snip = snippet_with_context(cx, expr.span, local.span.ctxt(), "()", &mut app).0;
                         diag.span_suggestion(local.span, "omit the `let` binding", format!("{snip};"), app);
                     }
+
+                    if let PatKind::Binding(_, binding_hir_id, ident, ..) = local.pat.kind
+                        && let Some(body_id) = cx.enclosing_body.as_ref()
+                        && let body = cx.tcx.hir().body(*body_id)
+                        && is_local_used(cx, body, binding_hir_id)
+                    {
+                        let identifier = ident.as_str();
+                        let mut visitor = UnitVariableCollector::new(binding_hir_id);
+                        walk_body(&mut visitor, body);
+                        visitor.spans.into_iter().for_each(|span| {
+                            let msg =
+                                format!("variable `{identifier}` of type `()` can be replaced with explicit `()`");
+                            diag.span_suggestion(span, msg, "()", Applicability::MachineApplicable);
+                        });
+                    }
                 },
             );
         }
+    }
+}
+
+struct UnitVariableCollector {
+    id: HirId,
+    spans: Vec<rustc_span::Span>,
+}
+
+impl UnitVariableCollector {
+    fn new(id: HirId) -> Self {
+        Self { id, spans: vec![] }
+    }
+}
+
+/**
+ * Collect all instances where a variable is used based on its `HirId`.
+ */
+impl<'tcx> Visitor<'tcx> for UnitVariableCollector {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> Self::Result {
+        if let ExprKind::Path(QPath::Resolved(None, path)) = ex.kind
+            && let Res::Local(id) = path.res
+            && id == self.id
+        {
+            self.spans.push(path.span);
+        }
+        rustc_hir::intravisit::walk_expr(self, ex);
     }
 }
 

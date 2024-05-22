@@ -1,5 +1,8 @@
+//@aux-build:proc_macros.rs
 #![warn(clippy::large_stack_arrays)]
 #![allow(clippy::large_enum_variant)]
+
+extern crate proc_macros;
 
 #[derive(Clone, Copy)]
 struct S {
@@ -54,4 +57,49 @@ fn main() {
         [E::T(0); 1000],
         [(); 20_000_000],
     );
+}
+
+#[allow(clippy::useless_vec)]
+fn issue_12586() {
+    macro_rules! dummy {
+        ($n:expr) => {
+            $n
+        };
+        // Weird rule to test help messages.
+        ($a:expr => $b:expr) => {
+            [$a, $b, $a, $b]
+            //~^ ERROR: allocating a local array larger than 512000 bytes
+        };
+        ($id:ident; $n:literal) => {
+            dummy!(::std::vec![$id;$n])
+        };
+        ($($id:expr),+ $(,)?) => {
+            ::std::vec![$($id),*]
+        }
+    }
+    macro_rules! create_then_move {
+        ($id:ident; $n:literal) => {{
+            let _x_ = [$id; $n];
+            //~^ ERROR: allocating a local array larger than 512000 bytes
+            _x_
+        }};
+    }
+
+    let x = [0u32; 50_000];
+    let y = vec![x, x, x, x, x];
+    let y = vec![dummy![x, x, x, x, x]];
+    let y = vec![dummy![[x, x, x, x, x]]];
+    let y = dummy![x, x, x, x, x];
+    let y = [x, x, dummy!(x), x, x];
+    //~^ ERROR: allocating a local array larger than 512000 bytes
+    let y = dummy![x => x];
+    let y = dummy![x;5];
+    let y = dummy!(vec![dummy![x, x, x, x, x]]);
+    let y = dummy![[x, x, x, x, x]];
+    //~^ ERROR: allocating a local array larger than 512000 bytes
+
+    let y = proc_macros::make_it_big!([x; 1]);
+    //~^ ERROR: allocating a local array larger than 512000 bytes
+    let y = vec![proc_macros::make_it_big!([x; 10])];
+    let y = vec![create_then_move![x; 5]; 5];
 }

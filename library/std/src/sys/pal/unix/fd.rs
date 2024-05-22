@@ -33,24 +33,22 @@ pub struct FileDesc(OwnedFd);
 // with the man page quoting that if the count of bytes to read is
 // greater than `SSIZE_MAX` the result is "unspecified".
 //
-// On macOS, however, apparently the 64-bit libc is either buggy or
+// On Apple targets however, apparently the 64-bit libc is either buggy or
 // intentionally showing odd behavior by rejecting any read with a size
 // larger than or equal to INT_MAX. To handle both of these the read
 // size is capped on both platforms.
-#[cfg(target_os = "macos")]
-const READ_LIMIT: usize = libc::c_int::MAX as usize - 1;
-#[cfg(not(target_os = "macos"))]
-const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
+const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
+    libc::c_int::MAX as usize - 1
+} else {
+    libc::ssize_t::MAX as usize
+};
 
 #[cfg(any(
     target_os = "dragonfly",
     target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "watchos",
+    target_vendor = "apple",
 ))]
 const fn max_iov() -> usize {
     libc::IOV_MAX as usize
@@ -71,16 +69,13 @@ const fn max_iov() -> usize {
     target_os = "dragonfly",
     target_os = "emscripten",
     target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
     target_os = "linux",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "nto",
     target_os = "openbsd",
     target_os = "horizon",
     target_os = "vita",
-    target_os = "watchos",
+    target_vendor = "apple",
 )))]
 const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
@@ -199,13 +194,10 @@ impl FileDesc {
         target_os = "fuchsia",
         target_os = "hurd",
         target_os = "illumos",
-        target_os = "ios",
-        target_os = "tvos",
         target_os = "linux",
-        target_os = "macos",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_os = "watchos",
+        target_vendor = "apple",
     )))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         io::default_read_vectored(|b| self.read_at(b, offset), bufs)
@@ -239,19 +231,40 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    // We support old MacOS and iOS versions that do not have `preadv`. There is
-    // no `syscall` possible in these platform.
-    #[cfg(any(
-        all(target_os = "android", target_pointer_width = "32"),
-        target_os = "ios", // ios 14.0
-        target_os = "tvos", // tvos 14.0
-        target_os = "macos", // macos 11.0
-        target_os = "watchos", // watchos 7.0
-    ))]
+    #[cfg(all(target_os = "android", target_pointer_width = "32"))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         super::weak::weak!(fn preadv64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 
         match preadv64.get() {
+            Some(preadv) => {
+                let ret = cvt(unsafe {
+                    preadv(
+                        self.as_raw_fd(),
+                        bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
+                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        offset as _,
+                    )
+                })?;
+                Ok(ret as usize)
+            }
+            None => io::default_read_vectored(|b| self.read_at(b, offset), bufs),
+        }
+    }
+
+    // We support old MacOS, iOS, watchOS, tvOS and visionOS. `preadv` was added in the following
+    // Apple OS versions:
+    // ios 14.0
+    // tvos 14.0
+    // macos 11.0
+    // watchos 7.0
+    //
+    // These versions may be newer than the minimum supported versions of OS's we support so we must
+    // use "weak" linking.
+    #[cfg(target_vendor = "apple")]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        super::weak::weak!(fn preadv(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+
+        match preadv.get() {
             Some(preadv) => {
                 let ret = cvt(unsafe {
                     preadv(
@@ -358,13 +371,10 @@ impl FileDesc {
         target_os = "fuchsia",
         target_os = "hurd",
         target_os = "illumos",
-        target_os = "ios",
-        target_os = "tvos",
         target_os = "linux",
-        target_os = "macos",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_os = "watchos",
+        target_vendor = "apple",
     )))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         io::default_write_vectored(|b| self.write_at(b, offset), bufs)
@@ -398,19 +408,40 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    // We support old MacOS and iOS versions that do not have `pwritev`. There is
-    // no `syscall` possible in these platform.
-    #[cfg(any(
-        all(target_os = "android", target_pointer_width = "32"),
-        target_os = "ios", // ios 14.0
-        target_os = "tvos", // tvos 14.0
-        target_os = "macos", // macos 11.0
-        target_os = "watchos", // watchos 7.0
-    ))]
+    #[cfg(all(target_os = "android", target_pointer_width = "32"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         super::weak::weak!(fn pwritev64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 
         match pwritev64.get() {
+            Some(pwritev) => {
+                let ret = cvt(unsafe {
+                    pwritev(
+                        self.as_raw_fd(),
+                        bufs.as_ptr() as *const libc::iovec,
+                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        offset as _,
+                    )
+                })?;
+                Ok(ret as usize)
+            }
+            None => io::default_write_vectored(|b| self.write_at(b, offset), bufs),
+        }
+    }
+
+    // We support old MacOS, iOS, watchOS, tvOS and visionOS. `pwritev` was added in the following
+    // Apple OS versions:
+    // ios 14.0
+    // tvos 14.0
+    // macos 11.0
+    // watchos 7.0
+    //
+    // These versions may be newer than the minimum supported versions of OS's we support so we must
+    // use "weak" linking.
+    #[cfg(target_vendor = "apple")]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        super::weak::weak!(fn pwritev(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+
+        match pwritev.get() {
             Some(pwritev) => {
                 let ret = cvt(unsafe {
                     pwritev(

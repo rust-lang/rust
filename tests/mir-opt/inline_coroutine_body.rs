@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // skip-filecheck
-//@ unit-test: Inline
+//@ test-mir-pass: Inline
 //@ edition: 2021
 //@ compile-flags: -Zinline-mir-hint-threshold=10000 -Zinline-mir-threshold=10000 --crate-type=lib
 

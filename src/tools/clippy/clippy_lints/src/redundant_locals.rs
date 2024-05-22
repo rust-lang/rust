@@ -3,7 +3,7 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::needs_ordered_drop;
 use rustc_ast::Mutability;
 use rustc_hir::def::Res;
-use rustc_hir::{BindingAnnotation, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
+use rustc_hir::{BindingMode, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
 use rustc_hir_typeck::expr_use_visitor::PlaceBase;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if !local.span.is_desugaring(DesugaringKind::Async)
             // the pattern is a single by-value binding
-            && let PatKind::Binding(BindingAnnotation(ByRef::No, mutability), _, ident, None) = local.pat.kind
+            && let PatKind::Binding(BindingMode(ByRef::No, mutability), _, ident, None) = local.pat.kind
             // the binding is not type-ascribed
             && local.ty.is_none()
             // the expression is a resolved path
@@ -77,9 +77,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
                 cx,
                 REDUNDANT_LOCALS,
                 local.span,
-                &format!("redundant redefinition of a binding `{ident}`"),
+                format!("redundant redefinition of a binding `{ident}`"),
                 Some(binding_pat.span),
-                &format!("`{ident}` is initially defined here"),
+                format!("`{ident}` is initially defined here"),
             );
         }
     }
@@ -109,7 +109,7 @@ fn is_by_value_closure_capture(cx: &LateContext<'_>, redefinition: HirId, root_v
 }
 
 /// Find the annotation of a binding introduced by a pattern, or `None` if it's not introduced.
-fn find_binding(pat: &Pat<'_>, name: Ident) -> Option<BindingAnnotation> {
+fn find_binding(pat: &Pat<'_>, name: Ident) -> Option<BindingMode> {
     let mut ret = None;
 
     pat.each_binding_or_first(&mut |annotation, _, _, ident| {

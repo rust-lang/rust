@@ -24,13 +24,13 @@ use crate::util::logv;
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
 use getopts::Options;
-use lazycell::AtomicLazyCell;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, vec};
 use test::ColorConfig;
@@ -39,7 +39,6 @@ use walkdir::WalkDir;
 
 use self::header::{make_test_description, EarlyProps};
 use crate::header::HeadersCache;
-use std::sync::Arc;
 
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
@@ -65,7 +64,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "mode",
             "which sort of compile tests to run",
             "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
-            | rustdoc-json | codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
+            | rustdoc-json | codegen-units | incremental | run-make | ui \
+            | js-doc-test | mir-opt | assembly | crashes",
         )
         .reqopt(
             "",
@@ -82,7 +82,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
-        .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
+        .optmulti(
+            "",
+            "skip",
+            "skip tests matching SUBSTRING. Can be passed multiple times",
+            "SUBSTRING",
+        )
         .optflag("", "exact", "filters match exactly")
         .optopt(
             "",
@@ -145,7 +150,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "profiler-support", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
+        .optflag(
+            "",
+            "git-hash",
+            "run tests which rely on commit version being compiled into the binaries",
+        )
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");
@@ -310,7 +319,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         force_rerun: matches.opt_present("force-rerun"),
 
-        target_cfgs: AtomicLazyCell::new(),
+        target_cfgs: OnceLock::new(),
 
         nocapture: matches.opt_present("nocapture"),
 
@@ -941,7 +950,7 @@ fn is_android_gdb_target(target: &str) -> bool {
     )
 }
 
-/// Returns `true` if the given target is a MSVC target for the purpouses of CDB testing.
+/// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
 fn is_pc_windows_msvc_target(target: &str) -> bool {
     target.ends_with("-pc-windows-msvc")
 }

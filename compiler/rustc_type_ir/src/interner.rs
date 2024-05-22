@@ -1,127 +1,131 @@
 use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Deref;
 
-use crate::fold::TypeSuperFoldable;
+use crate::inherent::*;
+use crate::ir_print::IrPrint;
+use crate::solve::inspect::GoalEvaluationStep;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    new, BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebugWithInfcx, RegionKind, TyKind,
-    UniverseIndex,
+    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
+    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, GenericArgKind,
+    NormalizesTo, ProjectionPredicate, SubtypePredicate, TermKind, TraitPredicate, TraitRef,
 };
 
-pub trait Interner: Sized + Copy {
-    type DefId: Copy + Debug + Hash + Eq;
+pub trait Interner:
+    Sized
+    + Copy
+    + IrPrint<AliasTy<Self>>
+    + IrPrint<AliasTerm<Self>>
+    + IrPrint<TraitRef<Self>>
+    + IrPrint<TraitPredicate<Self>>
+    + IrPrint<ExistentialTraitRef<Self>>
+    + IrPrint<ExistentialProjection<Self>>
+    + IrPrint<ProjectionPredicate<Self>>
+    + IrPrint<NormalizesTo<Self>>
+    + IrPrint<SubtypePredicate<Self>>
+    + IrPrint<CoercePredicate<Self>>
+    + IrPrint<FnSig<Self>>
+{
+    type DefId: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
 
-    type GenericArgs: Copy
+    type GenericArgs: GenericArgs<Self>;
+    /// The slice of args for a specific item. For a GAT like `type Foo<'a>`, it will be `['a]`,
+    /// not including the args from the parent item (trait or impl).
+    type OwnItemArgs: Copy + Debug + Hash + Eq;
+    type GenericArg: Copy
         + DebugWithInfcx<Self>
         + Hash
         + Eq
-        + IntoIterator<Item = Self::GenericArg>;
-    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type Term: Copy + Debug + Hash + Eq;
+        + IntoKind<Kind = GenericArgKind<Self>>
+        + TypeVisitable<Self>;
+    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = TermKind<Self>> + TypeVisitable<Self>;
 
-    type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
-    type BoundVars: IntoIterator<Item = Self::BoundVar>;
-    type BoundVar;
+    type BoundVarKinds: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Deref<Target: Deref<Target = [Self::BoundVarKind]>>
+        + Default;
+    type BoundVarKind: Copy + Debug + Hash + Eq;
 
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
+    type PredefinedOpaques: Copy + Debug + Hash + Eq;
+    type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
+    type ExternalConstraints: Copy + Debug + Hash + Eq;
+    type GoalEvaluationSteps: Copy + Debug + Hash + Eq + Deref<Target = [GoalEvaluationStep<Self>]>;
 
     // Kinds of tys
-    type Ty: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + Into<Self::GenericArg>
-        + IntoKind<Kind = TyKind<Self>>
-        + TypeSuperVisitable<Self>
-        + TypeSuperFoldable<Self>
-        + Flags
-        + new::Ty<Self>;
-    type Tys: Copy + Debug + Hash + Eq + IntoIterator<Item = Self::Ty>;
-    type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type Ty: Ty<Self>;
+    type Tys: Tys<Self>;
+    type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]> + TypeVisitable<Self>;
     type ParamTy: Copy + Debug + Hash + Eq;
-    type BoundTy: Copy + Debug + Hash + Eq;
-    type PlaceholderTy: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
+    type PlaceholderTy: PlaceholderLike;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
     type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type AllocId: Copy + Debug + Hash + Eq;
+    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
+    type Safety: Safety<Self>;
+    type Abi: Abi<Self>;
 
     // Kinds of consts
-    type Const: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + Into<Self::GenericArg>
-        + IntoKind<Kind = ConstKind<Self>>
-        + ConstTy<Self>
-        + TypeSuperVisitable<Self>
-        + TypeSuperFoldable<Self>
-        + Flags
-        + new::Const<Self>;
-    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type PlaceholderConst: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type Const: Const<Self>;
+    type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq;
-    type BoundConst: Copy + Debug + Hash + Eq;
+    type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
     type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
 
     // Kinds of regions
-    type Region: Copy
-        + DebugWithInfcx<Self>
-        + Hash
-        + Eq
-        + Into<Self::GenericArg>
-        + IntoKind<Kind = RegionKind<Self>>
-        + Flags
-        + new::Region<Self>;
+    type Region: Region<Self>;
     type EarlyParamRegion: Copy + Debug + Hash + Eq;
     type LateParamRegion: Copy + Debug + Hash + Eq;
-    type BoundRegion: Copy + Debug + Hash + Eq;
-    type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type PlaceholderRegion: Copy + Debug + Hash + Eq + PlaceholderLike;
+    type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
+    type PlaceholderRegion: PlaceholderLike;
 
     // Predicates
-    type Predicate: Copy
-        + Debug
-        + Hash
-        + Eq
-        + TypeSuperVisitable<Self>
-        + TypeSuperFoldable<Self>
-        + Flags;
-    type TraitPredicate: Copy + Debug + Hash + Eq;
-    type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type ProjectionPredicate: Copy + Debug + Hash + Eq;
-    type NormalizesTo: Copy + Debug + Hash + Eq;
-    type SubtypePredicate: Copy + Debug + Hash + Eq;
-    type CoercePredicate: Copy + Debug + Hash + Eq;
-    type ClosureKind: Copy + Debug + Hash + Eq;
+    type ParamEnv: Copy + Debug + Hash + Eq;
+    type Predicate: Predicate<Self>;
+    type Clause: Clause<Self>;
+    type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
-}
 
-/// Common capabilities of placeholder kinds
-pub trait PlaceholderLike {
-    fn universe(self) -> UniverseIndex;
-    fn var(self) -> BoundVar;
+    type GenericsOf: GenericsOf<Self>;
+    fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self;
+    // FIXME: Remove after uplifting `EarlyBinder`
+    fn type_of_instantiated(self, def_id: Self::DefId, args: Self::GenericArgs) -> Self::Ty;
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self;
-}
+    fn alias_ty_kind(self, alias: AliasTy<Self>) -> AliasTyKind;
 
-pub trait IntoKind {
-    type Kind;
+    fn alias_term_kind(self, alias: AliasTerm<Self>) -> AliasTermKind;
 
-    fn kind(self) -> Self::Kind;
-}
+    fn trait_ref_and_own_args_for_alias(
+        self,
+        def_id: Self::DefId,
+        args: Self::GenericArgs,
+    ) -> (TraitRef<Self>, Self::OwnItemArgs);
 
-pub trait ConstTy<I: Interner> {
-    fn ty(self) -> I::Ty;
+    fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
+
+    fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs;
+
+    fn check_and_mk_args(
+        self,
+        def_id: Self::DefId,
+        args: impl IntoIterator<Item: Into<Self::GenericArg>>,
+    ) -> Self::GenericArgs;
+
+    fn parent(self, def_id: Self::DefId) -> Self::DefId;
+
+    fn recursion_limit(self) -> usize;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

@@ -58,6 +58,7 @@ pkg_type! {
     Miri = "miri"; preview = true,
     JsonDocs = "rust-docs-json"; preview = true,
     RustcCodegenCranelift = "rustc-codegen-cranelift"; preview = true,
+    LlvmBitcodeLinker = "llvm-bitcode-linker"; preview = true,
 }
 
 impl PkgType {
@@ -94,6 +95,7 @@ impl PkgType {
             PkgType::ReproducibleArtifacts => true,
             PkgType::RustMingw => true,
             PkgType::RustAnalysis => true,
+            PkgType::LlvmBitcodeLinker => true,
         }
     }
 
@@ -121,6 +123,7 @@ impl PkgType {
             Rustfmt => HOSTS,
             RustAnalysis => TARGETS,
             LlvmTools => TARGETS,
+            LlvmBitcodeLinker => HOSTS,
         }
     }
 

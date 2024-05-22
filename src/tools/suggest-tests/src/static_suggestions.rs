@@ -1,10 +1,14 @@
 use crate::{sug, Suggestion};
+use std::sync::OnceLock;
 
 // FIXME: perhaps this could use `std::lazy` when it is stablizied
 macro_rules! static_suggestions {
     ($( [ $( $glob:expr ),* $(,)? ] => [ $( $suggestion:expr ),* $(,)? ] ),* $(,)? ) => {
-        pub(crate) const STATIC_SUGGESTIONS: ::once_cell::unsync::Lazy<Vec<(Vec<&'static str>, Vec<Suggestion>)>>
-            = ::once_cell::unsync::Lazy::new(|| vec![ $( (vec![ $($glob),* ], vec![ $($suggestion),* ]) ),*]);
+        pub(crate) fn static_suggestions() -> &'static [(Vec<&'static str>, Vec<Suggestion>)]
+        {
+            static S: OnceLock<Vec<(Vec<&'static str>, Vec<Suggestion>)>> = OnceLock::new();
+            S.get_or_init(|| vec![ $( (vec![ $($glob),* ], vec![ $($suggestion),* ]) ),*])
+        }
     }
 }
 

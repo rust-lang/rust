@@ -4,7 +4,7 @@
 use hir_def::{
     body::Body,
     hir::{Expr, ExprId, UnaryOp},
-    resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
+    resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
     DefWithBodyId,
 };
 
@@ -13,9 +13,9 @@ use crate::{
 };
 
 pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
-    let infer = db.infer(def);
-    let mut res = Vec::new();
+    let _p = tracing::span!(tracing::Level::INFO, "missing_unsafe").entered();
 
+    let mut res = Vec::new();
     let is_unsafe = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).has_unsafe_kw(),
         DefWithBodyId::StaticId(_)
@@ -28,6 +28,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
     }
 
     let body = db.body(def);
+    let infer = db.infer(def);
     unsafe_expressions(db, &infer, def, &body, body.body_expr, &mut |expr| {
         if !expr.inside_unsafe_block {
             res.push(expr.expr);
@@ -51,14 +52,24 @@ pub fn unsafe_expressions(
     current: ExprId,
     unsafe_expr_cb: &mut dyn FnMut(UnsafeExpr),
 ) {
-    walk_unsafe(db, infer, def, body, current, false, unsafe_expr_cb)
+    walk_unsafe(
+        db,
+        infer,
+        body,
+        &mut resolver_for_expr(db.upcast(), def, current),
+        def,
+        current,
+        false,
+        unsafe_expr_cb,
+    )
 }
 
 fn walk_unsafe(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
-    def: DefWithBodyId,
     body: &Body,
+    resolver: &mut Resolver,
+    def: DefWithBodyId,
     current: ExprId,
     inside_unsafe_block: bool,
     unsafe_expr_cb: &mut dyn FnMut(UnsafeExpr),
@@ -73,13 +84,14 @@ fn walk_unsafe(
             }
         }
         Expr::Path(path) => {
-            let resolver = resolver_for_expr(db.upcast(), def, current);
+            let g = resolver.update_to_inner_scope(db.upcast(), def, current);
             let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
             if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
                 if db.static_data(id).mutable {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
+            resolver.reset_to_guard(g);
         }
         Expr::MethodCall { .. } => {
             if infer
@@ -97,13 +109,13 @@ fn walk_unsafe(
         }
         Expr::Unsafe { .. } => {
             return expr.walk_child_exprs(|child| {
-                walk_unsafe(db, infer, def, body, child, true, unsafe_expr_cb);
+                walk_unsafe(db, infer, body, resolver, def, child, true, unsafe_expr_cb);
             });
         }
         _ => {}
     }
 
     expr.walk_child_exprs(|child| {
-        walk_unsafe(db, infer, def, body, child, inside_unsafe_block, unsafe_expr_cb);
+        walk_unsafe(db, infer, body, resolver, def, child, inside_unsafe_block, unsafe_expr_cb);
     });
 }

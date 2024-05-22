@@ -1,4 +1,6 @@
 //@ min-lldb-version: 310
+//@ ignore-gdb-version: 15.0 - 99.0
+// ^ test temporarily disabled as it fails under gdb 15
 
 //@ compile-flags:-g
 // gdb-command:run

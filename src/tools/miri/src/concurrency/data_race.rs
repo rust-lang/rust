@@ -547,9 +547,9 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         trace!("Unsynchronized read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
-            thread_clocks.clock[index].span = current_span;
+            thread_clocks.clock.index_mut(index).span = current_span;
         }
-        thread_clocks.clock[index].set_read_type(read_type);
+        thread_clocks.clock.index_mut(index).set_read_type(read_type);
         if self.write_was_before(&thread_clocks.clock) {
             let race_free = if let Some(atomic) = self.atomic() {
                 // We must be ordered-after all atomic accesses, reads and writes.
@@ -577,7 +577,7 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
-            thread_clocks.clock[index].span = current_span;
+            thread_clocks.clock.index_mut(index).span = current_span;
         }
         if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
             let race_free = if let Some(atomic) = self.atomic() {
@@ -844,9 +844,10 @@ impl VClockAlloc {
         global: &GlobalState,
         thread_mgr: &ThreadManager<'_, '_>,
         len: Size,
-        kind: MemoryKind<MiriMemoryKind>,
+        kind: MemoryKind,
         current_span: Span,
     ) -> VClockAlloc {
+        // Determine the thread that did the allocation, and when it did it.
         let (alloc_timestamp, alloc_index) = match kind {
             // User allocated and stack memory should track allocation.
             MemoryKind::Machine(
@@ -858,13 +859,13 @@ impl VClockAlloc {
                 | MiriMemoryKind::Mmap,
             )
             | MemoryKind::Stack => {
-                let (alloc_index, clocks) = global.current_thread_state(thread_mgr);
+                let (alloc_index, clocks) = global.active_thread_state(thread_mgr);
                 let mut alloc_timestamp = clocks.clock[alloc_index];
                 alloc_timestamp.span = current_span;
                 (alloc_timestamp, alloc_index)
             }
             // Other global memory should trace races but be allocated at the 0 timestamp
-            // (conceptually they are allocated before everything).
+            // (conceptually they are allocated on the main thread before everything).
             MemoryKind::Machine(
                 MiriMemoryKind::Global
                 | MiriMemoryKind::Machine
@@ -872,7 +873,8 @@ impl VClockAlloc {
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls,
             )
-            | MemoryKind::CallerLocation => (VTimestamp::ZERO, VectorIdx::MAX_INDEX),
+            | MemoryKind::CallerLocation =>
+                (VTimestamp::ZERO, global.thread_index(ThreadId::MAIN_THREAD)),
         };
         VClockAlloc {
             alloc_ranges: RefCell::new(RangeMap::new(
@@ -930,7 +932,7 @@ impl VClockAlloc {
         ptr_dbg: Pointer<AllocId>,
         ty: Option<Ty<'_>>,
     ) -> InterpResult<'tcx> {
-        let (current_index, current_clocks) = global.current_thread_state(thread_mgr);
+        let (active_index, active_clocks) = global.active_thread_state(thread_mgr);
         let mut other_size = None; // if `Some`, this was a size-mismatch race
         let write_clock;
         let (other_access, other_thread, other_clock) =
@@ -939,30 +941,30 @@ impl VClockAlloc {
             // we are reporting races between two non-atomic reads.
             if !access.is_atomic() &&
                 let Some(atomic) = mem_clocks.atomic() &&
-                let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
+                let Some(idx) = Self::find_gt_index(&atomic.write_vector, &active_clocks.clock)
             {
                 (AccessType::AtomicStore, idx, &atomic.write_vector)
             } else if !access.is_atomic() &&
                 let Some(atomic) = mem_clocks.atomic() &&
-                let Some(idx) = Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
+                let Some(idx) = Self::find_gt_index(&atomic.read_vector, &active_clocks.clock)
             {
                 (AccessType::AtomicLoad, idx, &atomic.read_vector)
             // Then check races with non-atomic writes/reads.
-            } else if mem_clocks.write.1 > current_clocks.clock[mem_clocks.write.0] {
+            } else if mem_clocks.write.1 > active_clocks.clock[mem_clocks.write.0] {
                 write_clock = mem_clocks.write();
                 (AccessType::NaWrite(mem_clocks.write_type), mem_clocks.write.0, &write_clock)
-            } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &current_clocks.clock) {
+            } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &active_clocks.clock) {
                 (AccessType::NaRead(mem_clocks.read[idx].read_type()), idx, &mem_clocks.read)
             // Finally, mixed-size races.
             } else if access.is_atomic() && let Some(atomic) = mem_clocks.atomic() && atomic.size != access_size {
                 // This is only a race if we are not synchronized with all atomic accesses, so find
                 // the one we are not synchronized with.
                 other_size = Some(atomic.size);
-                if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
+                if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &active_clocks.clock)
                     {
                         (AccessType::AtomicStore, idx, &atomic.write_vector)
                     } else if let Some(idx) =
-                        Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
+                        Self::find_gt_index(&atomic.read_vector, &active_clocks.clock)
                     {
                         (AccessType::AtomicLoad, idx, &atomic.read_vector)
                     } else {
@@ -975,7 +977,7 @@ impl VClockAlloc {
             };
 
         // Load elaborated thread information about the racing thread actions.
-        let current_thread_info = global.print_thread_metadata(thread_mgr, current_index);
+        let active_thread_info = global.print_thread_metadata(thread_mgr, active_index);
         let other_thread_info = global.print_thread_metadata(thread_mgr, other_thread);
         let involves_non_atomic = !access.is_atomic() || !other_access.is_atomic();
 
@@ -1003,8 +1005,8 @@ impl VClockAlloc {
             },
             op2: RacingOp {
                 action: access.description(ty, other_size.map(|_| access_size)),
-                thread_info: current_thread_info,
-                span: current_clocks.clock.as_slice()[current_index.index()].span_data(),
+                thread_info: active_thread_info,
+                span: active_clocks.clock.as_slice()[active_index.index()].span_data(),
             },
         }))?
     }
@@ -1026,7 +1028,7 @@ impl VClockAlloc {
         let current_span = machine.current_span();
         let global = machine.data_race.as_ref().unwrap();
         if global.race_detecting() {
-            let (index, mut thread_clocks) = global.current_thread_state_mut(&machine.threads);
+            let (index, mut thread_clocks) = global.active_thread_state_mut(&machine.threads);
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (mem_clocks_range, mem_clocks) in
                 alloc_ranges.iter_mut(access_range.start, access_range.size)
@@ -1069,7 +1071,7 @@ impl VClockAlloc {
         let current_span = machine.current_span();
         let global = machine.data_race.as_mut().unwrap();
         if global.race_detecting() {
-            let (index, mut thread_clocks) = global.current_thread_state_mut(&machine.threads);
+            let (index, mut thread_clocks) = global.active_thread_state_mut(&machine.threads);
             for (mem_clocks_range, mem_clocks) in
                 self.alloc_ranges.get_mut().iter_mut(access_range.start, access_range.size)
             {
@@ -1454,7 +1456,7 @@ impl GlobalState {
         // Setup the main-thread since it is not explicitly created:
         // uses vector index and thread-id 0.
         let index = global_state.vector_clocks.get_mut().push(ThreadClockSet::default());
-        global_state.vector_info.get_mut().push(ThreadId::new(0));
+        global_state.vector_info.get_mut().push(ThreadId::MAIN_THREAD);
         global_state
             .thread_info
             .get_mut()
@@ -1518,7 +1520,7 @@ impl GlobalState {
         thread: ThreadId,
         current_span: Span,
     ) {
-        let current_index = self.current_index(thread_mgr);
+        let current_index = self.active_thread_index(thread_mgr);
 
         // Enable multi-threaded execution, there are now at least two threads
         // so data-races are now possible.
@@ -1642,7 +1644,7 @@ impl GlobalState {
     /// `thread_joined`.
     #[inline]
     pub fn thread_terminated(&mut self, thread_mgr: &ThreadManager<'_, '_>, current_span: Span) {
-        let current_index = self.current_index(thread_mgr);
+        let current_index = self.active_thread_index(thread_mgr);
 
         // Increment the clock to a unique termination timestamp.
         let vector_clocks = self.vector_clocks.get_mut();
@@ -1680,9 +1682,9 @@ impl GlobalState {
         op: impl FnOnce(VectorIdx, RefMut<'_, ThreadClockSet>) -> InterpResult<'tcx, bool>,
     ) -> InterpResult<'tcx> {
         if self.multi_threaded.get() {
-            let (index, clocks) = self.current_thread_state_mut(thread_mgr);
+            let (index, clocks) = self.active_thread_state_mut(thread_mgr);
             if op(index, clocks)? {
-                let (_, mut clocks) = self.current_thread_state_mut(thread_mgr);
+                let (_, mut clocks) = self.active_thread_state_mut(thread_mgr);
                 clocks.increment_clock(index, current_span);
             }
         }
@@ -1701,102 +1703,91 @@ impl GlobalState {
         format!("thread `{thread_name}`")
     }
 
-    /// Acquire a lock, express that the previous call of
-    /// `validate_lock_release` must happen before this.
+    /// Acquire the given clock into the given thread, establishing synchronization with
+    /// the moment when that clock snapshot was taken via `release_clock`.
     /// As this is an acquire operation, the thread timestamp is not
     /// incremented.
-    pub fn validate_lock_acquire(&self, lock: &VClock, thread: ThreadId) {
-        let (_, mut clocks) = self.load_thread_state_mut(thread);
+    pub fn acquire_clock(&self, lock: &VClock, thread: ThreadId) {
+        let (_, mut clocks) = self.thread_state_mut(thread);
         clocks.clock.join(lock);
     }
 
-    /// Release a lock handle, express that this happens-before
-    /// any subsequent calls to `validate_lock_acquire`.
-    /// For normal locks this should be equivalent to `validate_lock_release_shared`
-    /// since an acquire operation should have occurred before, however
-    /// for futex & condvar operations this is not the case and this
-    /// operation must be used.
-    pub fn validate_lock_release(&self, lock: &mut VClock, thread: ThreadId, current_span: Span) {
-        let (index, mut clocks) = self.load_thread_state_mut(thread);
-        lock.clone_from(&clocks.clock);
+    /// Returns the `release` clock of the given thread.
+    /// Other threads can acquire this clock in the future to establish synchronization
+    /// with this program point.
+    pub fn release_clock(&self, thread: ThreadId, current_span: Span) -> Ref<'_, VClock> {
+        // We increment the clock each time this happens, to ensure no two releases
+        // can be confused with each other.
+        let (index, mut clocks) = self.thread_state_mut(thread);
         clocks.increment_clock(index, current_span);
+        drop(clocks);
+        // To return a read-only view, we need to release the RefCell
+        // and borrow it again.
+        let (_index, clocks) = self.thread_state(thread);
+        Ref::map(clocks, |c| &c.clock)
     }
 
-    /// Release a lock handle, express that this happens-before
-    /// any subsequent calls to `validate_lock_acquire` as well
-    /// as any previous calls to this function after any
-    /// `validate_lock_release` calls.
-    /// For normal locks this should be equivalent to `validate_lock_release`.
-    /// This function only exists for joining over the set of concurrent readers
-    /// in a read-write lock and should not be used for anything else.
-    pub fn validate_lock_release_shared(
-        &self,
-        lock: &mut VClock,
-        thread: ThreadId,
-        current_span: Span,
-    ) {
-        let (index, mut clocks) = self.load_thread_state_mut(thread);
-        lock.join(&clocks.clock);
-        clocks.increment_clock(index, current_span);
+    fn thread_index(&self, thread: ThreadId) -> VectorIdx {
+        self.thread_info.borrow()[thread].vector_index.expect("thread has no assigned vector")
     }
 
     /// Load the vector index used by the given thread as well as the set of vector clocks
     /// used by the thread.
     #[inline]
-    fn load_thread_state_mut(&self, thread: ThreadId) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
-        let index = self.thread_info.borrow()[thread]
-            .vector_index
-            .expect("Loading thread state for thread with no assigned vector");
+    fn thread_state_mut(&self, thread: ThreadId) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
+        let index = self.thread_index(thread);
         let ref_vector = self.vector_clocks.borrow_mut();
         let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
         (index, clocks)
     }
 
-    /// Load the current vector clock in use and the current set of thread clocks
-    /// in use for the vector.
+    /// Load the vector index used by the given thread as well as the set of vector clocks
+    /// used by the thread.
     #[inline]
-    pub(super) fn current_thread_state(
-        &self,
-        thread_mgr: &ThreadManager<'_, '_>,
-    ) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
-        let index = self.current_index(thread_mgr);
+    fn thread_state(&self, thread: ThreadId) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
+        let index = self.thread_index(thread);
         let ref_vector = self.vector_clocks.borrow();
         let clocks = Ref::map(ref_vector, |vec| &vec[index]);
         (index, clocks)
     }
 
     /// Load the current vector clock in use and the current set of thread clocks
+    /// in use for the vector.
+    #[inline]
+    pub(super) fn active_thread_state(
+        &self,
+        thread_mgr: &ThreadManager<'_, '_>,
+    ) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
+        self.thread_state(thread_mgr.get_active_thread_id())
+    }
+
+    /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector mutably for modification.
     #[inline]
-    pub(super) fn current_thread_state_mut(
+    pub(super) fn active_thread_state_mut(
         &self,
         thread_mgr: &ThreadManager<'_, '_>,
     ) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
-        let index = self.current_index(thread_mgr);
-        let ref_vector = self.vector_clocks.borrow_mut();
-        let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
-        (index, clocks)
+        self.thread_state_mut(thread_mgr.get_active_thread_id())
     }
 
     /// Return the current thread, should be the same
     /// as the data-race active thread.
     #[inline]
-    fn current_index(&self, thread_mgr: &ThreadManager<'_, '_>) -> VectorIdx {
+    fn active_thread_index(&self, thread_mgr: &ThreadManager<'_, '_>) -> VectorIdx {
         let active_thread_id = thread_mgr.get_active_thread_id();
-        self.thread_info.borrow()[active_thread_id]
-            .vector_index
-            .expect("active thread has no assigned vector")
+        self.thread_index(active_thread_id)
     }
 
     // SC ATOMIC STORE rule in the paper.
     pub(super) fn sc_write(&self, thread_mgr: &ThreadManager<'_, '_>) {
-        let (index, clocks) = self.current_thread_state(thread_mgr);
+        let (index, clocks) = self.active_thread_state(thread_mgr);
         self.last_sc_write.borrow_mut().set_at_index(&clocks.clock, index);
     }
 
     // SC ATOMIC READ rule in the paper.
     pub(super) fn sc_read(&self, thread_mgr: &ThreadManager<'_, '_>) {
-        let (.., mut clocks) = self.current_thread_state_mut(thread_mgr);
+        let (.., mut clocks) = self.active_thread_state_mut(thread_mgr);
         clocks.read_seqcst.join(&self.last_sc_fence.borrow());
     }
 }

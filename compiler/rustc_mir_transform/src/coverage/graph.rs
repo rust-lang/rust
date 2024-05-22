@@ -1,9 +1,10 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
-use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
+use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 
 use std::cmp::Ordering;
@@ -193,16 +194,14 @@ impl IndexMut<BasicCoverageBlock> for CoverageGraph {
 
 impl graph::DirectedGraph for CoverageGraph {
     type Node = BasicCoverageBlock;
-}
 
-impl graph::WithNumNodes for CoverageGraph {
     #[inline]
     fn num_nodes(&self) -> usize {
         self.bcbs.len()
     }
 }
 
-impl graph::WithStartNode for CoverageGraph {
+impl graph::StartNode for CoverageGraph {
     #[inline]
     fn start_node(&self) -> Self::Node {
         self.bcb_from_bb(mir::START_BLOCK)
@@ -210,28 +209,16 @@ impl graph::WithStartNode for CoverageGraph {
     }
 }
 
-type BcbSuccessors<'graph> = std::slice::Iter<'graph, BasicCoverageBlock>;
-
-impl<'graph> graph::GraphSuccessors<'graph> for CoverageGraph {
-    type Item = BasicCoverageBlock;
-    type Iter = std::iter::Cloned<BcbSuccessors<'graph>>;
-}
-
-impl graph::WithSuccessors for CoverageGraph {
+impl graph::Successors for CoverageGraph {
     #[inline]
-    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.successors[node].iter().cloned()
     }
 }
 
-impl<'graph> graph::GraphPredecessors<'graph> for CoverageGraph {
-    type Item = BasicCoverageBlock;
-    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicCoverageBlock>>;
-}
-
-impl graph::WithPredecessors for CoverageGraph {
+impl graph::Predecessors for CoverageGraph {
     #[inline]
-    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+    fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors[node].iter().copied()
     }
 }

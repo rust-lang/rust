@@ -2,13 +2,14 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_middle::ty::{self, Region, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArg, GenericArgKind};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use smallvec::smallvec;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
 pub(crate) type RequiredPredicates<'tcx> =
-    FxIndexMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, Span>;
+    FxIndexMap<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>, Span>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`

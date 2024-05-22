@@ -1,24 +1,19 @@
-error[E0277]: the trait bound `dyn Setup<From = T>: Setup` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>`
   --> $DIR/object-unsafety.rs:12:12
    |
 LL |     copy::<dyn Setup<From=T>>(t)
-   |            ^^^^^^^^^^^^^^^^^ the trait `Setup` is not implemented for `dyn Setup<From = T>`
+   |            ^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`, which is required by `dyn Setup<From = T>: Setup`
    |
+   = note: required because it appears within the type `dyn Setup<From = T>`
 note: required by a bound in `copy`
   --> $DIR/object-unsafety.rs:7:12
    |
 LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
    |            ^^^^^ required by this bound in `copy`
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+help: consider restricting type parameter `T`
    |
-LL | pub fn copy_any<T>(t: &T) -> T where dyn Setup<From = T>: Setup {
-   |                                ++++++++++++++++++++++++++++++++
-
-error: the type `&<dyn Setup<From = T> as Setup>::From` is not well-formed
-  --> $DIR/object-unsafety.rs:12:31
-   |
-LL |     copy::<dyn Setup<From=T>>(t)
-   |                               ^
+LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
+   |                  +++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/object-unsafety.rs:12:31
@@ -36,13 +31,19 @@ note: function defined here
 LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
    |    ^^^^                    --------------
 
-error: the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
+error[E0277]: the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>`
   --> $DIR/object-unsafety.rs:12:5
    |
 LL |     copy::<dyn Setup<From=T>>(t)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`, which is required by `dyn Setup<From = T>: Setup`
+   |
+   = note: required because it appears within the type `dyn Setup<From = T>`
+help: consider restricting type parameter `T`
+   |
+LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
+   |                  +++++++++++++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

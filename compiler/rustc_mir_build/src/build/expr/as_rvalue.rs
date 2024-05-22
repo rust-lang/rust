@@ -9,6 +9,7 @@ use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
@@ -567,11 +568,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let result_tup = Ty::new_tup(self.tcx, &[ty, bool_ty]);
                 let result_value = self.temp(result_tup, span);
 
+                let op_with_overflow = op.wrapping_to_overflowing().unwrap();
+
                 self.cfg.push_assign(
                     block,
                     source_info,
                     result_value,
-                    Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
+                    Rvalue::BinaryOp(op_with_overflow, Box::new((lhs.to_copy(), rhs.to_copy()))),
                 );
                 let val_fld = FieldIdx::ZERO;
                 let of_fld = FieldIdx::new(1);

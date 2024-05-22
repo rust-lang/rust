@@ -1,23 +1,79 @@
+use std::ffi::OsStr;
+use std::io;
 use std::iter;
+use std::path::{self, Path, PathBuf};
 use std::str;
 
 use rustc_span::Symbol;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::windows::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
-use shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
-use shims::windows::sync::EvalContextExt as _;
-use shims::windows::thread::EvalContextExt as _;
+use shims::windows::handle::{Handle, PseudoHandle};
 
-fn is_dyn_sym(name: &str) -> bool {
+pub fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols
     matches!(
         name,
         "SetThreadDescription" | "GetThreadDescription" | "WaitOnAddress" | "WakeByAddressSingle"
     )
+}
+
+#[cfg(windows)]
+fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
+    // We are on Windows so we can simply lte the host do this.
+    return Ok(path::absolute(path));
+}
+
+#[cfg(unix)]
+#[allow(clippy::get_first, clippy::arithmetic_side_effects)]
+fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
+    // We are on Unix, so we need to implement parts of the logic ourselves.
+    let bytes = path.as_os_str().as_encoded_bytes();
+    // If it starts with `//` (these were backslashes but are already converted)
+    // then this is a magic special path, we just leave it unchanged.
+    if bytes.get(0).copied() == Some(b'/') && bytes.get(1).copied() == Some(b'/') {
+        return Ok(Ok(path.into()));
+    };
+    // Special treatment for Windows' magic filenames: they are treated as being relative to `\\.\`.
+    let magic_filenames = &[
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    if magic_filenames.iter().any(|m| m.as_bytes() == bytes) {
+        let mut result: Vec<u8> = br"//./".into();
+        result.extend(bytes);
+        return Ok(Ok(bytes_to_os_str(&result)?.into()));
+    }
+    // Otherwise we try to do something kind of close to what Windows does, but this is probably not
+    // right in all cases. We iterate over the components between `/`, and remove trailing `.`,
+    // except that trailing `..` remain unchanged.
+    let mut result = vec![];
+    let mut bytes = bytes; // the remaining bytes to process
+    loop {
+        let len = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
+        let mut component = &bytes[..len];
+        if len >= 2 && component[len - 1] == b'.' && component[len - 2] != b'.' {
+            // Strip trailing `.`
+            component = &component[..len - 1];
+        }
+        // Add this component to output.
+        result.extend(component);
+        // Prepare next iteration.
+        if len < bytes.len() {
+            // There's a component after this; add `/` and process remaining bytes.
+            result.push(b'/');
+            bytes = &bytes[len + 1..];
+            continue;
+        } else {
+            // This was the last component and it did not have a trailing `/`.
+            break;
+        }
+    }
+    // Let the host `absolute` function do working-dir handling
+    Ok(path::absolute(bytes_to_os_str(&result)?))
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -28,7 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
@@ -76,6 +132,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.SetCurrentDirectoryW(path)?;
                 this.write_scalar(result, dest)?;
             }
+            "GetUserProfileDirectoryW" => {
+                let [token, buf, size] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let result = this.GetUserProfileDirectoryW(token, buf, size)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // File related shims
             "NtWriteFile" => {
@@ -111,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let written = if handle == -11 || handle == -12 {
                     // stdout/stderr
-                    use std::io::{self, Write};
+                    use io::Write;
 
                     let buf_cont =
                         this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(u64::from(n)))?;
@@ -145,6 +207,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     dest,
                 )?;
             }
+            "GetFullPathNameW" => {
+                let [filename, size, buffer, filepart] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                this.check_no_isolation("`GetFullPathNameW`")?;
+
+                let filename = this.read_pointer(filename)?;
+                let size = this.read_scalar(size)?.to_u32()?;
+                let buffer = this.read_pointer(buffer)?;
+                let filepart = this.read_pointer(filepart)?;
+
+                if !this.ptr_is_null(filepart)? {
+                    throw_unsup_format!("GetFullPathNameW: non-null `lpFilePart` is not supported");
+                }
+
+                let filename = this.read_path_from_wide_str(filename)?;
+                let result = match win_absolute(&filename)? {
+                    Err(err) => {
+                        this.set_last_error_from_io_error(err)?;
+                        Scalar::from_u32(0) // return zero upon failure
+                    }
+                    Ok(abs_filename) => {
+                        Scalar::from_u32(helpers::windows_check_buffer_size(
+                            this.write_path_to_wide_str(&abs_filename, buffer, size.into())?,
+                        ))
+                        // This can in fact return 0. It is up to the caller to set last_error to 0
+                        // beforehand and check it afterwards to exclude that case.
+                    }
+                };
+                this.write_scalar(result, dest)?;
+            }
 
             // Allocation
             "HeapAlloc" => {
@@ -155,8 +247,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let size = this.read_target_usize(size)?;
                 let heap_zero_memory = 0x00000008; // HEAP_ZERO_MEMORY
                 let zero_init = (flags & heap_zero_memory) == heap_zero_memory;
-                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap)?;
-                this.write_pointer(res, dest)?;
+                // Alignment is twice the pointer size.
+                // Source: <https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapalloc>
+                let align = this.tcx.pointer_size().bytes().strict_mul(2);
+                let ptr = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::WinHeap.into(),
+                )?;
+                if zero_init {
+                    this.write_bytes_ptr(
+                        ptr.into(),
+                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+                    )?;
+                }
+                this.write_pointer(ptr, dest)?;
             }
             "HeapFree" => {
                 let [handle, flags, ptr] =
@@ -164,23 +269,41 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_target_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::WinHeap)?;
+                // "This pointer can be NULL." It doesn't say what happens then, but presumably nothing.
+                // (https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapfree)
+                if !this.ptr_is_null(ptr)? {
+                    this.deallocate_ptr(ptr, None, MiriMemoryKind::WinHeap.into())?;
+                }
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
-                let [handle, flags, ptr, size] =
+                let [handle, flags, old_ptr, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_target_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
-                let ptr = this.read_pointer(ptr)?;
+                let old_ptr = this.read_pointer(old_ptr)?;
                 let size = this.read_target_usize(size)?;
-                let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
-                this.write_pointer(res, dest)?;
+                let align = this.tcx.pointer_size().bytes().strict_mul(2); // same as above
+                // The docs say that `old_ptr` must come from an earlier HeapAlloc or HeapReAlloc,
+                // so unlike C `realloc` we do *not* allow a NULL here.
+                // (https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heaprealloc)
+                let new_ptr = this.reallocate_ptr(
+                    old_ptr,
+                    None,
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::WinHeap.into(),
+                )?;
+                this.write_pointer(new_ptr, dest)?;
             }
             "LocalFree" => {
                 let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::WinLocal)?;
+                // "If the hMem parameter is NULL, LocalFree ignores the parameter and returns NULL."
+                // (https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-localfree)
+                if !this.ptr_is_null(ptr)? {
+                    this.deallocate_ptr(ptr, None, MiriMemoryKind::WinLocal.into())?;
+                }
                 this.write_null(dest)?;
             }
 
@@ -413,7 +536,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Miscellaneous
+            "ExitProcess" => {
+                let [code] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let code = this.read_scalar(code)?.to_u32()?;
+                throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+            }
             "SystemFunction036" => {
+                // used by getrandom 0.1
                 // This is really 'RtlGenRandom'.
                 let [ptr, len] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -423,6 +553,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             "ProcessPrng" => {
+                // used by `std`
                 let [ptr, len] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
@@ -431,6 +562,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "BCryptGenRandom" => {
+                // used by getrandom 0.2
                 let [algorithm, ptr, len, flags] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let algorithm = this.read_scalar(algorithm)?;
@@ -508,15 +640,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Using the host current_exe is a bit off, but consistent with Linux
                 // (where stdlib reads /proc/self/exe).
-                // Unfortunately this Windows function has a crazy behavior so we can't just use
-                // `write_path_to_wide_str`...
                 let path = std::env::current_exe().unwrap();
-                let (all_written, size_needed) = this.write_path_to_wide_str(
-                    &path,
-                    filename,
-                    size.into(),
-                    /*truncate*/ true,
-                )?;
+                let (all_written, size_needed) =
+                    this.write_path_to_wide_str_truncated(&path, filename, size.into())?;
 
                 if all_written {
                     // If the function succeeds, the return value is the length of the string that
@@ -532,6 +658,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let insufficient_buffer = this.eval_windows("c", "ERROR_INSUFFICIENT_BUFFER");
                     this.set_last_error(insufficient_buffer)?;
                 }
+            }
+            "FormatMessageW" => {
+                let [flags, module, message_id, language_id, buffer, size, arguments] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                let flags = this.read_scalar(flags)?.to_u32()?;
+                let _module = this.read_pointer(module)?; // seems to contain a module name
+                let message_id = this.read_scalar(message_id)?;
+                let _language_id = this.read_scalar(language_id)?.to_u32()?;
+                let buffer = this.read_pointer(buffer)?;
+                let size = this.read_scalar(size)?.to_u32()?;
+                let _arguments = this.read_pointer(arguments)?;
+
+                // We only support `FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS`
+                // This also means `arguments` can be ignored.
+                if flags != 4096u32 | 512u32 {
+                    throw_unsup_format!("FormatMessageW: unsupported flags {flags:#x}");
+                }
+
+                let error = this.try_errnum_to_io_error(message_id)?;
+                let formatted = match error {
+                    Some(err) => format!("{err}"),
+                    None => format!("<unknown error in FormatMessageW: {message_id}>"),
+                };
+                let (complete, length) =
+                    this.write_os_str_to_wide_str(OsStr::new(&formatted), buffer, size.into())?;
+                if !complete {
+                    // The API docs don't say what happens when the buffer is not big enough...
+                    // Let's just bail.
+                    throw_unsup_format!("FormatMessageW: buffer not big enough");
+                }
+                // The return value is the number of characters stored *excluding* the null terminator.
+                this.write_int(length.checked_sub(1).unwrap(), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -600,9 +759,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_null(dest)?;
             }
 
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

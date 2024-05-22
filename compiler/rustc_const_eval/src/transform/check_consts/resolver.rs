@@ -105,7 +105,7 @@ where
     fn ref_allows_mutation(&self, kind: mir::BorrowKind, place: mir::Place<'tcx>) -> bool {
         match kind {
             mir::BorrowKind::Mut { .. } => true,
-            mir::BorrowKind::Shared | mir::BorrowKind::Fake => {
+            mir::BorrowKind::Shared | mir::BorrowKind::Fake(_) => {
                 self.shared_borrow_allows_mutation(place)
             }
         }
@@ -200,7 +200,6 @@ where
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)
-            | mir::Rvalue::CheckedBinaryOp(..)
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
             | mir::Rvalue::Discriminant(..)

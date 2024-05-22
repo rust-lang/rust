@@ -1,6 +1,6 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
 use super::unsupported;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::time::Duration;
@@ -67,7 +67,7 @@ mod task_queue {
 pub mod wait_notify {
     use crate::pin::Pin;
     use crate::sync::Arc;
-    use crate::sys_common::thread_parking::Parker;
+    use crate::sys::sync::Parker;
 
     pub struct Notifier(Arc<Parker>);
 
@@ -131,10 +131,6 @@ impl Thread {
         // by the platform-agnostic (target-agnostic) Rust thread code.
         // This can be observed in the [`std::thread::tests::test_named_thread`] test,
         // which succeeds as-is with the SGX target.
-    }
-
-    pub fn get_name() -> Option<CString> {
-        None
     }
 
     pub fn sleep(dur: Duration) {

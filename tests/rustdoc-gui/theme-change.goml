@@ -1,7 +1,7 @@
 // Ensures that the theme change is working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
 
 store-value: (background_light, "white")
 store-value: (background_dark, "#353535")
@@ -68,8 +68,7 @@ assert: "#preferred-light-theme.setting-line.hidden"
 
 // Ensures that the custom theme feature is working as expected.
 go-to: "file://" + |DOC_PATH| + "/theme_css/index.html"
-set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
 
 store-value: (background_light, "white")
 store-value: (background_dark, "#353535")

@@ -20,7 +20,7 @@ fn err_sb_ub<'tcx>(
 #[derive(Clone, Debug)]
 pub struct AllocHistory {
     id: AllocId,
-    base: (Item, Span),
+    root: (Item, Span),
     creations: smallvec::SmallVec<[Creation; 1]>,
     invalidations: smallvec::SmallVec<[Invalidation; 1]>,
     protectors: smallvec::SmallVec<[Protection; 1]>,
@@ -225,7 +225,7 @@ impl AllocHistory {
     pub fn new(id: AllocId, item: Item, machine: &MiriMachine<'_, '_>) -> Self {
         Self {
             id,
-            base: (item, machine.current_span()),
+            root: (item, machine.current_span()),
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
@@ -342,15 +342,15 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
                 })
             })
             .or_else(|| {
-                // If we didn't find a retag that created this tag, it might be the base tag of
+                // If we didn't find a retag that created this tag, it might be the root tag of
                 // this allocation.
-                if self.history.base.0.tag() == tag {
+                if self.history.root.0.tag() == tag {
                     Some((
                         format!(
-                            "{tag:?} was created here, as the base tag for {:?}",
+                            "{tag:?} was created here, as the root tag for {:?}",
                             self.history.id
                         ),
-                        self.history.base.1.data(),
+                        self.history.root.1.data(),
                     ))
                 } else {
                     None
@@ -438,7 +438,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             .machine
             .threads
             .all_stacks()
-            .flatten()
+            .flat_map(|(_id, stack)| stack)
             .map(|frame| {
                 frame.extra.borrow_tracker.as_ref().expect("we should have borrow tracking data")
             })

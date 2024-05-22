@@ -1,7 +1,7 @@
 //! This module add real world mbe example for benchmark tests
 
 use rustc_hash::FxHashMap;
-use span::Span;
+use span::{Edition, Span};
 use syntax::{
     ast::{self, HasName},
     AstNode, SmolStr,
@@ -10,7 +10,7 @@ use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro, DummyTestSpanMap, DUMMY,
+    syntax_node_to_token_tree, DeclarativeMacro, DocCommentDesugarMode, DummyTestSpanMap, DUMMY,
 };
 
 #[test]
@@ -46,9 +46,9 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(&tt, |_| (), true, DUMMY);
+                let res = rules[&id].expand(&tt, |_| (), true, DUMMY, Edition::CURRENT);
                 assert!(res.err.is_none());
-                res.value.token_trees.len()
+                res.value.0.token_trees.len()
             })
             .sum()
     };
@@ -66,7 +66,7 @@ fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
 
 fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
     let fixture = bench_fixture::numerous_macro_rules();
-    let source_file = ast::SourceFile::parse(&fixture).ok().unwrap();
+    let source_file = ast::SourceFile::parse(&fixture, span::Edition::CURRENT).ok().unwrap();
 
     source_file
         .syntax()
@@ -78,6 +78,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
                 rule.token_tree().unwrap().syntax(),
                 DummyTestSpanMap,
                 DUMMY,
+                DocCommentDesugarMode::Mbe,
             );
             (id, def_tt)
         })
@@ -120,7 +121,7 @@ fn invocation_fixtures(
                         },
                         token_trees: token_trees.into_boxed_slice(),
                     };
-                    if it.expand(&subtree, |_| (), true, DUMMY).err.is_none() {
+                    if it.expand(&subtree, |_| (), true, DUMMY, Edition::CURRENT).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }

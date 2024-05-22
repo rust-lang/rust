@@ -18,6 +18,22 @@ The value can either be a single identifier or two identifiers separated by `=`.
 For examples, `--cfg 'verbose'` or `--cfg 'feature="serde"'`. These correspond
 to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
 
+<a id="option-check-cfg"></a>
+## `--check-cfg`: configure compile-time checking of conditional compilation
+
+This flag enables checking conditional configurations of the crate at compile-time,
+specifically it helps configure the set of expected cfg names and values, in order
+to check that every _reachable_ `#[cfg]` matches the expected config names and values.
+
+This is different from the `--cfg` flag above which activates some config but do
+not expect them. This is useful to prevent stalled conditions, typos, ...
+
+Refer to the [Checking conditional configurations](check-cfg.md) of this book
+for further details and explanation.
+
+For examples, `--check-cfg 'cfg(verbose)'` or `--check-cfg 'cfg(feature, values("serde"))'`.
+These correspond to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
+
 <a id="option-l-search-path"></a>
 ## `-L`: add a directory to the library search path
 

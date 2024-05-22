@@ -20,15 +20,11 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
             debug x => _9;
         }
         scope 5 (inlined iter::range::<impl Iterator for RangeInclusive<u32>>::next) {
-            debug self => _6;
         }
     }
     scope 3 (inlined RangeInclusive::<u32>::new) {
-        debug start => _1;
-        debug end => _2;
     }
     scope 4 (inlined <RangeInclusive<u32> as IntoIterator>::into_iter) {
-        debug self => _4;
     }
 
     bb0: {

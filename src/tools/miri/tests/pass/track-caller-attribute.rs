@@ -232,7 +232,7 @@ fn test_coroutine() {
     }
 
     #[rustfmt::skip]
-    let coroutine = #[track_caller] |arg: String| {
+    let coroutine = #[track_caller] #[coroutine] |arg: String| {
         yield ("first", arg.clone(), Location::caller());
         yield ("second", arg.clone(), Location::caller());
     };
@@ -255,7 +255,7 @@ fn test_coroutine() {
     assert_eq!(mono_loc.column(), 42);
 
     #[rustfmt::skip]
-    let non_tracked_coroutine = || { yield Location::caller(); };
+    let non_tracked_coroutine = #[coroutine] || { yield Location::caller(); };
     let non_tracked_line = line!() - 1; // This is the line of the coroutine, not its caller
     let non_tracked_loc = match Box::pin(non_tracked_coroutine).as_mut().resume(()) {
         CoroutineState::Yielded(val) => val,
@@ -263,7 +263,7 @@ fn test_coroutine() {
     };
     assert_eq!(non_tracked_loc.file(), file!());
     assert_eq!(non_tracked_loc.line(), non_tracked_line);
-    assert_eq!(non_tracked_loc.column(), 44);
+    assert_eq!(non_tracked_loc.column(), 57);
 }
 
 fn main() {

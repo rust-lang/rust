@@ -1,6 +1,6 @@
 //! Type checking expressions.
 //!
-//! See `mod.rs` for more context on type checking in general.
+//! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
 use crate::cast;
 use crate::coercion::CoerceMany;
@@ -35,21 +35,17 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
-use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::error::{
-    ExpectedFound,
-    TypeError::{FieldMisMatch, Sorts},
-};
+use rustc_middle::ty::error::{ExpectedFound, TypeError::Sorts};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -58,8 +54,8 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
-use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
@@ -84,10 +80,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Ty::new_error(self.tcx(), reported);
             }
 
-            let adj_ty = self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::AdjustmentType,
-                span: expr.span,
-            });
+            let adj_ty = self.next_ty_var(expr.span);
             self.apply_adjustments(
                 expr,
                 vec![Adjustment { kind: Adjust::NeverToAny, target: adj_ty }],
@@ -544,16 +537,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::FnDef(did, _) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
 
-            if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
-                && tcx.item_name(did) == sym::transmute
-            {
-                let from = fn_sig.inputs().skip_binder()[0];
+            if tcx.is_intrinsic(did, sym::transmute) {
+                let Some(from) = fn_sig.inputs().skip_binder().get(0) else {
+                    span_bug!(
+                        tcx.def_span(did),
+                        "intrinsic fn `transmute` defined with no parameters"
+                    );
+                };
                 let to = fn_sig.output().skip_binder();
                 // We defer the transmute to the end of typeck, once all inference vars have
                 // been resolved or we errored. This is important as we can only check transmute
                 // on concrete types, but the output type may not be known yet (it would only
                 // be known if explicitly specified via turbofish).
-                self.deferred_transmute_checks.borrow_mut().push((from, to, expr.hir_id));
+                self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
             if !tcx.features().unsized_fn_params {
                 // We want to remove some Sized bounds from std functions,
@@ -578,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.require_type_is_sized_deferred(
                         input,
                         span,
-                        traits::SizedArgumentType(None),
+                        ObligationCauseCode::SizedArgumentType(None),
                     );
                 }
             }
@@ -596,7 +592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.require_type_is_sized_deferred(
                 output,
                 call.map_or(expr.span, |e| e.span),
-                traits::SizedCallReturnType,
+                ObligationCauseCode::SizedCallReturnType,
             );
         }
 
@@ -657,7 +653,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Otherwise, this is a break *without* a value. That's
                 // always legal, and is equivalent to `break ()`.
-                e_ty = Ty::new_unit(tcx);
+                e_ty = tcx.types.unit;
                 cause = self.misc(expr.span);
             }
 
@@ -690,10 +686,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
                             self.annotate_loop_expected_due_to_inference(err, expr, error);
-                            if let Some(val) = ty_kind_suggestion(ty) {
+                            if let Some(val) =
+                                self.err_ctxt().ty_kind_suggestion(self.param_env, ty)
+                            {
                                 err.span_suggestion_verbose(
                                     expr.span.shrink_to_hi(),
-                                    "give it a value of the expected type",
+                                    "give the `break` a value of the expected type",
                                     format!(" {val}"),
                                     Applicability::HasPlaceholders,
                                 );
@@ -1134,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type is `bool` but this will result in `()` so we can reasonably
             // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
             // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = Ty::new_unit(self.tcx);
+            let actual_ty = self.tcx.types.unit;
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(lhs);
             let rhs_ty = self.check_expr(rhs);
@@ -1252,12 +1250,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
 
-        self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
+        self.require_type_is_sized(lhs_ty, lhs.span, ObligationCauseCode::AssignmentLhsSized);
 
         if let Err(guar) = (lhs_ty, rhs_ty).error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
-            Ty::new_unit(self.tcx)
+            self.tcx.types.unit
         }
     }
 
@@ -1272,7 +1270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // otherwise check exactly as a let statement
         self.check_decl((let_expr, hir_id).into());
         // but return a bool, for this is a boolean expression
-        if let Some(error_guaranteed) = let_expr.is_recovered {
+        if let ast::Recovered::Yes(error_guaranteed) = let_expr.recovered {
             self.set_tainted_by_errors(error_guaranteed);
             Ty::new_error(self.tcx, error_guaranteed)
         } else {
@@ -1320,7 +1318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if ctxt.coerce.is_none() && !ctxt.may_break {
             self.dcx().span_bug(body.span, "no coercion, but loop may not break");
         }
-        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| Ty::new_unit(self.tcx))
+        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.types.unit)
     }
 
     /// Checks a method call.
@@ -1348,6 +1346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if segment.ident.name != kw::Empty {
                     if let Some(err) = self.report_method_error(
                         span,
+                        Some(rcvr),
                         rcvr_t,
                         segment.ident,
                         SelfSource::MethodCall(rcvr),
@@ -1386,15 +1385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-            match cast::CastCheck::new(
-                self,
-                e,
-                t_expr,
-                t_cast,
-                t.span,
-                expr.span,
-                hir::Constness::NotConst,
-            ) {
+            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                 Ok(cast_check) => {
                     debug!(
                         "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
@@ -1421,12 +1412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                     _ => None,
                 })
-                .unwrap_or_else(|| {
-                    self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeInference,
-                        span: expr.span,
-                    })
-                });
+                .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
             assert_eq!(self.diverges.get(), Diverges::Maybe);
             for e in args {
@@ -1436,10 +1422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             coerce.complete(self)
         } else {
-            self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span: expr.span,
-            })
+            self.next_ty_var(expr.span)
         };
         let array_len = args.len() as u64;
         self.suggest_array_len(expr, array_len);
@@ -1459,7 +1442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
-            && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+            && let hir::ArrayLen::Body(&hir::AnonConst { hir_id, .. }) = length
         {
             let span = self.tcx.hir().span(hir_id);
             self.dcx().try_steal_modify_and_emit_err(
@@ -1490,7 +1473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         crate::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(body.value, expected);
-        fcx.require_type_is_sized(ty, body.value.span, traits::ConstSized);
+        fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::ConstSized);
         fcx.write_ty(block.hir_id, ty);
         ty
     }
@@ -1498,7 +1481,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
-        count: &'tcx hir::ArrayLen,
+        count: &'tcx hir::ArrayLen<'tcx>,
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
@@ -1522,10 +1505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (uty, uty)
             }
             None => {
-                let ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: element.span,
-                });
+                let ty = self.next_ty_var(element.span);
                 let element_ty = self.check_expr_has_type_or_error(element, ty, |_| {});
                 (element_ty, ty)
             }
@@ -1539,7 +1519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
 
-        self.register_wf_obligation(ty.into(), expr.span, traits::WellFormed(None));
+        self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
 
         ty
     }
@@ -1629,7 +1609,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Err(guar) = tuple.error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
-            self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
+            self.require_type_is_sized(
+                tuple,
+                expr.span,
+                ObligationCauseCode::TupleInitializerSized,
+            );
             tuple
         }
     }
@@ -1668,7 +1652,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             base_expr,
         );
 
-        self.require_type_is_sized(adt_ty, expr.span, traits::StructInitializerSized);
+        self.require_type_is_sized(adt_ty, expr.span, ObligationCauseCode::StructInitializerSized);
         adt_ty
     }
 
@@ -1811,7 +1795,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let target_ty = self.field_ty(base_expr.span, f, args);
                                 let cause = self.misc(base_expr.span);
                                 match self.at(&cause, self.param_env).sup(
-                                    DefineOpaqueTypes::No,
+                                    // We're already using inference variables for any params, and don't allow converting
+                                    // between different structs, so there is no way this ever actually defines an opaque type.
+                                    // Thus choosing `Yes` is fine.
+                                    DefineOpaqueTypes::Yes,
                                     target_ty,
                                     fru_ty,
                                 ) {
@@ -1819,16 +1806,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         self.register_predicates(obligations)
                                     }
                                     Err(_) => {
-                                        // This should never happen, since we're just subtyping the
-                                        // remaining_fields, but it's fine to emit this, I guess.
-                                        self.err_ctxt()
-                                            .report_mismatched_types(
-                                                &cause,
-                                                target_ty,
-                                                fru_ty,
-                                                FieldMisMatch(variant.name, ident.name),
-                                            )
-                                            .emit();
+                                        span_bug!(
+                                            cause.span(),
+                                            "subtyping remaining fields of type changing FRU failed: {target_ty} != {fru_ty}: {}::{}",
+                                            variant.name,
+                                            ident.name,
+                                        );
                                     }
                                 }
                             }
@@ -2028,8 +2011,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .sess
                 .source_map()
-                .span_extend_while(range_start.span, |c| c.is_whitespace())
-                .unwrap_or(range_start.span)
+                .span_extend_while_whitespace(range_start.span)
                 .shrink_to_hi()
                 .to(range_end.span);
 
@@ -2433,7 +2415,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let guar = if field.name == kw::Empty {
             self.dcx().span_delayed_bug(field.span, "field name with no name")
-        } else if self.method_exists(field, base_ty, expr.hir_id, expected.only_has_type(self)) {
+        } else if self.method_exists_for_diagnostic(
+            field,
+            base_ty,
+            expr.hir_id,
+            expected.only_has_type(self),
+        ) {
             self.ban_take_value_of_method(expr, base_ty, field)
         } else if !base_ty.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, base_ty)
@@ -2619,7 +2606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = self.private_field_err(field, base_did);
 
         // Also check if an accessible method exists, which is often what is meant.
-        if self.method_exists(field, expr_t, expr.hir_id, return_ty)
+        if self.method_exists_for_diagnostic(field, expr_t, expr.hir_id, return_ty)
             && !self.expr_in_place(expr.hir_id)
         {
             self.suggest_method_call(
@@ -2716,7 +2703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn point_at_param_definition(&self, err: &mut Diag<'_>, param: ty::ParamTy) {
         let generics = self.tcx.generics_of(self.body_id);
-        let generic_param = generics.type_param(&param, self.tcx);
+        let generic_param = generics.type_param(param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
             return;
         }
@@ -2870,7 +2857,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         base_ty: Ty<'tcx>,
         mod_id: DefId,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
@@ -3103,14 +3090,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             polarity: ty::PredicatePolarity::Positive,
                         }),
                         |derived| {
-                            traits::ImplDerivedObligation(Box::new(
-                                traits::ImplDerivedObligationCause {
-                                    derived,
-                                    impl_or_alias_def_id: impl_def_id,
-                                    impl_def_predicate_index: Some(idx),
-                                    span,
-                                },
-                            ))
+                            ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
+                                derived,
+                                impl_or_alias_def_id: impl_def_id,
+                                impl_def_predicate_index: Some(idx),
+                                span,
+                            }))
                         },
                     )
                 },
@@ -3128,7 +3113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let true_errors = ocx.select_where_possible();
 
-            // Do a leak check -- we can't really report report a useful error here,
+            // Do a leak check -- we can't really report a useful error here,
             // but it at least avoids an ICE when the error has to do with higher-ranked
             // lifetimes.
             self.leak_check(outer_universe, Some(snapshot))?;
@@ -3193,7 +3178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.dcx().emit_err(YieldExprOutsideOfCoroutine { span: expr.span });
                 // Avoid expressions without types during writeback (#78653).
                 self.check_expr(value);
-                Ty::new_unit(self.tcx)
+                self.tcx.types.unit
             }
         }
     }
@@ -3201,7 +3186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_asm_operand(&self, expr: &'tcx hir::Expr<'tcx>, is_input: bool) {
         let needs = if is_input { Needs::None } else { Needs::MutPlace };
         let ty = self.check_expr_with_needs(expr, needs);
-        self.require_type_is_sized(ty, expr.span, traits::InlineAsmSized);
+        self.require_type_is_sized(ty, expr.span, ObligationCauseCode::InlineAsmSized);
 
         if !is_input && !expr.is_syntactic_place_expr() {
             self.dcx()
@@ -3372,7 +3357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let field_ty = self.field_ty(expr.span, field, args);
 
                     // FIXME: DSTs with static alignment should be allowed
-                    self.require_type_is_sized(field_ty, expr.span, traits::MiscObligation);
+                    self.require_type_is_sized(field_ty, expr.span, ObligationCauseCode::Misc);
 
                     if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
                         self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
@@ -3400,7 +3385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, args);
 
                         // FIXME: DSTs with static alignment should be allowed
-                        self.require_type_is_sized(field_ty, expr.span, traits::MiscObligation);
+                        self.require_type_is_sized(field_ty, expr.span, ObligationCauseCode::Misc);
 
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
@@ -3421,7 +3406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && field.name == sym::integer(index)
                     {
                         for ty in tys.iter().take(index + 1) {
-                            self.require_type_is_sized(ty, expr.span, traits::MiscObligation);
+                            self.require_type_is_sized(ty, expr.span, ObligationCauseCode::Misc);
                         }
                         if let Some(&field_ty) = tys.get(index) {
                             field_indices.push((FIRST_VARIANT, index.into()));

@@ -12,13 +12,13 @@
   
       bb0: {
           _3 = discriminant((*_1));
-          switchInt(move _3) -> [1: bb1, otherwise: bb3];
+          switchInt(move _3) -> [1: bb1, 0: bb3, otherwise: bb5];
       }
   
       bb1: {
           _4 = deref_copy (((*_1) as Some).0: &E<'_>);
           _2 = discriminant((*_4));
-          switchInt(move _2) -> [1: bb2, otherwise: bb3];
+          switchInt(move _2) -> [1: bb2, 0: bb3, otherwise: bb5];
       }
   
       bb2: {
@@ -33,6 +33,10 @@
   
       bb4: {
           return;
+      }
+  
+      bb5: {
+          unreachable;
       }
   }
   

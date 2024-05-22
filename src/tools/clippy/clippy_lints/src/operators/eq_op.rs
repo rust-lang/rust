@@ -24,7 +24,7 @@ pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
             cx,
             EQ_OP,
             lhs.span.to(rhs.span),
-            &format!("identical args used in this `{macro_name}!` macro call"),
+            format!("identical args used in this `{macro_name}!` macro call"),
         );
     }
 }
@@ -41,7 +41,7 @@ pub(crate) fn check<'tcx>(
             cx,
             EQ_OP,
             e.span,
-            &format!("equal expressions as operands to `{}`", op.as_str()),
+            format!("equal expressions as operands to `{}`", op.as_str()),
             |diag| {
                 if let BinOpKind::Ne = op
                     && cx.typeck_results().expr_ty(left).is_floating_point()

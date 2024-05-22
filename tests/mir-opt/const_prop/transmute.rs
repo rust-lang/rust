@@ -1,4 +1,4 @@
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -O --crate-type=lib
 //@ ignore-endian-big
 // EMIT_MIR_FOR_EACH_BIT_WIDTH

@@ -1,6 +1,5 @@
 use super::{
-    mir::Safety,
-    mir::{Body, Mutability},
+    mir::{Body, Mutability, Safety},
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
@@ -97,6 +96,12 @@ impl Ty {
     pub fn kind(&self) -> TyKind {
         with(|context| context.ty_kind(*self))
     }
+}
+
+/// Represents a pattern in the type system
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Pattern {
+    Range { start: Option<Const>, end: Option<Const>, include_end: bool },
 }
 
 /// Represents a constant in MIR or from the Type system.
@@ -481,6 +486,7 @@ pub enum RigidTy {
     Foreign(ForeignDef),
     Str,
     Array(Ty, Const),
+    Pat(Ty, Pattern),
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
@@ -890,13 +896,19 @@ pub struct AliasTy {
     pub args: GenericArgs,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AliasTerm {
+    pub def_id: AliasDef,
+    pub args: GenericArgs,
+}
+
 pub type PolyFnSig = Binder<FnSig>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
-    pub unsafety: Safety,
+    pub safety: Safety,
     pub abi: Abi,
 }
 
@@ -1187,12 +1199,13 @@ pub enum TraitSpecializationKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
-    pub unsafety: Safety,
+    pub safety: Safety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,
     pub is_coinductive: bool,
     pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,
@@ -1343,7 +1356,7 @@ pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectionPredicate {
-    pub projection_ty: AliasTy,
+    pub projection_term: AliasTerm,
     pub term: TermKind,
 }
 

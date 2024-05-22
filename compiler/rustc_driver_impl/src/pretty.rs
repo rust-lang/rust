@@ -13,9 +13,9 @@ use rustc_session::Session;
 use rustc_smir::rustc_internal::pretty::write_smir_pretty;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
-
 use std::cell::Cell;
 use std::fmt::Write;
+use tracing::debug;
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
@@ -23,20 +23,6 @@ pub use self::PpSourceMode::*;
 struct AstNoAnn;
 
 impl pprust_ast::PpAnn for AstNoAnn {}
-
-struct HirNoAnn<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> pprust_hir::PpAnn for HirNoAnn<'tcx> {
-    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        pprust_hir::PpAnn::nested(
-            &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>),
-            state,
-            nested,
-        )
-    }
-}
 
 struct AstIdentifiedAnn;
 
@@ -300,10 +286,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                 )
             };
             match s {
-                PpHirMode::Normal => {
-                    let annotation = HirNoAnn { tcx };
-                    f(&annotation)
-                }
+                PpHirMode::Normal => f(&tcx),
                 PpHirMode::Identified => {
                     let annotation = HirIdentifiedAnn { tcx };
                     f(&annotation)
@@ -336,7 +319,8 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         ThirTree => {
             let tcx = ex.tcx();
             let mut out = String::new();
-            if rustc_hir_analysis::check_crate(tcx).is_err() {
+            rustc_hir_analysis::check_crate(tcx);
+            if tcx.dcx().has_errors().is_some() {
                 FatalError.raise();
             }
             debug!("pretty printing THIR tree");
@@ -348,7 +332,8 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         ThirFlat => {
             let tcx = ex.tcx();
             let mut out = String::new();
-            if rustc_hir_analysis::check_crate(tcx).is_err() {
+            rustc_hir_analysis::check_crate(tcx);
+            if tcx.dcx().has_errors().is_some() {
                 FatalError.raise();
             }
             debug!("pretty printing THIR flat");

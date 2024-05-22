@@ -498,6 +498,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidTag(_) => const_eval_invalid_tag,
             InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
             InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
+            InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
             InvalidStr(_) => const_eval_invalid_str,
             InvalidUninitBytes(None) => const_eval_invalid_uninit_bytes_unknown,
             InvalidUninitBytes(Some(_)) => const_eval_invalid_uninit_bytes,
@@ -537,12 +538,20 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | DeadLocal
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
+
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);
                 diag.arg("index", index);
             }
             UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
                 diag.arg("pointer", ptr);
+            }
+            InvalidVTableTrait { expected_trait, vtable_trait } => {
+                diag.arg("expected_trait", expected_trait.to_string());
+                diag.arg(
+                    "vtable_trait",
+                    vtable_trait.map(|t| t.to_string()).unwrap_or_else(|| format!("<trivial>")),
+                );
             }
             PointerUseAfterFree(alloc_id, msg) => {
                 diag.arg("alloc_id", alloc_id)
@@ -634,6 +643,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
             Uninit { .. } => const_eval_validation_uninit,
             InvalidVTablePtr { .. } => const_eval_validation_invalid_vtable_ptr,
+            InvalidMetaWrongTrait { .. } => const_eval_validation_invalid_vtable_trait,
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
                 const_eval_validation_invalid_box_slice_meta
             }
@@ -772,6 +782,13 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             DanglingPtrNoProvenance { pointer, .. } => {
                 err.arg("pointer", pointer);
+            }
+            InvalidMetaWrongTrait { expected_trait: ref_trait, vtable_trait } => {
+                err.arg("ref_trait", ref_trait.to_string());
+                err.arg(
+                    "vtable_trait",
+                    vtable_trait.map(|t| t.to_string()).unwrap_or_else(|| format!("<trivial>")),
+                );
             }
             NullPtr { .. }
             | PtrToStatic { .. }

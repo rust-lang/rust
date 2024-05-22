@@ -27,6 +27,15 @@ LL |     let mut s: S<B> = S::new(); drop(s);
    |         move occurs because `s` has type `S<Box<u32>>`, which does not implement the `Copy` trait
 LL |     s.x = 10; s.y = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
+   |
+note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-use.rs:15:1
+   |
+LL | struct S<Y> {
+   | ^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut s: S<B> = S::new(); drop(s);
+   |                                      - you could clone this value
 
 error[E0382]: assign to part of moved value: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:116:5
@@ -72,6 +81,15 @@ LL |     let mut s: S<B> = S::new(); drop(s);
    |         move occurs because `s` has type `S<Box<u32>>`, which does not implement the `Copy` trait
 LL |     s.x = 10;
    |     ^^^^^^^^ value partially assigned here after move
+   |
+note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-use.rs:15:1
+   |
+LL | struct S<Y> {
+   | ^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut s: S<B> = S::new(); drop(s);
+   |                                      - you could clone this value
 
 error[E0382]: assign to part of moved value: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:142:5

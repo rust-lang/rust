@@ -161,7 +161,7 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::num::NonZero;
-use core::ptr::{self, NonNull};
+use core::ptr;
 
 use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
@@ -254,28 +254,31 @@ where
     let (src_buf, src_ptr, src_cap, mut dst_buf, dst_end, dst_cap) = unsafe {
         let inner = iterator.as_inner().as_into_iter();
         (
-            inner.buf.as_ptr(),
+            inner.buf,
             inner.ptr,
             inner.cap,
-            inner.buf.as_ptr() as *mut T,
+            inner.buf.cast::<T>(),
             inner.end as *const T,
-            inner.cap * mem::size_of::<I::Src>() / mem::size_of::<T>(),
+            // SAFETY: the multiplication can not overflow, since `inner.cap * size_of::<I::SRC>()` is the size of the allocation.
+            inner.cap.unchecked_mul(mem::size_of::<I::Src>()) / mem::size_of::<T>(),
         )
     };
 
     // SAFETY: `dst_buf` and `dst_end` are the start and end of the buffer.
-    let len = unsafe { SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf, dst_end) };
+    let len = unsafe {
+        SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf.as_ptr() as *mut T, dst_end)
+    };
 
     let src = unsafe { iterator.as_inner().as_into_iter() };
     // check if SourceIter contract was upheld
     // caveat: if they weren't we might not even make it to this point
-    debug_assert_eq!(src_buf, src.buf.as_ptr());
+    debug_assert_eq!(src_buf, src.buf);
     // check InPlaceIterable contract. This is only possible if the iterator advanced the
     // source pointer at all. If it uses unchecked access via TrustedRandomAccess
     // then the source pointer will stay in its initial position and we can't use it as reference
     if src.ptr != src_ptr {
         debug_assert!(
-            unsafe { dst_buf.add(len) as *const _ } <= src.ptr.as_ptr(),
+            unsafe { dst_buf.add(len).cast() } <= src.ptr,
             "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
         );
     }
@@ -315,10 +318,9 @@ where
             let dst_size = mem::size_of::<T>().unchecked_mul(dst_cap);
             let new_layout = Layout::from_size_align_unchecked(dst_size, dst_align);
 
-            let result =
-                alloc.shrink(NonNull::new_unchecked(dst_buf as *mut u8), old_layout, new_layout);
+            let result = alloc.shrink(dst_buf.cast(), old_layout, new_layout);
             let Ok(reallocated) = result else { handle_alloc_error(new_layout) };
-            dst_buf = reallocated.as_ptr() as *mut T;
+            dst_buf = reallocated.cast::<T>();
         }
     } else {
         debug_assert_eq!(src_cap * mem::size_of::<I::Src>(), dst_cap * mem::size_of::<T>());
@@ -326,7 +328,7 @@ where
 
     mem::forget(dst_guard);
 
-    let vec = unsafe { Vec::from_raw_parts(dst_buf, len, dst_cap) };
+    let vec = unsafe { Vec::from_nonnull(dst_buf, len, dst_cap) };
 
     vec
 }
@@ -373,7 +375,7 @@ where
         // - it lets us thread the write pointer through its innards and get it back in the end
         let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
         let sink =
-            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).unwrap();
+            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).into_ok();
         // iteration succeeded, don't drop head
         unsafe { ManuallyDrop::new(sink).dst.sub_ptr(dst_buf) }
     }

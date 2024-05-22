@@ -16,6 +16,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_span::symbol::{sym, Symbol};
@@ -153,7 +154,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
-            _ => span_bug!(lhs.span, "named field access on non-ADT"),
+            ty::Error(_) => {}
+            kind => span_bug!(lhs.span, "named field access on non-ADT: {kind:?}"),
         }
     }
 

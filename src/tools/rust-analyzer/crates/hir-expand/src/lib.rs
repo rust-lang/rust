@@ -3,7 +3,7 @@
 //! Specifically, it implements a concept of `MacroFile` -- a file whose syntax
 //! tree originates not from the text of some `FileId`, but from some macro
 //! expansion.
-
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 pub mod attrs;
@@ -132,13 +132,13 @@ pub enum ExpandError {
     MacroDefinition,
     Mbe(mbe::ExpandError),
     RecursionOverflow,
-    Other(Box<Box<str>>),
-    ProcMacroPanic(Box<Box<str>>),
+    Other(Arc<Box<str>>),
+    ProcMacroPanic(Arc<Box<str>>),
 }
 
 impl ExpandError {
     pub fn other(msg: impl Into<Box<str>>) -> Self {
-        ExpandError::Other(Box::new(msg.into()))
+        ExpandError::Other(Arc::new(msg.into()))
     }
 }
 

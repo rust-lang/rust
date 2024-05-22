@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)] // since we want to recognize them as unexpected
+
 pub mod inner {
     #[cfg(FALSE)]
     pub fn uwu() {}

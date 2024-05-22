@@ -1,21 +1,17 @@
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt};
-use rustc_infer::traits::{
-    Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult, TraitEngine,
-};
-use rustc_middle::traits::solve::{CandidateSource, CanonicalInput, Certainty, Goal};
-use rustc_middle::traits::{
-    BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, ObligationCause, SelectionError,
-};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
+use std::ops::ControlFlow;
 
-use crate::solve::assembly::Candidate;
-use crate::solve::eval_ctxt::{EvalCtxt, GenerateProofTree};
-use crate::solve::inspect::ProofTreeBuilder;
-use crate::traits::StructurallyNormalizeExt;
-use crate::traits::TraitEngineExt;
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::solve::inspect::ProbeKind;
+use rustc_infer::traits::solve::{CandidateSource, Certainty, Goal};
+use rustc_infer::traits::{
+    BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, Obligation, ObligationCause,
+    PolyTraitObligation, Selection, SelectionError, SelectionResult,
+};
+use rustc_macros::extension;
+use rustc_middle::{bug, span_bug};
+use rustc_span::Span;
+
+use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
 
 #[extension(pub trait InferCtxtSelectExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -25,353 +21,164 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
-        self.enter_forall(obligation.predicate, |pred| {
-            let trait_goal = Goal::new(self.tcx, obligation.param_env, pred);
-
-            let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::Never, |ecx| {
-                let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
-                let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
-                let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
-
-                // pseudo-winnow
-                if candidates.len() == 0 {
-                    return Err(SelectionError::Unimplemented);
-                } else if candidates.len() > 1 {
-                    let mut i = 0;
-                    while i < candidates.len() {
-                        let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                            candidate_should_be_dropped_in_favor_of(
-                                ecx.tcx(),
-                                &candidates[i],
-                                &candidates[j],
-                            )
-                        });
-                        if should_drop_i {
-                            candidates.swap_remove(i);
-                        } else {
-                            i += 1;
-                            if i > 1 {
-                                return Ok(None);
-                            }
-                        }
-                    }
-                }
-
-                let candidate = candidates.pop().unwrap();
-                let (normalization_nested_goals, certainty) = ecx
-                    .instantiate_and_apply_query_response(
-                        trait_goal.param_env,
-                        orig_values,
-                        candidate.result,
-                    );
-                assert!(normalization_nested_goals.is_empty());
-                Ok(Some((candidate, certainty)))
-            });
-
-            let (candidate, certainty) = match result {
-                Ok(Some(result)) => result,
-                Ok(None) => return Ok(None),
-                Err(e) => return Err(e),
-            };
-
-            let goal = self.resolve_vars_if_possible(trait_goal);
-            match (certainty, candidate.source) {
-                // Rematching the implementation will instantiate the same nested goals that
-                // would have caused the ambiguity, so we can still make progress here regardless.
-                (_, CandidateSource::Impl(def_id)) => rematch_impl(self, goal, def_id),
-
-                // If an unsize goal is ambiguous, then we can manually rematch it to make
-                // selection progress for coercion during HIR typeck. If it is *not* ambiguous,
-                // but is `BuiltinImplSource::Misc`, it may have nested `Unsize` goals,
-                // and we need to rematch those to detect tuple unsizing and trait upcasting.
-                // FIXME: This will be wrong if we have param-env or where-clause bounds
-                // with the unsize goal -- we may need to mark those with different impl
-                // sources.
-                (Certainty::Maybe(_), CandidateSource::BuiltinImpl(src))
-                | (Certainty::Yes, CandidateSource::BuiltinImpl(src @ BuiltinImplSource::Misc))
-                    if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
-                {
-                    rematch_unsize(self, goal, src, certainty)
-                }
-
-                // Technically some builtin impls have nested obligations, but if
-                // `Certainty::Yes`, then they should've all been verified and don't
-                // need re-checking.
-                (Certainty::Yes, CandidateSource::BuiltinImpl(src)) => {
-                    Ok(Some(ImplSource::Builtin(src, vec![])))
-                }
-
-                // It's fine not to do anything to rematch these, since there are no
-                // nested obligations.
-                (Certainty::Yes, CandidateSource::ParamEnv(_) | CandidateSource::AliasBound) => {
-                    Ok(Some(ImplSource::Param(vec![])))
-                }
-
-                (Certainty::Maybe(_), _) => Ok(None),
-            }
-        })
-    }
-}
-
-impl<'tcx> EvalCtxt<'_, 'tcx> {
-    fn compute_canonical_trait_candidates(
-        &mut self,
-        canonical_input: CanonicalInput<'tcx>,
-    ) -> Vec<Candidate<'tcx>> {
-        // This doesn't record the canonical goal on the stack during the
-        // candidate assembly step, but that's fine. Selection is conceptually
-        // outside of the solver, and if there were any cycles, we'd encounter
-        // the cycle anyways one step later.
-        EvalCtxt::enter_canonical(
-            self.tcx(),
-            self.search_graph,
-            canonical_input,
-            // FIXME: This is wrong, idk if we even want to track stuff here.
-            &mut ProofTreeBuilder::new_noop(),
-            |ecx, goal| {
-                let trait_goal = Goal {
-                    param_env: goal.param_env,
-                    predicate: goal
-                        .predicate
-                        .to_opt_poly_trait_pred()
-                        .expect("we canonicalized a trait goal")
-                        .no_bound_vars()
-                        .expect("we instantiated all bound vars"),
-                };
-                ecx.assemble_and_evaluate_candidates(trait_goal)
-            },
+        self.visit_proof_tree(
+            Goal::new(self.tcx, obligation.param_env, obligation.predicate),
+            &mut Select { span: obligation.cause.span },
         )
+        .break_value()
+        .unwrap()
     }
 }
 
-fn candidate_should_be_dropped_in_favor_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    victim: &Candidate<'tcx>,
-    other: &Candidate<'tcx>,
-) -> bool {
-    match (victim.source, other.source) {
-        (CandidateSource::ParamEnv(victim_idx), CandidateSource::ParamEnv(other_idx)) => {
-            victim_idx >= other_idx
+struct Select {
+    span: Span,
+}
+
+impl<'tcx> inspect::ProofTreeVisitor<'tcx> for Select {
+    type Result = ControlFlow<SelectionResult<'tcx, Selection<'tcx>>>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        let mut candidates = goal.candidates();
+        candidates.retain(|cand| cand.result().is_ok());
+
+        // No candidates -- not implemented.
+        if candidates.is_empty() {
+            return ControlFlow::Break(Err(SelectionError::Unimplemented));
         }
-        (_, CandidateSource::ParamEnv(_)) => true,
 
-        // FIXME: we could prefer earlier vtable bases perhaps...
+        // One candidate, no need to winnow.
+        if candidates.len() == 1 {
+            return ControlFlow::Break(Ok(to_selection(
+                self.span,
+                candidates.into_iter().next().unwrap(),
+            )));
+        }
+
+        // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
+        // codegen, and only on the good path.
+        if matches!(goal.result().unwrap(), Certainty::Maybe(..)) {
+            return ControlFlow::Break(Ok(None));
+        }
+
+        // We need to winnow. See comments on `candidate_should_be_dropped_in_favor_of`.
+        let mut i = 0;
+        while i < candidates.len() {
+            let should_drop_i = (0..candidates.len())
+                .filter(|&j| i != j)
+                .any(|j| candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j]));
+            if should_drop_i {
+                candidates.swap_remove(i);
+            } else {
+                i += 1;
+                if i > 1 {
+                    return ControlFlow::Break(Ok(None));
+                }
+            }
+        }
+
+        ControlFlow::Break(Ok(to_selection(self.span, candidates.into_iter().next().unwrap())))
+    }
+}
+
+/// This is a lot more limited than the old solver's equivalent method. This may lead to more `Ok(None)`
+/// results when selecting traits in polymorphic contexts, but we should never rely on the lack of ambiguity,
+/// and should always just gracefully fail here. We shouldn't rely on this incompleteness.
+fn candidate_should_be_dropped_in_favor_of<'tcx>(
+    victim: &inspect::InspectCandidate<'_, 'tcx>,
+    other: &inspect::InspectCandidate<'_, 'tcx>,
+) -> bool {
+    // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
+    // codegen, and only on the good path.
+    if matches!(other.result().unwrap(), Certainty::Maybe(..)) {
+        return false;
+    }
+
+    let inspect::ProbeKind::TraitCandidate { source: victim_source, result: _ } = victim.kind()
+    else {
+        return false;
+    };
+    let inspect::ProbeKind::TraitCandidate { source: other_source, result: _ } = other.kind()
+    else {
+        return false;
+    };
+
+    match (victim_source, other_source) {
+        (_, CandidateSource::CoherenceUnknowable) | (CandidateSource::CoherenceUnknowable, _) => {
+            bug!("should not have assembled a CoherenceUnknowable candidate")
+        }
+
+        // In the old trait solver, we arbitrarily choose lower vtable candidates
+        // over higher ones.
         (
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base: a }),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base: b }),
+        ) => a >= b,
+        // Prefer dyn candidates over non-dyn candidates. This is necessary to
+        // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.
+        (
+            CandidateSource::Impl(_) | CandidateSource::ParamEnv(_) | CandidateSource::AliasBound,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
-        ) => false,
-        (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. })) => true,
+        ) => true,
 
+        // Prefer specializing candidates over specialized candidates.
         (CandidateSource::Impl(victim_def_id), CandidateSource::Impl(other_def_id)) => {
-            tcx.specializes((other_def_id, victim_def_id))
-                && other.result.value.certainty == Certainty::Yes
+            victim.goal().infcx().tcx.specializes((other_def_id, victim_def_id))
         }
 
         _ => false,
     }
 }
 
-fn rematch_impl<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
-    impl_def_id: DefId,
-) -> SelectionResult<'tcx, Selection<'tcx>> {
-    let args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-    let impl_trait_ref =
-        infcx.tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(infcx.tcx, args);
+fn to_selection<'tcx>(
+    span: Span,
+    cand: inspect::InspectCandidate<'_, 'tcx>,
+) -> Option<Selection<'tcx>> {
+    if let Certainty::Maybe(..) = cand.shallow_certainty() {
+        return None;
+    }
 
-    let mut nested = infcx
-        .at(&ObligationCause::dummy(), goal.param_env)
-        .eq(DefineOpaqueTypes::No, goal.predicate.trait_ref, impl_trait_ref)
-        .map_err(|_| SelectionError::Unimplemented)?
-        .into_obligations();
+    let (nested, impl_args) = cand.instantiate_nested_goals_and_opt_impl_args(span);
+    let nested = nested
+        .into_iter()
+        .map(|nested| {
+            Obligation::new(
+                nested.infcx().tcx,
+                ObligationCause::dummy_with_span(span),
+                nested.goal().param_env,
+                nested.goal().predicate,
+            )
+        })
+        .collect();
 
-    nested.extend(
-        infcx.tcx.predicates_of(impl_def_id).instantiate(infcx.tcx, args).into_iter().map(
-            |(pred, _)| Obligation::new(infcx.tcx, ObligationCause::dummy(), goal.param_env, pred),
-        ),
-    );
-
-    Ok(Some(ImplSource::UserDefined(ImplSourceUserDefinedData { impl_def_id, args, nested })))
-}
-
-/// The `Unsize` trait is particularly important to coercion, so we try rematch it.
-/// NOTE: This must stay in sync with `consider_builtin_unsize_candidate` in trait
-/// goal assembly in the solver, both for soundness and in order to avoid ICEs.
-fn rematch_unsize<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
-    source: BuiltinImplSource,
-    certainty: Certainty,
-) -> SelectionResult<'tcx, Selection<'tcx>> {
-    let tcx = infcx.tcx;
-    let mut nested = vec![];
-    let a_ty = structurally_normalize(goal.predicate.self_ty(), infcx, goal.param_env, &mut nested);
-    let b_ty = structurally_normalize(
-        goal.predicate.trait_ref.args.type_at(1),
-        infcx,
-        goal.param_env,
-        &mut nested,
-    );
-
-    match (a_ty.kind(), b_ty.kind()) {
-        // Don't try to coerce `?0` to `dyn Trait`
-        (ty::Infer(ty::TyVar(_)), _) | (_, ty::Infer(ty::TyVar(_))) => Ok(None),
-        // Stall any ambiguous upcasting goals, since we can't rematch those
-        (ty::Dynamic(_, _, ty::Dyn), ty::Dynamic(_, _, ty::Dyn)) => match certainty {
-            Certainty::Yes => Ok(Some(ImplSource::Builtin(source, nested))),
-            _ => Ok(None),
-        },
-        // `T` -> `dyn Trait` upcasting
-        (_, &ty::Dynamic(data, region, ty::Dyn)) => {
-            // Check that the type implements all of the predicates of the def-id.
-            // (i.e. the principal, all of the associated types match, and any auto traits)
-            nested.extend(data.iter().map(|pred| {
-                Obligation::new(
-                    infcx.tcx,
-                    ObligationCause::dummy(),
-                    goal.param_env,
-                    pred.with_self_ty(tcx, a_ty),
-                )
-            }));
-            // The type must be Sized to be unsized.
-            let sized_def_id = tcx.require_lang_item(hir::LangItem::Sized, None);
-            nested.push(Obligation::new(
-                infcx.tcx,
-                ObligationCause::dummy(),
-                goal.param_env,
-                ty::TraitRef::new(tcx, sized_def_id, [a_ty]),
-            ));
-            // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            nested.push(Obligation::new(
-                infcx.tcx,
-                ObligationCause::dummy(),
-                goal.param_env,
-                ty::OutlivesPredicate(a_ty, region),
-            ));
-
-            Ok(Some(ImplSource::Builtin(source, nested)))
-        }
-        // `[T; n]` -> `[T]` unsizing
-        (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
-            nested.extend(
-                infcx
-                    .at(&ObligationCause::dummy(), goal.param_env)
-                    .eq(DefineOpaqueTypes::No, a_elem_ty, b_elem_ty)
-                    .expect("expected rematch to succeed")
-                    .into_obligations(),
-            );
-
-            Ok(Some(ImplSource::Builtin(source, nested)))
-        }
-        // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-        (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
-            if a_def.is_struct() && a_def.did() == b_def.did() =>
-        {
-            let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
-            // We must be unsizing some type parameters. This also implies
-            // that the struct has a tail field.
-            if unsizing_params.is_empty() {
-                bug!("expected rematch to succeed")
+    Some(match cand.kind() {
+        ProbeKind::TraitCandidate { source, result: _ } => match source {
+            CandidateSource::Impl(impl_def_id) => {
+                // FIXME: Remove this in favor of storing this in the tree
+                // For impl candidates, we do the rematch manually to compute the args.
+                ImplSource::UserDefined(ImplSourceUserDefinedData {
+                    impl_def_id,
+                    args: impl_args.expect("expected recorded impl args for impl candidate"),
+                    nested,
+                })
             }
-
-            let tail_field = a_def
-                .non_enum_variant()
-                .fields
-                .raw
-                .last()
-                .expect("expected unsized ADT to have a tail field");
-            let tail_field_ty = tcx.type_of(tail_field.did);
-
-            let a_tail_ty = tail_field_ty.instantiate(tcx, a_args);
-            let b_tail_ty = tail_field_ty.instantiate(tcx, b_args);
-
-            // Instantiate just the unsizing params from B into A. The type after
-            // this instantiation must be equal to B. This is so we don't unsize
-            // unrelated type parameters.
-            let new_a_args = tcx.mk_args_from_iter(
-                a_args
-                    .iter()
-                    .enumerate()
-                    .map(|(i, a)| if unsizing_params.contains(i as u32) { b_args[i] } else { a }),
-            );
-            let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_args);
-
-            nested.extend(
-                infcx
-                    .at(&ObligationCause::dummy(), goal.param_env)
-                    .eq(DefineOpaqueTypes::No, unsized_a_ty, b_ty)
-                    .expect("expected rematch to succeed")
-                    .into_obligations(),
-            );
-
-            // Finally, we require that `TailA: Unsize<TailB>` for the tail field
-            // types.
-            nested.push(Obligation::new(
-                tcx,
-                ObligationCause::dummy(),
-                goal.param_env,
-                ty::TraitRef::new(tcx, goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
-            ));
-
-            Ok(Some(ImplSource::Builtin(source, nested)))
+            CandidateSource::BuiltinImpl(builtin) => ImplSource::Builtin(builtin, nested),
+            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => ImplSource::Param(nested),
+            CandidateSource::CoherenceUnknowable => {
+                span_bug!(span, "didn't expect to select an unknowable candidate")
+            }
+        },
+        ProbeKind::TryNormalizeNonRigid { result: _ }
+        | ProbeKind::NormalizedSelfTyAssembly
+        | ProbeKind::UnsizeAssembly
+        | ProbeKind::UpcastProjectionCompatibility
+        | ProbeKind::OpaqueTypeStorageLookup { result: _ }
+        | ProbeKind::Root { result: _ }
+        | ProbeKind::ShadowedEnvProbing => {
+            span_bug!(span, "didn't expect to assemble trait candidate from {:#?}", cand.kind())
         }
-        // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
-        (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
-            if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
-        {
-            let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
-            let b_last_ty = b_tys.last().unwrap();
-
-            // Instantiate just the tail field of B., and require that they're equal.
-            let unsized_a_ty =
-                Ty::new_tup_from_iter(tcx, a_rest_tys.iter().chain([b_last_ty]).copied());
-            nested.extend(
-                infcx
-                    .at(&ObligationCause::dummy(), goal.param_env)
-                    .eq(DefineOpaqueTypes::No, unsized_a_ty, b_ty)
-                    .expect("expected rematch to succeed")
-                    .into_obligations(),
-            );
-
-            // Similar to ADTs, require that we can unsize the tail.
-            nested.push(Obligation::new(
-                tcx,
-                ObligationCause::dummy(),
-                goal.param_env,
-                ty::TraitRef::new(tcx, goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
-            ));
-
-            // We need to be able to detect tuple unsizing to require its feature gate.
-            assert_eq!(
-                source,
-                BuiltinImplSource::TupleUnsizing,
-                "compiler-errors wants to know if this can ever be triggered..."
-            );
-            Ok(Some(ImplSource::Builtin(source, nested)))
-        }
-        _ => {
-            assert_ne!(certainty, Certainty::Yes);
-            Ok(None)
-        }
-    }
-}
-
-fn structurally_normalize<'tcx>(
-    ty: Ty<'tcx>,
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    nested: &mut Vec<PredicateObligation<'tcx>>,
-) -> Ty<'tcx> {
-    if matches!(ty.kind(), ty::Alias(..)) {
-        let mut engine = <dyn TraitEngine<'tcx>>::new(infcx);
-        let normalized_ty = infcx
-            .at(&ObligationCause::dummy(), param_env)
-            .structurally_normalize(ty, &mut *engine)
-            .expect("normalization shouldn't fail if we got to here");
-        nested.extend(engine.pending_obligations());
-        normalized_ty
-    } else {
-        ty
-    }
+    })
 }

@@ -13,6 +13,7 @@ use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};

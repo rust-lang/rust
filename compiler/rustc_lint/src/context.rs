@@ -27,9 +27,10 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError};
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
 use rustc_session::lint::{BuiltinLintDiag, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
@@ -110,7 +111,7 @@ struct LintAlias {
 
 struct LintGroup {
     lint_ids: Vec<LintId>,
-    is_loaded: bool,
+    is_externally_loaded: bool,
     depr: Option<LintAlias>,
 }
 
@@ -159,7 +160,9 @@ impl LintStore {
                 // Don't display deprecated lint groups.
                 depr.is_none()
             })
-            .map(|(k, LintGroup { lint_ids, is_loaded, .. })| (*k, lint_ids.clone(), *is_loaded))
+            .map(|(k, LintGroup { lint_ids, is_externally_loaded, .. })| {
+                (*k, lint_ids.clone(), *is_externally_loaded)
+            })
     }
 
     pub fn register_early_pass(
@@ -218,7 +221,7 @@ impl LintStore {
                         .entry(edition.lint_name())
                         .or_insert(LintGroup {
                             lint_ids: vec![],
-                            is_loaded: lint.is_loaded,
+                            is_externally_loaded: lint.is_externally_loaded,
                             depr: None,
                         })
                         .lint_ids
@@ -231,7 +234,7 @@ impl LintStore {
                         .entry("future_incompatible")
                         .or_insert(LintGroup {
                             lint_ids: vec![],
-                            is_loaded: lint.is_loaded,
+                            is_externally_loaded: lint.is_externally_loaded,
                             depr: None,
                         })
                         .lint_ids
@@ -246,7 +249,7 @@ impl LintStore {
             alias,
             LintGroup {
                 lint_ids: vec![],
-                is_loaded: false,
+                is_externally_loaded: false,
                 depr: Some(LintAlias { name: lint_name, silent: true }),
             },
         );
@@ -254,21 +257,21 @@ impl LintStore {
 
     pub fn register_group(
         &mut self,
-        is_loaded: bool,
+        is_externally_loaded: bool,
         name: &'static str,
         deprecated_name: Option<&'static str>,
         to: Vec<LintId>,
     ) {
         let new = self
             .lint_groups
-            .insert(name, LintGroup { lint_ids: to, is_loaded, depr: None })
+            .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
             self.lint_groups.insert(
                 deprecated,
                 LintGroup {
                     lint_ids: vec![],
-                    is_loaded,
+                    is_externally_loaded,
                     depr: Some(LintAlias { name, silent: false }),
                 },
             );
@@ -524,30 +527,24 @@ pub struct EarlyContext<'a> {
     pub buffered: LintBuffer,
 }
 
-pub trait LintContext {
-    fn sess(&self) -> &Session;
-
+impl EarlyContext<'_> {
     /// Emit a lint at the appropriate level, with an optional associated span and an existing
     /// diagnostic.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn span_lint_with_diagnostics(
+    pub fn span_lint_with_diagnostics(
         &self,
         lint: &'static Lint,
-        span: Option<impl Into<MultiSpan>>,
-        msg: impl Into<DiagMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        span: MultiSpan,
         diagnostic: BuiltinLintDiag,
     ) {
-        // We first generate a blank diagnostic.
-        self.opt_span_lint(lint, span, msg, |db| {
-            // Now, set up surrounding context.
-            diagnostics::builtin(self.sess(), diagnostic, db);
-            // Rewrap `db`, and pass control to the user.
-            decorate(db)
-        });
+        diagnostics::emit_buffered_lint(self, lint, span, diagnostic)
     }
+}
+
+pub trait LintContext {
+    fn sess(&self) -> &Session;
 
     // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
     // set the span in their `decorate` function (preferably using set_span).
@@ -741,7 +738,7 @@ impl<'tcx> LateContext<'tcx> {
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     self.tcx
-                        .has_typeck_results(id.owner.to_def_id())
+                        .has_typeck_results(id.owner.def_id)
                         .then(|| self.tcx.typeck(id.owner.def_id))
                 })
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id))

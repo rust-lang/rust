@@ -4,12 +4,13 @@
 
 use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
-use crate::Session;
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{
+    CrateNum, DefId, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE,
+};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
-use rustc_span::hygiene::{ExpnHash, ExpnId};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -219,23 +220,6 @@ pub trait CrateStore: std::fmt::Debug {
     // incr. comp. uses to identify a CrateNum.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
     fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId;
-    fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum;
-
-    /// Fetch a DefId from a DefPathHash for a foreign crate.
-    fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId;
-    fn expn_hash_to_expn_id(
-        &self,
-        sess: &Session,
-        cnum: CrateNum,
-        index_guess: u32,
-        hash: ExpnHash,
-    ) -> ExpnId;
-
-    /// Imports all `SourceFile`s from the given crate into the current session.
-    /// This normally happens automatically when we decode a `Span` from
-    /// that crate's metadata - however, the incr comp cache needs
-    /// to trigger this manually when decoding a foreign `Span`
-    fn import_source_files(&self, sess: &Session, cnum: CrateNum);
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::DynSync + sync::DynSend;
@@ -245,4 +229,6 @@ pub struct Untracked {
     /// Reference span for definitions.
     pub source_span: AppendOnlyIndexVec<LocalDefId, Span>,
     pub definitions: FreezeLock<Definitions>,
+    /// The interned [StableCrateId]s.
+    pub stable_crate_ids: FreezeLock<StableCrateIdMap>,
 }

@@ -1,6 +1,80 @@
-//@ only-cdb
+//@ min-lldb-version: 1800
+//@ ignore-gdb
 //@ compile-flags:-g
-//
+
+// === LLDB TESTS ==================================================================================
+// lldb-command:run
+
+// lldb-command:v a
+// lldbg-check:(core::option::Option<msvc_pretty_enums::CStyleEnum>) a = { value = { 0 = Low } }
+
+// lldb-command:v b
+// lldbg-check:(core::option::Option<msvc_pretty_enums::CStyleEnum>) b = { value = $discr$ = '\x01' }
+
+// lldb-command:v c
+// lldbg-check:(msvc_pretty_enums::NicheLayoutEnum) c = { value = $discr$ = '\x11' }
+
+// lldb-command:v d
+// lldbg-check:(msvc_pretty_enums::NicheLayoutEnum) d = { value = { my_data = High } }
+
+// lldb-command:v e
+// lldbg-check:(msvc_pretty_enums::NicheLayoutEnum) e = { value = $discr$ = '\x13' }
+
+// lldb-command:v h
+// lldbg-check:(core::option::Option<u32>) h = { value = { 0 = 12 } $discr$ = 1 }
+
+// lldb-command:v i
+// lldbg-check:(core::option::Option<u32>) i = { value = $discr$ = 0 }
+
+// lldb-command:v j
+// lldbg-check:(msvc_pretty_enums::CStyleEnum) j = High
+
+// lldb-command:v k
+// lldbg-check:(core::option::Option<alloc::string::String>) k = { value = { 0 = "IAMA optional string!" { vec = size=21 { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 'o' [6] = 'p' [7] = 't' [8] = 'i' [9] = 'o' [10] = 'n' [11] = 'a' [12] = 'l' [13] = ' ' [14] = 's' [15] = 't' [16] = 'r' [17] = 'i' [18] = 'n' [19] = 'g' [20] = '!' } } } }
+
+// lldb-command:v l
+// lldbg-check:(core::result::Result<u32, msvc_pretty_enums::Empty>) l = { value = { 0 = {} } }
+
+// lldb-command:v niche128_some
+// lldbg-check:(core::option::Option<core::num::nonzero::NonZero<i128>>) niche128_some = { value = $discr$ = 123456 }
+
+// lldb-command:v niche128_none
+// lldbg-check:(core::option::Option<core::num::nonzero::NonZero<i128>>) niche128_none = { value = $discr$ = 0 }
+
+// lldb-command:v wrapping_niche128_untagged
+// lldbg-check:(msvc_pretty_enums::Wrapping128Niche) wrapping_niche128_untagged = { value = { 0 = { 0 = 340282366920938463463374607431768211454 } } }
+
+// lldb-command:v wrapping_niche128_none1
+// lldbg-check:(msvc_pretty_enums::Wrapping128Niche) wrapping_niche128_none1 = { value = { 0 = { 0 = 2 } } }
+
+// lldb-command:v direct_tag_128_a
+// lldbg-check:(msvc_pretty_enums::DirectTag128) direct_tag_128_a = { value = { 0 = 42 } $discr$ = 0 }
+
+// lldb-command:v direct_tag_128_b
+// lldbg-check:(msvc_pretty_enums::DirectTag128) direct_tag_128_b = { value = { 0 = 137 } $discr$ = 1 }
+
+// &u32 is incorrectly formatted and LLDB thinks it's a char* so skipping niche_w_fields_1_some
+
+// lldb-command:v niche_w_fields_1_none
+// lldbg-check:(msvc_pretty_enums::NicheLayoutWithFields1) niche_w_fields_1_none = { value = { 0 = 99 } $discr$ = 1 }
+
+// lldb-command:v niche_w_fields_2_some
+// lldbg-check:(msvc_pretty_enums::NicheLayoutWithFields2) niche_w_fields_2_some = { value = { 0 = 800 { __0 = { 0 = 800 } } 1 = 900 } $discr$ = 0 }
+
+// lldb-command:v niche_w_fields_3_some
+// lldbg-check:(msvc_pretty_enums::NicheLayoutWithFields3) niche_w_fields_3_some = { value = { 0 = '\x89' 1 = true } }
+
+// lldb-command:v niche_w_fields_3_niche3
+// lldbg-check:(msvc_pretty_enums::NicheLayoutWithFields3) niche_w_fields_3_niche3 = { value = { 0 = '"' } $discr$ = '\x04' }
+
+// lldb-command:v arbitrary_discr1
+// lldbg-check:(msvc_pretty_enums::ArbitraryDiscr) arbitrary_discr1 = { value = { 0 = 1234 } $discr$ = 1000 }
+
+// lldb-command:v arbitrary_discr2
+// lldbg-check:(msvc_pretty_enums::ArbitraryDiscr) arbitrary_discr2 = { value = { 0 = 5678 } $discr$ = 5000000 }
+
+// === CDB TESTS ==================================================================================
+
 // cdb-command: g
 //
 // cdb-command: dx a
@@ -132,7 +206,6 @@
 // cdb-command: dx -r2 arbitrary_discr2,d
 // cdb-check: arbitrary_discr2,d : Def [Type: enum2$<msvc_pretty_enums::ArbitraryDiscr>]
 // cdb-check:     [+0x[...]] __0              : 5678 [Type: unsigned int]
-#![feature(generic_nonzero)]
 #![feature(rustc_attrs)]
 #![feature(repr128)]
 #![feature(arbitrary_enum_discriminant)]

@@ -1,6 +1,6 @@
 #![allow(nonstandard_style)]
 
-use libc::{c_int, c_void};
+use core::ffi::{c_int, c_void};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -33,10 +33,10 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
 pub const unwinder_private_data_size: usize = 6;
 
-#[cfg(all(target_arch = "arm", not(any(target_os = "ios", target_os = "watchos"))))]
+#[cfg(all(target_arch = "arm", not(all(target_vendor = "apple", not(target_os = "watchos")))))]
 pub const unwinder_private_data_size: usize = 20;
 
-#[cfg(all(target_arch = "arm", any(target_os = "ios", target_os = "watchos")))]
+#[cfg(all(target_arch = "arm", all(target_vendor = "apple", not(target_os = "watchos"))))]
 pub const unwinder_private_data_size: usize = 5;
 
 #[cfg(all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")))]
@@ -123,7 +123,7 @@ extern "C" {
 }
 
 cfg_if::cfg_if! {
-if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "netbsd", not(target_arch = "arm")))] {
+if #[cfg(any(all(target_vendor = "apple", not(target_os = "watchos")), target_os = "netbsd", not(target_arch = "arm")))] {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
@@ -258,8 +258,15 @@ if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", targe
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
-    // Not 32-bit iOS
+if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"))] {
+    // 32-bit ARM Apple (except for watchOS) uses SjLj and does not provide
+    // _Unwind_Backtrace()
+    extern "C-unwind" {
+        pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
+    }
+
+    pub use _Unwind_SjLj_RaiseException as _Unwind_RaiseException;
+} else {
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
         link(name = "unwind", kind = "static", modifiers = "-bundle")
@@ -276,13 +283,6 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
                                  trace_argument: *mut c_void)
                                  -> _Unwind_Reason_Code;
     }
-} else {
-    // 32-bit iOS uses SjLj and does not provide _Unwind_Backtrace()
-    extern "C-unwind" {
-        pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-    }
-
-    pub use _Unwind_SjLj_RaiseException as _Unwind_RaiseException;
 }
 } // cfg_if!
 

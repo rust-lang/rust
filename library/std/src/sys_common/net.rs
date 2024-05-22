@@ -17,10 +17,17 @@ use crate::ffi::{c_int, c_void};
 
 cfg_if::cfg_if! {
     if #[cfg(any(
-        target_os = "dragonfly", target_os = "freebsd",
-        target_os = "ios", target_os = "tvos", target_os = "macos", target_os = "watchos",
-        target_os = "openbsd", target_os = "netbsd", target_os = "illumos",
-        target_os = "solaris", target_os = "haiku", target_os = "l4re", target_os = "nto"))] {
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "illumos",
+        target_os = "solaris",
+        target_os = "haiku",
+        target_os = "l4re",
+        target_os = "nto",
+        target_vendor = "apple",
+    ))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
         use crate::sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
     } else {
@@ -417,6 +424,10 @@ impl TcpListener {
                 // it allows up to about 37, but other times it doesn't even
                 // accept 32. There may be a global limitation causing this.
                 let backlog = 20;
+            } else if #[cfg(target_os = "haiku")] {
+                // Haiku does not support a queue length > 32
+                // https://github.com/haiku/haiku/blob/979a0bc487864675517fb2fab28f87dc8bf43041/headers/posix/sys/socket.h#L81
+                let backlog = 32;
             } else {
                 // The default for all other platforms
                 let backlog = 128;

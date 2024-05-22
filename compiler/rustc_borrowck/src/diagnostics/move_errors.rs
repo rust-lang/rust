@@ -2,10 +2,14 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{CaptureBy, ExprKind, HirId, Node};
+use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
+use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
 
 use crate::diagnostics::CapturedMessageOpt;
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
@@ -303,6 +307,121 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.cannot_move_out_of(span, &description)
     }
 
+    fn suggest_clone_of_captured_var_in_move_closure(
+        &self,
+        err: &mut Diag<'_>,
+        upvar_hir_id: HirId,
+        upvar_name: &str,
+        use_spans: Option<UseSpans<'tcx>>,
+    ) {
+        let tcx = self.infcx.tcx;
+        let typeck_results = tcx.typeck(self.mir_def_id());
+        let Some(use_spans) = use_spans else { return };
+        // We only care about the case where a closure captured a binding.
+        let UseSpans::ClosureUse { args_span, .. } = use_spans else { return };
+        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+        // Fetch the type of the expression corresponding to the closure-captured binding.
+        let Some(captured_ty) = typeck_results.node_type_opt(upvar_hir_id) else { return };
+        if !self.implements_clone(captured_ty) {
+            // We only suggest cloning the captured binding if the type can actually be cloned.
+            return;
+        };
+        // Find the closure that captured the binding.
+        let mut expr_finder = FindExprBySpan::new(args_span, tcx);
+        expr_finder.include_closures = true;
+        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        let Some(closure_expr) = expr_finder.result else { return };
+        let ExprKind::Closure(closure) = closure_expr.kind else { return };
+        // We'll only suggest cloning the binding if it's a `move` closure.
+        let CaptureBy::Value { .. } = closure.capture_clause else { return };
+        // Find the expression within the closure where the binding is consumed.
+        let mut suggested = false;
+        let use_span = use_spans.var_or_use();
+        let mut expr_finder = FindExprBySpan::new(use_span, tcx);
+        expr_finder.include_closures = true;
+        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        let Some(use_expr) = expr_finder.result else { return };
+        let parent = tcx.parent_hir_node(use_expr.hir_id);
+        if let Node::Expr(expr) = parent
+            && let ExprKind::Assign(lhs, ..) = expr.kind
+            && lhs.hir_id == use_expr.hir_id
+        {
+            // Cloning the value being assigned makes no sense:
+            //
+            // error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
+            //   --> $DIR/option-content-move2.rs:11:9
+            //    |
+            // LL |     let mut var = None;
+            //    |         ------- captured outer variable
+            // LL |     func(|| {
+            //    |          -- captured by this `FnMut` closure
+            // LL |         // Shouldn't suggest `move ||.as_ref()` here
+            // LL |         move || {
+            //    |         ^^^^^^^ `var` is moved here
+            // LL |
+            // LL |             var = Some(NotCopyable);
+            //    |             ---
+            //    |             |
+            //    |             variable moved due to use in closure
+            //    |             move occurs because `var` has type `Option<NotCopyable>`, which does not implement the `Copy` trait
+            //    |
+            return;
+        }
+
+        // Search for an appropriate place for the structured `.clone()` suggestion to be applied.
+        // If we encounter a statement before the borrow error, we insert a statement there.
+        for (_, node) in tcx.hir().parent_iter(closure_expr.hir_id) {
+            if let Node::Stmt(stmt) = node {
+                let padding = tcx
+                    .sess
+                    .source_map()
+                    .indentation_before(stmt.span)
+                    .unwrap_or_else(|| "    ".to_string());
+                err.multipart_suggestion_verbose(
+                    "clone the value before moving it into the closure",
+                    vec![
+                        (
+                            stmt.span.shrink_to_lo(),
+                            format!("let value = {upvar_name}.clone();\n{padding}"),
+                        ),
+                        (use_span, "value".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+                suggested = true;
+                break;
+            } else if let Node::Expr(expr) = node
+                && let ExprKind::Closure(_) = expr.kind
+            {
+                // We want to suggest cloning only on the first closure, not
+                // subsequent ones (like `ui/suggestions/option-content-move2.rs`).
+                break;
+            }
+        }
+        if !suggested {
+            // If we couldn't find a statement for us to insert a new `.clone()` statement before,
+            // we have a bare expression, so we suggest the creation of a new block inline to go
+            // from `move || val` to `{ let value = val.clone(); move || value }`.
+            let padding = tcx
+                .sess
+                .source_map()
+                .indentation_before(closure_expr.span)
+                .unwrap_or_else(|| "    ".to_string());
+            err.multipart_suggestion_verbose(
+                "clone the value before moving it into the closure",
+                vec![
+                    (
+                        closure_expr.span.shrink_to_lo(),
+                        format!("{{\n{padding}let value = {upvar_name}.clone();\n{padding}"),
+                    ),
+                    (use_spans.var_or_use(), "value".to_string()),
+                    (closure_expr.span.shrink_to_hi(), format!("\n{padding}}}")),
+                ],
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+
     fn report_cannot_move_from_borrowed_content(
         &mut self,
         move_place: Place<'tcx>,
@@ -310,10 +429,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
     ) -> Diag<'tcx> {
+        let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
-        let ty = deref_target_place.ty(self.body, self.infcx.tcx).ty;
+        let ty = deref_target_place.ty(self.body, tcx).ty;
         let upvar_field = self
             .prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
@@ -363,8 +483,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
                 let upvar_hir_id = upvar.get_root_variable();
-                let upvar_name = upvar.to_string(self.infcx.tcx);
-                let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
+                let upvar_name = upvar.to_string(tcx);
+                let upvar_span = tcx.hir().span(upvar_hir_id);
 
                 let place_name = self.describe_any_place(move_place.as_ref());
 
@@ -380,12 +500,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     closure_kind_ty, closure_kind, place_description,
                 );
 
-                self.cannot_move_out_of(span, &place_description)
+                let closure_span = tcx.def_span(def_id);
+                let mut err = self
+                    .cannot_move_out_of(span, &place_description)
                     .with_span_label(upvar_span, "captured outer variable")
                     .with_span_label(
-                        self.infcx.tcx.def_span(def_id),
+                        closure_span,
                         format!("captured by this `{closure_kind}` closure"),
-                    )
+                    );
+                self.suggest_clone_of_captured_var_in_move_closure(
+                    &mut err,
+                    upvar_hir_id,
+                    &upvar_name,
+                    use_spans,
+                );
+                err
             }
             _ => {
                 let source = self.borrowed_content_source(deref_base);
@@ -415,7 +544,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ),
                     (_, _, _) => self.cannot_move_out_of(
                         span,
-                        &source.describe_for_unnamed_place(self.infcx.tcx),
+                        &source.describe_for_unnamed_place(tcx),
                     ),
                 }
             }
@@ -435,7 +564,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
         match error {
-            GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
+            GroupedMoveError::MovesFromPlace {
+                mut binds_to, move_from, span: other_span, ..
+            } => {
                 self.add_borrow_suggestions(err, span);
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -443,6 +574,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         Some(desc) => format!("`{desc}`"),
                         None => "value".to_string(),
                     };
+
+                    if let Some(expr) = self.find_expr(span) {
+                        self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span), None);
+                    }
 
                     err.subdiagnostic(
                         self.dcx(),
@@ -468,19 +603,30 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
-                let span = use_spans.var_or_use();
+                let use_span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
                 };
+
+                if let Some(expr) = self.find_expr(use_span) {
+                    self.suggest_cloning(
+                        err,
+                        place_ty,
+                        expr,
+                        self.find_expr(span),
+                        Some(use_spans),
+                    );
+                }
+
                 err.subdiagnostic(
                     self.dcx(),
                     crate::session_diagnostics::TypeNoCopy::Label {
                         is_partial_move: false,
                         ty: place_ty,
                         place: &place_desc,
-                        span,
+                        span: use_span,
                     },
                 );
 
@@ -582,6 +728,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             if binds_to.len() == 1 {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
+
+                if let Some(expr) = self.find_expr(binding_span) {
+                    self.suggest_cloning(err, bind_to.ty, expr, None, None);
+                }
+
                 err.subdiagnostic(
                     self.dcx(),
                     crate::session_diagnostics::TypeNoCopy::Label {

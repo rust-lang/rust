@@ -118,6 +118,8 @@ builtin_macros_env_not_unicode = environment variable `{$var}` is not a valid Un
 
 builtin_macros_env_takes_args = `env!()` takes 1 or 2 arguments
 
+builtin_macros_expected_comma_in_list = expected token: `,`
+
 builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern
 
 builtin_macros_expected_register_class_or_explicit_register = expected register class or explicit register
@@ -219,11 +221,15 @@ builtin_macros_non_exhaustive_default = default variant must be exhaustive
 builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants
     .help = consider a manual implementation of `Default`
 
+builtin_macros_only_one_argument = {$name} takes 1 argument
+
 builtin_macros_proc_macro = `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
 
 builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
+
+builtin_macros_takes_no_arguments = {$name} takes no arguments
 
 builtin_macros_test_bad_fn = {$kind} functions cannot be used for tests
     .label = `{$kind}` because of this
@@ -241,5 +247,3 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
     .label = not a trait
     .str_lit = try using `#[derive({$sym})]`
     .other = for example, write `#[derive(Debug)]` for `Debug`
-
-builtin_macros_unnameable_test_items = cannot test inner items

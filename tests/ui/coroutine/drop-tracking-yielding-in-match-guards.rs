@@ -1,10 +1,10 @@
 //@ build-pass
 //@ edition:2018
 
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 fn main() {
-    let _ = static |x: u8| match x {
+    let _ = #[coroutine] static |x: u8| match x {
         y if { yield } == y + 1 => (),
         _ => (),
     };

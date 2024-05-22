@@ -12,11 +12,12 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, ByRef, MatchSource, RangeEnd};
+use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::newtype_index;
 use rustc_index::IndexVec;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::{AllocId, Scalar};
+use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::IntegerExt;
@@ -115,13 +116,13 @@ pub struct Param<'tcx> {
     /// Whether this param is `self`, and how it is bound.
     pub self_kind: Option<hir::ImplicitSelfKind>,
     /// HirId for lints.
-    pub hir_id: Option<hir::HirId>,
+    pub hir_id: Option<HirId>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum LintLevel {
     Inherited,
-    Explicit(hir::HirId),
+    Explicit(HirId),
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -167,7 +168,7 @@ pub struct ClosureExpr<'tcx> {
     pub args: UpvarArgs<'tcx>,
     pub upvars: Box<[ExprId]>,
     pub movability: Option<hir::Movability>,
-    pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
+    pub fake_reads: Vec<(ExprId, FakeReadCause, HirId)>,
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -184,7 +185,7 @@ pub enum BlockSafety {
     /// A compiler-generated unsafe block
     BuiltinUnsafe,
     /// An `unsafe` block. The `HirId` is the ID of the block.
-    ExplicitUnsafe(hir::HirId),
+    ExplicitUnsafe(HirId),
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -233,7 +234,7 @@ pub enum StmtKind<'tcx> {
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
-pub struct LocalVarId(pub hir::HirId);
+pub struct LocalVarId(pub HirId);
 
 /// A THIR expression.
 #[derive(Clone, Debug, HashStable)]
@@ -356,7 +357,7 @@ pub enum ExprKind<'tcx> {
     /// A `match` expression.
     Match {
         scrutinee: ExprId,
-        scrutinee_hir_id: hir::HirId,
+        scrutinee_hir_id: HirId,
         arms: Box<[ArmId]>,
         match_source: MatchSource,
     },
@@ -603,10 +604,7 @@ impl<'tcx> Pat<'tcx> {
     pub fn simple_ident(&self) -> Option<Symbol> {
         match self.kind {
             PatKind::Binding {
-                name,
-                mode: BindingAnnotation(ByRef::No, _),
-                subpattern: None,
-                ..
+                name, mode: BindingMode(ByRef::No, _), subpattern: None, ..
             } => Some(name),
             _ => None,
         }
@@ -645,7 +643,7 @@ impl<'tcx> Pat<'tcx> {
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
-            | DerefPattern { subpattern }
+            | DerefPattern { subpattern, .. }
             | InlineConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
@@ -683,6 +681,23 @@ impl<'tcx> Pat<'tcx> {
             it(p);
             true
         })
+    }
+
+    /// Whether this a never pattern.
+    pub fn is_never_pattern(&self) -> bool {
+        let mut is_never_pattern = false;
+        self.walk(|pat| match &pat.kind {
+            PatKind::Never => {
+                is_never_pattern = true;
+                false
+            }
+            PatKind::Or { pats } => {
+                is_never_pattern = pats.iter().all(|p| p.is_never_pattern());
+                false
+            }
+            _ => true,
+        });
+        is_never_pattern
     }
 }
 
@@ -730,7 +745,7 @@ pub enum PatKind<'tcx> {
     Binding {
         name: Symbol,
         #[type_visitable(ignore)]
-        mode: BindingAnnotation,
+        mode: BindingMode,
         #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
@@ -763,6 +778,7 @@ pub enum PatKind<'tcx> {
     /// Deref pattern, written `box P` for now.
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
+        mutability: hir::Mutability,
     },
 
     /// One of the following:
@@ -1009,18 +1025,20 @@ impl<'tcx> PatRangeBoundary<'tcx> {
 
             // This code is hot when compiling matches with many ranges. So we
             // special-case extraction of evaluated scalars for speed, for types where
-            // raw data comparisons are appropriate. E.g. `unicode-normalization` has
+            // we can do scalar comparisons. E.g. `unicode-normalization` has
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
-            (Finite(mir::Const::Ty(a)), Finite(mir::Const::Ty(b)))
-                if matches!(ty.kind(), ty::Uint(_) | ty::Char) =>
-            {
-                return Some(a.to_valtree().cmp(&b.to_valtree()));
+            (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
+                if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
+                    let sz = ty.primitive_size(tcx);
+                    let cmp = match ty.kind() {
+                        ty::Uint(_) | ty::Char => a.assert_uint(sz).cmp(&b.assert_uint(sz)),
+                        ty::Int(_) => a.assert_int(sz).cmp(&b.assert_int(sz)),
+                        _ => unreachable!(),
+                    };
+                    return Some(cmp);
+                }
             }
-            (
-                Finite(mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(a)), _)),
-                Finite(mir::Const::Val(mir::ConstValue::Scalar(Scalar::Int(b)), _)),
-            ) if matches!(ty.kind(), ty::Uint(_) | ty::Char) => return Some(a.cmp(&b)),
             _ => {}
         }
 
@@ -1167,7 +1185,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 }
                 write!(f, "{subpattern}")
             }
-            PatKind::DerefPattern { ref subpattern } => {
+            PatKind::DerefPattern { ref subpattern, .. } => {
                 write!(f, "deref!({subpattern})")
             }
             PatKind::Constant { value } => write!(f, "{value}"),
@@ -1206,9 +1224,10 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);

@@ -9,7 +9,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, ToPredicate};
+use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, Upcast};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -37,13 +38,15 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         // from the trait itself that *shouldn't* be shown as the source of
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
-        let span = rustc_span::DUMMY_SP;
+        let span = DUMMY_SP;
 
-        result.predicates =
-            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).to_predicate(tcx),
-                span,
-            ))));
+        result.predicates = tcx.arena.alloc_from_iter(
+            result
+                .predicates
+                .iter()
+                .copied()
+                .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
+        );
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -73,8 +76,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             // opaque lifetimes, which explains the slicing below.
             compute_bidirectional_outlives_predicates(
                 tcx,
-                &tcx.generics_of(def_id.to_def_id()).params
-                    [tcx.generics_of(fn_def_id).params.len()..],
+                &tcx.generics_of(def_id.to_def_id()).own_params
+                    [tcx.generics_of(fn_def_id).own_params.len()..],
                 &mut predicates,
             );
 
@@ -164,7 +167,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.insert((trait_ref.to_predicate(tcx), tcx.def_span(def_id)));
+        predicates.insert((trait_ref.upcast(tcx), tcx.def_span(def_id)));
     }
 
     // Collect the predicates that were written inline by the user on each
@@ -195,10 +198,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
                 let ct = icx.lowerer().lower_const_param(param.hir_id, ct_ty);
-                predicates.insert((
-                    ty::ClauseKind::ConstArgHasType(ct, ct_ty).to_predicate(tcx),
-                    param.span,
-                ));
+                predicates
+                    .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
             }
         }
     }
@@ -227,7 +228,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                             ty::ClauseKind::WellFormed(ty.into()),
                             bound_vars,
                         );
-                        predicates.insert((predicate.to_predicate(tcx), span));
+                        predicates.insert((predicate.upcast(tcx), span));
                     }
                 }
 
@@ -256,8 +257,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                             )
                         }
                     };
-                    let pred = ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .to_predicate(tcx);
+                    let pred =
+                        ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)).upcast(tcx);
                     (pred, span)
                 }))
             }
@@ -300,7 +301,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         };
         debug!(?lifetimes);
 
-        compute_bidirectional_outlives_predicates(tcx, &generics.params, &mut predicates);
+        compute_bidirectional_outlives_predicates(tcx, &generics.own_params, &mut predicates);
         debug!(?predicates);
     }
 
@@ -327,12 +328,12 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
             let span = tcx.def_span(param.def_id);
             predicates.push((
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
-                    .to_predicate(tcx),
+                    .upcast(tcx),
                 span,
             ));
             predicates.push((
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_lifetime, orig_lifetime))
-                    .to_predicate(tcx),
+                    .upcast(tcx),
                 span,
             ));
         }
@@ -353,8 +354,7 @@ fn const_evaluatable_predicates_of(
             let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
                 let span = self.tcx.def_span(c.def_id);
-                self.preds
-                    .insert((ty::ClauseKind::ConstEvaluatable(ct).to_predicate(self.tcx), span));
+                self.preds.insert((ty::ClauseKind::ConstEvaluatable(ct).upcast(self.tcx), span));
             }
         }
 
@@ -445,7 +445,9 @@ pub(super) fn explicit_predicates_of<'tcx>(
             .copied()
             .filter(|(pred, _)| match pred.kind().skip_binder() {
                 ty::ClauseKind::Trait(tr) => !is_assoc_item_ty(tr.self_ty()),
-                ty::ClauseKind::Projection(proj) => !is_assoc_item_ty(proj.projection_ty.self_ty()),
+                ty::ClauseKind::Projection(proj) => {
+                    !is_assoc_item_ty(proj.projection_term.self_ty())
+                }
                 ty::ClauseKind::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
                 _ => true,
             })
@@ -691,7 +693,7 @@ pub(super) fn type_param_predicates(
         && param_id == item_hir_id
     {
         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id.to_def_id());
-        extend = Some((identity_trait_ref.to_predicate(tcx), item.span));
+        extend = Some((identity_trait_ref.upcast(tcx), item.span));
     }
 
     let icx = ItemCtxt::new(tcx, item_def_id);

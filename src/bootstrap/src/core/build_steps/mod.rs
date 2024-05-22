@@ -1,5 +1,6 @@
 pub(crate) mod check;
 pub(crate) mod clean;
+pub(crate) mod clippy;
 pub(crate) mod compile;
 pub(crate) mod dist;
 pub(crate) mod doc;
@@ -13,3 +14,4 @@ pub(crate) mod synthetic_targets;
 pub(crate) mod test;
 pub(crate) mod tool;
 pub(crate) mod toolstate;
+pub(crate) mod vendor;

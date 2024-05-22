@@ -130,7 +130,7 @@ pub(crate) fn codegen_int_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
+    if !matches!(bin_op, BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked) {
         assert_eq!(
             in_lhs.layout().ty,
             in_rhs.layout().ty,
@@ -179,6 +179,9 @@ pub(crate) fn codegen_int_binop<'tcx>(
             }
         }
         BinOp::Offset => unreachable!("Offset is not an integer operation"),
+        BinOp::AddWithOverflow | BinOp::SubWithOverflow | BinOp::MulWithOverflow => {
+            unreachable!("Overflow binops handled by `codegen_checked_int_binop`")
+        }
         // Compare binops handles by `codegen_binop`.
         BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge | BinOp::Cmp => {
             unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty);
@@ -388,12 +391,8 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    let is_thin_ptr = in_lhs
-        .layout()
-        .ty
-        .builtin_deref(true)
-        .map(|TypeAndMut { ty, mutbl: _ }| !has_ptr_meta(fx.tcx, ty))
-        .unwrap_or(true);
+    let is_thin_ptr =
+        in_lhs.layout().ty.builtin_deref(true).map(|ty| !has_ptr_meta(fx.tcx, ty)).unwrap_or(true);
 
     if is_thin_ptr {
         match bin_op {
@@ -404,7 +403,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
                 codegen_compare_bin_op(fx, bin_op, false, lhs, rhs)
             }
             BinOp::Offset => {
-                let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap().ty;
+                let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap();
                 let (base, offset) = (in_lhs, in_rhs.load_scalar(fx));
                 let pointee_size = fx.layout_of(pointee_ty).size.bytes();
                 let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);

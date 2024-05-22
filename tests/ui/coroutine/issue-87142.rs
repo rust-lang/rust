@@ -22,6 +22,7 @@ pub struct Context<G: 'static + CoroutineProviderAlt> {
 impl CoroutineProviderAlt for () {
     type Coro = impl Coroutine<(), Return = (), Yield = ()>;
     fn start(ctx: Context<Self>) -> Self::Coro {
+        #[coroutine]
         move || {
             match ctx {
                 _ => (),

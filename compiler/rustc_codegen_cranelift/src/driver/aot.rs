@@ -15,6 +15,7 @@ use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{par_map, IntoDynSyncSend};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -341,6 +342,8 @@ fn emit_cgu(
             object: Some(global_asm_object_file),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         }),
         existing_work_product: None,
     })
@@ -378,7 +381,15 @@ fn emit_module(
 
     prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
 
-    Ok(CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None })
+    Ok(CompiledModule {
+        name,
+        kind,
+        object: Some(tmp_file),
+        dwarf_object: None,
+        bytecode: None,
+        assembly: None,
+        llvm_ir: None,
+    })
 }
 
 fn reuse_workproduct_for_cgu(
@@ -426,6 +437,8 @@ fn reuse_workproduct_for_cgu(
             object: Some(obj_out_regular),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         },
         module_global_asm: has_global_asm.then(|| CompiledModule {
             name: cgu.name().to_string(),
@@ -433,6 +446,8 @@ fn reuse_workproduct_for_cgu(
             object: Some(obj_out_global_asm),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         }),
         existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
@@ -467,15 +482,16 @@ fn module_codegen(
             for (mono_item, _) in mono_items {
                 match mono_item {
                     MonoItem::Fn(inst) => {
-                        let codegened_function = crate::base::codegen_fn(
+                        if let Some(codegened_function) = crate::base::codegen_fn(
                             tcx,
                             &mut cx,
                             &mut type_dbg,
                             Function::new(),
                             &mut module,
                             inst,
-                        );
-                        codegened_functions.push(codegened_function);
+                        ) {
+                            codegened_functions.push(codegened_function);
+                        }
                     }
                     MonoItem::Static(def_id) => {
                         let data_id = crate::constant::codegen_static(tcx, &mut module, def_id);
@@ -590,39 +606,39 @@ pub(crate) fn run_aot(
 
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
-    let mut concurrency_limiter = ConcurrencyLimiter::new(tcx.sess, cgus.len());
+    let (todo_cgus, done_cgus) =
+        cgus.into_iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
+            _ if backend_config.disable_incr_cache => true,
+            CguReuse::No => true,
+            CguReuse::PreLto | CguReuse::PostLto => false,
+        });
+
+    let concurrency_limiter = IntoDynSyncSend(ConcurrencyLimiter::new(tcx.sess, todo_cgus.len()));
 
     let modules = tcx.sess.time("codegen mono items", || {
-        cgus.iter()
-            .enumerate()
-            .map(|(i, cgu)| {
-                let cgu_reuse =
-                    if backend_config.disable_incr_cache { CguReuse::No } else { cgu_reuse[i] };
-                match cgu_reuse {
-                    CguReuse::No => {
-                        let dep_node = cgu.codegen_dep_node(tcx);
-                        tcx.dep_graph
-                            .with_task(
-                                dep_node,
-                                tcx,
-                                (
-                                    backend_config.clone(),
-                                    global_asm_config.clone(),
-                                    cgu.name(),
-                                    concurrency_limiter.acquire(tcx.dcx()),
-                                ),
-                                module_codegen,
-                                Some(rustc_middle::dep_graph::hash_result),
-                            )
-                            .0
-                    }
-                    CguReuse::PreLto | CguReuse::PostLto => {
-                        concurrency_limiter.job_already_done();
-                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
-                    }
-                }
-            })
-            .collect::<Vec<_>>()
+        let mut modules: Vec<_> = par_map(todo_cgus, |(_, cgu)| {
+            let dep_node = cgu.codegen_dep_node(tcx);
+            tcx.dep_graph
+                .with_task(
+                    dep_node,
+                    tcx,
+                    (
+                        backend_config.clone(),
+                        global_asm_config.clone(),
+                        cgu.name(),
+                        concurrency_limiter.acquire(tcx.dcx()),
+                    ),
+                    module_codegen,
+                    Some(rustc_middle::dep_graph::hash_result),
+                )
+                .0
+        });
+        modules.extend(
+            done_cgus
+                .into_iter()
+                .map(|(_, cgu)| OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))),
+        );
+        modules
     });
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
@@ -678,6 +694,8 @@ pub(crate) fn run_aot(
             object: Some(tmp_file),
             dwarf_object: None,
             bytecode: None,
+            assembly: None,
+            llvm_ir: None,
         })
     } else {
         None
@@ -689,6 +707,6 @@ pub(crate) fn run_aot(
         metadata_module,
         metadata,
         crate_info: CrateInfo::new(tcx, target_cpu),
-        concurrency_limiter,
+        concurrency_limiter: concurrency_limiter.0,
     })
 }

@@ -43,7 +43,7 @@ pub struct Std {
     /// This shouldn't be used from other steps; see the comment on [`Rustc`].
     crates: Vec<String>,
     /// When using download-rustc, we need to use a new build of `std` for running unit tests of Std itself,
-    /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
+    /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overridden by `builder.ensure` from other steps.
     force_recompile: bool,
     extra_rust_args: &'static [&'static str],
     is_for_mir_opt_tests: bool,
@@ -394,16 +394,13 @@ fn copy_self_contained_objects(
             target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
         }
     } else if target.contains("-wasi") {
-        let srcdir = builder
-            .wasi_root(target)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Target {:?} does not have a \"wasi-root\" key in Config.toml",
-                    target.triple
-                )
-            })
-            .join("lib")
-            .join(target.to_string().replace("-preview1", "").replace("p2", "").replace("p1", ""));
+        let srcdir = builder.wasi_libdir(target).unwrap_or_else(|| {
+            panic!(
+                "Target {:?} does not have a \"wasi-root\" key in Config.toml \
+                    or `$WASI_SDK_PATH` set",
+                target.triple
+            )
+        });
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -514,12 +511,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         }
 
         if target.contains("-wasi") {
-            if let Some(p) = builder.wasi_root(target) {
-                let root = format!(
-                    "native={}/lib/{}",
-                    p.to_str().unwrap(),
-                    target.to_string().replace("-preview1", "")
-                );
+            if let Some(dir) = builder.wasi_libdir(target) {
+                let root = format!("native={}", dir.to_str().unwrap());
                 cargo.rustflag("-L").rustflag(&root);
             }
         }
@@ -842,13 +835,13 @@ impl Rustc {
 }
 
 impl Step for Rustc {
-    // We return the stage of the "actual" compiler (not the uplifted one).
-    //
-    // By "actual" we refer to the uplifting logic where we may not compile the requested stage;
-    // instead, we uplift it from the previous stages. Which can lead to bootstrap failures in
-    // specific situations where we request stage X from other steps. However we may end up
-    // uplifting it from stage Y, causing the other stage to fail when attempting to link with
-    // stage X which was never actually built.
+    /// We return the stage of the "actual" compiler (not the uplifted one).
+    ///
+    /// By "actual" we refer to the uplifting logic where we may not compile the requested stage;
+    /// instead, we uplift it from the previous stages. Which can lead to bootstrap failures in
+    /// specific situations where we request stage X from other steps. However we may end up
+    /// uplifting it from stage Y, causing the other stage to fail when attempting to link with
+    /// stage X which was never actually built.
     type Output = u32;
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
@@ -945,55 +938,10 @@ impl Step for Rustc {
             "build",
         );
 
-        rustc_cargo(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo(builder, &mut cargo, target, &compiler);
 
-        if builder.config.rust_profile_use.is_some()
-            && builder.config.rust_profile_generate.is_some()
-        {
-            panic!("Cannot use and generate PGO profiles at the same time");
-        }
-
-        // With LLD, we can use ICF (identical code folding) to reduce the executable size
-        // of librustc_driver/rustc and to improve i-cache utilization.
-        //
-        // -Wl,[link options] doesn't work on MSVC. However, /OPT:ICF (technically /OPT:REF,ICF)
-        // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
-        // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
-        // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
-        if builder.config.lld_mode.is_used() && !compiler.host.is_msvc() {
-            cargo.rustflag("-Clink-args=-Wl,--icf=all");
-        }
-
-        let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
-            if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-generate={path}"));
-                // Apparently necessary to avoid overflowing the counters during
-                // a Cargo build profile
-                cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
-                true
-            } else {
-                false
-            }
-        } else if let Some(path) = &builder.config.rust_profile_use {
-            if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-use={path}"));
-                if builder.is_verbose() {
-                    cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
-                }
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-        if is_collecting {
-            // Ensure paths to Rust sources are relative, not absolute.
-            cargo.rustflag(&format!(
-                "-Cllvm-args=-static-func-strip-dirname-prefix={}",
-                builder.config.src.components().count()
-            ));
-        }
+        // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
+        // consistently applied by check/doc/test modes too.
 
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
@@ -1044,7 +992,12 @@ impl Step for Rustc {
     }
 }
 
-pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection, stage: u32) {
+pub fn rustc_cargo(
+    builder: &Builder<'_>,
+    cargo: &mut Cargo,
+    target: TargetSelection,
+    compiler: &Compiler,
+) {
     cargo
         .arg("--features")
         .arg(builder.rustc_features(builder.kind, target))
@@ -1053,9 +1006,16 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
 
+    // If the rustc output is piped to e.g. `head -n1` we want the process to be
+    // killed, rather than having an error bubble up and cause a panic.
+    // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
+    if compiler.stage != 0 {
+        cargo.rustflag("-Zon-broken-pipe=kill");
+    }
+
     // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
     // and may just be a time sink.
-    if stage != 0 {
+    if compiler.stage != 0 {
         match builder.config.rust_lto {
             RustcLto::Thin | RustcLto::Fat => {
                 // Since using LTO for optimizing dylibs is currently experimental,
@@ -1081,7 +1041,52 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         cargo.rustflag("-Clto=off");
     }
 
-    rustc_cargo_env(builder, cargo, target, stage);
+    // With LLD, we can use ICF (identical code folding) to reduce the executable size
+    // of librustc_driver/rustc and to improve i-cache utilization.
+    //
+    // -Wl,[link options] doesn't work on MSVC. However, /OPT:ICF (technically /OPT:REF,ICF)
+    // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
+    // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
+    // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
+    if builder.config.lld_mode.is_used() && !compiler.host.is_msvc() {
+        cargo.rustflag("-Clink-args=-Wl,--icf=all");
+    }
+
+    if builder.config.rust_profile_use.is_some() && builder.config.rust_profile_generate.is_some() {
+        panic!("Cannot use and generate PGO profiles at the same time");
+    }
+    let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+        if compiler.stage == 1 {
+            cargo.rustflag(&format!("-Cprofile-generate={path}"));
+            // Apparently necessary to avoid overflowing the counters during
+            // a Cargo build profile
+            cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+            true
+        } else {
+            false
+        }
+    } else if let Some(path) = &builder.config.rust_profile_use {
+        if compiler.stage == 1 {
+            cargo.rustflag(&format!("-Cprofile-use={path}"));
+            if builder.is_verbose() {
+                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+            }
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    if is_collecting {
+        // Ensure paths to Rust sources are relative, not absolute.
+        cargo.rustflag(&format!(
+            "-Cllvm-args=-static-func-strip-dirname-prefix={}",
+            builder.config.src.components().count()
+        ));
+    }
+
+    rustc_cargo_env(builder, cargo, target, compiler.stage);
 }
 
 pub fn rustc_cargo_env(
@@ -1131,6 +1136,11 @@ pub fn rustc_cargo_env(
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
 
+    // Enable rustc's env var for `rust-lld` when requested.
+    if builder.config.lld_enabled {
+        cargo.env("CFG_USE_SELF_CONTAINED_LINKER", "1");
+    }
+
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
     }
@@ -1141,7 +1151,7 @@ pub fn rustc_cargo_env(
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled(target) {
         let building_is_expensive =
-            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).is_err();
+            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).should_build();
         // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
         let can_skip_build = builder.kind == Kind::Check && builder.top_stage == stage;
         let should_skip_build = building_is_expensive && can_skip_build;
@@ -1284,11 +1294,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     if path.path.to_str().unwrap().contains(CODEGEN_BACKEND_PREFIX) {
         let mut needs_codegen_backend_config = true;
         for backend in run.builder.config.codegen_backends(run.target) {
-            if path
-                .path
-                .to_str()
-                .unwrap()
-                .ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + &backend))
+            if path.path.to_str().unwrap().ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + backend))
             {
                 needs_codegen_backend_config = false;
             }
@@ -1308,7 +1314,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
 impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
-    // Only the backends specified in the `codegen-backends` entry of `config.toml` are built.
+    /// Only the backends specified in the `codegen-backends` entry of `config.toml` are built.
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1848,7 +1854,7 @@ impl Step for Assemble {
                 extra_features: vec![],
             });
             let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
-            builder.copy_link(&src_path, &libdir_bin.join(&tool_exe));
+            builder.copy_link(&src_path, &libdir_bin.join(tool_exe));
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,

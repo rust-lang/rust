@@ -1,4 +1,4 @@
-//@ compile-flags: -Z mir-opt-level=3 -Z inline-mir
+//@ compile-flags: -Z mir-opt-level=3 -Z inline-mir -C debuginfo=full
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![crate_type = "lib"]
 

@@ -40,7 +40,7 @@ fn integrated_highlighting_benchmark() {
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro_server: ProcMacroServerChoice::None,
+        with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: false,
     };
 
@@ -100,7 +100,7 @@ fn integrated_completion_benchmark() {
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro_server: ProcMacroServerChoice::None,
+        with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
     };
 
@@ -153,6 +153,7 @@ fn integrated_completion_benchmark() {
             prefer_no_std: false,
             prefer_prelude: true,
             limit: None,
+            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -197,6 +198,7 @@ fn integrated_completion_benchmark() {
             prefer_no_std: false,
             prefer_prelude: true,
             limit: None,
+            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -239,6 +241,7 @@ fn integrated_completion_benchmark() {
             prefer_no_std: false,
             prefer_prelude: true,
             limit: None,
+            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -262,7 +265,7 @@ fn integrated_diagnostics_benchmark() {
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro_server: ProcMacroServerChoice::None,
+        with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
     };
 
@@ -295,12 +298,13 @@ fn integrated_diagnostics_benchmark() {
         },
         prefer_no_std: false,
         prefer_prelude: false,
+        term_search_fuel: 400,
     };
     host.analysis()
         .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
         .unwrap();
 
-    let _g = crate::tracing::hprof::init("*>1");
+    let _g = crate::tracing::hprof::init("*");
 
     {
         let _it = stdx::timeit("change");

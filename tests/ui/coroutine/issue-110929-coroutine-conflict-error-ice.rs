@@ -1,11 +1,12 @@
 //@ edition:2021
 //@ check-pass
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 fn main() {
     let x = &mut ();
     || {
-        let _c = || yield *&mut *x;
+        let _c = #[coroutine]
+        || yield *&mut *x;
         || _ = &mut *x;
     };
 }

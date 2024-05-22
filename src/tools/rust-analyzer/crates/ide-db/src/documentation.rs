@@ -91,8 +91,10 @@ pub fn docs_with_rangemap(
     db: &dyn DefDatabase,
     attrs: &AttrsWithOwner,
 ) -> Option<(Documentation, DocsRangeMap)> {
-    let docs =
-        attrs.by_key("doc").attrs().filter_map(|attr| attr.string_value().map(|s| (s, attr.id)));
+    let docs = attrs
+        .by_key("doc")
+        .attrs()
+        .filter_map(|attr| attr.string_value_unescape().map(|s| (s, attr.id)));
     let indent = doc_indent(attrs);
     let mut buf = String::new();
     let mut mapping = Vec::new();
@@ -132,7 +134,7 @@ pub fn docs_with_rangemap(
 }
 
 pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
-    let docs = attrs.by_key("doc").attrs().filter_map(|attr| attr.string_value());
+    let docs = attrs.by_key("doc").attrs().filter_map(|attr| attr.string_value_unescape());
     let indent = doc_indent(attrs);
     let mut buf = String::new();
     for doc in docs {
@@ -270,10 +272,9 @@ fn doc_indent(attrs: &hir::Attrs) -> usize {
     attrs
         .by_key("doc")
         .attrs()
-        .filter_map(|attr| attr.string_value())
+        .filter_map(|attr| attr.string_value()) // no need to use unescape version here
         .flat_map(|s| s.lines())
-        .filter(|line| !line.chars().all(|c| c.is_whitespace()))
-        .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
+        .filter_map(|line| line.chars().position(|c| !c.is_whitespace()))
         .min()
         .unwrap_or(0)
 }

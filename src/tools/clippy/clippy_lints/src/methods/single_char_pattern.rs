@@ -8,7 +8,7 @@ use rustc_span::symbol::Symbol;
 
 use super::SINGLE_CHAR_PATTERN;
 
-const PATTERN_METHODS: [(&str, usize); 24] = [
+const PATTERN_METHODS: [(&str, usize); 22] = [
     ("contains", 0),
     ("starts_with", 0),
     ("ends_with", 0),
@@ -27,8 +27,6 @@ const PATTERN_METHODS: [(&str, usize); 24] = [
     ("rmatches", 0),
     ("match_indices", 0),
     ("rmatch_indices", 0),
-    ("strip_prefix", 0),
-    ("strip_suffix", 0),
     ("trim_start_matches", 0),
     ("trim_end_matches", 0),
     ("replace", 0),
@@ -50,7 +48,7 @@ pub(super) fn check(
             && args.len() > pos
             && let arg = &args[pos]
             && let mut applicability = Applicability::MachineApplicable
-            && let Some(hint) = get_hint_if_single_char_arg(cx, arg, &mut applicability)
+            && let Some(hint) = get_hint_if_single_char_arg(cx, arg, &mut applicability, true)
         {
             span_lint_and_sugg(
                 cx,

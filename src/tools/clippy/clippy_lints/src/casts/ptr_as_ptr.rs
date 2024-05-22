@@ -62,8 +62,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
         // we omit following `cast`:
         let omit_cast = if let ExprKind::Call(func, []) = cast_expr.kind
             && let ExprKind::Path(ref qpath @ QPath::Resolved(None, path)) = func.kind
+            && let Some(method_defid) = path.res.opt_def_id()
         {
-            let method_defid = path.res.def_id();
             if cx.tcx.is_diagnostic_item(sym::ptr_null, method_defid) {
                 OmitFollowedCastReason::Null(qpath)
             } else if cx.tcx.is_diagnostic_item(sym::ptr_null_mut, method_defid) {
@@ -77,7 +77,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
 
         let (help, final_suggestion) = if let Some(method) = omit_cast.corresponding_item() {
             // don't force absolute path
-            let method = qpath_to_string(method);
+            let method = qpath_to_string(&cx.tcx, method);
             ("try call directly", format!("{method}{turbofish}()"))
         } else {
             let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut app);

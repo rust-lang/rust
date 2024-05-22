@@ -481,8 +481,8 @@ macro_rules! int_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
         #[doc = concat!("[`wrapping_add`]: ", stringify!($SelfT), "::wrapping_add")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -623,8 +623,8 @@ macro_rules! int_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
         #[doc = concat!("[`wrapping_sub`]: ", stringify!($SelfT), "::wrapping_sub")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -765,8 +765,8 @@ macro_rules! int_impl {
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
         #[doc = concat!("[`wrapping_mul`]: ", stringify!($SelfT), "::wrapping_mul")]
-        #[stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_math", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_math", since = "1.79.0")]
+        #[rustc_const_stable(feature = "unchecked_math", since = "1.79.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1163,12 +1163,19 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        // We could always go back to wrapping
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shl(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // Not using overflowing_shl as that's a wrapping shift
+            if rhs < Self::BITS {
+                // SAFETY: just checked the RHS is in-range
+                Some(unsafe { self.unchecked_shl(rhs) })
+            } else {
+                None
+            }
         }
 
         /// Strict shift left. Computes `self << rhs`, panicking if `rhs` is larger
@@ -1227,18 +1234,9 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self << rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
                 // SAFETY: the caller must uphold the safety contract for
                 // `unchecked_shl`.
                 unsafe { intrinsics::unchecked_shl(self, rhs) }
-            }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -1254,12 +1252,19 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
+        // We could always go back to wrapping
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shr(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // Not using overflowing_shr as that's a wrapping shift
+            if rhs < Self::BITS {
+                // SAFETY: just checked the RHS is in-range
+                Some(unsafe { self.unchecked_shr(rhs) })
+            } else {
+                None
+            }
         }
 
         /// Strict shift right. Computes `self >> rhs`, panicking `rhs` is
@@ -1318,18 +1323,9 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            #[cfg(bootstrap)]
-            {
-                // For bootstrapping, just use built-in primitive shift.
-                // panicking is a legal manifestation of UB
-                self >> rhs
-            }
-            #[cfg(not(bootstrap))]
-            {
-                // SAFETY: the caller must uphold the safety contract for
-                // `unchecked_shr`.
-                unsafe { intrinsics::unchecked_shr(self, rhs) }
-            }
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_shr`.
+            unsafe { intrinsics::unchecked_shr(self, rhs) }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if
@@ -3109,21 +3105,9 @@ macro_rules! int_impl {
             if self <= 0 || base <= 1 {
                 None
             } else {
-                let mut n = 0;
-                let mut r = self;
-
-                // Optimization for 128 bit wide integers.
-                if Self::BITS == 128 {
-                    let b = Self::ilog2(self) / (Self::ilog2(base) + 1);
-                    n += b;
-                    r /= base.pow(b as u32);
-                }
-
-                while r >= base {
-                    r /= base;
-                    n += 1;
-                }
-                Some(n)
+                // Delegate to the unsigned implementation.
+                // The condition makes sure that both casts are exact.
+                (self as $UnsignedT).checked_ilog(base as $UnsignedT)
             }
         }
 
@@ -3185,7 +3169,8 @@ macro_rules! int_impl {
         /// that code in debug mode will trigger a panic on this case and
         /// optimized code will return
         #[doc = concat!("`", stringify!($SelfT), "::MIN`")]
-        /// without a panic.
+        /// without a panic. If you do not want this behavior, consider
+        /// using [`unsigned_abs`](Self::unsigned_abs) instead.
         ///
         /// # Examples
         ///

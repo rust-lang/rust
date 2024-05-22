@@ -9,10 +9,10 @@ use std::{
 };
 
 use build_helper::ci::CiEnv;
+use build_helper::stage0_parser::VersionMetadata;
 use xz2::bufread::XzDecoder;
 
-use crate::core::config::RustfmtMetadata;
-use crate::utils::helpers::{check_run, exe, program_out_of_date};
+use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
 use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
 use crate::{t, Config};
 
@@ -209,7 +209,7 @@ impl Config {
             None => panic!("no protocol in {url}"),
         }
         t!(
-            std::fs::rename(&tempfile, dest_path),
+            move_file(&tempfile, dest_path),
             format!("failed to rename {tempfile:?} to {dest_path:?}")
         );
     }
@@ -313,7 +313,7 @@ impl Config {
             if src_path.is_dir() && dst_path.exists() {
                 continue;
             }
-            t!(fs::rename(src_path, dst_path));
+            t!(move_file(src_path, dst_path));
         }
         let dst_dir = dst.join(directory_prefix);
         if dst_dir.exists() {
@@ -408,7 +408,7 @@ impl Config {
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
     /// reuse target directories or artifacts
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
-        let RustfmtMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
+        let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
 
         let host = self.build;
@@ -606,7 +606,7 @@ impl Config {
             DownloadSource::Dist => {
                 let dist_server = env::var("RUSTUP_DIST_SERVER")
                     .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
-                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0
                 (dist_server, format!("dist/{key}/{filename}"), true)
             }
         };
@@ -616,7 +616,7 @@ impl Config {
         // this on each and every nightly ...
         let checksum = if should_verify {
             let error = format!(
-                "src/stage0.json doesn't contain a checksum for {url}. \
+                "src/stage0 doesn't contain a checksum for {url}. \
                 Pre-built artifacts might not be available for this \
                 target at this time, see https://doc.rust-lang.org/nightly\
                 /rustc/platform-support.html for more information."

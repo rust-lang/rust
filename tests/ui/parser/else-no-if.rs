@@ -1,3 +1,7 @@
+macro_rules! falsy {
+    () => { false };
+}
+
 fn foo() {
     if true {
     } else false {
@@ -23,6 +27,32 @@ fn foo4() {
     } else loop{}
     //~^ ERROR expected `{`, found keyword `loop`
     {}
+}
+
+fn foo5() {
+    if true {
+    } else falsy!() {
+    //~^ ERROR expected `{`, found `falsy`
+    }
+}
+
+fn foo6() {
+    if true {
+    } else falsy!();
+    //~^ ERROR expected `{`, found `falsy`
+}
+
+fn foo7() {
+    if true {
+    } else falsy! {} {
+    //~^ ERROR expected `{`, found `falsy`
+    }
+}
+
+fn foo8() {
+    if true {
+    } else falsy! {};
+    //~^ ERROR expected `{`, found `falsy`
 }
 
 fn falsy() -> bool {

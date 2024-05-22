@@ -209,8 +209,7 @@ impl ImportAssets {
         prefer_no_std: bool,
         prefer_prelude: bool,
     ) -> impl Iterator<Item = LocatedImport> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "import_assets::search_for_imports").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::search_for_imports").entered();
         self.search_for(sema, Some(prefix_kind), prefer_no_std, prefer_prelude)
     }
 
@@ -221,7 +220,7 @@ impl ImportAssets {
         prefer_no_std: bool,
         prefer_prelude: bool,
     ) -> impl Iterator<Item = LocatedImport> {
-        let _p = tracing::span!(tracing::Level::INFO, "import_assets::search_for_relative_paths")
+        let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::search_for_relative_paths")
             .entered();
         self.search_for(sema, None, prefer_no_std, prefer_prelude)
     }
@@ -263,7 +262,7 @@ impl ImportAssets {
         prefer_no_std: bool,
         prefer_prelude: bool,
     ) -> impl Iterator<Item = LocatedImport> {
-        let _p = tracing::span!(tracing::Level::INFO, "import_assets::search_for").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::search_for").entered();
 
         let scope = match sema.scope(&self.candidate_node) {
             Some(it) => it,
@@ -308,7 +307,7 @@ impl ImportAssets {
     }
 
     fn scope_definitions(&self, sema: &Semantics<'_, RootDatabase>) -> FxHashSet<ScopeDef> {
-        let _p = tracing::span!(tracing::Level::INFO, "import_assets::scope_definitions").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::scope_definitions").entered();
         let mut scope_definitions = FxHashSet::default();
         if let Some(scope) = sema.scope(&self.candidate_node) {
             scope.process_all_names(&mut |_, scope_def| {
@@ -327,7 +326,7 @@ fn path_applicable_imports(
     scope_filter: impl Fn(ItemInNs) -> bool + Copy,
 ) -> FxHashSet<LocatedImport> {
     let _p =
-        tracing::span!(tracing::Level::INFO, "import_assets::path_applicable_imports").entered();
+        tracing::span!(tracing::Level::INFO, "ImportAssets::path_applicable_imports").entered();
 
     match &path_candidate.qualifier {
         None => {
@@ -374,7 +373,7 @@ fn import_for_item(
     original_item: ItemInNs,
     scope_filter: impl Fn(ItemInNs) -> bool,
 ) -> Option<LocatedImport> {
-    let _p = tracing::span!(tracing::Level::INFO, "import_assets::import_for_item").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::import_for_item").entered();
     let [first_segment, ..] = unresolved_qualifier else { return None };
 
     let item_as_assoc = item_as_assoc(db, original_item);
@@ -508,8 +507,7 @@ fn trait_applicable_items(
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
     scope_filter: impl Fn(hir::Trait) -> bool,
 ) -> FxHashSet<LocatedImport> {
-    let _p =
-        tracing::span!(tracing::Level::INFO, "import_assets::trait_applicable_items").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::trait_applicable_items").entered();
 
     let db = sema.db;
 

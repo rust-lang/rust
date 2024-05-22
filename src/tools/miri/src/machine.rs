@@ -30,13 +30,12 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::{
-    concurrency::{data_race, weak_memory},
-    shims::unix::FileHandler,
+    concurrency::{
+        data_race::{self, NaReadType, NaWriteType},
+        weak_memory,
+    },
     *,
 };
-
-use self::concurrency::data_race::NaReadType;
-use self::concurrency::data_race::NaWriteType;
 
 /// First real-time signal.
 /// `signal(7)` says this must be between 32 and 64 and specifies 34 or 35
@@ -135,9 +134,9 @@ pub enum MiriMemoryKind {
     Mmap,
 }
 
-impl From<MiriMemoryKind> for MemoryKind<MiriMemoryKind> {
+impl From<MiriMemoryKind> for MemoryKind {
     #[inline(always)]
-    fn from(kind: MiriMemoryKind) -> MemoryKind<MiriMemoryKind> {
+    fn from(kind: MiriMemoryKind) -> MemoryKind {
         MemoryKind::Machine(kind)
     }
 }
@@ -185,6 +184,8 @@ impl fmt::Display for MiriMemoryKind {
     }
 }
 
+pub type MemoryKind = interpret::MemoryKind<MiriMemoryKind>;
+
 /// Pointer provenance.
 #[derive(Clone, Copy)]
 pub enum Provenance {
@@ -204,11 +205,11 @@ pub enum Provenance {
     /// whether *some* exposed pointer could have done what we want to do, and if the answer is yes
     /// then we allow the access. This allows too much code in two ways:
     /// - The same wildcard pointer can "take the role" of multiple different exposed pointers on
-    ///   subsequenct memory accesses.
+    ///   subsequent memory accesses.
     /// - In the aliasing model, we don't just have to know the borrow tag of the pointer used for
     ///   the access, we also have to update the aliasing state -- and that update can be very
     ///   different depending on which borrow tag we pick! Stacked Borrows has support for this by
-    ///   switching to a stack that is only approximately known, i.e. we overapproximate the effect
+    ///   switching to a stack that is only approximately known, i.e. we over-approximate the effect
     ///   of using *any* exposed pointer for this access, and only keep information about the borrow
     ///   stack that would be true with all possible choices.
     Wildcard,
@@ -239,12 +240,12 @@ pub enum ProvenanceExtra {
     Wildcard,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 static_assert_size!(Pointer<Provenance>, 24);
 // FIXME: this would with in 24bytes but layout optimizations are not smart enough
-// #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+// #[cfg(target_pointer_width = "64")]
 //static_assert_size!(Pointer<Option<Provenance>>, 24);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 static_assert_size!(Scalar<Provenance>, 32);
 
 impl fmt::Debug for Provenance {
@@ -378,7 +379,7 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
         let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
         let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
         Ok(Self {
-            unit: layout_cx.layout_of(Ty::new_unit(tcx))?,
+            unit: layout_cx.layout_of(tcx.types.unit)?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
             i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,
@@ -437,8 +438,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Ptr-int-cast module global data.
     pub alloc_addresses: alloc_addresses::GlobalState,
 
-    /// Environment variables set by `setenv`.
-    /// Miri does not expose env vars from the host to the emulated program.
+    /// Environment variables.
     pub(crate) env_vars: EnvVars<'tcx>,
 
     /// Return place of the main function.
@@ -463,9 +463,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) validate: bool,
 
     /// The table of file descriptors.
-    pub(crate) file_handler: shims::unix::FileHandler,
+    pub(crate) fds: shims::FdTable,
     /// The table of directory descriptors.
-    pub(crate) dir_handler: shims::unix::DirHandler,
+    pub(crate) dirs: shims::DirTable,
 
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
@@ -501,7 +501,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Crates which are considered local for the purposes of error reporting.
     pub(crate) local_crates: Vec<CrateNum>,
 
-    /// Mapping extern static names to their base pointer.
+    /// Mapping extern static names to their pointer.
     extern_statics: FxHashMap<Symbol, Pointer<Provenance>>,
 
     /// The random number generator used for resolving non-determinism.
@@ -534,11 +534,11 @@ pub struct MiriMachine<'mir, 'tcx> {
     // The total number of blocks that have been executed.
     pub(crate) basic_block_count: u64,
 
-    /// Handle of the optional shared object file for external functions.
+    /// Handle of the optional shared object file for native functions.
     #[cfg(target_os = "linux")]
-    pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
+    pub native_lib: Option<(libloading::Library, std::path::PathBuf)>,
     #[cfg(not(target_os = "linux"))]
-    pub external_so_lib: Option<!>,
+    pub native_lib: Option<!>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
     pub(crate) gc_interval: u32,
@@ -640,8 +640,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            file_handler: FileHandler::new(config.mute_stdout_stderr),
-            dir_handler: Default::default(),
+            fds: shims::FdTable::new(config.mute_stdout_stderr),
+            dirs: Default::default(),
             layouts,
             threads: ThreadManager::default(),
             static_roots: Vec::new(),
@@ -664,7 +664,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             basic_block_count: 0,
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(target_os = "linux")]
-            external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
+            native_lib: config.native_lib.as_ref().map(|lib_file_path| {
                 let target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
@@ -686,7 +686,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 )
             }),
             #[cfg(not(target_os = "linux"))]
-            external_so_lib: config.external_so_file.as_ref().map(|_| {
+            native_lib: config.native_lib.as_ref().map(|_| {
                 panic!("loading external .so files is only supported on Linux")
             }),
             gc_interval: config.gc_interval,
@@ -774,11 +774,11 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             argv,
             cmd_line,
             extern_statics,
-            dir_handler,
+            dirs,
             borrow_tracker,
             data_race,
             alloc_addresses,
-            file_handler,
+            fds,
             tcx: _,
             isolated_op: _,
             validate: _,
@@ -801,7 +801,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             preemption_rate: _,
             report_progress: _,
             basic_block_count: _,
-            external_so_lib: _,
+            native_lib: _,
             gc_interval: _,
             since_gc: _,
             num_cpus: _,
@@ -817,8 +817,8 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         threads.visit_provenance(visit);
         tls.visit_provenance(visit);
         env_vars.visit_provenance(visit);
-        dir_handler.visit_provenance(visit);
-        file_handler.visit_provenance(visit);
+        dirs.visit_provenance(visit);
+        fds.visit_provenance(visit);
         data_race.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
         alloc_addresses.visit_provenance(visit);
@@ -861,12 +861,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     type Provenance = Provenance;
     type ProvenanceExtra = ProvenanceExtra;
-    type Bytes = Box<[u8]>;
+    type Bytes = MiriAllocBytes;
 
-    type MemoryMap = MonoHashMap<
-        AllocId,
-        (MemoryKind<MiriMemoryKind>, Allocation<Provenance, Self::AllocExtra, Self::Bytes>),
-    >;
+    type MemoryMap =
+        MonoHashMap<AllocId, (MemoryKind, Allocation<Provenance, Self::AllocExtra, Self::Bytes>)>;
 
     const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
 
@@ -987,7 +985,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         dest: &MPlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         ecx.call_intrinsic(instance, args, dest, ret, unwind)
     }
 
@@ -1042,14 +1040,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.generate_nan(inputs)
     }
 
-    fn thread_local_static_base_pointer(
+    fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         ecx.get_or_create_thread_local_alloc(def_id)
     }
 
-    fn extern_static_base_pointer(
+    fn extern_static_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
@@ -1066,7 +1064,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
             if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
                 throw_unsup_format!(
-                    "`extern` static `{name}` from crate `{krate}` has been declared \
+                    "extern static `{link_name}` has been declared as `{krate}::{name}` \
                     with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
                     but Miri emulates it via an extern static shim \
                     with a size of {shim_size} bytes and alignment of {shim_align} bytes",
@@ -1080,11 +1078,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             }
             Ok(ptr)
         } else {
-            throw_unsup_format!(
-                "`extern` static `{name}` from crate `{krate}` is not supported by Miri",
-                name = ecx.tcx.def_path_str(def_id),
-                krate = ecx.tcx.crate_name(def_id.krate),
-            )
+            throw_unsup_format!("extern static `{link_name}` is not supported by Miri",)
         }
     }
 
@@ -1092,8 +1086,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &MiriInterpCx<'mir, 'tcx>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
-        kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>> {
+        kind: Option<MemoryKind>,
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
+    {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
             ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
@@ -1131,7 +1126,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             Some(ecx.generate_stacktrace())
         };
 
-        let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
+        let alloc: Allocation<Provenance, Self::AllocExtra, Self::Bytes> = alloc.adjust_from_tcx(
             &ecx.tcx,
             AllocExtra {
                 borrow_tracker,
@@ -1139,7 +1134,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 weak_memory: buffer_alloc,
                 backtrace,
             },
-            |ptr| ecx.global_base_pointer(ptr),
+            |ptr| ecx.global_root_pointer(ptr),
         )?;
 
         if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
@@ -1152,31 +1147,33 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         Ok(Cow::Owned(alloc))
     }
 
-    fn adjust_alloc_base_pointer(
+    fn adjust_alloc_root_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<CtfeProvenance>,
+        kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
+        let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
         let alloc_id = ptr.provenance.alloc_id();
         if cfg!(debug_assertions) {
             // The machine promises to never call us on thread-local or extern statics.
             match ecx.tcx.try_get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Static(def_id)) if ecx.tcx.is_thread_local_static(def_id) => {
-                    panic!("adjust_alloc_base_pointer called on thread-local static")
+                    panic!("adjust_alloc_root_pointer called on thread-local static")
                 }
                 Some(GlobalAlloc::Static(def_id)) if ecx.tcx.is_foreign_item(def_id) => {
-                    panic!("adjust_alloc_base_pointer called on extern static")
+                    panic!("adjust_alloc_root_pointer called on extern static")
                 }
                 _ => {}
             }
         }
         // FIXME: can we somehow preserve the immutability of `ptr`?
         let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
-            borrow_tracker.borrow_mut().base_ptr_tag(alloc_id, &ecx.machine)
+            borrow_tracker.borrow_mut().root_ptr_tag(alloc_id, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        ecx.ptr_from_rel_ptr(ptr, tag)
+        ecx.adjust_alloc_root_pointer(ptr, tag, kind)
     }
 
     /// Called on `usize as ptr` casts.
@@ -1284,6 +1281,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         size: Size,
         align: Align,
+        kind: MemoryKind,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
@@ -1304,12 +1302,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         {
             *deallocated_at = Some(machine.current_span());
         }
-        machine.alloc_addresses.get_mut().free_alloc_id(
-            machine.rng.get_mut(),
-            alloc_id,
-            size,
-            align,
-        );
+        machine.free_alloc_id(alloc_id, size, align, kind);
         Ok(())
     }
 

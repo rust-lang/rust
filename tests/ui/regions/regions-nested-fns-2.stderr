@@ -1,6 +1,9 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns-2.rs:7:25
    |
+LL |     let y = 3;
+   |         - binding `y` declared here
+LL |     ignore(
 LL |         |z| {
    |         --- value captured here
 LL |             if false { &y } else { z }

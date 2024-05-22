@@ -1,6 +1,8 @@
 error[E0597]: `local_arr` does not live long enough
   --> $DIR/propagate-multiple-requirements.rs:15:14
    |
+LL |     let local_arr = other_local_arr;
+   |         --------- binding `local_arr` declared here
 LL |     let mut out: &mut &'static [i32] = &mut (&[1] as _);
    |                  ------------------- type annotation requires that `local_arr` is borrowed for `'static`
 LL |     once(|mut z: &[i32], mut out_val: &mut &[i32]| {

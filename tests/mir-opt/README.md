@@ -14,17 +14,18 @@ presence of pointers in constants or other bit width dependent things. In that c
 
 to your test, causing separate files to be generated for 32bit and 64bit systems.
 
-## Unit testing
+## Testing a particular MIR pass
 
 If you are only testing the behavior of a particular mir-opt pass on some specific input (as is
 usually the case), you should add
 
 ```
-// unit-test: PassName
+//@ test-mir-pass: PassName
 ```
 
 to the top of the file. This makes sure that other passes don't run which means you'll get the input
-you expected and your test won't break when other code changes.
+you expected and your test won't break when other code changes. This also lets you test passes
+that are disabled by default.
 
 ## Emit a diff of the mir for a specific optimization
 

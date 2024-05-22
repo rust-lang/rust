@@ -8,7 +8,7 @@ LL | //     Alias::
 LL | ||     Unit();
    | ||________^_- call expression requires function
    |  |________|
-   | 
+   |
    |
 help: `Alias::Unit` is a unit enum variant, and does not take parentheses to be constructed
    |

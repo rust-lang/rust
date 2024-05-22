@@ -9,7 +9,7 @@ use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingAnnotation, ByRef, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -20,6 +20,7 @@ use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
@@ -158,7 +159,7 @@ struct Builder<'a, 'tcx> {
     cfg: CFG<'tcx>,
 
     def_id: LocalDefId,
-    hir_id: hir::HirId,
+    hir_id: HirId,
     parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
@@ -222,7 +223,7 @@ struct Builder<'a, 'tcx> {
     coverage_branch_info: Option<coverageinfo::BranchInfoBuilder>,
 }
 
-type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
+type CaptureMap<'tcx> = SortedIndexMultiMap<usize, HirId, Capture<'tcx>>;
 
 #[derive(Debug)]
 struct Capture<'tcx> {
@@ -566,7 +567,8 @@ fn construct_const<'a, 'tcx>(
             span,
             ..
         }) => (*span, ty.span),
-        Node::AnonConst(_) | Node::ConstBlock(_) => {
+        Node::AnonConst(ct) => (ct.span, ct.span),
+        Node::ConstBlock(_) => {
             let span = tcx.def_span(def);
             (span, span)
         }
@@ -721,7 +723,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         thir: &'a Thir<'tcx>,
         infcx: InferCtxt<'tcx>,
         def: LocalDefId,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         span: Span,
         arg_count: usize,
         return_ty: Ty<'tcx>,
@@ -931,7 +933,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     var,
-                    mode: BindingAnnotation(ByRef::No, mutability),
+                    mode: BindingMode(ByRef::No, mutability),
                     subpattern: None,
                     ..
                 } => {
@@ -941,7 +943,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
-                            let binding_mode = BindingAnnotation(ByRef::No, mutability);
+                            let binding_mode = BindingMode(ByRef::No, mutability);
                             LocalInfo::User(BindingForm::Var(VarBindingForm {
                                 binding_mode,
                                 opt_ty_info: param.ty_span,
@@ -981,7 +983,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn set_correct_source_scope_for_arg(
         &mut self,
-        arg_hir_id: hir::HirId,
+        arg_hir_id: HirId,
         original_source_scope: SourceScope,
         pattern_span: Span,
     ) {
@@ -997,7 +999,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match self.unit_temp {
             Some(tmp) => tmp,
             None => {
-                let ty = Ty::new_unit(self.tcx);
+                let ty = self.tcx.types.unit;
                 let fn_span = self.fn_span;
                 let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp);
@@ -1023,7 +1025,13 @@ pub(crate) fn parse_float_into_scalar(
     let num = num.as_str();
     match float_ty {
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
-        ty::FloatTy::F16 => num.parse::<Half>().ok().map(Scalar::from_f16),
+        ty::FloatTy::F16 => {
+            let mut f = num.parse::<Half>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(Scalar::from_f16(f))
+        }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1071,7 +1079,13 @@ pub(crate) fn parse_float_into_scalar(
             Some(Scalar::from_f64(f))
         }
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
-        ty::FloatTy::F128 => num.parse::<Quad>().ok().map(Scalar::from_f128),
+        ty::FloatTy::F128 => {
+            let mut f = num.parse::<Quad>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(Scalar::from_f128(f))
+        }
     }
 }
 

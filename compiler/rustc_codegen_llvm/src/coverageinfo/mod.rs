@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, Size};
 
 use std::cell::RefCell;
 
@@ -24,14 +24,13 @@ pub(crate) mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
 
-const VAR_ALIGN: Align = Align::EIGHT;
-
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map:
         RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
+    pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
 }
 
 impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
@@ -39,6 +38,7 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         Self {
             function_coverage_map: Default::default(),
             pgo_func_name_var_map: Default::default(),
+            mcdc_condition_bitmap_map: Default::default(),
         }
     }
 
@@ -46,6 +46,23 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         &self,
     ) -> FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
         self.function_coverage_map.replace(FxIndexMap::default())
+    }
+
+    /// LLVM use a temp value to record evaluated mcdc test vector of each decision, which is called condition bitmap.
+    /// In order to handle nested decisions, several condition bitmaps can be
+    /// allocated for a function body.
+    /// These values are named `mcdc.addr.{i}` and are a 32-bit integers.
+    /// They respectively hold the condition bitmaps for decisions with a depth of `i`.
+    fn try_get_mcdc_condition_bitmap(
+        &self,
+        instance: &Instance<'tcx>,
+        decision_depth: u16,
+    ) -> Option<&'ll llvm::Value> {
+        self.mcdc_condition_bitmap_map
+            .borrow()
+            .get(instance)
+            .and_then(|bitmap_map| bitmap_map.get(decision_depth as usize))
+            .copied() // Dereference Option<&&Value> to Option<&Value>
     }
 }
 
@@ -74,6 +91,42 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
+    fn init_coverage(&mut self, instance: Instance<'tcx>) {
+        let Some(function_coverage_info) =
+            self.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
+        else {
+            return;
+        };
+
+        // If there are no MC/DC bitmaps to set up, return immediately.
+        if function_coverage_info.mcdc_bitmap_bytes == 0 {
+            return;
+        }
+
+        let fn_name = self.get_pgo_func_name_var(instance);
+        let hash = self.const_u64(function_coverage_info.function_source_hash);
+        let bitmap_bytes = self.const_u32(function_coverage_info.mcdc_bitmap_bytes);
+        self.mcdc_parameters(fn_name, hash, bitmap_bytes);
+
+        // Create pointers named `mcdc.addr.{i}` to stack-allocated condition bitmaps.
+        let mut cond_bitmaps = vec![];
+        for i in 0..function_coverage_info.mcdc_num_condition_bitmaps {
+            // MC/DC intrinsics will perform loads/stores that use the ABI default
+            // alignment for i32, so our variable declaration should match.
+            let align = self.tcx.data_layout.i32_align.abi;
+            let cond_bitmap = self.alloca(Size::from_bytes(4), align);
+            llvm::set_value_name(cond_bitmap, format!("mcdc.addr.{i}").as_bytes());
+            self.store(self.const_i32(0), cond_bitmap, align);
+            cond_bitmaps.push(cond_bitmap);
+        }
+
+        self.coverage_context()
+            .expect("always present when coverage is enabled")
+            .mcdc_condition_bitmap_map
+            .borrow_mut()
+            .insert(instance, cond_bitmaps);
+    }
+
     #[instrument(level = "debug", skip(self))]
     fn add_coverage(&mut self, instance: Instance<'tcx>, kind: &CoverageKind) {
         // Our caller should have already taken care of inlining subtleties,
@@ -132,6 +185,36 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             CoverageKind::ExpressionUsed { id } => {
                 func_coverage.mark_expression_id_seen(id);
+            }
+            CoverageKind::CondBitmapUpdate { id, value, decision_depth } => {
+                drop(coverage_map);
+                assert_ne!(
+                    id.as_u32(),
+                    0,
+                    "ConditionId of evaluated conditions should never be zero"
+                );
+                let cond_bitmap = coverage_context
+                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
+                    .expect("mcdc cond bitmap should have been allocated for updating");
+                let cond_loc = bx.const_i32(id.as_u32() as i32 - 1);
+                let bool_value = bx.const_bool(value);
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                bx.mcdc_condbitmap_update(fn_name, hash, cond_loc, cond_bitmap, bool_value);
+            }
+            CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
+                drop(coverage_map);
+                let cond_bitmap = coverage_context
+                                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
+                                    .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
+                let bitmap_bytes = function_coverage_info.mcdc_bitmap_bytes;
+                assert!(bitmap_idx < bitmap_bytes, "bitmap index of the decision out of range");
+
+                let fn_name = bx.get_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let bitmap_bytes = bx.const_u32(bitmap_bytes);
+                let bitmap_index = bx.const_u32(bitmap_idx);
+                bx.mcdc_tvbitmap_update(fn_name, hash, bitmap_bytes, bitmap_index, cond_bitmap);
             }
         }
     }
@@ -226,7 +309,8 @@ pub(crate) fn save_cov_data_to_mod<'ll, 'tcx>(
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::set_section(llglobal, &covmap_section_name);
-    llvm::set_alignment(llglobal, VAR_ALIGN);
+    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    llvm::set_alignment(llglobal, Align::EIGHT);
     cx.add_used_global(llglobal);
 }
 
@@ -256,7 +340,8 @@ pub(crate) fn save_func_record_to_mod<'ll, 'tcx>(
     llvm::set_linkage(llglobal, llvm::Linkage::LinkOnceODRLinkage);
     llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
     llvm::set_section(llglobal, covfun_section_name);
-    llvm::set_alignment(llglobal, VAR_ALIGN);
+    // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    llvm::set_alignment(llglobal, Align::EIGHT);
     llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
     cx.add_used_global(llglobal);
 }

@@ -17,6 +17,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::def_id::DefId;
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexVec;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -165,13 +166,16 @@ pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
 
-    /// The immediately borrowed place must be immutable, but projections from
-    /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
-    /// conflict with a mutable borrow of `a.b.c`.
+    /// An immutable, aliasable borrow that is discarded after borrow-checking. Can behave either
+    /// like a normal shared borrow or like a special shallow borrow (see [`FakeBorrowKind`]).
     ///
-    /// This is used when lowering matches: when matching on a place we want to
-    /// ensure that place have the same value from the start of the match until
-    /// an arm is selected. This prevents this code from compiling:
+    /// This is used when lowering index expressions and matches. This is used to prevent code like
+    /// the following from compiling:
+    /// ```compile_fail,E0510
+    /// let mut x: &[_] = &[[0, 1]];
+    /// let y: &[_] = &[];
+    /// let _ = x[0][{x = y; 1}];
+    /// ```
     /// ```compile_fail,E0510
     /// let mut x = &Some(0);
     /// match *x {
@@ -180,11 +184,8 @@ pub enum BorrowKind {
     ///     Some(_) => (),
     /// }
     /// ```
-    /// This can't be a shared borrow because mutably borrowing (*x as Some).0
-    /// should not prevent `if let None = x { ... }`, for example, because the
-    /// mutating `(*x as Some).0` can't affect the discriminant of `x`.
     /// We can also report errors with this kind of borrow differently.
-    Fake,
+    Fake(FakeBorrowKind),
 
     /// Data is mutable and not aliasable.
     Mut { kind: MutBorrowKind },
@@ -238,6 +239,57 @@ pub enum MutBorrowKind {
     /// This solves the problem. For simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
     ClosureCapture,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
+pub enum FakeBorrowKind {
+    /// A shared shallow borrow. The immediately borrowed place must be immutable, but projections
+    /// from it don't need to be. For example, a shallow borrow of `a.b` doesn't conflict with a
+    /// mutable borrow of `a.b.c`.
+    ///
+    /// This is used when lowering matches: when matching on a place we want to ensure that place
+    /// have the same value from the start of the match until an arm is selected. This prevents this
+    /// code from compiling:
+    /// ```compile_fail,E0510
+    /// let mut x = &Some(0);
+    /// match *x {
+    ///     None => (),
+    ///     Some(_) if { x = &None; false } => (),
+    ///     Some(_) => (),
+    /// }
+    /// ```
+    /// This can't be a shared borrow because mutably borrowing `(*x as Some).0` should not checking
+    /// the discriminant or accessing other variants, because the mutating `(*x as Some).0` can't
+    /// affect the discriminant of `x`. E.g. the following is allowed:
+    /// ```rust
+    /// let mut x = Some(0);
+    /// match x {
+    ///     Some(_)
+    ///         if {
+    ///             if let Some(ref mut y) = x {
+    ///                 *y += 1;
+    ///             };
+    ///             true
+    ///         } => {}
+    ///     _ => {}
+    /// }
+    /// ```
+    Shallow,
+    /// A shared (deep) borrow. Data must be immutable and is aliasable.
+    ///
+    /// This is used when lowering deref patterns, where shallow borrows wouldn't prevent something
+    /// like:
+    // ```compile_fail
+    // let mut b = Box::new(false);
+    // match b {
+    //     deref!(true) => {} // not reached because `*b == false`
+    //     _ if { *b = true; false } => {} // not reached because the guard is `false`
+    //     deref!(false) => {} // not reached because the guard changed it
+    //     // UB because we reached the unreachable.
+    // }
+    // ```
+    Deep,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1243,17 +1295,11 @@ pub enum Rvalue<'tcx> {
     ///   truncated as needed.
     /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
     ///   types and return a value of that type.
+    /// * The `FooWithOverflow` are like the `Foo`, but returning `(T, bool)` instead of just `T`,
+    ///   where the `bool` is true if the result is not equal to the infinite-precision result.
     /// * The remaining operations accept signed integers, unsigned integers, or floats with
     ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
-
-    /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
-    ///
-    /// For addition, subtraction, and multiplication on integers the error condition is set when
-    /// the infinite precision result would not be equal to the actual result.
-    ///
-    /// Other combinations of types and operators are unsupported.
-    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
     NullaryOp(NullOp<'tcx>, Ty<'tcx>),
@@ -1351,6 +1397,21 @@ pub enum AggregateKind<'tcx> {
     Closure(DefId, GenericArgsRef<'tcx>),
     Coroutine(DefId, GenericArgsRef<'tcx>),
     CoroutineClosure(DefId, GenericArgsRef<'tcx>),
+
+    /// Construct a raw pointer from the data pointer and metadata.
+    ///
+    /// The `Ty` here is the type of the *pointee*, not the pointer itself.
+    /// The `Mutability` indicates whether this produces a `*const` or `*mut`.
+    ///
+    /// The [`Rvalue::Aggregate`] operands for thus must be
+    ///
+    /// 0. A raw pointer of matching mutability with any [`core::ptr::Thin`] pointee
+    /// 1. A value of the appropriate [`core::ptr::Pointee::Metadata`] type
+    ///
+    /// *Both* operands must always be included, even the unit value if this is
+    /// creating a thin pointer. If you're just converting between thin pointers,
+    /// you may want an [`Rvalue::Cast`] with [`CastKind::PtrToPtr`] instead.
+    RawPtr(Ty<'tcx>, Mutability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1382,14 +1443,23 @@ pub enum BinOp {
     Add,
     /// Like `Add`, but with UB on overflow.  (Integers only.)
     AddUnchecked,
+    /// Like `Add`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    AddWithOverflow,
     /// The `-` operator (subtraction)
     Sub,
     /// Like `Sub`, but with UB on overflow.  (Integers only.)
     SubUnchecked,
+    /// Like `Sub`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    SubWithOverflow,
     /// The `*` operator (multiplication)
     Mul,
     /// Like `Mul`, but with UB on overflow.  (Integers only.)
     MulUnchecked,
+    /// Like `Mul`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    MulWithOverflow,
     /// The `/` operator (division)
     ///
     /// For integer types, division by zero is UB, as is `MIN / -1` for signed.
@@ -1413,13 +1483,17 @@ pub enum BinOp {
     BitOr,
     /// The `<<` operator (shift left)
     ///
-    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
+    /// The offset is (uniquely) determined as follows:
+    /// - it is "equal modulo LHS::BITS" to the RHS
+    /// - it is in the range `0..LHS::BITS`
     Shl,
     /// Like `Shl`, but is UB if the RHS >= LHS::BITS or RHS < 0
     ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
-    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
+    /// The offset is (uniquely) determined as follows:
+    /// - it is "equal modulo LHS::BITS" to the RHS
+    /// - it is in the range `0..LHS::BITS`
     ///
     /// This is an arithmetic shift if the LHS is signed
     /// and a logical shift if the LHS is unsigned.
@@ -1453,9 +1527,10 @@ pub enum BinOp {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AggregateKind<'_>, 32);
     static_assert_size!(Operand<'_>, 24);
@@ -1463,5 +1538,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
+    static_assert_size!(TerminatorKind<'_>, 96);
     // tidy-alphabetical-end
 }

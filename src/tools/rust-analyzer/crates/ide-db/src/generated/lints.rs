@@ -3869,7 +3869,7 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         yield 1;
         return "foo"
     };
@@ -3901,7 +3901,7 @@ use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         println!("2");
         yield;
         println!("4");
@@ -4007,7 +4007,7 @@ use std::pin::Pin;
 
 fn main() {
     let ret = "foo";
-    let mut coroutine = move || {
+    let mut coroutine = #[coroutine] move || {
         yield 1;
         return ret
     };

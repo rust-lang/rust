@@ -110,11 +110,11 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
             .map_or(param.span, |bound_span| param.span.with_hi(bound_span.hi()))
     }
 
-    fn emit_help(&self, spans: Vec<Span>, msg: &str, help: &'static str) {
+    fn emit_help(&self, spans: Vec<Span>, msg: String, help: &'static str) {
         span_lint_and_help(self.cx, EXTRA_UNUSED_TYPE_PARAMETERS, spans, msg, None, help);
     }
 
-    fn emit_sugg(&self, spans: Vec<Span>, msg: &str, help: &'static str) {
+    fn emit_sugg(&self, spans: Vec<Span>, msg: String, help: &'static str) {
         let suggestions: Vec<(Span, String)> = spans.iter().copied().zip(std::iter::repeat(String::new())).collect();
         span_lint_and_then(self.cx, EXTRA_UNUSED_TYPE_PARAMETERS, spans, msg, |diag| {
             diag.multipart_suggestion(help, suggestions, Applicability::MachineApplicable);
@@ -167,7 +167,7 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
                 .iter()
                 .map(|(_, param)| self.get_bound_span(param))
                 .collect::<Vec<_>>();
-            self.emit_help(spans, &msg, help);
+            self.emit_help(spans, msg, help);
         } else {
             let spans = if explicit_params.len() == extra_params.len() {
                 vec![self.generics.span] // Remove the entire list of generics
@@ -196,7 +196,7 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
                     })
                     .collect()
             };
-            self.emit_sugg(spans, &msg, help);
+            self.emit_sugg(spans, msg, help);
         };
     }
 }

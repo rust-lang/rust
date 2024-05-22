@@ -242,7 +242,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti("L", "library-path", "directory to add to crate search path", "DIR")
         }),
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
-        unstable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
+        stable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
         stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
         unstable("extern-html-root-url", |o| {
             o.optmulti(
@@ -730,10 +730,10 @@ fn main_args(
         core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
 
     match (options.should_test, options.markdown_input()) {
-        (true, true) => return wrap_return(&diag, markdown::test(options)),
-        (true, false) => return doctest::run(&diag, options),
-        (false, true) => {
-            let input = options.input.clone();
+        (true, Some(_)) => return wrap_return(&diag, markdown::test(options)),
+        (true, None) => return doctest::run(&diag, options),
+        (false, Some(input)) => {
+            let input = input.to_owned();
             let edition = options.edition;
             let config = core::create_config(options, &render_options, using_internal_features);
 
@@ -747,7 +747,7 @@ fn main_args(
                 }),
             );
         }
-        (false, false) => {}
+        (false, None) => {}
     }
 
     // need to move these items separately because we lose them by the time the closure is called,

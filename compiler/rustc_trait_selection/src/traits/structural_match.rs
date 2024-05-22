@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use std::ops::ControlFlow;
 
@@ -126,7 +127,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
                 return ControlFlow::Continue(());
             }
 
-            ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {
+            ty::Pat(..) | ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {
                 // First check all contained types and then tell the caller to continue searching.
                 return ty.super_visit_with(self);
             }

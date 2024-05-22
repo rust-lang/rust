@@ -60,7 +60,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 UNNECESSARY_FIND_MAP
             },
             expr.span,
-            &format!("this `.{name}` can be written more simply using `.{sugg}`"),
+            format!("this `.{name}` can be written more simply using `.{sugg}`"),
         );
     }
 }

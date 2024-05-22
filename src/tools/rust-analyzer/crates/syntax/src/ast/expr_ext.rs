@@ -89,6 +89,7 @@ fn if_block_condition() {
             else { "else" }
         }
         "#,
+        parser::Edition::CURRENT,
     );
     let if_ = parse.tree().syntax().descendants().find_map(ast::IfExpr::cast).unwrap();
     assert_eq!(if_.then_branch().unwrap().syntax().text(), r#"{ "if" }"#);
@@ -123,6 +124,7 @@ fn if_condition_with_if_inside() {
             else { "else" }
         }
         "#,
+        parser::Edition::CURRENT,
     );
     let if_ = parse.tree().syntax().descendants().find_map(ast::IfExpr::cast).unwrap();
     assert_eq!(if_.then_branch().unwrap().syntax().text(), r#"{ "if" }"#);
@@ -386,7 +388,8 @@ impl ast::BlockExpr {
 
 #[test]
 fn test_literal_with_attr() {
-    let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
+    let parse =
+        ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#, parser::Edition::CURRENT);
     let lit = parse.tree().syntax().descendants().find_map(ast::Literal::cast).unwrap();
     assert_eq!(lit.token().text(), r#""Hello""#);
 }

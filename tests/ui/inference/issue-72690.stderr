@@ -50,7 +50,7 @@ help: try using a fully qualified path to specify the expected types
 LL |     |x| String::from(<str as AsRef<T>>::as_ref("x"));
    |                      ++++++++++++++++++++++++++   ~
 
-error[E0283]: type annotations needed for `&T`
+error[E0283]: type annotations needed for `&_`
   --> $DIR/issue-72690.rs:17:9
    |
 LL |     let _ = "x".as_ref();

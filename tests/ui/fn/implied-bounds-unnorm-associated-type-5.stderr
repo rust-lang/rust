@@ -27,6 +27,12 @@ LL |     drop(x);
    |          ^ move out of `x` occurs here
 LL |     println!("{}", y);
    |                    - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let y = f(&x, ());
+LL +     let y = f(x.clone(), ());
+   |
 
 error: aborting due to 2 previous errors
 

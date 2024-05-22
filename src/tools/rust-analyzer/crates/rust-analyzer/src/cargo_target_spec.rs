@@ -33,53 +33,55 @@ impl CargoTargetSpec {
         kind: &RunnableKind,
         cfg: &Option<CfgExpr>,
     ) -> (Vec<String>, Vec<String>) {
-        let mut args = Vec::new();
-        let mut extra_args = Vec::new();
+        let extra_test_binary_args = snap.config.runnables().extra_test_binary_args;
+
+        let mut cargo_args = Vec::new();
+        let mut executable_args = Vec::new();
 
         match kind {
             RunnableKind::Test { test_id, attr } => {
-                args.push("test".to_owned());
-                extra_args.push(test_id.to_string());
+                cargo_args.push("test".to_owned());
+                executable_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
-                    extra_args.push("--exact".to_owned());
+                    executable_args.push("--exact".to_owned());
                 }
-                extra_args.push("--nocapture".to_owned());
+                executable_args.extend(extra_test_binary_args);
                 if attr.ignore {
-                    extra_args.push("--ignored".to_owned());
+                    executable_args.push("--ignored".to_owned());
                 }
             }
             RunnableKind::TestMod { path } => {
-                args.push("test".to_owned());
-                extra_args.push(path.clone());
-                extra_args.push("--nocapture".to_owned());
+                cargo_args.push("test".to_owned());
+                executable_args.push(path.clone());
+                executable_args.extend(extra_test_binary_args);
             }
             RunnableKind::Bench { test_id } => {
-                args.push("bench".to_owned());
-                extra_args.push(test_id.to_string());
+                cargo_args.push("bench".to_owned());
+                executable_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
-                    extra_args.push("--exact".to_owned());
+                    executable_args.push("--exact".to_owned());
                 }
-                extra_args.push("--nocapture".to_owned());
+                executable_args.extend(extra_test_binary_args);
             }
             RunnableKind::DocTest { test_id } => {
-                args.push("test".to_owned());
-                args.push("--doc".to_owned());
-                extra_args.push(test_id.to_string());
-                extra_args.push("--nocapture".to_owned());
+                cargo_args.push("test".to_owned());
+                cargo_args.push("--doc".to_owned());
+                executable_args.push(test_id.to_string());
+                executable_args.extend(extra_test_binary_args);
             }
             RunnableKind::Bin => {
                 let subcommand = match spec {
                     Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => "test",
                     _ => "run",
                 };
-                args.push(subcommand.to_owned());
+                cargo_args.push(subcommand.to_owned());
             }
         }
 
         let (allowed_features, target_required_features) = if let Some(mut spec) = spec {
             let allowed_features = mem::take(&mut spec.features);
             let required_features = mem::take(&mut spec.required_features);
-            spec.push_to(&mut args, kind);
+            spec.push_to(&mut cargo_args, kind);
             (allowed_features, required_features)
         } else {
             (Default::default(), Default::default())
@@ -89,10 +91,10 @@ impl CargoTargetSpec {
 
         match &cargo_config.features {
             CargoFeatures::All => {
-                args.push("--all-features".to_owned());
+                cargo_args.push("--all-features".to_owned());
                 for feature in target_required_features {
-                    args.push("--features".to_owned());
-                    args.push(feature);
+                    cargo_args.push("--features".to_owned());
+                    cargo_args.push(feature);
                 }
             }
             CargoFeatures::Selected { features, no_default_features } => {
@@ -108,16 +110,16 @@ impl CargoTargetSpec {
 
                 feats.dedup();
                 for feature in feats {
-                    args.push("--features".to_owned());
-                    args.push(feature);
+                    cargo_args.push("--features".to_owned());
+                    cargo_args.push(feature);
                 }
 
                 if *no_default_features {
-                    args.push("--no-default-features".to_owned());
+                    cargo_args.push("--no-default-features".to_owned());
                 }
             }
         }
-        (args, extra_args)
+        (cargo_args, executable_args)
     }
 
     pub(crate) fn for_file(
@@ -208,7 +210,8 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
-    use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
+    use ide::Edition;
+    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
@@ -216,9 +219,14 @@ mod tests {
 
     fn check(cfg: &str, expected_features: &[&str]) {
         let cfg_expr = {
-            let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
+            let source_file = ast::SourceFile::parse(cfg, Edition::CURRENT).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let tt = syntax_node_to_token_tree(tt.syntax(), &DummyTestSpanMap, DUMMY);
+            let tt = syntax_node_to_token_tree(
+                tt.syntax(),
+                &DummyTestSpanMap,
+                DUMMY,
+                DocCommentDesugarMode::Mbe,
+            );
             CfgExpr::parse(&tt)
         };
 

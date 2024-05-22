@@ -708,7 +708,7 @@ declare_clippy_lint! {
     /// let a_ref = &1;
     /// let a_ptr = std::ptr::from_ref(a_ref);
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub REF_AS_PTR,
     pedantic,
     "using `as` to cast a reference to pointer"
@@ -754,11 +754,7 @@ impl_lint_pass!(Casts => [
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !in_external_macro(cx.sess(), expr.span) {
-            ptr_as_ptr::check(cx, expr, &self.msrv);
-        }
-
-        if expr.span.from_expansion() {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
@@ -771,7 +767,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 cx.typeck_results().expr_ty(expr),
             );
 
-            if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
+            if !expr.span.from_expansion() && unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
                 return;
             }
             cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, &self.msrv);
@@ -782,7 +778,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
             zero_ptr::check(cx, expr, cast_expr, cast_to_hir);
 
-            if cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+            if cast_to.is_numeric() {
                 cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to, cast_to_hir.span);
                 if cast_from.is_numeric() {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);

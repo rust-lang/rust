@@ -1,7 +1,7 @@
 use crate::spec::Target;
 use crate::{abi::Size, spec::RelocModel};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
@@ -9,11 +9,11 @@ use std::str::FromStr;
 pub struct ModifierInfo {
     pub modifier: char,
     pub result: &'static str,
-    pub size: u64,
+    pub size: u16,
 }
 
-impl From<(char, &'static str, u64)> for ModifierInfo {
-    fn from((modifier, result, size): (char, &'static str, u64)) -> Self {
+impl From<(char, &'static str, u16)> for ModifierInfo {
+    fn from((modifier, result, size): (char, &'static str, u16)) -> Self {
         Self { modifier, result, size }
     }
 }
@@ -24,7 +24,7 @@ macro_rules! def_reg_class {
             $class:ident,
         )*
     }) => {
-        #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, HashStable_Generic)]
+        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_regclass {
             $($class,)*
@@ -73,7 +73,7 @@ macro_rules! def_regs {
         )*
     }) => {
         #[allow(unreachable_code)]
-        #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, HashStable_Generic)]
+        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_reg {
             $($reg,)*
@@ -217,6 +217,7 @@ pub enum InlineAsmArch {
     X86_64,
     Arm,
     AArch64,
+    Arm64EC,
     RiscV32,
     RiscV64,
     Nvptx64,
@@ -246,6 +247,7 @@ impl FromStr for InlineAsmArch {
             "x86_64" => Ok(Self::X86_64),
             "arm" => Ok(Self::Arm),
             "aarch64" => Ok(Self::AArch64),
+            "arm64ec" => Ok(Self::Arm64EC),
             "riscv32" => Ok(Self::RiscV32),
             "riscv64" => Ok(Self::RiscV64),
             "nvptx64" => Ok(Self::Nvptx64),
@@ -341,7 +343,9 @@ impl InlineAsmReg {
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => Self::X86(X86InlineAsmReg::parse(name)?),
             InlineAsmArch::Arm => Self::Arm(ArmInlineAsmReg::parse(name)?),
-            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmReg::parse(name)?),
+            InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
+                Self::AArch64(AArch64InlineAsmReg::parse(name)?)
+            }
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                 Self::RiscV(RiscVInlineAsmReg::parse(name)?)
             }
@@ -610,7 +614,9 @@ impl InlineAsmRegClass {
                 Self::X86(X86InlineAsmRegClass::parse(name)?)
             }
             InlineAsmArch::Arm => Self::Arm(ArmInlineAsmRegClass::parse(name)?),
-            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmRegClass::parse(name)?),
+            InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
+                Self::AArch64(AArch64InlineAsmRegClass::parse(name)?)
+            }
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                 Self::RiscV(RiscVInlineAsmRegClass::parse(name)?)
             }
@@ -783,7 +789,7 @@ pub fn allocatable_registers(
             arm::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
-        InlineAsmArch::AArch64 => {
+        InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
             let mut map = aarch64::regclass_map();
             aarch64::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
@@ -908,6 +914,10 @@ impl InlineAsmClobberAbi {
                     InlineAsmClobberAbi::AArch64
                 }),
                 _ => Err(&["C", "system", "efiapi"]),
+            },
+            InlineAsmArch::Arm64EC => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::AArch64NoX18),
+                _ => Err(&["C", "system"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
                 "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::RiscV),

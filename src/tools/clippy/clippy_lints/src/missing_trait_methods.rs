@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
                         cx,
                         MISSING_TRAIT_METHODS,
                         source_map.guess_head_span(item.span),
-                        &format!("missing trait method provided by default: `{}`", assoc.name),
+                        format!("missing trait method provided by default: `{}`", assoc.name),
                         Some(definition_span),
                         "implement the method",
                     );

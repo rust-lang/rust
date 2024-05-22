@@ -3,7 +3,7 @@
 #![allow(unused)]
 #![feature(assert_matches)]
 #![feature(coroutine_trait)]
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 #![feature(never_type)]
 use std::assert_matches::assert_matches;
 use std::ops::Coroutine;
@@ -13,7 +13,7 @@ use std::pin::Pin;
 fn conjure<T>() -> T { loop {} }
 
 fn run<T>(x: bool, y: bool) {
-    let mut c = || {
+    let mut c = #[coroutine] || {
         if x {
             let a : T;
             if y {

@@ -8,6 +8,7 @@
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
 #![allow(unused_features)]
+#![feature(asm_experimental_arch)]
 #![feature(core_intrinsics)]
 #![feature(panic_runtime)]
 #![feature(std_internals)]
@@ -78,7 +79,7 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
                         core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
                     } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
                         core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-                    } else if #[cfg(target_arch = "aarch64")] {
+                    } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
                         core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
                     } else {
                         core::intrinsics::abort();

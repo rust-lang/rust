@@ -1,7 +1,5 @@
 use crate::fx::FxHashMap;
 use std::cmp::max;
-use std::iter;
-use std::slice;
 
 use super::*;
 
@@ -36,38 +34,26 @@ impl TestGraph {
 
 impl DirectedGraph for TestGraph {
     type Node = usize;
-}
 
-impl WithStartNode for TestGraph {
-    fn start_node(&self) -> usize {
-        self.start_node
-    }
-}
-
-impl WithNumNodes for TestGraph {
     fn num_nodes(&self) -> usize {
         self.num_nodes
     }
 }
 
-impl WithPredecessors for TestGraph {
-    fn predecessors(&self, node: usize) -> <Self as GraphPredecessors<'_>>::Iter {
+impl StartNode for TestGraph {
+    fn start_node(&self) -> usize {
+        self.start_node
+    }
+}
+
+impl Predecessors for TestGraph {
+    fn predecessors(&self, node: usize) -> impl Iterator<Item = Self::Node> {
         self.predecessors[&node].iter().cloned()
     }
 }
 
-impl WithSuccessors for TestGraph {
-    fn successors(&self, node: usize) -> <Self as GraphSuccessors<'_>>::Iter {
+impl Successors for TestGraph {
+    fn successors(&self, node: usize) -> impl Iterator<Item = Self::Node> {
         self.successors[&node].iter().cloned()
     }
-}
-
-impl<'graph> GraphPredecessors<'graph> for TestGraph {
-    type Item = usize;
-    type Iter = iter::Cloned<slice::Iter<'graph, usize>>;
-}
-
-impl<'graph> GraphSuccessors<'graph> for TestGraph {
-    type Item = usize;
-    type Iter = iter::Cloned<slice::Iter<'graph, usize>>;
 }

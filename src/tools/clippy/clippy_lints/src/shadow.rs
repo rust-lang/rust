@@ -194,7 +194,7 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
         cx,
         lint,
         span,
-        &msg,
+        msg,
         Some(cx.tcx.hir().span(shadowed)),
         "previous binding is here",
     );

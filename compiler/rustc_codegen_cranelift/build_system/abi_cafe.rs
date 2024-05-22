@@ -43,7 +43,13 @@ pub(crate) fn run(
     let mut cmd = ABI_CAFE.run(bootstrap_host_compiler, dirs);
     cmd.arg("--");
     cmd.arg("--pairs");
-    cmd.args(pairs);
+    cmd.args(
+        if cfg!(not(any(target_os = "macos", all(target_os = "windows", target_env = "msvc")))) {
+            &pairs[..]
+        } else {
+            &pairs[..2]
+        },
+    );
     cmd.arg("--add-rustc-codegen-backend");
     match cg_clif_dylib {
         CodegenBackend::Local(path) => {

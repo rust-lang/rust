@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_errors::{codes::*, DiagArgName, DiagArgValue, DiagMessage};
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::ty::Ty;

@@ -46,7 +46,7 @@
 // lldb-command:v c
 // lldb-check:(int) c = 6
 
-#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
+#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![omit_gdb_pretty_printer_section]
 
 use std::ops::Coroutine;
@@ -54,7 +54,8 @@ use std::pin::Pin;
 
 fn main() {
     let mut a = 5;
-    let mut b = || {
+    let mut b = #[coroutine]
+    || {
         let c = 6; // Live across multiple yield points
 
         let d = 7; // Live across only one yield point
@@ -76,4 +77,6 @@ fn main() {
     _zzz(); // #break
 }
 
-fn _zzz() {()}
+fn _zzz() {
+    ()
+}

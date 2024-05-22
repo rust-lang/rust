@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use clippy_utils::{return_ty, trait_ref_of_method};
-use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem, Unsafety};
+use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem, Safety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
         if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // #11201
             && let header = signature.header
-            && header.unsafety == Unsafety::Normal
+            && header.safety == Safety::Safe
             && header.abi == Abi::Rust
             && impl_item.ident.name == sym::to_string
             && let decl = signature.decl
@@ -132,20 +132,20 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
             cx,
             INHERENT_TO_STRING_SHADOW_DISPLAY,
             item.span,
-            &format!(
+            format!(
                 "type `{self_type}` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`"
             ),
             None,
-            &format!("remove the inherent method from type `{self_type}`"),
+            format!("remove the inherent method from type `{self_type}`"),
         );
     } else {
         span_lint_and_help(
             cx,
             INHERENT_TO_STRING,
             item.span,
-            &format!("implementation of inherent method `to_string(&self) -> String` for type `{self_type}`"),
+            format!("implementation of inherent method `to_string(&self) -> String` for type `{self_type}`"),
             None,
-            &format!("implement trait `Display` for type `{self_type}` instead"),
+            format!("implement trait `Display` for type `{self_type}` instead"),
         );
     }
 }

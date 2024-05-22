@@ -1,4 +1,4 @@
-//! Detecting language items.
+//! Detecting lang items.
 //!
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
@@ -149,8 +149,9 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
             };
 
-            // When there's a duplicate lang item, something went very wrong and there's no value in recovering or doing anything.
-            // Give the user the one message to let them debug the mess they created and then wish them farewell.
+            // When there's a duplicate lang item, something went very wrong and there's no value
+            // in recovering or doing anything. Give the user the one message to let them debug the
+            // mess they created and then wish them farewell.
             self.tcx.dcx().emit_fatal(DuplicateLangItem {
                 local_span: item_span,
                 lang_item_name,
@@ -285,7 +286,9 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::TraitAlias(_, _) => Target::TraitAlias,
             ast::ItemKind::Impl(_) => Target::Impl,
             ast::ItemKind::MacroDef(_) => Target::MacroDef,
-            ast::ItemKind::MacCall(_) => unreachable!("macros should have been expanded"),
+            ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
+                unreachable!("macros should have been expanded")
+            }
         };
 
         self.check_for_lang(
@@ -340,7 +343,9 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             }
             ast::AssocItemKind::Const(ct) => (Target::AssocConst, Some(&ct.generics)),
             ast::AssocItemKind::Type(ty) => (Target::AssocTy, Some(&ty.generics)),
-            ast::AssocItemKind::MacCall(_) => unreachable!("macros should have been expanded"),
+            ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(_) => {
+                unreachable!("macros should have been expanded")
+            }
         };
 
         self.check_for_lang(

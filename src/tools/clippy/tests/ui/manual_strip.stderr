@@ -17,7 +17,7 @@ LL ~     if let Some(<stripped>) = s.strip_prefix("ab") {
 LL ~         str::to_string(<stripped>);
 LL |
 LL ~         <stripped>.to_string();
-LL | 
+LL |
 LL ~         str::to_string(<stripped>);
 LL ~         <stripped>.to_string();
    |
@@ -39,7 +39,7 @@ LL ~     if let Some(<stripped>) = s.strip_suffix("bc") {
 LL ~         str::to_string(<stripped>);
 LL |
 LL ~         <stripped>.to_string();
-LL | 
+LL |
 LL ~         str::to_string(<stripped>);
 LL ~         <stripped>.to_string();
    |

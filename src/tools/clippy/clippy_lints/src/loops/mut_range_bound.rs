@@ -2,9 +2,8 @@ use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{get_enclosing_block, higher, path_to_local};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Node, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
@@ -41,7 +40,7 @@ fn mut_warn_with_span(cx: &LateContext<'_>, span: Option<Span>) {
 fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId> {
     if let Some(hir_id) = path_to_local(bound)
         && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
-        && let PatKind::Binding(BindingAnnotation::MUT, ..) = pat.kind
+        && let PatKind::Binding(BindingMode::MUT, ..) = pat.kind
     {
         return Some(hir_id);
     }
@@ -61,15 +60,9 @@ fn check_for_mutation(
         span_low: None,
         span_high: None,
     };
-    let infcx = cx.tcx.infer_ctxt().build();
-    ExprUseVisitor::new(
-        &mut delegate,
-        &infcx,
-        body.hir_id.owner.def_id,
-        cx.param_env,
-        cx.typeck_results(),
-    )
-    .walk_expr(body);
+    ExprUseVisitor::for_clippy(cx, body.hir_id.owner.def_id, &mut delegate)
+        .walk_expr(body)
+        .into_ok();
 
     delegate.mutation_span()
 }
@@ -109,7 +102,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl MutatePairDelegate<'_, '_> {
@@ -141,7 +134,7 @@ impl BreakAfterExprVisitor {
     }
 }
 
-impl<'tcx> intravisit::Visitor<'tcx> for BreakAfterExprVisitor {
+impl<'tcx> Visitor<'tcx> for BreakAfterExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.past_candidate {
             return;

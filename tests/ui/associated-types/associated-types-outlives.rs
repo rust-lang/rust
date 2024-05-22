@@ -3,10 +3,10 @@
 // fn body, causing this (invalid) code to be accepted.
 
 pub trait Foo<'a> {
-    type Bar;
+    type Bar: Clone;
 }
 
-impl<'a, T:'a> Foo<'a> for T {
+impl<'a, T: 'a> Foo<'a> for T {
     type Bar = &'a T;
 }
 

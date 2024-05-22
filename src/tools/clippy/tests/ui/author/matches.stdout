@@ -20,7 +20,7 @@ if let StmtKind::Local(local) = stmt.kind
     && let Some(init1) = local1.init
     && let ExprKind::Lit(ref lit4) = init1.kind
     && let LitKind::Int(3, LitIntType::Unsuffixed) = lit4.node
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local1.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local1.pat.kind
     && name.as_str() == "x"
     && let Some(trailing_expr) = block.expr
     && let ExprKind::Path(ref qpath) = trailing_expr.kind
@@ -29,7 +29,7 @@ if let StmtKind::Local(local) = stmt.kind
     && arms[2].guard.is_none()
     && let ExprKind::Lit(ref lit5) = arms[2].body.kind
     && let LitKind::Int(1, LitIntType::Unsuffixed) = lit5.node
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name1, None) = local.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name1, None) = local.pat.kind
     && name1.as_str() == "a"
 {
     // report your lint here

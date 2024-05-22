@@ -205,6 +205,8 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+mod move_check;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_for_each_in, LRef, MTLock};
 use rustc_hir as hir;
@@ -214,6 +216,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
+use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
@@ -225,8 +228,8 @@ use rustc_middle::ty::{
     TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::EntryFnType;
-use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Spanned};
 use rustc_span::symbol::{sym, Ident};
@@ -235,9 +238,9 @@ use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    self, EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
-    TypeLengthLimit,
+    self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit, TypeLengthLimit,
 };
+use move_check::MoveCheckState;
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionStrategy {
@@ -666,11 +669,8 @@ struct MirUsedCollector<'a, 'tcx> {
     /// Note that this contains *not-monomorphized* items!
     used_mentioned_items: &'a mut FxHashSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
-    /// Spans for move size lints already emitted. Helps avoid duplicate lints.
-    move_size_spans: Vec<Span>,
     visiting_call_terminator: bool,
-    /// Set of functions for which it is OK to move large data into.
-    skip_move_check_fns: Option<Vec<DefId>>,
+    move_check: move_check::MoveCheckState,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -684,124 +684,6 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             ty::ParamEnv::reveal_all(),
             ty::EarlyBinder::bind(value),
         )
-    }
-
-    fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
-        let limit = self.tcx.move_size_limit();
-        if limit.0 == 0 {
-            return;
-        }
-
-        // This function is called by visit_operand() which visits _all_
-        // operands, including TerminatorKind::Call operands. But if
-        // check_fn_args_move_size() has been called, the operands have already
-        // been visited. Do not visit them again.
-        if self.visiting_call_terminator {
-            return;
-        }
-
-        let source_info = self.body.source_info(location);
-        debug!(?source_info);
-
-        if let Some(too_large_size) = self.operand_size_if_too_large(limit, operand) {
-            self.lint_large_assignment(limit.0, too_large_size, location, source_info.span);
-        };
-    }
-
-    fn check_fn_args_move_size(
-        &mut self,
-        callee_ty: Ty<'tcx>,
-        args: &[Spanned<mir::Operand<'tcx>>],
-        fn_span: Span,
-        location: Location,
-    ) {
-        let limit = self.tcx.move_size_limit();
-        if limit.0 == 0 {
-            return;
-        }
-
-        if args.is_empty() {
-            return;
-        }
-
-        // Allow large moves into container types that themselves are cheap to move
-        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
-            return;
-        };
-        if self
-            .skip_move_check_fns
-            .get_or_insert_with(|| build_skip_move_check_fns(self.tcx))
-            .contains(&def_id)
-        {
-            return;
-        }
-
-        debug!(?def_id, ?fn_span);
-
-        for arg in args {
-            // Moving args into functions is typically implemented with pointer
-            // passing at the llvm-ir level and not by memcpy's. So always allow
-            // moving args into functions.
-            let operand: &mir::Operand<'tcx> = &arg.node;
-            if let mir::Operand::Move(_) = operand {
-                continue;
-            }
-
-            if let Some(too_large_size) = self.operand_size_if_too_large(limit, operand) {
-                self.lint_large_assignment(limit.0, too_large_size, location, arg.span);
-            };
-        }
-    }
-
-    fn operand_size_if_too_large(
-        &mut self,
-        limit: Limit,
-        operand: &mir::Operand<'tcx>,
-    ) -> Option<Size> {
-        let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
-        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else {
-            return None;
-        };
-        if layout.size.bytes_usize() > limit.0 {
-            debug!(?layout);
-            Some(layout.size)
-        } else {
-            None
-        }
-    }
-
-    fn lint_large_assignment(
-        &mut self,
-        limit: usize,
-        too_large_size: Size,
-        location: Location,
-        span: Span,
-    ) {
-        let source_info = self.body.source_info(location);
-        debug!(?source_info);
-        for reported_span in &self.move_size_spans {
-            if reported_span.overlaps(span) {
-                return;
-            }
-        }
-        let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
-        debug!(?lint_root);
-        let Some(lint_root) = lint_root else {
-            // This happens when the issue is in a function from a foreign crate that
-            // we monomorphized in the current crate. We can't get a `HirId` for things
-            // in other crates.
-            // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
-            // but correct span? This would make the lint at least accept crate-level lint attributes.
-            return;
-        };
-        self.tcx.emit_node_span_lint(
-            LARGE_ASSIGNMENTS,
-            lint_root,
-            span,
-            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
-        );
-        self.move_size_spans.push(span);
     }
 
     /// Evaluates a *not yet monomorphized* constant.
@@ -1085,13 +967,14 @@ fn visit_instance_use<'tcx>(
         ty::InstanceDef::ThreadLocalShim(..) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceDef::DropGlue(_, None) => {
+        ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_))
+        | ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(_))
         | ty::InstanceDef::VTableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
@@ -1366,19 +1249,6 @@ fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> 
     return None;
 }
 
-fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
-    let fns = [
-        (tcx.lang_items().owned_box(), "new"),
-        (tcx.get_diagnostic_item(sym::Rc), "new"),
-        (tcx.get_diagnostic_item(sym::Arc), "new"),
-    ];
-    fns.into_iter()
-        .filter_map(|(def_id, fn_name)| {
-            def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, Ident::from_str(fn_name)))
-        })
-        .collect::<Vec<_>>()
-}
-
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 ///
 /// Anything that's found is added to `output`. Furthermore the "mentioned items" of the MIR are returned.
@@ -1408,21 +1278,21 @@ fn collect_items_of_instance<'tcx>(
         used_items,
         used_mentioned_items: &mut used_mentioned_items,
         instance,
-        move_size_spans: vec![],
         visiting_call_terminator: false,
-        skip_move_check_fns: None,
+        move_check: MoveCheckState::new(),
     };
 
     if mode == CollectionMode::UsedItems {
-        // Visit everything. Here we rely on the visitor also visiting `required_consts`, so that we
-        // evaluate them and abort compilation if any of them errors.
-        collector.visit_body(body);
-    } else {
-        // We only need to evaluate all constants, but can ignore the rest of the MIR.
-        for const_op in &body.required_consts {
-            if let Some(val) = collector.eval_constant(const_op) {
-                collect_const_value(tcx, val, mentioned_items);
-            }
+        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+            collector.visit_basic_block_data(bb, data)
+        }
+    }
+
+    // Always visit all `required_consts`, so that we evaluate them and abort compilation if any of
+    // them errors.
+    for const_op in &body.required_consts {
+        if let Some(val) = collector.eval_constant(const_op) {
+            collect_const_value(tcx, val, mentioned_items);
         }
     }
 
@@ -1559,7 +1429,7 @@ impl<'v> RootCollector<'_, 'v> {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
-                    && self.tcx.generics_of(id.owner_id).count() == 0
+                    && self.tcx.generics_of(id.owner_id).is_empty()
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 

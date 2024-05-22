@@ -176,6 +176,60 @@ error: [*, *, o, o]
 LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 24 previous errors
+error: [*, o]
+  --> $DIR/variance.rs:62:5
+   |
+LL | /     impl Nesting<
+LL | |         'a,
+LL | |         Output = impl Nesting<
+LL | |             'a,
+...  |
+LL | |         >,
+LL | |     >;
+   | |_____^
+
+error: [*, o]
+  --> $DIR/variance.rs:64:18
+   |
+LL |           Output = impl Nesting<
+   |  __________________^
+LL | |             'a,
+LL | |             Output = impl Nesting<
+LL | |                 'a,
+...  |
+LL | |             >,
+LL | |         >,
+   | |_________^
+
+error: [*, o]
+  --> $DIR/variance.rs:66:22
+   |
+LL |               Output = impl Nesting<
+   |  ______________________^
+LL | |                 'a,
+LL | |                 Output = impl Nesting<
+LL | |                     'a,
+LL | |                     Output = impl Nesting<'a>
+LL | |                 >
+LL | |             >,
+   | |_____________^
+
+error: [*, o]
+  --> $DIR/variance.rs:68:26
+   |
+LL |                   Output = impl Nesting<
+   |  __________________________^
+LL | |                     'a,
+LL | |                     Output = impl Nesting<'a>
+LL | |                 >
+   | |_________________^
+
+error: [*, o]
+  --> $DIR/variance.rs:70:30
+   |
+LL |                     Output = impl Nesting<'a>
+   |                              ^^^^^^^^^^^^^^^^
+
+error: aborting due to 29 previous errors
 
 For more information about this error, try `rustc --explain E0657`.

@@ -1,7 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
 

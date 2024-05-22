@@ -1,4 +1,5 @@
 #![feature(start, core_intrinsics, lang_items)]
+#![allow(internal_features)]
 #![no_std]
 
 #[cfg_attr(unix, link(name = "c"))]

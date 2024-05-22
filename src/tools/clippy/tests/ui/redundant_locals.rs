@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 #![allow(unused, clippy::no_effect, clippy::needless_pass_by_ref_mut)]
 #![warn(clippy::redundant_locals)]
-#![feature(async_closure, coroutines)]
+#![feature(async_closure, coroutines, stmt_expr_attributes)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};
@@ -191,14 +191,20 @@ fn issue12225() {
         let v4 = v4;
         dbg!(&v4);
     });
-    assert_static(static || {
-        let v5 = v5;
-        yield;
-    });
-    assert_static(|| {
-        let v6 = v6;
-        yield;
-    });
+    assert_static(
+        #[coroutine]
+        static || {
+            let v5 = v5;
+            yield;
+        },
+    );
+    assert_static(
+        #[coroutine]
+        || {
+            let v6 = v6;
+            yield;
+        },
+    );
 
     fn foo(a: &str, b: &str) {}
 

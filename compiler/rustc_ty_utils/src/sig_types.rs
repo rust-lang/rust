@@ -4,6 +4,7 @@
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
@@ -13,6 +14,7 @@ pub trait SpannedTypeVisitor<'tcx> {
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> Self::Result;
 }
 
+#[instrument(level = "trace", skip(tcx, visitor))]
 pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
@@ -36,7 +38,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             for (hir, ty) in hir_sig.inputs.iter().zip(ty_sig.inputs().iter()) {
                 try_visit!(visitor.visit(hir.span, ty.map_bound(|x| *x)));
             }
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
+            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, pred));
             }
         }
@@ -54,7 +56,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 // Associated types in traits don't necessarily have a type that we can visit
                 try_visit!(visitor.visit(ty.span, tcx.type_of(item).instantiate_identity()));
             }
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
+            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, pred));
             }
         }
@@ -76,7 +78,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 let ty = field.ty(tcx, args);
                 try_visit!(visitor.visit(span, ty));
             }
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
+            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, pred));
             }
         }
@@ -95,12 +97,12 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 _ => tcx.def_span(item),
             };
             try_visit!(visitor.visit(span, tcx.type_of(item).instantiate_identity()));
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
+            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, pred));
             }
         }
         DefKind::TraitAlias | DefKind::Trait => {
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
+            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, pred));
             }
         }

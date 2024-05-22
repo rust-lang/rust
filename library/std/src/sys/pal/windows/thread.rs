@@ -9,7 +9,6 @@ use crate::sys::handle::Handle;
 use crate::sys::stack_overflow;
 use crate::sys_common::FromInner;
 use crate::time::Duration;
-use alloc::ffi::CString;
 use core::ffi::c_void;
 
 use super::time::WaitableTimer;
@@ -46,14 +45,11 @@ impl Thread {
             Err(io::Error::last_os_error())
         };
 
-        extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
-            unsafe {
-                // Next, set up our stack overflow handler which may get triggered if we run
-                // out of stack.
-                let _handler = stack_overflow::Handler::new();
-                // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
-            }
+        unsafe extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
+            // Next, reserve some stack space for if we otherwise run out of stack.
+            stack_overflow::reserve_stack();
+            // Finally, let's run some code.
+            Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             0
         }
     }
@@ -62,33 +58,18 @@ impl Thread {
         if let Ok(utf8) = name.to_str() {
             if let Ok(utf16) = to_u16s(utf8) {
                 unsafe {
-                    c::SetThreadDescription(c::GetCurrentThread(), utf16.as_ptr());
-                };
+                    // SAFETY: the vec returned by `to_u16s` ends with a zero value
+                    Self::set_name_wide(&utf16)
+                }
             };
         };
     }
 
-    pub fn get_name() -> Option<CString> {
-        unsafe {
-            let mut ptr = core::ptr::null_mut();
-            let result = c::GetThreadDescription(c::GetCurrentThread(), &mut ptr);
-            if result < 0 {
-                return None;
-            }
-            let name = String::from_utf16_lossy({
-                let mut len = 0;
-                while *ptr.add(len) != 0 {
-                    len += 1;
-                }
-                core::slice::from_raw_parts(ptr, len)
-            })
-            .into_bytes();
-            // Attempt to free the memory.
-            // This should never fail but if it does then there's not much we can do about it.
-            let result = c::LocalFree(ptr.cast::<c_void>());
-            debug_assert!(result.is_null());
-            if name.is_empty() { None } else { Some(CString::from_vec_unchecked(name)) }
-        }
+    /// # Safety
+    ///
+    /// `name` must end with a zero value
+    pub unsafe fn set_name_wide(name: &[u16]) {
+        c::SetThreadDescription(c::GetCurrentThread(), name.as_ptr());
     }
 
     pub fn join(self) {
@@ -137,10 +118,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         sysinfo.dwNumberOfProcessors as usize
     };
     match res {
-        0 => Err(io::const_io_error!(
-            io::ErrorKind::NotFound,
-            "The number of hardware threads is not known for the target platform",
-        )),
+        0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
         cpus => Ok(unsafe { NonZero::new_unchecked(cpus) }),
     }
 }

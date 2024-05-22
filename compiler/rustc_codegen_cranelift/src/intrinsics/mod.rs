@@ -26,6 +26,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
+use crate::cast::clif_intcast;
 use crate::prelude::*;
 
 fn bug_on_incorrect_arg_count(intrinsic: impl std::fmt::Display) -> ! {
@@ -585,7 +586,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (base, offset); intrinsic);
             let offset = offset.load_scalar(fx);
 
-            let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_ty = base.layout().ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let ptr_diff = if pointee_size != 1 {
                 fx.bcx.ins().imul_imm(offset, pointee_size as i64)
@@ -609,7 +610,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = val.load_scalar(fx);
             let count = count.load_scalar(fx);
 
-            let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap();
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let count = if pointee_size != 1 {
                 fx.bcx.ins().imul_imm(count, pointee_size as i64)
@@ -627,7 +628,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // FIXME trap on `ctlz_nonzero` with zero arg.
             let res = fx.bcx.ins().clz(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::cttz | sym::cttz_nonzero => {
@@ -636,7 +638,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // FIXME trap on `cttz_nonzero` with zero arg.
             let res = fx.bcx.ins().ctz(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::ctpop => {
@@ -644,7 +647,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = arg.load_scalar(fx);
 
             let res = fx.bcx.ins().popcnt(val);
-            let res = CValue::by_val(res, arg.layout());
+            let res = clif_intcast(fx, res, types::I32, false);
+            let res = CValue::by_val(res, ret.layout());
             ret.write_cvalue(fx, res);
         }
         sym::bitreverse => {
@@ -711,7 +715,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // Cranelift treats loads as volatile by default
             // FIXME correctly handle unaligned_volatile_load
-            let inner_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
+            let inner_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap());
             let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         }

@@ -276,7 +276,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::target_feature => {
                 if !tcx.is_closure_like(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().unsafety() == hir::Unsafety::Normal
+                    && fn_sig.skip_binder().safety() == hir::Safety::Safe
                 {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
@@ -435,7 +435,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::repr => {
                 codegen_fn_attrs.alignment = if let Some(items) = attr.meta_item_list()
                     && let [item] = items.as_slice()
-                    && let Some((sym::align, literal)) = item.name_value_literal()
+                    && let Some((sym::align, literal)) = item.singleton_lit_list()
                 {
                     rustc_attr::parse_alignment(&literal.kind)
                         .map_err(|msg| {

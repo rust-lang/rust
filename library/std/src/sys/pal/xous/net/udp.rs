@@ -331,10 +331,7 @@ impl UdpSocket {
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         if let Some(d) = timeout {
             if d.is_zero() {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::InvalidInput,
-                    &"Zero duration is invalid"
-                ));
+                return Err(io::Error::ZERO_TIMEOUT);
             }
         }
         self.read_timeout
@@ -345,10 +342,7 @@ impl UdpSocket {
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         if let Some(d) = timeout {
             if d.is_zero() {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::InvalidInput,
-                    &"Zero duration is invalid"
-                ));
+                return Err(io::Error::ZERO_TIMEOUT);
             }
         }
         self.write_timeout

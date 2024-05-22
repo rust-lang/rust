@@ -5,8 +5,6 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
     debug index => _2;
     let mut _0: std::option::Option<&mut u32>;
     scope 1 (inlined core::slice::<impl [u32]>::get_mut::<usize>) {
-        debug self => _1;
-        debug index => _2;
     }
 
     bb0: {

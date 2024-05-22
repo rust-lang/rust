@@ -10,6 +10,11 @@ LL |         _ if { (|| { let bar = b; *bar = false; })();
    |                 --             - variable moved due to use in closure
    |                 |
    |                 value moved into closure here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         _ if { (|| { let bar = b.clone(); *bar = false; })();
+   |                                 ++++++++
 
 error[E0382]: use of moved value: `b`
   --> $DIR/issue-27282-move-match-input-into-guard.rs:24:5
@@ -23,6 +28,11 @@ LL |             (|| { let bar = b; *bar = false; })();
    |              --             - variable moved due to use in closure
    |              |
    |              value moved into closure here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |             (|| { let bar = b.clone(); *bar = false; })();
+   |                              ++++++++
 
 error: aborting due to 2 previous errors
 

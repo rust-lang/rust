@@ -2,7 +2,7 @@
 
 // Same as: tests/ui/coroutine/issue-68112.stderr
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::{
     cell::RefCell,
@@ -30,7 +30,7 @@ fn make_non_send_coroutine() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
 }
 
 fn test1() {
-    let send_gen = || {
+    let send_gen = #[coroutine] || {
         let _non_send_gen = make_non_send_coroutine();
         yield;
     };
@@ -39,7 +39,7 @@ fn test1() {
 }
 
 pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
-    || {
+    #[coroutine] || {
         yield;
         t
     }
@@ -49,7 +49,7 @@ fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
 }
 
 fn test2() {
-    let send_gen = || {
+    let send_gen = #[coroutine] || {
         let _non_send_gen = make_non_send_coroutine2();
         yield;
     };

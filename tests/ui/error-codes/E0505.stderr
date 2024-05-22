@@ -10,6 +10,15 @@ LL |         eat(x);
    |             ^ move out of `x` occurs here
 LL |         _ref_to_val.use_ref();
    |         ----------- borrow later used here
+   |
+note: if `Value` implemented `Clone`, you could clone the value
+  --> $DIR/E0505.rs:1:1
+   |
+LL | struct Value {}
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _ref_to_val: &Value = &x;
+   |                                   -- you could clone this value
 
 error: aborting due to 1 previous error
 

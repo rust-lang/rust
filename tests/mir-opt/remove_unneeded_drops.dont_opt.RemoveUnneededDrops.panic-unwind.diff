@@ -7,7 +7,6 @@
       let _2: ();
       let mut _3: std::vec::Vec<bool>;
       scope 1 (inlined std::mem::drop::<Vec<bool>>) {
-          debug _x => _3;
       }
   
       bb0: {

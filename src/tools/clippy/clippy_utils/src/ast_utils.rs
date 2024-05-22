@@ -97,8 +97,8 @@ pub fn eq_path_seg(l: &PathSegment, r: &PathSegment) -> bool {
 
 pub fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
     match (l, r) {
-        (GenericArgs::AngleBracketed(l), GenericArgs::AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
-        (GenericArgs::Parenthesized(l), GenericArgs::Parenthesized(r)) => {
+        (AngleBracketed(l), AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
+        (Parenthesized(l), Parenthesized(r)) => {
             over(&l.inputs, &r.inputs, |l, r| eq_ty(l, r)) && eq_fn_ret_ty(&l.output, &r.output)
         },
         _ => false,
@@ -304,25 +304,25 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
         (
-            Static(box ast::StaticItem {
+            Static(box StaticItem {
                 ty: lt,
                 mutability: lm,
                 expr: le,
             }),
-            Static(box ast::StaticItem {
+            Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
             }),
         ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: ld,
                 generics: lg,
                 ty: lt,
                 expr: le,
             }),
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: rd,
                 generics: rg,
                 ty: rt,
@@ -386,21 +386,21 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (
             Trait(box ast::Trait {
                 is_auto: la,
-                unsafety: lu,
+                safety: lu,
                 generics: lg,
                 bounds: lb,
                 items: li,
             }),
             Trait(box ast::Trait {
                 is_auto: ra,
-                unsafety: ru,
+                safety: ru,
                 generics: rg,
                 bounds: rb,
                 items: ri,
             }),
         ) => {
             la == ra
-                && matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
+                && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
@@ -408,7 +408,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (TraitAlias(lg, lb), TraitAlias(rg, rb)) => eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
         (
             Impl(box ast::Impl {
-                unsafety: lu,
+                safety: lu,
                 polarity: lp,
                 defaultness: ld,
                 constness: lc,
@@ -418,7 +418,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: li,
             }),
             Impl(box ast::Impl {
-                unsafety: ru,
+                safety: ru,
                 polarity: rp,
                 defaultness: rd,
                 constness: rc,
@@ -428,7 +428,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: ri,
             }),
         ) => {
-            matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
+            matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && matches!(lp, ImplPolarity::Positive) == matches!(rp, ImplPolarity::Positive)
                 && eq_defaultness(*ld, *rd)
                 && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
@@ -446,7 +446,18 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
 pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
-        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Static(box StaticForeignItem {
+                ty: lt,
+                mutability: lm,
+                expr: le,
+            }),
+            Static(box StaticForeignItem {
+                ty: rt,
+                mutability: rm,
+                expr: re,
+            }),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -493,13 +504,13 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
         (
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: ld,
                 generics: lg,
                 ty: lt,
                 expr: le,
             }),
-            Const(box ast::ConstItem {
+            Const(box ConstItem {
                 defaultness: rd,
                 generics: rg,
                 ty: rt,
@@ -523,14 +534,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
         },
         (
-            Type(box ast::TyAlias {
+            Type(box TyAlias {
                 defaultness: ld,
                 generics: lg,
                 bounds: lb,
                 ty: lt,
                 ..
             }),
-            Type(box ast::TyAlias {
+            Type(box TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
@@ -594,7 +605,7 @@ fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> 
 }
 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
-    matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
+    matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
         && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
@@ -637,7 +648,7 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     match (l, r) {
         (Glob, Glob) => true,
         (Simple(l), Simple(r)) => both(l, r, |l, r| eq_id(*l, *r)),
-        (Nested(l), Nested(r)) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
+        (Nested { items: l, .. }, Nested { items: r, .. }) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
         _ => false,
     }
 }
@@ -701,7 +712,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
             both(ll, rl, |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
         (BareFn(l), BareFn(r)) => {
-            l.unsafety == r.unsafety
+            l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
                 && eq_fn_decl(&l.decl, &r.decl)
@@ -709,7 +720,12 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Tup(l), Tup(r)) => over(l, r, |l, r| eq_ty(l, r)),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, eq_qself) && eq_path(lp, rp),
         (TraitObject(lg, ls), TraitObject(rg, rs)) => ls == rs && over(lg, rg, eq_generic_bound),
-        (ImplTrait(_, lg), ImplTrait(_, rg)) => over(lg, rg, eq_generic_bound),
+        (ImplTrait(_, lg, lc), ImplTrait(_, rg, rc)) => {
+            over(lg, rg, eq_generic_bound)
+                && both(lc, rc, |lc, rc| {
+                    over(lc.0.as_slice(), rc.0.as_slice(), eq_precise_capture)
+                })
+        },
         (Typeof(l), Typeof(r)) => eq_expr(&l.value, &r.value),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         _ => false,
@@ -766,6 +782,14 @@ pub fn eq_generic_bound(l: &GenericBound, r: &GenericBound) -> bool {
     match (l, r) {
         (Trait(ptr1, tbm1), Trait(ptr2, tbm2)) => tbm1 == tbm2 && eq_poly_ref_trait(ptr1, ptr2),
         (Outlives(l), Outlives(r)) => eq_id(l.ident, r.ident),
+        _ => false,
+    }
+}
+
+pub fn eq_precise_capture(l: &PreciseCapturingArg, r: &PreciseCapturingArg) -> bool {
+    match (l, r) {
+        (PreciseCapturingArg::Lifetime(l), PreciseCapturingArg::Lifetime(r)) => l.ident == r.ident,
+        (PreciseCapturingArg::Arg(l, _), PreciseCapturingArg::Arg(r, _)) => l.segments[0].ident == r.segments[0].ident,
         _ => false,
     }
 }

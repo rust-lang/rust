@@ -13,10 +13,8 @@ humansize = "2"
 sysinfo = { version = "0.30", default-features = false }
 fs_extra = "1"
 camino = "1"
-reqwest = { version = "0.11", features = ["blocking"] }
-zip = { version = "0.6", default-features = false, features = ["deflate"] }
 tar = "0.4"
-xz = "0.1"
+xz = { version = "0.1", package = "xz2" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 glob = "0.3"

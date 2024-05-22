@@ -60,11 +60,12 @@ pub use crate::{
     },
     token_text::TokenText,
 };
-pub use parser::{SyntaxKind, T};
+pub use parser::{Edition, SyntaxKind, T};
 pub use rowan::{
     api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
     TokenAtOffset, WalkEvent,
 };
+pub use rustc_lexer::unescape;
 pub use smol_str::{format_smolstr, SmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
@@ -141,8 +142,8 @@ impl Parse<SourceFile> {
         buf
     }
 
-    pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel))
+    pub fn reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
+        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel, edition))
     }
 
     fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
@@ -159,10 +160,10 @@ impl Parse<SourceFile> {
         })
     }
 
-    fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+    fn full_reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
         let mut text = self.tree().syntax().text().to_string();
         indel.apply(&mut text);
-        SourceFile::parse(&text)
+        SourceFile::parse(&text, edition)
     }
 }
 
@@ -170,9 +171,9 @@ impl Parse<SourceFile> {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    pub fn parse(text: &str) -> Parse<SourceFile> {
+    pub fn parse(text: &str, edition: Edition) -> Parse<SourceFile> {
         let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
-        let (green, errors) = parsing::parse_text(text);
+        let (green, errors) = parsing::parse_text(text, edition);
         let root = SyntaxNode::new_root(green.clone());
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
@@ -185,7 +186,10 @@ impl SourceFile {
 }
 
 impl ast::TokenTree {
-    pub fn reparse_as_comma_separated_expr(self) -> Parse<ast::MacroEagerInput> {
+    pub fn reparse_as_comma_separated_expr(
+        self,
+        edition: parser::Edition,
+    ) -> Parse<ast::MacroEagerInput> {
         let tokens = self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
 
         let mut parser_input = parser::Input::default();
@@ -219,7 +223,7 @@ impl ast::TokenTree {
             }
         }
 
-        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input);
+        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input, edition);
 
         let mut tokens =
             self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
@@ -337,7 +341,7 @@ fn api_walkthrough() {
     //
     // The `parse` method returns a `Parse` -- a pair of syntax tree and a list
     // of errors. That is, syntax tree is constructed even in presence of errors.
-    let parse = SourceFile::parse(source_code);
+    let parse = SourceFile::parse(source_code, parser::Edition::CURRENT);
     assert!(parse.errors().is_empty());
 
     // The `tree` method returns an owned syntax node of type `SourceFile`.

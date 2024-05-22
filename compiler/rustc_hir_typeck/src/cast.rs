@@ -36,21 +36,24 @@ use hir::ExprKind;
 use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtExt;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 #[derive(Debug)]
-pub struct CastCheck<'tcx> {
+pub(crate) struct CastCheck<'tcx> {
     /// The expression whose value is being casted
     expr: &'tcx hir::Expr<'tcx>,
     /// The source type for the cast expression
@@ -60,8 +63,6 @@ pub struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
-    /// whether the cast is made in a const context or not.
-    pub constness: hir::Constness,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -130,6 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::RawPtr(_, _)
             | ty::Ref(..)
+            | ty::Pat(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)
@@ -139,7 +141,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
-                self.dcx().span_bug(span, format!("`{t:?}` should be sized but is not?"));
+                let guar = self
+                    .dcx()
+                    .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
+                return Err(guar);
             }
         })
     }
@@ -194,18 +199,45 @@ fn make_invalid_casting_error<'a, 'tcx>(
     )
 }
 
+/// If a cast from `from_ty` to `to_ty` is valid, returns a `Some` containing the kind
+/// of the cast.
+///
+/// This is a helper used from clippy.
+pub fn check_cast<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> Option<CastKind> {
+    let hir_id = e.hir_id;
+    let local_def_id = hir_id.owner.def_id;
+
+    let root_ctxt = crate::TypeckRootCtxt::new(tcx, local_def_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, local_def_id);
+
+    if let Ok(check) = CastCheck::new(
+        &fn_ctxt, e, from_ty, to_ty,
+        // We won't show any errors to the user, so the span is irrelevant here.
+        DUMMY_SP, DUMMY_SP,
+    ) {
+        check.do_check(&fn_ctxt).ok()
+    } else {
+        None
+    }
+}
+
 impl<'a, 'tcx> CastCheck<'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         fcx: &FnCtxt<'a, 'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
         cast_span: Span,
         span: Span,
-        constness: hir::Constness,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, constness };
+        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
@@ -644,7 +676,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     /// Checks a cast, and report an error if one exists. In some cases, this
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
-    pub fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
+    fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
         use rustc_middle::ty::cast::CastTy::*;
         use rustc_middle::ty::cast::IntTy::*;
 

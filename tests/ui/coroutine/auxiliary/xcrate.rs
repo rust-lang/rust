@@ -1,9 +1,10 @@
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::marker::Unpin;
 use std::ops::Coroutine;
 
 pub fn foo() -> impl Coroutine<(), Yield = (), Return = ()> {
+    #[coroutine]
     || {
         if false {
             yield;
@@ -12,7 +13,10 @@ pub fn foo() -> impl Coroutine<(), Yield = (), Return = ()> {
 }
 
 pub fn bar<T: 'static>(t: T) -> Box<Coroutine<(), Yield = T, Return = ()> + Unpin> {
-    Box::new(|| {
-        yield t;
-    })
+    Box::new(
+        #[coroutine]
+        || {
+            yield t;
+        },
+    )
 }

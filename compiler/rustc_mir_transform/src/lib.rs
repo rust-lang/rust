@@ -4,7 +4,6 @@
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(inline_const)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
@@ -17,8 +16,6 @@
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
@@ -39,6 +36,7 @@ use rustc_middle::mir::{
 use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
+use rustc_middle::{bug, span_bug};
 use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
@@ -333,6 +331,8 @@ fn mir_promoted(
         body.tainted_by_errors = Some(error_reported);
     }
 
+    // Collect `required_consts` *before* promotion, so if there are any consts being promoted
+    // we still add them to the list in the outer MIR body.
     let mut required_consts = Vec::new();
     let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
     for (bb, bb_data) in traversal::reverse_postorder(&body) {

@@ -7,7 +7,7 @@ LL |   let x: i32 = loop { break };
    |       |        this loop is expected to be of type `i32`
    |       expected because of this assignment
    |
-help: give it a value of the expected type
+help: give the `break` a value of the expected type
    |
 LL |   let x: i32 = loop { break 42 };
    |                             ++

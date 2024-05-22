@@ -3,6 +3,11 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL |     type A: S<C<X = 0i32> = 34>;
    |                 ^^^^^^^^ associated type not allowed here
+   |
+help: consider removing this type binding
+   |
+LL |     type A: S<C<X = 0i32> = 34>;
+   |                ~~~~~~~~~~
 
 error[E0229]: associated type bindings are not allowed here
   --> $DIR/issue-102467.rs:7:17
@@ -11,6 +16,10 @@ LL |     type A: S<C<X = 0i32> = 34>;
    |                 ^^^^^^^^ associated type not allowed here
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this type binding
+   |
+LL |     type A: S<C<X = 0i32> = 34>;
+   |                ~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

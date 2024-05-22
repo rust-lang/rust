@@ -69,7 +69,7 @@ impl CommentBlock {
                 panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");
             }
 
-            block.id = id.trim().to_owned();
+            id.trim().clone_into(&mut block.id);
             true
         });
         blocks

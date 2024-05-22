@@ -77,13 +77,6 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = E0699)]
-pub struct MethodCallOnUnknownRawPointee {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_typeck_functional_record_update_on_non_struct, code = E0436)]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
@@ -171,6 +164,25 @@ pub struct MissingParenthesesInRange {
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,
 }
 
+#[derive(LintDiagnostic)]
+pub enum NeverTypeFallbackFlowingIntoUnsafe {
+    #[help]
+    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_call)]
+    Call,
+    #[help]
+    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_method)]
+    Method,
+    #[help]
+    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_path)]
+    Path,
+    #[help]
+    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_union_field)]
+    UnionField,
+    #[help]
+    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_deref)]
+    Deref,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_typeck_add_missing_parentheses_in_range,
@@ -198,7 +210,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
@@ -377,7 +389,7 @@ impl Subdiagnostic for RemoveSemiForCoerce {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(self.expr, fluent::hir_typeck_remove_semi_for_coerce_expr);
@@ -553,7 +565,7 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         match self {
             CastUnknownPointerSub::To(span) => {

@@ -300,7 +300,7 @@ impl Bool {
         true
     }
 }
-const USAGE_OF_BOOL:bool = Bool::True.to_primitive();
+const USAGE_OF_BOOL: bool = Bool::True.to_primitive();
 
 trait Baz {
     type Qux;

@@ -1,6 +1,7 @@
 Available passes for running rustdoc:
 check-custom-code-classes - check for custom code classes without the feature-gate enabled
 check_doc_test_visibility - run various visibility-related lints on doctests
+strip-aliased-non-local - strips all non-local private aliased items from the output
         strip-hidden - strips all `#[doc(hidden)]` items from the output
        strip-private - strips all private items from a crate which cannot be seen externally, implies strip-priv-imports
   strip-priv-imports - strips all private import statements (`use`, `extern crate`) from a crate
@@ -14,6 +15,7 @@ Default passes for rustdoc:
 check-custom-code-classes
  collect-trait-impls
 check_doc_test_visibility
+strip-aliased-non-local
         strip-hidden  (when not --document-hidden-items)
        strip-private  (when not --document-private-items)
   strip-priv-imports  (when --document-private-items)

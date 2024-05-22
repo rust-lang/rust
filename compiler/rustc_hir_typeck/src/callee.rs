@@ -9,19 +9,17 @@ use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::autoderef::Autoderef;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_infer::{
     infer,
-    traits::{self, Obligation},
-};
-use rustc_infer::{
-    infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
-    traits::ObligationCause,
+    traits::{self, Obligation, ObligationCause},
 };
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -41,8 +39,11 @@ pub fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
+    body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.lang_items().drop_trait() == Some(trait_id) {
+    if tcx.lang_items().drop_trait() == Some(trait_id)
+        && tcx.lang_items().fallback_surface_drop_fn() != Some(body_id)
+    {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo(),
@@ -118,7 +119,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // we must check that return type of called functions is WF:
-        self.register_wf_obligation(output.into(), call_expr.span, traits::WellFormed(None));
+        self.register_wf_obligation(
+            output.into(),
+            call_expr.span,
+            ObligationCauseCode::WellFormed(None),
+        );
 
         output
     }
@@ -180,18 +185,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infer::FnCall,
                     closure_args.coroutine_closure_sig(),
                 );
-                let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: callee_expr.span,
-                });
+                let tupled_upvars_ty = self.next_ty_var(callee_expr.span);
                 // We may actually receive a coroutine back whose kind is different
                 // from the closure that this dispatched from. This is because when
                 // we have no captures, we automatically implement `FnOnce`. This
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
-                let kind_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: callee_expr.span,
-                });
+                let kind_ty = self.next_ty_var(callee_expr.span);
                 let call_sig = self.tcx.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(
@@ -202,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tupled_upvars_ty,
                     ),
                     coroutine_closure_sig.c_variadic,
-                    coroutine_closure_sig.unsafety,
+                    coroutine_closure_sig.safety,
                     coroutine_closure_sig.abi,
                 );
                 let adjustments = self.adjust_steps(autoderef);
@@ -302,15 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
             let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
-                Ty::new_tup_from_iter(
-                    self.tcx,
-                    arg_exprs.iter().map(|e| {
-                        self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span: e.span,
-                        })
-                    }),
-                )
+                Ty::new_tup_from_iter(self.tcx, arg_exprs.iter().map(|e| self.next_ty_var(e.span)))
             });
 
             if let Some(ok) = self.lookup_method_in_trait(
@@ -539,9 +530,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_bound(
                     ty,
                     self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
-                    traits::ObligationCause::new(sp, self.body_id, traits::RustCall),
+                    traits::ObligationCause::new(sp, self.body_id, ObligationCauseCode::RustCall),
                 );
-                self.require_type_is_sized(ty, sp, traits::RustCall);
+                self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
                 self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
             }
@@ -584,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.misc(span),
                             self.param_env,
                             ty::ProjectionPredicate {
-                                projection_ty: ty::AliasTy::new(
+                                projection_term: ty::AliasTerm::new(
                                     self.tcx,
                                     fn_once_output_def_id,
                                     [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
@@ -724,7 +715,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def::CtorOf::Variant => "enum variant",
             };
             let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-            unit_variant = Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
+            unit_variant =
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(&self.tcx, qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -918,7 +910,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let param = callee_args.const_at(host_effect_index);
         let cause = self.misc(span);
-        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
+        // We know the type of `effect` to be `bool`, there will be no opaque type inference.
+        match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::Yes, effect, param) {
             Ok(infer::InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }

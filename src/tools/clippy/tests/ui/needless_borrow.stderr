@@ -163,5 +163,11 @@ error: this expression borrows a value the compiler would automatically borrow
 LL |         let _ = &mut (&mut { x.u }).x;
    |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
 
-error: aborting due to 27 previous errors
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:258:23
+   |
+LL |     option.unwrap_or((&x.0,));
+   |                       ^^^^ help: change this to: `x.0`
+
+error: aborting due to 28 previous errors
 

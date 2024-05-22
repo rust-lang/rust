@@ -150,6 +150,21 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     }
 }
 
+/// Rename a file if from and to are in the same filesystem or
+/// copy and remove the file otherwise
+pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
+    match fs::rename(&from, &to) {
+        // FIXME: Once `ErrorKind::CrossesDevices` is stabilized use
+        // if e.kind() == io::ErrorKind::CrossesDevices {
+        #[cfg(unix)]
+        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => {
+            std::fs::copy(&from, &to)?;
+            std::fs::remove_file(&from)
+        }
+        r => r,
+    }
+}
+
 pub fn forcing_clang_based_tests() -> bool {
     if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
         match &var.to_string_lossy().to_lowercase()[..] {
@@ -294,6 +309,15 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     } else {
         meta.modified().unwrap_or(UNIX_EPOCH) <= threshold
     }
+}
+
+/// Returns the filename without the hash prefix added by the cc crate.
+///
+/// Since v1.0.78 of the cc crate, object files are prefixed with a 16-character hash
+/// to avoid filename collisions.
+pub fn unhashed_basename(obj: &Path) -> &str {
+    let basename = obj.file_stem().unwrap().to_str().expect("UTF-8 file name");
+    basename.split_once('-').unwrap().1
 }
 
 fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
@@ -549,7 +573,12 @@ pub fn hex_encode<T>(input: T) -> String
 where
     T: AsRef<[u8]>,
 {
-    input.as_ref().iter().map(|x| format!("{:02x}", x)).collect()
+    use std::fmt::Write;
+
+    input.as_ref().iter().fold(String::with_capacity(input.as_ref().len() * 2), |mut acc, &byte| {
+        write!(&mut acc, "{:02x}", byte).expect("Failed to write byte to the hex String.");
+        acc
+    })
 }
 
 /// Create a `--check-cfg` argument invocation for a given name

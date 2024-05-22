@@ -6,6 +6,7 @@ use rustc_const_eval::const_eval::{throw_machine_stop_str, DummyMachine};
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -164,7 +165,9 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     }
                 }
             }
-            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
+            Rvalue::BinaryOp(overflowing_op, box (left, right))
+                if let Some(op) = overflowing_op.overflowing_to_wrapping() =>
+            {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
@@ -174,7 +177,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let overflow_target = self.map().apply(target, TrackElem::Field(1_u32.into()));
 
                 if value_target.is_some() || overflow_target.is_some() {
-                    let (val, overflow) = self.binary_op(state, *op, left, right);
+                    let (val, overflow) = self.binary_op(state, op, left, right);
 
                     if let Some(value_target) = value_target {
                         // We have flooded `target` earlier.
@@ -202,7 +205,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 if let Some(target_len) = self.map().find_len(target.as_ref())
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
-                    && let ty::Array(_, len) = operand_ty.ty.kind()
+                    && let ty::Array(_, len) = operand_ty.kind()
                     && let Some(len) = Const::Ty(*len).try_eval_scalar_int(self.tcx, self.param_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());
@@ -684,6 +687,7 @@ fn try_write_constant<'tcx>(
 
         // Unsupported for now.
         ty::Array(_, _)
+        | ty::Pat(_, _)
 
         // Do not attempt to support indirection in constants.
         | ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Str | ty::Slice(_)

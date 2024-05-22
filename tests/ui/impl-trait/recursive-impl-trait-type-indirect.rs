@@ -57,6 +57,8 @@ fn coroutine_sig() -> impl Sized {
 fn coroutine_capture() -> impl Sized {
     //~^ ERROR
     let x = coroutine_capture();
+
+    #[coroutine]
     move || {
         yield;
         x;

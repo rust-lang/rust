@@ -11,7 +11,6 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
-use ast::token::IdentIsRaw;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
@@ -19,20 +18,21 @@ pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
+use core::fmt;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
-    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, StrLit, Unsafe, Visibility,
+    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
     VisibilityKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::PResult;
-use rustc_errors::{Applicability, Diag, FatalError, MultiSpan};
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -45,8 +45,22 @@ use crate::errors::{
     self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
 
+#[cfg(test)]
+mod tests;
+
+// Ideally, these tests would be in `rustc_ast`. But they depend on having a
+// parser, so they are here.
+#[cfg(test)]
+mod tokenstream {
+    mod tests;
+}
+#[cfg(test)]
+mod mut_visit {
+    mod tests;
+}
+
 bitflags::bitflags! {
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, Debug)]
     struct Restrictions: u8 {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;
@@ -72,7 +86,7 @@ enum BlockMode {
 
 /// Whether or not we should force collection of tokens for an AST node,
 /// regardless of whether or not it has attributes
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ForceCollect {
     Yes,
     No,
@@ -93,7 +107,7 @@ pub enum TrailingToken {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind
-            && let token::$constructor(x) = &nt.0
+            && let token::$constructor(x) = &**nt
         {
             #[allow(unused_mut)]
             let mut $x = x.clone();
@@ -109,9 +123,9 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
             && $self.may_recover()
-            && $self.look_ahead(1, |t| t == &token::ModSep)
+            && $self.look_ahead(1, |t| t == &token::PathSep)
             && let token::Interpolated(nt) = &$self.token.kind
-            && let token::NtTy(ty) = &nt.0
+            && let token::NtTy(ty) = &**nt
         {
             let ty = ty.clone();
             $self.bump();
@@ -120,7 +134,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     };
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Recovery {
     Allowed,
     Forbidden,
@@ -162,7 +176,6 @@ pub struct Parser<'a> {
     ///
     /// See the comments in the `parse_path_segment` function for more details.
     unmatched_angle_bracket_count: u16,
-    max_angle_bracket_count: u16,
     angle_bracket_nesting: u16,
 
     last_unexpected_token_span: Option<Span>,
@@ -171,7 +184,7 @@ pub struct Parser<'a> {
     capture_state: CaptureState,
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
-    pub current_closure: Option<ClosureSpans>,
+    current_closure: Option<ClosureSpans>,
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
     pub recovery: Recovery,
@@ -179,11 +192,11 @@ pub struct Parser<'a> {
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(Parser<'_>, 264);
 
 /// Stores span information about a closure.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ClosureSpans {
     pub whole_closure: Span,
     pub closing_pipe: Span,
@@ -212,7 +225,7 @@ pub type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
 /// we will never need an `AttrTokenStream`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
     No,
@@ -220,7 +233,7 @@ pub enum Capturing {
     Yes,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
@@ -231,7 +244,7 @@ struct CaptureState {
 /// we (a) lex tokens into a nice tree structure (`TokenStream`), and then (b)
 /// use this type to emit them as a linear sequence. But a linear sequence is
 /// what the parser expects, for the most part.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct TokenCursor {
     // Cursor for the current (innermost) token stream. The delimiters for this
     // token stream are found in `self.stack.last()`; when that is `None` then
@@ -336,6 +349,7 @@ enum TokenExpectType {
 }
 
 /// A sequence separator.
+#[derive(Debug)]
 struct SeqSep {
     /// The separator token.
     sep: Option<TokenKind>,
@@ -353,22 +367,10 @@ impl SeqSep {
     }
 }
 
+#[derive(Debug)]
 pub enum FollowedByType {
     Yes,
     No,
-}
-
-/// Whether a function performed recovery
-#[derive(Copy, Clone, Debug)]
-pub enum Recovered {
-    No,
-    Yes,
-}
-
-impl From<Recovered> for bool {
-    fn from(r: Recovered) -> bool {
-        matches!(r, Recovered::Yes)
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -377,7 +379,7 @@ pub enum Trailing {
     Yes,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenDescription {
     ReservedIdentifier,
     Keyword,
@@ -405,7 +407,9 @@ pub(super) fn token_descr(token: &Token) -> String {
         (Some(TokenDescription::Keyword), _) => Some("keyword"),
         (Some(TokenDescription::ReservedKeyword), _) => Some("reserved keyword"),
         (Some(TokenDescription::DocComment), _) => Some("doc comment"),
-        (None, TokenKind::Interpolated(node)) => Some(node.0.descr()),
+        (None, TokenKind::NtIdent(..)) => Some("identifier"),
+        (None, TokenKind::NtLifetime(..)) => Some("lifetime"),
+        (None, TokenKind::Interpolated(node)) => Some(node.descr()),
         (None, _) => None,
     };
 
@@ -430,7 +434,6 @@ impl<'a> Parser<'a> {
             num_bump_calls: 0,
             break_last_token: false,
             unmatched_angle_bracket_count: 0,
-            max_angle_bracket_count: 0,
             angle_bracket_nesting: 0,
             last_unexpected_token_span: None,
             subparser_name,
@@ -707,7 +710,7 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(&nt.0, token::NtBlock(..)),
+                token::Interpolated(nt) => matches!(&**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
                 _ => false,
             })
@@ -778,7 +781,6 @@ impl<'a> Parser<'a> {
         if ate {
             // See doc comment for `unmatched_angle_bracket_count`.
             self.unmatched_angle_bracket_count += 1;
-            self.max_angle_bracket_count += 1;
             debug!("eat_lt: (increment) count={:?}", self.unmatched_angle_bracket_count);
         }
         ate
@@ -842,9 +844,9 @@ impl<'a> Parser<'a> {
                         Ok(Recovered::No) => {
                             self.current_closure.take();
                         }
-                        Ok(Recovered::Yes) => {
+                        Ok(Recovered::Yes(guar)) => {
                             self.current_closure.take();
-                            recovered = Recovered::Yes;
+                            recovered = Recovered::Yes(guar);
                             break;
                         }
                         Err(mut expect_err) => {
@@ -898,6 +900,7 @@ impl<'a> Parser<'a> {
                             }
 
                             // Attempt to keep parsing if it was an omitted separator.
+                            self.last_unexpected_token_span = None;
                             match f(self) {
                                 Ok(t) => {
                                     // Parsed successfully, therefore most probably the code only
@@ -1214,12 +1217,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self, case: Case) -> Unsafe {
+    /// Parses fn unsafety: `unsafe`, `safe` or nothing.
+    fn parse_safety(&mut self, case: Case) -> Safety {
         if self.eat_keyword_case(kw::Unsafe, case) {
-            Unsafe::Yes(self.prev_token.uninterpolated_span())
+            Safety::Unsafe(self.prev_token.uninterpolated_span())
         } else {
-            Unsafe::No
+            Safety::Default
         }
     }
 
@@ -1254,8 +1257,6 @@ impl<'a> Parser<'a> {
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
         if pat {
             self.psess.gated_spans.gate(sym::inline_const_pat, span);
-        } else {
-            self.psess.gated_spans.gate(sym::inline_const, span);
         }
         self.eat_keyword(kw::Const);
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
@@ -1532,10 +1533,51 @@ impl<'a> Parser<'a> {
 
     /// `::{` or `::*`
     fn is_import_coupler(&mut self) -> bool {
-        self.check(&token::ModSep)
+        self.check(&token::PathSep)
             && self.look_ahead(1, |t| {
                 *t == token::OpenDelim(Delimiter::Brace) || *t == token::BinOp(token::Star)
             })
+    }
+
+    // debug view of the parser's token stream, up to `{lookahead}` tokens
+    pub fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug + '_ {
+        struct DebugParser<'dbg> {
+            parser: &'dbg Parser<'dbg>,
+            lookahead: usize,
+        }
+
+        impl fmt::Debug for DebugParser<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let Self { parser, lookahead } = self;
+                let mut dbg_fmt = f.debug_struct("Parser"); // or at least, one view of
+
+                // we don't need N spans, but we want at least one, so print all of prev_token
+                dbg_fmt.field("prev_token", &parser.prev_token);
+                // make it easier to peek farther ahead by taking TokenKinds only until EOF
+                let tokens = (0..*lookahead)
+                    .map(|i| parser.look_ahead(i, |tok| tok.kind.clone()))
+                    .scan(parser.prev_token == TokenKind::Eof, |eof, tok| {
+                        let current = eof.then_some(tok.clone()); // include a trailing EOF token
+                        *eof |= &tok == &TokenKind::Eof;
+                        current
+                    });
+                dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
+                dbg_fmt.field("approx_token_stream_pos", &parser.num_bump_calls);
+
+                // some fields are interesting for certain values, as they relate to macro parsing
+                if let Some(subparser) = parser.subparser_name {
+                    dbg_fmt.field("subparser_name", &subparser);
+                }
+                if let Recovery::Forbidden = parser.recovery {
+                    dbg_fmt.field("recovery", &parser.recovery);
+                }
+
+                // imply there's "more to know" than this view
+                dbg_fmt.finish_non_exhaustive()
+            }
+        }
+
+        DebugParser { parser: self, lookahead }
     }
 
     pub fn clear_expected_tokens(&mut self) {
@@ -1591,19 +1633,11 @@ pub enum FlatToken {
 
 // Metavar captures of various kinds.
 #[derive(Clone, Debug)]
-pub enum ParseNtResult<NtType> {
+pub enum ParseNtResult {
     Tt(TokenTree),
-    Nt(NtType),
-}
+    Ident(Ident, IdentIsRaw),
+    Lifetime(Ident),
 
-impl<T> ParseNtResult<T> {
-    pub fn map_nt<F, U>(self, mut f: F) -> ParseNtResult<U>
-    where
-        F: FnMut(T) -> U,
-    {
-        match self {
-            ParseNtResult::Tt(tt) => ParseNtResult::Tt(tt),
-            ParseNtResult::Nt(nt) => ParseNtResult::Nt(f(nt)),
-        }
-    }
+    /// This case will eventually be removed, along with `Token::Interpolate`.
+    Nt(Lrc<Nonterminal>),
 }

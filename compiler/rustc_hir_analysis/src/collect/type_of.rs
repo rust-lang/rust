@@ -7,6 +7,7 @@ use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -24,7 +25,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir_node(hir_id);
-    let Node::AnonConst(_) = node else {
+    let Node::AnonConst(&AnonConst { span, .. }) = node else {
         span_bug!(
             tcx.def_span(def_id),
             "expected anon const in `anon_const_type_of`, got {node:?}"
@@ -134,7 +135,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 // I dont think it's possible to reach this but I'm not 100% sure - BoxyUwU
                 return Ty::new_error_with_message(
                     tcx,
-                    tcx.def_span(def_id),
+                    span,
                     "unexpected non-GAT usage of an anon const",
                 );
             }
@@ -152,7 +153,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let Some(type_dependent_def) = tables.type_dependent_def_id(parent_node_id) else {
                 return Ty::new_error_with_message(
                     tcx,
-                    tcx.def_span(def_id),
+                    span,
                     format!("unable to find type-dependent def for {parent_node_id:?}"),
                 );
             };
@@ -194,7 +195,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     } else {
                         return Ty::new_error_with_message(
                             tcx,
-                            tcx.def_span(def_id),
+                            span,
                             format!("unable to find const parent for {hir_id} in pat {pat:?}"),
                         );
                     }
@@ -202,7 +203,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 _ => {
                     return Ty::new_error_with_message(
                         tcx,
-                        tcx.def_span(def_id),
+                        span,
                         format!("unexpected const parent path {parent_node:?}"),
                     );
                 }
@@ -226,11 +227,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                             .map(|idx| (idx, seg))
                     })
             }) else {
-                return Ty::new_error_with_message(
-                    tcx,
-                    tcx.def_span(def_id),
-                    "no arg matching AnonConst in path",
-                );
+                return Ty::new_error_with_message(tcx, span, "no arg matching AnonConst in path");
             };
 
             let generics = match tcx.res_generics_def_id(segment.res) {
@@ -238,7 +235,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 None => {
                     return Ty::new_error_with_message(
                         tcx,
-                        tcx.def_span(def_id),
+                        span,
                         format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );
                 }
@@ -250,7 +247,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         _ => {
             return Ty::new_error_with_message(
                 tcx,
-                tcx.def_span(def_id),
+                span,
                 format!("unexpected const parent in type_of(): {parent_node:?}"),
             );
         }
@@ -259,7 +256,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     debug!(?parent_node);
     debug!(?generics, ?arg_idx);
     if let Some(param_def_id) = generics
-        .params
+        .own_params
         .iter()
         .filter(|param| param.kind.is_ty_or_const())
         .nth(match generics.has_self && generics.parent.is_none() {
@@ -278,7 +275,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     } else {
         return Ty::new_error_with_message(
             tcx,
-            tcx.def_span(def_id),
+            span,
             format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
         );
     }

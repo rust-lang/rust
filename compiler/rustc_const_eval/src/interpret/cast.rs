@@ -7,11 +7,13 @@ use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 
 use super::{
-    util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
+    err_inval, throw_ub, throw_ub_custom, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate,
+    InterpCx, Machine, OpTy, PlaceTy,
 };
 
 use crate::fluent_generated as fluent;
@@ -393,6 +395,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_immediate(src)?;
                 if data_a.principal() == data_b.principal() {
                     // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
+                    // (But currently mismatching vtables violate the validity invariant so UB is triggered anyway.)
                     return self.write_immediate(*val, dest);
                 }
                 let (old_data, old_vptr) = val.to_scalar_pair();
@@ -400,7 +403,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_vptr = old_vptr.to_pointer(self)?;
                 let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
                 if old_trait != data_a.principal() {
-                    throw_ub_custom!(fluent::const_eval_upcast_mismatch);
+                    throw_ub!(InvalidVTableTrait {
+                        expected_trait: data_a,
+                        vtable_trait: old_trait,
+                    });
                 }
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)

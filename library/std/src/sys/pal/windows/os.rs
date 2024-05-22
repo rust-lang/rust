@@ -326,6 +326,8 @@ fn home_dir_crt() -> Option<PathBuf> {
 
         super::fill_utf16_buf(
             |buf, mut sz| {
+                // GetUserProfileDirectoryW does not quite use the usual protocol for
+                // negotiating the buffer size, so we have to translate.
                 match c::GetUserProfileDirectoryW(
                     ptr::without_provenance_mut(CURRENT_PROCESS_TOKEN),
                     buf,

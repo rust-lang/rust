@@ -1,5 +1,6 @@
 #![allow(
     clippy::cast_lossless,
+    clippy::legacy_numeric_constants,
     unused,
     // Int::max_value will be deprecated in the future
     deprecated,

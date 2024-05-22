@@ -34,7 +34,7 @@ nav.sub {
 	in rustdoc.css */
 
 /* Begin theme: light */
-:root {
+:root, :root:not([data-theme]) {
 	--main-background-color: white;
 	--main-color: black;
 	--settings-input-color: #2196f3;
@@ -85,6 +85,7 @@ nav.sub {
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
+	--settings-menu-filter: none;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -140,7 +141,7 @@ nav.sub {
 
 @media (prefers-color-scheme: dark) {
 	/* Begin theme: dark */
-	:root {
+	:root, :root:not([data-theme]) {
 		--main-background-color: #353535;
 		--main-color: #ddd;
 		--settings-input-color: #2196f3;

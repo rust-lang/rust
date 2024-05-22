@@ -20,7 +20,7 @@ where
 {
     let dl = cx.data_layout();
 
-    if !matches!(scalar.primitive(), abi::F32 | abi::F64) {
+    if !matches!(scalar.primitive(), abi::Float(abi::F32 | abi::F64)) {
         return data;
     }
 
@@ -56,7 +56,7 @@ where
         return data;
     }
 
-    if scalar.primitive() == abi::F32 {
+    if scalar.primitive() == abi::Float(abi::F32) {
         data.arg_attribute = ArgAttribute::InReg;
         data.prefix[data.prefix_index] = Some(Reg::f32());
         data.last_offset = offset + Reg::f32().size;
@@ -80,14 +80,14 @@ where
 {
     data = arg_scalar(cx, scalar1, offset, data);
     match (scalar1.primitive(), scalar2.primitive()) {
-        (abi::F32, _) => offset += Reg::f32().size,
-        (_, abi::F64) => offset += Reg::f64().size,
+        (abi::Float(abi::F32), _) => offset += Reg::f32().size,
+        (_, abi::Float(abi::F64)) => offset += Reg::f64().size,
         (abi::Int(i, _signed), _) => offset += i.size(),
         (abi::Pointer(_), _) => offset += Reg::i64().size,
         _ => {}
     }
 
-    if (offset.bytes() % 4) != 0 && matches!(scalar2.primitive(), abi::F32 | abi::F64) {
+    if (offset.bytes() % 4) != 0 && matches!(scalar2.primitive(), abi::Float(abi::F32 | abi::F64)) {
         offset += Size::from_bytes(4 - (offset.bytes() % 4));
     }
     data = arg_scalar(cx, scalar2, offset, data);
@@ -192,7 +192,7 @@ where
 
                 arg.cast_to(CastTarget {
                     prefix: data.prefix,
-                    rest: Uniform { unit: Reg::i64(), total: rest_size },
+                    rest: Uniform::new(Reg::i64(), rest_size),
                     attrs: ArgAttributes {
                         regular: data.arg_attribute,
                         arg_ext: ArgExtension::None,
@@ -205,7 +205,7 @@ where
         }
     }
 
-    arg.cast_to(Uniform { unit: Reg::i64(), total });
+    arg.cast_to(Uniform::new(Reg::i64(), total));
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)

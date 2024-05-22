@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultIterEmpty {
                 cx,
                 DEFAULT_INSTEAD_OF_ITER_EMPTY,
                 expr.span,
-                &format!("`{path}()` is the more idiomatic way"),
+                format!("`{path}()` is the more idiomatic way"),
                 "try",
                 sugg,
                 applicability,
@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultIterEmpty {
 
 fn make_sugg(
     cx: &LateContext<'_>,
-    ty_path: &rustc_hir::QPath<'_>,
+    ty_path: &QPath<'_>,
     ctxt: SyntaxContext,
     applicability: &mut Applicability,
     path: &str,

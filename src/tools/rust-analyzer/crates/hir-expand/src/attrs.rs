@@ -1,13 +1,14 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
-use std::{fmt, ops};
+use std::{borrow::Cow, fmt, ops};
 
 use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
-use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
+use mbe::{syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
+use syntax::unescape;
 use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::ThinArc;
 
@@ -54,8 +55,7 @@ impl RawAttrs {
                     Attr {
                         id,
                         input: Some(Interned::new(AttrInput::Literal(tt::Literal {
-                            // FIXME: Escape quotes from comment content
-                            text: SmolStr::new(format_smolstr!("\"{doc}\"",)),
+                            text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
                             span,
                         }))),
                         path: Interned::new(ModPath::from(crate::name!(doc))),
@@ -72,6 +72,10 @@ impl RawAttrs {
         };
 
         RawAttrs { entries }
+    }
+
+    fn escape_chars(s: &str) -> String {
+        s.replace('\\', r#"\\"#).replace('"', r#"\""#)
     }
 
     pub fn from_attrs_owner(
@@ -235,7 +239,12 @@ impl Attr {
                 span,
             })))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
+            let tree = syntax_node_to_token_tree(
+                tt.syntax(),
+                span_map,
+                span,
+                DocCommentDesugarMode::ProcMacro,
+            );
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
@@ -243,8 +252,18 @@ impl Attr {
         Some(Attr { id, path, input, ctxt: span.ctx })
     }
 
-    fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
-        let ctxt = tt.first()?.first_span().ctx;
+    fn from_tt(db: &dyn ExpandDatabase, mut tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
+        if matches!(tt,
+            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, .. })), ..]
+            if text == "unsafe"
+        ) {
+            match tt.get(1) {
+                Some(tt::TokenTree::Subtree(subtree)) => tt = &subtree.token_trees,
+                _ => return None,
+            }
+        }
+        let first = &tt.first()?;
+        let ctxt = first.first_span().ctx;
         let path_end = tt
             .iter()
             .position(|tt| {
@@ -293,6 +312,18 @@ impl Attr {
             }
             .strip_prefix('"')?
             .strip_suffix('"'),
+            _ => None,
+        }
+    }
+
+    pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => {
+                    it.trim_matches('#').strip_prefix('"')?.strip_suffix('"').map(Cow::Borrowed)
+                }
+                None => it.text.strip_prefix('"')?.strip_suffix('"').and_then(unescape),
+            },
             _ => None,
         }
     }
@@ -346,6 +377,33 @@ impl Attr {
     }
 }
 
+fn unescape(s: &str) -> Option<Cow<'_, str>> {
+    let mut buf = String::new();
+    let mut prev_end = 0;
+    let mut has_error = false;
+    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+        unescaped_char,
+        buf.capacity() == 0,
+    ) {
+        (Ok(c), false) => buf.push(c),
+        (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+            prev_end = char_range.end
+        }
+        (Ok(c), true) => {
+            buf.reserve_exact(s.len());
+            buf.push_str(&s[..prev_end]);
+            buf.push(c);
+        }
+        (Err(_), _) => has_error = true,
+    });
+
+    match (has_error, buf.capacity() == 0) {
+        (true, _) => None,
+        (false, false) => Some(Cow::Owned(buf)),
+        (false, true) => Some(Cow::Borrowed(s)),
+    }
+}
+
 pub fn collect_attrs(
     owner: &dyn ast::HasAttrs,
 ) -> impl Iterator<Item = (AttrId, Either<ast::Attr, ast::Comment>)> {
@@ -387,7 +445,7 @@ fn inner_attributes(
 
 // Input subtree is: `(cfg, $(attr),+)`
 // Split it up into a `cfg` subtree and the `attr` subtrees.
-pub fn parse_cfg_attr_input(
+fn parse_cfg_attr_input(
     subtree: &Subtree,
 ) -> Option<(&[tt::TokenTree], impl Iterator<Item = &[tt::TokenTree]>)> {
     let mut parts = subtree

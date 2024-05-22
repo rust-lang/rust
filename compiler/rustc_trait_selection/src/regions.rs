@@ -1,5 +1,6 @@
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError};
+use rustc_macros::extension;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 

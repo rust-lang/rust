@@ -5,6 +5,11 @@ LL | fn foo() -> u8 {
    |             -- expected `u8` because of this return type
 LL |     return;
    |     ^^^^^^ return type is not `()`
+   |
+help: give the `return` a value of the expected type
+   |
+LL |     return 42;
+   |            ++
 
 error: aborting due to 1 previous error
 

@@ -11,7 +11,7 @@ use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::{
     ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods,
 };
@@ -354,7 +354,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let block = self.llbb();
                 let extended_asm = block.add_extended_asm(None, "");
-                extended_asm.add_input_operand(None, "r", result.llval);
+                extended_asm.add_input_operand(None, "r", result.val.llval);
                 extended_asm.add_clobber("memory");
                 extended_asm.set_volatile_flag(true);
 
@@ -388,8 +388,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast { cast: ty, .. } = &fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
-                let ptr = self.pointercast(result.llval, ptr_llty);
-                self.store(llval, ptr, result.align);
+                let ptr = self.pointercast(result.val.llval, ptr_llty);
+                self.store(llval, ptr, result.val.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
                     .val
@@ -502,7 +502,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
+            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
@@ -511,7 +511,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.type_ptr_to(cast.gcc_type(bx));
-                let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
+                let cast_dst = bx.pointercast(dst.val.llval, cast_ptr_llty);
                 bx.store(val, cast_dst, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -531,7 +531,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(bx);
                 let scratch_align = cast.align(bx);
-                let llscratch = bx.alloca(cast.gcc_type(bx), scratch_align);
+                let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ... where we first store the value...
@@ -539,7 +539,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
-                    dst.llval,
+                    dst.val.llval,
                     self.layout.align.abi,
                     llscratch,
                     scratch_align,
@@ -571,7 +571,12 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { meta_attrs: Some(_), .. } => {
-                OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
+                let place_val = PlaceValue {
+                    llval: next(),
+                    llextra: Some(next()),
+                    align: self.layout.align.abi,
+                };
+                OperandValue::Ref(place_val).store(bx, dst);
             }
             PassMode::Direct(_)
             | PassMode::Indirect { meta_attrs: None, .. }
@@ -665,11 +670,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let step3 = self.or(left, right);
 
                 // Fourth step.
-                if width == 8 {
-                    step3
-                } else {
-                    self.gcc_bswap(step3, width)
-                }
+                if width == 8 { step3 } else { self.gcc_bswap(step3, width) }
             }
             128 => {
                 // TODO(antoyo): find a more efficient implementation?
@@ -1218,9 +1219,9 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             iter::once(i8p),
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
-            rustc_hir::Unsafety::Unsafe,
+            rustc_hir::Safety::Unsafe,
             Abi::Rust,
         )),
     );
@@ -1229,9 +1230,9 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             [i8p, i8p].iter().cloned(),
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
-            rustc_hir::Unsafety::Unsafe,
+            rustc_hir::Safety::Unsafe,
             Abi::Rust,
         )),
     );
@@ -1240,7 +1241,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
         false,
-        rustc_hir::Unsafety::Unsafe,
+        rustc_hir::Safety::Unsafe,
         Abi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);

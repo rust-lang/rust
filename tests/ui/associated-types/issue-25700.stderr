@@ -7,6 +7,15 @@ LL |     drop(t);
    |          - value moved here
 LL |     drop(t);
    |          ^ value used here after move
+   |
+note: if `S<()>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-25700.rs:1:1
+   |
+LL | struct S<T: 'static>(#[allow(dead_code)] Option<&'static T>);
+   | ^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(t);
+   |          - you could clone this value
 
 error: aborting due to 1 previous error
 

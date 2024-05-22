@@ -9,7 +9,10 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::fs;
+use std::{
+    fs,
+    path::{Component, Path},
+};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
@@ -206,6 +209,11 @@ impl NotifyActor {
                                 return true;
                             }
                             let path = entry.path();
+
+                            if path_is_parent_symlink(path) {
+                                return false;
+                            }
+
                             root == path
                                 || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
                         });
@@ -214,7 +222,7 @@ impl NotifyActor {
                         let depth = entry.depth();
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
-                        let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
+                        let abs_path = AbsPathBuf::try_from(entry.into_path()).ok()?;
                         if depth < 2 && is_dir {
                             self.send(make_message(abs_path.clone()));
                         }
@@ -257,4 +265,22 @@ fn read(path: &AbsPath) -> Option<Vec<u8>> {
 
 fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {
     res.map_err(|err| tracing::warn!("notify error: {}", err)).ok()
+}
+
+/// Is `path` a symlink to a parent directory?
+///
+/// Including this path is guaranteed to cause an infinite loop. This
+/// heuristic is not sufficient to catch all symlink cycles (it's
+/// possible to construct cycle using two or more symlinks), but it
+/// catches common cases.
+fn path_is_parent_symlink(path: &Path) -> bool {
+    let Ok(destination) = std::fs::read_link(path) else {
+        return false;
+    };
+
+    // If the symlink is of the form "../..", it's a parent symlink.
+    let is_relative_parent =
+        destination.components().all(|c| matches!(c, Component::CurDir | Component::ParentDir));
+
+    is_relative_parent || path.starts_with(destination)
 }

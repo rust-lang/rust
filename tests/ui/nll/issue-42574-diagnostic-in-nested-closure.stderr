@@ -11,6 +11,8 @@ LL |     || doit(data);
 error[E0597]: `data` does not live long enough
   --> $DIR/issue-42574-diagnostic-in-nested-closure.rs:6:13
    |
+LL | fn doit(data: &'static mut ()) {
+   |         ---- binding `data` declared here
 LL |     || doit(data);
    |     -- -----^^^^-
    |     |  |    |

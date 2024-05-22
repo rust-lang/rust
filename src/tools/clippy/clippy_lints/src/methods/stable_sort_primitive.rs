@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx
             cx,
             STABLE_SORT_PRIMITIVE,
             e.span,
-            &format!("used `sort` on primitive type `{slice_type}`"),
+            format!("used `sort` on primitive type `{slice_type}`"),
             |diag| {
                 let mut app = Applicability::MachineApplicable;
                 let recv_snip = snippet_with_context(cx, recv.span, e.span.ctxt(), "..", &mut app).0;

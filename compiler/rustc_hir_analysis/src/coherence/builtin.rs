@@ -10,10 +10,11 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionResolutionError};
-use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -189,10 +190,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // even if they do not carry that attribute.
     use rustc_type_ir::TyKind::*;
     match (source.kind(), target.kind()) {
-        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
-                && mutbl_a == *mutbl_b =>
-        {
+        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b)) if r_a == *r_b && mutbl_a == *mutbl_b => {
             Ok(())
         }
         (&RawPtr(_, a_mutbl), &RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
@@ -230,18 +228,14 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         }
                     }
 
-                    if let Ok(ok) =
-                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
-                    {
-                        if ok.obligations.is_empty() {
-                            res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
-                                span,
-                                name: field.name,
-                                ty: ty_a,
-                            }));
+                    if ty_a == ty_b {
+                        res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
+                            span,
+                            name: field.name,
+                            ty: ty_a,
+                        }));
 
-                            return false;
-                        }
+                        return false;
                     }
 
                     return true;
@@ -433,14 +427,12 @@ pub fn coerce_unsized_info<'tcx>(
                     // something more accepting, but we use
                     // equality because we want to be able to
                     // perform this check without computing
-                    // variance where possible. (This is because
-                    // we may have to evaluate constraint
+                    // variance or constraining opaque types' hidden types.
+                    // (This is because we may have to evaluate constraint
                     // expressions in the course of execution.)
                     // See e.g., #41936.
-                    if let Ok(ok) = infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, a, b) {
-                        if ok.obligations.is_empty() {
-                            return None;
-                        }
+                    if a == b {
+                        return None;
                     }
 
                     // Collect up all fields that were significantly changed

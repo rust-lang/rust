@@ -53,25 +53,25 @@ use crate::fmt;
 /// # Examples
 ///
 /// ```
-/// use std::cell::RefCell;
+/// use std::cell::Cell;
 /// use std::thread;
 ///
-/// thread_local!(static FOO: RefCell<u32> = RefCell::new(1));
+/// thread_local!(static FOO: Cell<u32> = Cell::new(1));
 ///
-/// FOO.with_borrow(|v| assert_eq!(*v, 1));
-/// FOO.with_borrow_mut(|v| *v = 2);
+/// assert_eq!(FOO.get(), 1);
+/// FOO.set(2);
 ///
 /// // each thread starts out with the initial value of 1
 /// let t = thread::spawn(move|| {
-///     FOO.with_borrow(|v| assert_eq!(*v, 1));
-///     FOO.with_borrow_mut(|v| *v = 3);
+///     assert_eq!(FOO.get(), 1);
+///     FOO.set(3);
 /// });
 ///
 /// // wait for the thread to complete and bail out on panic
 /// t.join().unwrap();
 ///
 /// // we retain our original value of 2 despite the child thread
-/// FOO.with_borrow(|v| assert_eq!(*v, 2));
+/// assert_eq!(FOO.get(), 2);
 /// ```
 ///
 /// # Platform-specific behavior
@@ -141,15 +141,16 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// Publicity and attributes for each static are allowed. Example:
 ///
 /// ```
-/// use std::cell::RefCell;
-/// thread_local! {
-///     pub static FOO: RefCell<u32> = RefCell::new(1);
+/// use std::cell::{Cell, RefCell};
 ///
-///     static BAR: RefCell<f32> = RefCell::new(1.0);
+/// thread_local! {
+///     pub static FOO: Cell<u32> = Cell::new(1);
+///
+///     static BAR: RefCell<Vec<f32>> = RefCell::new(vec![1.0, 2.0]);
 /// }
 ///
-/// FOO.with_borrow(|v| assert_eq!(*v, 1));
-/// BAR.with_borrow(|v| assert_eq!(*v, 1.0));
+/// assert_eq!(FOO.get(), 1);
+/// BAR.with_borrow(|v| assert_eq!(v[1], 2.0));
 /// ```
 ///
 /// Note that only shared references (`&T`) to the inner data may be obtained, so a
@@ -164,12 +165,13 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// track any additional state.
 ///
 /// ```
-/// use std::cell::Cell;
+/// use std::cell::RefCell;
+///
 /// thread_local! {
-///     pub static FOO: Cell<u32> = const { Cell::new(1) };
+///     pub static FOO: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
 /// }
 ///
-/// assert_eq!(FOO.get(), 1);
+/// FOO.with_borrow(|v| assert_eq!(v.len(), 0));
 /// ```
 ///
 /// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
@@ -279,10 +281,9 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(&T) -> R,
     {
-        unsafe {
-            let thread_local = (self.inner)(None).ok_or(AccessError)?;
-            Ok(f(thread_local))
-        }
+        // SAFETY: `inner` is safe to call within the lifetime of the thread
+        let thread_local = unsafe { (self.inner)(None).ok_or(AccessError)? };
+        Ok(f(thread_local))
     }
 
     /// Acquires a reference to the value in this TLS key, initializing it with
@@ -301,14 +302,17 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(Option<T>, &T) -> R,
     {
-        unsafe {
-            let mut init = Some(init);
-            let reference = (self.inner)(Some(&mut init)).expect(
+        let mut init = Some(init);
+
+        // SAFETY: `inner` is safe to call within the lifetime of the thread
+        let reference = unsafe {
+            (self.inner)(Some(&mut init)).expect(
                 "cannot access a Thread Local Storage value \
                  during or after destruction",
-            );
-            f(init, reference)
-        }
+            )
+        };
+
+        f(init, reference)
     }
 }
 
@@ -377,7 +381,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     where
         T: Copy,
     {
-        self.with(|cell| cell.get())
+        self.with(Cell::get)
     }
 
     /// Takes the contained value, leaving `Default::default()` in its place.
@@ -407,7 +411,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     where
         T: Default,
     {
-        self.with(|cell| cell.take())
+        self.with(Cell::take)
     }
 
     /// Replaces the contained value, returning the old value.
@@ -578,7 +582,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     where
         T: Default,
     {
-        self.with(|cell| cell.take())
+        self.with(RefCell::take)
     }
 
     /// Replaces the contained value, returning the old value.

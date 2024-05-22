@@ -13,7 +13,13 @@ ignore = [
 
     # tests for now are not formatted, as they are sometimes pretty-printing constrained
     # (and generally rustfmt can move around comments in UI-testing incompatible ways)
-    "/tests/",
+    "/tests/*",
+
+    # but we still want to format rmake.rs files in tests/run-make/ so we need to do this
+    # dance to avoid the parent directory from being excluded
+    "!/tests/run-make/",
+    "/tests/run-make/*/*.rs",
+    "!/tests/run-make/*/rmake.rs",
 
     # do not format submodules
     # FIXME: sync submodule list with tidy/bootstrap/etc
@@ -34,6 +40,7 @@ ignore = [
     "src/tools/clippy",
     "src/tools/miri",
     "src/tools/rust-analyzer",
+    "src/tools/rustc-perf",
     "src/tools/rustfmt",
 
     # these are ignored by a standard cargo fmt run

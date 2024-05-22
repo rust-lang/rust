@@ -94,7 +94,7 @@ fn check_lit(cx: &EarlyContext<'_>, lit: &Lit, span: Span, is_string: bool) {
         cx,
         OCTAL_ESCAPES,
         span,
-        &format!(
+        format!(
             "octal-looking escape in {} literal",
             if is_string { "string" } else { "byte string" }
         ),

@@ -1,9 +1,10 @@
 // This test ensures that the elements in the sidebar are displayed correctly.
+include: "utils.goml"
 javascript: false
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // Since the javascript is disabled, there shouldn't be a toggle.
 wait-for-css: (".sidebar", {"display": "none"})
-assert-css: ("#sidebar-button", {"display": "none"})
+assert-false: "#sidebar-button"
 
 // Let's retry with javascript enabled.
 javascript: true
@@ -34,8 +35,7 @@ define-function: (
         theme, color, color_hover, background, background_hover, background_toggle,
     ],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
         assert-css: (
             "#src-sidebar details[open] > .files a.selected",

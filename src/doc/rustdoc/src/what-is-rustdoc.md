@@ -34,6 +34,9 @@ the main page is located in `doc/lib/index.html`. If you open that up in
 a web browser, you will see a page with a search bar, and "Crate lib" at the
 top, with no contents.
 
+You can also use `cargo doc` to generate documentation for the whole project.
+See [Using rustdoc with Cargo](#using-rustdoc-with-cargo).
+
 ## Configuring rustdoc
 
 There are two problems with this: first, why does it
@@ -79,7 +82,13 @@ docs. Instead of the `rustdoc` command, we could have done this:
 $ cargo doc
 ```
 
-Internally, this calls out to `rustdoc` like this:
+If you want `cargo` to automatically open the generated documentation, you can use:
+
+```bash
+$ cargo doc --open
+```
+
+Internally, `cargo doc` calls out to `rustdoc` like this:
 
 ```bash
 $ rustdoc --crate-name docs src/lib.rs -o <path>/docs/target/doc -L

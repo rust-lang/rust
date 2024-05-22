@@ -4,7 +4,7 @@ use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
     eq_expr_value, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
     pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
@@ -14,7 +14,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
+    BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt,
+    StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -109,12 +110,31 @@ fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir 
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
+    /// Make sure the init expr implements try trait so a valid suggestion could be given.
+    ///
+    /// Because the init expr could have the type of `&Option<T>` which does not implements `Try`.
+    ///
+    /// NB: This conveniently prevents the cause of
+    /// issue [#12412](https://github.com/rust-lang/rust-clippy/issues/12412),
+    /// since accessing an `Option` field from a borrowed struct requires borrow, such as
+    /// `&some_struct.opt`, which is type of `&Option`. And we can't suggest `&some_struct.opt?`
+    /// or `(&some_struct.opt)?` since the first one has different semantics and the later does
+    /// not implements `Try`.
+    fn init_expr_can_use_question_mark(cx: &LateContext<'_>, init_expr: &Expr<'_>) -> bool {
+        let init_ty = cx.typeck_results().expr_ty_adjusted(init_expr);
+        cx.tcx
+            .lang_items()
+            .try_trait()
+            .map_or(false, |did| implements_trait(cx, init_ty, did, &[]))
+    }
+
     if let StmtKind::Let(LetStmt {
         pat,
         init: Some(init_expr),
         els: Some(els),
         ..
     }) = stmt.kind
+        && init_expr_can_use_question_mark(cx, init_expr)
         && let Some(ret) = find_let_else_ret_expression(els)
         && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
         && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
@@ -263,7 +283,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         && !is_else_clause(cx.tcx, expr)
         && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
         && ddpos.as_opt_usize().is_none()
-        && let PatKind::Binding(BindingAnnotation(by_ref, _), bind_id, ident, None) = field.kind
+        && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
         && let caller_ty = cx.typeck_results().expr_ty(let_expr)
         && let if_block = IfBlockType::IfLet(
             cx.qpath_res(path1, let_pat.hir_id),
@@ -310,9 +330,9 @@ impl QuestionMark {
     }
 }
 
-fn is_try_block(cx: &LateContext<'_>, bl: &rustc_hir::Block<'_>) -> bool {
+fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
-        && let rustc_hir::ExprKind::Call(callee, _) = expr.kind
+        && let ExprKind::Call(callee, _) = expr.kind
     {
         is_path_lang_item(cx, callee, LangItem::TryTraitFromOutput)
     } else {
@@ -341,7 +361,7 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx rustc_hir::Block<'tcx>) {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
@@ -350,15 +370,15 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
         self.try_block_depth_stack.push(0);
     }
 
-    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Body<'tcx>) {
+    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
         self.try_block_depth_stack.pop();
     }
 
-    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx rustc_hir::Block<'tcx>) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack

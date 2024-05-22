@@ -1,12 +1,15 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
 use rustc_middle::mir;
+use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
 use rustc_middle::ty::{self, ScalarInt, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
-use super::{ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable};
+use super::{
+    err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable,
+};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Writes the discriminant of the given variant.
@@ -295,8 +298,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         &niche_start_val,
                     )?
                     .to_scalar()
-                    .try_to_int()
-                    .unwrap();
+                    .assert_int();
                 Ok(Some((tag, tag_field)))
             }
         }

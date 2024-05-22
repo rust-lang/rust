@@ -1,10 +1,10 @@
 use crate::pp::Breaks::Inconsistent;
+use crate::pprust::state::fixup::FixupContext;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 use ast::{ForLoopKind, MatchKind};
 use itertools::{Itertools, Position};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode};
@@ -13,78 +13,6 @@ use rustc_ast::{
     FormatTrait,
 };
 use std::fmt::Write;
-
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct FixupContext {
-    /// Print expression such that it can be parsed back as a statement
-    /// consisting of the original expression.
-    ///
-    /// The effect of this is for binary operators in statement position to set
-    /// `leftmost_subexpression_in_stmt` when printing their left-hand operand.
-    ///
-    /// ```ignore (illustrative)
-    /// (match x {}) - 1;  // match needs parens when LHS of binary operator
-    ///
-    /// match x {};  // not when its own statement
-    /// ```
-    pub stmt: bool,
-
-    /// This is the difference between:
-    ///
-    /// ```ignore (illustrative)
-    /// (match x {}) - 1;  // subexpression needs parens
-    ///
-    /// let _ = match x {} - 1;  // no parens
-    /// ```
-    ///
-    /// There are 3 distinguishable contexts in which `print_expr` might be
-    /// called with the expression `$match` as its argument, where `$match`
-    /// represents an expression of kind `ExprKind::Match`:
-    ///
-    ///   - stmt=false leftmost_subexpression_in_stmt=false
-    ///
-    ///     Example: `let _ = $match - 1;`
-    ///
-    ///     No parentheses required.
-    ///
-    ///   - stmt=false leftmost_subexpression_in_stmt=true
-    ///
-    ///     Example: `$match - 1;`
-    ///
-    ///     Must parenthesize `($match)`, otherwise parsing back the output as a
-    ///     statement would terminate the statement after the closing brace of
-    ///     the match, parsing `-1;` as a separate statement.
-    ///
-    ///   - stmt=true leftmost_subexpression_in_stmt=false
-    ///
-    ///     Example: `$match;`
-    ///
-    ///     No parentheses required.
-    pub leftmost_subexpression_in_stmt: bool,
-
-    /// This is the difference between:
-    ///
-    /// ```ignore (illustrative)
-    /// if let _ = (Struct {}) {}  // needs parens
-    ///
-    /// match () {
-    ///     () if let _ = Struct {} => {}  // no parens
-    /// }
-    /// ```
-    pub parenthesize_exterior_struct_lit: bool,
-}
-
-/// The default amount of fixing is minimal fixing. Fixups should be turned on
-/// in a targeted fashion where needed.
-impl Default for FixupContext {
-    fn default() -> Self {
-        FixupContext {
-            stmt: false,
-            leftmost_subexpression_in_stmt: false,
-            parenthesize_exterior_struct_lit: false,
-        }
-    }
-}
 
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {
@@ -136,9 +64,7 @@ impl<'a> State<'a> {
     /// Prints an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
     fn print_expr_as_cond(&mut self, expr: &ast::Expr) {
-        let fixup =
-            FixupContext { parenthesize_exterior_struct_lit: true, ..FixupContext::default() };
-        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr), fixup)
+        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr), FixupContext::new_cond())
     }
 
     /// Does `expr` need parentheses when printed in a condition position?
@@ -310,15 +236,7 @@ impl<'a> State<'a> {
         // because the latter is valid syntax but with the incorrect meaning.
         // It's a match-expression followed by tuple-expression, not a function
         // call.
-        self.print_expr_maybe_paren(
-            func,
-            prec,
-            FixupContext {
-                stmt: false,
-                leftmost_subexpression_in_stmt: fixup.stmt || fixup.leftmost_subexpression_in_stmt,
-                ..fixup
-            },
-        );
+        self.print_expr_maybe_paren(func, prec, fixup.leftmost_subexpression());
 
         self.print_call_post(args)
     }
@@ -387,33 +305,17 @@ impl<'a> State<'a> {
             _ => left_prec,
         };
 
-        self.print_expr_maybe_paren(
-            lhs,
-            left_prec,
-            FixupContext {
-                stmt: false,
-                leftmost_subexpression_in_stmt: fixup.stmt || fixup.leftmost_subexpression_in_stmt,
-                ..fixup
-            },
-        );
+        self.print_expr_maybe_paren(lhs, left_prec, fixup.leftmost_subexpression());
 
         self.space();
         self.word_space(op.node.as_str());
 
-        self.print_expr_maybe_paren(
-            rhs,
-            right_prec,
-            FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..fixup },
-        );
+        self.print_expr_maybe_paren(rhs, right_prec, fixup.subsequent_subexpression());
     }
 
     fn print_expr_unary(&mut self, op: ast::UnOp, expr: &ast::Expr, fixup: FixupContext) {
         self.word(op.as_str());
-        self.print_expr_maybe_paren(
-            expr,
-            parser::PREC_PREFIX,
-            FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..fixup },
-        );
+        self.print_expr_maybe_paren(expr, parser::PREC_PREFIX, fixup.subsequent_subexpression());
     }
 
     fn print_expr_addr_of(
@@ -431,11 +333,7 @@ impl<'a> State<'a> {
                 self.print_mutability(mutability, true);
             }
         }
-        self.print_expr_maybe_paren(
-            expr,
-            parser::PREC_PREFIX,
-            FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..fixup },
-        );
+        self.print_expr_maybe_paren(expr, parser::PREC_PREFIX, fixup.subsequent_subexpression());
     }
 
     pub(super) fn print_expr(&mut self, expr: &ast::Expr, fixup: FixupContext) {
@@ -470,8 +368,7 @@ impl<'a> State<'a> {
         //
         // Same applies to a small set of other expression kinds which eagerly
         // terminate a statement which opens with them.
-        let needs_par =
-            fixup.leftmost_subexpression_in_stmt && !classify::expr_requires_semi_to_be_stmt(expr);
+        let needs_par = fixup.would_cause_statement_boundary(expr);
         if needs_par {
             self.popen();
             fixup = FixupContext::default();
@@ -519,22 +416,14 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Cast(expr, ty) => {
                 let prec = AssocOp::As.precedence() as i8;
-                self.print_expr_maybe_paren(
-                    expr,
-                    prec,
-                    FixupContext {
-                        stmt: false,
-                        leftmost_subexpression_in_stmt: fixup.stmt
-                            || fixup.leftmost_subexpression_in_stmt,
-                        ..fixup
-                    },
-                );
+                self.print_expr_maybe_paren(expr, prec, fixup.leftmost_subexpression());
                 self.space();
                 self.word_space("as");
                 self.print_type(ty);
             }
             ast::ExprKind::Type(expr, ty) => {
-                self.word("type_ascribe!(");
+                self.word("builtin # type_ascribe");
+                self.popen();
                 self.ibox(0);
                 self.print_expr(expr, FixupContext::default());
 
@@ -543,7 +432,7 @@ impl<'a> State<'a> {
                 self.print_type(ty);
 
                 self.end();
-                self.word(")");
+                self.pclose();
             }
             ast::ExprKind::Let(pat, scrutinee, _, _) => {
                 self.print_let(pat, scrutinee, fixup);
@@ -600,7 +489,7 @@ impl<'a> State<'a> {
                         self.space();
                     }
                     MatchKind::Postfix => {
-                        self.print_expr_as_cond(expr);
+                        self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
                         self.word_nbsp(".match");
                     }
                 }
@@ -660,70 +549,34 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(blk, attrs);
             }
             ast::ExprKind::Await(expr, _) => {
-                // Same fixups as ExprKind::MethodCall.
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
                 self.word(".await");
             }
             ast::ExprKind::Assign(lhs, rhs, _) => {
-                // Same fixups as ExprKind::Binary.
                 let prec = AssocOp::Assign.precedence() as i8;
-                self.print_expr_maybe_paren(
-                    lhs,
-                    prec + 1,
-                    FixupContext {
-                        stmt: false,
-                        leftmost_subexpression_in_stmt: fixup.stmt
-                            || fixup.leftmost_subexpression_in_stmt,
-                        ..fixup
-                    },
-                );
+                self.print_expr_maybe_paren(lhs, prec + 1, fixup.leftmost_subexpression());
                 self.space();
                 self.word_space("=");
-                self.print_expr_maybe_paren(
-                    rhs,
-                    prec,
-                    FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..fixup },
-                );
+                self.print_expr_maybe_paren(rhs, prec, fixup.subsequent_subexpression());
             }
             ast::ExprKind::AssignOp(op, lhs, rhs) => {
-                // Same fixups as ExprKind::Binary.
                 let prec = AssocOp::Assign.precedence() as i8;
-                self.print_expr_maybe_paren(
-                    lhs,
-                    prec + 1,
-                    FixupContext {
-                        stmt: false,
-                        leftmost_subexpression_in_stmt: fixup.stmt
-                            || fixup.leftmost_subexpression_in_stmt,
-                        ..fixup
-                    },
-                );
+                self.print_expr_maybe_paren(lhs, prec + 1, fixup.leftmost_subexpression());
                 self.space();
                 self.word(op.node.as_str());
                 self.word_space("=");
-                self.print_expr_maybe_paren(
-                    rhs,
-                    prec,
-                    FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..fixup },
-                );
+                self.print_expr_maybe_paren(rhs, prec, fixup.subsequent_subexpression());
             }
             ast::ExprKind::Field(expr, ident) => {
-                // Same fixups as ExprKind::MethodCall.
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
                 self.word(".");
                 self.print_ident(*ident);
             }
             ast::ExprKind::Index(expr, index, _) => {
-                // Same fixups as ExprKind::Call.
                 self.print_expr_maybe_paren(
                     expr,
                     parser::PREC_POSTFIX,
-                    FixupContext {
-                        stmt: false,
-                        leftmost_subexpression_in_stmt: fixup.stmt
-                            || fixup.leftmost_subexpression_in_stmt,
-                        ..fixup
-                    },
+                    fixup.leftmost_subexpression(),
                 );
                 self.word("[");
                 self.print_expr(index, FixupContext::default());
@@ -736,31 +589,14 @@ impl<'a> State<'a> {
                 // a "normal" binop gets parenthesized. (`LOr` is the lowest-precedence binop.)
                 let fake_prec = AssocOp::LOr.precedence() as i8;
                 if let Some(e) = start {
-                    self.print_expr_maybe_paren(
-                        e,
-                        fake_prec,
-                        FixupContext {
-                            stmt: false,
-                            leftmost_subexpression_in_stmt: fixup.stmt
-                                || fixup.leftmost_subexpression_in_stmt,
-                            ..fixup
-                        },
-                    );
+                    self.print_expr_maybe_paren(e, fake_prec, fixup.leftmost_subexpression());
                 }
                 match limits {
                     ast::RangeLimits::HalfOpen => self.word(".."),
                     ast::RangeLimits::Closed => self.word("..="),
                 }
                 if let Some(e) = end {
-                    self.print_expr_maybe_paren(
-                        e,
-                        fake_prec,
-                        FixupContext {
-                            stmt: false,
-                            leftmost_subexpression_in_stmt: false,
-                            ..fixup
-                        },
-                    );
+                    self.print_expr_maybe_paren(e, fake_prec, fixup.subsequent_subexpression());
                 }
             }
             ast::ExprKind::Underscore => self.word("_"),
@@ -777,11 +613,7 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(
                         expr,
                         parser::PREC_JUMP,
-                        FixupContext {
-                            stmt: false,
-                            leftmost_subexpression_in_stmt: false,
-                            ..fixup
-                        },
+                        fixup.subsequent_subexpression(),
                     );
                 }
             }
@@ -799,11 +631,7 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(
                         expr,
                         parser::PREC_JUMP,
-                        FixupContext {
-                            stmt: false,
-                            leftmost_subexpression_in_stmt: false,
-                            ..fixup
-                        },
+                        fixup.subsequent_subexpression(),
                     );
                 }
             }
@@ -816,11 +644,7 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(
                         expr,
                         parser::PREC_JUMP,
-                        FixupContext {
-                            stmt: false,
-                            leftmost_subexpression_in_stmt: false,
-                            ..fixup
-                        },
+                        fixup.subsequent_subexpression(),
                     );
                 }
             }
@@ -830,19 +654,19 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(
                     result,
                     parser::PREC_JUMP,
-                    FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..fixup },
+                    fixup.subsequent_subexpression(),
                 );
             }
             ast::ExprKind::InlineAsm(a) => {
-                // FIXME: This should have its own syntax, distinct from a macro invocation.
+                // FIXME: Print `builtin # asm` once macro `asm` uses `builtin_syntax`.
                 self.word("asm!");
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
-                // FIXME: This should have its own syntax, distinct from a macro invocation.
+                // FIXME: Print `builtin # format_args` once macro `format_args` uses `builtin_syntax`.
                 self.word("format_args!");
                 self.popen();
-                self.rbox(0, Inconsistent);
+                self.ibox(0);
                 self.word(reconstruct_format_args_template_string(&fmt.template));
                 for arg in fmt.arguments.all_args() {
                     self.word_space(",");
@@ -854,7 +678,7 @@ impl<'a> State<'a> {
             ast::ExprKind::OffsetOf(container, fields) => {
                 self.word("builtin # offset_of");
                 self.popen();
-                self.rbox(0, Inconsistent);
+                self.ibox(0);
                 self.print_type(container);
                 self.word(",");
                 self.space();
@@ -867,8 +691,8 @@ impl<'a> State<'a> {
                         self.print_ident(field);
                     }
                 }
-                self.pclose();
                 self.end();
+                self.pclose();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {
@@ -884,16 +708,11 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(
                         expr,
                         parser::PREC_JUMP,
-                        FixupContext {
-                            stmt: false,
-                            leftmost_subexpression_in_stmt: false,
-                            ..fixup
-                        },
+                        fixup.subsequent_subexpression(),
                     );
                 }
             }
             ast::ExprKind::Try(e) => {
-                // Same fixups as ExprKind::MethodCall.
                 self.print_expr_maybe_paren(e, parser::PREC_POSTFIX, fixup);
                 self.word("?")
             }
@@ -961,7 +780,7 @@ impl<'a> State<'a> {
                 }
                 _ => {
                     self.end(); // Close the ibox for the pattern.
-                    self.print_expr(body, FixupContext { stmt: true, ..FixupContext::default() });
+                    self.print_expr(body, FixupContext::new_match_arm());
                     self.word(",");
                 }
             }

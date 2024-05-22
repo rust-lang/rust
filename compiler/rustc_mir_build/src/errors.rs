@@ -423,7 +423,7 @@ impl Subdiagnostic for UnsafeNotInheritedLintNote {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
         let body_start = self.body_span.shrink_to_lo();
@@ -819,6 +819,15 @@ pub struct NontrivialStructuralMatch<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_exceeds_mcdc_condition_num_limit)]
+pub(crate) struct MCDCExceedsConditionNumLimit {
+    #[primary_span]
+    pub span: Span,
+    pub conditions_num: usize,
+    pub max_conditions_num: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]
@@ -862,7 +871,7 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
@@ -940,4 +949,31 @@ pub enum RustcBoxAttrReason {
     NotBoxNew,
     #[note(mir_build_missing_box)]
     MissingBox,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_rust_2024_incompatible_pat)]
+pub struct Rust2024IncompatiblePat {
+    #[subdiagnostic]
+    pub sugg: Rust2024IncompatiblePatSugg,
+}
+
+pub struct Rust2024IncompatiblePatSugg {
+    pub suggestion: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        let applicability =
+            if self.suggestion.iter().all(|(span, _)| span.can_be_used_for_suggestions()) {
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
+        diag.multipart_suggestion("desugar the match ergonomics", self.suggestion, applicability);
+    }
 }

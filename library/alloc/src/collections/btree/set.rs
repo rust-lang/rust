@@ -116,8 +116,8 @@ impl<T: Clone, A: Allocator + Clone> Clone for BTreeSet<T, A> {
         BTreeSet { map: self.map.clone() }
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        self.map.clone_from(&other.map);
+    fn clone_from(&mut self, source: &Self) {
+        self.map.clone_from(&source.map);
     }
 }
 

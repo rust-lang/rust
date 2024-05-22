@@ -8,7 +8,7 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan, SubdiagMessage};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
@@ -59,9 +59,9 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, msg.to_string(), |diag| {
+    cx.span_lint(lint, sp, msg.into(), |diag| {
         docs_link(diag, lint);
     });
 }
@@ -104,17 +104,16 @@ pub fn span_lint_and_help<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
     span: impl Into<MultiSpan>,
-    msg: &str,
+    msg: impl Into<DiagMessage>,
     help_span: Option<Span>,
-    help: &str,
+    help: impl Into<SubdiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, msg.to_string(), |diag| {
-        let help = help.to_string();
+    cx.span_lint(lint, span, msg.into(), |diag| {
         if let Some(help_span) = help_span {
-            diag.span_help(help_span, help);
+            diag.span_help(help_span, help.into());
         } else {
-            diag.help(help);
+            diag.help(help.into());
         }
         docs_link(diag, lint);
     });
@@ -161,17 +160,16 @@ pub fn span_lint_and_note<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
     span: impl Into<MultiSpan>,
-    msg: &str,
+    msg: impl Into<DiagMessage>,
     note_span: Option<Span>,
-    note: &str,
+    note: impl Into<SubdiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, msg.to_string(), |diag| {
-        let note = note.to_string();
+    cx.span_lint(lint, span, msg.into(), |diag| {
         if let Some(note_span) = note_span {
-            diag.span_note(note_span, note);
+            diag.span_note(note_span, note.into());
         } else {
-            diag.note(note);
+            diag.note(note.into());
         }
         docs_link(diag, lint);
     });
@@ -195,14 +193,15 @@ pub fn span_lint_and_note<T: LintContext>(
 /// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
-pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str, f: F)
+pub fn span_lint_and_then<C, S, M, F>(cx: &C, lint: &'static Lint, sp: S, msg: M, f: F)
 where
     C: LintContext,
     S: Into<MultiSpan>,
+    M: Into<DiagMessage>,
     F: FnOnce(&mut Diag<'_, ()>),
 {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, msg.to_string(), |diag| {
+    cx.span_lint(lint, sp, msg, |diag| {
         f(diag);
         docs_link(diag, lint);
     });
@@ -232,9 +231,9 @@ where
 /// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
 /// the compiler check lint level attributes at the place of the expression and
 /// the `#[allow]` will work.
-pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
+pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, msg.into(), |diag| {
         docs_link(diag, lint);
     });
 }
@@ -268,11 +267,11 @@ pub fn span_lint_hir_and_then(
     lint: &'static Lint,
     hir_id: HirId,
     sp: impl Into<MultiSpan>,
-    msg: &str,
+    msg: impl Into<DiagMessage>,
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, msg.into(), |diag| {
         f(diag);
         docs_link(diag, lint);
     });
@@ -316,13 +315,13 @@ pub fn span_lint_and_sugg<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
     sp: Span,
-    msg: &str,
-    help: &str,
+    msg: impl Into<DiagMessage>,
+    help: impl Into<SubdiagMessage>,
     sugg: String,
     applicability: Applicability,
 ) {
-    span_lint_and_then(cx, lint, sp, msg, |diag| {
-        diag.span_suggestion(sp, help.to_string(), sugg, applicability);
+    span_lint_and_then(cx, lint, sp, msg.into(), |diag| {
+        diag.span_suggestion(sp, help.into(), sugg, applicability);
     });
 }
 
@@ -332,7 +331,7 @@ pub fn span_lint_and_sugg<T: LintContext>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg<I>(diag: &mut Diag<'_, ()>, help_msg: &str, sugg: I)
+pub fn multispan_sugg<I>(diag: &mut Diag<'_, ()>, help_msg: impl Into<SubdiagMessage>, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
@@ -346,11 +345,11 @@ where
 /// Suggestions with multiple spans will be silently ignored.
 pub fn multispan_sugg_with_applicability<I>(
     diag: &mut Diag<'_, ()>,
-    help_msg: &str,
+    help_msg: impl Into<SubdiagMessage>,
     applicability: Applicability,
     sugg: I,
 ) where
     I: IntoIterator<Item = (Span, String)>,
 {
-    diag.multipart_suggestion(help_msg.to_string(), sugg.into_iter().collect(), applicability);
+    diag.multipart_suggestion(help_msg.into(), sugg.into_iter().collect(), applicability);
 }

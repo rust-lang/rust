@@ -1,6 +1,17 @@
-use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, Path, QPath, TyKind};
+use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
+use rustc_hir::{Path, QPath};
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::{Obligation, ObligationCause};
+use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
+use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::Span;
 use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};
+use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_trait_selection::traits::error_reporting::ambiguity::{
+    compute_applicable_impls_for_diagnostics, CandidateSource,
+};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -27,7 +38,7 @@ declare_lint! {
     ///
     /// Creating non-local definitions go against expectation and can create discrepancies
     /// in tooling. It should be avoided. It may become deny-by-default in edition 2024
-    /// and higher, see see the tracking issue <https://github.com/rust-lang/rust/issues/120363>.
+    /// and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>.
     ///
     /// An `impl` definition is non-local if it is nested inside an item and neither
     /// the type nor the trait are at the same nesting level as the `impl` block.
@@ -35,7 +46,7 @@ declare_lint! {
     /// All nested bodies (functions, enum discriminant, array length, consts) (expect for
     /// `const _: Ty = { ... }` in top-level module, which is still undecided) are checked.
     pub NON_LOCAL_DEFINITIONS,
-    Allow,
+    Warn,
     "checks for non-local definitions",
     report_in_external_macro
 }
@@ -66,7 +77,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             return;
         }
 
-        let parent = cx.tcx.parent(item.owner_id.def_id.into());
+        let def_id = item.owner_id.def_id.into();
+        let parent = cx.tcx.parent(def_id);
         let parent_def_kind = cx.tcx.def_kind(parent);
         let parent_opt_item_name = cx.tcx.opt_item_name(parent);
 
@@ -121,6 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     None
                 };
 
+                // Part 1: Is the Self type local?
                 let self_ty_has_local_parent = match impl_.self_ty.kind {
                     TyKind::Path(QPath::Resolved(_, ty_path)) => {
                         path_has_local_parent(ty_path, cx, parent, parent_parent)
@@ -143,6 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     | TyKind::Never
                     | TyKind::Tup(_)
                     | TyKind::Path(_)
+                    | TyKind::Pat(..)
                     | TyKind::AnonAdt(_)
                     | TyKind::OpaqueDef(_, _, _)
                     | TyKind::Typeof(_)
@@ -150,45 +164,80 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     | TyKind::Err(_) => false,
                 };
 
+                if self_ty_has_local_parent {
+                    return;
+                }
+
+                // Part 2: Is the Trait local?
                 let of_trait_has_local_parent = impl_
                     .of_trait
                     .map(|of_trait| path_has_local_parent(of_trait.path, cx, parent, parent_parent))
                     .unwrap_or(false);
 
-                // If none of them have a local parent (LOGICAL NOR) this means that
-                // this impl definition is a non-local definition and so we lint on it.
-                if !(self_ty_has_local_parent || of_trait_has_local_parent) {
-                    let const_anon = if self.body_depth == 1
-                        && parent_def_kind == DefKind::Const
-                        && parent_opt_item_name != Some(kw::Underscore)
-                        && let Some(parent) = parent.as_local()
-                        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
-                        && let ItemKind::Const(ty, _, _) = item.kind
-                        && let TyKind::Tup(&[]) = ty.kind
-                    {
-                        Some(item.ident.span)
-                    } else {
-                        None
-                    };
-
-                    cx.emit_span_lint(
-                        NON_LOCAL_DEFINITIONS,
-                        item.span,
-                        NonLocalDefinitionsDiag::Impl {
-                            depth: self.body_depth,
-                            body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
-                            body_name: parent_opt_item_name
-                                .map(|s| s.to_ident_string())
-                                .unwrap_or_else(|| "<unnameable>".to_string()),
-                            cargo_update: cargo_update(),
-                            const_anon,
-                        },
-                    )
+                if of_trait_has_local_parent {
+                    return;
                 }
+
+                // Part 3: Is the impl definition leaking outside it's defining scope?
+                //
+                // We always consider inherent impls to be leaking.
+                let impl_has_enough_non_local_candidates = cx
+                    .tcx
+                    .impl_trait_ref(def_id)
+                    .map(|binder| {
+                        impl_trait_ref_has_enough_non_local_candidates(
+                            cx.tcx,
+                            item.span,
+                            def_id,
+                            binder,
+                            |did| did_has_local_parent(did, cx.tcx, parent, parent_parent),
+                        )
+                    })
+                    .unwrap_or(false);
+
+                if impl_has_enough_non_local_candidates {
+                    return;
+                }
+
+                // Get the span of the parent const item ident (if it's a not a const anon).
+                //
+                // Used to suggest changing the const item to a const anon.
+                let span_for_const_anon_suggestion = if self.body_depth == 1
+                    && parent_def_kind == DefKind::Const
+                    && parent_opt_item_name != Some(kw::Underscore)
+                    && let Some(parent) = parent.as_local()
+                    && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
+                    && let ItemKind::Const(ty, _, _) = item.kind
+                    && let TyKind::Tup(&[]) = ty.kind
+                {
+                    Some(item.ident.span)
+                } else {
+                    None
+                };
+
+                cx.emit_span_lint(
+                    NON_LOCAL_DEFINITIONS,
+                    item.span,
+                    NonLocalDefinitionsDiag::Impl {
+                        depth: self.body_depth,
+                        body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
+                        body_name: parent_opt_item_name
+                            .map(|s| s.to_ident_string())
+                            .unwrap_or_else(|| "<unnameable>".to_string()),
+                        cargo_update: cargo_update(),
+                        const_anon: span_for_const_anon_suggestion,
+                    },
+                )
             }
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
+                // determining we if are in a doctest context can't currently be determined
+                // by the code it-self (no specific attrs), but fortunatly rustdoc sets a
+                // perma-unstable env for libtest so we just re-use that env for now
+                let is_at_toplevel_doctest =
+                    self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     item.span,
@@ -199,10 +248,97 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
+                        help: (!is_at_toplevel_doctest).then_some(()),
+                        doctest_help: is_at_toplevel_doctest.then_some(()),
+                        notes: (),
                     },
                 )
             }
             _ => {}
+        }
+    }
+}
+
+// Detecting if the impl definition is leaking outside of it's defining scope.
+//
+// Rule: for each impl, instantiate all local types with inference vars and
+// then assemble candidates for that goal, if there are more than 1 (non-private
+// impls), it does not leak.
+//
+// https://github.com/rust-lang/rust/issues/121621#issuecomment-1976826895
+fn impl_trait_ref_has_enough_non_local_candidates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infer_span: Span,
+    trait_def_id: DefId,
+    binder: EarlyBinder<TraitRef<'tcx>>,
+    mut did_has_local_parent: impl FnMut(DefId) -> bool,
+) -> bool {
+    let infcx = tcx
+        .infer_ctxt()
+        // We use the new trait solver since the obligation we are trying to
+        // prove here may overflow and those are fatal in the old trait solver.
+        // Which is unacceptable for a lint.
+        //
+        // Thanksfully the part we use here are very similar to the
+        // new-trait-solver-as-coherence, which is in stabilization.
+        //
+        // https://github.com/rust-lang/rust/issues/123573
+        .with_next_trait_solver(true)
+        .build();
+
+    let trait_ref = binder.instantiate(tcx, infcx.fresh_args_for_item(infer_span, trait_def_id));
+
+    let trait_ref = trait_ref.fold_with(&mut ReplaceLocalTypesWithInfer {
+        infcx: &infcx,
+        infer_span,
+        did_has_local_parent: &mut did_has_local_parent,
+    });
+
+    let poly_trait_obligation = Obligation::new(
+        tcx,
+        ObligationCause::dummy(),
+        ty::ParamEnv::empty(),
+        Binder::dummy(trait_ref),
+    );
+
+    let ambiguities = compute_applicable_impls_for_diagnostics(&infcx, &poly_trait_obligation);
+
+    let mut it = ambiguities.iter().filter(|ambi| match ambi {
+        CandidateSource::DefId(did) => !did_has_local_parent(*did),
+        CandidateSource::ParamEnv(_) => unreachable!(),
+    });
+
+    let _ = it.next();
+    it.next().is_some()
+}
+
+/// Replace every local type by inference variable.
+///
+/// ```text
+/// <Global<Local> as std::cmp::PartialEq<Global<Local>>>
+/// to
+/// <Global<_> as std::cmp::PartialEq<Global<_>>>
+/// ```
+struct ReplaceLocalTypesWithInfer<'a, 'tcx, F: FnMut(DefId) -> bool> {
+    infcx: &'a InferCtxt<'tcx>,
+    did_has_local_parent: F,
+    infer_span: Span,
+}
+
+impl<'a, 'tcx, F: FnMut(DefId) -> bool> TypeFolder<TyCtxt<'tcx>>
+    for ReplaceLocalTypesWithInfer<'a, 'tcx, F>
+{
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if let Some(def) = t.ty_adt_def()
+            && (self.did_has_local_parent)(def.did())
+        {
+            self.infcx.next_ty_var(self.infer_span)
+        } else {
+            t.super_fold_with(self)
         }
     }
 }
@@ -216,16 +352,35 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
 ///    std::convert::PartialEq<Foo<Bar>>
 ///    ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
+#[inline]
 fn path_has_local_parent(
     path: &Path<'_>,
     cx: &LateContext<'_>,
     impl_parent: DefId,
     impl_parent_parent: Option<DefId>,
 ) -> bool {
-    path.res.opt_def_id().is_some_and(|did| {
-        did.is_local() && {
-            let res_parent = cx.tcx.parent(did);
-            res_parent == impl_parent || Some(res_parent) == impl_parent_parent
+    path.res
+        .opt_def_id()
+        .is_some_and(|did| did_has_local_parent(did, cx.tcx, impl_parent, impl_parent_parent))
+}
+
+/// Given a def id and a parent impl def id, this checks if the parent
+/// def id (modulo modules) correspond to the def id of the parent impl definition.
+#[inline]
+fn did_has_local_parent(
+    did: DefId,
+    tcx: TyCtxt<'_>,
+    impl_parent: DefId,
+    impl_parent_parent: Option<DefId>,
+) -> bool {
+    did.is_local()
+        && if let Some(did_parent) = tcx.opt_parent(did) {
+            did_parent == impl_parent
+                || Some(did_parent) == impl_parent_parent
+                || !did_parent.is_crate_root()
+                    && tcx.def_kind(did_parent) == DefKind::Mod
+                    && did_has_local_parent(did_parent, tcx, impl_parent, impl_parent_parent)
+        } else {
+            false
         }
-    })
 }

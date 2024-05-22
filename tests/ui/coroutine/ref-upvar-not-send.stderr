@@ -1,8 +1,8 @@
 error: coroutine cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:15:17
+  --> $DIR/ref-upvar-not-send.rs:15:30
    |
-LL |       assert_send(move || {
-   |  _________________^
+LL |       assert_send(#[coroutine] move || {
+   |  ______________________________^
 LL | |
 LL | |
 LL | |         yield;
@@ -10,7 +10,7 @@ LL | |         let _x = x;
 LL | |     });
    | |_____^ coroutine is not `Send`
    |
-   = help: the trait `Sync` is not implemented for `*mut ()`, which is required by `{coroutine@$DIR/ref-upvar-not-send.rs:15:17: 15:24}: Send`
+   = help: the trait `Sync` is not implemented for `*mut ()`, which is required by `{coroutine@$DIR/ref-upvar-not-send.rs:15:30: 15:37}: Send`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
   --> $DIR/ref-upvar-not-send.rs:19:18
    |
@@ -23,10 +23,10 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
 error: coroutine cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:23:17
+  --> $DIR/ref-upvar-not-send.rs:23:30
    |
-LL |       assert_send(move || {
-   |  _________________^
+LL |       assert_send(#[coroutine] move || {
+   |  ______________________________^
 LL | |
 LL | |
 LL | |         yield;
@@ -34,7 +34,7 @@ LL | |         let _y = y;
 LL | |     });
    | |_____^ coroutine is not `Send`
    |
-   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:17: 23:24}`, the trait `Send` is not implemented for `*mut ()`, which is required by `{coroutine@$DIR/ref-upvar-not-send.rs:23:17: 23:24}: Send`
+   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}`, the trait `Send` is not implemented for `*mut ()`, which is required by `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}: Send`
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
   --> $DIR/ref-upvar-not-send.rs:27:18
    |

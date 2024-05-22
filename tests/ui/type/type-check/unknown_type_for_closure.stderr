@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/unknown_type_for_closure.rs:2:13
+  --> $DIR/unknown_type_for_closure.rs:2:14
    |
 LL |     let x = |b: Vec<_>| {};
-   |             ^^^^^^^^^^^^^^ cannot infer type for struct `Vec<_>`
+   |              ^^^^^^^^^ cannot infer type
 
 error[E0282]: type annotations needed
   --> $DIR/unknown_type_for_closure.rs:6:14

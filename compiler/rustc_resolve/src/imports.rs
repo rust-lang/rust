@@ -34,6 +34,7 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::SmallVec;
+use tracing::debug;
 
 use std::cell::Cell;
 use std::mem;
@@ -618,11 +619,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         && binding.res() != Res::Err
                         && exported_ambiguities.contains(&binding)
                     {
-                        self.lint_buffer.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint(
                             AMBIGUOUS_GLOB_REEXPORTS,
                             import.root_id,
                             import.root_span,
-                            "ambiguous glob re-exports",
                             BuiltinLintDiag::AmbiguousGlobReexports {
                                 name: key.ident.to_string(),
                                 namespace: key.ns.descr().to_string(),
@@ -654,11 +654,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             && glob_binding.vis.is_public()
                             && !binding.vis.is_public()
                         {
-                            self.lint_buffer.buffer_lint_with_diagnostic(
+                            self.lint_buffer.buffer_lint(
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                "private item shadows public glob re-export",
                                 BuiltinLintDiag::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
@@ -1014,17 +1013,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         && !max_vis.is_at_least(import_vis, self.tcx)
                     {
                         let def_id = self.local_def_id(id);
-                        let msg = format!(
-                            "glob import doesn't reexport anything with visibility `{}` because no imported item is public enough",
-                            import_vis.to_string(def_id, self.tcx)
-                        );
-                        self.lint_buffer.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint(
                             UNUSED_IMPORTS,
                             id,
                             import.span,
-                            msg,
                             BuiltinLintDiag::RedundantImportVisibility {
                                 max_vis: max_vis.to_string(def_id, self.tcx),
+                                import_vis: import_vis.to_string(def_id, self.tcx),
                                 span: import.span,
                             },
                         );
@@ -1251,16 +1246,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
             if pub_use_of_private_extern_crate_hack(import, binding) {
-                let msg = format!(
-                    "extern crate `{ident}` is private, and cannot be \
-                                   re-exported (error E0365), consider declaring with \
-                                   `pub`"
-                );
                 self.lint_buffer.buffer_lint(
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                     import_id,
                     import.span,
-                    msg,
+                    BuiltinLintDiag::PrivateExternCrateReexport(ident),
                 );
             } else {
                 if ns == TypeNS {
@@ -1391,13 +1381,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
+            /* FIXME(unused_imports): Add this back as a new lint
             self.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 id,
                 import.span,
-                format!("the item `{source}` is imported redundantly"),
                 BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
+            */
             return true;
         }
 

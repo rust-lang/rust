@@ -8,7 +8,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_debug(
+pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
@@ -53,7 +53,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
-        EnumTag(..) | StaticStruct(..) | StaticEnum(..) => {
+        EnumDiscr(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.dcx().span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
     };

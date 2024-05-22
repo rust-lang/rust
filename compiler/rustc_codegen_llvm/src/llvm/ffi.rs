@@ -200,6 +200,8 @@ pub enum AttributeKind {
     AllocAlign = 39,
     SanitizeSafeStack = 40,
     FnRetThunkExtern = 41,
+    Writable = 42,
+    DeadOnUnwind = 43,
 }
 
 /// LLVMIntPredicate
@@ -1631,6 +1633,10 @@ extern "C" {
 
     // Miscellaneous instructions
     pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustGetInstrProfMCDCParametersIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(M: &Module) -> &Value;
+    pub fn LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(M: &Module) -> &Value;
+
     pub fn LLVMRustBuildCall<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,
@@ -1801,12 +1807,21 @@ extern "C" {
     ///
     /// In order for Rust-C LTO to work, module flags must be compatible with Clang. What
     /// "compatible" means depends on the merge behaviors involved.
-    pub fn LLVMRustAddModuleFlag(
+    pub fn LLVMRustAddModuleFlagU32(
         M: &Module,
         merge_behavior: LLVMModFlagBehavior,
         name: *const c_char,
         value: u32,
     );
+
+    pub fn LLVMRustAddModuleFlagString(
+        M: &Module,
+        merge_behavior: LLVMModFlagBehavior,
+        name: *const c_char,
+        value: *const c_char,
+        value_len: size_t,
+    );
+
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
@@ -2294,6 +2309,7 @@ extern "C" {
         Members: *const &RustArchiveMember<'_>,
         WriteSymbtab: bool,
         Kind: ArchiveKind,
+        isEC: bool,
     ) -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew<'a>(
         Filename: *const c_char,

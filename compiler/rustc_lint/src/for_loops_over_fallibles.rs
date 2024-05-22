@@ -9,7 +9,8 @@ use crate::{
 use hir::{Expr, Pat};
 use rustc_hir as hir;
 use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
-use rustc_middle::ty::{self, List};
+use rustc_middle::ty;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
 
@@ -122,7 +123,7 @@ fn extract_iterator_next_call<'tcx>(
 fn suggest_question_mark<'tcx>(
     cx: &LateContext<'tcx>,
     adt: ty::AdtDef<'tcx>,
-    args: &List<ty::GenericArg<'tcx>>,
+    args: ty::GenericArgsRef<'tcx>,
     span: Span,
 ) -> bool {
     let Some(body_id) = cx.enclosing_body else { return false };
@@ -149,11 +150,8 @@ fn suggest_question_mark<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
 
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
-    let cause = ObligationCause::new(
-        span,
-        body_def_id,
-        rustc_infer::traits::ObligationCauseCode::MiscObligation,
-    );
+    let cause =
+        ObligationCause::new(span, body_def_id, rustc_infer::traits::ObligationCauseCode::Misc);
 
     ocx.register_bound(
         cause,

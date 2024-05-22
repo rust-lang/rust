@@ -1,3 +1,4 @@
+use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{sym, Symbol};
 
 #[derive(Clone, Debug, Copy, Eq, PartialEq, HashStable_Generic)]

@@ -72,8 +72,8 @@ impl Foo {
 pub struct Bar;
 
 impl Bar {
-    // Do not show non-const stabilities that are the same as the enclosing item.
-    // @matches 'foo/struct.Bar.html' '//span[@class="since"]' '^const: 1.2.0$'
+    // Show non-const stabilities that are the same as the enclosing item.
+    // @has 'foo/struct.Bar.html' '//span[@class="since"]' '1.0.0 (const: 1.2.0)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const2", since = "1.2.0")]
     pub const fn stable_impl() -> u32 { 42 }

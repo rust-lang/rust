@@ -8,7 +8,7 @@ use std::ops::Coroutine;
 fn with<F>(f: F) -> impl Coroutine<Yield=(), Return=()>
 where F: Fn() -> ()
 {
-    move || {
+    #[coroutine] move || {
         loop {
             match f() {
                 _ => yield,
@@ -19,7 +19,7 @@ where F: Fn() -> ()
 
 fn main() {
     let data = &vec![1];
-    || { //~ WARN unused coroutine that must be used
+    #[coroutine] || { //~ WARN unused coroutine that must be used
         let _to_pin = with(move || println!("{:p}", data));
         loop {
             yield

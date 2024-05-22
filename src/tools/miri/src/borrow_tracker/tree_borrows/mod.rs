@@ -34,10 +34,10 @@ impl<'tcx> Tree {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        _kind: MemoryKind<machine::MiriMemoryKind>,
+        _kind: MemoryKind,
         machine: &MiriMachine<'_, 'tcx>,
     ) -> Self {
-        let tag = state.base_ptr_tag(id, machine); // Fresh tag for the root
+        let tag = state.root_ptr_tag(id, machine); // Fresh tag for the root
         let span = machine.current_span();
         Tree::new(tag, size, span)
     }
@@ -173,7 +173,7 @@ impl<'tcx> NewPermission {
         cx: &crate::MiriInterpCx<'_, 'tcx>,
         zero_size: bool,
     ) -> Option<Self> {
-        let pointee = ty.builtin_deref(true).unwrap().ty;
+        let pointee = ty.builtin_deref(true).unwrap();
         pointee.is_unpin(*cx.tcx, cx.param_env()).then_some(()).map(|()| {
             // Regular `Unpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.

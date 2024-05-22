@@ -52,4 +52,28 @@ impl<'i> Foo<'i> for () {
     //~^ ERROR: unconstrained opaque type
 }
 
+trait Nesting<'a> {
+    type Output;
+}
+impl<'a> Nesting<'a> for &'a () {
+    type Output = &'a ();
+}
+type NestedDeeply<'a> =
+    impl Nesting< //~ [*, o]
+        'a,
+        Output = impl Nesting< //~ [*, o]
+            'a,
+            Output = impl Nesting< //~ [*, o]
+                'a,
+                Output = impl Nesting< //~ [*, o]
+                    'a,
+                    Output = impl Nesting<'a> //~ [*, o]
+                >
+            >,
+        >,
+    >;
+fn test<'a>() -> NestedDeeply<'a> {
+    &()
+}
+
 fn main() {}

@@ -22,10 +22,7 @@ use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
-use rustc_symbol_mangling::typeid::{
-    kcfi_typeid_for_fnabi, kcfi_typeid_for_instance, typeid_for_fnabi, typeid_for_instance,
-    TypeIdOptions,
-};
+use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
 
 /// Declare a function.
@@ -145,27 +142,29 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             if let Some(instance) = instance {
                 let mut typeids = FxIndexSet::default();
                 for options in [
-                    TypeIdOptions::GENERALIZE_POINTERS,
-                    TypeIdOptions::NORMALIZE_INTEGERS,
-                    TypeIdOptions::NO_SELF_TYPE_ERASURE,
+                    cfi::TypeIdOptions::GENERALIZE_POINTERS,
+                    cfi::TypeIdOptions::NORMALIZE_INTEGERS,
+                    cfi::TypeIdOptions::USE_CONCRETE_SELF,
                 ]
                 .into_iter()
                 .powerset()
-                .map(TypeIdOptions::from_iter)
+                .map(cfi::TypeIdOptions::from_iter)
                 {
-                    let typeid = typeid_for_instance(self.tcx, instance, options);
+                    let typeid = cfi::typeid_for_instance(self.tcx, instance, options);
                     if typeids.insert(typeid.clone()) {
                         self.add_type_metadata(llfn, typeid);
                     }
                 }
             } else {
-                for options in
-                    [TypeIdOptions::GENERALIZE_POINTERS, TypeIdOptions::NORMALIZE_INTEGERS]
-                        .into_iter()
-                        .powerset()
-                        .map(TypeIdOptions::from_iter)
+                for options in [
+                    cfi::TypeIdOptions::GENERALIZE_POINTERS,
+                    cfi::TypeIdOptions::NORMALIZE_INTEGERS,
+                ]
+                .into_iter()
+                .powerset()
+                .map(cfi::TypeIdOptions::from_iter)
                 {
-                    let typeid = typeid_for_fnabi(self.tcx, fn_abi, options);
+                    let typeid = cfi::typeid_for_fnabi(self.tcx, fn_abi, options);
                     self.add_type_metadata(llfn, typeid);
                 }
             }
@@ -173,19 +172,19 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         if self.tcx.sess.is_sanitizer_kcfi_enabled() {
             // LLVM KCFI does not support multiple !kcfi_type attachments
-            let mut options = TypeIdOptions::empty();
+            let mut options = kcfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+                options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
             }
             if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+                options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
             if let Some(instance) = instance {
-                let kcfi_typeid = kcfi_typeid_for_instance(self.tcx, instance, options);
+                let kcfi_typeid = kcfi::typeid_for_instance(self.tcx, instance, options);
                 self.set_kcfi_type_metadata(llfn, kcfi_typeid);
             } else {
-                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
+                let kcfi_typeid = kcfi::typeid_for_fnabi(self.tcx, fn_abi, options);
                 self.set_kcfi_type_metadata(llfn, kcfi_typeid);
             }
         }

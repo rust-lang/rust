@@ -11,7 +11,7 @@ note: the lint level is defined here
    |
 LL | #![warn(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(keyword_idents)]` implied by `#[warn(rust_2018_compatibility)]`
+   = note: `#[warn(keyword_idents_2018)]` implied by `#[warn(rust_2018_compatibility)]`
 
 warning: `try` is a keyword in the 2018 edition
   --> $DIR/try-ident.rs:12:4

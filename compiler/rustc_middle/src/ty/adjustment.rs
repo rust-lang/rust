@@ -1,7 +1,7 @@
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
 
@@ -15,7 +15,7 @@ pub enum PointerCoercion {
 
     /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
     /// It cannot convert a closure that requires unsafe.
-    ClosureFnPointer(hir::Unsafety),
+    ClosureFnPointer(hir::Safety),
 
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,

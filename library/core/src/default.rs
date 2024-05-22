@@ -178,9 +178,7 @@ default_impl! { i32, 0, "Returns the default value of `0`" }
 default_impl! { i64, 0, "Returns the default value of `0`" }
 default_impl! { i128, 0, "Returns the default value of `0`" }
 
-#[cfg(not(bootstrap))]
 default_impl! { f16, 0.0f16, "Returns the default value of `0.0`" }
 default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
 default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
-#[cfg(not(bootstrap))]
 default_impl! { f128, 0.0f128, "Returns the default value of `0.0`" }

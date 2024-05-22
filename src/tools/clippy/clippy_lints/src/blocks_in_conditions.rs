@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
         else {
             return;
         };
-        let complex_block_message = &format!(
+        let complex_block_message = format!(
             "in {desc}, avoid complex blocks or closures with blocks; \
             instead, move the block or closure higher and bind it with a `let`",
         );
@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                     let ex = &body.value;
                     if let ExprKind::Block(block, _) = ex.kind {
                         if !body.value.span.from_expansion() && !block.stmts.is_empty() {
-                            span_lint(cx, BLOCKS_IN_CONDITIONS, ex.span, complex_block_message);
+                            span_lint(cx, BLOCKS_IN_CONDITIONS, ex.span, complex_block_message.clone());
                             return ControlFlow::Continue(Descend::No);
                         }
                     }

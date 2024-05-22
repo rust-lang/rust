@@ -1,15 +1,16 @@
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
-    UintTy,
+    self, EarlyBinder, FloatTy, Instance, IntTy, ReifyReason, Ty, TyCtxt, TypeVisitable,
+    TypeVisitableExt, UintTy,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
@@ -44,7 +45,9 @@ pub(super) fn mangle<'tcx>(
     let shim_kind = match instance.def {
         ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
         ty::InstanceDef::VTableShim(_) => Some("vtable"),
-        ty::InstanceDef::ReifyShim(_) => Some("reify"),
+        ty::InstanceDef::ReifyShim(_, None) => Some("reify"),
+        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
+        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
 
         ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
         | ty::InstanceDef::CoroutineKindShim { .. } => Some("fn_once"),
@@ -316,11 +319,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Uint(UintTy::U64) => "y",
             ty::Uint(UintTy::U128) => "o",
             ty::Uint(UintTy::Usize) => "j",
-            // FIXME(f16_f128): update these once `rustc-demangle` supports the new types
-            ty::Float(FloatTy::F16) => unimplemented!("f16_f128"),
+            ty::Float(FloatTy::F16) => "C3f16",
             ty::Float(FloatTy::F32) => "f",
             ty::Float(FloatTy::F64) => "d",
-            ty::Float(FloatTy::F128) => unimplemented!("f16_f128"),
+            ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
             // Placeholders (should be demangled as `_`).
@@ -369,6 +371,25 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ty.print(self)?;
             }
 
+            ty::Pat(ty, pat) => match *pat {
+                ty::PatternKind::Range { start, end, include_end } => {
+                    let consts = [
+                        start.unwrap_or(self.tcx.consts.unit),
+                        end.unwrap_or(self.tcx.consts.unit),
+                        ty::Const::from_bool(self.tcx, include_end).into(),
+                    ];
+                    // HACK: Represent as tuple until we have something better.
+                    // HACK: constants are used in arrays, even if the types don't match.
+                    self.push("T");
+                    ty.print(self)?;
+                    for ct in consts {
+                        Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct)
+                            .print(self)?;
+                    }
+                    self.push("E");
+                }
+            },
+
             ty::Array(ty, len) => {
                 self.push("A");
                 ty.print(self)?;
@@ -403,7 +424,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::FnPtr(sig) => {
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
-                    if sig.unsafety == hir::Unsafety::Unsafe {
+                    if sig.safety == hir::Safety::Unsafe {
                         cx.push("U");
                     }
                     match sig.abi {
@@ -608,8 +629,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         let pointee_ty = ct
                             .ty()
                             .builtin_deref(true)
-                            .expect("tried to dereference on non-ptr type")
-                            .ty;
+                            .expect("tried to dereference on non-ptr type");
                         // FIXME(const_generics): add an assert that we only do this for valtrees.
                         let dereferenced_const = self.tcx.mk_ct_from_kind(ct.kind(), pointee_ty);
                         dereferenced_const.print(self)?;
@@ -810,7 +830,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 ///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
 pub(crate) fn push_integer_62(x: u64, output: &mut String) {
     if let Some(x) = x.checked_sub(1) {
-        base_n::push_str(x as u128, 62, output);
+        output.push_str(&x.to_base(62));
     }
     output.push('_');
 }

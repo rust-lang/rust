@@ -1,7 +1,7 @@
 //! Implementation of find-usages functionality.
 //!
 //! It is based on the standard ide trick: first, we run a fast text search to
-//! get a super-set of matches. Then, we we confirm each match using precise
+//! get a super-set of matches. Then, we confirm each match using precise
 //! name resolution.
 
 use std::mem;
@@ -64,7 +64,7 @@ pub struct FileReference {
     pub range: TextRange,
     /// The node of the reference in the (macro-)file
     pub name: FileReferenceNode,
-    pub category: Option<ReferenceCategory>,
+    pub category: ReferenceCategory,
 }
 
 #[derive(Debug, Clone)]
@@ -124,17 +124,16 @@ impl FileReferenceNode {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ReferenceCategory {
-    // FIXME: Add this variant and delete the `retain_adt_literal_usages` function.
-    // Create
-    Write,
-    Read,
-    Import,
-    // FIXME: Some day should be able to search in doc comments. Would probably
-    // need to switch from enum to bitflags then?
-    // DocComment
-    Test,
+bitflags::bitflags! {
+    #[derive(Copy, Clone, Default, PartialEq, Eq, Hash, Debug)]
+    pub struct ReferenceCategory: u8 {
+        // FIXME: Add this variant and delete the `retain_adt_literal_usages` function.
+        // const CREATE = 1 << 0;
+        const WRITE = 1 << 0;
+        const READ = 1 << 1;
+        const IMPORT = 1 << 2;
+        const TEST = 1 << 3;
+    }
 }
 
 /// Generally, `search_scope` returns files that might contain references for the element.
@@ -660,7 +659,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::NameRef(name_ref.clone()),
-                    category: None,
+                    category: ReferenceCategory::empty(),
                 };
                 sink(file_id, reference)
             }
@@ -676,10 +675,15 @@ impl<'a> FindUsages<'a> {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def @ Definition::Module(_))) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let category = if is_name_ref_in_import(name_ref) {
+                    ReferenceCategory::IMPORT
+                } else {
+                    ReferenceCategory::empty()
+                };
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::NameRef(name_ref.clone()),
-                    category: is_name_ref_in_import(name_ref).then_some(ReferenceCategory::Import),
+                    category,
                 };
                 sink(file_id, reference)
             }
@@ -700,7 +704,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::FormatStringEntry(token, range),
-                    category: Some(ReferenceCategory::Read),
+                    category: ReferenceCategory::READ,
                 };
                 sink(file_id, reference)
             }
@@ -719,7 +723,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::Lifetime(lifetime.clone()),
-                    category: None,
+                    category: ReferenceCategory::empty(),
                 };
                 sink(file_id, reference)
             }
@@ -817,7 +821,7 @@ impl<'a> FindUsages<'a> {
                     range,
                     name: FileReferenceNode::Name(name.clone()),
                     // FIXME: mutable patterns should have `Write` access
-                    category: Some(ReferenceCategory::Read),
+                    category: ReferenceCategory::READ,
                 };
                 sink(file_id, reference)
             }
@@ -826,7 +830,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::Name(name.clone()),
-                    category: None,
+                    category: ReferenceCategory::empty(),
                 };
                 sink(file_id, reference)
             }
@@ -851,7 +855,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::Name(name.clone()),
-                    category: None,
+                    category: ReferenceCategory::empty(),
                 };
                 sink(file_id, reference)
             }
@@ -875,38 +879,41 @@ impl ReferenceCategory {
         sema: &Semantics<'_, RootDatabase>,
         def: &Definition,
         r: &ast::NameRef,
-    ) -> Option<ReferenceCategory> {
+    ) -> ReferenceCategory {
+        let mut result = ReferenceCategory::empty();
         if is_name_ref_in_test(sema, r) {
-            return Some(ReferenceCategory::Test);
+            result |= ReferenceCategory::TEST;
         }
 
         // Only Locals and Fields have accesses for now.
         if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
-            return is_name_ref_in_import(r).then_some(ReferenceCategory::Import);
+            if is_name_ref_in_import(r) {
+                result |= ReferenceCategory::IMPORT;
+            }
+            return result;
         }
 
         let mode = r.syntax().ancestors().find_map(|node| {
-        match_ast! {
-            match node {
-                ast::BinExpr(expr) => {
-                    if matches!(expr.op_kind()?, ast::BinaryOp::Assignment { .. }) {
-                        // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
-                        // FIXME: This is not terribly accurate.
-                        if let Some(lhs) = expr.lhs() {
-                            if lhs.syntax().text_range().end() == r.syntax().text_range().end() {
-                                return Some(ReferenceCategory::Write);
+            match_ast! {
+                match node {
+                    ast::BinExpr(expr) => {
+                        if matches!(expr.op_kind()?, ast::BinaryOp::Assignment { .. }) {
+                            // If the variable or field ends on the LHS's end then it's a Write
+                            // (covers fields and locals). FIXME: This is not terribly accurate.
+                            if let Some(lhs) = expr.lhs() {
+                                if lhs.syntax().text_range().end() == r.syntax().text_range().end() {
+                                    return Some(ReferenceCategory::WRITE)
+                                }
                             }
                         }
-                    }
-                    Some(ReferenceCategory::Read)
-                },
-                _ => None
+                        Some(ReferenceCategory::READ)
+                    },
+                    _ => None,
+                }
             }
-        }
-    });
+        }).unwrap_or(ReferenceCategory::READ);
 
-        // Default Locals and Fields to read
-        mode.or(Some(ReferenceCategory::Read))
+        result | mode
     }
 }
 

@@ -38,7 +38,7 @@ declare_clippy_lint! {
     ///   }
     /// }
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub TO_STRING_TRAIT_IMPL,
     style,
     "check for direct implementations of `ToString`"

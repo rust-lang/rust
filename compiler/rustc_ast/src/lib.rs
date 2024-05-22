@@ -11,7 +11,6 @@
 #![doc(rust_logo)]
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -19,12 +18,6 @@
 #![feature(never_type)]
 #![feature(negative_impls)]
 #![feature(stmt_expr_attributes)]
-
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
 
 pub mod util {
     pub mod case;

@@ -48,6 +48,9 @@ fn main() {
         const fn fe3(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         extern "C" fn fe4(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         const async unsafe extern "C" fn fe5(); //~ ERROR functions in `extern` blocks
-        //~^ ERROR functions cannot be both `const` and `async`
+        //~| ERROR functions in `extern` blocks
+        //~| ERROR functions in `extern` blocks
+        //~| ERROR functions in `extern` blocks
+        //~| ERROR functions cannot be both `const` and `async`
     }
 }

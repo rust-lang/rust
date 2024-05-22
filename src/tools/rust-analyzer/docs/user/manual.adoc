@@ -210,7 +210,10 @@ While the sandbox can be disabled for some directories, `/usr/bin` will always b
 This prevents access to the system's C compiler, a system-wide installation of Rust, or any other libraries you might want to link to.
 Some compilers and libraries can be acquired as Flatpak SDKs, such as `org.freedesktop.Sdk.Extension.rust-stable` or `org.freedesktop.Sdk.Extension.llvm15`.
 
-If you use a Flatpak SDK for Rust, there should be no extra steps necessary.
+If you use a Flatpak SDK for Rust, it must be in your `PATH`:
+
+ * install the SDK extensions with `flatpak install org.freedesktop.Sdk.Extension.{llvm15,rust-stable}//23.08`
+ * enable SDK extensions in the editor with the environment variable `FLATPAK_ENABLE_SDK_EXT=llvm15,rust-stable` (this can be done using flatseal or `flatpak override`)
 
 If you want to use Flatpak in combination with `rustup`, the following steps might help:
 
@@ -373,7 +376,7 @@ If you're running Neovim 0.10 or later, you can enable inlay hints via `on_attac
 ----
 lspconfig.rust_analyzer.setup({
     on_attach = function(client, bufnr)
-        vim.lsp.inlay_hint.enable(bufnr)
+        vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
     end
 })
 ----
@@ -783,8 +786,6 @@ There are three ways to feed `rust-project.json` to rust-analyzer:
 * Specify `"rust-analyzer.linkedProjects": [ { "roots": [...], "crates": [...] }]` inline.
 
 Relative paths are interpreted relative to `rust-project.json` file location or (for inline JSON) relative to `rootUri`.
-
-See https://github.com/rust-analyzer/rust-project.json-example for a small example.
 
 You can set the `RA_LOG` environment variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 

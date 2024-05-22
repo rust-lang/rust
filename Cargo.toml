@@ -31,7 +31,6 @@ members = [
   "src/tools/miri/cargo-miri",
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
-  "src/tools/expand-yaml-anchors",
   "src/tools/jsondocck",
   "src/tools/jsondoclint",
   "src/tools/llvm-bitcode-linker",
@@ -96,6 +95,7 @@ adler.debug = 0
 gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
+rustc-demangle.debug = 0
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.
@@ -111,6 +111,3 @@ strip = true
 rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
-
-[patch."https://github.com/rust-lang/rust-clippy"]
-clippy_lints = { path = "src/tools/clippy/clippy_lints" }

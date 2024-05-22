@@ -16,6 +16,10 @@ help: you can `clone` the value and consume it, but this might not be your desir
    |
 LL |         <Vec<String> as Clone>::clone(&y).into_iter();
    |         +++++++++++++++++++++++++++++++ +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         y.clone().into_iter();
+   |          ++++++++
 
 error: aborting due to 1 previous error
 

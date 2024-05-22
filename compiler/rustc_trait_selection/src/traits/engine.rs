@@ -7,6 +7,7 @@ use crate::regions::InferCtxtRegionExt;
 use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::NormalizeExt;
+use crate::traits::StructurallyNormalizeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -15,15 +16,17 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::RegionResolutionError;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::{
     FulfillmentError, Obligation, ObligationCause, PredicateObligation, TraitEngineExt as _,
 };
+use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::Upcast;
 use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -93,7 +96,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             cause,
             recursion_depth: 0,
             param_env,
-            predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
+            predicate: trait_ref.upcast(tcx),
         });
     }
 
@@ -114,6 +117,17 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         value: T,
     ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
         self.infcx.at(cause, param_env).deeply_normalize(value, &mut **self.engine.borrow_mut())
+    }
+
+    pub fn structurally_normalize(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: Ty<'tcx>,
+    ) -> Result<Ty<'tcx>, Vec<FulfillmentError<'tcx>>> {
+        self.infcx
+            .at(cause, param_env)
+            .structurally_normalize(value, &mut **self.engine.borrow_mut())
     }
 
     pub fn eq<T: ToTrace<'tcx>>(
@@ -181,6 +195,18 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.engine.borrow_mut().select_all_or_error(self.infcx)
     }
 
+    /// Returns the not-yet-processed and stalled obligations from the
+    /// `ObligationCtxt`.
+    ///
+    /// Takes ownership of the context as doing operations such as
+    /// [`ObligationCtxt::eq`] afterwards will result in other obligations
+    /// getting ignored. You can make a new `ObligationCtxt` if this
+    /// needs to be done in a loop, for example.
+    #[must_use]
+    pub fn into_pending_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+        self.engine.borrow().pending_obligations()
+    }
+
     /// Resolves regions and reports errors.
     ///
     /// Takes ownership of the context as doing trait solving afterwards
@@ -196,6 +222,18 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         } else {
             Err(self.infcx.err_ctxt().report_region_errors(generic_param_scope, &errors))
         }
+    }
+
+    /// Resolves regions and reports errors.
+    ///
+    /// Takes ownership of the context as doing trait solving afterwards
+    /// will result in region constraints getting ignored.
+    #[must_use]
+    pub fn resolve_regions(
+        self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) -> Vec<RegionResolutionError<'tcx>> {
+        self.infcx.resolve_regions(outlives_env)
     }
 
     pub fn assumed_wf_types_and_report_errors(

@@ -1,12 +1,13 @@
 // All stability badges should have rounded corners and colored backgrounds.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
 define-function: (
     "check-badge",
     [theme, background, color],
     block {
-        set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
         go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        call-function: ("switch-theme", {"theme": |theme|})
         assert: ".docblock .stab"
         assert: ".item-table .stab"
         assert-css: (".stab", {

@@ -640,10 +640,10 @@ LL | /// or even to add a number `n` to 42 (`add(42, n)\`)!
    |                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:108:1
+  --> $DIR/unescaped_backticks.rs:108:9
    |
 LL | #[doc = "`"]
-   | ^^^^^^^^^^^^
+   |         ^^^
    |
    = help: the opening or closing backtick of an inline code may be missing
    = help: if you meant to use a literal backtick, escape it
@@ -651,10 +651,10 @@ LL | #[doc = "`"]
            to this: \`
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:115:1
+  --> $DIR/unescaped_backticks.rs:115:9
    |
 LL | #[doc = concat!("\\", "`")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^
    |
    = help: the opening backtick of an inline code may be missing
             change: \`
@@ -664,10 +664,10 @@ LL | #[doc = concat!("\\", "`")]
            to this: \\`
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:119:1
+  --> $DIR/unescaped_backticks.rs:119:9
    |
 LL | #[doc = "Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`."]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the opening backtick of a previous inline code may be missing
             change: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
@@ -677,10 +677,10 @@ LL | #[doc = "Addition is commutative, which means that add(a, b)` is the same a
            to this: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)\`.
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:123:1
+  --> $DIR/unescaped_backticks.rs:123:9
    |
 LL | #[doc = "Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`."]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: a previous inline code might be longer than expected
             change: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
@@ -690,10 +690,10 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b) is the same a
            to this: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)\`.
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:127:1
+  --> $DIR/unescaped_backticks.rs:127:9
    |
 LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`."]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the opening backtick of an inline code may be missing
             change: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
@@ -703,10 +703,10 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same 
            to this: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)\`.
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:131:1
+  --> $DIR/unescaped_backticks.rs:131:9
    |
 LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)."]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the closing backtick of an inline code may be missing
             change: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).

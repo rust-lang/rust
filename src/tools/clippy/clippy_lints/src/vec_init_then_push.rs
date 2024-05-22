@@ -6,9 +6,7 @@ use clippy_utils::{get_parent_expr, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    BindingAnnotation, Block, Expr, ExprKind, HirId, LetStmt, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp,
-};
+use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
@@ -159,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if let Some(init_expr) = local.init
-            && let PatKind::Binding(BindingAnnotation::MUT, id, name, None) = local.pat.kind
+            && let PatKind::Binding(BindingMode::MUT, id, name, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)
             && let Some(init) = get_vec_init_kind(cx, init_expr)
             && !matches!(init, VecInitKind::WithExprCapacity(_))

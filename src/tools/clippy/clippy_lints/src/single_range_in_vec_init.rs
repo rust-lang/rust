@@ -122,7 +122,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     cx,
                     SINGLE_RANGE_IN_VEC_INIT,
                     span,
-                    &format!("{suggested_type} of `Range` that is only one element"),
+                    format!("{suggested_type} of `Range` that is only one element"),
                     |diag| {
                         if should_emit_every_value {
                             diag.span_suggestion(

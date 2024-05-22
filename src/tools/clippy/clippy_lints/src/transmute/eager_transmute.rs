@@ -87,7 +87,7 @@ pub(super) fn check<'tcx>(
         && is_normalizable(cx, cx.param_env, from_ty)
         && is_normalizable(cx, cx.param_env, to_ty)
         // we only want to lint if the target type has a niche that is larger than the one of the source type
-        // e.g. `u8` to `NonZeroU8` should lint, but `NonZeroU8` to `u8` should not
+        // e.g. `u8` to `NonZero<u8>` should lint, but `NonZero<u8>` to `u8` should not
         && let Ok(from_layout) = cx.tcx.layout_of(cx.param_env.and(from_ty))
         && let Ok(to_layout) = cx.tcx.layout_of(cx.param_env.and(to_ty))
         && match (from_layout.largest_niche, to_layout.largest_niche) {

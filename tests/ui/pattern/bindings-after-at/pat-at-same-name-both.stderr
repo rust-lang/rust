@@ -70,13 +70,19 @@ error[E0384]: cannot assign twice to immutable variable `a`
   --> $DIR/pat-at-same-name-both.rs:13:15
    |
 LL |         Ok(a @ b @ a)
-   |                    -
-   |                    |
-   |                    first assignment to `a`
-   |                    help: consider making this binding mutable: `mut a`
+   |                    - first assignment to `a`
 LL |
 LL |         | Err(a @ b @ a)
    |               ^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |         Ok(a @ b @ mut a)
+   |                    ~~~~~
+help: to modify the original value, take a borrow instead
+   |
+LL |         Ok(a @ b @ ref mut a)
+   |                    ~~~~~~~~~
 
 error: aborting due to 12 previous errors
 

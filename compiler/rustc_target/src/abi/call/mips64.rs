@@ -26,8 +26,8 @@ where
 {
     match ret.layout.field(cx, i).abi {
         abi::Abi::Scalar(scalar) => match scalar.primitive() {
-            abi::F32 => Some(Reg::f32()),
-            abi::F64 => Some(Reg::f64()),
+            abi::Float(abi::F32) => Some(Reg::f32()),
+            abi::Float(abi::F64) => Some(Reg::f64()),
             _ => None,
         },
         _ => None,
@@ -68,7 +68,7 @@ where
         }
 
         // Cast to a uniform int structure
-        ret.cast_to(Uniform { unit: Reg::i64(), total: size });
+        ret.cast_to(Uniform::new(Reg::i64(), size));
     } else {
         ret.make_indirect();
     }
@@ -110,7 +110,7 @@ where
 
                 // We only care about aligned doubles
                 if let abi::Abi::Scalar(scalar) = field.abi {
-                    if let abi::F64 = scalar.primitive() {
+                    if scalar.primitive() == abi::Float(abi::F64) {
                         if offset.is_aligned(dl.f64_align.abi) {
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_aligned(dl.f64_align.abi));
@@ -139,7 +139,7 @@ where
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
     arg.cast_to(CastTarget {
         prefix,
-        rest: Uniform { unit: Reg::i64(), total: rest_size },
+        rest: Uniform::new(Reg::i64(), rest_size),
         attrs: ArgAttributes {
             regular: ArgAttribute::default(),
             arg_ext: ArgExtension::None,

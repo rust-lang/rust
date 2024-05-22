@@ -1,7 +1,7 @@
-use crate::rustc_middle::ty::util::IntTypeExt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
+use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};

@@ -98,7 +98,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
                         cx,
                         DISALLOWED_SCRIPT_IDENTS,
                         span,
-                        &format!(
+                        format!(
                             "identifier `{symbol_str}` has a Unicode script that is not allowed by configuration: {}",
                             script.full_name()
                         ),

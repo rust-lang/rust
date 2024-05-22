@@ -268,6 +268,53 @@ mod prim_bool {}
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
+/// # Never type fallback
+///
+/// When the compiler sees a value of type `!` in a [coercion site], it implicitly inserts a
+/// coercion to allow the type checker to infer any type:
+///
+/// ```rust,ignore (illustrative-and-has-placeholders)
+/// // this
+/// let x: u8 = panic!();
+///
+/// // is (essentially) turned by the compiler into
+/// let x: u8 = absurd(panic!());
+///
+/// // where absurd is a function with the following signature
+/// // (it's sound, because `!` always marks unreachable code):
+/// fn absurd<T>(_: !) -> T { ... }
+// FIXME: use `core::convert::absurd` here instead, once it's merged
+/// ```
+///
+/// This can lead to compilation errors if the type cannot be inferred:
+///
+/// ```compile_fail
+/// // this
+/// { panic!() };
+///
+/// // gets turned into this
+/// { absurd(panic!()) }; // error: can't infer the type of `absurd`
+/// ```
+///
+/// To prevent such errors, the compiler remembers where it inserted `absurd` calls, and
+/// if it can't infer the type, it uses the fallback type instead:
+/// ```rust, ignore
+/// type Fallback = /* An arbitrarily selected type! */;
+/// { absurd::<Fallback>(panic!()) }
+/// ```
+///
+/// This is what is known as "never type fallback".
+///
+/// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously
+/// coerced to `()`, even when it would not infer `()` without the fallback. There are plans to
+/// change it in the [2024 edition] (and possibly in all editions on a later date); see
+/// [Tracking Issue for making `!` fall back to `!`][fallback-ti].
+///
+/// [coercion site]: <https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites>
+/// [`()`]: prim@unit
+/// [fallback-ti]: <https://github.com/rust-lang/rust/issues/123748>
+/// [2024 edition]: <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/index.html>
+///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
 
@@ -537,7 +584,11 @@ impl () {}
 /// ## 4. Get it from C.
 ///
 /// ```
-/// # #![feature(rustc_private)]
+/// # mod libc {
+/// # pub unsafe fn malloc(_size: usize) -> *mut core::ffi::c_void { core::ptr::NonNull::dangling().as_ptr() }
+/// # pub unsafe fn free(_ptr: *mut core::ffi::c_void) {}
+/// # }
+/// # #[cfg(any())]
 /// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
@@ -548,7 +599,7 @@ impl () {}
 ///     if my_num.is_null() {
 ///         panic!("failed to allocate memory");
 ///     }
-///     libc::free(my_num as *mut libc::c_void);
+///     libc::free(my_num as *mut core::ffi::c_void);
 /// }
 /// ```
 ///
@@ -1074,7 +1125,28 @@ mod prim_tuple {}
 #[doc(hidden)]
 impl<T> (T,) {}
 
+#[rustc_doc_primitive = "f16"]
+#[doc(alias = "half")]
+/// A 16-bit floating point type (specifically, the "binary16" type defined in IEEE 754-2008).
+///
+/// This type is very similar to [`prim@f32`] but has decreased precision because it uses half as many
+/// bits. Please see [the documentation for [`prim@f32`] or [Wikipedia on
+/// half-precision values][wikipedia] for more information.
+///
+/// Note that most common platforms will not support `f16` in hardware without enabling extra target
+/// features, with the notable exception of Apple Silicon (also known as M1, M2, etc.) processors.
+/// Hardware support on x86-64 requires the avx512fp16 feature, while RISC-V requires Zhf.
+/// Usually the fallback implementation will be to use `f32` hardware if it exists, and convert
+/// between `f16` and `f32` when performing math.
+///
+/// *[See also the `std::f16::consts` module](crate::f16::consts).*
+///
+/// [wikipedia]: https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+#[unstable(feature = "f16", issue = "116909")]
+mod prim_f16 {}
+
 #[rustc_doc_primitive = "f32"]
+#[doc(alias = "single")]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
@@ -1143,6 +1215,7 @@ impl<T> (T,) {}
 mod prim_f32 {}
 
 #[rustc_doc_primitive = "f64"]
+#[doc(alias = "double")]
 /// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`f32`], but has increased
@@ -1156,6 +1229,26 @@ mod prim_f32 {}
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
+
+#[rustc_doc_primitive = "f128"]
+#[doc(alias = "quad")]
+/// A 128-bit floating point type (specifically, the "binary128" type defined in IEEE 754-2008).
+///
+/// This type is very similar to [`prim@f32`] and [`prim@f64`], but has increased precision by using twice
+/// as many bits as `f64`. Please see [the documentation for [`prim@f32`] or [Wikipedia on
+/// quad-precision values][wikipedia] for more information.
+///
+/// Note that no platforms have hardware support for `f128` without enabling target specific features,
+/// as for all instruction set architectures `f128` is considered an optional feature.
+/// Only Power ISA ("PowerPC") and RISCV specify it, and only certain microarchitectures
+/// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
+/// so it will always be a software implementation significantly slower than `f64`.
+///
+/// *[See also the `std::f128::consts` module](crate::f128::consts).*
+///
+/// [wikipedia]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format
+#[unstable(feature = "f128", issue = "116909")]
+mod prim_f128 {}
 
 #[rustc_doc_primitive = "i8"]
 //
@@ -1374,8 +1467,9 @@ mod prim_usize {}
 /// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, when such values cross an API
 /// boundary, the following invariants must generally be upheld:
 ///
+/// * `t` is non-null
 /// * `t` is aligned to `align_of_val(t)`
-/// * `t` is dereferenceable for `size_of_val(t)` many bytes
+/// * if `size_of_val(t) > 0`, then `t` is dereferenceable for `size_of_val(t)` many bytes
 ///
 /// If `t` points at address `a`, being "dereferenceable" for N bytes means that the memory range
 /// `[a, a + N)` is all contained within a single [allocated object].

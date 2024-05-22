@@ -4,7 +4,7 @@
 // deallocated.
 // In Miri we explicitly store previously-assigned AllocIds for each const and ensure
 // that we only hand out a finite number of AllocIds per const.
-// MIR inlining will put every evaluation of the const we're repeatedly evaluting into the same
+// MIR inlining will put every evaluation of the const we're repeatedly evaluating into the same
 // stack frame, breaking this test.
 //@compile-flags: -Zinline-mir=no
 #![feature(strict_provenance)]

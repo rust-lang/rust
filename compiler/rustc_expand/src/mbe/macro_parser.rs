@@ -75,10 +75,9 @@ pub(crate) use ParseResult::*;
 
 use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
 
-use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
+use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{ParseNtResult, Parser};
@@ -266,7 +265,7 @@ struct MatcherPos {
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(MatcherPos, 16);
 
 impl MatcherPos {
@@ -392,7 +391,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 #[derive(Debug, Clone)]
 pub(crate) enum NamedMatch {
     MatchedSeq(Vec<NamedMatch>),
-    MatchedSingle(ParseNtResult<Lrc<(Nonterminal, Span)>>),
+    MatchedSingle(ParseNtResult),
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
@@ -542,6 +541,8 @@ impl TtParser {
                         // The separator matches the current token. Advance past it.
                         mp.idx += 1;
                         self.next_mps.push(mp);
+                    } else {
+                        track.set_expected_token(separator);
                     }
                 }
                 &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
@@ -633,6 +634,7 @@ impl TtParser {
                 parser.approx_token_stream_pos(),
                 track,
             );
+
             if let Some(res) = res {
                 return res;
             }
@@ -686,11 +688,7 @@ impl TtParser {
                             }
                             Ok(nt) => nt,
                         };
-                        mp.push_match(
-                            next_metavar,
-                            seq_depth,
-                            MatchedSingle(nt.map_nt(|nt| (Lrc::new((nt, span))))),
-                        );
+                        mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
                         mp.idx += 1;
                     } else {
                         unreachable!()

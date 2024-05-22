@@ -1,5 +1,6 @@
 //@ revisions: base
 
+//@ unused-revision-names: g2p
 //@[g2p]compile-flags: -Z two-phase-beyond-autoref
 // the above revision is disabled until two-phase-beyond-autoref support is better
 

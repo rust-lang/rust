@@ -29,7 +29,7 @@ declare_clippy_lint! {
     ///     F: Sized + std::fmt::Debug,
     /// {}
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub MULTIPLE_BOUND_LOCATIONS,
     suspicious,
     "defining generic bounds in multiple locations"

@@ -34,20 +34,20 @@ pub fn replace_ref_str<'a>(r: &mut &'a str, v: &'a str) -> &'a str {
 
 #[no_mangle]
 // CHECK-LABEL: @replace_short_array_3(
+// CHECK-SAME: ptr{{.+}}sret{{.+}}%[[RET:.+]], ptr{{.+}}%r, ptr{{.+}}%v
 pub fn replace_short_array_3(r: &mut [u32; 3], v: [u32; 3]) -> [u32; 3] {
     // CHECK-NOT: alloca
-    // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %result, ptr align 4 %r, i64 12, i1 false)
+    // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %[[RET]], ptr align 4 %r, i64 12, i1 false)
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %r, ptr align 4 %v, i64 12, i1 false)
     std::mem::replace(r, v)
 }
 
 #[no_mangle]
 // CHECK-LABEL: @replace_short_array_4(
+// CHECK-SAME: ptr{{.+}}sret{{.+}}%[[RET:.+]], ptr{{.+}}%r, ptr{{.+}}%v
 pub fn replace_short_array_4(r: &mut [u32; 4], v: [u32; 4]) -> [u32; 4] {
     // CHECK-NOT: alloca
-    // CHECK: %[[R:.+]] = load <4 x i32>, ptr %r, align 4
-    // CHECK: store <4 x i32> %[[R]], ptr %result
-    // CHECK: %[[V:.+]] = load <4 x i32>, ptr %v, align 4
-    // CHECK: store <4 x i32> %[[V]], ptr %r
+    // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %[[RET]], ptr align 4 %r, i64 16, i1 false)
+    // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %r, ptr align 4 %v, i64 16, i1 false)
     std::mem::replace(r, v)
 }

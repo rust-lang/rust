@@ -67,6 +67,10 @@ impl<T> EraseType for &'_ ty::List<T> {
     type Result = [u8; size_of::<&'static ty::List<()>>()];
 }
 
+impl<T> EraseType for &'_ ty::ListWithCachedTypeInfo<T> {
+    type Result = [u8; size_of::<&'static ty::ListWithCachedTypeInfo<()>>()];
+}
+
 impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
     type Result = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
 }

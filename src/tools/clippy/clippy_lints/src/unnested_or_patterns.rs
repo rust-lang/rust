@@ -137,12 +137,12 @@ fn insert_necessary_parens(pat: &mut P<Pat>) {
     struct Visitor;
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut P<Pat>) {
-            use ast::BindingAnnotation;
+            use ast::BindingMode;
             noop_visit_pat(pat, self);
             let target = match &mut pat.kind {
                 // `i @ a | b`, `box a | b`, and `& mut? a | b`.
                 Ident(.., Some(p)) | Box(p) | Ref(p, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
-                Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingAnnotation::MUT, ..)) => p, // `&(mut x)`
+                Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingMode::MUT, ..)) => p, // `&(mut x)`
                 _ => return,
             };
             target.kind = Paren(P(take_pat(target)));
@@ -215,7 +215,7 @@ macro_rules! always_pat {
 /// in `alternatives[focus_idx + 1..]`.
 fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: usize) -> bool {
     // Extract the kind; we'll need to make some changes in it.
-    let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, PatKind::Wild);
+    let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, Wild);
     // We'll focus on `alternatives[focus_idx]`,
     // so we're draining from `alternatives[focus_idx + 1..]`.
     let start = focus_idx + 1;
@@ -232,7 +232,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
         // In the case of only two patterns, replacement adds net characters.
         | Ref(_, Mutability::Not)
         // Dealt with elsewhere.
-        | Or(_) | Paren(_) => false,
+        | Or(_) | Paren(_) | Deref(_) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
         //
         // The cases below until `Slice(...)` deal with *singleton* products.
@@ -242,8 +242,6 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
             |k| matches!(k, Box(_)),
             |k| always_pat!(k, Box(p) => p),
         ),
-        // FIXME(deref_patterns): Should we merge patterns here?
-        Deref(_) => false,
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
         Ref(target, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,

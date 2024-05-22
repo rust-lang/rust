@@ -314,7 +314,7 @@ const DEFAULT_DEPRECATION_REASON: &str = "default deprecation note";
 /// # Panics
 ///
 /// If a file path could not read from or written to
-pub fn deprecate(name: &str, reason: Option<&String>) {
+pub fn deprecate(name: &str, reason: Option<&str>) {
     fn finish(
         (lints, mut deprecated_lints, renamed_lints): (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>),
         name: &str,
@@ -335,7 +335,7 @@ pub fn deprecate(name: &str, reason: Option<&String>) {
         println!("note: you must run `cargo uitest` to update the test results");
     }
 
-    let reason = reason.map_or(DEFAULT_DEPRECATION_REASON, String::as_str);
+    let reason = reason.unwrap_or(DEFAULT_DEPRECATION_REASON);
     let name_lower = name.to_lowercase();
     let name_upper = name.to_uppercase();
 
@@ -992,7 +992,7 @@ fn replace_region_in_text<'a>(
 }
 
 fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
-    match fs::OpenOptions::new().create_new(true).write(true).open(new_name) {
+    match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
         Err(e) => panic_file(e, new_name, "create"),
@@ -1016,7 +1016,7 @@ fn panic_file(error: io::Error, name: &Path, action: &str) -> ! {
 }
 
 fn rewrite_file(path: &Path, f: impl FnOnce(&str) -> Option<String>) {
-    let mut file = fs::OpenOptions::new()
+    let mut file = OpenOptions::new()
         .write(true)
         .read(true)
         .open(path)

@@ -1,7 +1,6 @@
 //@ compile-flags: -O -C no-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(dyn_star)]
-#![feature(generic_nonzero)]
 #![feature(allocator_api)]
 
 use std::mem::MaybeUninit;
@@ -198,7 +197,7 @@ pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
   x
 }
 
-// CHECK: @struct_return(ptr noalias nocapture noundef sret([32 x i8]) align 4 dereferenceable(32){{( %_0)?}})
+// CHECK: @struct_return(ptr{{( dead_on_unwind)?}} noalias nocapture noundef{{( writable)?}} sret([32 x i8]) align 4 dereferenceable(32){{( %_0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
   S {

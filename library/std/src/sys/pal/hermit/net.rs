@@ -80,10 +80,7 @@ impl Socket {
         let mut pollfd = netc::pollfd { fd: self.as_raw_fd(), events: netc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::const_io_error!(
-                io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
-            ));
+            return Err(io::Error::ZERO_TIMEOUT);
         }
 
         let start = Instant::now();
@@ -178,23 +175,12 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let mut size: isize = 0;
-
-        for i in bufs.iter_mut() {
-            let ret: isize =
-                cvt(unsafe { netc::read(self.0.as_raw_fd(), i.as_mut_ptr(), i.len()) })?;
-
-            if ret != 0 {
-                size += ret;
-            }
-        }
-
-        Ok(size.try_into().unwrap())
+        crate::io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        true
+        false
     }
 
     fn recv_from_with_flags(&self, buf: &mut [u8], flags: i32) -> io::Result<(usize, SocketAddr)> {
@@ -228,27 +214,18 @@ impl Socket {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let mut size: isize = 0;
-
-        for i in bufs.iter() {
-            size += cvt(unsafe { netc::write(self.0.as_raw_fd(), i.as_ptr(), i.len()) })?;
-        }
-
-        Ok(size.try_into().unwrap())
+        crate::io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        true
+        false
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: i32) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
-                    return Err(io::const_io_error!(
-                        io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
-                    ));
+                    return Err(io::Error::ZERO_TIMEOUT);
                 }
 
                 let secs = if dur.as_secs() > netc::time_t::MAX as u64 {

@@ -1,4 +1,4 @@
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 // `foo` attempts to dereference `""`, which results in an error being reported. Later, the
 // coroutine transform for `foo` then produces a union which contains a `str` type - unions should
@@ -9,7 +9,8 @@
 // makes sure that doesn't happen again.
 
 fn foo() {
-    let _y = static || {
+    let _y = #[coroutine]
+    static || {
         let x = &mut 0;
         *{
             yield;

@@ -1,13 +1,14 @@
 //! Read Rust code on stdin, print syntax tree on stdout.
+use ide::Edition;
 use syntax::{AstNode, SourceFile};
 
 use crate::cli::{flags, read_stdin};
 
 impl flags::Parse {
     pub fn run(self) -> anyhow::Result<()> {
-        let _p = tracing::span!(tracing::Level::INFO, "parsing").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "flags::Parse::run").entered();
         let text = read_stdin()?;
-        let file = SourceFile::parse(&text).tree();
+        let file = SourceFile::parse(&text, Edition::CURRENT).tree();
         if !self.no_dump {
             println!("{:#?}", file.syntax());
         }

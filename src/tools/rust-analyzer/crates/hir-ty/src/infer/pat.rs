@@ -2,21 +2,22 @@
 
 use std::iter::repeat_with;
 
-use chalk_ir::Mutability;
 use hir_def::{
     body::Body,
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId},
     path::Path,
 };
 use hir_expand::name::Name;
+use stdx::TupleExt;
 
 use crate::{
     consteval::{try_const_usize, usize_const},
+    error_lifetime,
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, InferenceDiagnostic, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt,
-    TyKind,
+    static_lifetime, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
+    TyBuilder, TyExt, TyKind,
 };
 
 /// Used to generalize patterns and assignee expressions.
@@ -89,9 +90,6 @@ impl InferenceContext<'_> {
 
         self.unify(&ty, expected);
 
-        let substs =
-            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(Interner));
-
         match def {
             _ if subs.is_empty() => {}
             Some(def) => {
@@ -108,8 +106,10 @@ impl InferenceContext<'_> {
                 let pre_iter = pre.iter().enumerate();
                 let post_iter = (post_idx_offset..).zip(post.iter());
 
+                let substs = ty.as_adt().map(TupleExt::tail);
+
                 for (i, &subpat) in pre_iter.chain(post_iter) {
-                    let field_def = {
+                    let expected_ty = {
                         match variant_data.field(&Name::new_tuple_field(i)) {
                             Some(local_id) => {
                                 if !visibilities[local_id]
@@ -117,16 +117,16 @@ impl InferenceContext<'_> {
                                 {
                                     // FIXME(DIAGNOSE): private tuple field
                                 }
-                                Some(local_id)
+                                let f = field_types[local_id].clone();
+                                let expected_ty = match substs {
+                                    Some(substs) => f.substitute(Interner, substs),
+                                    None => f.substitute(Interner, &Substitution::empty(Interner)),
+                                };
+                                self.normalize_associated_types_in(expected_ty)
                             }
-                            None => None,
+                            None => self.err_ty(),
                         }
                     };
-
-                    let expected_ty = field_def.map_or(self.err_ty(), |f| {
-                        field_types[f].clone().substitute(Interner, &substs)
-                    });
-                    let expected_ty = self.normalize_associated_types_in(expected_ty);
 
                     T::infer(self, subpat, &expected_ty, default_bm);
                 }
@@ -149,7 +149,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: T::BindingMode,
         id: T,
-        subs: impl Iterator<Item = (Name, T)> + ExactSizeIterator,
+        subs: impl ExactSizeIterator<Item = (Name, T)>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path, false);
         if let Some(variant) = def {
@@ -158,9 +158,6 @@ impl InferenceContext<'_> {
 
         self.unify(&ty, expected);
 
-        let substs =
-            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(Interner));
-
         match def {
             _ if subs.len() == 0 => {}
             Some(def) => {
@@ -168,8 +165,10 @@ impl InferenceContext<'_> {
                 let variant_data = def.variant_data(self.db.upcast());
                 let visibilities = self.db.field_visibilities(def);
 
+                let substs = ty.as_adt().map(TupleExt::tail);
+
                 for (name, inner) in subs {
-                    let field_def = {
+                    let expected_ty = {
                         match variant_data.field(&name) {
                             Some(local_id) => {
                                 if !visibilities[local_id]
@@ -178,24 +177,26 @@ impl InferenceContext<'_> {
                                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                         field: inner.into(),
                                         private: true,
+                                        variant: def,
                                     });
                                 }
-                                Some(local_id)
+                                let f = field_types[local_id].clone();
+                                let expected_ty = match substs {
+                                    Some(substs) => f.substitute(Interner, substs),
+                                    None => f.substitute(Interner, &Substitution::empty(Interner)),
+                                };
+                                self.normalize_associated_types_in(expected_ty)
                             }
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                     field: inner.into(),
                                     private: false,
+                                    variant: def,
                                 });
-                                None
+                                self.err_ty()
                             }
                         }
                     };
-
-                    let expected_ty = field_def.map_or(self.err_ty(), |f| {
-                        field_types[f].clone().substitute(Interner, &substs)
-                    });
-                    let expected_ty = self.normalize_associated_types_in(expected_ty);
 
                     T::infer(self, inner, &expected_ty, default_bm);
                 }
@@ -396,14 +397,14 @@ impl InferenceContext<'_> {
             None => {
                 let inner_ty = self.table.new_type_var();
                 let ref_ty =
-                    TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner);
+                    TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner);
                 // Unification failure will be reported by the caller.
                 self.unify(&ref_ty, expected);
                 inner_ty
             }
         };
         let subty = self.infer_pat(inner_pat, &expectation, default_bm);
-        TyKind::Ref(mutability, static_lifetime(), subty).intern(Interner)
+        TyKind::Ref(mutability, error_lifetime(), subty).intern(Interner)
     }
 
     fn infer_bind_pat(
@@ -430,7 +431,7 @@ impl InferenceContext<'_> {
 
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
-                TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner)
+                TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner)
             }
             BindingMode::Move => inner_ty.clone(),
         };

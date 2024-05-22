@@ -1,0 +1,32 @@
+- // MIR for `match_u8_i16` before MatchBranchSimplification
++ // MIR for `match_u8_i16` after MatchBranchSimplification
+  
+  fn match_u8_i16(_1: EnumAu8) -> i16 {
+      debug i => _1;
+      let mut _0: i16;
+      let mut _2: u8;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [1: bb3, 2: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = const 2_i16;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = const 1_i16;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
+      }
+  }
+  

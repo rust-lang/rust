@@ -17,13 +17,7 @@ help: you might be missing a type parameter
 LL | pub struct Opcode2<S>(&'a S);
    |                   +++
 
-error: could not evaluate constant pattern
-  --> $DIR/ice-type-mismatch-when-copying-112824.rs:15:9
-   |
-LL |         Opcode2::OP2 => unimplemented!(),
-   |         ^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0261, E0412.
 For more information about an error, try `rustc --explain E0261`.

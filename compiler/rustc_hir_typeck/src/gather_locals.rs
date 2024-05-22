@@ -1,13 +1,12 @@
 use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::PatKind;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_hir::{HirId, PatKind};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::UserType;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
-use rustc_trait_selection::traits;
 
 /// Provides context for checking patterns in declarations. More specifically this
 /// allows us to infer array types if the pattern is irrefutable and allows us to infer
@@ -33,7 +32,7 @@ impl<'a> DeclOrigin<'a> {
 ///
 /// It must have a hir_id, as this is how we connect gather_locals to the check functions.
 pub(super) struct Declaration<'a> {
-    pub hir_id: hir::HirId,
+    pub hir_id: HirId,
     pub pat: &'a hir::Pat<'a>,
     pub ty: Option<&'a hir::Ty<'a>>,
     pub span: Span,
@@ -48,9 +47,9 @@ impl<'a> From<&'a hir::LetStmt<'a>> for Declaration<'a> {
     }
 }
 
-impl<'a> From<(&'a hir::LetExpr<'a>, hir::HirId)> for Declaration<'a> {
-    fn from((let_expr, hir_id): (&'a hir::LetExpr<'a>, hir::HirId)) -> Self {
-        let hir::LetExpr { pat, ty, span, init, is_recovered: _ } = *let_expr;
+impl<'a> From<(&'a hir::LetExpr<'a>, HirId)> for Declaration<'a> {
+    fn from((let_expr, hir_id): (&'a hir::LetExpr<'a>, HirId)) -> Self {
+        let hir::LetExpr { pat, ty, span, init, recovered: _ } = *let_expr;
         Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }
@@ -60,7 +59,7 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // parameters are special cases of patterns, but we want to handle them as
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
-    outermost_fn_param_pat: Option<(Span, hir::HirId)>,
+    outermost_fn_param_pat: Option<(Span, HirId)>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
@@ -68,14 +67,11 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         Self { fcx, outermost_fn_param_pat: None }
     }
 
-    fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
+    fn assign(&mut self, span: Span, nid: HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
                 // Infer the variable's type.
-                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
+                let var_ty = self.fcx.next_ty_var(span);
                 self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
@@ -150,7 +146,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         p.span,
                         // ty_span == ident.span iff this is a closure parameter with no type
                         // ascription, or if it's an implicit `self` parameter
-                        traits::SizedArgumentType(
+                        ObligationCauseCode::SizedArgumentType(
                             if ty_span == ident.span
                                 && self.fcx.tcx.is_closure_like(self.fcx.body_id.into())
                             {
@@ -163,7 +159,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 }
             } else {
                 if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+                    self.fcx.require_type_is_sized(
+                        var_ty,
+                        p.span,
+                        ObligationCauseCode::VariableType(p.hir_id),
+                    );
                 }
             }
 

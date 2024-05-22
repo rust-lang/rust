@@ -133,8 +133,8 @@ extern "Rust" {
     /// with a null terminator.
     /// Returns 0 if the `out` buffer was large enough, and the required size otherwise.
     pub fn miri_host_to_target_path(
-        path: *const std::ffi::c_char,
-        out: *mut std::ffi::c_char,
+        path: *const core::ffi::c_char,
+        out: *mut core::ffi::c_char,
         out_size: usize,
     ) -> usize;
 

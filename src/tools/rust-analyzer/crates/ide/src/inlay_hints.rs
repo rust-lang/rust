@@ -1,6 +1,5 @@
 use std::{
     fmt::{self, Write},
-    hash::{BuildHasher, BuildHasherDefault},
     mem::take,
 };
 
@@ -9,7 +8,7 @@ use hir::{
     known, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
     ModuleDefId, Semantics,
 };
-use ide_db::{base_db::FileRange, famous_defs::FamousDefs, FxHasher, RootDatabase};
+use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
@@ -495,8 +494,9 @@ pub(crate) fn inlay_hints_resolve(
     position: TextSize,
     hash: u64,
     config: &InlayHintsConfig,
+    hasher: impl Fn(&InlayHint) -> u64,
 ) -> Option<InlayHint> {
-    let _p = tracing::span!(tracing::Level::INFO, "inlay_hints").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "inlay_hints_resolve").entered();
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
     let file = file.syntax();
@@ -506,20 +506,16 @@ pub(crate) fn inlay_hints_resolve(
     let mut acc = Vec::new();
 
     let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
-    match file.token_at_offset(position).left_biased() {
-        Some(token) => {
-            if let Some(parent_block) = token.parent_ancestors().find_map(ast::BlockExpr::cast) {
-                parent_block.syntax().descendants().for_each(hints)
-            } else if let Some(parent_item) = token.parent_ancestors().find_map(ast::Item::cast) {
-                parent_item.syntax().descendants().for_each(hints)
-            } else {
-                return None;
-            }
-        }
-        None => return None,
+    let token = file.token_at_offset(position).left_biased()?;
+    if let Some(parent_block) = token.parent_ancestors().find_map(ast::BlockExpr::cast) {
+        parent_block.syntax().descendants().for_each(hints)
+    } else if let Some(parent_item) = token.parent_ancestors().find_map(ast::Item::cast) {
+        parent_item.syntax().descendants().for_each(hints)
+    } else {
+        return None;
     }
 
-    acc.into_iter().find(|hint| BuildHasherDefault::<FxHasher>::default().hash_one(hint) == hash)
+    acc.into_iter().find(|hint| hasher(hint) == hash)
 }
 
 fn hints(

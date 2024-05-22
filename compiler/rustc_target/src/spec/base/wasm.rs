@@ -80,9 +80,6 @@ pub fn options() -> TargetOptions {
         // threaded model which will legalize atomics to normal operations.
         singlethread: true,
 
-        // no dynamic linking, no need for default visibility!
-        default_hidden_visibility: true,
-
         // Symbol visibility takes care of this for the WebAssembly.
         // Additionally the only known linker, LLD, doesn't support the script
         // arguments just yet

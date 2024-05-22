@@ -38,70 +38,58 @@ LL |     let _map = HashMap::<&mut Cell<usize>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:80:5
-   |
-LL |     let _map = HashMap::<&mut usize, usize>::new();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: mutable key type
-  --> tests/ui/mut_key.rs:83:5
+  --> tests/ui/mut_key.rs:81:5
    |
 LL |     let _map = HashMap::<Vec<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:85:5
+  --> tests/ui/mut_key.rs:83:5
    |
 LL |     let _map = HashMap::<BTreeMap<Cell<usize>, ()>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:87:5
+  --> tests/ui/mut_key.rs:85:5
    |
 LL |     let _map = HashMap::<BTreeMap<(), Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:89:5
+  --> tests/ui/mut_key.rs:87:5
    |
 LL |     let _map = HashMap::<BTreeSet<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:91:5
+  --> tests/ui/mut_key.rs:89:5
    |
 LL |     let _map = HashMap::<Option<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:93:5
+  --> tests/ui/mut_key.rs:91:5
    |
 LL |     let _map = HashMap::<Option<Vec<Cell<usize>>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:95:5
-   |
-LL |     let _map = HashMap::<Result<&mut usize, ()>, usize>::new();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: mutable key type
-  --> tests/ui/mut_key.rs:98:5
+  --> tests/ui/mut_key.rs:94:5
    |
 LL |     let _map = HashMap::<Box<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:100:5
+  --> tests/ui/mut_key.rs:96:5
    |
 LL |     let _map = HashMap::<Rc<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> tests/ui/mut_key.rs:102:5
+  --> tests/ui/mut_key.rs:98:5
    |
 LL |     let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 15 previous errors
 

@@ -195,9 +195,15 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
-                    ExprKind::Binary { op, lhs, rhs } => Ok(Rvalue::CheckedBinaryOp(
-                        *op, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?))
-                    )),
+                    ExprKind::Binary { op, lhs, rhs } => {
+                        if let Some(op_with_overflow) = op.wrapping_to_overflowing() {
+                            Ok(Rvalue::BinaryOp(
+                                op_with_overflow, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?))
+                            ))
+                        } else {
+                            Err(self.expr_error(expr_id, "No WithOverflow form of this operator"))
+                        }
+                    },
                 )
             },
             @call(mir_offset, args) => {

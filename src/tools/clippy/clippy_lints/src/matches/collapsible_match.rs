@@ -1,3 +1,4 @@
+use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::source::snippet;
@@ -11,12 +12,12 @@ use rustc_hir::{Arm, Expr, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
-use super::COLLAPSIBLE_MATCH;
+use super::{pat_contains_disallowed_or, COLLAPSIBLE_MATCH};
 
-pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
+pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], msrv: &Msrv) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
         for arm in arms {
-            check_arm(cx, true, arm.pat, arm.body, arm.guard, Some(els_arm.body));
+            check_arm(cx, true, arm.pat, arm.body, arm.guard, Some(els_arm.body), msrv);
         }
     }
 }
@@ -26,8 +27,9 @@ pub(super) fn check_if_let<'tcx>(
     pat: &'tcx Pat<'_>,
     body: &'tcx Expr<'_>,
     else_expr: Option<&'tcx Expr<'_>>,
+    msrv: &Msrv,
 ) {
-    check_arm(cx, false, pat, body, None, else_expr);
+    check_arm(cx, false, pat, body, None, else_expr, msrv);
 }
 
 fn check_arm<'tcx>(
@@ -37,6 +39,7 @@ fn check_arm<'tcx>(
     outer_then_body: &'tcx Expr<'tcx>,
     outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
+    msrv: &Msrv,
 ) {
     let inner_expr = peel_blocks_with_stmt(outer_then_body);
     if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr)
@@ -57,7 +60,7 @@ fn check_arm<'tcx>(
         // match expression must be a local binding
         // match <local> { .. }
         && let Some(binding_id) = path_to_local(peel_ref_operators(cx, inner_scrutinee))
-        && !pat_contains_or(inner_then_pat)
+        && !pat_contains_disallowed_or(inner_then_pat, msrv)
         // the binding must come from the pattern of the containing match arm
         // ..<local>.. => match <local> { .. }
         && let (Some(binding_span), is_innermost_parent_pat_struct)
@@ -97,7 +100,7 @@ fn check_arm<'tcx>(
         } else {
             String::new()
         };
-        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, &msg, |diag| {
+        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, msg, |diag| {
             let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
             help_span.push_span_label(binding_span, "replace this binding");
             help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));
@@ -141,14 +144,4 @@ fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: Hi
         },
     });
     (span, is_innermost_parent_pat_struct)
-}
-
-fn pat_contains_or(pat: &Pat<'_>) -> bool {
-    let mut result = false;
-    pat.walk(|p| {
-        let is_or = matches!(p.kind, PatKind::Or(_));
-        result |= is_or;
-        !is_or
-    });
-    result
 }

@@ -5,6 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::{Idx, IndexVec};
@@ -21,6 +22,8 @@ use crate::{
 };
 use rustc_middle::mir::patch::MirPatch;
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
+
+mod async_destructor_ctor;
 
 pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
@@ -55,7 +58,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         // a virtual call, or a direct call to a function for which
         // indirect calls must be codegen'd differently than direct ones
         // (such as `#[track_caller]`).
-        ty::InstanceDef::ReifyShim(def_id) => {
+        ty::InstanceDef::ReifyShim(def_id, _) => {
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id))
         }
         ty::InstanceDef::ClosureOnceShim { call_once: _, track_caller: _ } => {
@@ -127,6 +130,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty) => {
+            async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty)
+        }
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
@@ -1041,7 +1047,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
                 args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
             ),
             sig.c_variadic,
-            sig.unsafety,
+            sig.safety,
             sig.abi,
         )
     });

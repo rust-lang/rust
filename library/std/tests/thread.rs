@@ -5,7 +5,8 @@ use std::time::Duration;
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-fn sleep() {
+#[cfg_attr(miri, ignore)] // Miri does not like the thread leak
+fn sleep_very_long() {
     let finished = Arc::new(Mutex::new(false));
     let t_finished = finished.clone();
     thread::spawn(move || {

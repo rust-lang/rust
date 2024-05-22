@@ -1,5 +1,5 @@
 // Test that we don't remove pointer to int casts or retags
-//@ unit-test: DeadStoreElimination-initial
+//@ test-mir-pass: DeadStoreElimination-initial
 //@ compile-flags: -Zmir-emit-retag
 
 // EMIT_MIR provenance_soundness.pointer_to_int.DeadStoreElimination-initial.diff

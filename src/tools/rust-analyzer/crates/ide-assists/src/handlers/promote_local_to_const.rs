@@ -59,10 +59,7 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let ty = match ty.display_source_code(ctx.db(), module.into(), false) {
         Ok(ty) => ty,
-        Err(_) => {
-            cov_mark::hit!(promote_local_not_applicable_if_ty_not_inferred);
-            return None;
-        }
+        Err(_) => return None,
     };
 
     let initializer = let_stmt.initializer()?;
@@ -315,12 +312,16 @@ fn foo() {
 
     #[test]
     fn not_applicable_unknown_ty() {
-        cov_mark::check!(promote_local_not_applicable_if_ty_not_inferred);
-        check_assist_not_applicable(
+        check_assist(
             promote_local_to_const,
             r"
 fn foo() {
     let x$0 = bar();
+}
+",
+            r"
+fn foo() {
+    const $0X: _ = bar();
 }
 ",
         );

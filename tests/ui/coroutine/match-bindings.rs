@@ -9,7 +9,7 @@ enum Enum {
 }
 
 fn main() {
-    || { //~ WARN unused coroutine that must be used
+    #[coroutine] || { //~ WARN unused coroutine that must be used
         loop {
             if let true = true {
                 match Enum::A(String::new()) {

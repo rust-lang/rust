@@ -20,7 +20,9 @@ use std::sync::OnceLock;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
-use crate::utils::helpers::{self, exe, get_clang_cl_resource_dir, output, t, up_to_date};
+use crate::utils::helpers::{
+    self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
+};
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
@@ -42,14 +44,28 @@ pub struct Meta {
     root: String,
 }
 
-// Linker flags to pass to LLVM's CMake invocation.
+pub enum LlvmBuildStatus {
+    AlreadyBuilt(LlvmResult),
+    ShouldBuild(Meta),
+}
+
+impl LlvmBuildStatus {
+    pub fn should_build(&self) -> bool {
+        match self {
+            LlvmBuildStatus::AlreadyBuilt(_) => false,
+            LlvmBuildStatus::ShouldBuild(_) => true,
+        }
+    }
+}
+
+/// Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
 struct LdFlags {
-    // CMAKE_EXE_LINKER_FLAGS
+    /// CMAKE_EXE_LINKER_FLAGS
     exe: OsString,
-    // CMAKE_SHARED_LINKER_FLAGS
+    /// CMAKE_SHARED_LINKER_FLAGS
     shared: OsString,
-    // CMAKE_MODULE_LINKER_FLAGS
+    /// CMAKE_MODULE_LINKER_FLAGS
     module: OsString,
 }
 
@@ -72,10 +88,10 @@ impl LdFlags {
 ///
 /// This will return the llvm-config if it can get it (but it will not build it
 /// if not).
-pub fn prebuilt_llvm_config(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-) -> Result<LlvmResult, Meta> {
+pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
+    // If we have llvm submodule initialized already, sync it.
+    builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
+
     builder.config.maybe_download_ci_llvm();
 
     // If we're using a custom LLVM bail out here, but we can only use a
@@ -90,9 +106,12 @@ pub fn prebuilt_llvm_config(
             llvm_cmake_dir.push("lib");
             llvm_cmake_dir.push("cmake");
             llvm_cmake_dir.push("llvm");
-            return Ok(LlvmResult { llvm_config, llvm_cmake_dir });
+            return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
         }
     }
+
+    // Initialize the llvm submodule if not initialized already.
+    builder.update_submodule(&Path::new("src").join("llvm-project"));
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
@@ -125,10 +144,10 @@ pub fn prebuilt_llvm_config(
                 stamp.path.display()
             ));
         }
-        return Ok(res);
+        return LlvmBuildStatus::AlreadyBuilt(res);
     }
 
-    Err(Meta { stamp, res, out_dir, root: root.into() })
+    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
 }
 
 /// This retrieves the LLVM sha we *want* to use, according to git history.
@@ -276,11 +295,10 @@ impl Step for Llvm {
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
         let Meta { stamp, res, out_dir, root } = match prebuilt_llvm_config(builder, target) {
-            Ok(p) => return p,
-            Err(m) => m,
+            LlvmBuildStatus::AlreadyBuilt(p) => return p,
+            LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.llvm_link_shared() && target.is_windows() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
@@ -365,10 +383,11 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
-        // Are we compiling for iOS/tvOS/watchOS?
+        // Are we compiling for iOS/tvOS/watchOS/visionOS?
         if target.contains("apple-ios")
             || target.contains("apple-tvos")
             || target.contains("apple-watchos")
+            || target.contains("apple-visionos")
         {
             // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
             cfg.define("CMAKE_OSX_SYSROOT", "/");
@@ -578,7 +597,7 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
-    extra_compiler_flags: &[&str],
+    suppressed_compiler_flag_prefixes: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -712,7 +731,17 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    let mut cflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::C).join(" ").into();
+    let mut cflags: OsString = builder
+        .cflags(target, GitRepo::Llvm, CLang::C)
+        .into_iter()
+        .filter(|flag| {
+            !suppressed_compiler_flag_prefixes
+                .iter()
+                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+        .into();
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push(" ");
         cflags.push(s);
@@ -721,20 +750,24 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(&format!(" --target={target}"));
     }
-    for flag in extra_compiler_flags {
-        cflags.push(&format!(" {flag}"));
-    }
     cfg.define("CMAKE_C_FLAGS", cflags);
-    let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
+    let mut cxxflags: OsString = builder
+        .cflags(target, GitRepo::Llvm, CLang::Cxx)
+        .into_iter()
+        .filter(|flag| {
+            !suppressed_compiler_flag_prefixes
+                .iter()
+                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+        .into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(&format!(" --target={target}"));
-    }
-    for flag in extra_compiler_flags {
-        cxxflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -1003,15 +1036,19 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        let extra_compiler_flags: &[&str] =
-            if self.target.contains("apple") { &["-fembed-bitcode=off"] } else { &[] };
+        // Since v1.0.86, the cc crate adds -mmacosx-version-min to the default
+        // flags on MacOS. A long-standing bug in the CMake rules for compiler-rt
+        // causes architecture detection to be skipped when this flag is present,
+        // and compilation fails. https://github.com/llvm/llvm-project/issues/88780
+        let suppressed_compiler_flag_prefixes: &[&str] =
+            if self.target.contains("apple-darwin") { &["-mmacosx-version-min="] } else { &[] };
         configure_cmake(
             builder,
             self.target,
             &mut cfg,
             use_compiler_launcher,
             LdFlags::default(),
-            extra_compiler_flags,
+            suppressed_compiler_flag_prefixes,
         );
 
         t!(fs::create_dir_all(&out_dir));
@@ -1173,7 +1210,7 @@ impl Step for CrtBeginEnd {
 
         let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtbegin.c");
         let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtend.c");
-        if up_to_date(&crtbegin_src, &out_dir.join("crtbegin.o"))
+        if up_to_date(&crtbegin_src, &out_dir.join("crtbeginS.o"))
             && up_to_date(&crtend_src, &out_dir.join("crtendS.o"))
         {
             return out_dir;
@@ -1205,10 +1242,15 @@ impl Step for CrtBeginEnd {
             .define("CRT_HAS_INITFINI_ARRAY", None)
             .define("EH_USE_FRAME_REGISTRY", None);
 
-        cfg.compile("crt");
+        let objs = cfg.compile_intermediates();
+        assert_eq!(objs.len(), 2);
+        for obj in objs {
+            let base_name = unhashed_basename(&obj);
+            assert!(base_name == "crtbegin" || base_name == "crtend");
+            t!(fs::copy(&obj, out_dir.join(format!("{}S.o", base_name))));
+            t!(fs::rename(&obj, out_dir.join(format!("{}.o", base_name))));
+        }
 
-        t!(fs::copy(out_dir.join("crtbegin.o"), out_dir.join("crtbeginS.o")));
-        t!(fs::copy(out_dir.join("crtend.o"), out_dir.join("crtendS.o")));
         out_dir
     }
 }
@@ -1355,9 +1397,9 @@ impl Step for Libunwind {
         for entry in fs::read_dir(&out_dir).unwrap() {
             let file = entry.unwrap().path().canonicalize().unwrap();
             if file.is_file() && file.extension() == Some(OsStr::new("o")) {
-                // file name starts with "Unwind-EHABI", "Unwind-seh" or "libunwind"
-                let file_name = file.file_name().unwrap().to_str().expect("UTF-8 file name");
-                if cpp_sources.iter().any(|f| file_name.starts_with(&f[..f.len() - 4])) {
+                // Object file name without the hash prefix is "Unwind-EHABI", "Unwind-seh" or "libunwind".
+                let base_name = unhashed_basename(&file);
+                if cpp_sources.iter().any(|f| *base_name == f[..f.len() - 4]) {
                     cc_cfg.object(&file);
                     count += 1;
                 }

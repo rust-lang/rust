@@ -1133,6 +1133,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .setting-check input:checked {
 	background-color: var(--settings-input-color);
 	border-width: 1px;
+	/* cross-mark image in the settings checkboxes */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
 		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
 		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
@@ -1603,7 +1604,32 @@ a.tooltip:hover::after {
 	border-color: var(--settings-button-border-focus);
 }
 
+#settings-menu > a {
+	line-height: 0;
+	font-size: 0;
+}
+#settings-menu > a:before {
+	/* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
+	content: url('data:image/svg+xml,<svg width="22" height="22" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M10.25,6c0-0.1243286-0.0261841-0.241333-0.0366211-0.362915l1.6077881-1.5545654l\
+	-1.25-2.1650391  c0,0-1.2674561,0.3625488-2.1323853,0.6099854c-0.2034912-0.1431885-0.421875\
+	-0.2639771-0.6494751-0.3701782L7.25,0h-2.5 c0,0-0.3214111,1.2857666-0.5393066,2.1572876\
+	C3.9830933,2.2634888,3.7647095,2.3842773,3.5612183,2.5274658L1.428833,1.9174805 \
+	l-1.25,2.1650391c0,0,0.9641113,0.9321899,1.6077881,1.5545654C1.7761841,5.758667,\
+	1.75,5.8756714,1.75,6  s0.0261841,0.241333,0.0366211,0.362915L0.178833,7.9174805l1.25,\
+	2.1650391l2.1323853-0.6099854  c0.2034912,0.1432495,0.421875,0.2639771,0.6494751,0.3701782\
+	L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.6494751\
+	-0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
+	10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
+	,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
+	width: 22px;
+	height: 22px;
+	filter: var(--settings-menu-filter);
+}
+
 #sidebar-button > a:before {
+	/* sidebar resizer image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
 		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
@@ -1617,17 +1643,36 @@ a.tooltip:hover::after {
 	color: var(--copy-path-button-color);
 	background: var(--main-background-color);
 	height: 34px;
+	width: 33px;
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
 	border: 0;
-	width: 33px;
+	font-size: 0;
 }
-#copy-path > img {
+#copy-path::before {
 	filter: var(--copy-path-img-filter);
+	/* clipboard <https://github.com/rust-lang/crates.io/commits/main/public/assets/copy.svg> */
+	content: url('data:image/svg+xml,<svg width="19" height="18" viewBox="0 0 24 25" \
+xmlns="http://www.w3.org/2000/svg" aria-label="Copy to clipboard">\
+<path d="M18 20h2v3c0 1-1 2-2 2H2c-.998 0-2-1-2-2V5c0-.911.755-1.667 1.667-1.667h5A3.323 3.323 0 \
+0110 0a3.323 3.323 0 013.333 3.333h5C19.245 3.333 20 4.09 20 5v8.333h-2V9H2v14h16v-3zM3 \
+7h14c0-.911-.793-1.667-1.75-1.667H13.5c-.957 0-1.75-.755-1.75-1.666C11.75 2.755 10.957 2 10 \
+2s-1.75.755-1.75 1.667c0 .911-.793 1.666-1.75 1.666H4.75C3.793 5.333 3 6.09 3 7z"/>\
+<path d="M4 19h6v2H4zM12 11H4v2h8zM4 17h4v-2H4zM15 15v-3l-4.5 4.5L15 21v-3l8.027-.032L23 15z"/>\
+</svg>');
+	width: 19px;
+	height: 18px;
 }
-#copy-path:hover > img {
+#copy-path:hover::before {
 	filter: var(--copy-path-img-hover-filter);
+}
+#copy-path.clicked::before {
+	/* Checkmark <https://www.svgrepo.com/svg/335033/checkmark> */
+	content: url('data:image/svg+xml,<svg viewBox="-1 -1 23 23" xmlns="http://www.w3.org/2000/svg" \
+		fill="black" height="18px">\
+		<g><path d="M9 19.414l-6.707-6.707 1.414-1.414L9 16.586 20.293 5.293l1.414 1.414"></path>\
+		</g></svg>');
 }
 
 @keyframes rotating {
@@ -1818,6 +1863,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /* sidebar button opens modal
 	use hamburger button */
 .src #sidebar-button > a:before, .sidebar-menu-toggle:before {
+	/* hamburger button image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		viewBox="0 0 22 22" fill="none" stroke="black">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
@@ -1831,6 +1877,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 
 /* src sidebar button opens a folder view */
 .src #sidebar-button > a:before {
+	/* folder image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		viewBox="0 0 22 22" fill="none" stroke="black">\
 		<path d="M16,9v-4h-6v-1l-2,-2h-4l-2,2v16h13L21,9h-15L2,19" stroke-width="1.25"/>\
@@ -2315,8 +2362,14 @@ in src-script.js and main.js
 	tooling to ensure different themes all define all the variables. Do not
 	alter their formatting. */
 
+/*
+About `:root:not([data-theme])`: if for any reason the JS is enabled but cannot be loaded,
+`noscript` won't be enabled and the doc will have no color applied. To do around this, we
+add a selector check that if `data-theme` is not defined, then we apply the light theme
+by default.
+*/
 /* Begin theme: light */
-:root[data-theme="light"] {
+:root[data-theme="light"], :root:not([data-theme]) {
 	--main-background-color: white;
 	--main-color: black;
 	--settings-input-color: #2196f3;
@@ -2367,6 +2420,7 @@ in src-script.js and main.js
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
+	--settings-menu-filter: none;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -2472,6 +2526,7 @@ in src-script.js and main.js
 	--search-tab-button-not-selected-background: #252525;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #353535;
+	--settings-menu-filter: none;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ab8ac1;
@@ -2584,6 +2639,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-tab-button-not-selected-background: transparent !important;
 	--search-tab-button-selected-border-top-color: none;
 	--search-tab-button-selected-background: #141920 !important;
+	--settings-menu-filter: invert(100%);
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;

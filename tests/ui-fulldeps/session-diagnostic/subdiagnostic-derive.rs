@@ -827,3 +827,13 @@ struct PrimarySpanOnVec {
     //~| NOTE there must be exactly one primary span
     sub: Vec<Span>,
 }
+
+#[derive(Subdiagnostic)]
+struct NestedParent {
+    #[subdiagnostic]
+    single_sub: A,
+    #[subdiagnostic]
+    option_sub: Option<A>,
+    #[subdiagnostic]
+    vec_sub: Vec<A>,
+}

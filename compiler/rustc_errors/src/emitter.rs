@@ -35,6 +35,7 @@ use std::iter;
 use std::path::Path;
 use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Color, WriteColor};
+use tracing::{debug, instrument, trace, warn};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
 const DEFAULT_COLUMN_WIDTH: usize = 140;
@@ -984,7 +985,7 @@ impl HumanEmitter {
         // 4 |   }
         //   |
         for pos in 0..=line_len {
-            draw_col_separator(buffer, line_offset + pos + 1, width_offset - 2);
+            draw_col_separator_no_space(buffer, line_offset + pos + 1, width_offset - 2);
         }
 
         // Write the horizontal lines for multiline annotations
@@ -1513,7 +1514,9 @@ impl HumanEmitter {
                 for line_idx in 0..annotated_file.lines.len() {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
-                    if let Some(source_string) = file.get_line(line.line_index - 1) {
+                    if let Some(source_string) =
+                        line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
+                    {
                         let leading_whitespace = source_string
                             .chars()
                             .take_while(|c| c.is_whitespace())
@@ -1553,7 +1556,10 @@ impl HumanEmitter {
                 for line in &annotated_file.lines {
                     max_line_len = max(
                         max_line_len,
-                        annotated_file.file.get_line(line.line_index - 1).map_or(0, |s| s.len()),
+                        line.line_index
+                            .checked_sub(1)
+                            .and_then(|l| annotated_file.file.get_line(l))
+                            .map_or(0, |s| s.len()),
                     );
                     for ann in &line.annotations {
                         span_right_margin = max(span_right_margin, ann.start_col.display);
@@ -2014,7 +2020,7 @@ impl HumanEmitter {
                     let offset: isize = offsets
                         .iter()
                         .filter_map(
-                            |(start, v)| if span_start_pos <= *start { None } else { Some(v) },
+                            |(start, v)| if span_start_pos < *start { None } else { Some(v) },
                         )
                         .sum();
                     let underline_start = (span_start_pos + start) as isize + offset;
@@ -2023,7 +2029,7 @@ impl HumanEmitter {
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
                         if let DisplaySuggestion::Underline = show_code_change {
-                            // If this is a replacement, underline with `^`, if this is an addition
+                            // If this is a replacement, underline with `~`, if this is an addition
                             // underline with `+`.
                             buffer.putc(
                                 row_num,
@@ -2255,13 +2261,23 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+                    draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
                     buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
                 }
             }
-            buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+            //   LL | line_to_add
+            //   ++^^^
+            //    |  |
+            //    |  magic `3`
+            //    `max_line_num_len`
+            buffer.puts(
+                *row_num,
+                max_line_num_len + 3,
+                &normalize_whitespace(line_to_add),
+                Style::NoStyle,
+            );
         } else if let DisplaySuggestion::Add = show_code_change {
             buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
             buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);

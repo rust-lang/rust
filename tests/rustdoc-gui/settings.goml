@@ -35,8 +35,12 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
+// If we are on the settings page, the menu doesn't work the same so we set
+// the theme manually.
 set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
 reload:
+
 click: "#settings-menu"
 wait-for: "#settings"
 

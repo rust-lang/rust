@@ -91,17 +91,21 @@ pub struct EscapeDefault(escape::EscapeIterInner<4>);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn escape_default(c: u8) -> EscapeDefault {
-    let mut data = [Char::Null; 4];
-    let range = escape::escape_ascii_into(&mut data, c);
-    EscapeDefault(escape::EscapeIterInner::new(data, range))
+    EscapeDefault::new(c)
 }
 
 impl EscapeDefault {
-    pub(crate) fn empty() -> Self {
-        let data = [Char::Null; 4];
-        EscapeDefault(escape::EscapeIterInner::new(data, 0..0))
+    #[inline]
+    pub(crate) const fn new(c: u8) -> Self {
+        Self(escape::EscapeIterInner::ascii(c))
     }
 
+    #[inline]
+    pub(crate) fn empty() -> Self {
+        Self(escape::EscapeIterInner::empty())
+    }
+
+    #[inline]
     pub(crate) fn as_str(&self) -> &str {
         self.0.as_str()
     }

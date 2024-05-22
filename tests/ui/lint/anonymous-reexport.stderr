@@ -34,7 +34,7 @@ error: unused import: `Bar as _`
 LL | pub use self::my_mod::{Bar as _, Foo as _};
    |                        ^^^^^^^^
 
-error: unused imports: `Bar as _`, `TyBar as _`
+error: unused imports: `Bar as _` and `TyBar as _`
   --> $DIR/anonymous-reexport.rs:17:24
    |
 LL | pub use self::my_mod::{Bar as _, TyBar as _};

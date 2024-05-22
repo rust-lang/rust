@@ -12,7 +12,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 use thin_vec::{thin_vec, ThinVec};
 
-pub fn expand_deriving_default(
+pub(crate) fn expand_deriving_default(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,

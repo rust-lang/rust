@@ -38,13 +38,16 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::HirId;
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{
-    self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarArgs, UpvarCapture,
+    self, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, UpvarArgs,
+    UpvarCapture,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
@@ -87,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum UpvarMigrationInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
-    CapturingPrecise { source_expr: Option<hir::HirId>, var_name: String },
+    CapturingPrecise { source_expr: Option<HirId>, var_name: String },
     CapturingNothing {
         // where the variable appears in the closure (but is not captured)
         use_span: Span,
@@ -130,7 +133,7 @@ struct MigrationLintNote {
 /// Intermediate format to store the hir id of the root variable and a HashSet containing
 /// information on why the root variable should be fully captured
 struct NeededMigration {
-    var_hir_id: hir::HirId,
+    var_hir_id: HirId,
     diagnostics_info: Vec<MigrationLintNote>,
 }
 
@@ -162,11 +165,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     fn analyze_closure(
         &self,
-        closure_hir_id: hir::HirId,
+        closure_hir_id: HirId,
         span: Span,
         body_id: hir::BodyId,
         body: &'tcx hir::Body<'tcx>,
-        capture_clause: hir::CaptureBy,
+        mut capture_clause: hir::CaptureBy,
     ) {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
@@ -191,6 +194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         };
+        let args = self.resolve_vars_if_possible(args);
         let closure_def_id = closure_def_id.expect_local();
 
         assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
@@ -226,8 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else {
                     bug!();
                 };
-                let hir::PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), _, _, _) =
-                    pat.kind
+                let hir::PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), _, _, _) = pat.kind
                 else {
                     // Complex pattern, skip the non-upvar local.
                     continue;
@@ -250,14 +253,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        euv::ExprUseVisitor::new(
+        let _ = euv::ExprUseVisitor::new(
+            &FnCtxt::new(self, self.tcx.param_env(closure_def_id), closure_def_id),
             &mut delegate,
-            &self.infcx,
-            closure_def_id,
-            self.param_env,
-            &self.typeck_results.borrow(),
         )
         .consume_body(body);
+
+        // If a coroutine is comes from a coroutine-closure that is `move`, but
+        // the coroutine-closure was inferred to be `FnOnce` during signature
+        // inference, then it's still possible that we try to borrow upvars from
+        // the coroutine-closure because they are not used by the coroutine body
+        // in a way that forces a move.
+        //
+        // This would lead to an impossible to satisfy situation, since `AsyncFnOnce`
+        // coroutine bodies can't borrow from their parent closure. To fix this,
+        // we force the inner coroutine to also be `move`. This only matters for
+        // coroutine-closures that are `move` since otherwise they themselves will
+        // be borrowing from the outer environment, so there's no self-borrows occuring.
+        if let UpvarArgs::Coroutine(..) = args
+            && let hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) =
+                self.tcx.coroutine_kind(closure_def_id).expect("coroutine should have kind")
+            && let parent_hir_id =
+                self.tcx.local_def_id_to_hir_id(self.tcx.local_parent(closure_def_id))
+            && let parent_ty = self.node_ty(parent_hir_id)
+            && let Some(ty::ClosureKind::FnOnce) = self.closure_kind(parent_ty)
+        {
+            capture_clause = self.tcx.hir_node(parent_hir_id).expect_closure().capture_clause;
+        }
 
         debug!(
             "For closure={:?}, capture_information={:#?}",
@@ -339,43 +361,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For coroutine-closures, we additionally must compute the
         // `coroutine_captures_by_ref_ty` type, which is used to generate the by-ref
         // version of the coroutine-closure's output coroutine.
-        if let UpvarArgs::CoroutineClosure(args) = args {
+        if let UpvarArgs::CoroutineClosure(args) = args
+            && !args.references_error()
+        {
             let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
                 self.tcx,
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::BrEnv },
             );
+
+            let num_args = args
+                .as_coroutine_closure()
+                .coroutine_closure_sig()
+                .skip_binder()
+                .tupled_inputs_ty
+                .tuple_fields()
+                .len();
+            let typeck_results = self.typeck_results.borrow();
+
             let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
                 self.tcx,
-                self.typeck_results
-                    .borrow()
-                    .closure_min_captures_flattened(
-                        self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
-                    )
-                    // Skip the captures that are just moving the closure's args
-                    // into the coroutine. These are always by move, and we append
-                    // those later in the `CoroutineClosureSignature` helper functions.
-                    .skip(
-                        args.as_coroutine_closure()
-                            .coroutine_closure_sig()
-                            .skip_binder()
-                            .tupled_inputs_ty
-                            .tuple_fields()
-                            .len(),
-                    )
-                    .map(|captured_place| {
-                        let upvar_ty = captured_place.place.ty();
-                        let capture = captured_place.info.capture_kind;
+                ty::analyze_coroutine_closure_captures(
+                    typeck_results.closure_min_captures_flattened(closure_def_id),
+                    typeck_results
+                        .closure_min_captures_flattened(
+                            self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
+                        )
+                        // Skip the captures that are just moving the closure's args
+                        // into the coroutine. These are always by move, and we append
+                        // those later in the `CoroutineClosureSignature` helper functions.
+                        .skip(num_args),
+                    |(_, parent_capture), (_, child_capture)| {
+                        // This is subtle. See documentation on function.
+                        let needs_ref = should_reborrow_from_env_of_parent_coroutine_closure(
+                            parent_capture,
+                            child_capture,
+                        );
+
+                        let upvar_ty = child_capture.place.ty();
+                        let capture = child_capture.info.capture_kind;
                         // Not all upvars are captured by ref, so use
                         // `apply_capture_kind_on_capture_ty` to ensure that we
                         // compute the right captured type.
-                        apply_capture_kind_on_capture_ty(
+                        return apply_capture_kind_on_capture_ty(
                             self.tcx,
                             upvar_ty,
                             capture,
-                            Some(closure_env_region),
-                        )
-                    }),
+                            if needs_ref { Some(closure_env_region) } else { child_capture.region },
+                        );
+                    },
+                ),
             );
             let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                 self.tcx,
@@ -384,7 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         [],
                         tupled_upvars_ty_for_borrow,
                         false,
-                        hir::Unsafety::Normal,
+                        hir::Safety::Safe,
                         rustc_target::spec::abi::Abi::Rust,
                     ),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
@@ -399,16 +434,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             // Additionally, we can now constrain the coroutine's kind type.
-            let ty::Coroutine(_, coroutine_args) =
-                *self.typeck_results.borrow().expr_ty(body.value).kind()
-            else {
-                bug!();
-            };
-            self.demand_eqtype(
-                span,
-                coroutine_args.as_coroutine().kind_ty(),
-                Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
-            );
+            //
+            // We only do this if `infer_kind`, because if we have constrained
+            // the kind from closure signature inference, the kind inferred
+            // for the inner coroutine may actually be more restrictive.
+            if infer_kind {
+                let ty::Coroutine(_, coroutine_args) =
+                    *self.typeck_results.borrow().expr_ty(body.value).kind()
+                else {
+                    bug!();
+                };
+                self.demand_eqtype(
+                    span,
+                    coroutine_args.as_coroutine().kind_ty(),
+                    Ty::from_coroutine_closure_kind(self.tcx, closure_kind),
+                );
+            }
         }
 
         self.log_closure_min_capture_info(closure_def_id, span);
@@ -1055,7 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn compute_2229_migrations_for_trait(
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-        var_hir_id: hir::HirId,
+        var_hir_id: HirId,
         closure_clause: hir::CaptureBy,
     ) -> Option<FxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
         let auto_traits_def_id = [
@@ -1167,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_span: Span,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
-        var_hir_id: hir::HirId,
+        var_hir_id: HirId,
     ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
@@ -1607,7 +1648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn place_for_root_variable(
         &self,
         closure_def_id: LocalDefId,
-        var_hir_id: hir::HirId,
+        var_hir_id: HirId,
     ) -> Place<'tcx> {
         let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id);
 
@@ -1733,6 +1774,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
+/// Determines whether a child capture that is derived from a parent capture
+/// should be borrowed with the lifetime of the parent coroutine-closure's env.
+///
+/// There are two cases when this needs to happen:
+///
+/// (1.) Are we borrowing data owned by the parent closure? We can determine if
+/// that is the case by checking if the parent capture is by move, EXCEPT if we
+/// apply a deref projection, which means we're reborrowing a reference that we
+/// captured by move.
+///
+/// ```rust
+/// #![feature(async_closure)]
+/// let x = &1i32; // Let's call this lifetime `'1`.
+/// let c = async move || {
+///     println!("{:?}", *x);
+///     // Even though the inner coroutine borrows by ref, we're only capturing `*x`,
+///     // not `x`, so the inner closure is allowed to reborrow the data for `'1`.
+/// };
+/// ```
+///
+/// (2.) If a coroutine is mutably borrowing from a parent capture, then that
+/// mutable borrow cannot live for longer than either the parent *or* the borrow
+/// that we have on the original upvar. Therefore we always need to borrow the
+/// child capture with the lifetime of the parent coroutine-closure's env.
+///
+/// ```rust
+/// #![feature(async_closure)]
+/// let mut x = 1i32;
+/// let c = async || {
+///     x = 1;
+///     // The parent borrows `x` for some `&'1 mut i32`.
+///     // However, when we call `c()`, we implicitly autoref for the signature of
+///     // `AsyncFnMut::async_call_mut`. Let's call that lifetime `'call`. Since
+///     // the maximum that `&'call mut &'1 mut i32` can be reborrowed is `&'call mut i32`,
+///     // the inner coroutine should capture w/ the lifetime of the coroutine-closure.
+/// };
+/// ```
+///
+/// If either of these cases apply, then we should capture the borrow with the
+/// lifetime of the parent coroutine-closure's env. Luckily, if this function is
+/// not correct, then the program is not unsound, since we still borrowck and validate
+/// the choices made from this function -- the only side-effect is that the user
+/// may receive unnecessary borrowck errors.
+fn should_reborrow_from_env_of_parent_coroutine_closure<'tcx>(
+    parent_capture: &ty::CapturedPlace<'tcx>,
+    child_capture: &ty::CapturedPlace<'tcx>,
+) -> bool {
+    // (1.)
+    (!parent_capture.is_by_ref()
+        && !matches!(
+            child_capture.place.projections.get(parent_capture.place.projections.len()),
+            Some(Projection { kind: ProjectionKind::Deref, .. })
+        ))
+        // (2.)
+        || matches!(child_capture.info.capture_kind, UpvarCapture::ByRef(ty::BorrowKind::MutBorrow))
+}
+
 /// Truncate the capture so that the place being borrowed is in accordance with RFC 1240,
 /// which states that it's unsafe to take a reference into a struct marked `repr(packed)`.
 fn restrict_repr_packed_field_ref_capture<'tcx>(
@@ -1781,7 +1879,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> Span {
+fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir_node(owner_id);
@@ -1833,7 +1931,7 @@ struct InferBorrowKind<'tcx> {
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
     capture_information: InferredCaptureInformation<'tcx>,
-    fake_reads: Vec<(Place<'tcx>, FakeReadCause, hir::HirId)>,
+    fake_reads: Vec<(Place<'tcx>, FakeReadCause, HirId)>,
 }
 
 impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
@@ -1841,7 +1939,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
         &mut self,
         place: &PlaceWithHirId<'tcx>,
         cause: FakeReadCause,
-        diag_expr_id: hir::HirId,
+        diag_expr_id: HirId,
     ) {
         let PlaceBase::Upvar(_) = place.place.base else { return };
 
@@ -1856,7 +1954,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
 
@@ -1874,7 +1972,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId,
+        diag_expr_id: HirId,
         bk: ty::BorrowKind,
     ) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
@@ -1905,7 +2003,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
 }
@@ -2092,14 +2190,14 @@ fn construct_capture_info_string<'tcx>(
     format!("{place_str} -> {capture_kind_str}")
 }
 
-fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
+fn var_name(tcx: TyCtxt<'_>, var_hir_id: HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
 #[instrument(level = "debug", skip(tcx))]
 fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
-    closure_id: hir::HirId,
+    closure_id: HirId,
 ) -> bool {
     if tcx.sess.at_least_rust_2021() {
         return false;

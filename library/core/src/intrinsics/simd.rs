@@ -540,12 +540,8 @@ extern "rust-intrinsic" {
     /// `T` must be a vector of pointers.
     ///
     /// `U` must be a vector of `usize` with the same length as `T`.
-    #[cfg(not(bootstrap))]
     #[rustc_nounwind]
     pub fn simd_expose_provenance<T, U>(ptr: T) -> U;
-    #[cfg(bootstrap)]
-    #[rustc_nounwind]
-    pub fn simd_expose_addr<T, U>(ptr: T) -> U;
 
     /// Create a vector of pointers from a vector of addresses.
     ///
@@ -553,11 +549,7 @@ extern "rust-intrinsic" {
     ///
     /// `U` must be a vector of pointers, with the same length as `T`.
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn simd_with_exposed_provenance<T, U>(addr: T) -> U;
-    #[rustc_nounwind]
-    #[cfg(bootstrap)]
-    pub fn simd_from_exposed_addr<T, U>(addr: T) -> U;
 
     /// Swap bytes of each element.
     ///
@@ -576,6 +568,13 @@ extern "rust-intrinsic" {
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_ctlz<T>(x: T) -> T;
+
+    /// Count the number of ones in each element.
+    ///
+    /// `T` must be a vector of integers.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn simd_ctpop<T>(x: T) -> T;
 
     /// Count the trailing zeros of each element.
     ///
@@ -663,8 +662,3 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_flog<T>(a: T) -> T;
 }
-
-#[cfg(bootstrap)]
-pub use simd_expose_addr as simd_expose_provenance;
-#[cfg(bootstrap)]
-pub use simd_from_exposed_addr as simd_with_exposed_provenance;

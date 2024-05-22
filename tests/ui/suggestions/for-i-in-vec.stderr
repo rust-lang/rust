@@ -13,6 +13,10 @@ help: consider iterating over a slice of the `Vec<u32>`'s content to avoid movin
    |
 LL |         for _ in &self.v {
    |                  +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         for _ in self.v.clone() {
+   |                        ++++++++
 
 error[E0507]: cannot move out of `self.h` which is behind a shared reference
   --> $DIR/for-i-in-vec.rs:13:18
@@ -27,6 +31,10 @@ help: consider iterating over a slice of the `HashMap<i32, i32>`'s content to av
    |
 LL |         for _ in &self.h {
    |                  +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         for _ in self.h.clone() {
+   |                        ++++++++
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/for-i-in-vec.rs:21:19
@@ -43,6 +51,11 @@ help: consider iterating over a slice of the `Vec<&u8>`'s content to avoid movin
    |
 LL |     for loader in &*LOADERS {
    |                   +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     for loader in *LOADERS {
+LL +     for loader in LOADERS.clone() {
+   |
 
 error: aborting due to 3 previous errors
 

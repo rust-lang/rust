@@ -13,12 +13,12 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `derived_drop::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}: Send`
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `derived_drop::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:34: 17:41}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
-LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
-   |                                                            ------------------------ has type `derived_drop::Client` which is not `Send`
+LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                                         ------------------------ has type `derived_drop::Client` which is not `Send`
 ...
 LL |                   _ => yield,
    |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
@@ -53,12 +53,12 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `significant_drop::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}: Send`
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `significant_drop::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:34: 17:41}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
-LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
-   |                                                            ------------------------ has type `significant_drop::Client` which is not `Send`
+LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                                         ------------------------ has type `significant_drop::Client` which is not `Send`
 ...
 LL |                   _ => yield,
    |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
@@ -93,12 +93,12 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `insignificant_dtor::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}: Send`
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `insignificant_dtor::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:34: 17:41}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
-LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
-   |                                                            ------------------------ has type `insignificant_dtor::Client` which is not `Send`
+LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                                         ------------------------ has type `insignificant_dtor::Client` which is not `Send`
 ...
 LL |                   _ => yield,
    |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later

@@ -17,13 +17,10 @@ mod tests;
     target_os = "linux",
     target_os = "dragonfly",
     target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "nto",
+    target_vendor = "apple",
 ))]
 mod ucred;
 
@@ -43,13 +40,10 @@ pub use self::stream::*;
     target_os = "linux",
     target_os = "dragonfly",
     target_os = "freebsd",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "nto",
+    target_vendor = "apple",
 ))]
 #[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
 pub use self::ucred::*;

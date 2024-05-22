@@ -1,20 +1,20 @@
 use crate::traits::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::Ty;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{hygiene, BytePos, Span};
 use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
-use super::place::PlaceRef;
+use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
 
 use std::ops::Range;
@@ -120,7 +120,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
 {
     fn deref(&self, bx: &mut Bx) -> Self {
         bx.cx().layout_of(
-            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)).ty,
+            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)),
         )
     }
 
@@ -220,24 +220,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         source_info: mir::SourceInfo,
     ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
-        let span = self.adjust_span_for_debugging(source_info.span);
         let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
+        let span = hygiene::walk_chain_collapsed(source_info.span, self.mir.span);
         Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
-    }
-
-    /// In order to have a good line stepping behavior in debugger, we overwrite debug
-    /// locations of macro expansions with that of the outermost expansion site (when the macro is
-    /// annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
-    fn adjust_span_for_debugging(&self, span: Span) -> Span {
-        // Bail out if debug info emission is not enabled.
-        if self.debug_context.is_none() {
-            return span;
-        }
-        // Walk up the macro expansion chain until we reach a non-expanded span.
-        // We also stop at the function body level because no line stepping can occur
-        // at the level above that.
-        // Use span of the outermost expansion site, while keeping the original lexical scope.
-        self.cx.tcx().collapsed_debuginfo(span, self.mir.span)
     }
 
     fn spill_operand_to_stack(
@@ -252,7 +237,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // at least for the cases which LLVM handles correctly.
         let spill_slot = PlaceRef::alloca(bx, operand.layout);
         if let Some(name) = name {
-            bx.set_var_name(spill_slot.llval, &(name + ".dbg.spill"));
+            bx.set_var_name(spill_slot.val.llval, &(name + ".dbg.spill"));
         }
         operand.val.store(bx, spill_slot);
         spill_slot
@@ -331,10 +316,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(name) = &name {
             match local_ref {
                 LocalRef::Place(place) | LocalRef::UnsizedPlace(place) => {
-                    bx.set_var_name(place.llval, name);
+                    bx.set_var_name(place.val.llval, name);
                 }
                 LocalRef::Operand(operand) => match operand.val {
-                    OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
+                    OperandValue::Ref(PlaceValue { llval: x, .. }) | OperandValue::Immediate(x) => {
                         bx.set_var_name(x, name);
                     }
                     OperandValue::Pair(a, b) => {
@@ -417,16 +402,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let ptr_ty = Ty::new_mut_ptr(bx.tcx(), place.layout.ty);
             let ptr_layout = bx.layout_of(ptr_ty);
             let alloca = PlaceRef::alloca(bx, ptr_layout);
-            bx.set_var_name(alloca.llval, &(var.name.to_string() + ".dbg.spill"));
+            bx.set_var_name(alloca.val.llval, &(var.name.to_string() + ".dbg.spill"));
 
             // Write the pointer to the variable
-            bx.store(place.llval, alloca.llval, alloca.align);
+            bx.store_to_place(place.val.llval, alloca.val);
 
             // Point the debug info to `*alloca` for the current variable
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
-                alloca.llval,
+                alloca.val.llval,
                 Size::ZERO,
                 &[Size::ZERO],
                 var.fragment,
@@ -435,7 +420,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
-                base.llval,
+                base.val.llval,
                 direct_offset,
                 &indirect_offsets,
                 var.fragment,
@@ -553,7 +538,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let base =
                             Self::spill_operand_to_stack(operand, Some(var.name.to_string()), bx);
 
-                        bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[], fragment);
+                        bx.dbg_var_addr(
+                            dbg_var,
+                            dbg_loc,
+                            base.val.llval,
+                            Size::ZERO,
+                            &[],
+                            fragment,
+                        );
                     }
                 }
             }

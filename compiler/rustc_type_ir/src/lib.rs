@@ -8,14 +8,14 @@
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
-#[macro_use]
-extern crate bitflags;
 #[cfg(feature = "nightly")]
-#[macro_use]
-extern crate rustc_macros;
-
+use rustc_data_structures::sso::SsoHashSet;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::sync::Lrc;
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
+#[cfg(not(feature = "nightly"))]
+use std::collections::HashSet as SsoHashSet;
 use std::fmt;
 use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
@@ -23,11 +23,13 @@ use std::sync::Arc as Lrc;
 
 #[macro_use]
 pub mod visit;
-
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
-pub mod new;
+pub mod inherent;
+pub mod ir_print;
+pub mod lift;
+pub mod solve;
 pub mod ty_info;
 pub mod ty_kind;
 
@@ -38,10 +40,13 @@ mod canonical;
 mod const_kind;
 mod debug;
 mod flags;
+mod generic_arg;
 mod infcx;
 mod interner;
+mod predicate;
 mod predicate_kind;
 mod region_kind;
+mod upcast;
 
 pub use binder::*;
 pub use canonical::*;
@@ -50,13 +55,16 @@ pub use codec::*;
 pub use const_kind::*;
 pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
+pub use generic_arg::*;
 pub use infcx::InferCtxtLike;
 pub use interner::*;
+pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
-pub use AliasKind::*;
+pub use upcast::*;
+pub use AliasTyKind::*;
 pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;
@@ -346,6 +354,11 @@ impl UniverseIndex {
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self < other
     }
+
+    /// Returns `true` if `self` is the root universe, otherwise false.
+    pub fn is_root(self) -> bool {
+        self == Self::ROOT
+    }
 }
 
 impl Default for UniverseIndex {
@@ -361,6 +374,16 @@ rustc_index::newtype_index! {
     #[debug_format = "{}"]
     #[gate_rustc_only]
     pub struct BoundVar {}
+}
+
+impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
+    fn var(self) -> BoundVar {
+        self
+    }
+
+    fn assert_eq(self, _var: I::BoundVarKind) {
+        unreachable!("FIXME: We really should have a separate `BoundConst` for consts")
+    }
 }
 
 /// Represents the various closure traits in the language. This

@@ -3,13 +3,11 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
+use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
 
@@ -65,7 +63,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             };
 
             self.at.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(data),
+                OverflowCause::DeeplyNormalize(data.into()),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -74,10 +72,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         self.depth += 1;
 
-        let new_infer_ty = infcx.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::NormalizeProjectionType,
-            span: self.at.cause.span,
-        });
+        let new_infer_ty = infcx.next_ty_var(self.at.cause.span);
         let obligation = Obligation::new(
             tcx,
             self.at.cause.clone(),
@@ -113,7 +108,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(ty::AliasTy::new(tcx, uv.def, uv.args)),
+                OverflowCause::DeeplyNormalize(uv.into()),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -122,21 +117,12 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         self.depth += 1;
 
-        let new_infer_ct = infcx.next_const_var(
-            ty,
-            ConstVariableOrigin {
-                kind: ConstVariableOriginKind::MiscVariable,
-                span: self.at.cause.span,
-            },
-        );
+        let new_infer_ct = infcx.next_const_var(ty, self.at.cause.span);
         let obligation = Obligation::new(
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::NormalizesTo {
-                alias: AliasTy::new(tcx, uv.def, uv.args),
-                term: new_infer_ct.into(),
-            },
+            ty::NormalizesTo { alias: uv.into(), term: new_infer_ct.into() },
         );
 
         let result = if infcx.predicate_may_hold(&obligation) {
@@ -173,11 +159,11 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         Ok(t)
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ty, infcx.shallow_resolve(ty));
-        if !ty.has_projections() {
+        if !ty.has_aliases() {
             return Ok(ty);
         }
 
@@ -200,11 +186,11 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
-        debug_assert_eq!(ct, infcx.shallow_resolve(ct));
-        if !ct.has_projections() {
+        debug_assert_eq!(ct, infcx.shallow_resolve_const(ct));
+        if !ct.has_aliases() {
             return Ok(ct);
         }
 

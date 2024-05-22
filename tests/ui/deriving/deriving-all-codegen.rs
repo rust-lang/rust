@@ -156,6 +156,20 @@ enum EnumGeneric<T, U> {
     Two(U),
 }
 
+// An enum that has variant, which does't implement `Copy`.
+#[derive(PartialEq)]
+enum NonCopyEnum {
+    // The `dyn NonCopyTrait` implements `PartialEq`, but it doesn't require `Copy`.
+    // So we cannot generate `PartialEq` with dereference.
+    NonCopyField(Box<dyn NonCopyTrait>),
+}
+trait NonCopyTrait {}
+impl PartialEq for dyn NonCopyTrait {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
 // A union. Most builtin traits are not derivable for unions.
 #[derive(Clone, Copy)]
 pub union Union {

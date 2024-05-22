@@ -5,9 +5,8 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
-use rustc_target::abi::{Int, Pointer, F128, F16, F32, F64};
+use rustc_target::abi::{Float, Int, Pointer};
 use rustc_target::abi::{Scalar, Size, Variants};
 
 use std::fmt::Write;
@@ -166,7 +165,6 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type>;
 }
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
@@ -274,10 +272,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type {
         match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
-            F16 => cx.type_f16(),
-            F32 => cx.type_f32(),
-            F64 => cx.type_f64(),
-            F128 => cx.type_f128(),
+            Float(f) => cx.type_from_float(f),
             Pointer(address_space) => cx.type_ptr_ext(address_space),
         }
     }
@@ -307,45 +302,5 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
 
         self.scalar_llvm_type_at(cx, scalar)
-    }
-
-    fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type> {
-        debug_assert!(self.is_sized());
-
-        // FIXME: this is a fairly arbitrary choice, but 128 bits on WASM
-        // (matching the 128-bit SIMD types proposal) and 256 bits on x64
-        // (like AVX2 registers) seems at least like a tolerable starting point.
-        let threshold = cx.data_layout().pointer_size * 4;
-        if self.layout.size() > threshold {
-            return None;
-        }
-
-        // Vectors, even for non-power-of-two sizes, have the same layout as
-        // arrays but don't count as aggregate types
-        // While LLVM theoretically supports non-power-of-two sizes, and they
-        // often work fine, sometimes x86-isel deals with them horribly
-        // (see #115212) so for now only use power-of-two ones.
-        if let FieldsShape::Array { count, .. } = self.layout.fields()
-            && count.is_power_of_two()
-            && let element = self.field(cx, 0)
-            && element.ty.is_integral()
-        {
-            // `cx.type_ix(bits)` is tempting here, but while that works great
-            // for things that *stay* as memory-to-memory copies, it also ends
-            // up suppressing vectorization as it introduces shifts when it
-            // extracts all the individual values.
-
-            let ety = element.llvm_type(cx);
-            if *count == 1 {
-                // Emitting `<1 x T>` would be silly; just use the scalar.
-                return Some(ety);
-            } else {
-                return Some(cx.type_vector(ety, *count));
-            }
-        }
-
-        // FIXME: The above only handled integer arrays; surely more things
-        // would also be possible. Be careful about provenance, though!
-        None
     }
 }

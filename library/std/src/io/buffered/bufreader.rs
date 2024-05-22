@@ -322,6 +322,14 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
         crate::io::default_read_exact(self, buf)
     }
 
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        if self.buf.consume_with(cursor.capacity(), |claimed| cursor.append(claimed)) {
+            return Ok(());
+        }
+
+        crate::io::default_read_buf_exact(self, cursor)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.buf.pos() == self.buf.filled() && total_len >= self.capacity() {
@@ -375,12 +383,7 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
             // buffer.
             let mut bytes = Vec::new();
             self.read_to_end(&mut bytes)?;
-            let string = crate::str::from_utf8(&bytes).map_err(|_| {
-                io::const_io_error!(
-                    io::ErrorKind::InvalidData,
-                    "stream did not contain valid UTF-8",
-                )
-            })?;
+            let string = crate::str::from_utf8(&bytes).map_err(|_| io::Error::INVALID_UTF8)?;
             *buf += string;
             Ok(string.len())
         }

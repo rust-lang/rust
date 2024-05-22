@@ -34,7 +34,7 @@ if let StmtKind::Local(local) = stmt.kind
     && let ExprKind::Path(ref qpath3) = inner2.kind
     && match_qpath(qpath3, &["x"])
     && block.expr.is_none()
-    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local.pat.kind
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "print_text"
 {
     // report your lint here

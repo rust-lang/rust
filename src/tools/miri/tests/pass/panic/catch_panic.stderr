@@ -1,6 +1,7 @@
 thread 'main' panicked at $DIR/catch_panic.rs:LL:CC:
 Hello from std::panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 Caught panic message (&str): Hello from std::panic
 thread 'main' panicked at $DIR/catch_panic.rs:LL:CC:
 Hello from std::panic: 1

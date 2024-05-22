@@ -15,7 +15,7 @@ LL |       let s = c"foo\
 LL | |              bar
    | |   ^ whitespace symbol '\u{a0}' is not skipped
    | |___|
-   | 
+   |
 
 warning: whitespace symbol '\u{c}' is not skipped
   --> $DIR/str-escape.rs:26:16
@@ -25,7 +25,7 @@ LL |       let s = b"a\
 LL | |     b";
    | |    ^- whitespace symbol '\u{c}' is not skipped
    | |____|
-   | 
+   |
 
 warning: 3 warnings emitted
 

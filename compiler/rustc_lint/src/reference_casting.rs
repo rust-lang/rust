@@ -2,6 +2,7 @@ use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, layout::TyAndLayout};
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};
@@ -198,6 +199,16 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
     let e_alloc = cx.expr_or_init(e);
     let e_alloc =
         if let ExprKind::AddrOf(_, _, inner_expr) = e_alloc.kind { inner_expr } else { e_alloc };
+
+    // if the current expr looks like this `&mut expr[index]` then just looking
+    // at `expr[index]` won't give us the underlying allocation, so we just skip it
+    // the same logic applies field access `&mut expr.field` and reborrows `&mut *expr`.
+    if let ExprKind::Index(..) | ExprKind::Field(..) | ExprKind::Unary(UnOp::Deref, ..) =
+        e_alloc.kind
+    {
+        return None;
+    }
+
     let alloc_ty = cx.typeck_results().node_type(e_alloc.hir_id);
 
     // if we do not find it we bail out, as this may not be UB

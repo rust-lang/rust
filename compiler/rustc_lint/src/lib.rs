@@ -32,7 +32,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
-#![feature(generic_nonzero)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
@@ -41,13 +40,8 @@
 #![allow(internal_features)]
 
 #[macro_use]
-extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_session;
-#[macro_use]
 extern crate tracing;
 
-mod array_into_iter;
 mod async_fn_in_trait;
 pub mod builtin;
 mod context;
@@ -60,6 +54,7 @@ mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
 pub mod hidden_unicode_codepoints;
+mod impl_trait_overcaptures;
 mod internal;
 mod invalid_from_utf8;
 mod late;
@@ -80,18 +75,18 @@ mod passes;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
+mod shadowed_into_iter;
 mod traits;
 mod types;
 mod unit_bindings;
 mod unused;
 
-pub use array_into_iter::ARRAY_INTO_ITER;
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use array_into_iter::ArrayIntoIter;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use deref_into_dyn_supertrait::*;
@@ -99,6 +94,7 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
+use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
@@ -115,6 +111,7 @@ use pass_by_value::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use shadowed_into_iter::ShadowedIntoIter;
 use traits::*;
 use types::*;
 use unit_bindings::*;
@@ -218,7 +215,7 @@ late_lint_methods!(
             DerefNullPtr: DerefNullPtr,
             UnstableFeatures: UnstableFeatures,
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
-            ArrayIntoIter: ArrayIntoIter::default(),
+            ShadowedIntoIter: ShadowedIntoIter,
             DropTraitConstraints: DropTraitConstraints,
             TemporaryCStringAsPtr: TemporaryCStringAsPtr,
             NonPanicFmt: NonPanicFmt,
@@ -233,6 +230,7 @@ late_lint_methods!(
             MissingDoc: MissingDoc,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
+            ImplTraitOvercaptures: ImplTraitOvercaptures,
         ]
     ]
 );
@@ -313,6 +311,8 @@ fn register_builtins(store: &mut LintStore) {
                                        // MACRO_USE_EXTERN_CRATE
     );
 
+    add_lint_group!("keyword_idents", KEYWORD_IDENTS_2018, KEYWORD_IDENTS_2024);
+
     add_lint_group!(
         "refining_impl_trait",
         REFINING_IMPL_TRAIT_REACHABLE,
@@ -325,7 +325,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("bare_trait_object", "bare_trait_objects");
     store.register_renamed("unstable_name_collision", "unstable_name_collisions");
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
-    store.register_renamed("async_idents", "keyword_idents");
+    store.register_renamed("async_idents", "keyword_idents_2018");
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");

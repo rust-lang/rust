@@ -843,7 +843,11 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(_, ref it) => {
+            ast::TyKind::ImplTrait(_, ref it, ref captures) => {
+                // FIXME(precise_capturing): Implement formatting.
+                if captures.is_some() {
+                    return None;
+                }
                 // Empty trait is not a parser error.
                 if it.is_empty() {
                     return Some("impl".to_owned());
@@ -867,6 +871,11 @@ impl Rewrite for ast::Ty {
                 self.span,
                 shape,
             ),
+            ast::TyKind::Pat(ref ty, ref pat) => {
+                let ty = ty.rewrite(context, shape)?;
+                let pat = pat.rewrite(context, shape)?;
+                Some(format!("{ty} is {pat}"))
+            }
         }
     }
 }
@@ -890,7 +899,7 @@ fn rewrite_bare_fn(
         result.push_str("> ");
     }
 
-    result.push_str(crate::utils::format_unsafety(bare_fn.unsafety));
+    result.push_str(crate::utils::format_safety(bare_fn.safety));
 
     result.push_str(&format_extern(
         bare_fn.ext,
@@ -1101,7 +1110,8 @@ fn join_bounds_inner(
 
 pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
     ty.as_ref().and_then(|t| match &t.kind {
-        ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
+        // FIXME(precise_capturing): Implement support here
+        ast::TyKind::ImplTrait(_, bounds, _) => Some(bounds),
         _ => None,
     })
 }

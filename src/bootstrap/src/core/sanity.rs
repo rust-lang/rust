@@ -8,12 +8,13 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use walkdir::WalkDir;
 
 use crate::builder::Kind;
 use crate::core::config::Target;
@@ -24,6 +25,15 @@ pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
     path: OsString,
 }
+
+// During sanity checks, we search for target names to determine if they exist in the compiler's built-in
+// target list (`rustc --print target-list`). While a target name may be present in the stage2 compiler,
+// it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
+//
+// Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
+const STAGE0_MISSING_TARGETS: &[&str] = &[
+    // just a dummy comment so the list doesn't get onelined
+];
 
 impl Finder {
     pub fn new() -> Self {
@@ -157,6 +167,12 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
+    let stage0_supported_target_list: HashSet<String> =
+        output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]))
+            .lines()
+            .map(|s| s.to_string())
+            .collect();
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in &build.targets {
@@ -175,6 +191,50 @@ than building it.
         // skip check for cross-targets
         if skip_target_sanity && target != &build.build {
             continue;
+        }
+
+        let target_str = target.to_string();
+
+        // Ignore fake targets that are only used for unit tests in bootstrap.
+        if !["A-A", "B-B", "C-C"].contains(&target_str.as_str()) {
+            let mut has_target = false;
+
+            let missing_targets_hashset: HashSet<_> = STAGE0_MISSING_TARGETS.iter().map(|t| t.to_string()).collect();
+            let duplicated_targets: Vec<_> = stage0_supported_target_list.intersection(&missing_targets_hashset).collect();
+
+            if !duplicated_targets.is_empty() {
+                println!("Following targets supported from the stage0 compiler, please remove them from STAGE0_MISSING_TARGETS list.");
+                for duplicated_target in duplicated_targets {
+                    println!("  {duplicated_target}");
+                }
+                std::process::exit(1);
+            }
+
+            // Check if it's a built-in target.
+            has_target |= stage0_supported_target_list.contains(&target_str);
+            has_target |= STAGE0_MISSING_TARGETS.contains(&target_str.as_str());
+
+            if !has_target {
+                // This might also be a custom target, so check the target file that could have been specified by the user.
+                if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
+                    let mut target_filename = OsString::from(&target_str);
+                    // Target filename ends with `.json`.
+                    target_filename.push(".json");
+
+                    // Recursively traverse through nested directories.
+                    let walker = WalkDir::new(custom_target_path).into_iter();
+                    for entry in walker.filter_map(|e| e.ok()) {
+                        has_target |= entry.file_name() == target_filename;
+                    }
+                }
+            }
+
+            if !has_target {
+                panic!(
+                    "No such target exists in the target list,
+                specify a correct location of the JSON specification file for custom targets!"
+                );
+            }
         }
 
         if !build.config.dry_run() {

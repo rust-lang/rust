@@ -3,7 +3,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ needs-asm-support
 //@ needs-unwind
-//@ compile-flags: -Zinline-mir-hint-threshold=1000
+//@ compile-flags: -Zinline-mir-hint-threshold=1000 -C debuginfo=full
 #![feature(asm_unwind)]
 
 struct D;

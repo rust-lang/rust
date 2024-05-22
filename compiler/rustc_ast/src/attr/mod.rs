@@ -13,6 +13,7 @@ use crate::util::literal::escape_string_symbol;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use smallvec::{smallvec, SmallVec};
 use std::iter;
 use std::sync::atomic::{AtomicU32, Ordering};
 use thin_vec::{thin_vec, ThinVec};
@@ -87,8 +88,18 @@ impl Attribute {
             AttrKind::DocComment(..) => None,
         }
     }
+
     pub fn name_or_empty(&self) -> Symbol {
         self.ident().unwrap_or_else(Ident::empty).name
+    }
+
+    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                normal.item.path.segments.iter().map(|s| s.ident.name).collect()
+            }
+            AttrKind::DocComment(..) => smallvec![sym::doc],
+        }
     }
 
     #[inline]
@@ -298,7 +309,10 @@ impl MetaItem {
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        self.kind.value_str()
+        match &self.kind {
+            MetaItemKind::NameValue(v) => v.kind.str(),
+            _ => None,
+        }
     }
 
     fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
@@ -308,11 +322,11 @@ impl MetaItem {
         // FIXME: Share code with `parse_path`.
         let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref() {
             Some(&TokenTree::Token(
-                Token { kind: ref kind @ (token::Ident(..) | token::ModSep), span },
+                Token { kind: ref kind @ (token::Ident(..) | token::PathSep), span },
                 _,
             )) => 'arm: {
                 let mut segments = if let &token::Ident(name, _) = kind {
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -331,7 +345,7 @@ impl MetaItem {
                     } else {
                         return None;
                     }
-                    if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
+                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         tokens.peek()
                     {
                         tokens.next();
@@ -342,7 +356,7 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &nt.0 {
+            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
                 token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,
@@ -362,13 +376,6 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    pub fn value_str(&self) -> Option<Symbol> {
-        match self {
-            MetaItemKind::NameValue(v) => v.kind.str(),
-            _ => None,
-        }
-    }
-
     fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<NestedMetaItem>> {
         let mut tokens = tokens.trees().peekable();
         let mut result = ThinVec::new();
@@ -468,8 +475,9 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
-    /// Returns a name and single literal value tuple of the `MetaItem`.
-    pub fn name_value_literal(&self) -> Option<(Symbol, &MetaItemLit)> {
+    /// If it's a singleton list of the form `foo(lit)`, returns the `foo` and
+    /// the `lit`.
+    pub fn singleton_lit_list(&self) -> Option<(Symbol, &MetaItemLit)> {
         self.meta_item().and_then(|meta_item| {
             meta_item.meta_item_list().and_then(|meta_item_list| {
                 if meta_item_list.len() == 1

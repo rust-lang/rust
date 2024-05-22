@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fmt;
+use std::io;
+use std::io::Read;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -9,14 +12,14 @@ use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
 use rustc_session::config::{get_cmd_lint_options, nightly_options};
-use rustc_session::config::{
-    CodegenOptions, ErrorOutputType, Externs, JsonUnusedExterns, UnstableOptions,
-};
+use rustc_session::config::{CodegenOptions, ErrorOutputType, Externs, Input};
+use rustc_session::config::{JsonUnusedExterns, UnstableOptions};
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::EarlyDiagCtxt;
 use rustc_span::edition::Edition;
+use rustc_span::FileName;
 use rustc_target::spec::TargetTriple;
 
 use crate::core::new_dcx;
@@ -60,7 +63,7 @@ impl TryFrom<&str> for OutputFormat {
 pub(crate) struct Options {
     // Basic options / Options passed directly to rustc
     /// The crate root or Markdown file to load.
-    pub(crate) input: PathBuf,
+    pub(crate) input: Input,
     /// The name of the crate being documented.
     pub(crate) crate_name: Option<String>,
     /// Whether or not this is a bin crate
@@ -179,7 +182,7 @@ impl fmt::Debug for Options {
         }
 
         f.debug_struct("Options")
-            .field("input", &self.input)
+            .field("input", &self.input.source_name())
             .field("crate_name", &self.crate_name)
             .field("bin_crate", &self.bin_crate)
             .field("proc_macro_crate", &self.proc_macro_crate)
@@ -285,8 +288,6 @@ pub(crate) struct RenderOptions {
     pub(crate) no_emit_shared: bool,
     /// If `true`, HTML source code pages won't be generated.
     pub(crate) html_no_source: bool,
-    /// Whether `-Zforce-unstable-if-unmarked` unstable option is set
-    pub(crate) force_unstable_if_unmarked: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -322,6 +323,23 @@ impl RenderOptions {
     }
 }
 
+/// Create the input (string or file path)
+///
+/// Warning: Return an unrecoverable error in case of error!
+fn make_input(early_dcx: &EarlyDiagCtxt, input: &str) -> Input {
+    if input == "-" {
+        let mut src = String::new();
+        if io::stdin().read_to_string(&mut src).is_err() {
+            // Immediately stop compilation if there was an issue reading
+            // the input (for example if the input stream is not UTF-8).
+            early_dcx.early_fatal("couldn't read from stdin, as it did not contain valid UTF-8");
+        }
+        Input::Str { name: FileName::anon_source_code(&src), input: src }
+    } else {
+        Input::File(PathBuf::from(input))
+    }
+}
+
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
@@ -353,7 +371,6 @@ impl Options {
 
         let codegen_options = CodegenOptions::build(early_dcx, matches);
         let unstable_opts = UnstableOptions::build(early_dcx, matches);
-        let force_unstable_if_unmarked = unstable_opts.force_unstable_if_unmarked;
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
 
@@ -450,15 +467,16 @@ impl Options {
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
-        let input = PathBuf::from(if describe_lints {
+        let input = if describe_lints {
             "" // dummy, this won't be used
-        } else if matches.free.is_empty() {
-            dcx.fatal("missing file operand");
-        } else if matches.free.len() > 1 {
-            dcx.fatal("too many file operands");
         } else {
-            &matches.free[0]
-        });
+            match matches.free.as_slice() {
+                [] => dcx.fatal("missing file operand"),
+                [input] => input,
+                _ => dcx.fatal("too many file operands"),
+            }
+        };
+        let input = make_input(early_dcx, &input);
 
         let externs = parse_externs(early_dcx, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
@@ -635,7 +653,16 @@ impl Options {
         let libs = matches
             .opt_strs("L")
             .iter()
-            .map(|s| SearchPath::from_cli_opt(&sysroot, &target, early_dcx, s))
+            .map(|s| {
+                SearchPath::from_cli_opt(
+                    &sysroot,
+                    &target,
+                    early_dcx,
+                    s,
+                    #[allow(rustc::bad_opt_access)] // we have no `Session` here
+                    unstable_opts.unstable_options,
+                )
+            })
             .collect();
 
         let show_coverage = matches.opt_present("show-coverage");
@@ -781,14 +808,15 @@ impl Options {
             call_locations,
             no_emit_shared: false,
             html_no_source,
-            force_unstable_if_unmarked,
         };
         Some((options, render_options))
     }
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.
-    pub(crate) fn markdown_input(&self) -> bool {
-        self.input.extension().is_some_and(|e| e == "md" || e == "markdown")
+    pub(crate) fn markdown_input(&self) -> Option<&Path> {
+        self.input
+            .opt_path()
+            .filter(|p| matches!(p.extension(), Some(e) if e == "md" || e == "markdown"))
     }
 }
 

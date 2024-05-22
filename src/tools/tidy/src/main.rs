@@ -35,6 +35,7 @@ fn main() {
     let library_path = root_path.join("library");
     let compiler_path = root_path.join("compiler");
     let librustdoc_path = src_path.join("librustdoc");
+    let crashes_path = tests_path.join("crashes");
 
     let args: Vec<String> = env::args().skip(1).collect();
     let (cfg_args, pos_args) = match args.iter().position(|arg| arg == "--") {
@@ -108,6 +109,8 @@ fn main() {
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
+        check!(known_bug, &crashes_path);
+        check!(unknown_revision, &tests_path);
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);

@@ -15,6 +15,7 @@ use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId};
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
@@ -179,7 +180,7 @@ pub fn provide(providers: &mut Providers) {
                     .parenting
                     .get(&owner_id.def_id)
                     .copied()
-                    .unwrap_or(ItemLocalId::from_u32(0)),
+                    .unwrap_or(ItemLocalId::ZERO),
             }
         })
     };

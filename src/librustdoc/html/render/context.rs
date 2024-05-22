@@ -78,8 +78,10 @@ pub(crate) struct Context<'tcx> {
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
-#[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(not(windows), target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Context<'_>, 160);
+#[cfg(all(windows, target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Context<'_>, 168);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -231,7 +233,7 @@ impl<'tcx> Context<'tcx> {
                 rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
             };
             let mut page_buffer = Buffer::html();
-            print_item(self, it, &mut page_buffer, &page);
+            print_item(self, it, &mut page_buffer);
             layout::render(
                 &clone_shared.layout,
                 &page,

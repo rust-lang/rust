@@ -3,6 +3,8 @@ name: Various rustc tests
 on:
   - push
 
+permissions: {}
+
 jobs:
   bootstrap_rustc:
     runs-on: ubuntu-latest
@@ -18,7 +20,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
 
     - name: Prepare dependencies
       run: ./y.sh prepare
@@ -41,7 +43,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
 
     - name: Install ripgrep
       run: |

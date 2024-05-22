@@ -232,6 +232,7 @@ pub struct DiagnosticsConfig {
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
+    pub term_search_fuel: u64,
 }
 
 impl DiagnosticsConfig {
@@ -256,6 +257,7 @@ impl DiagnosticsConfig {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            term_search_fuel: 400,
         }
     }
 }
@@ -297,11 +299,10 @@ pub fn diagnostics(
 ) -> Vec<Diagnostic> {
     let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
     let sema = Semantics::new(db);
-    let parse = db.parse(file_id);
     let mut res = Vec::new();
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    res.extend(parse.errors().into_iter().take(128).map(|err| {
+    res.extend(db.parse_errors(file_id).as_deref().into_iter().flatten().take(128).map(|err| {
         Diagnostic::new(
             DiagnosticCode::RustcHardError("syntax-error"),
             format!("Syntax Error: {err}"),
@@ -320,13 +321,11 @@ pub fn diagnostics(
     let module = sema.file_to_module_def(file_id);
 
     let ctx = DiagnosticsContext { config, sema, resolve };
-    if module.is_none() {
-        handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id);
-    }
 
     let mut diags = Vec::new();
-    if let Some(m) = module {
-        m.diagnostics(db, &mut diags, config.style_lints);
+    match module {
+        Some(m) => m.diagnostics(db, &mut diags, config.style_lints),
+        None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id),
     }
 
     for diag in diags {
@@ -342,7 +341,8 @@ pub fn diagnostics(
             AnyDiagnostic::MacroDefError(d) => handlers::macro_error::macro_def_error(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MacroExpansionParseError(d) => {
-                res.extend(d.errors.iter().take(32).map(|err| {
+                // FIXME: Point to the correct error span here, not just the macro-call name
+                res.extend(d.errors.iter().take(16).map(|err| {
                     {
                         Diagnostic::new(
                             DiagnosticCode::RustcHardError("syntax-error"),
@@ -409,6 +409,11 @@ pub fn diagnostics(
         res.push(d)
     }
 
+    res.retain(|d| {
+        !(ctx.config.disabled.contains(d.code.as_str())
+            || ctx.config.disable_experimental && d.experimental)
+    });
+
     let mut diagnostics_of_range = res
         .iter_mut()
         .filter_map(|it| {
@@ -421,9 +426,14 @@ pub fn diagnostics(
         })
         .collect::<FxHashMap<_, _>>();
 
+    if diagnostics_of_range.is_empty() {
+        return res;
+    }
+
     let mut rustc_stack: FxHashMap<String, Vec<Severity>> = FxHashMap::default();
     let mut clippy_stack: FxHashMap<String, Vec<Severity>> = FxHashMap::default();
 
+    // FIXME: This becomes quite expensive for big files
     handle_lint_attributes(
         &ctx.sema,
         parse.syntax(),
@@ -432,11 +442,7 @@ pub fn diagnostics(
         &mut diagnostics_of_range,
     );
 
-    res.retain(|d| {
-        d.severity != Severity::Allow
-            && !ctx.config.disabled.contains(d.code.as_str())
-            && !(ctx.config.disable_experimental && d.experimental)
-    });
+    res.retain(|d| d.severity != Severity::Allow);
 
     res
 }
@@ -476,6 +482,7 @@ fn handle_lint_attributes(
     clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
 ) {
+    let _g = tracing::span!(tracing::Level::INFO, "handle_lint_attributes").entered();
     let file_id = sema.hir_file_for(root);
     let preorder = root.preorder();
     for ev in preorder {
@@ -486,24 +493,24 @@ fn handle_lint_attributes(
                         stack.push(severity);
                     });
                 }
-                if let Some(x) =
+                if let Some(it) =
                     diagnostics_of_range.get_mut(&InFile { file_id, value: node.clone() })
                 {
                     const EMPTY_LINTS: &[&str] = &[];
-                    let (names, stack) = match x.code {
+                    let (names, stack) = match it.code {
                         DiagnosticCode::RustcLint(name) => (
-                            RUSTC_LINT_GROUPS_DICT.get(name).map_or(EMPTY_LINTS, |x| &**x),
+                            RUSTC_LINT_GROUPS_DICT.get(name).map_or(EMPTY_LINTS, |it| &**it),
                             &mut *rustc_stack,
                         ),
                         DiagnosticCode::Clippy(name) => (
-                            CLIPPY_LINT_GROUPS_DICT.get(name).map_or(EMPTY_LINTS, |x| &**x),
+                            CLIPPY_LINT_GROUPS_DICT.get(name).map_or(EMPTY_LINTS, |it| &**it),
                             &mut *clippy_stack,
                         ),
                         _ => continue,
                     };
                     for &name in names {
-                        if let Some(s) = stack.get(name).and_then(|x| x.last()) {
-                            x.severity = *s;
+                        if let Some(s) = stack.get(name).and_then(|it| it.last()) {
+                            it.severity = *s;
                         }
                     }
                 }
@@ -571,8 +578,8 @@ fn parse_lint_attribute(
         if let Some(lint) = lint.as_single_name_ref() {
             job(rustc_stack.entry(lint.to_string()).or_default(), severity);
         }
-        if let Some(tool) = lint.qualifier().and_then(|x| x.as_single_name_ref()) {
-            if let Some(name_ref) = &lint.segment().and_then(|x| x.name_ref()) {
+        if let Some(tool) = lint.qualifier().and_then(|it| it.as_single_name_ref()) {
+            if let Some(name_ref) = &lint.segment().and_then(|it| it.name_ref()) {
                 if tool.to_string() == "clippy" {
                     job(clippy_stack.entry(name_ref.to_string()).or_default(), severity);
                 }

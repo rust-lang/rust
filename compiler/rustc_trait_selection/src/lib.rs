@@ -17,11 +17,11 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(option_take_if)]
 #![feature(never_type)]
@@ -29,16 +29,7 @@
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
-extern crate rustc_macros;
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-#[macro_use]
-extern crate rustc_data_structures;
-#[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
-#[macro_use]
-extern crate smallvec;
 
 pub mod errors;
 pub mod infer;

@@ -23,7 +23,6 @@
     trusted_len,
     hash_raw_entry
 )]
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]

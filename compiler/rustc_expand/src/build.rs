@@ -175,20 +175,6 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
     }
 
-    pub fn stmt_let_pat(&self, sp: Span, pat: P<ast::Pat>, ex: P<ast::Expr>) -> ast::Stmt {
-        let local = P(ast::Local {
-            pat,
-            ty: None,
-            id: ast::DUMMY_NODE_ID,
-            kind: LocalKind::Init(ex),
-            span: sp,
-            colon_sp: None,
-            attrs: AttrVec::new(),
-            tokens: None,
-        });
-        self.stmt_local(local, sp)
-    }
-
     pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
         self.stmt_let_ty(sp, mutbl, ident, None, ex)
     }
@@ -202,7 +188,7 @@ impl<'a> ExtCtxt<'a> {
         ex: P<ast::Expr>,
     ) -> ast::Stmt {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindingAnnotation::MUT)
+            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::MUT)
         } else {
             self.pat_ident(sp, ident)
         };
@@ -276,10 +262,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn expr_self(&self, span: Span) -> P<ast::Expr> {
         self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
-    }
-
-    pub fn expr_field(&self, span: Span, expr: P<Expr>, field: Ident) -> P<ast::Expr> {
-        self.expr(span, ast::ExprKind::Field(expr, field))
     }
 
     pub fn expr_macro_call(&self, span: Span, call: P<ast::MacCall>) -> P<ast::Expr> {
@@ -394,11 +376,6 @@ impl<'a> ExtCtxt<'a> {
         self.expr(span, ast::ExprKind::Lit(lit))
     }
 
-    pub fn expr_char(&self, span: Span, ch: char) -> P<ast::Expr> {
-        let lit = token::Lit::new(token::Char, literal::escape_char_symbol(ch), None);
-        self.expr(span, ast::ExprKind::Lit(lit))
-    }
-
     pub fn expr_byte_str(&self, span: Span, bytes: Vec<u8>) -> P<ast::Expr> {
         let lit = token::Lit::new(token::ByteStr, literal::escape_byte_str_symbol(&bytes), None);
         self.expr(span, ast::ExprKind::Lit(lit))
@@ -412,10 +389,6 @@ impl<'a> ExtCtxt<'a> {
     /// `&[expr1, expr2, ...]`
     pub fn expr_array_ref(&self, sp: Span, exprs: ThinVec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr_addr_of(sp, self.expr_array(sp, exprs))
-    }
-
-    pub fn expr_cast(&self, sp: Span, expr: P<ast::Expr>, ty: P<ast::Ty>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::Cast(expr, ty))
     }
 
     pub fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
@@ -490,14 +463,14 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Lit(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
-        self.pat_ident_binding_mode(span, ident, ast::BindingAnnotation::NONE)
+        self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)
     }
 
     pub fn pat_ident_binding_mode(
         &self,
         span: Span,
         ident: Ident,
-        ann: ast::BindingAnnotation,
+        ann: ast::BindingMode,
     ) -> P<ast::Pat> {
         let pat = PatKind::Ident(ann, ident.with_span_pos(span), None);
         self.pat(span, pat)

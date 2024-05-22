@@ -1,7 +1,5 @@
 //@ only-wasm32-wasip1
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::collections::HashMap;
 

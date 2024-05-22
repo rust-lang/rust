@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
-                FloatTy::F16 => {
+                FloatTy::F16 | FloatTy::F128 => {
                     // FIXME(f16_f128): do a check like the others when parsing is available
                     return;
                 },
@@ -96,10 +96,6 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     let value = sym_str.parse::<f64>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
-                },
-                FloatTy::F128 => {
-                    // FIXME(f16_f128): do a check like the others when parsing is available
-                    return;
                 },
             };
 

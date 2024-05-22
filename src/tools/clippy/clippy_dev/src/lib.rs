@@ -2,8 +2,14 @@
 #![feature(let_chains)]
 #![feature(rustc_private)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-// warn on lints, that are included in `rust-lang/rust`s bootstrap
-#![warn(rust_2018_idioms, unused_lifetimes)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    rust_2018_idioms,
+    unused_lifetimes,
+    unused_qualifications
+)]
+#![allow(clippy::missing_panics_doc)]
 
 // The `rustc_driver` crate seems to be required in order to use the `rust_lexer` crate.
 #[allow(unused_extern_crates)]

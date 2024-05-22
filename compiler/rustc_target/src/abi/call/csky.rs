@@ -18,7 +18,7 @@ fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
         if total.bits() > 64 {
             arg.make_indirect();
         } else if total.bits() > 32 {
-            arg.cast_to(Uniform { unit: Reg::i32(), total });
+            arg.cast_to(Uniform::new(Reg::i32(), total));
         } else {
             arg.cast_to(Reg::i32());
         }
@@ -38,7 +38,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     if arg.layout.is_aggregate() {
         let total = arg.layout.size;
         if total.bits() > 32 {
-            arg.cast_to(Uniform { unit: Reg::i32(), total });
+            arg.cast_to(Uniform::new(Reg::i32(), total));
         } else {
             arg.cast_to(Reg::i32());
         }

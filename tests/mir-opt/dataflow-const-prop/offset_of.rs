@@ -1,4 +1,4 @@
-//@ unit-test: DataflowConstProp
+//@ test-mir-pass: DataflowConstProp
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(offset_of_nested)]
@@ -36,16 +36,16 @@ fn concrete() {
     // CHECK: debug z0 => [[z0:_.*]];
     // CHECK: debug z1 => [[z1:_.*]];
 
-    // CHECK: [[x]] = must_use::<usize>(const 4_usize) -> {{.*}}
+    // CHECK: [[x]] = const 4_usize
     let x = offset_of!(Alpha, x);
 
-    // CHECK: [[y]] = must_use::<usize>(const 0_usize) -> {{.*}}
+    // CHECK: [[y]] = const 0_usize
     let y = offset_of!(Alpha, y);
 
-    // CHECK: [[z0]] = must_use::<usize>(const 2_usize) -> {{.*}}
+    // CHECK: [[z0]] = const 2_usize
     let z0 = offset_of!(Alpha, z.0);
 
-    // CHECK: [[z1]] = must_use::<usize>(const 3_usize) -> {{.*}}
+    // CHECK: [[z1]] = const 3_usize
     let z1 = offset_of!(Alpha, z.1);
 }
 
@@ -58,16 +58,16 @@ fn generic<T>() {
     // CHECK: debug dx => [[dx:_.*]];
     // CHECK: debug dy => [[dy:_.*]];
 
-    // CHECK: [[gx]] = must_use::<usize>(move {{_.*}}) -> {{.*}}
+    // CHECK: [[gx]] = OffsetOf(Gamma<T>, [(0, 0)]);
     let gx = offset_of!(Gamma<T>, x);
 
-    // CHECK: [[gy]] = must_use::<usize>(move {{_.*}}) -> {{.*}}
+    // CHECK: [[gy]] = OffsetOf(Gamma<T>, [(0, 1)]);
     let gy = offset_of!(Gamma<T>, y);
 
-    // CHECK: [[dx]] = must_use::<usize>(const 0_usize) -> {{.*}}
+    // CHECK: [[dx]] = const 0_usize
     let dx = offset_of!(Delta<T>, x);
 
-    // CHECK: [[dy]] = must_use::<usize>(const 2_usize) -> {{.*}}
+    // CHECK: [[dy]] = const 2_usize
     let dy = offset_of!(Delta<T>, y);
 }
 

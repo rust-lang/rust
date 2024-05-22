@@ -5,7 +5,7 @@
 
 use std::{cmp::Ordering, iter, mem, ops::Not};
 
-use base_db::{CrateId, Dependency, FileId};
+use base_db::{CrateId, CrateOrigin, Dependency, FileId, LangCrateOrigin};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -15,15 +15,13 @@ use hir_expand::{
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::CustomProcMacroExpander,
-    ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
-    MacroDefId, MacroDefKind,
+    ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContextId};
-use stdx::always;
 use syntax::ast;
 use triomphe::Arc;
 
@@ -279,7 +277,8 @@ impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
         let _p = tracing::span!(tracing::Level::INFO, "seed_with_top_level").entered();
 
-        let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
+        let crate_graph = self.db.crate_graph();
+        let file_id = crate_graph[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
@@ -288,19 +287,14 @@ impl DefCollector<'_> {
             crate_data.proc_macro_loading_error = Some(e.clone());
         }
 
-        for (name, dep) in &self.deps {
-            if dep.is_prelude() {
-                crate_data
-                    .extern_prelude
-                    .insert(name.clone(), (CrateRootModuleId { krate: dep.crate_id }, None));
-            }
-        }
+        let mut process = true;
 
         // Process other crate-level attributes.
         for attr in &*attrs {
             if let Some(cfg) = attr.cfg() {
                 if self.cfg_options.check(&cfg) == Some(false) {
-                    return;
+                    process = false;
+                    break;
                 }
             }
             let Some(attr_name) = attr.path.as_ident() else { continue };
@@ -350,8 +344,37 @@ impl DefCollector<'_> {
             }
         }
 
-        crate_data.shrink_to_fit();
+        for (name, dep) in &self.deps {
+            if dep.is_prelude() {
+                // This is a bit confusing but the gist is that `no_core` and `no_std` remove the
+                // sysroot dependence on `core` and `std` respectively. Our `CrateGraph` is eagerly
+                // constructed with them in place no matter what though, since at that point we
+                // don't do pre-configured attribute resolution yet.
+                // So here check if we are no_core / no_std and we are trying to add the
+                // corresponding dep from the sysroot
+                let skip = match crate_graph[dep.crate_id].origin {
+                    CrateOrigin::Lang(LangCrateOrigin::Core) => {
+                        crate_data.no_core && dep.is_sysroot()
+                    }
+                    CrateOrigin::Lang(LangCrateOrigin::Std) => {
+                        crate_data.no_std && dep.is_sysroot()
+                    }
+                    _ => false,
+                };
+                if skip {
+                    continue;
+                }
+                crate_data
+                    .extern_prelude
+                    .insert(name.clone(), (CrateRootModuleId { krate: dep.crate_id }, None));
+            }
+        }
+
         self.inject_prelude();
+
+        if !process {
+            return;
+        }
 
         ModCollector {
             def_collector: self,
@@ -362,6 +385,7 @@ impl DefCollector<'_> {
             mod_dir: ModDir::root(),
         }
         .collect_in_top_module(item_tree.top_level_items());
+        Arc::get_mut(&mut self.def_map.data).unwrap().shrink_to_fit();
     }
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
@@ -519,23 +543,19 @@ impl DefCollector<'_> {
 
         let krate = if self.def_map.data.no_std {
             name![core]
+        } else if self.def_map.extern_prelude().any(|(name, _)| *name == name![std]) {
+            name![std]
         } else {
-            let std = name![std];
-            if self.def_map.extern_prelude().any(|(name, _)| *name == std) {
-                std
-            } else {
-                // If `std` does not exist for some reason, fall back to core. This mostly helps
-                // keep r-a's own tests minimal.
-                name![core]
-            }
+            // If `std` does not exist for some reason, fall back to core. This mostly helps
+            // keep r-a's own tests minimal.
+            name![core]
         };
 
         let edition = match self.def_map.data.edition {
             Edition::Edition2015 => name![rust_2015],
             Edition::Edition2018 => name![rust_2018],
             Edition::Edition2021 => name![rust_2021],
-            // FIXME: update this when rust_2024 exists
-            Edition::Edition2024 => name![rust_2021],
+            Edition::Edition2024 => name![rust_2024],
         };
 
         let path_kind = match self.def_map.data.edition {
@@ -1390,31 +1410,6 @@ impl DefCollector<'_> {
         }
         let file_id = macro_call_id.as_file();
 
-        // First, fetch the raw expansion result for purposes of error reporting. This goes through
-        // `parse_macro_expansion_error` to avoid depending on the full expansion result (to improve
-        // incrementality).
-        // FIXME: This kind of error fetching feels a bit odd?
-        let ExpandResult { value: errors, err } =
-            self.db.parse_macro_expansion_error(macro_call_id);
-        if let Some(err) = err {
-            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
-            let diag = match err {
-                // why is this reported here?
-                hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
-                    always!(krate == loc.def.krate);
-                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone(), loc.def.krate)
-                }
-                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
-            };
-
-            self.def_map.diagnostics.push(diag);
-        }
-        if !errors.is_empty() {
-            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
-            let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, errors);
-            self.def_map.diagnostics.push(diag);
-        }
-
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.file_item_tree(file_id);
 
@@ -1918,7 +1913,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
-        let path_attr = attrs.by_key("path").string_value();
+        let path_attr = attrs.by_key("path").string_value_unescape();
         let is_macro_use = attrs.by_key("macro_use").exists();
         let module = &self.item_tree[module_id];
         match &module.kind {
@@ -1932,7 +1927,8 @@ impl ModCollector<'_, '_> {
                     module_id,
                 );
 
-                let Some(mod_dir) = self.mod_dir.descend_into_definition(&module.name, path_attr)
+                let Some(mod_dir) =
+                    self.mod_dir.descend_into_definition(&module.name, path_attr.as_deref())
                 else {
                     return;
                 };
@@ -1953,8 +1949,12 @@ impl ModCollector<'_, '_> {
             ModKind::Outline => {
                 let ast_id = AstId::new(self.file_id(), module.ast_id);
                 let db = self.def_collector.db;
-                match self.mod_dir.resolve_declaration(db, self.file_id(), &module.name, path_attr)
-                {
+                match self.mod_dir.resolve_declaration(
+                    db,
+                    self.file_id(),
+                    &module.name,
+                    path_attr.as_deref(),
+                ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree = db.file_item_tree(file_id.into());
                         let krate = self.def_collector.def_map.krate;

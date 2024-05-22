@@ -6,7 +6,7 @@ impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {} //~ ERROR cannot find type `U` 
 //~| ERROR the trait `DispatchFromDyn` may only be implemented for a coercion between structures
 trait Foo: X<u32> {}
 trait X<T> {
-    fn foo(self: Smaht<Self, T>); //~ ERROR: invalid `self`
+    fn foo(self: Smaht<Self, T>); //~ ERROR: invalid `self` parameter type
 }
 trait Marker {}
 impl Marker for dyn Foo {}

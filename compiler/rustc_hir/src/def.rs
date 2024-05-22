@@ -5,7 +5,7 @@ use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::kw;
@@ -113,6 +113,9 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
+    /// A field in a struct, enum or union. e.g.
+    /// - `bar` in `struct Foo { bar: u8 }`
+    /// - `Foo::Bar::0` in `enum Foo { Bar(u8) }`
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
@@ -204,7 +207,6 @@ impl DefKind {
             | DefKind::Enum
             | DefKind::Variant
             | DefKind::Trait
-            | DefKind::OpaqueTy
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
@@ -231,7 +233,8 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. } => None,
+            | DefKind::Impl { .. }
+            | DefKind::OpaqueTy => None,
         }
     }
 

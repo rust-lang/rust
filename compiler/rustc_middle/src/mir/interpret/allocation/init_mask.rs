@@ -5,6 +5,7 @@ use std::hash;
 use std::iter;
 use std::ops::Range;
 
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::Size;
 use rustc_type_ir::{TyDecoder, TyEncoder};

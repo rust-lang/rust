@@ -50,6 +50,14 @@ error[E0507]: cannot move out of dereference of `ManuallyDrop<((MockVec<u8>, Moc
 LL |     let a = (u.x.0).0;
    |             ^^^^^^^^^ move occurs because value has type `MockVec<u8>`, which does not implement the `Copy` trait
    |
+note: if `MockVec<u8>` implemented `Clone`, you could clone the value
+  --> $DIR/union-borrow-move-parent-sibling.rs:25:1
+   |
+LL | struct MockVec<T> {
+   | ^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = (u.x.0).0;
+   |             --------- you could clone this value
 help: consider borrowing here
    |
 LL |     let a = &(u.x.0).0;

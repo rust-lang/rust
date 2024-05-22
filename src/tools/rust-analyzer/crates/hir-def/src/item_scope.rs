@@ -234,6 +234,14 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
+    pub fn all_macro_calls(&self) -> impl Iterator<Item = MacroCallId> + '_ {
+        self.macro_invocations.values().copied().chain(self.attr_macros.values().copied()).chain(
+            self.derive_macros.values().flat_map(|it| {
+                it.iter().flat_map(|it| it.derive_call_ids.iter().copied().flatten())
+            }),
+        )
+    }
+
     pub(crate) fn modules_in_scope(&self) -> impl Iterator<Item = (ModuleId, Visibility)> + '_ {
         self.types.values().copied().filter_map(|(def, vis, _)| match def {
             ModuleDefId::ModuleId(module) => Some((module, vis)),
@@ -277,10 +285,40 @@ impl ItemScope {
             ItemInNs::Types(def) => self.types.iter().find_map(|(name, &(other_def, vis, i))| {
                 (other_def == def).then_some((name, vis, i.is_none()))
             }),
-
             ItemInNs::Values(def) => self.values.iter().find_map(|(name, &(other_def, vis, i))| {
                 (other_def == def).then_some((name, vis, i.is_none()))
             }),
+        }
+    }
+
+    /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
+    pub(crate) fn names_of<T>(
+        &self,
+        item: ItemInNs,
+        mut cb: impl FnMut(&Name, Visibility, bool) -> Option<T>,
+    ) -> Option<T> {
+        match item {
+            ItemInNs::Macros(def) => self
+                .macros
+                .iter()
+                .filter_map(|(name, &(other_def, vis, i))| {
+                    (other_def == def).then_some((name, vis, i.is_none()))
+                })
+                .find_map(|(a, b, c)| cb(a, b, c)),
+            ItemInNs::Types(def) => self
+                .types
+                .iter()
+                .filter_map(|(name, &(other_def, vis, i))| {
+                    (other_def == def).then_some((name, vis, i.is_none()))
+                })
+                .find_map(|(a, b, c)| cb(a, b, c)),
+            ItemInNs::Values(def) => self
+                .values
+                .iter()
+                .filter_map(|(name, &(other_def, vis, i))| {
+                    (other_def == def).then_some((name, vis, i.is_none()))
+                })
+                .find_map(|(a, b, c)| cb(a, b, c)),
         }
     }
 

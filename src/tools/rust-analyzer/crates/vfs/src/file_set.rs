@@ -132,6 +132,10 @@ impl FileSetConfig {
     ///
     /// `scratch_space` is used as a buffer and will be entirely replaced.
     fn classify(&self, path: &VfsPath, scratch_space: &mut Vec<u8>) -> usize {
+        // `path` is a file, but r-a only cares about the containing directory. We don't
+        // want `/foo/bar_baz.rs` to be attributed to source root directory `/foo/bar`.
+        let path = path.parent().unwrap_or_else(|| path.clone());
+
         scratch_space.clear();
         path.encode(scratch_space);
         let automaton = PrefixOf::new(scratch_space.as_slice());

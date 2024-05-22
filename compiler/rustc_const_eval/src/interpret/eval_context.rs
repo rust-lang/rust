@@ -17,15 +17,17 @@ use rustc_middle::ty::layout::{
     TyAndLayout,
 };
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
-    Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable,
-    Provenance, Scalar, StackPopJump,
+    err_inval, throw_inval, throw_ub, throw_ub_custom, throw_unsup, GlobalId, Immediate,
+    InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, MemoryKind,
+    OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar,
+    StackPopJump,
 };
 use crate::errors;
 use crate::util;
@@ -822,15 +824,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack_mut().push(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
-        if M::POST_MONO_CHECKS {
-            for &const_ in &body.required_consts {
-                let c = self
-                    .instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
-                c.eval(*self.tcx, self.param_env, const_.span).map_err(|err| {
-                    err.emit_note(*self.tcx);
-                    err
-                })?;
-            }
+        for &const_ in &body.required_consts {
+            let c =
+                self.instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
+            c.eval(*self.tcx, self.param_env, const_.span).map_err(|err| {
+                err.emit_note(*self.tcx);
+                err
+            })?;
         }
 
         // done
@@ -1060,6 +1060,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
 
+                ty::Pat(ty, ..) => is_very_trivially_sized(*ty),
+
                 // We don't want to do any queries, so there is not much we can do with ADTs.
                 ty::Adt(..) => false,
 
@@ -1179,8 +1181,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
             let const_val = val.eval(*ecx.tcx, ecx.param_env, span).map_err(|err| {
-                // FIXME: somehow this is reachable even when POST_MONO_CHECKS is on.
-                // Are we not always populating `required_consts`?
+                if M::ALL_CONSTS_ARE_PRECHECKED && !matches!(err, ErrorHandled::TooGeneric(..)) {
+                    // Looks like the const is not captued by `required_consts`, that's bad.
+                    bug!("interpret const eval failure of {val:?} which is not in required_consts");
+                }
                 err.emit_note(*ecx.tcx);
                 err
             })?;

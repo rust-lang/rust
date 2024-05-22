@@ -1,8 +1,7 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/sized-yield.rs:8:19
+  --> $DIR/sized-yield.rs:9:5
    |
-LL |       let mut gen = move || {
-   |  ___________________^
+LL | /     move || {
 LL | |
 LL | |         yield s[..];
 LL | |     };
@@ -12,7 +11,7 @@ LL | |     };
    = note: the yield type of a coroutine must have a statically known size
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/sized-yield.rs:12:24
+  --> $DIR/sized-yield.rs:13:24
    |
 LL |     Pin::new(&mut gen).resume(());
    |                        ^^^^^^ doesn't have a size known at compile-time

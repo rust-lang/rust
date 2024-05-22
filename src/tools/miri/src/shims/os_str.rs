@@ -72,11 +72,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         u16vec_to_osstring(u16_vec)
     }
 
-    /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
-    /// the Unix APIs usually handle. This function returns `Ok((false, length))` without trying
-    /// to write if `size` is not large enough to fit the contents of `os_string` plus a null
-    /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
-    /// string length returned does include the null terminator.
+    /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what the
+    /// Unix APIs usually handle. Returns `(success, full_len)`, where length includes the null
+    /// terminator. On failure, nothing is written.
     fn write_os_str_to_c_str(
         &mut self,
         os_str: &OsStr,
@@ -87,18 +85,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         self.eval_context_mut().write_c_str(bytes, ptr, size)
     }
 
-    /// Helper function to write an OsStr as a 0x0000-terminated u16-sequence, which is what the
-    /// Windows APIs usually handle.
-    ///
-    /// If `truncate == false` (the usual mode of operation), this function returns `Ok((false,
-    /// length))` without trying to write if `size` is not large enough to fit the contents of
-    /// `os_string` plus a null terminator. It returns `Ok((true, length))` if the writing process
-    /// was successful. The string length returned does include the null terminator. Length is
-    /// measured in units of `u16.`
-    ///
-    /// If `truncate == true`, then in case `size` is not large enough it *will* write the first
-    /// `size.saturating_sub(1)` many items, followed by a null terminator (if `size > 0`).
-    fn write_os_str_to_wide_str(
+    /// Internal helper to share code between `write_os_str_to_wide_str` and
+    /// `write_os_str_to_wide_str_truncated`.
+    fn write_os_str_to_wide_str_helper(
         &mut self,
         os_str: &OsStr,
         ptr: Pointer<Option<Provenance>>,
@@ -132,11 +121,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok((written, size_needed))
     }
 
+    /// Helper function to write an OsStr as a 0x0000-terminated u16-sequence, which is what the
+    /// Windows APIs usually handle. Returns `(success, full_len)`, where length is measured
+    /// in units of `u16` and includes the null terminator. On failure, nothing is written.
+    fn write_os_str_to_wide_str(
+        &mut self,
+        os_str: &OsStr,
+        ptr: Pointer<Option<Provenance>>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        self.write_os_str_to_wide_str_helper(os_str, ptr, size, /*truncate*/ false)
+    }
+
+    /// Like `write_os_str_to_wide_str`, but on failure as much as possible is written into
+    /// the buffer (always with a null terminator).
+    fn write_os_str_to_wide_str_truncated(
+        &mut self,
+        os_str: &OsStr,
+        ptr: Pointer<Option<Provenance>>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        self.write_os_str_to_wide_str_helper(os_str, ptr, size, /*truncate*/ true)
+    }
+
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of bytes.
     fn alloc_os_str_as_c_str(
         &mut self,
         os_str: &OsStr,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
         let this = self.eval_context_mut();
@@ -152,16 +164,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_os_str_as_wide_str(
         &mut self,
         os_str: &OsStr,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0x0000` terminator.
         let this = self.eval_context_mut();
 
         let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
-        let (written, _) = self
-            .write_os_str_to_wide_str(os_str, arg_place.ptr(), size, /*truncate*/ false)
-            .unwrap();
+        let (written, _) = self.write_os_str_to_wide_str(os_str, arg_place.ptr(), size).unwrap();
         assert!(written);
         Ok(arg_place.ptr())
     }
@@ -216,12 +226,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         path: &Path,
         ptr: Pointer<Option<Provenance>>,
         size: u64,
-        truncate: bool,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
         let os_str =
             this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_wide_str(&os_str, ptr, size, truncate)
+        this.write_os_str_to_wide_str(&os_str, ptr, size)
+    }
+
+    /// Write a Path to the machine memory (as a null-terminated sequence of `u16`s),
+    /// adjusting path separators if needed.
+    fn write_path_to_wide_str_truncated(
+        &mut self,
+        path: &Path,
+        ptr: Pointer<Option<Provenance>>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        let this = self.eval_context_mut();
+        let os_str =
+            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        this.write_os_str_to_wide_str_truncated(&os_str, ptr, size)
     }
 
     /// Allocate enough memory to store a Path as a null-terminated sequence of bytes,
@@ -229,7 +252,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_path_as_c_str(
         &mut self,
         path: &Path,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         let os_str =
@@ -242,7 +265,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn alloc_path_as_wide_str(
         &mut self,
         path: &Path,
-        memkind: MemoryKind<MiriMemoryKind>,
+        memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         let os_str =
@@ -250,7 +273,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.alloc_os_str_as_wide_str(&os_str, memkind)
     }
 
-    #[allow(clippy::get_first)]
     fn convert_path<'a>(
         &self,
         os_str: Cow<'a, OsStr>,
@@ -259,82 +281,97 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         let target_os = &this.tcx.sess.target.os;
 
+        /// Adjust a Windows path to Unix conventions such that it un-does everything that
+        /// `unix_to_windows` did, and such that if the Windows input path was absolute, then the
+        /// Unix output path is absolute.
+        fn windows_to_unix<T>(path: &mut Vec<T>)
+        where
+            T: From<u8> + Copy + Eq,
+        {
+            let sep = T::from(b'/');
+            // Make sure all path separators are `/`.
+            for c in path.iter_mut() {
+                if *c == b'\\'.into() {
+                    *c = sep;
+                }
+            }
+            // If this starts with `//?/`, it was probably produced by `unix_to_windows`` and we
+            // remove the `//?` that got added to get the Unix path back out.
+            if path.get(0..4) == Some(&[sep, sep, b'?'.into(), sep]) {
+                // Remove first 3 characters. It still starts with `/` so it is absolute on Unix.
+                path.splice(0..3, std::iter::empty());
+            }
+            // If it starts with a drive letter (`X:/`), convert it to an absolute Unix path.
+            else if path.get(1..3) == Some(&[b':'.into(), sep]) {
+                // We add a `/` at the beginning, to store the absolute Windows
+                // path in something that looks like an absolute Unix path.
+                path.insert(0, sep);
+            }
+        }
+
+        /// Adjust a Unix path to Windows conventions such that it un-does everything that
+        /// `windows_to_unix` did, and such that if the Unix input path was absolute, then the
+        /// Windows output path is absolute.
+        fn unix_to_windows<T>(path: &mut Vec<T>)
+        where
+            T: From<u8> + Copy + Eq,
+        {
+            let sep = T::from(b'\\');
+            // Make sure all path separators are `\`.
+            for c in path.iter_mut() {
+                if *c == b'/'.into() {
+                    *c = sep;
+                }
+            }
+            // If the path is `\X:\`, the leading separator was probably added by `windows_to_unix`
+            // and we should get rid of it again.
+            if path.get(2..4) == Some(&[b':'.into(), sep]) && path[0] == sep {
+                // The new path is still absolute on Windows.
+                path.remove(0);
+            }
+            // If this starts withs a `\` but not a `\\`, then this was absolute on Unix but is
+            // relative on Windows (relative to "the root of the current directory", e.g. the
+            // drive letter).
+            else if path.first() == Some(&sep) && path.get(1) != Some(&sep) {
+                // We add `\\?` so it starts with `\\?\` which is some magic path on Windows
+                // that *is* considered absolute. This way we store the absolute Unix path
+                // in something that looks like an absolute Windows path.
+                path.splice(0..0, [sep, sep, b'?'.into()]);
+            }
+        }
+
+        // Below we assume that everything non-Windows works like Unix, at least
+        // when it comes to file system path conventions.
         #[cfg(windows)]
         return if target_os == "windows" {
             // Windows-on-Windows, all fine.
             os_str
         } else {
             // Unix target, Windows host.
-            let (from, to) = match direction {
-                PathConversion::HostToTarget => ('\\', '/'),
-                PathConversion::TargetToHost => ('/', '\\'),
-            };
-            let mut converted = os_str
-                .encode_wide()
-                .map(|wchar| if wchar == from as u16 { to as u16 } else { wchar })
-                .collect::<Vec<_>>();
-            // We also have to ensure that absolute paths remain absolute.
+            let mut path: Vec<u16> = os_str.encode_wide().collect();
             match direction {
                 PathConversion::HostToTarget => {
-                    // If this is an absolute Windows path that starts with a drive letter (`C:/...`
-                    // after separator conversion), it would not be considered absolute by Unix
-                    // target code.
-                    if converted.get(1).copied() == Some(b':' as u16)
-                        && converted.get(2).copied() == Some(b'/' as u16)
-                    {
-                        // We add a `/` at the beginning, to store the absolute Windows
-                        // path in something that looks like an absolute Unix path.
-                        converted.insert(0, b'/' as u16);
-                    }
+                    windows_to_unix(&mut path);
                 }
                 PathConversion::TargetToHost => {
-                    // If the path is `\C:\`, the leading backslash was probably added by the above code
-                    // and we should get rid of it again.
-                    if converted.get(0).copied() == Some(b'\\' as u16)
-                        && converted.get(2).copied() == Some(b':' as u16)
-                        && converted.get(3).copied() == Some(b'\\' as u16)
-                    {
-                        converted.remove(0);
-                    }
+                    unix_to_windows(&mut path);
                 }
             }
-            Cow::Owned(OsString::from_wide(&converted))
+            Cow::Owned(OsString::from_wide(&path))
         };
         #[cfg(unix)]
         return if target_os == "windows" {
             // Windows target, Unix host.
-            let (from, to) = match direction {
-                PathConversion::HostToTarget => (b'/', b'\\'),
-                PathConversion::TargetToHost => (b'\\', b'/'),
-            };
-            let mut converted = os_str
-                .as_bytes()
-                .iter()
-                .map(|&wchar| if wchar == from { to } else { wchar })
-                .collect::<Vec<_>>();
-            // We also have to ensure that absolute paths remain absolute.
+            let mut path: Vec<u8> = os_str.into_owned().into_encoded_bytes();
             match direction {
                 PathConversion::HostToTarget => {
-                    // If this start withs a `\`, we add `\\?` so it starts with `\\?\` which is
-                    // some magic path on Windows that *is* considered absolute.
-                    if converted.get(0).copied() == Some(b'\\') {
-                        converted.splice(0..0, b"\\\\?".iter().copied());
-                    }
+                    unix_to_windows(&mut path);
                 }
                 PathConversion::TargetToHost => {
-                    // If this starts with `//?/`, it was probably produced by the above code and we
-                    // remove the `//?` that got added to get the Unix path back out.
-                    if converted.get(0).copied() == Some(b'/')
-                        && converted.get(1).copied() == Some(b'/')
-                        && converted.get(2).copied() == Some(b'?')
-                        && converted.get(3).copied() == Some(b'/')
-                    {
-                        // Remove first 3 characters
-                        converted.splice(0..3, std::iter::empty());
-                    }
+                    windows_to_unix(&mut path);
                 }
             }
-            Cow::Owned(OsString::from_vec(converted))
+            Cow::Owned(OsString::from_vec(path))
         } else {
             // Unix-on-Unix, all is fine.
             os_str

@@ -1,7 +1,7 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::macros::root_macro_call;
+use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::source::snippet;
 use clippy_utils::{expr_or_init, fn_def_id, match_def_path, paths};
 use rustc_errors::Applicability;
@@ -55,7 +55,7 @@ fn emit_lint(cx: &LateContext<'_>, span: Span, kind: &str, note: &'static str, s
         cx,
         REPEAT_VEC_WITH_CAPACITY,
         span,
-        &format!("repeating `Vec::with_capacity` using `{kind}`, which does not retain capacity"),
+        format!("repeating `Vec::with_capacity` using `{kind}`, which does not retain capacity"),
         |diag| {
             diag.note(note);
             diag.span_suggestion_verbose(span, sugg_msg, sugg, Applicability::MaybeIncorrect);
@@ -65,8 +65,7 @@ fn emit_lint(cx: &LateContext<'_>, span: Span, kind: &str, note: &'static str, s
 
 /// Checks `vec![Vec::with_capacity(x); n]`
 fn check_vec_macro(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if let Some(mac_call) = root_macro_call(expr.span)
-        && cx.tcx.is_diagnostic_item(sym::vec_macro, mac_call.def_id)
+    if matching_root_macro_call(cx, expr.span, sym::vec_macro).is_some()
         && let Some(VecArgs::Repeat(repeat_expr, len_expr)) = VecArgs::hir(cx, expr)
         && fn_def_id(cx, repeat_expr).is_some_and(|did| match_def_path(cx, did, &paths::VEC_WITH_CAPACITY))
         && !len_expr.span.from_expansion()

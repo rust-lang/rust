@@ -46,10 +46,6 @@ LL |     mac!(0);
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |             if let ...$e; { todo!() }
-   |             ++            +++++++++++
 
 error: aborting due to 6 previous errors
 

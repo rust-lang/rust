@@ -1,4 +1,4 @@
-#![feature(inline_const, const_type_id)]
+#![feature(const_type_id)]
 
 use std::alloc::Layout;
 use std::any::TypeId;

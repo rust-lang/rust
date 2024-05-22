@@ -187,7 +187,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
-    /// back to a pointer yields yields a [pointer without provenance][without_provenance_mut], which is undefined
+    /// back to a pointer yields a [pointer without provenance][without_provenance_mut], which is undefined
     /// behavior to dereference. To properly restore the lost information and obtain a
     /// dereferenceable pointer, use [`with_addr`][pointer::with_addr] or
     /// [`map_addr`][pointer::map_addr].
@@ -367,6 +367,57 @@ impl<T: ?Sized> *mut T {
         if self.is_null() { None } else { unsafe { Some(&*self) } }
     }
 
+    /// Returns a shared reference to the value behind the pointer.
+    /// If the pointer may be null or the value may be uninitialized, [`as_uninit_ref`] must be used instead.
+    /// If the pointer may be null, but the value is known to have been initialized, [`as_ref`] must be used instead.
+    ///
+    /// For the mutable counterpart see [`as_mut_unchecked`].
+    ///
+    /// [`as_ref`]: #method.as_ref
+    /// [`as_uninit_ref`]: #method.as_uninit_ref
+    /// [`as_mut_unchecked`]: #method.as_mut_unchecked
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    ///
+    /// * The pointer must point to an initialized instance of `T`.
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, while this reference exists, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// [the module documentation]: crate::ptr#safety
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_as_ref_unchecked)]
+    /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
+    ///
+    /// unsafe {
+    ///     println!("We got back the value: {}!", ptr.as_ref_unchecked());
+    /// }
+    /// ```
+    // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
+    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[inline]
+    #[must_use]
+    pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
+        // SAFETY: the caller must guarantee that `self` is valid for a reference
+        unsafe { &*self }
+    }
+
     /// Returns `None` if the pointer is null, or else returns a shared reference to
     /// the value wrapped in `Some`. In contrast to [`as_ref`], this does not require
     /// that the value has to be initialized.
@@ -464,8 +515,8 @@ impl<T: ?Sized> *mut T {
     /// let ptr: *mut u32 = s.as_mut_ptr();
     ///
     /// unsafe {
-    ///     println!("{}", *ptr.offset(1));
-    ///     println!("{}", *ptr.offset(2));
+    ///     assert_eq!(2, *ptr.offset(1));
+    ///     assert_eq!(3, *ptr.offset(2));
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -686,6 +737,58 @@ impl<T: ?Sized> *mut T {
         // SAFETY: the caller must guarantee that `self` is be valid for
         // a mutable reference if it isn't null.
         if self.is_null() { None } else { unsafe { Some(&mut *self) } }
+    }
+
+    /// Returns a unique reference to the value behind the pointer.
+    /// If the pointer may be null or the value may be uninitialized, [`as_uninit_mut`] must be used instead.
+    /// If the pointer may be null, but the value is known to have been initialized, [`as_mut`] must be used instead.
+    ///
+    /// For the shared counterpart see [`as_ref_unchecked`].
+    ///
+    /// [`as_mut`]: #method.as_mut
+    /// [`as_uninit_mut`]: #method.as_uninit_mut
+    /// [`as_ref_unchecked`]: #method.as_mut_unchecked
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    ///
+    /// * The pointer must point to an initialized instance of `T`.
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, while this reference exists, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// [the module documentation]: crate::ptr#safety
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_as_ref_unchecked)]
+    /// let mut s = [1, 2, 3];
+    /// let ptr: *mut u32 = s.as_mut_ptr();
+    /// let first_value = unsafe { ptr.as_mut_unchecked() };
+    /// *first_value = 4;
+    /// # assert_eq!(s, [4, 2, 3]);
+    /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
+    /// ```
+    // FIXME: mention it in the docs for `as_mut` and `as_uninit_mut` once stabilized.
+    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[inline]
+    #[must_use]
+    pub const unsafe fn as_mut_unchecked<'a>(self) -> &'a mut T {
+        // SAFETY: the caller must guarantee that `self` is valid for a reference
+        unsafe { &mut *self }
     }
 
     /// Returns `None` if the pointer is null, or else returns a unique reference to
@@ -1027,8 +1130,8 @@ impl<T: ?Sized> *mut T {
     /// let ptr: *const u8 = s.as_ptr();
     ///
     /// unsafe {
-    ///     println!("{}", *ptr.add(1) as char);
-    ///     println!("{}", *ptr.add(2) as char);
+    ///     assert_eq!('2', *ptr.add(1) as char);
+    ///     assert_eq!('3', *ptr.add(2) as char);
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
@@ -1111,8 +1214,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// unsafe {
     ///     let end: *const u8 = s.as_ptr().add(3);
-    ///     println!("{}", *end.sub(1) as char);
-    ///     println!("{}", *end.sub(2) as char);
+    ///     assert_eq!('3', *end.sub(1) as char);
+    ///     assert_eq!('2', *end.sub(2) as char);
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
@@ -1756,7 +1859,7 @@ impl<T: ?Sized> *mut T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned(self) -> bool
     where
@@ -1909,15 +2012,15 @@ impl<T> *mut [T] {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_len)]
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[inline(always)]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn len(self) -> usize {
         metadata(self)
     }
@@ -1927,15 +2030,14 @@ impl<T> *mut [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_ptr_len)]
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert!(!slice.is_empty());
     /// ```
     #[inline(always)]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
     }

@@ -102,11 +102,11 @@ impl DisallowedMacros {
                         DISALLOWED_MACROS,
                         cx.tcx.local_def_id_to_hir_id(derive_src.def_id),
                         mac.span,
-                        &msg,
+                        msg,
                         add_note,
                     );
                 } else {
-                    span_lint_and_then(cx, DISALLOWED_MACROS, mac.span, &msg, add_note);
+                    span_lint_and_then(cx, DISALLOWED_MACROS, mac.span, msg, add_note);
                 }
             }
         }

@@ -59,7 +59,7 @@ impl Subdiagnostic for UntranslatableInAddtoDiag {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
@@ -72,7 +72,7 @@ impl Subdiagnostic for TranslatableInAddtoDiag {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.note(crate::fluent_generated::no_crate_note);
     }

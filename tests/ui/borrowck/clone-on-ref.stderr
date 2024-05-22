@@ -32,6 +32,13 @@ LL |
 LL |     println!("{b}");
    |               --- borrow later used here
    |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/clone-on-ref.rs:11:8
+   |
+LL | fn bar<T: std::fmt::Display>(x: T) {
+   |        ^ consider constraining this type parameter with `Clone`
+LL |     let a = &x;
+   |             -- you could clone this value
 help: consider further restricting this bound
    |
 LL | fn bar<T: std::fmt::Display + Clone>(x: T) {
@@ -52,6 +59,14 @@ LL |
 LL |     println!("{b:?}");
    |               ----- borrow later used here
    |
+note: if `A` implemented `Clone`, you could clone the value
+  --> $DIR/clone-on-ref.rs:19:1
+   |
+LL | struct A;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+LL | fn qux(x: A) {
+LL |     let a = &x;
+   |             -- you could clone this value
 help: consider annotating `A` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

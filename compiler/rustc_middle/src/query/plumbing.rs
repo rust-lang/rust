@@ -8,12 +8,11 @@ use crate::query::{
 };
 use crate::ty::TyCtxt;
 use field_offset::FieldOffset;
-use measureme::StringId;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
+use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 pub(crate) use rustc_query_system::query::QueryJobId;
@@ -21,16 +20,6 @@ use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use std::ops::Deref;
-
-pub struct QueryKeyStringCache {
-    pub def_id_cache: FxHashMap<DefId, StringId>,
-}
-
-impl QueryKeyStringCache {
-    pub fn new() -> QueryKeyStringCache {
-        QueryKeyStringCache { def_id_cache: Default::default() }
-    }
-}
 
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
@@ -278,13 +267,7 @@ macro_rules! separate_provide_extern_default {
         ()
     };
     ([(separate_provide_extern) $($rest:tt)*][$name:ident]) => {
-        |_, key| bug!(
-            "`tcx.{}({:?})` unsupported by its crate; \
-             perhaps the `{}` query was never assigned a provider function",
-            stringify!($name),
-            key,
-            stringify!($name),
-        )
+        |_, key| $crate::query::plumbing::default_extern_query(stringify!($name), &key)
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_default!([$($modifiers)*][$($args)*])
@@ -338,10 +321,11 @@ macro_rules! define_callbacks {
 
                 pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
 
-                // Ensure that keys grow no larger than 64 bytes
-                #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+                // Ensure that keys grow no larger than 72 bytes by accident.
+                // Increase this limit if necessary, but do try to keep the size low if possible
+                #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if mem::size_of::<Key<'static>>() > 64 {
+                    if mem::size_of::<Key<'static>>() > 72 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
@@ -352,8 +336,9 @@ macro_rules! define_callbacks {
                     }
                 };
 
-                // Ensure that values grow no larger than 64 bytes
-                #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+                // Ensure that values grow no larger than 64 bytes by accident.
+                // Increase this limit if necessary, but do try to keep the size low if possible
+                #[cfg(target_pointer_width = "64")]
                 const _: () = {
                     if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(
@@ -472,15 +457,7 @@ macro_rules! define_callbacks {
         impl Default for Providers {
             fn default() -> Self {
                 Providers {
-                    $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for this key;\n\
-                        hint: Queries can be either made to the local crate, or the external crate. \
-                        This error means you tried to use it for one that's not supported.\n\
-                        If that's not the case, {} was likely never assigned to a provider function.\n",
-                        stringify!($name),
-                        key,
-                        stringify!($name),
-                    ),)*
+                    $($name: |_, key| $crate::query::plumbing::default_query(stringify!($name), &key)),*
                 }
             }
         }
@@ -671,3 +648,21 @@ use super::erase::EraseType;
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct CyclePlaceholder(pub ErrorGuaranteed);
+
+#[cold]
+pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
+    bug!(
+        "`tcx.{name}({key:?})` is not supported for this key;\n\
+        hint: Queries can be either made to the local crate, or the external crate. \
+        This error means you tried to use it for one that's not supported.\n\
+        If that's not the case, {name} was likely never assigned to a provider function.\n",
+    )
+}
+
+#[cold]
+pub(crate) fn default_extern_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
+    bug!(
+        "`tcx.{name}({key:?})` unsupported by its crate; \
+         perhaps the `{name}` query was never assigned a provider function",
+    )
+}

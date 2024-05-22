@@ -53,9 +53,9 @@ fn check_asm_syntax(
                 cx,
                 lint,
                 span,
-                &format!("{style} x86 assembly syntax used"),
+                format!("{style} x86 assembly syntax used"),
                 None,
-                &format!("use {} x86 assembly syntax", !style),
+                format!("use {} x86 assembly syntax", !style),
             );
         }
     }

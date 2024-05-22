@@ -105,7 +105,7 @@ pub(crate) fn handle_did_change_text_document(
         )
         .into_bytes();
         if *data != new_contents {
-            *data = new_contents.clone();
+            data.clone_from(&new_contents);
             state.vfs.write().0.set_file_contents(path, Some(new_contents));
         }
     }
@@ -154,6 +154,10 @@ pub(crate) fn handle_did_save_text_document(
                 state
                     .fetch_workspaces_queue
                     .request_op(format!("workspace vfs file change saved {abs_path}"), false);
+            } else if state.detached_files.contains(abs_path) {
+                state
+                    .fetch_workspaces_queue
+                    .request_op(format!("detached file saved {abs_path}"), false);
             }
         }
 
@@ -285,26 +289,27 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 
             // Find all workspaces that have at least one target containing the saved file
             let workspace_ids = world.workspaces.iter().enumerate().filter_map(|(idx, ws)| {
-                let package = match ws {
-                    project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                        cargo.packages().find_map(|pkg| {
-                            let has_target_with_root = cargo[pkg]
-                                .targets
-                                .iter()
-                                .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
-                            has_target_with_root.then(|| cargo[pkg].name.clone())
-                        })
-                    }
-                    project_model::ProjectWorkspace::Json { project, .. } => {
-                        if !project
-                            .crates()
-                            .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c))
-                        {
+                let package = match &ws.kind {
+                    project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | project_model::ProjectWorkspaceKind::DetachedFile {
+                        cargo: Some((cargo, _)),
+                        ..
+                    } => cargo.packages().find_map(|pkg| {
+                        let has_target_with_root = cargo[pkg]
+                            .targets
+                            .iter()
+                            .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
+                        has_target_with_root.then(|| cargo[pkg].name.clone())
+                    }),
+                    project_model::ProjectWorkspaceKind::Json(project) => {
+                        if !project.crates().any(|(_, krate)| {
+                            crate_root_paths.contains(&krate.root_module.as_path())
+                        }) {
                             return None;
                         }
                         None
                     }
-                    project_model::ProjectWorkspace::DetachedFiles { .. } => return None,
+                    project_model::ProjectWorkspaceKind::DetachedFile { .. } => return None,
                 };
                 Some((idx, package))
             });
@@ -344,7 +349,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 }
 
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_stop_flycheck").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "handle_cancel_flycheck").entered();
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }

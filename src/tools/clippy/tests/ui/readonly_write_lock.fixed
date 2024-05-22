@@ -43,3 +43,7 @@ fn main() {
         *writer1 = *writer2;
     }
 }
+
+fn issue12733(rw: &RwLock<()>) {
+    let _write_guard = rw.write().unwrap();
+}

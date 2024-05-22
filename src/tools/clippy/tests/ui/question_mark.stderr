@@ -141,5 +141,13 @@ LL | |                 // https://github.com/rust-lang/rust-clippy/pull/11001#is
 LL | |             }
    | |_____________^ help: replace it with: `a?;`
 
-error: aborting due to 16 previous errors
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:357:5
+   |
+LL | /     let Some(v) = bar.foo.owned.clone() else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
+
+error: aborting due to 17 previous errors
 

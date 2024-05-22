@@ -101,7 +101,7 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<chalk_ir::Const<Interner>, Self::Error> {
         let it = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(it)) else {
+        let Some(idx) = self.generics.as_ref().and_then(|g| g.type_or_const_param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
         Ok(self
@@ -119,7 +119,7 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<Ty, Self::Error> {
         let it = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(it)) else {
+        let Some(idx) = self.generics.as_ref().and_then(|g| g.type_or_const_param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
         Ok(self

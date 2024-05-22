@@ -2,12 +2,12 @@
 
 Tier 3
 
-Bare-metal target for any cpu in the ARMv4T architecture family, supporting
-ARM/Thumb code interworking (aka `a32`/`t32`), with ARM code as the default code
+Bare-metal target for any cpu in the Armv4T architecture family, supporting
+ARM/Thumb code interworking (aka `A32`/`T32`), with ARM code as the default code
 generation.
 
 In particular this supports the Game Boy Advance (GBA), but there's nothing
-GBA-specific with this target, so any ARMv4T device should work fine.
+GBA-specific with this target, so any Armv4T device should work fine.
 
 See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `arm-none-eabi` targets.

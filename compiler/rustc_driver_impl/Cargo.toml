@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-ctrlc = "3.4.4"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
@@ -43,15 +42,14 @@ rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_session = { path = "../rustc_session" }
-rustc_smir ={ path = "../rustc_smir" }
+rustc_smir = { path = "../rustc_smir" }
 rustc_span = { path = "../rustc_span" }
-rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 serde_json = "1.0.59"
 shlex = "1.0"
-time = { version = "0.3", default-features = false, features = ["alloc", "formatting", "parsing", "macros"] }
+time = { version = "0.3.36", default-features = false, features = ["alloc", "formatting", "parsing", "macros"] }
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
@@ -65,6 +63,11 @@ version = "0.52.0"
 features = [
     "Win32_System_Diagnostics_Debug",
 ]
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+# tidy-alphabetical-start
+ctrlc = "3.4.4"
+# tidy-alphabetical-end
 
 [features]
 # tidy-alphabetical-start

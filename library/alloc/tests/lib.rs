@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
 #![feature(iter_array_chunks)]
@@ -14,7 +13,6 @@
 #![feature(core_intrinsics)]
 #![feature(extract_if)]
 #![feature(exact_size_is_empty)]
-#![feature(generic_nonzero)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
 #![feature(new_uninit)]

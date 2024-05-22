@@ -1,4 +1,5 @@
 // Checks that the interactions with the source code pages are working as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 // Check that we can click on the line number.
@@ -23,8 +24,7 @@ define-function: (
     "check-colors",
     [theme, color, background_color, highlight_color, highlight_background_color],
     block {
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (
             ".src-line-numbers > a:not(.line-highlighted)",
             {"color": |color|, "background-color": |background_color|},

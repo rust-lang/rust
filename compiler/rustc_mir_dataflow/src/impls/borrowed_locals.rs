@@ -102,14 +102,13 @@ where
             }
 
             Rvalue::Cast(..)
-            | Rvalue::Ref(_, BorrowKind::Fake, _)
+            | Rvalue::Ref(_, BorrowKind::Fake(_), _)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Use(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Repeat(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)

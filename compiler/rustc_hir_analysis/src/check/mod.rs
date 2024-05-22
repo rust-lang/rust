@@ -90,18 +90,20 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
+use rustc_trait_selection::traits::error_reporting::suggestions::{
+    ReturnsVisitor, TypeErrCtxtExt as _,
+};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::errors;
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::indenter;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
@@ -342,9 +344,10 @@ fn bounds_from_generic_predicates<'tcx>(
                 let mut projections_str = vec![];
                 for projection in &projections {
                     let p = projection.skip_binder();
-                    let alias_ty = p.projection_ty;
-                    if bound == tcx.parent(alias_ty.def_id) && alias_ty.self_ty() == ty {
-                        let name = tcx.item_name(alias_ty.def_id);
+                    if bound == tcx.parent(p.projection_term.def_id)
+                        && p.projection_term.self_ty() == ty
+                    {
+                        let name = tcx.item_name(p.projection_term.def_id);
                         projections_str.push(format!("{} = {}", name, p.term));
                     }
                 }
@@ -453,7 +456,7 @@ fn fn_sig_suggestion<'tcx>(
 
     let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
-    let unsafety = sig.unsafety.prefix_str();
+    let safety = sig.safety.prefix_str();
     let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
@@ -461,20 +464,7 @@ fn fn_sig_suggestion<'tcx>(
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
-    format!(
-        "{unsafety}{asyncness}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}"
-    )
-}
-
-pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
-    Some(match ty.kind() {
-        ty::Bool => "true",
-        ty::Char => "'a'",
-        ty::Int(_) | ty::Uint(_) => "42",
-        ty::Float(_) => "3.14159",
-        ty::Error(_) | ty::Never => return None,
-        _ => "value",
-    })
+    format!("{safety}{asyncness}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}")
 }
 
 /// Return placeholder code for the given associated item.
@@ -511,7 +501,12 @@ fn suggestion_signature<'tcx>(
         }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
-            let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
+            let val = tcx
+                .infer_ctxt()
+                .build()
+                .err_ctxt()
+                .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
+                .unwrap_or_else(|| "value".to_string());
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }

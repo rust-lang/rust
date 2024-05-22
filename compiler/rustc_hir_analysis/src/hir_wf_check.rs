@@ -4,6 +4,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -163,15 +164,17 @@ fn diagnostic_hir_wf_check<'tcx>(
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },
                 ..
             }) => vec![*ty],
-            hir::Node::AnonConst(_)
-                if let Some(const_param_id) =
-                    tcx.hir().opt_const_param_default_param_def_id(hir_id)
+            hir::Node::AnonConst(_) => {
+                if let Some(const_param_id) = tcx.hir().opt_const_param_default_param_def_id(hir_id)
                     && let hir::Node::GenericParam(hir::GenericParam {
                         kind: hir::GenericParamKind::Const { ty, .. },
                         ..
-                    }) = tcx.hir_node_by_def_id(const_param_id) =>
-            {
-                vec![*ty]
+                    }) = tcx.hir_node_by_def_id(const_param_id)
+                {
+                    vec![*ty]
+                } else {
+                    vec![]
+                }
             }
             ref node => bug!("Unexpected node {:?}", node),
         },

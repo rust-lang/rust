@@ -72,7 +72,7 @@ fn find_match_true<'tcx>(
     pat: &'tcx Pat<'_>,
     scrutinee: &'tcx Expr<'_>,
     span: Span,
-    message: &str,
+    message: &'static str,
 ) {
     if let PatKind::Lit(lit) = pat.kind
         && let ExprKind::Lit(lit) = lit.kind
@@ -98,7 +98,7 @@ fn find_match_true<'tcx>(
             span,
             message,
             "consider using the condition directly",
-            sugg.to_string(),
+            sugg.into_string(),
             applicability,
         );
     }
@@ -227,7 +227,7 @@ fn find_method_sugg_for_if_let<'tcx>(
         cx,
         REDUNDANT_PATTERN_MATCHING,
         let_pat.span,
-        &format!("redundant pattern matching, consider using `{good_method}`"),
+        format!("redundant pattern matching, consider using `{good_method}`"),
         |diag| {
             // if/while let ... = ... { ... }
             // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -304,7 +304,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 cx,
                 REDUNDANT_PATTERN_MATCHING,
                 span,
-                &format!("redundant pattern matching, consider using `{good_method}`"),
+                format!("redundant pattern matching, consider using `{good_method}`"),
                 "try",
                 sugg,
                 Applicability::MachineApplicable,

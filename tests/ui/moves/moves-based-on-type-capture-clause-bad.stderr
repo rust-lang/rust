@@ -3,8 +3,8 @@ error[E0382]: borrow of moved value: `x`
    |
 LL |     let x = "Hello world!".to_string();
    |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
-LL |     thread::spawn(move|| {
-   |                   ------ value moved into closure here
+LL |     thread::spawn(move || {
+   |                   ------- value moved into closure here
 LL |         println!("{}", x);
    |                        - variable moved due to use in closure
 LL |     });

@@ -573,6 +573,10 @@ impl FromWithTcx<clean::Type> for Type {
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
             Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s.to_string() },
+            clean::Type::Pat(t, p) => Type::Pat {
+                type_: Box::new((*t).into_tcx(tcx)),
+                __pat_unstable_do_not_use: p.to_string(),
+            },
             ImplTrait(g) => Type::ImplTrait(g.into_tcx(tcx)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -615,10 +619,10 @@ impl FromWithTcx<clean::Term> for Term {
 
 impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
     fn from_tcx(bare_decl: clean::BareFunctionDecl, tcx: TyCtxt<'_>) -> Self {
-        let clean::BareFunctionDecl { unsafety, generic_params, decl, abi } = bare_decl;
+        let clean::BareFunctionDecl { safety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
             header: Header {
-                unsafe_: matches!(unsafety, rustc_hir::Unsafety::Unsafe),
+                unsafe_: matches!(safety, rustc_hir::Safety::Unsafe),
                 const_: false,
                 async_: false,
                 abi: convert_abi(abi),
@@ -647,7 +651,7 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
 impl FromWithTcx<clean::Trait> for Trait {
     fn from_tcx(trait_: clean::Trait, tcx: TyCtxt<'_>) -> Self {
         let is_auto = trait_.is_auto(tcx);
-        let is_unsafe = trait_.unsafety(tcx) == rustc_hir::Unsafety::Unsafe;
+        let is_unsafe = trait_.safety(tcx) == rustc_hir::Safety::Unsafe;
         let is_object_safe = trait_.is_object_safe(tcx);
         let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
@@ -674,7 +678,7 @@ impl FromWithTcx<clean::PolyTrait> for PolyTrait {
 impl FromWithTcx<clean::Impl> for Impl {
     fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
-        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
+        let clean::Impl { safety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
             clean::ImplKind::Normal | clean::ImplKind::FakeVariadic => (false, None),
@@ -686,7 +690,7 @@ impl FromWithTcx<clean::Impl> for Impl {
             ty::ImplPolarity::Negative => true,
         };
         Impl {
-            is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
+            is_unsafe: safety == rustc_hir::Safety::Unsafe,
             generics: generics.into_tcx(tcx),
             provided_trait_methods: provided_trait_methods
                 .into_iter()

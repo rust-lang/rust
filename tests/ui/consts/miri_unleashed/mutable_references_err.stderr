@@ -1,17 +1,3 @@
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:18:1
-   |
-LL | const MUH: Meh = Meh {
-   | ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-note: the lint level is defined here
-  --> $DIR/mutable_references_err.rs:5:9
-   |
-LL | #![deny(const_eval_mutable_ptr_in_final_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/mutable_references_err.rs:18:1
    |
@@ -23,17 +9,8 @@ LL | const MUH: Meh = Meh {
                HEX_DUMP
            }
 
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:31:1
-   |
-LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:31:1
+  --> $DIR/mutable_references_err.rs:29:1
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.<dyn-downcast>.x: encountered `UnsafeCell` in read-only memory
@@ -44,7 +21,7 @@ LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:38:1
+  --> $DIR/mutable_references_err.rs:34:1
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -54,17 +31,8 @@ LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
                HEX_DUMP
            }
 
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:42:1
-   |
-LL | const BLUNT: &mut i32 = &mut 42;
-   | ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:42:1
+  --> $DIR/mutable_references_err.rs:38:1
    |
 LL | const BLUNT: &mut i32 = &mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
@@ -75,7 +43,7 @@ LL | const BLUNT: &mut i32 = &mut 42;
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:49:1
+  --> $DIR/mutable_references_err.rs:43:1
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
@@ -86,7 +54,7 @@ LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const 
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:56:1
+  --> $DIR/mutable_references_err.rs:50:1
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -97,28 +65,33 @@ LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
            }
 
 note: erroneous constant encountered
-  --> $DIR/mutable_references_err.rs:58:34
+  --> $DIR/mutable_references_err.rs:52:34
    |
 LL | const READS_FROM_MUTABLE: i32 = *POINTS_TO_MUTABLE1;
    |                                  ^^^^^^^^^^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/mutable_references_err.rs:60:43
+  --> $DIR/mutable_references_err.rs:54:43
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
    |                                           ^^^^^^^^^^^^^ constant accesses mutable global memory
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:64:1
+  --> $DIR/mutable_references_err.rs:58:1
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
+note: the lint level is defined here
+  --> $DIR/mutable_references_err.rs:5:9
+   |
+LL | #![deny(const_eval_mutable_ptr_in_final_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:68:1
+  --> $DIR/mutable_references_err.rs:62:1
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -127,7 +100,7 @@ LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:72:1
+  --> $DIR/mutable_references_err.rs:66:1
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -136,7 +109,7 @@ LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *cons
    = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:85:1
+  --> $DIR/mutable_references_err.rs:79:1
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,7 +118,7 @@ LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:89:1
+  --> $DIR/mutable_references_err.rs:83:1
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,7 +127,7 @@ LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const
    = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:93:1
+  --> $DIR/mutable_references_err.rs:87:1
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,132 +138,87 @@ LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:22:8
+  --> $DIR/mutable_references_err.rs:20:8
    |
 LL |     x: &UnsafeCell::new(42),
    |        ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:31:27
+  --> $DIR/mutable_references_err.rs:29:27
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:38:40
+  --> $DIR/mutable_references_err.rs:34:40
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                        ^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references_err.rs:38:35
+  --> $DIR/mutable_references_err.rs:34:35
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                   ^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:42:25
+  --> $DIR/mutable_references_err.rs:38:25
    |
 LL | const BLUNT: &mut i32 = &mut 42;
    |                         ^^^^^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references_err.rs:49:49
+  --> $DIR/mutable_references_err.rs:43:49
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references_err.rs:49:49
+  --> $DIR/mutable_references_err.rs:43:49
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:56:44
+  --> $DIR/mutable_references_err.rs:50:44
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    |                                            ^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:60:45
+  --> $DIR/mutable_references_err.rs:54:45
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
    |                                             ^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:64:45
+  --> $DIR/mutable_references_err.rs:58:45
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    |                                             ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:68:46
+  --> $DIR/mutable_references_err.rs:62:46
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    |                                              ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:72:47
+  --> $DIR/mutable_references_err.rs:66:47
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                               ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:85:51
+  --> $DIR/mutable_references_err.rs:79:51
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    |                                                   ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:89:49
+  --> $DIR/mutable_references_err.rs:83:49
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    |                                                 ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:93:51
+  --> $DIR/mutable_references_err.rs:87:51
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                   ^^^^^^
 
-error: aborting due to 16 previous errors; 1 warning emitted
+error: aborting due to 13 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.
 Future incompatibility report: Future breakage diagnostic:
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:18:1
-   |
-LL | const MUH: Meh = Meh {
-   | ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-note: the lint level is defined here
-  --> $DIR/mutable_references_err.rs:5:9
-   |
-LL | #![deny(const_eval_mutable_ptr_in_final_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Future breakage diagnostic:
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:31:1
-   |
-LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-note: the lint level is defined here
-  --> $DIR/mutable_references_err.rs:5:9
-   |
-LL | #![deny(const_eval_mutable_ptr_in_final_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Future breakage diagnostic:
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:42:1
-   |
-LL | const BLUNT: &mut i32 = &mut 42;
-   | ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-note: the lint level is defined here
-  --> $DIR/mutable_references_err.rs:5:9
-   |
-LL | #![deny(const_eval_mutable_ptr_in_final_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Future breakage diagnostic:
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:64:1
+  --> $DIR/mutable_references_err.rs:58:1
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -305,7 +233,7 @@ LL | #![deny(const_eval_mutable_ptr_in_final_value)]
 
 Future breakage diagnostic:
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:68:1
+  --> $DIR/mutable_references_err.rs:62:1
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -320,7 +248,7 @@ LL | #![deny(const_eval_mutable_ptr_in_final_value)]
 
 Future breakage diagnostic:
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:72:1
+  --> $DIR/mutable_references_err.rs:66:1
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -335,7 +263,7 @@ LL | #![deny(const_eval_mutable_ptr_in_final_value)]
 
 Future breakage diagnostic:
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:85:1
+  --> $DIR/mutable_references_err.rs:79:1
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -350,7 +278,7 @@ LL | #![deny(const_eval_mutable_ptr_in_final_value)]
 
 Future breakage diagnostic:
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:89:1
+  --> $DIR/mutable_references_err.rs:83:1
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -365,7 +293,7 @@ LL | #![deny(const_eval_mutable_ptr_in_final_value)]
 
 Future breakage diagnostic:
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:93:1
+  --> $DIR/mutable_references_err.rs:87:1
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

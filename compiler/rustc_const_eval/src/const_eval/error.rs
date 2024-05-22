@@ -7,10 +7,11 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol};
 
 use super::CompileTimeInterpreter;
 use crate::errors::{self, FrameNote, ReportErrorExt};
+use crate::interpret::{err_inval, err_machine_stop};
 use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
 
 /// The CTFE machine has some custom error kinds.
@@ -121,7 +122,7 @@ where
 pub(super) fn report<'tcx, C, F, E>(
     tcx: TyCtxt<'tcx>,
     error: InterpError<'tcx>,
-    span: Option<Span>,
+    span: Span,
     get_span_and_frames: C,
     mk: F,
 ) -> ErrorHandled
@@ -135,16 +136,16 @@ where
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
         err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
-            ErrorHandled::TooGeneric(span.unwrap_or(DUMMY_SP))
+            ErrorHandled::TooGeneric(span)
         }
-        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span.unwrap_or(DUMMY_SP)),
+        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span),
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
-            ErrorHandled::Reported(guar.into(), span.unwrap_or(DUMMY_SP))
+            ErrorHandled::Reported(guar.into(), span)
         }
         // Report remaining errors.
         _ => {
             let (our_span, frames) = get_span_and_frames();
-            let span = span.unwrap_or(our_span);
+            let span = span.substitute_dummy(our_span);
             let err = mk(span, frames);
             let mut err = tcx.dcx().create_err(err);
 

@@ -15,14 +15,17 @@
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
+use rustc_macros::extension;
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
 };
-use rustc_middle::ty::{self, AliasRelationDirection, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
-    CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
+    self, AliasRelationDirection, CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, Ty,
+    TyCtxt, TypeOutlivesPredicate, UniverseIndex,
 };
 
 mod alias_relate;
@@ -72,7 +75,7 @@ enum GoalEvaluationKind {
 }
 
 #[extension(trait CanonicalResponseExt)]
-impl<'tcx> Canonical<'tcx, Response<'tcx>> {
+impl<'tcx> Canonical<'tcx, Response<TyCtxt<'tcx>>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         self.value.external_constraints.region_constraints.is_empty()
             && self.value.var_values.is_identity()
@@ -80,8 +83,8 @@ impl<'tcx> Canonical<'tcx, Response<'tcx>> {
     }
 }
 
-impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
+impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
+    #[instrument(level = "trace", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
         goal: Goal<'tcx, TypeOutlivesPredicate<'tcx>>,
@@ -91,7 +94,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_region_outlives_goal(
         &mut self,
         goal: Goal<'tcx, RegionOutlivesPredicate<'tcx>>,
@@ -101,7 +104,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_coerce_goal(
         &mut self,
         goal: Goal<'tcx, CoercePredicate<'tcx>>,
@@ -116,7 +119,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         })
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_subtype_goal(
         &mut self,
         goal: Goal<'tcx, SubtypePredicate<'tcx>>,
@@ -137,7 +140,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_well_formed_goal(
         &mut self,
         goal: Goal<'tcx, ty::GenericArg<'tcx>>,
@@ -151,7 +154,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,
         Goal { param_env, predicate: ct }: Goal<'tcx, ty::Const<'tcx>>,
@@ -188,7 +191,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn compute_const_arg_has_type_goal(
         &mut self,
         goal: Goal<'tcx, (ty::Const<'tcx>, Ty<'tcx>)>,
@@ -199,20 +202,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
-    fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
-        inspect::ProofTreeBuilder::add_normalizes_to_goal(self, goal);
-        self.nested_goals.normalizes_to_goals.push(goal);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        inspect::ProofTreeBuilder::add_goal(self, source, goal);
-        self.nested_goals.goals.push((source, goal));
-    }
-
-    #[instrument(level = "debug", skip(self, goals))]
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+    #[instrument(level = "trace", skip(self, goals))]
     fn add_goals(
         &mut self,
         source: GoalSource,
@@ -226,7 +217,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_merge_responses(
         &mut self,
         responses: &[CanonicalResponse<'tcx>],
@@ -252,7 +243,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn flounder(&mut self, responses: &[CanonicalResponse<'tcx>]) -> QueryResult<'tcx> {
         if responses.is_empty() {
             return Err(NoSolution);
@@ -274,7 +265,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// This function is necessary in nearly all cases before matching on a type.
     /// Not doing so is likely to be incomplete and therefore unsound during
     /// coherence.
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     fn structurally_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -316,5 +307,6 @@ fn response_no_constraints_raw<'tcx>(
             external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
+        defining_opaque_types: Default::default(),
     }
 }

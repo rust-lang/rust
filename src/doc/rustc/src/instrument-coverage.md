@@ -348,11 +348,7 @@ $ llvm-cov report \
 
 ## `-Z coverage-options=<options>`
 
-This unstable option provides finer control over some aspects of coverage
-instrumentation. Pass one or more of the following values, separated by commas.
-
-- `branch` or `no-branch`
-  - Enables or disables branch coverage instrumentation.
+[This unstable option is described in the Unstable Book.](../unstable-book/compiler-flags/coverage-options.html)
 
 ## Other references
 

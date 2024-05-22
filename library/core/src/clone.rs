@@ -227,12 +227,9 @@ mod impls {
     impl_clone! {
         usize u8 u16 u32 u64 u128
         isize i8 i16 i32 i64 i128
-        f32 f64
+        f16 f32 f64 f128
         bool char
     }
-
-    #[cfg(not(bootstrap))]
-    impl_clone! { f16 f128 }
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl Clone for ! {

@@ -1,10 +1,10 @@
 /// Functionality for terminators and helper types that appear in terminators.
 use rustc_hir::LangItem;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use super::TerminatorKind;
 use rustc_data_structures::packed::Pu128;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use std::slice;
 
 use super::*;
@@ -84,6 +84,12 @@ impl SwitchTargets {
         }
         self.values.push(value);
         self.targets.insert(self.targets.len() - 1, bb);
+    }
+
+    /// Returns true if all targets (including the fallback target) are distinct.
+    #[inline]
+    pub fn is_distinct(&self) -> bool {
+        self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
     }
 }
 

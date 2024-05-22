@@ -23,6 +23,7 @@ use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
+use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
@@ -266,8 +267,15 @@ impl ExternalCrate {
         let as_primitive = |res: Res<!>| {
             let Res::Def(DefKind::Mod, def_id) = res else { return None };
             tcx.get_attrs(def_id, sym::rustc_doc_primitive).find_map(|attr| {
-                // FIXME: should warn on unknown primitives?
-                Some((def_id, PrimitiveType::from_symbol(attr.value_str()?)?))
+                let attr_value = attr.value_str().expect("syntax should already be validated");
+                let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
+                    span_bug!(
+                        attr.span,
+                        "primitive `{attr_value}` is not a member of `PrimitiveType`"
+                    );
+                };
+
+                Some((def_id, prim))
             })
         };
 
@@ -400,7 +408,7 @@ impl Item {
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
         span_of_fragments(&self.attrs.doc_strings)
-            .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
+            .unwrap_or_else(|| self.span(tcx).map_or(DUMMY_SP, |span| span.inner()))
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.
@@ -592,13 +600,6 @@ impl Item {
         }
     }
 
-    pub(crate) fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
-        match self.const_stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since),
-            StabilityLevel::Unstable { .. } => None,
-        }
-    }
-
     pub(crate) fn is_non_exhaustive(&self) -> bool {
         self.attrs.other_attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
     }
@@ -635,17 +636,17 @@ impl Item {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
             };
-            hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+            hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    unsafety: if abi == Abi::RustIntrinsic {
+                    safety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
-                        hir::Unsafety::Unsafe
+                        hir::Safety::Unsafe
                     },
                     abi,
                     constness: if abi == Abi::RustIntrinsic
@@ -1447,8 +1448,8 @@ impl Trait {
     pub(crate) fn is_notable_trait(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.is_doc_notable_trait(self.def_id)
     }
-    pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
-        tcx.trait_def(self.def_id).unsafety
+    pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
+        tcx.trait_def(self.def_id).safety
     }
     pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.check_is_object_safe(self.def_id)
@@ -1475,7 +1476,9 @@ pub(crate) enum Type {
     ///
     /// This is mostly Rustdoc's version of [`hir::Path`].
     /// It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
-    Path { path: Path },
+    Path {
+        path: Path,
+    },
     /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
@@ -1492,10 +1495,15 @@ pub(crate) enum Type {
     ///
     /// The `String` field is a stringified version of the array's length parameter.
     Array(Box<Type>, Box<str>),
+    Pat(Box<Type>, Box<str>),
     /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
     /// A reference type: `&i32`, `&'a mut Foo`
-    BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
+    BorrowedRef {
+        lifetime: Option<Lifetime>,
+        mutability: Mutability,
+        type_: Box<Type>,
+    },
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath(Box<QPathData>),
@@ -1692,6 +1700,7 @@ impl Type {
             BareFunction(..) => PrimitiveType::Fn,
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
+            Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
@@ -1745,6 +1754,7 @@ pub(crate) enum PrimitiveType {
     Str,
     Slice,
     Array,
+    Pat,
     Tuple,
     Unit,
     RawPointer,
@@ -1797,8 +1807,10 @@ impl PrimitiveType {
             sym::bool => Some(PrimitiveType::Bool),
             sym::char => Some(PrimitiveType::Char),
             sym::str => Some(PrimitiveType::Str),
+            sym::f16 => Some(PrimitiveType::F16),
             sym::f32 => Some(PrimitiveType::F32),
             sym::f64 => Some(PrimitiveType::F64),
+            sym::f128 => Some(PrimitiveType::F128),
             sym::array => Some(PrimitiveType::Array),
             sym::slice => Some(PrimitiveType::Slice),
             sym::tuple => Some(PrimitiveType::Tuple),
@@ -1831,8 +1843,10 @@ impl PrimitiveType {
                 U32 => single(SimplifiedType::Uint(UintTy::U32)),
                 U64 => single(SimplifiedType::Uint(UintTy::U64)),
                 U128 => single(SimplifiedType::Uint(UintTy::U128)),
+                F16 => single(SimplifiedType::Float(FloatTy::F16)),
                 F32 => single(SimplifiedType::Float(FloatTy::F32)),
                 F64 => single(SimplifiedType::Float(FloatTy::F64)),
+                F128 => single(SimplifiedType::Float(FloatTy::F128)),
                 Str => single(SimplifiedType::Str),
                 Bool => single(SimplifiedType::Bool),
                 Char => single(SimplifiedType::Char),
@@ -1895,6 +1909,7 @@ impl PrimitiveType {
             Bool => sym::bool,
             Char => sym::char,
             Array => sym::array,
+            Pat => sym::pat,
             Slice => sym::slice,
             Tuple => sym::tuple,
             Unit => sym::unit,
@@ -2329,7 +2344,7 @@ pub(crate) struct OpaqueTy {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct BareFunctionDecl {
-    pub(crate) unsafety: hir::Unsafety,
+    pub(crate) safety: hir::Safety,
     pub(crate) generic_params: Vec<GenericParamDef>,
     pub(crate) decl: FnDecl,
     pub(crate) abi: Abi,
@@ -2431,7 +2446,7 @@ impl ConstantKind {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Impl {
-    pub(crate) unsafety: hir::Unsafety,
+    pub(crate) safety: hir::Safety,
     pub(crate) generics: Generics,
     pub(crate) trait_: Option<Path>,
     pub(crate) for_: Type,
@@ -2545,7 +2560,7 @@ pub(crate) enum TypeBindingKind {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;

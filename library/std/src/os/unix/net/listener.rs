@@ -79,23 +79,27 @@ impl UnixListener {
                 target_os = "espidf",
                 target_os = "horizon"
             ))]
-            const backlog: libc::c_int = 128;
+            const backlog: core::ffi::c_int = 128;
             #[cfg(any(
+                // Silently capped to `/proc/sys/net/core/somaxconn`.
                 target_os = "linux",
+                // Silently capped to `kern.ipc.soacceptqueue`.
                 target_os = "freebsd",
+                // Silently capped to `kern.somaxconn sysctl`.
                 target_os = "openbsd",
-                target_os = "macos"
+                // Silently capped to the default 128.
+                target_vendor = "apple",
             ))]
-            const backlog: libc::c_int = -1;
+            const backlog: core::ffi::c_int = -1;
             #[cfg(not(any(
                 target_os = "windows",
                 target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon",
                 target_os = "linux",
                 target_os = "freebsd",
                 target_os = "openbsd",
-                target_os = "macos",
-                target_os = "espidf",
-                target_os = "horizon"
+                target_vendor = "apple",
             )))]
             const backlog: libc::c_int = libc::SOMAXCONN;
 
@@ -138,9 +142,9 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             #[cfg(target_os = "linux")]
-            const backlog: libc::c_int = -1;
+            const backlog: core::ffi::c_int = -1;
             #[cfg(not(target_os = "linux"))]
-            const backlog: libc::c_int = 128;
+            const backlog: core::ffi::c_int = 128;
             cvt(libc::bind(
                 inner.as_raw_fd(),
                 core::ptr::addr_of!(socket_addr.addr) as *const _,

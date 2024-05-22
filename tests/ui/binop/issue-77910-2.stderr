@@ -21,8 +21,8 @@ LL |     xs
    |
 help: consider assigning a value
    |
-LL |     let xs = todo!();
-   |            +++++++++
+LL |     let xs = &42;
+   |            +++++
 
 error: aborting due to 2 previous errors
 

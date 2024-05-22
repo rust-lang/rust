@@ -72,14 +72,14 @@ For example:
 
 You can (cross-)run the entire test suite using:
 
-```
+```sh
 ./miri test
-MIRI_TEST_TARGET=i686-unknown-linux-gnu ./miri test
+./miri test --target i686-unknown-linux-gnu
 ```
 
 `./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
-base directory, e.g. `./miri test fail` will run all compile-fail tests). These filters are passed
-to `cargo test`, so for multiple filters you need to use `./miri test -- FILTER1 FILTER2`.
+base directory, e.g. `./miri test fail` will run all compile-fail tests). Multiple filters are
+supported: `./miri test FILTER1 FILTER2` runs all tests that contain either string.
 
 #### Fine grained logging
 
@@ -139,9 +139,8 @@ and then you can use it as if it was installed by `rustup` as a component of the
 in the `miri` toolchain's sysroot to prevent conflicts with other toolchains.
 The Miri binaries in the `cargo` bin directory (usually `~/.cargo/bin`) are managed by rustup.
 
-There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
-`./run-test.py` in there to execute it. Like `./miri test`, this respects the
-`MIRI_TEST_TARGET` environment variable to execute the test for another target.
+There's a test for the cargo wrapper in the `test-cargo-miri` directory; run `./run-test.py` in
+there to execute it. You can pass `--target` to execute the test for another target.
 
 ### Using a modified standard library
 
@@ -241,18 +240,20 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
+RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.
 
 ### Importing changes from the rustc repo
 
+*Note: this usually happens automatically, so these steps rarely have to be done by hand.*
+
 We assume we start on an up-to-date master branch in the Miri repo.
 
 ```sh
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
-# This will also update the 'rustc-version' file.
+# This will also update the `rustc-version` file.
 ./miri rustc-pull
 # Update local toolchain and apply formatting.
 ./miri toolchain && ./miri fmt
@@ -266,12 +267,6 @@ needed.
 
 ### Exporting changes to the rustc repo
 
-Keep in mind that pushing is the most complicated job that josh has to do -- pulling just filters
-the rustc history, but pushing needs to construct a new rustc history that would filter to the given
-Miri history! To avoid problems, it is a good idea to always pull immediately before you push. If
-you are getting strange errors, chances are you are running into [this josh
-bug](https://github.com/josh-project/josh/issues/998). In that case, please get in touch on Zulip.
-
 We will use the josh proxy to push to your fork of rustc. Run the following in the Miri repo,
 assuming we are on an up-to-date master branch:
 
@@ -280,9 +275,9 @@ assuming we are on an up-to-date master branch:
 ./miri rustc-push YOUR_NAME miri
 ```
 
-This will create a new branch called 'miri' in your fork, and the output should
-include a link to create a rustc PR that will integrate those changes into the
-main repository.
+This will create a new branch called `miri` in your fork, and the output should include a link that
+creates a rustc PR to integrate those changes into the main repository. If that PR has conflicts,
+you need to pull rustc changes into Miri first, and then re-do the rustc push.
 
 If this fails due to authentication problems, it can help to make josh push via ssh instead of
 https. Add the following to your `.gitconfig`:
@@ -291,3 +286,41 @@ https. Add the following to your `.gitconfig`:
 [url "git@github.com:"]
     pushInsteadOf = https://github.com/
 ```
+
+## Internal environment variables
+
+The following environment variables are *internal* and must not be used by
+anyone but Miri itself. They are used to communicate between different Miri
+binaries, and as such worth documenting:
+
+* `CARGO_EXTRA_FLAGS` is understood by `./miri` and passed to all host cargo invocations.
+* `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
+  actually not interpret the code but compile it like rustc would. With `target`, Miri sets
+  some compiler flags to prepare the code for interpretation; with `host`, this is not done.
+  This environment variable is useful to be sure that the compiled `rlib`s are compatible
+  with Miri.
+* `MIRI_CALLED_FROM_SETUP` is set during the Miri sysroot build,
+  which will re-invoke `cargo-miri` as the `rustc` to use for this build.
+* `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is
+  running as a child process of `rustdoc`, which invokes it twice for each doc-test
+  and requires special treatment, most notably a check-only build before interpretation.
+  This is set by `cargo-miri` itself when running as a `rustdoc`-wrapper.
+* `MIRI_CWD` when set to any value tells the Miri driver to change to the given
+  directory after loading all the source files, but before commencing
+  interpretation. This is useful if the interpreted program wants a different
+  working directory at run-time than at build-time.
+* `MIRI_LOCAL_CRATES` is set by `cargo-miri` to tell the Miri driver which
+  crates should be given special treatment in diagnostics, in addition to the
+  crate currently being compiled.
+* `MIRI_ORIG_RUSTDOC` is set and read by different phases of `cargo-miri` to remember the
+  value of `RUSTDOC` from before it was overwritten.
+* `MIRI_REPLACE_LIBRS_IF_NOT_TEST` when set to any value enables a hack that helps bootstrap
+  run the standard library tests in Miri.
+* `MIRI_TEST_TARGET` is set by `./miri test` (and `./x.py test miri`) to tell the test harness about
+  the chosen target.
+* `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
+  perform verbose logging.
+* `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*
+  operations.
+* `RUSTC_BLESS` is set by `./miri test` (and `./x.py test miri`) to indicate bless-mode to the test
+  harness.

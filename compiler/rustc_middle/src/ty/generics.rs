@@ -3,6 +3,7 @@ use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
@@ -131,7 +132,7 @@ pub struct GenericParamCount {
 pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
-    pub params: Vec<GenericParamDef>,
+    pub own_params: Vec<GenericParamDef>,
 
     /// Reverse map to the `index` field of each `GenericParamDef`.
     #[stable_hasher(ignore)]
@@ -142,6 +143,12 @@ pub struct Generics {
 
     // The index of the host effect when instantiated. (i.e. might be index to parent args)
     pub host_effect_index: Option<usize>,
+}
+
+impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
+    fn count(&self) -> usize {
+        self.parent_count + self.own_params.len()
+    }
 }
 
 impl<'tcx> Generics {
@@ -162,7 +169,7 @@ impl<'tcx> Generics {
 
     #[inline]
     pub fn count(&self) -> usize {
-        self.parent_count + self.params.len()
+        self.parent_count + self.own_params.len()
     }
 
     pub fn own_counts(&self) -> GenericParamCount {
@@ -171,7 +178,7 @@ impl<'tcx> Generics {
         // presence of this method will be a constant reminder.
         let mut own_counts = GenericParamCount::default();
 
-        for param in &self.params {
+        for param in &self.own_params {
             match param.kind {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
                 GenericParamDefKind::Type { .. } => own_counts.types += 1,
@@ -185,7 +192,7 @@ impl<'tcx> Generics {
     pub fn own_defaults(&self) -> GenericParamCount {
         let mut own_defaults = GenericParamCount::default();
 
-        for param in &self.params {
+        for param in &self.own_params {
             match param.kind {
                 GenericParamDefKind::Lifetime => (),
                 GenericParamDefKind::Type { has_default, .. } => {
@@ -214,7 +221,7 @@ impl<'tcx> Generics {
     }
 
     pub fn own_requires_monomorphization(&self) -> bool {
-        for param in &self.params {
+        for param in &self.own_params {
             match param.kind {
                 GenericParamDefKind::Type { .. }
                 | GenericParamDefKind::Const { is_host_effect: false, .. } => {
@@ -230,7 +237,7 @@ impl<'tcx> Generics {
     /// Returns the `GenericParamDef` with the given index.
     pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
-            &self.params[index]
+            &self.own_params[index]
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                 .param_at(param_index, tcx)
@@ -244,7 +251,7 @@ impl<'tcx> Generics {
         tcx: TyCtxt<'tcx>,
     ) -> Option<&'tcx GenericParamDef> {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
-            self.params.get(index)
+            self.own_params.get(index)
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                 .opt_param_at(param_index, tcx)
@@ -253,7 +260,7 @@ impl<'tcx> Generics {
 
     pub fn params_to(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx [GenericParamDef] {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
-            &self.params[..index]
+            &self.own_params[..index]
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                 .params_to(param_index, tcx)
@@ -263,7 +270,7 @@ impl<'tcx> Generics {
     /// Returns the `GenericParamDef` associated with this `EarlyParamRegion`.
     pub fn region_param(
         &'tcx self,
-        param: &ty::EarlyParamRegion,
+        param: ty::EarlyParamRegion,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
@@ -274,7 +281,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamTy`.
-    pub fn type_param(&'tcx self, param: &ParamTy, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
+    pub fn type_param(&'tcx self, param: ParamTy, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Type { .. } => param,
@@ -286,7 +293,7 @@ impl<'tcx> Generics {
     /// `Generics`.
     pub fn opt_type_param(
         &'tcx self,
-        param: &ParamTy,
+        param: ParamTy,
         tcx: TyCtxt<'tcx>,
     ) -> Option<&'tcx GenericParamDef> {
         let param = self.opt_param_at(param.index as usize, tcx)?;
@@ -297,7 +304,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamConst`.
-    pub fn const_param(&'tcx self, param: &ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
+    pub fn const_param(&'tcx self, param: ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Const { .. } => param,
@@ -307,7 +314,7 @@ impl<'tcx> Generics {
 
     /// Returns `true` if `params` has `impl Trait`.
     pub fn has_impl_trait(&'tcx self) -> bool {
-        self.params.iter().any(|param| {
+        self.own_params.iter().any(|param| {
             matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. })
         })
     }
@@ -316,11 +323,11 @@ impl<'tcx> Generics {
     /// of this item, excluding `Self`.
     ///
     /// **This should only be used for diagnostics purposes.**
-    pub fn own_args_no_defaults(
+    pub fn own_args_no_defaults<'a>(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
-        args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> &'tcx [ty::GenericArg<'tcx>] {
+        args: &'a [ty::GenericArg<'tcx>],
+    ) -> &'a [ty::GenericArg<'tcx>] {
         let mut own_params = self.parent_count..self.count();
         if self.has_self && self.parent.is_none() {
             own_params.start = 1;
@@ -335,7 +342,7 @@ impl<'tcx> Generics {
         // good enough for now as this should only be used
         // for diagnostics anyways.
         own_params.end -= self
-            .params
+            .own_params
             .iter()
             .rev()
             .take_while(|param| {
@@ -357,7 +364,7 @@ impl<'tcx> Generics {
         &'tcx self,
         args: &'tcx [ty::GenericArg<'tcx>],
     ) -> &'tcx [ty::GenericArg<'tcx>] {
-        let own = &args[self.parent_count..][..self.params.len()];
+        let own = &args[self.parent_count..][..self.own_params.len()];
         if self.has_self && self.parent.is_none() { &own[1..] } else { own }
     }
 
@@ -371,7 +378,7 @@ impl<'tcx> Generics {
         args: &'tcx [ty::GenericArg<'tcx>],
     ) -> bool {
         let mut default_param_seen = false;
-        for param in self.params.iter() {
+        for param in self.own_params.iter() {
             if let Some(inst) =
                 param.default_value(tcx).map(|default| default.instantiate(tcx, args))
             {
@@ -383,6 +390,14 @@ impl<'tcx> Generics {
             }
         }
         false
+    }
+
+    pub fn is_empty(&'tcx self) -> bool {
+        self.count() == 0
+    }
+
+    pub fn is_own_empty(&'tcx self) -> bool {
+        self.own_params.is_empty()
     }
 }
 

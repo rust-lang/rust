@@ -4,7 +4,6 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
-#![cfg_attr(bootstrap, feature(associated_type_bounds))]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_chains)]
@@ -15,8 +14,6 @@
 #![feature(try_blocks)]
 
 #[macro_use]
-extern crate rustc_middle;
-#[macro_use]
 extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -26,14 +23,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_infer::infer::{
-    InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
-};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
@@ -126,9 +122,8 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::bind(tcx, def)).build();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, None).0;
+    let opt_closure_req = do_mir_borrowck(tcx, input_body, promoted, None).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)
@@ -139,18 +134,15 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 /// Use `consumer_options: None` for the default behavior of returning
 /// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
 /// to the given [`ConsumerOptions`].
-#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
+#[instrument(skip(tcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
 fn do_mir_borrowck<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
     consumer_options: Option<ConsumerOptions>,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.def_id().expect_local();
-    debug!(?def);
-
-    let tcx = infcx.tcx;
-    let infcx = BorrowckInferCtxt::new(infcx);
+    let infcx = BorrowckInferCtxt::new(tcx, def);
     let param_env = tcx.param_env(def);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
@@ -189,6 +181,12 @@ fn do_mir_borrowck<'tcx>(
     let free_regions =
         nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
+
+    // FIXME(-Znext-solver): A bit dubious that we're only registering
+    // predefined opaques in the typeck root.
+    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
+        infcx.register_predefined_opaques_for_next_solver(def);
+    }
 
     let location_table = LocationTable::new(body);
 
@@ -443,13 +441,14 @@ fn do_mir_borrowck<'tcx>(
     (result, body_with_facts)
 }
 
-pub struct BorrowckInferCtxt<'cx, 'tcx> {
-    pub(crate) infcx: &'cx InferCtxt<'tcx>,
+pub struct BorrowckInferCtxt<'tcx> {
+    pub(crate) infcx: InferCtxt<'tcx>,
     pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
 }
 
-impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
-    pub(crate) fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
+impl<'tcx> BorrowckInferCtxt<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+        let infcx = tcx.infer_ctxt().with_opaque_type_inference(def_id).build();
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
     }
 
@@ -495,18 +494,40 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
 
         next_region
     }
+
+    /// With the new solver we prepopulate the opaque type storage during
+    /// MIR borrowck with the hidden types from HIR typeck. This is necessary
+    /// to avoid ambiguities as earlier goals can rely on the hidden type
+    /// of an opaque which is only constrained by a later goal.
+    fn register_predefined_opaques_for_next_solver(&self, def_id: LocalDefId) {
+        let tcx = self.tcx;
+        // OK to use the identity arguments for each opaque type key, since
+        // we remap opaques from HIR typeck back to their definition params.
+        for data in tcx.typeck(def_id).concrete_opaque_types.iter().map(|(k, v)| (*k, *v)) {
+            // HIR typeck did not infer the regions of the opaque, so we instantiate
+            // them with fresh inference variables.
+            let (key, hidden_ty) = tcx.fold_regions(data, |_, _| {
+                self.next_nll_region_var_in_universe(
+                    NllRegionVariableOrigin::Existential { from_forall: false },
+                    ty::UniverseIndex::ROOT,
+                )
+            });
+
+            self.inject_new_hidden_type_unchecked(key, hidden_ty);
+        }
+    }
 }
 
-impl<'cx, 'tcx> Deref for BorrowckInferCtxt<'cx, 'tcx> {
+impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     type Target = InferCtxt<'tcx>;
 
-    fn deref(&self) -> &'cx Self::Target {
-        self.infcx
+    fn deref(&self) -> &Self::Target {
+        &self.infcx
     }
 }
 
 struct MirBorrowckCtxt<'cx, 'tcx> {
-    infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
+    infcx: &'cx BorrowckInferCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     body: &'cx Body<'tcx>,
     move_data: &'cx MoveData<'tcx>,
@@ -1057,18 +1078,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared | BorrowKind::Fake)
-                | (Read(ReadKind::Borrow(BorrowKind::Fake)), BorrowKind::Mut { .. }) => {
-                    Control::Continue
-                }
+                (Read(_), BorrowKind::Shared | BorrowKind::Fake(_))
+                | (
+                    Read(ReadKind::Borrow(BorrowKind::Fake(FakeBorrowKind::Shallow))),
+                    BorrowKind::Mut { .. },
+                ) => Control::Continue,
 
-                (Reservation(_), BorrowKind::Fake | BorrowKind::Shared) => {
+                (Reservation(_), BorrowKind::Fake(_) | BorrowKind::Shared) => {
                     // This used to be a future compatibility warning (to be
                     // disallowed on NLL). See rust-lang/rust#56254
                     Control::Continue
                 }
 
-                (Write(WriteKind::Move), BorrowKind::Fake) => {
+                (Write(WriteKind::Move), BorrowKind::Fake(FakeBorrowKind::Shallow)) => {
                     // Handled by initialization checks.
                     Control::Continue
                 }
@@ -1176,10 +1198,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match rvalue {
             &Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
-                    BorrowKind::Fake => {
+                    BorrowKind::Fake(FakeBorrowKind::Shallow) => {
                         (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
                     }
-                    BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
+                    BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep) => {
+                        (Deep, Read(ReadKind::Borrow(bk)))
+                    }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(bk) {
@@ -1198,7 +1222,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     flow_state,
                 );
 
-                let action = if bk == BorrowKind::Fake {
+                let action = if bk == BorrowKind::Fake(FakeBorrowKind::Shallow) {
                     InitializationRequiringAction::MatchOn
                 } else {
                     InitializationRequiringAction::Borrow
@@ -1288,8 +1312,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (operand1, operand2))
-            | Rvalue::CheckedBinaryOp(_bin_op, box (operand1, operand2)) => {
+            Rvalue::BinaryOp(_bin_op, box (operand1, operand2)) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }
@@ -1316,7 +1339,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     AggregateKind::Adt(..)
                     | AggregateKind::Array(..)
-                    | AggregateKind::Tuple { .. } => (),
+                    | AggregateKind::Tuple { .. }
+                    | AggregateKind::RawPtr(..) => (),
                 }
 
                 for operand in operands {
@@ -1557,7 +1581,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Fake => false,
+                BorrowKind::Shared | BorrowKind::Fake(_) => false,
                 BorrowKind::Mut { .. } => true,
             });
 
@@ -1606,6 +1630,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::Foreign(_)
                     | ty::Str
                     | ty::Array(_, _)
+                    | ty::Pat(_, _)
                     | ty::Slice(_)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
@@ -1648,6 +1673,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::Foreign(_)
                     | ty::Str
                     | ty::Array(_, _)
+                    | ty::Pat(_, _)
                     | ty::Slice(_)
                     | ty::RawPtr(_, _)
                     | ty::Ref(_, _, _)
@@ -2120,14 +2146,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Fake),
+                | WriteKind::MutableBorrow(BorrowKind::Fake(_)),
             )
             | Write(
                 WriteKind::Move
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Fake),
+                | WriteKind::MutableBorrow(BorrowKind::Fake(_)),
             ) => {
                 if self.is_mutable(place.as_ref(), is_local_mutation_allowed).is_err()
                     && !self.has_buffered_diags()
@@ -2151,7 +2177,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return false;
             }
             Read(
-                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake)
+                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake(_))
                 | ReadKind::Copy,
             ) => {
                 // Access authorized

@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     recv: &'tcx Expr<'_>,
-    (msg, help): (&str, &str),
+    (msg, help): (&'static str, &'static str),
 ) {
     if is_trait_method(cx, expr, sym::IoRead)
         && matches!(recv.kind, ExprKind::Path(QPath::Resolved(None, _)))

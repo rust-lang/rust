@@ -1,7 +1,7 @@
 // Test that we do not suggest to add type annotations for unnamable types.
 
 #![crate_type="lib"]
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 const A = 5;
 //~^ ERROR: missing type for `const` item
@@ -34,6 +34,6 @@ const F = S { t: foo };
 //~| HELP: provide a type for the constant
 
 
-const G = || -> i32 { yield 0; return 1; };
+const G = #[coroutine] || -> i32 { yield 0; return 1; };
 //~^ ERROR: missing type for `const` item
 //~| NOTE: however, the inferred type

@@ -4,6 +4,7 @@ use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::DefId;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -33,7 +34,7 @@ pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
     PolarityMismatch(ExpectedFound<ty::PredicatePolarity>),
-    UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
+    SafetyMismatch(ExpectedFound<hir::Safety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     ArgumentMutability(usize),
@@ -106,7 +107,7 @@ impl<'tcx> TypeError<'tcx> {
                 format!("expected {} polarity, found {} polarity", values.expected, values.found)
                     .into()
             }
-            UnsafetyMismatch(values) => {
+            SafetyMismatch(values) => {
                 format!("expected {} fn, found {} fn", values.expected, values.found).into()
             }
             AbiMismatch(values) => {
@@ -203,7 +204,7 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
+            CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | ConstnessMismatch(_)
             | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
             | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
             | VariadicMismatch(_) | TargetFeatureCast(_) => false,
@@ -285,6 +286,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),
+            ty::Pat(..) => "pattern type".into(),
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_, _) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {

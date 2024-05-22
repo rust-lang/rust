@@ -12,7 +12,7 @@ use crate::mir;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
+use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind};
 
 use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
 use rustc_attr as attr;
@@ -24,6 +24,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols;
@@ -37,7 +38,7 @@ use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
-use rustc_target::abi::{Align, FIRST_VARIANT};
+use rustc_target::abi::FIRST_VARIANT;
 
 use std::cmp;
 use std::collections::BTreeSet;
@@ -282,15 +283,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
 
                 if src_f.layout.ty == dst_f.layout.ty {
-                    memcpy_ty(
-                        bx,
-                        dst_f.llval,
-                        dst_f.align,
-                        src_f.llval,
-                        src_f.align,
-                        src_f.layout,
-                        MemFlags::empty(),
-                    );
+                    bx.typed_place_copy(dst_f.val, src_f.val, src_f.layout);
                 } else {
                     coerce_unsized_into(bx, src_f, dst_f);
                 }
@@ -380,30 +373,6 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 /// of landingpad)
 pub fn wants_new_eh_instructions(sess: &Session) -> bool {
     wants_wasm_eh(sess) || wants_msvc_seh(sess)
-}
-
-pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    dst: Bx::Value,
-    dst_align: Align,
-    src: Bx::Value,
-    src_align: Align,
-    layout: TyAndLayout<'tcx>,
-    flags: MemFlags,
-) {
-    let size = layout.size.bytes();
-    if size == 0 {
-        return;
-    }
-
-    if flags == MemFlags::empty()
-        && let Some(bty) = bx.cx().scalar_copy_backend_type(layout)
-    {
-        let temp = bx.load(bty, src, src_align);
-        bx.store(temp, dst, dst_align);
-    } else {
-        bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
-    }
 }
 
 pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -540,7 +509,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let arg_argc = bx.const_int(cx.type_isize(), 2);
-        let arg_argv = bx.alloca(cx.type_array(cx.type_ptr(), 2), ptr_align);
+        let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
         bx.store(param_handle, arg_argv, ptr_align);
         let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
         bx.store(param_system_table, arg_argv_el1, ptr_align);
@@ -656,6 +625,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 object: Some(file_name),
                 dwarf_object: None,
                 bytecode: None,
+                assembly: None,
+                llvm_ir: None,
             }
         })
     });

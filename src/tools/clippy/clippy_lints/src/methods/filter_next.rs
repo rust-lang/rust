@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
-use rustc_ast::{BindingAnnotation, Mutability};
+use rustc_ast::{BindingMode, Mutability};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(cx, FILTER_NEXT, expr.span, msg, |diag| {
                 let (applicability, pat) = if let Some(id) = path_to_local(recv)
                     && let hir::Node::Pat(pat) = cx.tcx.hir_node(id)
-                    && let hir::PatKind::Binding(BindingAnnotation(_, Mutability::Not), _, ident, _) = pat.kind
+                    && let hir::PatKind::Binding(BindingMode(_, Mutability::Not), _, ident, _) = pat.kind
                 {
                     (Applicability::Unspecified, Some((pat.span, ident)))
                 } else {

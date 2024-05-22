@@ -1,10 +1,9 @@
 // skip-filecheck
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -Zmir-enable-passes=+RemoveZsts
 // Verify that we can pretty print invalid constants.
 
 #![feature(adt_const_params)]
-#![feature(inline_const)]
 #![allow(incomplete_features)]
 
 #[derive(Copy, Clone)]

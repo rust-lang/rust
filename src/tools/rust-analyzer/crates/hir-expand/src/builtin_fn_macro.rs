@@ -219,7 +219,7 @@ fn assert_expand(
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let call_site_span = span_with_call_site_ctxt(db, span, id);
-    let args = parse_exprs_with_sep(tt, ',', call_site_span);
+    let args = parse_exprs_with_sep(tt, ',', call_site_span, Edition::CURRENT);
     let dollar_crate = dollar_crate(span);
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
@@ -441,21 +441,21 @@ fn unquote_str(lit: &tt::Literal) -> Option<(String, Span)> {
     let span = lit.span;
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::String::cast(lit)?;
-    token.value().map(|it| (it.into_owned(), span))
+    token.value().ok().map(|it| (it.into_owned(), span))
 }
 
 fn unquote_char(lit: &tt::Literal) -> Option<(char, Span)> {
     let span = lit.span;
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::Char::cast(lit)?;
-    token.value().zip(Some(span))
+    token.value().ok().zip(Some(span))
 }
 
 fn unquote_byte_string(lit: &tt::Literal) -> Option<(Vec<u8>, Span)> {
     let span = lit.span;
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::ByteString::cast(lit)?;
-    token.value().map(|it| (it.into_owned(), span))
+    token.value().ok().map(|it| (it.into_owned(), span))
 }
 
 fn compile_error_expand(

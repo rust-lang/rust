@@ -285,7 +285,7 @@ impl<T: ?Sized> DerefMut for &mut T {
 /// is concerned. Calls to `deref`/`deref_mut`` must leave the pointer itself likewise
 /// unchanged.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-#[cfg_attr(not(bootstrap), lang = "deref_pure")]
+#[lang = "deref_pure"]
 pub unsafe trait DerefPure {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]

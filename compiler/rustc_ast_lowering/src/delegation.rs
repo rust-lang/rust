@@ -49,7 +49,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::ResolverAstLowering;
+use rustc_middle::ty::{Asyncness, ResolverAstLowering};
 use rustc_span::{symbol::Ident, Span};
 use rustc_target::spec::abi;
 use std::iter;
@@ -67,7 +67,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return false;
         };
         if let Some(local_sig_id) = sig_id.as_local() {
-            self.resolver.has_self.contains(&local_sig_id)
+            self.resolver.delegation_fn_sigs[&local_sig_id].has_self
         } else {
             match self.tcx.def_kind(sig_id) {
                 DefKind::Fn => false,
@@ -82,13 +82,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         delegation: &Delegation,
         item_id: NodeId,
     ) -> DelegationResults<'hir> {
-        let span = delegation.path.segments.last().unwrap().ident.span;
+        let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
         let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span);
         match sig_id {
             Ok(sig_id) => {
-                let decl = self.lower_delegation_decl(sig_id, span);
-                let sig = self.lower_delegation_sig(span, decl);
-                let body_id = self.lower_delegation_body(sig.decl, delegation);
+                let (param_count, c_variadic) = self.param_count(sig_id);
+                let decl = self.lower_delegation_decl(sig_id, param_count, c_variadic, span);
+                let sig = self.lower_delegation_sig(sig_id, decl, span);
+                let body_id = self.lower_delegation_body(delegation, param_count, span);
 
                 let generics = self.lower_delegation_generics(span);
                 DelegationResults { body_id, sig, generics }
@@ -123,34 +124,47 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
+    // Function parameter count, including C variadic `...` if present.
+    fn param_count(&self, sig_id: DefId) -> (usize, bool /*c_variadic*/) {
+        if let Some(local_sig_id) = sig_id.as_local() {
+            // Map may be filled incorrectly due to recursive delegation.
+            // Error will be emmited later during HIR ty lowering.
+            match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+                Some(sig) => (sig.param_count, sig.c_variadic),
+                None => (0, false),
+            }
+        } else {
+            let sig = self.tcx.fn_sig(sig_id).skip_binder().skip_binder();
+            (sig.inputs().len() + usize::from(sig.c_variadic), sig.c_variadic)
+        }
+    }
+
     fn lower_delegation_decl(
         &mut self,
         sig_id: DefId,
-        param_span: Span,
+        param_count: usize,
+        c_variadic: bool,
+        span: Span,
     ) -> &'hir hir::FnDecl<'hir> {
-        let args_count = if let Some(local_sig_id) = sig_id.as_local() {
-            // Map may be filled incorrectly due to recursive delegation.
-            // Error will be emitted later during HIR ty lowering.
-            self.resolver.fn_parameter_counts.get(&local_sig_id).cloned().unwrap_or_default()
-        } else {
-            self.tcx.fn_arg_names(sig_id).len()
-        };
-        let inputs = self.arena.alloc_from_iter((0..args_count).map(|arg| hir::Ty {
+        // The last parameter in C variadic functions is skipped in the signature,
+        // like during regular lowering.
+        let decl_param_count = param_count - c_variadic as usize;
+        let inputs = self.arena.alloc_from_iter((0..decl_param_count).map(|arg| hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(sig_id, hir::InferDelegationKind::Input(arg)),
-            span: self.lower_span(param_span),
+            span,
         }));
 
         let output = self.arena.alloc(hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(sig_id, hir::InferDelegationKind::Output),
-            span: self.lower_span(param_span),
+            span,
         });
 
         self.arena.alloc(hir::FnDecl {
             inputs,
             output: hir::FnRetTy::Return(output),
-            c_variadic: false,
+            c_variadic,
             lifetime_elision_allowed: true,
             implicit_self: hir::ImplicitSelfKind::None,
         })
@@ -158,35 +172,45 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_delegation_sig(
         &mut self,
-        span: Span,
+        sig_id: DefId,
         decl: &'hir hir::FnDecl<'hir>,
+        span: Span,
     ) -> hir::FnSig<'hir> {
-        hir::FnSig {
-            decl,
-            header: hir::FnHeader {
-                unsafety: hir::Unsafety::Normal,
-                constness: hir::Constness::NotConst,
-                asyncness: hir::IsAsync::NotAsync,
-                abi: abi::Abi::Rust,
-            },
-            span: self.lower_span(span),
-        }
+        let header = if let Some(local_sig_id) = sig_id.as_local() {
+            match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+                Some(sig) => self.lower_fn_header(sig.header),
+                None => self.generate_header_error(),
+            }
+        } else {
+            let sig = self.tcx.fn_sig(sig_id).skip_binder().skip_binder();
+            let asyncness = match self.tcx.asyncness(sig_id) {
+                Asyncness::Yes => hir::IsAsync::Async(span),
+                Asyncness::No => hir::IsAsync::NotAsync,
+            };
+            hir::FnHeader {
+                safety: sig.safety,
+                constness: self.tcx.constness(sig_id),
+                asyncness,
+                abi: sig.abi,
+            }
+        };
+        hir::FnSig { decl, header, span }
     }
 
-    fn generate_param(&mut self, ty: &'hir hir::Ty<'hir>) -> (hir::Param<'hir>, NodeId) {
+    fn generate_param(&mut self, span: Span) -> (hir::Param<'hir>, NodeId) {
         let pat_node_id = self.next_node_id();
         let pat_id = self.lower_node_id(pat_node_id);
         let pat = self.arena.alloc(hir::Pat {
             hir_id: pat_id,
-            kind: hir::PatKind::Binding(hir::BindingAnnotation::NONE, pat_id, Ident::empty(), None),
-            span: ty.span,
+            kind: hir::PatKind::Binding(hir::BindingMode::NONE, pat_id, Ident::empty(), None),
+            span,
             default_binding_modes: false,
         });
 
-        (hir::Param { hir_id: self.next_id(), pat, ty_span: ty.span, span: ty.span }, pat_node_id)
+        (hir::Param { hir_id: self.next_id(), pat, ty_span: span, span }, pat_node_id)
     }
 
-    fn generate_arg(&mut self, ty: &'hir hir::Ty<'hir>, param_id: HirId) -> hir::Expr<'hir> {
+    fn generate_arg(&mut self, param_id: HirId, span: Span) -> hir::Expr<'hir> {
         let segments = self.arena.alloc_from_iter(iter::once(hir::PathSegment {
             ident: Ident::empty(),
             hir_id: self.next_id(),
@@ -195,20 +219,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
             infer_args: false,
         }));
 
-        let path =
-            self.arena.alloc(hir::Path { span: ty.span, res: Res::Local(param_id), segments });
+        let path = self.arena.alloc(hir::Path { span, res: Res::Local(param_id), segments });
 
         hir::Expr {
             hir_id: self.next_id(),
             kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
-            span: ty.span,
+            span,
         }
     }
 
     fn lower_delegation_body(
         &mut self,
-        decl: &'hir hir::FnDecl<'hir>,
         delegation: &Delegation,
+        param_count: usize,
+        span: Span,
     ) -> BodyId {
         let path = self.lower_qpath(
             delegation.id,
@@ -224,8 +248,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let mut parameters: Vec<hir::Param<'_>> = Vec::new();
             let mut args: Vec<hir::Expr<'hir>> = Vec::new();
 
-            for (idx, param_ty) in decl.inputs.iter().enumerate() {
-                let (param, pat_node_id) = this.generate_param(param_ty);
+            for idx in 0..param_count {
+                let (param, pat_node_id) = this.generate_param(span);
                 parameters.push(param);
 
                 let arg = if let Some(block) = block
@@ -245,7 +269,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 } else {
                     let pat_hir_id = this.lower_node_id(pat_node_id);
-                    this.generate_arg(param_ty, pat_hir_id)
+                    this.generate_arg(pat_hir_id, span)
                 };
                 args.push(arg);
             }
@@ -304,13 +328,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             implicit_self: hir::ImplicitSelfKind::None,
         });
 
-        let sig = self.lower_delegation_sig(span, decl);
+        let header = self.generate_header_error();
+        let sig = hir::FnSig { decl, header, span };
+
         let body_id = self.lower_body(|this| {
             let expr =
                 hir::Expr { hir_id: this.next_id(), kind: hir::ExprKind::Err(err), span: span };
             (&[], expr)
         });
         DelegationResults { generics, body_id, sig }
+    }
+
+    fn generate_header_error(&self) -> hir::FnHeader {
+        hir::FnHeader {
+            safety: hir::Safety::Safe,
+            constness: hir::Constness::NotConst,
+            asyncness: hir::IsAsync::NotAsync,
+            abi: abi::Abi::Rust,
+        }
     }
 }
 

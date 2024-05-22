@@ -11,19 +11,20 @@ use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
+use std::ptr;
 
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
+impl<'a, 'tcx, H, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(usize, usize, HashingControls), Fingerprint>> =
+            static CACHE: RefCell<FxHashMap<(*const (), HashingControls), Fingerprint>> =
                 RefCell::new(Default::default());
         }
 
         let hash = CACHE.with(|cache| {
-            let key = (self.as_ptr() as usize, self.len(), hcx.hashing_controls());
+            let key = (ptr::from_ref(*self).cast::<()>(), hcx.hashing_controls());
             if let Some(&hash) = cache.borrow().get(&key) {
                 return hash;
             }
@@ -40,7 +41,7 @@ where
     }
 }
 
-impl<'a, 'tcx, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::List<T>
+impl<'a, 'tcx, H, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {

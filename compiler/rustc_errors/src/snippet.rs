@@ -1,6 +1,7 @@
 // Code for annotating snippets.
 
 use crate::{Level, Loc};
+use rustc_macros::{Decodable, Encodable};
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Line {

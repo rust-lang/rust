@@ -11,18 +11,13 @@ LL | extern "C" unsafe {
    |            ^^^^^^
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/unsafe-foreign-mod-2.rs:4:15
+  --> $DIR/unsafe-foreign-mod-2.rs:4:5
    |
 LL | extern "C" unsafe {
    | ----------------- in this `extern` block
 ...
 LL |     unsafe fn foo();
-   |               ^^^
-   |
-help: remove the qualifiers
-   |
-LL |     fn foo();
-   |     ~~
+   |     ^^^^^^ help: remove this qualifier
 
 error: aborting due to 3 previous errors
 

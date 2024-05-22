@@ -17,7 +17,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, SmolStr,
+    AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -466,7 +466,7 @@ impl CompletionContext<'_> {
                 cov_mark::hit!(completes_if_lifetime_without_idents);
                 TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
             }
-            IDENT | LIFETIME_IDENT | UNDERSCORE => self.original_token.text_range(),
+            IDENT | LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
@@ -667,7 +667,8 @@ impl<'a> CompletionContext<'a> {
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
             let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            parse.reparse(&edit).tree()
+            // FIXME: Edition
+            parse.reparse(&edit, Edition::CURRENT).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

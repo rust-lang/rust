@@ -32,6 +32,7 @@ pub struct CargoWorkspace {
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
     target_directory: AbsPathBuf,
+    manifest_path: ManifestPath,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -76,6 +77,8 @@ impl Default for CargoFeatures {
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
+    /// Whether to pass `--all-targets` to cargo invocations.
+    pub all_targets: bool,
     /// List of features to activate.
     pub features: CargoFeatures,
     /// rustc target
@@ -133,6 +136,20 @@ pub struct PackageData {
     pub active_features: Vec<String>,
     /// String representation of package id
     pub id: String,
+    /// Authors as given in the `Cargo.toml`
+    pub authors: Vec<String>,
+    /// Description as given in the `Cargo.toml`
+    pub description: Option<String>,
+    /// Homepage as given in the `Cargo.toml`
+    pub homepage: Option<String>,
+    /// License as given in the `Cargo.toml`
+    pub license: Option<String>,
+    /// License file as given in the `Cargo.toml`
+    pub license_file: Option<Utf8PathBuf>,
+    /// Readme file as given in the `Cargo.toml`
+    pub readme: Option<Utf8PathBuf>,
+    /// Rust version as given in the `Cargo.toml`
+    pub rust_version: Option<semver::Version>,
     /// The contents of [package.metadata.rust-analyzer]
     pub metadata: RustAnalyzerPackageMetaData,
 }
@@ -223,6 +240,10 @@ impl TargetKind {
         }
         TargetKind::Other
     }
+
+    pub fn is_executable(self) -> bool {
+        matches!(self, TargetKind::Bin | TargetKind::Example)
+    }
 }
 
 // Deserialize helper for the cargo metadata
@@ -285,6 +306,12 @@ impl CargoWorkspace {
                     .collect(),
             );
         }
+        // The manifest is a rust file, so this means its a script manifest
+        if cargo_toml.is_rust_manifest() {
+            // Deliberately don't set up RUSTC_BOOTSTRAP or a nightly override here, the user should
+            // opt into it themselves.
+            other_options.push("-Zscript".to_owned());
+        }
         meta.other_options(other_options);
 
         // FIXME: Fetching metadata is a slow process, as it might require
@@ -308,7 +335,7 @@ impl CargoWorkspace {
         .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
     }
 
-    pub fn new(mut meta: cargo_metadata::Metadata) -> CargoWorkspace {
+    pub fn new(mut meta: cargo_metadata::Metadata, manifest_path: ManifestPath) -> CargoWorkspace {
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();
@@ -328,6 +355,13 @@ impl CargoWorkspace {
                 repository,
                 edition,
                 metadata,
+                authors,
+                description,
+                homepage,
+                license,
+                license_file,
+                readme,
+                rust_version,
                 ..
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata).unwrap_or_default();
@@ -346,16 +380,24 @@ impl CargoWorkspace {
             let is_local = source.is_none();
             let is_member = ws_members.contains(&id);
 
+            let manifest = AbsPathBuf::assert(manifest_path);
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
                 name,
                 version,
-                manifest: AbsPathBuf::assert(manifest_path).try_into().unwrap(),
+                manifest: manifest.clone().try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
                 is_member,
                 edition,
                 repository,
+                authors,
+                description,
+                homepage,
+                license,
+                license_file,
+                readme,
+                rust_version,
                 dependencies: Vec::new(),
                 features: features.into_iter().collect(),
                 active_features: Vec::new(),
@@ -366,11 +408,22 @@ impl CargoWorkspace {
             for meta_tgt in meta_targets {
                 let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
                     meta_tgt;
+                let kind = TargetKind::new(&kind);
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name,
-                    root: AbsPathBuf::assert(src_path),
-                    kind: TargetKind::new(&kind),
+                    root: if kind == TargetKind::Bin
+                        && manifest.extension().is_some_and(|ext| ext == "rs")
+                    {
+                        // cargo strips the script part of a cargo script away and places the
+                        // modified manifest file into a special target dir which is then used as
+                        // the source path. We don't want that, we want the original here so map it
+                        // back
+                        manifest.clone()
+                    } else {
+                        AbsPathBuf::assert(src_path)
+                    },
+                    kind,
                     required_features,
                 });
                 pkg_data.targets.push(tgt);
@@ -396,7 +449,7 @@ impl CargoWorkspace {
 
         let target_directory = AbsPathBuf::assert(meta.target_directory);
 
-        CargoWorkspace { packages, targets, workspace_root, target_directory }
+        CargoWorkspace { packages, targets, workspace_root, target_directory, manifest_path }
     }
 
     pub fn packages(&self) -> impl ExactSizeIterator<Item = Package> + '_ {
@@ -412,6 +465,10 @@ impl CargoWorkspace {
 
     pub fn workspace_root(&self) -> &AbsPath {
         &self.workspace_root
+    }
+
+    pub fn manifest_path(&self) -> &ManifestPath {
+        &self.manifest_path
     }
 
     pub fn target_directory(&self) -> &AbsPath {

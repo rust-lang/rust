@@ -3,7 +3,6 @@
 fn f_unit() -> () {
     let mut _0: ();
     scope 1 (inlined f_dispatch::<()>) {
-        debug t => const ();
         let _1: ();
         scope 2 (inlined std::mem::size_of::<()>) {
         }

@@ -12,7 +12,7 @@ params: [
                 kind: PatKind {
                     Binding {
                         name: "foo"
-                        mode: BindingAnnotation(No, Not)
+                        mode: BindingMode(No, Not)
                         var: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).2))
                         ty: Foo
                         is_primary: true

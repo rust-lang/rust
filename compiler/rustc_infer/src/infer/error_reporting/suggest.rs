@@ -15,7 +15,7 @@ use rustc_middle::traits::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, Span};
 
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
@@ -167,7 +167,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
-        if let ObligationCauseCode::CompareImplItemObligation { .. } = cause.code() {
+        if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
         }
 
@@ -599,7 +599,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         span: Span,
         hir: hir::Node<'_>,
-        exp_found: &ty::error::ExpectedFound<ty::PolyTraitRef<'tcx>>,
+        exp_found: &ty::error::ExpectedFound<ty::TraitRef<'tcx>>,
         diag: &mut Diag<'_>,
     ) {
         // 0. Extract fn_decl from hir
@@ -614,10 +614,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
-        let Some(expected) = exp_found.expected.skip_binder().args.get(1) else {
+        let Some(expected) = exp_found.expected.args.get(1) else {
             return;
         };
-        let Some(found) = exp_found.found.skip_binder().args.get(1) else {
+        let Some(found) = exp_found.found.args.get(1) else {
             return;
         };
         let expected = expected.unpack();
@@ -763,8 +763,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let mac_call = rustc_span::source_map::original_sp(last_stmt.span, blk.span);
             self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
         } else {
-            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
+            self.tcx
+                .sess
+                .source_map()
+                .span_extend_while_whitespace(last_expr.span)
+                .shrink_to_hi()
+                .with_hi(last_stmt.span.hi())
         };
+
         Some((span, needs_box))
     }
 
@@ -867,10 +873,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         format!(" {ident} ")
                     };
                     let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
-                    (
-                        sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
-                        sugg,
-                    )
+                    (sm.span_extend_while_whitespace(left_span), sugg)
                 };
                 Some(SuggestRemoveSemiOrReturnBinding::Add { sp: span, code: sugg, ident: *ident })
             }

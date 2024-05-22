@@ -21,6 +21,7 @@ use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::Visibility;
+use rustc_middle::{bug, implement_ty_decoder};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{CrateSource, ExternCrate};
@@ -1208,7 +1209,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.stability_implications.decode(self))
     }
 
-    /// Iterates over the language items in the given crate.
+    /// Iterates over the lang items in the given crate.
     fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, LangItem)] {
         tcx.arena.alloc_from_iter(
             self.root
@@ -1260,30 +1261,34 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         id: DefIndex,
         sess: &'a Session,
     ) -> impl Iterator<Item = ModChild> + 'a {
-        iter::from_coroutine(move || {
-            if let Some(data) = &self.root.proc_macro_data {
-                // If we are loading as a proc macro, we want to return
-                // the view of this crate as a proc macro crate.
-                if id == CRATE_DEF_INDEX {
-                    for child_index in data.macros.decode(self) {
+        iter::from_coroutine(
+            #[coroutine]
+            move || {
+                if let Some(data) = &self.root.proc_macro_data {
+                    // If we are loading as a proc macro, we want to return
+                    // the view of this crate as a proc macro crate.
+                    if id == CRATE_DEF_INDEX {
+                        for child_index in data.macros.decode(self) {
+                            yield self.get_mod_child(child_index, sess);
+                        }
+                    }
+                } else {
+                    // Iterate over all children.
+                    let non_reexports =
+                        self.root.tables.module_children_non_reexports.get(self, id);
+                    for child_index in non_reexports.unwrap().decode(self) {
                         yield self.get_mod_child(child_index, sess);
                     }
-                }
-            } else {
-                // Iterate over all children.
-                let non_reexports = self.root.tables.module_children_non_reexports.get(self, id);
-                for child_index in non_reexports.unwrap().decode(self) {
-                    yield self.get_mod_child(child_index, sess);
-                }
 
-                let reexports = self.root.tables.module_children_reexports.get(self, id);
-                if !reexports.is_default() {
-                    for reexport in reexports.decode((self, sess)) {
-                        yield reexport;
+                    let reexports = self.root.tables.module_children_reexports.get(self, id);
+                    if !reexports.is_default() {
+                        for reexport in reexports.decode((self, sess)) {
+                            yield reexport;
+                        }
                     }
                 }
-            }
-        })
+            },
+        )
     }
 
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {

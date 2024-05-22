@@ -9,6 +9,7 @@
 //@ check-pass
 
 fn foo(x: &mut u32) {
+    #[coroutine]
     move || {
         let s = &mut *x;
         yield;

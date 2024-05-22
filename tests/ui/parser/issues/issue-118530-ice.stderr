@@ -33,11 +33,19 @@ LL |     attr::fn bar() -> String {
    |             |
    |             help: add `;` here
 
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `->`
+error: `->` used for field access or method call
   --> $DIR/issue-118530-ice.rs:5:20
    |
 LL |     attr::fn bar() -> String {
-   |                    ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+   |                    ^^ help: try using `.` instead
+   |
+   = help: the `.` operator will dereference the value if needed
 
-error: aborting due to 4 previous errors
+error: expected one of `(`, `.`, `::`, `;`, `?`, `}`, or an operator, found `{`
+  --> $DIR/issue-118530-ice.rs:5:30
+   |
+LL |     attr::fn bar() -> String {
+   |                              ^ expected one of 7 possible tokens
+
+error: aborting due to 5 previous errors
 

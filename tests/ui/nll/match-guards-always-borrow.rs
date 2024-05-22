@@ -1,4 +1,6 @@
 #![feature(if_let_guard)]
+#![allow(unused_mut)]
+//@ run-rustfix
 
 // Here is arielb1's basic example from rust-lang/rust#27282
 // that AST borrowck is flummoxed by:
@@ -7,7 +9,7 @@ fn should_reject_destructive_mutate_in_guard() {
     match Some(&4) {
         None => {},
         ref mut foo if {
-            (|| { let bar = foo; bar.take() })();
+            (|| { let mut bar = foo; bar.take() })();
             //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
             false } => { },
         Some(s) => std::process::exit(*s),
@@ -16,7 +18,7 @@ fn should_reject_destructive_mutate_in_guard() {
     match Some(&4) {
         None => {},
         ref mut foo if let Some(()) = {
-            (|| { let bar = foo; bar.take() })();
+            (|| { let mut bar = foo; bar.take() })();
             //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
             None } => { },
         Some(s) => std::process::exit(*s),

@@ -374,6 +374,21 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 }
             }
         }
+        "llvm.x86.avx2.permd" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_epi32
+            intrinsic_args!(fx, args => (a, idx); intrinsic);
+
+            for j in 0..=7 {
+                let index = idx.value_typed_lane(fx, fx.tcx.types.u32, j).load_scalar(fx);
+                let index = fx.bcx.ins().uextend(fx.pointer_type, index);
+                let value = a.value_lane_dyn(fx, index).load_scalar(fx);
+                ret.place_typed_lane(fx, fx.tcx.types.u32, j).to_ptr().store(
+                    fx,
+                    value,
+                    MemFlags::trusted(),
+                );
+            }
+        }
         "llvm.x86.avx2.vperm2i128"
         | "llvm.x86.avx.vperm2f128.ps.256"
         | "llvm.x86.avx.vperm2f128.pd.256" => {
@@ -830,6 +845,43 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let res_lane = CValue::by_val(res, ret_lane_layout);
                 ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
             }
+        }
+
+        "llvm.x86.sse42.crc32.32.8"
+        | "llvm.x86.sse42.crc32.32.16"
+        | "llvm.x86.sse42.crc32.32.32"
+        | "llvm.x86.sse42.crc32.64.64" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=1419&text=_mm_crc32_u32
+            intrinsic_args!(fx, args => (crc, v); intrinsic);
+
+            let crc = crc.load_scalar(fx);
+            let v = v.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.x86.sse42.crc32.32.8" => "crc32 eax, dl",
+                "llvm.x86.sse42.crc32.32.16" => "crc32 eax, dx",
+                "llvm.x86.sse42.crc32.32.32" => "crc32 eax, edx",
+                "llvm.x86.sse42.crc32.64.64" => "crc32 rax, rdx",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        _late: true,
+                        in_value: crc,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        value: v,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
         }
 
         "llvm.x86.sse42.pcmpestri128" => {

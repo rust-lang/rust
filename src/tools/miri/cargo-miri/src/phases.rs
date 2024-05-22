@@ -3,7 +3,7 @@
 use std::env;
 use std::fs::{self, File};
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use rustc_version::VersionMeta;
@@ -28,7 +28,7 @@ Examples:
     cargo miri run
     cargo miri test -- test-suite-filter
 
-    cargo miri setup --print sysroot
+    cargo miri setup --print-sysroot
         This will print the path to the generated sysroot (and nothing else) on stdout.
         stderr will still contain progress information about how the build is doing.
 
@@ -87,6 +87,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
             ),
     };
     let verbose = num_arg_flag("-v");
+    let quiet = has_arg_flag("-q") || has_arg_flag("--quiet");
 
     // Determine the involved architectures.
     let rustc_version = VersionMeta::for_command(miri_for_host()).unwrap_or_else(|err| {
@@ -110,7 +111,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     }
 
     // We always setup.
-    let miri_sysroot = setup(&subcommand, target, &rustc_version, verbose);
+    let miri_sysroot = setup(&subcommand, target, &rustc_version, verbose, quiet);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -172,8 +173,6 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Forward all further arguments (not consumed by `ArgSplitFlagValue`) to cargo.
     cmd.args(args);
 
-    // Let it know where the Miri sysroot lives.
-    cmd.env("MIRI_SYSROOT", miri_sysroot);
     // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
     // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
     // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
@@ -200,10 +199,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // always applied. However, buggy build scripts (https://github.com/eyre-rs/eyre/issues/84) and
     // also cargo (https://github.com/rust-lang/cargo/issues/10885) will invoke `rustc` even when
     // `RUSTC_WRAPPER` is set, bypassing the wrapper. To make sure everything is coherent, we want
-    // that to be the Miri driver, but acting as rustc, on the target level. (Target, rather than
-    // host, is needed for cross-interpretation situations.) This is not a perfect emulation of real
-    // rustc (it might be unable to produce binaries since the sysroot is check-only), but it's as
-    // close as we can get, and it's good enough for autocfg.
+    // that to be the Miri driver, but acting as rustc, in host mode.
     //
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
     // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
@@ -212,7 +208,10 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host
     // builds.
     cmd.env("RUSTC", fs::canonicalize(find_miri()).unwrap());
-    cmd.env("MIRI_BE_RUSTC", "target"); // we better remember to *unset* this in the other phases!
+    // In case we get invoked as RUSTC without the wrapper, let's be a host rustc. This makes no
+    // sense for cross-interpretation situations, but without the wrapper, this will use the host
+    // sysroot, so asking it to behave like a target build makes even less sense.
+    cmd.env("MIRI_BE_RUSTC", "host"); // we better remember to *unset* this in the other phases!
 
     // Set rustdoc to us as well, so we can run doctests.
     if let Some(orig_rustdoc) = env::var_os("RUSTDOC") {
@@ -220,6 +219,8 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     }
     cmd.env("RUSTDOC", &cargo_miri_path);
 
+    // Forward some crucial information to our own re-invocations.
+    cmd.env("MIRI_SYSROOT", miri_sysroot);
     cmd.env("MIRI_LOCAL_CRATES", local_crates(&metadata));
     if verbose > 0 {
         cmd.env("MIRI_VERBOSE", verbose.to_string()); // This makes the other phases verbose.
@@ -412,9 +413,31 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
     if target_crate {
-        // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
+        if phase != RustcPhase::Setup {
+            // Set the sysroot -- except during setup, where we don't have an existing sysroot yet
+            // and where the bootstrap wrapper adds its own `--sysroot` flag so we can't set ours.
+            cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
+        }
+
+        // Forward arguments, but patched.
         let emit_flag = "--emit";
+        // This hack helps bootstrap run standard library tests in Miri. The issue is as follows:
+        // when running `cargo miri test` on libcore, cargo builds a local copy of core and makes it
+        // a dependency of the integration test crate. This copy duplicates all the lang items, so
+        // the build fails. (Regular testing avoids this because the sysroot is a literal copy of
+        // what `cargo build` produces, but since Miri builds its own sysroot this does not work for
+        // us.) So we need to make it so that the locally built libcore contains all the items from
+        // `core`, but does not re-define them -- we want to replace the entire crate but a
+        // re-export of the sysroot crate. We do this by swapping out the source file: if
+        // `MIRI_REPLACE_LIBRS_IF_NOT_TEST` is set and we are building a `lib.rs` file, and a
+        // `lib.miri.rs` file exists in the same folder, we build that instead. But crucially we
+        // only do that for the library, not the unit test crate (which would be runnable) or
+        // rustdoc (which would have a different `phase`).
+        let replace_librs = env::var_os("MIRI_REPLACE_LIBRS_IF_NOT_TEST").is_some()
+            && !runnable_crate
+            && phase == RustcPhase::Build;
         while let Some(arg) = args.next() {
+            // Patch `--emit`: remove "link" from "--emit" to make this a check-only build.
             if let Some(val) = arg.strip_prefix(emit_flag) {
                 // Patch this argument. First, extract its value.
                 let val =
@@ -429,13 +452,31 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                     }
                 }
                 cmd.arg(format!("{emit_flag}={}", val.join(",")));
-            } else if arg == "--extern" {
-                // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
-                // https://github.com/rust-lang/miri/issues/1705
-                forward_patched_extern_arg(&mut args, &mut cmd);
-            } else {
-                cmd.arg(arg);
+                continue;
             }
+            // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
+            // https://github.com/rust-lang/miri/issues/1705
+            if arg == "--extern" {
+                forward_patched_extern_arg(&mut args, &mut cmd);
+                continue;
+            }
+            // If the REPLACE_LIBRS hack is enabled and we are building a `lib.rs` file, and a
+            // `lib.miri.rs` file exists, then build that instead.
+            if replace_librs {
+                let path = Path::new(&arg);
+                if path.file_name().is_some_and(|f| f == "lib.rs") && path.is_file() {
+                    let miri_rs = Path::new(&arg).with_extension("miri.rs");
+                    if miri_rs.is_file() {
+                        if verbose > 0 {
+                            eprintln!("Performing REPLACE_LIBRS hack: {arg:?} -> {miri_rs:?}");
+                        }
+                        cmd.arg(miri_rs);
+                        continue;
+                    }
+                }
+            }
+            // Fallback: just propagate the argument.
+            cmd.arg(arg);
         }
 
         // During setup, patch the panic runtime for `libpanic_abort` (mirroring what bootstrap usually does).
@@ -540,6 +581,12 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
         cmd.env(name, val);
     }
 
+    if phase != RunnerPhase::Rustdoc {
+        // Set the sysroot. Not necessary in rustdoc, where we already set the sysroot in
+        // `phase_rustdoc`. rustdoc will forward that flag when invoking rustc (i.e., us), so the
+        // flag is present in `info.args`.
+        cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
+    }
     // Forward rustc arguments.
     // We need to patch "--extern" filenames because we forced a check-only
     // build without cargo knowing about that: replace `.rlib` suffix by

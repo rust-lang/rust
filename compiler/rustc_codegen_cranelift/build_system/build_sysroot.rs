@@ -6,8 +6,7 @@ use std::process::Command;
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_file_name;
 use crate::utils::{
-    maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
-    LogGroup,
+    remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
 };
 use crate::{config, CodegenBackend, SysrootKind};
 
@@ -268,13 +267,16 @@ fn build_clif_sysroot_for_triple(
             prefix.to_str().unwrap()
         ));
     }
+    rustflags.push("-Zunstable-options".to_owned());
+    for (name, values) in EXTRA_CHECK_CFGS {
+        rustflags.push(check_cfg_arg(name, *values));
+    }
     compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
-    maybe_incremental(&mut build_cmd);
     if channel == "release" {
         build_cmd.arg("--release");
     }
-    build_cmd.arg("--features").arg("compiler-builtins-no-asm backtrace panic-unwind");
+    build_cmd.arg("--features").arg("backtrace panic-unwind");
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
@@ -328,3 +330,34 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
 
     Some(target_libs)
 }
+
+// Copied from https://github.com/rust-lang/rust/blob/4fd98a4b1b100f5329c6efae18031791f64372d2/src/bootstrap/src/utils/helpers.rs#L569-L585
+/// Create a `--check-cfg` argument invocation for a given name
+/// and it's values.
+fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
+    // Creating a string of the values by concatenating each value:
+    // ',values("tvos","watchos")' or '' (nothing) when there are no values.
+    let next = match values {
+        Some(values) => {
+            let mut tmp = values.iter().flat_map(|val| [",", "\"", val, "\""]).collect::<String>();
+
+            tmp.insert_str(1, "values(");
+            tmp.push(')');
+            tmp
+        }
+        None => "".to_string(),
+    };
+    format!("--check-cfg=cfg({name}{next})")
+}
+
+const EXTRA_CHECK_CFGS: &[(&str, Option<&[&str]>)] = &[
+    ("bootstrap", None),
+    ("stdarch_intel_sde", None),
+    ("no_fp_fmt_parse", None),
+    ("no_global_oom_handling", None),
+    ("no_rc", None),
+    ("no_sync", None),
+    ("netbsd10", None),
+    ("backtrace_in_libstd", None),
+    ("target_arch", Some(&["xtensa"])),
+];

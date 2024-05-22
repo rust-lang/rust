@@ -10,6 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
@@ -24,8 +25,9 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, compile_time_machine, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal,
-    Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
+    self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom,
+    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
+    ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
 };
 
 use super::error::*;
@@ -459,17 +461,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         dest: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         // Shared intrinsics.
         if ecx.emulate_intrinsic(instance, args, dest, target)? {
-            return Ok(());
+            return Ok(None);
         }
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
 
         // CTFE-specific intrinsics.
-        let Some(ret) = target else {
-            throw_unsup_format!("intrinsic `{intrinsic_name}` is not supported at compile-time");
-        };
         match intrinsic_name {
             sym::ptr_guaranteed_cmp => {
                 let a = ecx.read_scalar(&args[0])?;
@@ -536,14 +535,22 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // not the optimization stage.)
             sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
-                throw_unsup_format!(
-                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
-                );
+                // We haven't handled the intrinsic, let's see if we can use a fallback body.
+                if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                    throw_unsup_format!(
+                        "intrinsic `{intrinsic_name}` is not supported at compile-time"
+                    );
+                }
+                return Ok(Some(ty::Instance {
+                    def: ty::InstanceDef::Item(instance.def_id()),
+                    args: instance.args,
+                }));
             }
         }
 
-        ecx.go_to_block(ret);
-        Ok(())
+        // Intrinsic is done, jump to next block.
+        ecx.return_to_block(target)?;
+        Ok(None)
     }
 
     fn assert_panic(

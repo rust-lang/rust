@@ -2,6 +2,7 @@
 
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
+use cranelift_frontend::Variable;
 use rustc_middle::ty::FnSig;
 
 use crate::prelude::*;
@@ -316,17 +317,9 @@ impl<'tcx> CValue<'tcx> {
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
-        if let ty::Bool = layout.ty.kind() {
-            assert!(
-                const_val == ty::ScalarInt::FALSE || const_val == ty::ScalarInt::TRUE,
-                "Invalid bool 0x{:032X}",
-                const_val
-            );
-        }
-
         let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
-                let const_val = const_val.to_bits(layout.size).unwrap();
+                let const_val = const_val.assert_bits(layout.size);
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
@@ -338,7 +331,7 @@ impl<'tcx> CValue<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnPtr(..) => {
-                let raw_val = const_val.size().truncate(const_val.to_bits(layout.size).unwrap());
+                let raw_val = const_val.size().truncate(const_val.assert_bits(layout.size));
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F32) => {
@@ -818,7 +811,7 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub(crate) fn place_deref(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> CPlace<'tcx> {
-        let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
+        let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap());
         if has_ptr_meta(fx.tcx, inner_layout.ty) {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_ptr_with_extra(Pointer::new(addr), extra, inner_layout)
@@ -879,7 +872,7 @@ pub(crate) fn assert_assignable<'tcx>(
             let FnSig {
                 inputs_and_output: types_from,
                 c_variadic: c_variadic_from,
-                unsafety: unsafety_from,
+                safety: unsafety_from,
                 abi: abi_from,
             } = from_sig;
             let to_sig = fx
@@ -888,7 +881,7 @@ pub(crate) fn assert_assignable<'tcx>(
             let FnSig {
                 inputs_and_output: types_to,
                 c_variadic: c_variadic_to,
-                unsafety: unsafety_to,
+                safety: unsafety_to,
                 abi: abi_to,
             } = to_sig;
             let mut types_from = types_from.iter();

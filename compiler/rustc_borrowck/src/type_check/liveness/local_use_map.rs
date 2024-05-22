@@ -1,4 +1,3 @@
-use rustc_data_structures::vec_linked_list as vll;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
@@ -37,8 +36,11 @@ pub(crate) struct LocalUseMap {
     /// we add for each local variable.
     first_drop_at: IndexVec<Local, Option<AppearanceIndex>>,
 
-    appearances: IndexVec<AppearanceIndex, Appearance>,
+    appearances: Appearances,
 }
+
+// The `Appearance::next` field effectively embeds a linked list within `Appearances`.
+type Appearances = IndexVec<AppearanceIndex, Appearance>;
 
 struct Appearance {
     point_index: PointIndex,
@@ -49,13 +51,33 @@ rustc_index::newtype_index! {
     pub struct AppearanceIndex {}
 }
 
-impl vll::LinkElem for Appearance {
-    type LinkIndex = AppearanceIndex;
+fn appearances_iter(
+    first: Option<AppearanceIndex>,
+    appearances: &Appearances,
+) -> impl Iterator<Item = AppearanceIndex> + '_ {
+    AppearancesIter { appearances, current: first }
+}
 
-    fn next(elem: &Self) -> Option<AppearanceIndex> {
-        elem.next
+// Iterates over `Appearances` by following `next` fields.
+struct AppearancesIter<'a> {
+    appearances: &'a Appearances,
+    current: Option<AppearanceIndex>,
+}
+
+impl<'a> Iterator for AppearancesIter<'a> {
+    type Item = AppearanceIndex;
+
+    fn next(&mut self) -> Option<AppearanceIndex> {
+        if let Some(c) = self.current {
+            self.current = self.appearances[c].next;
+            Some(c)
+        } else {
+            None
+        }
     }
 }
+
+//-----------------------------------------------------------------------------
 
 impl LocalUseMap {
     pub(crate) fn build(
@@ -86,17 +108,17 @@ impl LocalUseMap {
     }
 
     pub(crate) fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
-        vll::iter(self.first_def_at[local], &self.appearances)
+        appearances_iter(self.first_def_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
     pub(crate) fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
-        vll::iter(self.first_use_at[local], &self.appearances)
+        appearances_iter(self.first_use_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
     pub(crate) fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
-        vll::iter(self.first_drop_at[local], &self.appearances)
+        appearances_iter(self.first_drop_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 }
@@ -146,7 +168,7 @@ impl LocalUseMapBuild<'_> {
     fn insert(
         elements: &DenseLocationMap,
         first_appearance: &mut Option<AppearanceIndex>,
-        appearances: &mut IndexVec<AppearanceIndex, Appearance>,
+        appearances: &mut Appearances,
         location: Location,
     ) {
         let point_index = elements.point_from_location(location);

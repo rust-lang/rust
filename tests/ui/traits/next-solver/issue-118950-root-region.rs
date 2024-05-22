@@ -12,7 +12,7 @@ trait ToUnit<'a> {
 trait Overlap<T> {}
 
 type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
-//~^ ERROR: not well-formed
+//~^ ERROR the trait bound `*const T: ToUnit<'a>` is not satisfied
 
 impl<T> Overlap<T> for T {}
 

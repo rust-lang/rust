@@ -8,7 +8,7 @@ fn function_return_type_mismatch_1() {
         r#"
 fn test() -> &'static str {
     5
-  //^ expected &str, got i32
+  //^ expected &'static str, got i32
 }
 "#,
     );
@@ -21,7 +21,7 @@ fn function_return_type_mismatch_2() {
 fn test(x: bool) -> &'static str {
     if x {
         return 1;
-             //^ expected &str, got i32
+             //^ expected &'static str, got i32
     }
     "ok"
 }
@@ -38,7 +38,7 @@ fn test(x: bool) -> &'static str {
         return "ok";
     }
     1
-  //^ expected &str, got i32
+  //^ expected &'static str, got i32
 }
 "#,
     );
@@ -53,7 +53,7 @@ fn test(x: bool) -> &'static str {
         "ok"
     } else {
         1
-      //^ expected &str, got i32
+      //^ expected &'static str, got i32
     }
 }
 "#,
@@ -67,7 +67,7 @@ fn function_return_type_mismatch_5() {
 fn test(x: bool) -> &'static str {
     if x {
         1
-      //^ expected &str, got i32
+      //^ expected &'static str, got i32
     } else {
         "ok"
     }
@@ -83,10 +83,10 @@ fn non_unit_block_expr_stmt_no_semi() {
 fn test(x: bool) {
     if x {
         "notok"
-      //^^^^^^^ expected (), got &str
+      //^^^^^^^ expected (), got &'static str
     } else {
         "ok"
-      //^^^^ expected (), got &str
+      //^^^^ expected (), got &'static str
     }
     match x { true => true, false => 0 }
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), got bool
@@ -132,6 +132,23 @@ trait Trait {
 impl Trait for () {
     type Assoc = impl Sized;
     const DEFINE: Option<Self::Assoc> = Option::Some(());
+}
+"#,
+    );
+}
+
+#[test]
+fn no_mismatches_with_unresolved_projections() {
+    check_no_mismatches(
+        r#"
+// `Thing` is `{unknown}`
+fn create() -> Option<(i32, Thing)> {
+    Some((69420, Thing))
+}
+
+fn consume() -> Option<()> {
+    let (number, thing) = create()?;
+    Some(())
 }
 "#,
     );

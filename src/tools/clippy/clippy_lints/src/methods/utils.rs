@@ -3,7 +3,6 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, path_to_local_id, usage};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat};
 use rustc_lint::LateContext;
@@ -13,9 +12,9 @@ use rustc_span::symbol::sym;
 
 pub(super) fn derefs_to_slice<'tcx>(
     cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'tcx>,
+    expr: &'tcx Expr<'tcx>,
     ty: Ty<'tcx>,
-) -> Option<&'tcx hir::Expr<'tcx>> {
+) -> Option<&'tcx Expr<'tcx>> {
     fn may_slice<'a>(cx: &LateContext<'a>, ty: Ty<'a>) -> bool {
         match ty.kind() {
             ty::Slice(_) => true,
@@ -27,7 +26,7 @@ pub(super) fn derefs_to_slice<'tcx>(
         }
     }
 
-    if let hir::ExprKind::MethodCall(path, self_arg, ..) = &expr.kind {
+    if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind {
         if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(self_arg)) {
             Some(self_arg)
         } else {
@@ -51,13 +50,19 @@ pub(super) fn derefs_to_slice<'tcx>(
 
 pub(super) fn get_hint_if_single_char_arg(
     cx: &LateContext<'_>,
-    arg: &hir::Expr<'_>,
+    arg: &Expr<'_>,
     applicability: &mut Applicability,
+    ascii_only: bool,
 ) -> Option<String> {
-    if let hir::ExprKind::Lit(lit) = &arg.kind
+    if let ExprKind::Lit(lit) = &arg.kind
         && let ast::LitKind::Str(r, style) = lit.node
         && let string = r.as_str()
-        && string.chars().count() == 1
+        && let len = if ascii_only {
+            string.len()
+        } else {
+            string.chars().count()
+        }
+        && len == 1
     {
         let snip = snippet_with_applicability(cx, arg.span, string, applicability);
         let ch = if let ast::StrStyle::Raw(nhash) = style {
@@ -115,6 +120,7 @@ fn pat_bindings(pat: &Pat<'_>) -> Vec<HirId> {
 /// operations performed on `binding_hir_ids` are:
 /// * to take non-mutable references to them
 /// * to use them as non-mutable `&self` in method calls
+///
 /// If any of `binding_hir_ids` is used in any other way, then `clone_or_copy_needed` will be true
 /// when `CloneOrCopyVisitor` is done visiting.
 struct CloneOrCopyVisitor<'cx, 'tcx> {

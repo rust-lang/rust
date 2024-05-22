@@ -3,6 +3,8 @@ name: Abi-cafe
 on:
   - push
 
+permissions: {}
+
 jobs:
   abi_cafe:
     runs-on: ${{ matrix.os }}
@@ -48,6 +50,14 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Use x86_64 compiler on macOS
+      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
+      run: rustup set default-host x86_64-apple-darwin
+
+    - name: Select XCode version
+      if: matrix.os == 'macos-latest'
+      run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
 
     - name: Prepare dependencies
       run: ./y.sh prepare

@@ -3,7 +3,7 @@
 //@ revisions: default nomiropt
 //@[nomiropt]compile-flags: -Z mir-opt-level=0
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 #![allow(dropping_copy_types)]
 
 use std::ops::Coroutine;
@@ -28,7 +28,7 @@ fn main() {
 
 fn t1() {
     let b = B;
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         yield;
         drop(b);
     };
@@ -42,7 +42,7 @@ fn t1() {
 
 fn t2() {
     let b = B;
-    let mut foo = || {
+    let mut foo = #[coroutine] || {
         yield b;
     };
 
@@ -55,7 +55,7 @@ fn t2() {
 
 fn t3() {
     let b = B;
-    let foo = || {
+    let foo = #[coroutine] || {
         yield;
         drop(b);
     };

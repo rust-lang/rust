@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
                 cx,
                 SELF_NAMED_CONSTRUCTORS,
                 impl_item.span,
-                &format!("constructor `{}` has the same name as the type", impl_item.ident.name),
+                format!("constructor `{}` has the same name as the type", impl_item.ident.name),
             );
         }
     }

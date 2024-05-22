@@ -1,66 +1,79 @@
 #![allow(rustc::bad_opt_access)]
-use crate::interface::parse_cfg;
+use crate::interface::{initialize_checked_jobserver, parse_cfg};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
-    CollapseMacroDebuginfo, CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType,
-    ExternEntry, ExternLocation, Externs, FunctionReturn, InliningThreshold, Input,
-    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
-    NextSolverConfig, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
-    Passes, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
-    WasiExecModel,
+    CollapseMacroDebuginfo, CoverageLevel, CoverageOptions, DebugInfo, DumpMonoStatsFormat,
+    ErrorOutputType, ExternEntry, ExternLocation, Externs, FunctionReturn, InliningThreshold,
+    Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail,
+    LtoCli, NextSolverConfig, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey,
+    PacRet, Passes, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use rustc_session::{build_session, filesearch, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
+use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
-use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
+use rustc_target::spec::{
+    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
+};
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
+fn sess_and_cfg<F>(args: &[&'static str], f: F)
+where
+    F: FnOnce(Session, Cfg),
+{
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-    early_dcx.initialize_checked_jobserver();
+    initialize_checked_jobserver(&early_dcx);
 
-    let registry = registry::Registry::new(&[]);
+    let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
-    let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
-    let io = CompilerIO {
-        input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
-        output_dir: None,
-        output_file: None,
-        temps_dir,
-    };
-
     let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
-
     let target = rustc_session::config::build_target_config(&early_dcx, &sessopts, &sysroot);
+    let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
+    let sm_inputs = Some(SourceMapInputs {
+        file_loader: Box::new(RealFileLoader) as _,
+        path_mapping: sessopts.file_path_mapping(),
+        hash_kind,
+    });
 
-    let sess = build_session(
-        early_dcx,
-        sessopts,
-        io,
-        None,
-        registry,
-        vec![],
-        Default::default(),
-        None,
-        target,
-        sysroot,
-        "",
-        None,
-        Arc::default(),
-        Default::default(),
-    );
-    let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
-    (sess, cfg)
+    rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {
+        let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
+        let io = CompilerIO {
+            input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
+            output_dir: None,
+            output_file: None,
+            temps_dir,
+        };
+
+        let sess = build_session(
+            early_dcx,
+            sessopts,
+            io,
+            None,
+            registry::Registry::new(&[]),
+            vec![],
+            Default::default(),
+            target,
+            sysroot,
+            "",
+            None,
+            Arc::default(),
+            Default::default(),
+        );
+        let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
+        let cfg = build_configuration(&sess, cfg);
+        f(sess, cfg)
+    });
 }
 
 fn new_public_extern_entry<S, I>(locations: I) -> ExternEntry
@@ -125,21 +138,15 @@ fn assert_non_crate_hash_different(x: &Options, y: &Options) {
 // When the user supplies --test we should implicitly supply --cfg test
 #[test]
 fn test_switch_implies_cfg_test() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["--test".to_string()]).unwrap();
-        let (sess, cfg) = mk_session(matches);
-        let cfg = build_configuration(&sess, cfg);
+    sess_and_cfg(&["--test"], |_sess, cfg| {
         assert!(cfg.contains(&(sym::test, None)));
-    });
+    })
 }
 
 // When the user supplies --test and --cfg test, don't implicitly add another --cfg test
 #[test]
 fn test_switch_implies_cfg_test_unless_cfg_test() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]).unwrap();
-        let (sess, cfg) = mk_session(matches);
-        let cfg = build_configuration(&sess, cfg);
+    sess_and_cfg(&["--test", "--cfg=test"], |_sess, cfg| {
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
@@ -148,22 +155,15 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 
 #[test]
 fn test_can_print_warnings() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+    sess_and_cfg(&["-Awarnings"], |sess, _cfg| {
         assert!(!sess.dcx().can_emit_warnings());
     });
 
-    rustc_span::create_default_session_globals_then(|| {
-        let matches =
-            optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+    sess_and_cfg(&["-Awarnings", "-Dwarnings"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
     });
 
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+    sess_and_cfg(&["-Adead_code"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
     });
 }
@@ -321,6 +321,7 @@ fn test_search_paths_tracking_hash_different_order() {
             &opts.target_triple,
             &early_dcx,
             search_path,
+            false,
         ));
     };
 
@@ -599,6 +600,7 @@ fn test_codegen_options_tracking_hash() {
     // Make sure that changing a [TRACKED] option changes the hash.
     // tidy-alphabetical-start
     tracked!(code_model, Some(CodeModel::Large));
+    tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, DebugInfo::Limited);
@@ -624,6 +626,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
+    tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(soft_float, true);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
@@ -758,12 +761,10 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
-    tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
-    tracked!(coverage_options, CoverageOptions { branch: true });
+    tracked!(coverage_options, CoverageOptions { level: CoverageLevel::Mcdc });
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
-    tracked!(debug_macros, true);
     tracked!(default_hidden_visibility, Some(true));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));
@@ -808,6 +809,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
+    tracked!(on_broken_pipe, OnBrokenPipe::Kill);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
@@ -822,7 +824,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
     tracked!(relax_elf_relocations, Some(true));
-    tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
@@ -846,12 +847,14 @@ fn test_unstable_options_tracking_hash() {
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZero::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
+    tracked!(ub_checks, Some(false));
     tracked!(uninit_const_chunk_threshold, 123);
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
     tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+    tracked!(wasm_c_abi, WasmCAbi::Spec);
     // tidy-alphabetical-end
 
     macro_rules! tracked_no_crate_hash {

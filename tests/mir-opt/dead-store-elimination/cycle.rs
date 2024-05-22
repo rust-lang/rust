@@ -2,7 +2,7 @@
 // report that *all* of these stores are live.
 //
 //@ needs-unwind
-//@ unit-test: DeadStoreElimination-initial
+//@ test-mir-pass: DeadStoreElimination-initial
 
 #![feature(core_intrinsics, custom_mir)]
 use std::intrinsics::mir::*;

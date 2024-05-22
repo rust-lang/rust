@@ -1,5 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::diagnostics::{self, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty;
@@ -149,7 +149,7 @@ fn print_unchecked_duration_subtraction_sugg(
     let left_expr = snippet_with_context(cx, left_expr.span, ctxt, "<instant>", &mut applicability).0;
     let right_expr = snippet_with_context(cx, right_expr.span, ctxt, "<duration>", &mut applicability).0;
 
-    diagnostics::span_lint_and_sugg(
+    span_lint_and_sugg(
         cx,
         UNCHECKED_DURATION_SUBTRACTION,
         expr.span,

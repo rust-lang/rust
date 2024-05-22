@@ -55,22 +55,34 @@ LL |     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:126:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:124:5
+   |
+LL |     const DIRECT: Cell<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> tests/ui/declare_interior_mutable_const/traits.rs:125:5
    |
 LL |     const INDIRECT: Cell<*const T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:142:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:129:5
+   |
+LL |     const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> tests/ui/declare_interior_mutable_const/traits.rs:141:5
    |
 LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:148:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:147:5
    |
 LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 

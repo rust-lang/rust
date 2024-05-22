@@ -32,9 +32,9 @@ python3 "$X_PY" test --stage 2 src/tools/rustfmt
 # that bugs which only surface when the GC runs at a specific time are more likely to cause CI to fail.
 # This significantly increases the runtime of our test suite, or we'd do this in PR CI too.
 if [ -z "${PR_CI_JOB:-}" ]; then
-    MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 src/tools/miri
+    MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri
 else
-    python3 "$X_PY" test --stage 2 src/tools/miri
+    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri
 fi
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets via cross-testing, in particular all tier 1 targets.
@@ -42,8 +42,8 @@ case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Only this branch runs in PR CI.
     # Fully test all main OSes, including a 32bit target.
-    python3 "$X_PY" test --stage 2 src/tools/miri --target x86_64-apple-darwin
-    python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-msvc
+    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target x86_64-apple-darwin
+    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target i686-pc-windows-msvc
     # Only run "pass" tests for the remaining targets, which is quite a bit faster.
     python3 "$X_PY" test --stage 2 src/tools/miri --target x86_64-pc-windows-gnu --test-args pass
     python3 "$X_PY" test --stage 2 src/tools/miri --target i686-unknown-linux-gnu --test-args pass
@@ -62,3 +62,8 @@ case $HOST_TARGET in
     exit 1
     ;;
 esac
+# Also smoke-test `x.py miri`. This doesn't run any actual tests (that would take too long),
+# but it ensures that the crates build properly when tested with Miri.
+python3 "$X_PY" miri --stage 2 library/core --test-args notest
+python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
+python3 "$X_PY" miri --stage 2 library/std --test-args notest

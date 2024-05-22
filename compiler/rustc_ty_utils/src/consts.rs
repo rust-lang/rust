@@ -1,6 +1,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
@@ -80,9 +81,9 @@ fn destructure_const<'tcx>(
 fn check_binop(op: mir::BinOp) -> bool {
     use mir::BinOp::*;
     match op {
-        Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
-        | BitAnd | BitOr | Shl | ShlUnchecked | Shr | ShrUnchecked | Eq | Lt | Le | Ne | Ge
-        | Gt | Cmp => true,
+        Add | AddUnchecked | AddWithOverflow | Sub | SubUnchecked | SubWithOverflow | Mul
+        | MulUnchecked | MulWithOverflow | Div | Rem | BitXor | BitAnd | BitOr | Shl
+        | ShlUnchecked | Shr | ShrUnchecked | Eq | Lt | Le | Ne | Ge | Gt | Cmp => true,
         Offset => false,
     }
 }

@@ -315,7 +315,11 @@ pub mod grapheme_extend {
         15, 0, 7, 1, 17, 2, 7, 1, 2, 1, 5, 100, 1, 160, 7, 0, 1, 61, 4, 0, 4, 0, 7, 109, 7, 0, 96,
         128, 240, 0,
     ];
+    #[inline]
     pub fn lookup(c: char) -> bool {
+        (c as u32) >= 0x300 && lookup_slow(c)
+    }
+    fn lookup_slow(c: char) -> bool {
         super::skip_search(
             c as u32,
             &SHORT_OFFSET_RUNS,

@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/issue-52398.rs:17:5
+  --> $DIR/issue-52398.rs:17:18
    |
-LL | /     move || {
+LL |       #[coroutine] move || {
+   |  __________________^
 LL | |         A.test(yield);
 LL | |     };
    | |_____^
@@ -10,9 +11,10 @@ LL | |     };
    = note: `#[warn(unused_must_use)]` on by default
 
 warning: unused coroutine that must be used
-  --> $DIR/issue-52398.rs:24:5
+  --> $DIR/issue-52398.rs:24:18
    |
-LL | /     static move || {
+LL |       #[coroutine] static move || {
+   |  __________________^
 LL | |         yield *y.borrow();
 LL | |         return "Done";
 LL | |     };

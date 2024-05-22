@@ -1,4 +1,5 @@
 use std::env;
+use std::thread;
 
 fn main() {
     // Test that miri environment is isolated when communication is disabled.
@@ -23,4 +24,11 @@ fn main() {
     env::remove_var("MIRI_TEST");
     assert_eq!(env::var("MIRI_TEST"), Err(env::VarError::NotPresent));
     println!("{:#?}", env::vars().collect::<Vec<_>>());
+
+    // Do things concurrently, to make sure there's no data race.
+    let t = thread::spawn(|| {
+        env::set_var("MIRI_TEST", "42");
+    });
+    env::set_var("MIRI_TEST", "42");
+    t.join().unwrap();
 }

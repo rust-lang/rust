@@ -6,8 +6,9 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
+use std::mem;
 use std::ops::Range;
-use std::{cmp, mem};
+use tracing::{debug, trace};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DocFragmentKind {
@@ -129,17 +130,20 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     let Some(min_indent) = docs
         .iter()
         .map(|fragment| {
-            fragment.doc.as_str().lines().fold(usize::MAX, |min_indent, line| {
-                if line.chars().all(|c| c.is_whitespace()) {
-                    min_indent
-                } else {
+            fragment
+                .doc
+                .as_str()
+                .lines()
+                .filter(|line| line.chars().any(|c| !c.is_whitespace()))
+                .map(|line| {
                     // Compare against either space or tab, ignoring whether they are
                     // mixed or not.
                     let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
-                    cmp::min(min_indent, whitespace)
-                        + if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add }
-                }
-            })
+                    whitespace
+                        + (if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add })
+                })
+                .min()
+                .unwrap_or(usize::MAX)
         })
         .min()
     else {
@@ -151,13 +155,13 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
             continue;
         }
 
-        let min_indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
+        let indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
             min_indent - add
         } else {
             min_indent
         };
 
-        fragment.indent = min_indent;
+        fragment.indent = indent;
     }
 }
 
@@ -194,12 +198,12 @@ pub fn attrs_to_doc_fragments<'a>(
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
-            let kind = if attr.is_doc_comment() {
-                DocFragmentKind::SugaredDoc
+            let (span, kind) = if attr.is_doc_comment() {
+                (attr.span, DocFragmentKind::SugaredDoc)
             } else {
-                DocFragmentKind::RawDoc
+                (span_for_value(attr), DocFragmentKind::RawDoc)
             };
-            let fragment = DocFragment { span: attr.span, doc, kind, item_id, indent: 0 };
+            let fragment = DocFragment { span, doc, kind, item_id, indent: 0 };
             doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
@@ -209,6 +213,16 @@ pub fn attrs_to_doc_fragments<'a>(
     unindent_doc_fragments(&mut doc_fragments);
 
     (doc_fragments, other_attrs)
+}
+
+fn span_for_value(attr: &ast::Attribute) -> Span {
+    if let ast::AttrKind::Normal(normal) = &attr.kind
+        && let ast::AttrArgs::Eq(_, ast::AttrArgsEq::Hir(meta)) = &normal.item.args
+    {
+        meta.span.with_ctxt(attr.span.ctxt())
+    } else {
+        attr.span
+    }
 }
 
 /// Return the doc-comments on this item, grouped by the module they came from.
@@ -482,15 +496,36 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
 
 /// Attempts to match a range of bytes from parsed markdown to a `Span` in the source code.
 ///
-/// This method will return `None` if we cannot construct a span from the source map or if the
-/// fragments are not all sugared doc comments. It's difficult to calculate the correct span in
-/// that case due to escaping and other source features.
+/// This method does not always work, because markdown bytes don't necessarily match source bytes,
+/// like if escapes are used in the string. In this case, it returns `None`.
+///
+/// This method will return `Some` only if:
+///
+/// - The doc is made entirely from sugared doc comments, which cannot contain escapes
+/// - The doc is entirely from a single doc fragment, with a string literal, exactly equal
+/// - The doc comes from `include_str!`
 pub fn source_span_for_markdown_range(
     tcx: TyCtxt<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     fragments: &[DocFragment],
 ) -> Option<Span> {
+    if let &[fragment] = &fragments
+        && fragment.kind == DocFragmentKind::RawDoc
+        && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(fragment.span)
+        && snippet.trim_end() == markdown.trim_end()
+        && let Ok(md_range_lo) = u32::try_from(md_range.start)
+        && let Ok(md_range_hi) = u32::try_from(md_range.end)
+    {
+        // Single fragment with string that contains same bytes as doc.
+        return Some(Span::new(
+            fragment.span.lo() + rustc_span::BytePos(md_range_lo),
+            fragment.span.lo() + rustc_span::BytePos(md_range_hi),
+            fragment.span.ctxt(),
+            fragment.span.parent(),
+        ));
+    }
+
     let is_all_sugared_doc = fragments.iter().all(|frag| frag.kind == DocFragmentKind::SugaredDoc);
 
     if !is_all_sugared_doc {

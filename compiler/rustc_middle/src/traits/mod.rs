@@ -9,27 +9,30 @@ pub mod specialization_graph;
 mod structural_impls;
 pub mod util;
 
-use crate::infer::canonical::Canonical;
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtKind, Ty};
-use crate::ty::{GenericArgsRef, TyCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
-
-pub use self::ObligationCauseCode::*;
+// FIXME: Remove this import and import via `solve::`
+pub use rustc_next_trait_solver::solve::BuiltinImplSource;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -125,7 +128,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     pub fn misc(span: Span, body_id: LocalDefId) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, body_id, MiscObligation)
+        ObligationCause::new(span, body_id, ObligationCauseCode::Misc)
     }
 
     #[inline(always)]
@@ -163,7 +166,7 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn derived_cause(
         mut self,
         parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
-        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         /*!
          * Creates a cause for obligations that are derived from
@@ -178,15 +181,14 @@ impl<'tcx> ObligationCause<'tcx> {
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose-internals or just a CLI argument.
-        self.code =
-            variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
+        self.code = variant(DerivedCause { parent_trait_pred, parent_code: self.code }).into();
         self
     }
 
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
-            MatchImpl(cause, _) => cause.to_constraint_category(),
-            AscribeUserTypeProvePredicate(predicate_span) => {
+            ObligationCauseCode::MatchImpl(cause, _) => cause.to_constraint_category(),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span) => {
                 ConstraintCategory::Predicate(*predicate_span)
             }
             _ => ConstraintCategory::BoringNoLocation,
@@ -205,7 +207,7 @@ pub struct UnifyReceiverContext<'tcx> {
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
 pub struct InternedObligationCauseCode<'tcx> {
-    /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
+    /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
     code: Option<Lrc<ObligationCauseCode<'tcx>>>,
 }
@@ -221,11 +223,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
     #[inline(always)]
     fn into(self) -> InternedObligationCauseCode<'tcx> {
         InternedObligationCauseCode {
-            code: if let ObligationCauseCode::MiscObligation = self {
-                None
-            } else {
-                Some(Lrc::new(self))
-            },
+            code: if let ObligationCauseCode::Misc = self { None } else { Some(Lrc::new(self)) },
         }
     }
 }
@@ -234,7 +232,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
     type Target = ObligationCauseCode<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        self.code.as_deref().unwrap_or(&ObligationCauseCode::MiscObligation)
+        self.code.as_deref().unwrap_or(&ObligationCauseCode::Misc)
     }
 }
 
@@ -242,7 +240,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
 #[derive(TypeVisitable, TypeFoldable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
-    MiscObligation,
+    Misc,
 
     /// A slice or array is WF only if `T: Sized`.
     SliceOrArrayElem,
@@ -250,22 +248,15 @@ pub enum ObligationCauseCode<'tcx> {
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
 
-    /// Must satisfy all of the where-clause predicates of the
-    /// given item.
-    ItemObligation(DefId),
+    /// Represents a clause that comes from a specific item.
+    /// The span corresponds to the clause.
+    WhereClause(DefId, Span),
 
-    /// Like `ItemObligation`, but carries the span of the
-    /// predicate when it can be identified.
-    BindingObligation(DefId, Span),
-
-    /// Like `ItemObligation`, but carries the `HirId` of the
-    /// expression that caused the obligation, and the `usize`
-    /// indicates exactly which predicate it is in the list of
-    /// instantiated predicates.
-    ExprItemObligation(DefId, rustc_hir::HirId, usize),
-
-    /// Combines `ExprItemObligation` and `BindingObligation`.
-    ExprBindingObligation(DefId, Span, rustc_hir::HirId, usize),
+    /// Like `WhereClause`, but also identifies the expression
+    /// which requires the `where` clause to be proven, and also
+    /// identifies the index of the predicate in the `predicates_of`
+    /// list of the item.
+    WhereClauseInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -287,9 +278,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// `S { ... }` must be `Sized`.
     StructInitializerSized,
     /// Type of each variable must be `Sized`.
-    VariableType(hir::HirId),
+    VariableType(HirId),
     /// Argument type must be `Sized`.
-    SizedArgumentType(Option<hir::HirId>),
+    SizedArgumentType(Option<HirId>),
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Return type of a call expression must be `Sized`.
@@ -327,24 +318,31 @@ pub enum ObligationCauseCode<'tcx> {
     /// `static` items must have `Sync` type.
     SharedStatic,
 
-    BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
+    /// Derived obligation (i.e. theoretical `where` clause) on a built-in
+    /// implementation like `Copy` or `Sized`.
+    BuiltinDerived(DerivedCause<'tcx>),
 
-    ImplDerivedObligation(Box<ImplDerivedObligationCause<'tcx>>),
+    /// Derived obligation (i.e. `where` clause) on an user-provided impl
+    /// or a trait alias.
+    ImplDerived(Box<ImplDerivedCause<'tcx>>),
 
-    DerivedObligation(DerivedObligationCause<'tcx>),
+    /// Derived obligation for WF goals.
+    WellFormedDerived(DerivedCause<'tcx>),
 
-    FunctionArgumentObligation {
+    /// Derived obligation refined to point at a specific argument in
+    /// a call or method expression.
+    FunctionArg {
         /// The node of the relevant argument in the function call.
-        arg_hir_id: hir::HirId,
+        arg_hir_id: HirId,
         /// The node of the function call.
-        call_hir_id: hir::HirId,
+        call_hir_id: HirId,
         /// The obligation introduced by this argument.
         parent_code: InternedObligationCauseCode<'tcx>,
     },
 
     /// Error derived when checking an impl item is compatible with
     /// its corresponding trait item's definition
-    CompareImplItemObligation {
+    CompareImplItem {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
         kind: ty::AssocKind,
@@ -402,18 +400,18 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnNoExpression,
 
     /// `return` with an expression
-    ReturnValue(hir::HirId),
+    ReturnValue(HirId),
 
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
     /// Block implicit return
-    BlockTailExpression(hir::HirId, hir::MatchSource),
+    BlockTailExpression(HirId, hir::MatchSource),
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
 
-    AwaitableExpr(hir::HirId),
+    AwaitableExpr(HirId),
 
     ForLoopIterator,
 
@@ -423,16 +421,16 @@ pub enum ObligationCauseCode<'tcx> {
     /// then it will be used to perform HIR-based wf checking
     /// after an error occurs, in order to generate a more precise error span.
     /// This is purely for diagnostic purposes - it is always
-    /// correct to use `MiscObligation` instead, or to specify
-    /// `WellFormed(None)`
+    /// correct to use `Misc` instead, or to specify
+    /// `WellFormed(None)`.
     WellFormed(Option<WellFormedLoc>),
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
-        lhs_hir_id: hir::HirId,
-        rhs_hir_id: Option<hir::HirId>,
+        lhs_hir_id: HirId,
+        rhs_hir_id: Option<HirId>,
         rhs_span: Option<Span>,
         rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
@@ -486,14 +484,14 @@ pub enum WellFormedLoc {
         /// The index of the parameter to use.
         /// Parameters are indexed from 0, with the return type
         /// being the last 'parameter'
-        param_idx: u16,
+        param_idx: usize,
     },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
-pub struct ImplDerivedObligationCause<'tcx> {
-    pub derived: DerivedObligationCause<'tcx>,
+pub struct ImplDerivedCause<'tcx> {
+    pub derived: DerivedCause<'tcx>,
     /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
     /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
     /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
@@ -531,10 +529,10 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
     pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
         match self {
-            FunctionArgumentObligation { parent_code, .. } => Some((parent_code, None)),
-            BuiltinDerivedObligation(derived)
-            | DerivedObligation(derived)
-            | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
+            ObligationCauseCode::FunctionArg { parent_code, .. } => Some((parent_code, None)),
+            ObligationCauseCode::BuiltinDerived(derived)
+            | ObligationCauseCode::WellFormedDerived(derived)
+            | ObligationCauseCode::ImplDerived(box ImplDerivedCause { derived, .. }) => {
                 Some((&derived.parent_code, Some(derived.parent_trait_pred)))
             }
             _ => None,
@@ -543,15 +541,15 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
     pub fn peel_match_impls(&self) -> &Self {
         match self {
-            MatchImpl(cause, _) => cause.code(),
+            ObligationCauseCode::MatchImpl(cause, _) => cause.code(),
             _ => self,
         }
     }
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ObligationCauseCode<'_>, 48);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {
@@ -562,10 +560,10 @@ pub enum StatementAsExpression {
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
-    pub arm_block_id: Option<hir::HirId>,
+    pub arm_block_id: Option<HirId>,
     pub arm_ty: Ty<'tcx>,
     pub arm_span: Span,
-    pub prior_arm_block_id: Option<hir::HirId>,
+    pub prior_arm_block_id: Option<HirId>,
     pub prior_arm_ty: Ty<'tcx>,
     pub prior_arm_span: Span,
     pub scrut_span: Span,
@@ -578,8 +576,8 @@ pub struct MatchExpressionArmCause<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
 pub struct IfExpressionCause<'tcx> {
-    pub then_id: hir::HirId,
-    pub else_id: hir::HirId,
+    pub then_id: HirId,
+    pub else_id: HirId,
     pub then_ty: Ty<'tcx>,
     pub else_ty: Ty<'tcx>,
     pub outer_span: Option<Span>,
@@ -589,7 +587,7 @@ pub struct IfExpressionCause<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
-pub struct DerivedObligationCause<'tcx> {
+pub struct DerivedCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
     /// derived obligations, so we just store the trait predicate here
@@ -620,11 +618,10 @@ pub enum SelectionError<'tcx> {
     OpaqueTypeAutoTraitLeakageUnknown(DefId),
 }
 
-// FIXME(@lcnr): The `Binder` here should be unnecessary. Just use `TraitRef` instead.
 #[derive(Clone, Debug, TypeVisitable)]
 pub struct SignatureMismatchData<'tcx> {
-    pub found_trait_ref: ty::PolyTraitRef<'tcx>,
-    pub expected_trait_ref: ty::PolyTraitRef<'tcx>,
+    pub found_trait_ref: ty::TraitRef<'tcx>,
+    pub expected_trait_ref: ty::TraitRef<'tcx>,
     pub terr: ty::error::TypeError<'tcx>,
 }
 
@@ -739,32 +736,6 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub args: GenericArgsRef<'tcx>,
     pub nested: Vec<N>,
 }
-
-#[derive(Copy, Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum BuiltinImplSource {
-    /// Some builtin impl we don't need to differentiate. This should be used
-    /// unless more specific information is necessary.
-    Misc,
-    /// A builtin impl for trait objects.
-    ///
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the start of `upcast_trait_ref`'s methods
-    /// in that vtable.
-    Object { vtable_base: usize },
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
-    /// within that vtable.
-    TraitUpcasting { vtable_vptr_slot: Option<usize> },
-    /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
-    ///
-    /// This needs to be a separate variant as it is still unstable and we need to emit
-    /// a feature error when using it on stable.
-    TupleUnsizing,
-}
-
-TrivialTypeTraversalImpls! { BuiltinImplSource }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum ObjectSafetyViolation {
@@ -996,34 +967,4 @@ pub enum CodegenObligationError {
     /// but was included during typeck due to the trivial_bounds feature.
     Unimplemented,
     FulfillmentError,
-}
-
-/// Defines the treatment of opaque types in a given inference context.
-///
-/// This affects both what opaques are allowed to be defined, but also whether
-/// opaques are replaced with inference vars eagerly in the old solver (e.g.
-/// in projection, and in the signature during function type-checking).
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum DefiningAnchor<'tcx> {
-    /// Define opaques which are in-scope of the current item being analyzed.
-    /// Also, eagerly replace these opaque types in `replace_opaque_types_with_inference_vars`.
-    ///
-    /// If the list is empty, do not allow any opaques to be defined. This is used to catch type mismatch
-    /// errors when handling opaque types, and also should be used when we would
-    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
-    Bind(&'tcx ty::List<LocalDefId>),
-    /// In contexts where we don't currently know what opaques are allowed to be
-    /// defined, such as (old solver) canonical queries, we will simply allow
-    /// opaques to be defined, but "bubble" them up in the canonical response or
-    /// otherwise treat them to be handled later.
-    ///
-    /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
-    /// which may affect what predicates pass and fail in the old trait solver.
-    Bubble,
-}
-
-impl<'tcx> DefiningAnchor<'tcx> {
-    pub fn bind(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
-        Self::Bind(tcx.opaque_types_defined_by(item))
-    }
 }

@@ -12,8 +12,8 @@ mod vec_box;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, LetStmt, MutTy, QPath, TraitItem,
-    TraitItemKind, TyKind,
+    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, LetStmt, MutTy, QPath, TraitFn,
+    TraitItem, TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -420,7 +420,13 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             TraitItemKind::Const(ty, _) | TraitItemKind::Type(_, Some(ty)) => {
                 self.check_ty(cx, ty, context);
             },
-            TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, sig.decl, context),
+            TraitItemKind::Fn(ref sig, trait_method) => {
+                // Check only methods without body
+                // Methods with body are covered by check_fn.
+                if let TraitFn::Required(_) = trait_method {
+                    self.check_fn_decl(cx, sig.decl, context);
+                }
+            },
             TraitItemKind::Type(..) => (),
         }
     }

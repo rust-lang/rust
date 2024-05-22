@@ -5,7 +5,7 @@
 #![feature(generic_arg_infer)]
 #![feature(core_intrinsics)]
 #![feature(repr_simd)]
-#![feature(inline_const)]
+
 use std::intrinsics::simd::*;
 
 #[repr(simd)]

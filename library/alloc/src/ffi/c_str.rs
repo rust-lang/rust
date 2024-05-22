@@ -41,6 +41,7 @@ use crate::sync::Arc;
 /// or anything that implements <code>[Into]<[Vec]<[u8]>></code> (for
 /// example, you can build a `CString` straight out of a [`String`] or
 /// a <code>&[str]</code>, since both implement that trait).
+/// You can create a `CString` from a literal with `CString::from(c"Text")`.
 ///
 /// The [`CString::new`] method will actually check that the provided <code>&[[u8]]</code>
 /// does not have 0 bytes in the middle, and return an error if it
@@ -909,6 +910,19 @@ impl From<&CStr> for Rc<CStr> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl Default for Rc<CStr> {
+    /// Creates an empty CStr inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        let c_str: &CStr = Default::default();
+        Rc::from(c_str)
+    }
+}
+
 #[cfg(not(test))]
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<CStr> {
@@ -1069,27 +1083,22 @@ impl CStr {
     ///
     /// # Examples
     ///
-    /// Calling `to_string_lossy` on a `CStr` containing valid UTF-8:
+    /// Calling `to_string_lossy` on a `CStr` containing valid UTF-8. The leading
+    /// `c` on the string literal denotes a `CStr`.
     ///
     /// ```
     /// use std::borrow::Cow;
-    /// use std::ffi::CStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"Hello World\0")
-    ///                  .expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(cstr.to_string_lossy(), Cow::Borrowed("Hello World"));
+    /// assert_eq!(c"Hello World".to_string_lossy(), Cow::Borrowed("Hello World"));
     /// ```
     ///
     /// Calling `to_string_lossy` on a `CStr` containing invalid UTF-8:
     ///
     /// ```
     /// use std::borrow::Cow;
-    /// use std::ffi::CStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
-    ///                  .expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(
-    ///     cstr.to_string_lossy(),
+    ///     c"Hello \xF0\x90\x80World".to_string_lossy(),
     ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```

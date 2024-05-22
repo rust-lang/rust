@@ -1,8 +1,6 @@
 //@ only-wasm32-wasip1
 //@ needs-wasmtime
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, tmp_dir};
 use std::path::Path;
 use std::process::Command;

@@ -168,4 +168,4 @@ render differently in this case:
 ```
 
 `1.` and `2.` will be displayed as is in the rendered documentation (ie, `[a]` and `[b][c]`)
-whereas `3.` and `4.` will be replaced by a link targetting `e` for `[d](e)` and `g` for `[f]`.
+whereas `3.` and `4.` will be replaced by a link targeting `e` for `[d](e)` and `g` for `[f]`.

@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::core::build_steps::compile;
@@ -36,8 +36,9 @@ struct ToolBuild {
 
 impl Builder<'_> {
     #[track_caller]
-    fn msg_tool(
+    pub(crate) fn msg_tool(
         &self,
+        kind: Kind,
         mode: Mode,
         tool: &str,
         build_stage: u32,
@@ -47,7 +48,7 @@ impl Builder<'_> {
         match mode {
             // depends on compiler stage, different to host compiler
             Mode::ToolRustc => self.msg_sysroot_tool(
-                Kind::Build,
+                kind,
                 build_stage,
                 format_args!("tool {tool}"),
                 *host,
@@ -100,6 +101,7 @@ impl Step for ToolBuild {
             cargo.allow_features(self.allow_features);
         }
         let _guard = builder.msg_tool(
+            Kind::Build,
             self.mode,
             self.tool,
             self.compiler.stage,
@@ -133,6 +135,7 @@ impl Step for ToolBuild {
     }
 }
 
+#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -299,7 +302,6 @@ bootstrap_tool!(
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
-    ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
     JsonDocLint, "src/tools/jsondoclint", "jsondoclint";
@@ -311,9 +313,46 @@ bootstrap_tool!(
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
-    OptimizedDist, "src/tools/opt-dist", "opt-dist";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
 );
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct OptimizedDist {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for OptimizedDist {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/opt-dist")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(OptimizedDist {
+            compiler: run.builder.compiler(0, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
+        // the tool requires it to be in place to run.
+        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "opt-dist",
+            mode: Mode::ToolBootstrap,
+            path: "src/tools/opt-dist",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+        })
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
@@ -469,7 +508,7 @@ impl Step for Rustdoc {
             features.push("jemalloc".to_string());
         }
 
-        let cargo = prepare_tool_cargo(
+        let mut cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustc,
@@ -480,7 +519,16 @@ impl Step for Rustdoc {
             features.as_slice(),
         );
 
+        // If the rustdoc output is piped to e.g. `head -n1` we want the process
+        // to be killed, rather than having an error bubble up and cause a
+        // panic.
+        // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
+        if build_compiler.stage > 0 {
+            cargo.rustflag("-Zon-broken-pipe=kill");
+        }
+
         let _guard = builder.msg_tool(
+            Kind::Build,
             Mode::ToolRustc,
             "rustdoc",
             build_compiler.stage,
@@ -542,7 +590,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let cargo_bin_path = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "cargo",
@@ -551,8 +599,7 @@ impl Step for Cargo {
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             allow_features: "",
-        });
-        cargo_bin_path
+        })
     }
 }
 
@@ -570,7 +617,7 @@ impl Step for LldWrapper {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let src_exe = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "lld-wrapper",
@@ -579,9 +626,7 @@ impl Step for LldWrapper {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
-        });
-
-        src_exe
+        })
     }
 }
 
@@ -746,9 +791,11 @@ impl Step for LlvmBitcodeLinker {
             .join(exe(bin_name, self.compiler.host));
 
         if self.compiler.stage > 0 {
-            let bindir = builder.sysroot(self.compiler).join("bin");
-            t!(fs::create_dir_all(&bindir));
-            let bin_destination = bindir.join(exe(bin_name, self.compiler.host));
+            let bindir_self_contained = builder
+                .sysroot(self.compiler)
+                .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
+            t!(fs::create_dir_all(&bindir_self_contained));
+            let bin_destination = bindir_self_contained.join(exe(bin_name, self.compiler.host));
             builder.copy_link(&tool_out, &bin_destination);
             bin_destination
         } else {

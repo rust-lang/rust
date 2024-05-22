@@ -8,7 +8,7 @@ use std::cell::Cell;
 use crate::abi::{FnAbi, Layout, LayoutShape};
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
-use crate::mir::{Body, Place};
+use crate::mir::{BinOp, Body, Place};
 use crate::target::MachineInfo;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
@@ -158,6 +158,9 @@ pub trait Context {
     /// Check if this is an empty DropGlue shim.
     fn is_empty_drop_shim(&self, def: InstanceDef) -> bool;
 
+    /// Check if this is an empty AsyncDropGlueCtor shim.
+    fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool;
+
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
     fn mono_instance(&self, def_id: DefId) -> Instance;
@@ -211,11 +214,14 @@ pub trait Context {
 
     /// Get a debug string representation of a place.
     fn place_pretty(&self, place: &Place) -> String;
+
+    /// Get the resulting type of binary operation.
+    fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local!(static TLV: Cell<*const ()>);
+scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
 pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
 where

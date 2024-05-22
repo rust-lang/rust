@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(inline_const)]
-
 // Makes sure we don't propagate generic instances of `Self: ?Sized` blanket impls.
 // This is relevant when we have an overlapping impl and builtin dyn instance.
 // See <https://github.com/rust-lang/rust/pull/114941> for more context.

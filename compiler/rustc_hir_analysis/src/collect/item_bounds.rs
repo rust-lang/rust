@@ -4,7 +4,8 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
@@ -39,7 +40,7 @@ fn associated_type_bounds<'tcx>(
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(tr) => tr.self_ty() == item_ty,
-            ty::ClauseKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
+            ty::ClauseKind::Projection(proj) => proj.projection_term.self_ty() == item_ty,
             ty::ClauseKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
         }
@@ -165,10 +166,7 @@ pub(super) fn explicit_item_bounds_with_filter(
     ty::EarlyBinder::bind(bounds)
 }
 
-pub(super) fn item_bounds(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> ty::EarlyBinder<&'_ ty::List<ty::Clause<'_>>> {
+pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::Clauses<'_>> {
     tcx.explicit_item_bounds(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)))
     })
@@ -177,7 +175,7 @@ pub(super) fn item_bounds(
 pub(super) fn item_super_predicates(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> ty::EarlyBinder<&'_ ty::List<ty::Clause<'_>>> {
+) -> ty::EarlyBinder<ty::Clauses<'_>> {
     tcx.explicit_item_super_predicates(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(
             util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)).filter_only_self(),
@@ -188,12 +186,12 @@ pub(super) fn item_super_predicates(
 pub(super) fn item_non_self_assumptions(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> ty::EarlyBinder<&'_ ty::List<ty::Clause<'_>>> {
+) -> ty::EarlyBinder<ty::Clauses<'_>> {
     let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
     let own_bounds: FxIndexSet<_> =
         tcx.item_super_predicates(def_id).skip_binder().iter().collect();
     if all_bounds.len() == own_bounds.len() {
-        ty::EarlyBinder::bind(ty::List::empty())
+        ty::EarlyBinder::bind(ty::ListWithCachedTypeInfo::empty())
     } else {
         ty::EarlyBinder::bind(tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()))
     }
@@ -217,7 +215,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
         {
             self.tcx.type_of(projection_ty.def_id).instantiate(self.tcx, projection_ty.args)
         } else {
-            ty
+            ty.super_fold_with(self)
         }
     }
 }

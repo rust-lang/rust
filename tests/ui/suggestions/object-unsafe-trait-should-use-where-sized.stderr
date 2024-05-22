@@ -26,7 +26,7 @@ help: consider changing method `bar`'s `self` parameter to be `&self`
 LL |     fn bar(self: &Self) {}
    |                  ~~~~~
 
-error[E0307]: invalid `self` parameter type: ()
+error[E0307]: invalid `self` parameter type: `()`
   --> $DIR/object-unsafe-trait-should-use-where-sized.rs:6:18
    |
 LL |     fn bar(self: ()) {}

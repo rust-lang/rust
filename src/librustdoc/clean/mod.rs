@@ -1,5 +1,25 @@
-//! This module contains the "cleaned" pieces of the AST, and the functions
-//! that clean them.
+//! This module defines the primary IR[^1] used in rustdoc together with the procedures that
+//! transform rustc data types into it.
+//!
+//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][ast].
+//!
+//! There are two kinds of transformation — *cleaning* — procedures:
+//!
+//! 1. Cleans [HIR][hir] types. Used for user-written code and inlined local re-exports
+//!    both found in the local crate.
+//! 2. Cleans [`rustc_middle::ty`] types. Used for inlined cross-crate re-exports and anything
+//!    output by the trait solver (e.g., when synthesizing blanket and auto-trait impls).
+//!    They usually have `ty` or `middle` in their name.
+//!
+//! Their name is prefixed by `clean_`.
+//!
+//! Both the HIR and the `rustc_middle::ty` IR are quite removed from the source code.
+//! The cleaned AST on the other hand is closer to it which simplifies the rendering process.
+//! Furthermore, operating on a single IR instead of two avoids duplicating efforts down the line.
+//!
+//! This IR is consumed by both the HTML and the JSON backend.
+//!
+//! [^1]: Intermediate representation.
 
 mod auto_trait;
 mod blanket_impl;
@@ -29,7 +49,7 @@ use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, ExpnKind};
+use rustc_span::ExpnKind;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use std::borrow::Cow;
@@ -37,14 +57,14 @@ use std::collections::BTreeMap;
 use std::mem;
 use thin_vec::ThinVec;
 
-use crate::core::{self, DocContext};
+use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
 
 use utils::*;
 
 pub(crate) use self::types::*;
-pub(crate) use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
+pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
 
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
@@ -261,7 +281,10 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
     Lifetime(lifetime.ident.name)
 }
 
-pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
+pub(crate) fn clean_const<'tcx>(
+    constant: &hir::ConstArg<'_>,
+    cx: &mut DocContext<'tcx>,
+) -> Constant {
     let def_id = cx.tcx.hir().body_owner_def_id(constant.value.body).to_def_id();
     Constant {
         type_: Box::new(clean_middle_ty(
@@ -430,7 +453,15 @@ fn clean_projection_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
     WherePredicate::EqPredicate {
-        lhs: clean_projection(pred.map_bound(|p| p.projection_ty), cx, None),
+        lhs: clean_projection(
+            pred.map_bound(|p| {
+                // FIXME: This needs to be made resilient for `AliasTerm`s that
+                // are associated consts.
+                p.projection_term.expect_ty(cx.tcx)
+            }),
+            cx,
+            None,
+        ),
         rhs: clean_middle_term(pred.map_bound(|p| p.term), cx),
     }
 }
@@ -772,7 +803,7 @@ fn clean_ty_generics<'tcx>(
     let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
 
     let params: ThinVec<_> = gens
-        .params
+        .own_params
         .iter()
         .filter(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime => !param.is_anonymous_lifetime(),
@@ -815,7 +846,7 @@ fn clean_ty_generics<'tcx>(
                         }
                     }
                     ty::ClauseKind::Projection(p) => {
-                        if let ty::Param(param) = p.projection_ty.self_ty().kind() {
+                        if let ty::Param(param) = p.projection_term.self_ty().kind() {
                             projection = Some(bound_p.rebind(p));
                             return Some(param.index);
                         }
@@ -834,7 +865,15 @@ fn clean_ty_generics<'tcx>(
                 bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
 
                 if let Some(proj) = projection
-                    && let lhs = clean_projection(proj.map_bound(|p| p.projection_ty), cx, None)
+                    && let lhs = clean_projection(
+                        proj.map_bound(|p| {
+                            // FIXME: This needs to be made resilient for `AliasTerm`s that
+                            // are associated consts.
+                            p.projection_term.expect_ty(cx.tcx)
+                        }),
+                        cx,
+                        None,
+                    )
                     && let Some((_, trait_did, name)) = lhs.projection()
                 {
                     impl_trait_proj.entry(param_idx).or_default().push((
@@ -1782,6 +1821,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
+        TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
         TyKind::Array(ty, ref length) => {
             let length = match length {
                 hir::ArrayLen::Infer(..) => "_".to_string(),
@@ -1836,9 +1876,9 @@ fn normalize<'tcx>(
         return None;
     }
 
-    use crate::rustc_trait_selection::infer::TyCtxtInferExt;
-    use crate::rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
     use rustc_middle::traits::ObligationCause;
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 
     // Try to normalize `<X as Y>::T` to a type
     let infcx = cx.tcx.infer_ctxt().build();
@@ -1964,7 +2004,7 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
                 let generics = tcx.generics_of(container);
                 debug_assert_eq!(generics.parent_count, 0);
 
-                let param = generics.params[index].def_id;
+                let param = generics.own_params[index].def_id;
                 let default = tcx.object_lifetime_default(param);
                 match default {
                     rbv::ObjectLifetimeDefault::Param(lifetime) => {
@@ -2008,6 +2048,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Float(float_ty) => Primitive(float_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
         ty::Slice(ty) => Slice(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None))),
+        ty::Pat(ty, pat) => Type::Pat(
+            Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)),
+            format!("{pat:?}").into_boxed_str(),
+        ),
         ty::Array(ty, mut n) => {
             n = n.normalize(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
@@ -2033,7 +2077,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let generic_params = clean_bound_vars(sig.bound_vars());
 
             BareFunction(Box::new(BareFunctionDecl {
-                unsafety: sig.unsafety(),
+                safety: sig.safety(),
                 generic_params,
                 decl,
                 abi: sig.abi(),
@@ -2098,7 +2142,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
                                 // HACK(compiler-errors): Doesn't actually matter what self
                                 // type we put here, because we're only using the GAT's args.
                                 .with_self_ty(cx.tcx, cx.tcx.types.self_param)
-                                .projection_ty
+                                .projection_term
+                                // FIXME: This needs to be made resilient for `AliasTerm`s
+                                // that are associated consts.
+                                .expect_ty(cx.tcx)
                         }),
                         cx,
                     ),
@@ -2256,10 +2303,12 @@ fn clean_middle_opaque_bounds<'tcx>(
                 .iter()
                 .filter_map(|bound| {
                     if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
-                        if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
+                        if proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(TypeBinding {
                                 assoc: projection_to_path_segment(
-                                    bound.kind().rebind(proj.projection_ty),
+                                    // FIXME: This needs to be made resilient for `AliasTerm`s that
+                                    // are associated consts.
+                                    bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
                                     cx,
                                 ),
                                 kind: TypeBindingKind::Equality {
@@ -2425,7 +2474,7 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
 
 fn clean_variant_data<'tcx>(
     variant: &hir::VariantData<'tcx>,
-    disr_expr: &Option<hir::AnonConst>,
+    disr_expr: &Option<&hir::AnonConst>,
     cx: &mut DocContext<'tcx>,
 ) -> Variant {
     let discriminant = disr_expr
@@ -2516,7 +2565,7 @@ fn clean_bare_fn_ty<'tcx>(
         let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
         (generic_params, decl)
     });
-    BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
+    BareFunctionDecl { safety: bare_fn.safety, abi: bare_fn.abi, decl, generic_params }
 }
 
 pub(crate) fn reexport_chain<'tcx>(
@@ -2825,7 +2874,7 @@ fn clean_impl<'tcx>(
         });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
-            unsafety: impl_.unsafety,
+            safety: impl_.safety,
             generics: clean_generics(impl_.generics, cx),
             trait_,
             for_,
@@ -3002,22 +3051,22 @@ fn clean_use_statement_inner<'tcx>(
             // were specifically asked for it
             denied = true;
         }
-        if !denied {
-            if let Some(mut items) = inline::try_inline(
+        if !denied
+            && let Some(mut items) = inline::try_inline(
                 cx,
                 path.res,
                 name,
                 Some((attrs, Some(import_def_id))),
                 &mut Default::default(),
-            ) {
-                items.push(Item::from_def_id_and_parts(
-                    import_def_id,
-                    None,
-                    ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
-                    cx,
-                ));
-                return items;
-            }
+            )
+        {
+            items.push(Item::from_def_id_and_parts(
+                import_def_id,
+                None,
+                ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
+                cx,
+            ));
+            return items;
         }
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };

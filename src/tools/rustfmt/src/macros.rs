@@ -1091,7 +1091,7 @@ fn next_space(tok: &TokenKind) -> SpaceState {
         | TokenKind::DotDotEq
         | TokenKind::Question => SpaceState::Punctuation,
 
-        TokenKind::ModSep
+        TokenKind::PathSep
         | TokenKind::Pound
         | TokenKind::Dollar
         | TokenKind::OpenDelim(_)

@@ -136,7 +136,7 @@ impl NewPermission {
         cx: &crate::MiriInterpCx<'_, 'tcx>,
     ) -> Self {
         // `ty` is not the `Box` but the field of the Box with this pointer (due to allocator handling).
-        let pointee = ty.builtin_deref(true).unwrap().ty;
+        let pointee = ty.builtin_deref(true).unwrap();
         if pointee.is_unpin(*cx.tcx, cx.param_env()) {
             // A regular box. On `FnEntry` this is `noalias`, but not `dereferenceable` (hence only
             // a weak protector).
@@ -509,7 +509,7 @@ impl Stacks {
         id: AllocId,
         size: Size,
         state: &mut GlobalStateInner,
-        kind: MemoryKind<MiriMemoryKind>,
+        kind: MemoryKind,
         machine: &MiriMachine<'_, '_>,
     ) -> Self {
         let (base_tag, perm) = match kind {
@@ -518,9 +518,9 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (state.base_ptr_tag(id, machine), Permission::Unique),
+            MemoryKind::Stack => (state.root_ptr_tag(id, machine), Permission::Unique),
             // Everything else is shared by default.
-            _ => (state.base_ptr_tag(id, machine), Permission::SharedReadWrite),
+            _ => (state.root_ptr_tag(id, machine), Permission::SharedReadWrite),
         };
         Stacks::new(size, perm, base_tag, id, machine)
     }

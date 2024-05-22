@@ -7,8 +7,8 @@ use rustc_ast::LitIntType;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::{
-    ArrayLen, BindingAnnotation, CaptureBy, Closure, ClosureKind, CoroutineKind, ExprKind, FnRetTy, HirId, Lit,
-    PatKind, QPath, StmtKind, TyKind,
+    ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, CoroutineKind, ExprKind, FnRetTy, HirId, Lit, PatKind,
+    QPath, StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -645,14 +645,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 bind!(self, name);
                 opt_bind!(self, sub);
                 let ann = match ann {
-                    BindingAnnotation::NONE => "NONE",
-                    BindingAnnotation::REF => "REF",
-                    BindingAnnotation::MUT => "MUT",
-                    BindingAnnotation::REF_MUT => "REF_MUT",
-                    BindingAnnotation::MUT_REF => "MUT_REF",
-                    BindingAnnotation::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::NONE => "NONE",
+                    BindingMode::REF => "REF",
+                    BindingMode::MUT => "MUT",
+                    BindingMode::REF_MUT => "REF_MUT",
+                    BindingMode::MUT_REF => "MUT_REF",
+                    BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
                 };
-                kind!("Binding(BindingAnnotation::{ann}, _, {name}, {sub})");
+                kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);
                 sub.if_some(|p| self.pat(p));
             },
@@ -754,7 +754,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 }
 
-fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
+fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir().attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
@@ -771,7 +771,7 @@ fn path_to_string(path: &QPath<'_>) -> Result<String, ()> {
                 }
             },
             QPath::TypeRelative(ty, segment) => match &ty.kind {
-                hir::TyKind::Path(inner_path) => {
+                TyKind::Path(inner_path) => {
                     inner(s, inner_path)?;
                     *s += ", ";
                     write!(s, "{:?}", segment.ident.as_str()).unwrap();

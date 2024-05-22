@@ -61,7 +61,7 @@ macro_rules! arena_types {
             [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
             [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
             [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
-            [] canonical_goal_evaluation: rustc_middle::traits::solve::inspect::GoalEvaluationStep<'tcx>,
+            [] canonical_goal_evaluation: rustc_next_trait_solver::solve::inspect::GoalEvaluationStep<rustc_middle::ty::TyCtxt<'tcx>>,
             [] query_region_constraints: rustc_middle::infer::canonical::QueryRegionConstraints<'tcx>,
             [] type_op_subtype:
                 rustc_middle::infer::canonical::Canonical<'tcx,
@@ -90,6 +90,7 @@ macro_rules! arena_types {
             [decode] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
+            [] pats: rustc_middle::ty::PatternKind<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

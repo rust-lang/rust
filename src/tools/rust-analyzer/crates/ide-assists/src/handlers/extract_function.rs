@@ -1149,8 +1149,14 @@ fn reference_is_exclusive(
     node: &dyn HasTokenAtOffset,
     ctx: &AssistContext<'_>,
 ) -> bool {
+    // FIXME: this quite an incorrect way to go about doing this :-)
+    // `FileReference` is an IDE-type --- it encapsulates data communicated to the human,
+    // but doesn't necessary fully reflect all the intricacies of the underlying language semantics
+    // The correct approach here would be to expose this entire analysis as a method on some hir
+    // type. Something like `body.free_variables(statement_range)`.
+
     // we directly modify variable with set: `n = 0`, `n += 1`
-    if reference.category == Some(ReferenceCategory::Write) {
+    if reference.category.contains(ReferenceCategory::WRITE) {
         return true;
     }
 
@@ -5617,7 +5623,7 @@ fn func<T: Debug>(i: Struct<'_, T>) {
     fun_name(i);
 }
 
-fn $0fun_name(i: Struct<'static, T>) {
+fn $0fun_name(i: Struct<T>) {
     foo(i);
 }
 "#,

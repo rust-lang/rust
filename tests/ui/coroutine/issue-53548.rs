@@ -17,7 +17,7 @@
 //
 //@ check-pass
 
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -29,7 +29,7 @@ struct Store<C> {
 }
 
 fn main() {
-    Box::new(static move || {
+    Box::new(#[coroutine] static move || {
         let store = Store::<Box<dyn Trait>> {
             inner: Default::default(),
         };

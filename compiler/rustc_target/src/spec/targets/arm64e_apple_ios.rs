@@ -1,9 +1,9 @@
-use crate::spec::base::apple::{ios_llvm_target, opts, Arch};
+use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64e;
-    let mut base = opts("ios", arch);
+    let mut base = opts("ios", arch, TargetAbi::Normal);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {
@@ -19,7 +19,7 @@ pub fn target() -> Target {
             std: None,
         },
         pointer_width: 64,
-        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
+        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128-Fn32".into(),
         arch: arch.target_arch(),
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a12,+v8.3a,+pauth".into(),

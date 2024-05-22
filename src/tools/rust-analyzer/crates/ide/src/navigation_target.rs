@@ -235,9 +235,11 @@ impl TryToNav for Definition {
             Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::ExternCrateDecl(it) => Some(it.try_to_nav(db)?),
-            Definition::BuiltinType(_) | Definition::TupleField(_) => None,
-            Definition::ToolModule(_) => None,
-            Definition::BuiltinAttr(_) => None,
+            Definition::BuiltinLifetime(_)
+            | Definition::BuiltinType(_)
+            | Definition::TupleField(_)
+            | Definition::ToolModule(_)
+            | Definition::BuiltinAttr(_) => None,
             // FIXME: The focus range should be set to the helper declaration
             Definition::DeriveHelper(it) => it.derive().try_to_nav(db),
         }

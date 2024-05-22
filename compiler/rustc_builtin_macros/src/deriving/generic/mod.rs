@@ -21,7 +21,7 @@
 //!   `struct T(i32, char)`).
 //! - `EnumMatching`, when `Self` is an enum and all the arguments are the
 //!   same variant of the enum (e.g., `Some(1)`, `Some(3)` and `Some(4)`)
-//! - `EnumTag` when `Self` is an enum, for comparing the enum tags.
+//! - `EnumDiscr` when `Self` is an enum, for comparing the enum discriminants.
 //! - `StaticEnum` and `StaticStruct` for static methods, where the type
 //!   being derived upon is either an enum or struct respectively. (Any
 //!   argument with type Self is just grouped among the non-self
@@ -143,11 +143,11 @@
 //! )
 //! ```
 //!
-//! For the tags,
+//! For the discriminants,
 //!
 //! ```text
-//! EnumTag(
-//!     &[<ident of self tag>, <ident of other tag>],
+//! EnumDiscr(
+//!     &[<ident of self discriminant>, <ident of other discriminant>],
 //!     <expr to combine with>,
 //! )
 //! ```
@@ -174,13 +174,13 @@
 //! )
 //! ```
 
-pub use StaticFields::*;
-pub use SubstructureFields::*;
+pub(crate) use StaticFields::*;
+pub(crate) use SubstructureFields::*;
 
 use crate::{deriving, errors};
 use rustc_ast::ptr::P;
 use rustc_ast::{
-    self as ast, BindingAnnotation, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
+    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
     Mutability, PatKind, TyKind, VariantData,
 };
 use rustc_attr as attr;
@@ -195,9 +195,9 @@ use std::vec;
 use thin_vec::{thin_vec, ThinVec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
-pub mod ty;
+pub(crate) mod ty;
 
-pub struct TraitDef<'a> {
+pub(crate) struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
     pub span: Span,
 
@@ -224,7 +224,7 @@ pub struct TraitDef<'a> {
     pub is_const: bool,
 }
 
-pub struct MethodDef<'a> {
+pub(crate) struct MethodDef<'a> {
     /// name of the method
     pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
@@ -248,7 +248,7 @@ pub struct MethodDef<'a> {
 
 /// How to handle fieldless enum variants.
 #[derive(PartialEq)]
-pub enum FieldlessVariantsStrategy {
+pub(crate) enum FieldlessVariantsStrategy {
     /// Combine fieldless variants into a single match arm.
     /// This assumes that relevant information has been handled
     /// by looking at the enum's discriminant.
@@ -263,7 +263,7 @@ pub enum FieldlessVariantsStrategy {
 }
 
 /// All the data about the data structure/method being derived upon.
-pub struct Substructure<'a> {
+pub(crate) struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
     /// Verbatim access to any non-selflike arguments, i.e. arguments that
@@ -273,7 +273,7 @@ pub struct Substructure<'a> {
 }
 
 /// Summary of the relevant parts of a struct/enum field.
-pub struct FieldInfo {
+pub(crate) struct FieldInfo {
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
@@ -287,13 +287,13 @@ pub struct FieldInfo {
 }
 
 #[derive(Copy, Clone)]
-pub enum IsTuple {
+pub(crate) enum IsTuple {
     No,
     Yes,
 }
 
 /// Fields for a static method
-pub enum StaticFields {
+pub(crate) enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
@@ -301,7 +301,7 @@ pub enum StaticFields {
 }
 
 /// A summary of the possible sets of fields.
-pub enum SubstructureFields<'a> {
+pub(crate) enum SubstructureFields<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
 
@@ -315,10 +315,10 @@ pub enum SubstructureFields<'a> {
     /// variant.
     EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
 
-    /// The tag of an enum. The first field is a `FieldInfo` for the tags, as
+    /// The discriminant of an enum. The first field is a `FieldInfo` for the discriminants, as
     /// if they were fields. The second field is the expression to combine the
-    /// tag expression with; it will be `None` if no match is necessary.
-    EnumTag(FieldInfo, Option<P<Expr>>),
+    /// discriminant expression with; it will be `None` if no match is necessary.
+    EnumDiscr(FieldInfo, Option<P<Expr>>),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData, StaticFields),
@@ -329,10 +329,10 @@ pub enum SubstructureFields<'a> {
 
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
-pub type CombineSubstructureFunc<'a> =
+pub(crate) type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
-pub fn combine_substructure(
+pub(crate) fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
 ) -> RefCell<CombineSubstructureFunc<'_>> {
     RefCell::new(f)
@@ -349,7 +349,7 @@ struct TypeParameter {
 /// avoiding the insertion of any unnecessary blocks.
 ///
 /// The statements come before the expression.
-pub struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
+pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
     pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
@@ -788,7 +788,7 @@ impl<'a> TraitDef<'a> {
             Ident::empty(),
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                unsafety: ast::Unsafe::No,
+                safety: ast::Safety::Default,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
@@ -1137,9 +1137,9 @@ impl<'a> MethodDef<'a> {
     /// impl ::core::cmp::PartialEq for A {
     ///     #[inline]
     ///     fn eq(&self, other: &A) -> bool {
-    ///         let __self_tag = ::core::intrinsics::discriminant_value(self);
-    ///         let __arg1_tag = ::core::intrinsics::discriminant_value(other);
-    ///         __self_tag == __arg1_tag
+    ///         let __self_discr = ::core::intrinsics::discriminant_value(self);
+    ///         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+    ///         __self_discr == __arg1_discr
     ///             && match (self, other) {
     ///                 (A::A2(__self_0), A::A2(__arg1_0)) => *__self_0 == *__arg1_0,
     ///                 _ => true,
@@ -1148,7 +1148,7 @@ impl<'a> MethodDef<'a> {
     /// }
     /// ```
     ///
-    /// Creates a tag check combined with a match for a tuple of all
+    /// Creates a discriminant check combined with a match for a tuple of all
     /// `selflike_args`, with an arm for each variant with fields, possibly an
     /// arm for each fieldless variant (if `unify_fieldless_variants` is not
     /// `Unify`), and possibly a default arm.
@@ -1169,7 +1169,7 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
         let variants = &enum_def.variants;
 
-        // Traits that unify fieldless variants always use the tag(s).
+        // Traits that unify fieldless variants always use the discriminant(s).
         let unify_fieldless_variants =
             self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
@@ -1199,25 +1199,25 @@ impl<'a> MethodDef<'a> {
         //
         // e.g. for `PartialEq::eq` builds two statements:
         // ```
-        // let __self_tag = ::core::intrinsics::discriminant_value(self);
-        // let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        // let __self_discr = ::core::intrinsics::discriminant_value(self);
+        // let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         // ```
-        let get_tag_pieces = |cx: &ExtCtxt<'_>| {
-            let tag_idents: Vec<_> = prefixes
+        let get_discr_pieces = |cx: &ExtCtxt<'_>| {
+            let discr_idents: Vec<_> = prefixes
                 .iter()
-                .map(|name| Ident::from_str_and_span(&format!("{name}_tag"), span))
+                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span))
                 .collect();
 
-            let mut tag_exprs: Vec<_> = tag_idents
+            let mut discr_exprs: Vec<_> = discr_idents
                 .iter()
                 .map(|&ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)))
                 .collect();
 
-            let self_expr = tag_exprs.remove(0);
-            let other_selflike_exprs = tag_exprs;
-            let tag_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
+            let self_expr = discr_exprs.remove(0);
+            let other_selflike_exprs = discr_exprs;
+            let discr_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
 
-            let tag_let_stmts: ThinVec<_> = iter::zip(&tag_idents, &selflike_args)
+            let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
                     let variant_value = deriving::call_intrinsic(
                         cx,
@@ -1229,7 +1229,7 @@ impl<'a> MethodDef<'a> {
                 })
                 .collect();
 
-            (tag_field, tag_let_stmts)
+            (discr_field, discr_let_stmts)
         };
 
         // There are some special cases involving fieldless enums where no
@@ -1239,19 +1239,19 @@ impl<'a> MethodDef<'a> {
             if variants.len() > 1 {
                 match self.fieldless_variants_strategy {
                     FieldlessVariantsStrategy::Unify => {
-                        // If the type is fieldless and the trait uses the tag and
+                        // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
-                        // the tag(s).
-                        let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
-                        let mut tag_check = self.call_substructure_method(
+                        // the discriminant(s).
+                        let (discr_field, mut discr_let_stmts) = get_discr_pieces(cx);
+                        let mut discr_check = self.call_substructure_method(
                             cx,
                             trait_,
                             type_ident,
                             nonselflike_args,
-                            &EnumTag(tag_field, None),
+                            &EnumDiscr(discr_field, None),
                         );
-                        tag_let_stmts.append(&mut tag_check.0);
-                        return BlockOrExpr(tag_let_stmts, tag_check.1);
+                        discr_let_stmts.append(&mut discr_check.0);
+                        return BlockOrExpr(discr_let_stmts, discr_check.1);
                     }
                     FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
                         return self.call_substructure_method(
@@ -1266,7 +1266,7 @@ impl<'a> MethodDef<'a> {
                 }
             } else if variants.len() == 1 {
                 // If there is a single variant, we don't need an operation on
-                // the tag(s). Just use the most degenerate result.
+                // the discriminant(s). Just use the most degenerate result.
                 return self.call_substructure_method(
                     cx,
                     trait_,
@@ -1380,22 +1380,22 @@ impl<'a> MethodDef<'a> {
             cx.expr_match(span, match_arg, match_arms)
         };
 
-        // If the trait uses the tag and there are multiple variants, we need
-        // to add a tag check operation before the match. Otherwise, the match
+        // If the trait uses the discriminant and there are multiple variants, we need
+        // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
-            let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
+            let (discr_field, mut discr_let_stmts) = get_discr_pieces(cx);
 
-            // Combine a tag check with the match.
-            let mut tag_check_plus_match = self.call_substructure_method(
+            // Combine a discriminant check with the match.
+            let mut discr_check_plus_match = self.call_substructure_method(
                 cx,
                 trait_,
                 type_ident,
                 nonselflike_args,
-                &EnumTag(tag_field, Some(get_match_expr(selflike_args))),
+                &EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
             );
-            tag_let_stmts.append(&mut tag_check_plus_match.0);
-            BlockOrExpr(tag_let_stmts, tag_check_plus_match.1)
+            discr_let_stmts.append(&mut discr_check_plus_match.0);
+            BlockOrExpr(discr_let_stmts, discr_check_plus_match.1)
         } else {
             BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }
@@ -1479,11 +1479,7 @@ impl<'a> TraitDef<'a> {
                             struct_field.ident,
                             cx.pat(
                                 path.span,
-                                PatKind::Ident(
-                                    BindingAnnotation(by_ref, Mutability::Not),
-                                    path,
-                                    None,
-                                ),
+                                PatKind::Ident(BindingMode(by_ref, Mutability::Not), path, None),
                             ),
                         )
                     });
@@ -1625,14 +1621,13 @@ impl<'a> TraitDef<'a> {
                         };
 
                         if let Some(ty) = exception {
-                            cx.sess.psess.buffer_lint_with_diagnostic(
+                            cx.sess.psess.buffer_lint(
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,
-                                format!(
-                                    "{ty} slice in a packed struct that derives a built-in trait"
-                                ),
-                                rustc_lint_defs::BuiltinLintDiag::ByteSliceInPackedStructWithDerive,
+                                rustc_lint_defs::BuiltinLintDiag::ByteSliceInPackedStructWithDerive {
+                                    ty: ty.to_string(),
+                                },
                             );
                         } else {
                             // Wrap the expression in `{...}`, causing a copy.
@@ -1651,7 +1646,7 @@ impl<'a> TraitDef<'a> {
 /// The function passed to `cs_fold` is called repeatedly with a value of this
 /// type. It describes one part of the code generation. The result is always an
 /// expression.
-pub enum CsFold<'a> {
+pub(crate) enum CsFold<'a> {
     /// The basic case: a field expression for one or more selflike args. E.g.
     /// for `PartialEq::eq` this is something like `self.x == other.x`.
     Single(&'a FieldInfo),
@@ -1666,7 +1661,7 @@ pub enum CsFold<'a> {
 
 /// Folds over fields, combining the expressions for each field in a sequence.
 /// Statics may not be folded over.
-pub fn cs_fold<F>(
+pub(crate) fn cs_fold<F>(
     use_foldl: bool,
     cx: &ExtCtxt<'_>,
     trait_span: Span,
@@ -1701,16 +1696,16 @@ where
                 rest.iter().rfold(base_expr, op)
             }
         }
-        EnumTag(tag_field, match_expr) => {
-            let tag_check_expr = f(cx, CsFold::Single(tag_field));
+        EnumDiscr(discr_field, match_expr) => {
+            let discr_check_expr = f(cx, CsFold::Single(discr_field));
             if let Some(match_expr) = match_expr {
                 if use_foldl {
-                    f(cx, CsFold::Combine(trait_span, tag_check_expr, match_expr.clone()))
+                    f(cx, CsFold::Combine(trait_span, discr_check_expr, match_expr.clone()))
                 } else {
-                    f(cx, CsFold::Combine(trait_span, match_expr.clone(), tag_check_expr))
+                    f(cx, CsFold::Combine(trait_span, match_expr.clone(), discr_check_expr))
                 }
             } else {
-                tag_check_expr
+                discr_check_expr
             }
         }
         StaticEnum(..) | StaticStruct(..) => {

@@ -12,16 +12,13 @@
           let _3: std::ptr::Unique<[bool]>;
           let mut _4: std::ptr::Unique<[bool; 0]>;
           scope 3 {
-              debug ptr => _3;
           }
           scope 4 (inlined Unique::<[bool; 0]>::dangling) {
               let mut _5: std::ptr::NonNull<[bool; 0]>;
               scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
                   let _6: *mut [bool; 0];
                   scope 6 {
-                      debug ptr => _6;
                       scope 10 (inlined NonNull::<[bool; 0]>::new_unchecked) {
-                          debug ptr => _6;
                           let mut _8: bool;
                           let _9: ();
                           let mut _10: *mut ();
@@ -37,7 +34,6 @@
                       scope 8 (inlined align_of::<[bool; 0]>) {
                       }
                       scope 9 (inlined without_provenance_mut::<[bool; 0]>) {
-                          debug addr => _7;
                       }
                   }
               }

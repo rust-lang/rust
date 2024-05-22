@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
+use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -69,7 +69,7 @@ pub(super) fn check(
                 _ => false,
             },
             // local binding capturing a reference
-            Node::LetStmt(l) if matches!(l.pat.kind, PatKind::Binding(BindingAnnotation(ByRef::Yes(_), _), ..)) => {
+            Node::LetStmt(l) if matches!(l.pat.kind, PatKind::Binding(BindingMode(ByRef::Yes(_), _), ..)) => {
                 return;
             },
             _ => false,
@@ -94,7 +94,7 @@ pub(super) fn check(
             cx,
             CLONE_ON_COPY,
             expr.span,
-            &with_forced_trimmed_paths!(format!(
+            with_forced_trimmed_paths!(format!(
                 "using `clone` on type `{ty}` which implements the `Copy` trait"
             )),
             help,

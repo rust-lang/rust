@@ -4,7 +4,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{Ref, Slice};
+use rustc_middle::ty;
 use rustc_span::Span;
 
 use super::UNNECESSARY_JOIN;
@@ -18,9 +18,9 @@ pub(super) fn check<'tcx>(
 ) {
     let applicability = Applicability::MachineApplicable;
     let collect_output_adjusted_type = cx.typeck_results().expr_ty_adjusted(join_self_arg);
-    if let Ref(_, ref_type, _) = collect_output_adjusted_type.kind()
+    if let ty::Ref(_, ref_type, _) = collect_output_adjusted_type.kind()
         // the turbofish for collect is ::<Vec<String>>
-        && let Slice(slice) = ref_type.kind()
+        && let ty::Slice(slice) = ref_type.kind()
         && is_type_lang_item(cx, *slice, LangItem::String)
         // the argument for join is ""
         && let ExprKind::Lit(spanned) = &join_arg.kind

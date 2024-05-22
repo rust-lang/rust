@@ -7,7 +7,7 @@ use modify_ast::*;
 
 #[derive(Foo)]
 pub struct MyStructc {
-    #[cfg_attr(my_cfg, foo)]
+    #[cfg_attr(FALSE, foo)]
     _a: i32,
 }
 

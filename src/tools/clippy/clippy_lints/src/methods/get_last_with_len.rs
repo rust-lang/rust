@@ -44,7 +44,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
             cx,
             GET_LAST_WITH_LEN,
             expr.span,
-            &format!("accessing last element with `{recv_snippet}.get({recv_snippet}.len() - 1)`"),
+            format!("accessing last element with `{recv_snippet}.get({recv_snippet}.len() - 1)`"),
             "try",
             format!("{recv_snippet}.{method}()"),
             applicability,

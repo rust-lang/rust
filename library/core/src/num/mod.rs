@@ -67,14 +67,14 @@ pub use error::ParseIntError;
 )]
 pub use nonzero::ZeroablePrimitive;
 
-#[unstable(feature = "generic_nonzero", issue = "120257")]
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
-
-#[stable(feature = "nonzero", since = "1.28.0")]
-pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
@@ -1412,11 +1412,9 @@ fn from_str_radix_panic_rt(radix: u32) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-const fn from_str_radix_assert(radix: u32) {
-    if 2 > radix || radix > 36 {
-        // The only difference between these two functions is their panic message.
-        intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);
-    }
+const fn from_str_radix_panic(radix: u32) {
+    // The only difference between these two functions is their panic message.
+    intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);
 }
 
 macro_rules! from_str_radix {
@@ -1450,7 +1448,9 @@ macro_rules! from_str_radix {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
 
-                from_str_radix_assert(radix);
+                if 2 > radix || radix > 36 {
+                    from_str_radix_panic(radix);
+                }
 
                 if src.is_empty() {
                     return Err(PIE { kind: Empty });

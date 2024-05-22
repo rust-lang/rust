@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Option<T>`
+error[E0282]: type annotations needed for `Option<_>`
   --> $DIR/copy-guessing.rs:20:9
    |
 LL |     let n = None;

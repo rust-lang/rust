@@ -189,3 +189,40 @@ fn main() {
 fn test_slice(b: &[u8]) {
     if !b.is_empty() {}
 }
+
+// issue #11992
+fn binop_with_macros() {
+    macro_rules! len {
+        ($seq:ident) => {
+            $seq.len()
+        };
+    }
+
+    macro_rules! compare_to {
+        ($val:literal) => {
+            $val
+        };
+        ($val:expr) => {{ $val }};
+    }
+
+    macro_rules! zero {
+        () => {
+            0
+        };
+    }
+
+    let has_is_empty = HasIsEmpty;
+    // Don't lint, suggesting changes might break macro compatibility.
+    (len!(has_is_empty) > 0).then(|| println!("This can happen."));
+    // Don't lint, suggesting changes might break macro compatibility.
+    if len!(has_is_empty) == 0 {}
+    // Don't lint
+    if has_is_empty.len() == compare_to!(if true { 0 } else { 1 }) {}
+    // This is fine
+    if has_is_empty.len() == compare_to!(1) {}
+
+    if has_is_empty.is_empty() {}
+    if has_is_empty.is_empty() {}
+
+    (!has_is_empty.is_empty()).then(|| println!("This can happen."));
+}

@@ -1,6 +1,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::GenericArgsRef;
@@ -54,6 +55,28 @@ fn resolve_instance<'tcx>(
                 debug!(" => trivial drop glue");
                 ty::InstanceDef::DropGlue(def_id, None)
             }
+        } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
+            let ty = args.type_at(0);
+
+            if !ty.is_async_destructor_noop(tcx, param_env) {
+                match *ty.kind() {
+                    ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..)
+                    | ty::Tuple(..)
+                    | ty::Adt(..)
+                    | ty::Dynamic(..)
+                    | ty::Array(..)
+                    | ty::Slice(..) => {}
+                    // Async destructor ctor shims can only be built from ADTs.
+                    _ => return Ok(None),
+                }
+                debug!(" => nontrivial async drop glue ctor");
+                ty::InstanceDef::AsyncDropGlueCtorShim(def_id, Some(ty))
+            } else {
+                debug!(" => trivial async drop glue ctor");
+                ty::InstanceDef::AsyncDropGlueCtorShim(def_id, None)
+            }
         } else {
             debug!(" => free item");
             // FIXME(effects): we may want to erase the effect param if that is present on this item.
@@ -79,18 +102,11 @@ fn resolve_associated_item<'tcx>(
 
     let vtbl = match tcx.codegen_select_candidate((param_env, trait_ref)) {
         Ok(vtbl) => vtbl,
-        Err(CodegenObligationError::Ambiguity) => {
-            let reported = tcx.dcx().span_delayed_bug(
-                tcx.def_span(trait_item_id),
-                format!(
-                    "encountered ambiguity selecting `{trait_ref:?}` during codegen, presuming due to \
-                     overflow or prior type error",
-                ),
-            );
-            return Err(reported);
-        }
-        Err(CodegenObligationError::Unimplemented) => return Ok(None),
-        Err(CodegenObligationError::FulfillmentError) => return Ok(None),
+        Err(
+            CodegenObligationError::Ambiguity
+            | CodegenObligationError::Unimplemented
+            | CodegenObligationError::FulfillmentError,
+        ) => return Ok(None),
     };
 
     // Now that we know which impl is being used, we can dispatch to

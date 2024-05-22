@@ -491,6 +491,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::Str => Res::Primitive(Str),
             ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
             ty::Tuple(_) => Res::Primitive(Tuple),
+            ty::Pat(..) => Res::Primitive(Pat),
             ty::Array(..) => Res::Primitive(Array),
             ty::Slice(_) => Res::Primitive(Slice),
             ty::RawPtr(_, _) => Res::Primitive(RawPointer),
@@ -536,8 +537,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             I64 => tcx.types.i64,
             I128 => tcx.types.i128,
             Isize => tcx.types.isize,
+            F16 => tcx.types.f16,
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            F128 => tcx.types.f128,
             U8 => tcx.types.u8,
             U16 => tcx.types.u16,
             U32 => tcx.types.u32,
@@ -1417,7 +1420,7 @@ impl LinkCollector<'_, '_> {
         //
         // Otherwise, check if 2 links are same, if so, skip the resolve process.
         //
-        // Notice that this algorithm is passive, might possibly miss actual redudant cases.
+        // Notice that this algorithm is passive, might possibly miss actual redundant cases.
         let explicit_link = explicit_link.to_string();
         let display_text = ori_link.display_text.as_ref().unwrap();
 
@@ -2196,8 +2199,10 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
         "u32" => U32,
         "u64" => U64,
         "u128" => U128,
+        "f16" => F16,
         "f32" => F32,
         "f64" => F64,
+        "f128" => F128,
         "char" => Char,
         "bool" | "true" | "false" => Bool,
         "str" | "&str" => Str,

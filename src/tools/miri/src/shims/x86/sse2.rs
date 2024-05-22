@@ -1,12 +1,12 @@
 use rustc_apfloat::ieee::Double;
-use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use super::{bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int, FloatBinOp};
+use super::{
+    bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int, packssdw, packsswb,
+    packuswb, shift_simd_by_scalar, FloatBinOp, ShiftOp,
+};
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -18,7 +18,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse2")?;
         // Prefix should have already been checked.
@@ -109,156 +109,27 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.write_scalar(Scalar::from_u64(res.into()), &dest)?;
                 }
             }
-            // Used to implement the _mm_{sll,srl,sra}_epi16 functions.
-            // Shifts 16-bit packed integers in left by the amount in right.
-            // Both operands are vectors of 16-bit integers. However, right is
-            // interpreted as a single 64-bit integer (remaining bits are ignored).
-            // For logic shifts, when right is larger than 15, zero is produced.
-            // For arithmetic shifts, when right is larger than 15, the sign bit
+            // Used to implement the _mm_{sll,srl,sra}_epi{16,32,64} functions
+            // (except _mm_sra_epi64, which is not available in SSE2).
+            // Shifts N-bit packed integers in left by the amount in right.
+            // Both operands are 128-bit vectors. However, right is interpreted as
+            // a single 64-bit integer (remaining bits are ignored).
+            // For logic shifts, when right is larger than N - 1, zero is produced.
+            // For arithmetic shifts, when right is larger than N - 1, the sign bit
             // is copied to remaining bits.
-            "psll.w" | "psrl.w" | "psra.w" => {
+            "psll.w" | "psrl.w" | "psra.w" | "psll.d" | "psrl.d" | "psra.d" | "psll.q"
+            | "psrl.q" => {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                enum ShiftOp {
-                    Sll,
-                    Srl,
-                    Sra,
-                }
                 let which = match unprefixed_name {
-                    "psll.w" => ShiftOp::Sll,
-                    "psrl.w" => ShiftOp::Srl,
-                    "psra.w" => ShiftOp::Sra,
+                    "psll.w" | "psll.d" | "psll.q" => ShiftOp::Left,
+                    "psrl.w" | "psrl.d" | "psrl.q" => ShiftOp::RightLogic,
+                    "psra.w" | "psra.d" => ShiftOp::RightArith,
                     _ => unreachable!(),
                 };
 
-                // Get the 64-bit shift operand and convert it to the type expected
-                // by checked_{shl,shr} (u32).
-                // It is ok to saturate the value to u32::MAX because any value
-                // above 15 will produce the same result.
-                let shift = extract_first_u64(this, &right)?.try_into().unwrap_or(u32::MAX);
-
-                for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_u16()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = match which {
-                        ShiftOp::Sll => left.checked_shl(shift).unwrap_or(0),
-                        ShiftOp::Srl => left.checked_shr(shift).unwrap_or(0),
-                        #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
-                        ShiftOp::Sra => {
-                            // Convert u16 to i16 to use arithmetic shift
-                            let left = left as i16;
-                            // Copy the sign bit to the remaining bits
-                            left.checked_shr(shift).unwrap_or(left >> 15) as u16
-                        }
-                    };
-
-                    this.write_scalar(Scalar::from_u16(res), &dest)?;
-                }
-            }
-            // Used to implement the _mm_{sll,srl,sra}_epi32 functions.
-            // 32-bit equivalent to the shift functions above.
-            "psll.d" | "psrl.d" | "psra.d" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                enum ShiftOp {
-                    Sll,
-                    Srl,
-                    Sra,
-                }
-                let which = match unprefixed_name {
-                    "psll.d" => ShiftOp::Sll,
-                    "psrl.d" => ShiftOp::Srl,
-                    "psra.d" => ShiftOp::Sra,
-                    _ => unreachable!(),
-                };
-
-                // Get the 64-bit shift operand and convert it to the type expected
-                // by checked_{shl,shr} (u32).
-                // It is ok to saturate the value to u32::MAX because any value
-                // above 31 will produce the same result.
-                let shift = extract_first_u64(this, &right)?.try_into().unwrap_or(u32::MAX);
-
-                for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_u32()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = match which {
-                        ShiftOp::Sll => left.checked_shl(shift).unwrap_or(0),
-                        ShiftOp::Srl => left.checked_shr(shift).unwrap_or(0),
-                        #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
-                        ShiftOp::Sra => {
-                            // Convert u32 to i32 to use arithmetic shift
-                            let left = left as i32;
-                            // Copy the sign bit to the remaining bits
-                            left.checked_shr(shift).unwrap_or(left >> 31) as u32
-                        }
-                    };
-
-                    this.write_scalar(Scalar::from_u32(res), &dest)?;
-                }
-            }
-            // Used to implement the _mm_{sll,srl}_epi64 functions.
-            // 64-bit equivalent to the shift functions above, except _mm_sra_epi64,
-            // which is not available in SSE2.
-            "psll.q" | "psrl.q" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                enum ShiftOp {
-                    Sll,
-                    Srl,
-                }
-                let which = match unprefixed_name {
-                    "psll.q" => ShiftOp::Sll,
-                    "psrl.q" => ShiftOp::Srl,
-                    _ => unreachable!(),
-                };
-
-                // Get the 64-bit shift operand and convert it to the type expected
-                // by checked_{shl,shr} (u32).
-                // It is ok to saturate the value to u32::MAX because any value
-                // above 63 will produce the same result.
-                let shift = this
-                    .read_scalar(&this.project_index(&right, 0)?)?
-                    .to_u64()?
-                    .try_into()
-                    .unwrap_or(u32::MAX);
-
-                for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_u64()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = match which {
-                        ShiftOp::Sll => left.checked_shl(shift).unwrap_or(0),
-                        ShiftOp::Srl => left.checked_shr(shift).unwrap_or(0),
-                    };
-
-                    this.write_scalar(Scalar::from_u64(res), &dest)?;
-                }
+                shift_simd_by_scalar(this, left, right, which, dest)?;
             }
             // Used to implement the _mm_cvtps_epi32, _mm_cvttps_epi32, _mm_cvtpd_epi32
             // and _mm_cvttpd_epi32 functions.
@@ -304,29 +175,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // left and right are i16x8, dest is i8x16
-                assert_eq!(left_len, 8);
-                assert_eq!(right_len, 8);
-                assert_eq!(dest_len, 16);
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i16()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i16()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res =
-                        i8::try_from(left).unwrap_or(if left < 0 { i8::MIN } else { i8::MAX });
-                    let right_res =
-                        i8::try_from(right).unwrap_or(if right < 0 { i8::MIN } else { i8::MAX });
-
-                    this.write_scalar(Scalar::from_i8(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_i8(right_res), &right_dest)?;
-                }
+                packsswb(this, left, right, dest)?;
             }
             // Used to implement the _mm_packus_epi16 function.
             // Converts two 16-bit signed integer vectors to a single 8-bit
@@ -335,28 +184,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // left and right are i16x8, dest is u8x16
-                assert_eq!(left_len, 8);
-                assert_eq!(right_len, 8);
-                assert_eq!(dest_len, 16);
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i16()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i16()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res = u8::try_from(left).unwrap_or(if left < 0 { 0 } else { u8::MAX });
-                    let right_res =
-                        u8::try_from(right).unwrap_or(if right < 0 { 0 } else { u8::MAX });
-
-                    this.write_scalar(Scalar::from_u8(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_u8(right_res), &right_dest)?;
-                }
+                packuswb(this, left, right, dest)?;
             }
             // Used to implement the _mm_packs_epi32 function.
             // Converts two 32-bit integer vectors to a single 16-bit integer
@@ -365,29 +193,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // left and right are i32x4, dest is i16x8
-                assert_eq!(left_len, 4);
-                assert_eq!(right_len, 4);
-                assert_eq!(dest_len, 8);
-
-                for i in 0..left_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_i32()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i32()?;
-                    let left_dest = this.project_index(&dest, i)?;
-                    let right_dest = this.project_index(&dest, i.checked_add(left_len).unwrap())?;
-
-                    let left_res =
-                        i16::try_from(left).unwrap_or(if left < 0 { i16::MIN } else { i16::MAX });
-                    let right_res =
-                        i16::try_from(right).unwrap_or(if right < 0 { i16::MIN } else { i16::MAX });
-
-                    this.write_scalar(Scalar::from_i16(left_res), &left_dest)?;
-                    this.write_scalar(Scalar::from_i16(right_res), &right_dest)?;
-                }
+                packssdw(this, left, right, dest)?;
             }
             // Used to implement _mm_min_sd and _mm_max_sd functions.
             // Note that the semantics are a bit different from Rust simd_min
@@ -548,7 +354,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
 
                 let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
-                    // Fallback to minimum acording to SSE semantics.
+                    // Fallback to minimum according to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
 
@@ -575,27 +381,13 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let res0 = this.float_to_float_or_int(&right0, dest0.layout)?;
                 this.write_immediate(*res0, &dest0)?;
 
-                // Copy remianing from `left`
+                // Copy remaining from `left`
                 for i in 1..dest_len {
                     this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }
             }
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
-}
-
-/// Takes a 128-bit vector, transmutes it to `[u64; 2]` and extracts
-/// the first value.
-fn extract_first_u64<'tcx>(
-    this: &crate::MiriInterpCx<'_, 'tcx>,
-    op: &MPlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, u64> {
-    // Transmute vector to `[u64; 2]`
-    let u64_array_layout = this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u64, 2))?;
-    let op = op.transmute(u64_array_layout, this)?;
-
-    // Get the first u64 from the array
-    this.read_scalar(&this.project_index(&op, 0)?)?.to_u64()
 }

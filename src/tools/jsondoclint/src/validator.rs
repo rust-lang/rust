@@ -21,7 +21,7 @@ const LOCAL_CRATE_ID: u32 = 0;
 ///              it is well formed. This involves calling `check_*` functions on
 ///              fields of that item, and `add_*` functions on [`Id`]s.
 /// - `add_*`: These add an [`Id`] to the worklist, after validating it to check if
-///            the `Id` is a kind expected in this suituation.
+///            the `Id` is a kind expected in this situation.
 #[derive(Debug)]
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,
@@ -262,6 +262,7 @@ impl<'a> Validator<'a> {
             Type::DynTrait(dyn_trait) => self.check_dyn_trait(dyn_trait),
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
+            Type::Pat { type_, __pat_unstable_do_not_use: _ } => self.check_type(type_),
             Type::FunctionPointer(fp) => self.check_function_pointer(&**fp),
             Type::Tuple(tys) => tys.iter().for_each(|ty| self.check_type(ty)),
             Type::Slice(inner) => self.check_type(&**inner),

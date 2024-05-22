@@ -575,8 +575,12 @@ pub(super) enum SubdiagnosticKind {
     Label,
     /// `#[note(...)]`
     Note,
+    /// `#[note_once(...)]`
+    NoteOnce,
     /// `#[help(...)]`
     Help,
+    /// `#[help_once(...)]`
+    HelpOnce,
     /// `#[warning(...)]`
     Warn,
     /// `#[suggestion{,_short,_hidden,_verbose}]`
@@ -624,7 +628,9 @@ impl SubdiagnosticVariant {
         let mut kind = match name {
             "label" => SubdiagnosticKind::Label,
             "note" => SubdiagnosticKind::Note,
+            "note_once" => SubdiagnosticKind::NoteOnce,
             "help" => SubdiagnosticKind::Help,
+            "help_once" => SubdiagnosticKind::HelpOnce,
             "warning" => SubdiagnosticKind::Warn,
             _ => {
                 // Recover old `#[(multipart_)suggestion_*]` syntaxes
@@ -682,7 +688,9 @@ impl SubdiagnosticVariant {
                 match kind {
                     SubdiagnosticKind::Label
                     | SubdiagnosticKind::Note
+                    | SubdiagnosticKind::NoteOnce
                     | SubdiagnosticKind::Help
+                    | SubdiagnosticKind::HelpOnce
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
                         return Ok(Some(SubdiagnosticVariant { kind, slug: None, no_span: false }));
@@ -836,7 +844,9 @@ impl SubdiagnosticVariant {
             }
             SubdiagnosticKind::Label
             | SubdiagnosticKind::Note
+            | SubdiagnosticKind::NoteOnce
             | SubdiagnosticKind::Help
+            | SubdiagnosticKind::HelpOnce
             | SubdiagnosticKind::Warn => {}
         }
 
@@ -849,7 +859,9 @@ impl quote::IdentFragment for SubdiagnosticKind {
         match self {
             SubdiagnosticKind::Label => write!(f, "label"),
             SubdiagnosticKind::Note => write!(f, "note"),
+            SubdiagnosticKind::NoteOnce => write!(f, "note_once"),
             SubdiagnosticKind::Help => write!(f, "help"),
+            SubdiagnosticKind::HelpOnce => write!(f, "help_once"),
             SubdiagnosticKind::Warn => write!(f, "warn"),
             SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestions_with_style"),
             SubdiagnosticKind::MultipartSuggestion { .. } => {

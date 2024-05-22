@@ -2,7 +2,7 @@
 //@ edition:2018
 
 #![feature(async_closure)]
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 #![deny(unused_must_use)]
 
 fn unused() {
@@ -26,7 +26,7 @@ fn unused() {
 
 fn ignored() {
     let _ = || {};
-    let _ = || yield 42;
+    let _ = #[coroutine] || yield 42;
 }
 
 fn main() {

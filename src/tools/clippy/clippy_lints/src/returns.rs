@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{
-    fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res, path_to_local_id,
+    fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res, path_to_local_id, span_contains_cfg,
     span_find_starting_semi,
 };
 use core::ops::ControlFlow;
@@ -232,6 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && !in_external_macro(cx.sess(), initexpr.span)
             && !in_external_macro(cx.sess(), retexpr.span)
             && !local.span.from_expansion()
+            && !span_contains_cfg(cx, stmt.span.between(retexpr.span))
         {
             span_lint_hir_and_then(
                 cx,

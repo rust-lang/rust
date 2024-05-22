@@ -3,6 +3,7 @@
 // attempting to bootstrap librustc with new destructor lifetime
 // semantics.
 
+#![allow(unexpected_cfgs)] // for the cfg-as-descriptions
 
 use std::collections::HashMap;
 use std::cell::RefCell;

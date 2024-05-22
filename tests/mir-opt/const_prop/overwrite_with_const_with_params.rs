@@ -1,4 +1,4 @@
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 //@ compile-flags: -O
 
 // Regression test for https://github.com/rust-lang/rust/issues/118328

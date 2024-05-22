@@ -1,5 +1,6 @@
 use crate::filesearch::make_target_lib_path;
 use crate::EarlyDiagCtxt;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_target::spec::TargetTriple;
 use std::path::{Path, PathBuf};
 
@@ -52,6 +53,7 @@ impl SearchPath {
         triple: &TargetTriple,
         early_dcx: &EarlyDiagCtxt,
         path: &str,
+        is_unstable_enabled: bool,
     ) -> Self {
         let (kind, path) = if let Some(stripped) = path.strip_prefix("native=") {
             (PathKind::Native, stripped)
@@ -68,6 +70,14 @@ impl SearchPath {
         };
         let dir = match path.strip_prefix("@RUSTC_BUILTIN") {
             Some(stripped) => {
+                if !is_unstable_enabled {
+                    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+                    early_dcx.early_fatal(
+                        "the `-Z unstable-options` flag must also be passed to \
+                         enable the use of `@RUSTC_BUILTIN`",
+                    );
+                }
+
                 make_target_lib_path(sysroot, triple.triple()).join("builtin").join(stripped)
             }
             None => PathBuf::from(path),

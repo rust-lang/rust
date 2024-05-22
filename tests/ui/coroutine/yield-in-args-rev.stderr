@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/yield-in-args-rev.rs:13:5
+  --> $DIR/yield-in-args-rev.rs:13:18
    |
-LL | /     || {
+LL |       #[coroutine] || {
+   |  __________________^
 LL | |         let b = true;
 LL | |         foo(yield, &b);
 LL | |     };

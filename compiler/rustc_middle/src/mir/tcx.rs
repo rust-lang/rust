@@ -14,8 +14,8 @@ pub struct PlaceTy<'tcx> {
 }
 
 // At least on 64 bit systems, `PlaceTy` should not be larger than two or three pointers.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PlaceTy<'_>, 16);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(PlaceTy<'_>, 16);
 
 impl<'tcx> PlaceTy<'tcx> {
     #[inline]
@@ -78,13 +78,9 @@ impl<'tcx> PlaceTy<'tcx> {
         }
         let answer = match *elem {
             ProjectionElem::Deref => {
-                let ty = self
-                    .ty
-                    .builtin_deref(true)
-                    .unwrap_or_else(|| {
-                        bug!("deref projection of non-dereferenceable ty {:?}", self)
-                    })
-                    .ty;
+                let ty = self.ty.builtin_deref(true).unwrap_or_else(|| {
+                    bug!("deref projection of non-dereferenceable ty {:?}", self)
+                });
                 PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
@@ -183,12 +179,6 @@ impl<'tcx> Rvalue<'tcx> {
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
-            Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
-                let lhs_ty = lhs.ty(local_decls, tcx);
-                let rhs_ty = rhs.ty(local_decls, tcx);
-                let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                Ty::new_tup(tcx, &[ty, tcx.types.bool])
-            }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
@@ -206,6 +196,7 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::CoroutineClosure(did, args) => {
                     Ty::new_coroutine_closure(tcx, did, args)
                 }
+                AggregateKind::RawPtr(ty, mutability) => Ty::new_ptr(tcx, ty, mutability),
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
@@ -266,6 +257,11 @@ impl<'tcx> BinOp {
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
             }
+            &BinOp::AddWithOverflow | &BinOp::SubWithOverflow | &BinOp::MulWithOverflow => {
+                // these should be integers of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                Ty::new_tup(tcx, &[lhs_ty, tcx.types.bool])
+            }
             &BinOp::Shl
             | &BinOp::ShlUnchecked
             | &BinOp::Shr
@@ -293,7 +289,7 @@ impl BorrowKind {
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
-            BorrowKind::Fake => hir::Mutability::Not,
+            BorrowKind::Fake(_) => hir::Mutability::Not,
         }
     }
 }
@@ -318,6 +314,9 @@ impl BinOp {
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
             BinOp::Cmp
+            | BinOp::AddWithOverflow
+            | BinOp::SubWithOverflow
+            | BinOp::MulWithOverflow
             | BinOp::AddUnchecked
             | BinOp::SubUnchecked
             | BinOp::MulUnchecked
@@ -327,5 +326,25 @@ impl BinOp {
                 unreachable!()
             }
         }
+    }
+
+    /// If this is a `FooWithOverflow`, return `Some(Foo)`.
+    pub fn overflowing_to_wrapping(self) -> Option<BinOp> {
+        Some(match self {
+            BinOp::AddWithOverflow => BinOp::Add,
+            BinOp::SubWithOverflow => BinOp::Sub,
+            BinOp::MulWithOverflow => BinOp::Mul,
+            _ => return None,
+        })
+    }
+
+    /// If this is a `Foo`, return `Some(FooWithOverflow)`.
+    pub fn wrapping_to_overflowing(self) -> Option<BinOp> {
+        Some(match self {
+            BinOp::Add => BinOp::AddWithOverflow,
+            BinOp::Sub => BinOp::SubWithOverflow,
+            BinOp::Mul => BinOp::MulWithOverflow,
+            _ => return None,
+        })
     }
 }

@@ -1,3 +1,4 @@
+use rustc_macros::HashStable;
 use smallvec::SmallVec;
 
 use crate::ty::context::TyCtxt;

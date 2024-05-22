@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(
             },
             [],
             _,
-        ) if method.ident.name == rustc_span::sym::iter => (arg, "&"),
+        ) if method.ident.name == sym::iter => (arg, "&"),
         ExprKind::MethodCall(
             method,
             Expr {
@@ -60,7 +60,7 @@ pub(super) fn check<'tcx>(
             },
             [],
             _,
-        ) if method.ident.name == rustc_span::sym::into_iter => (arg, ""),
+        ) if method.ident.name == sym::into_iter => (arg, ""),
         // Only check for arrays edition 2021 or later, as this case will trigger a compiler error otherwise.
         ExprKind::Array([arg]) if cx.tcx.sess.edition() >= Edition::Edition2021 => (arg, ""),
         _ => return,
@@ -95,7 +95,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 SINGLE_ELEMENT_LOOP,
                 arg.span,
-                format!("this loops only once with `{pat_snip}` being `{range_expr}`").as_str(),
+                format!("this loops only once with `{pat_snip}` being `{range_expr}`"),
                 "did you mean to iterate over the range instead?",
                 sugg.to_string(),
                 Applicability::Unspecified,

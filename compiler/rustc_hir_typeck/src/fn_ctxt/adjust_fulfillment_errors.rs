@@ -2,7 +2,7 @@ use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_infer::{infer::type_variable::TypeVariableOriginKind, traits::ObligationCauseCode};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::{symbol::kw, Span};
 use rustc_trait_selection::traits;
@@ -14,8 +14,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
-        let (traits::ExprItemObligation(def_id, hir_id, idx)
-        | traits::ExprBindingObligation(def_id, _, hir_id, idx)) =
+        let ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx) =
             *error.obligation.cause.code().peel_derives()
         else {
             return false;
@@ -38,7 +37,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::ClauseKind::Trait(pred) => {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
                 }
-                ty::ClauseKind::Projection(pred) => (pred.projection_ty.args.to_vec(), None),
+                ty::ClauseKind::Projection(pred) => (pred.projection_term.args.to_vec(), None),
                 ty::ClauseKind::ConstArgHasType(arg, ty) => (vec![ty.into(), arg.into()], None),
                 ty::ClauseKind::ConstEvaluatable(e) => (vec![e.into()], None),
                 _ => return false,
@@ -167,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // the method's turbofish segments but still use `FunctionArgumentObligation`
                     // elsewhere. Hopefully this doesn't break something.
                     error.obligation.cause.map_code(|parent_code| {
-                        ObligationCauseCode::FunctionArgumentObligation {
+                        ObligationCauseCode::FunctionArg {
                             arg_hir_id: receiver.hir_id,
                             call_hir_id: hir_id,
                             parent_code,
@@ -340,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             type Result = ControlFlow<ty::GenericArg<'tcx>>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let Some(origin) = self.0.type_var_origin(ty)
-                    && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
+                    && let Some(def_id) = origin.param_def_id
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
                     && let Some(arg) =
@@ -360,14 +359,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: &traits::FulfillmentError<'tcx>,
         span: Span,
     ) -> bool {
-        if let traits::FulfillmentErrorCode::SelectionError(
-            traits::SelectionError::SignatureMismatch(box traits::SignatureMismatchData {
-                expected_trait_ref,
-                ..
-            }),
-        ) = error.code
+        if let traits::FulfillmentErrorCode::Select(traits::SelectionError::SignatureMismatch(
+            box traits::SignatureMismatchData { expected_trait_ref, .. },
+        )) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
-                expected_trait_ref.skip_binder().self_ty().kind()
+                expected_trait_ref.self_ty().kind()
             && span.overlaps(self.tcx.def_span(*def_id))
         {
             true
@@ -459,12 +455,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.blame_specific_expr_if_possible(error, arg_expr)
             }
 
-            error.obligation.cause.map_code(|parent_code| {
-                ObligationCauseCode::FunctionArgumentObligation {
-                    arg_hir_id: arg.hir_id,
-                    call_hir_id,
-                    parent_code,
-                }
+            error.obligation.cause.map_code(|parent_code| ObligationCauseCode::FunctionArg {
+                arg_hir_id: arg.hir_id,
+                call_hir_id,
+                parent_code,
             });
             return true;
         } else if args_referencing_param.len() > 0 {
@@ -517,12 +511,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         match obligation_cause_code {
-            traits::ObligationCauseCode::ExprBindingObligation(_, _, _, _) => {
+            traits::ObligationCauseCode::WhereClauseInExpr(_, _, _, _) => {
                 // This is the "root"; we assume that the `expr` is already pointing here.
                 // Therefore, we return `Ok` so that this `expr` can be refined further.
                 Ok(expr)
             }
-            traits::ObligationCauseCode::ImplDerivedObligation(impl_derived) => self
+            traits::ObligationCauseCode::ImplDerived(impl_derived) => self
                 .blame_specific_expr_if_possible_for_derived_predicate_obligation(
                     impl_derived,
                     expr,
@@ -560,7 +554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// only a partial success - but it cannot be refined even further.
     fn blame_specific_expr_if_possible_for_derived_predicate_obligation(
         &self,
-        obligation: &traits::ImplDerivedObligationCause<'tcx>,
+        obligation: &traits::ImplDerivedCause<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         // First, we attempt to refine the `expr` for our span using the parent obligation.
@@ -729,7 +723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let struct_generic_parameters: &ty::Generics = self.tcx.generics_of(in_ty_adt.did());
-            if drill_generic_index >= struct_generic_parameters.params.len() {
+            if drill_generic_index >= struct_generic_parameters.own_params.len() {
                 return Err(expr);
             }
 
@@ -852,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let struct_generic_parameters: &ty::Generics = self.tcx.generics_of(in_ty_adt.did());
-            if drill_generic_index >= struct_generic_parameters.params.len() {
+            if drill_generic_index >= struct_generic_parameters.own_params.len() {
                 return Err(expr);
             }
 

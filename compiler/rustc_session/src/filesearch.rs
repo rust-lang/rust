@@ -1,13 +1,12 @@
 //! A module for searching for libraries
 
-use rustc_fs_util::try_canonicalize;
+use crate::search_paths::{PathKind, SearchPath};
+use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use smallvec::{smallvec, SmallVec};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-
-use crate::search_paths::{PathKind, SearchPath};
-use rustc_fs_util::fix_windows_verbatim_for_gcc;
+use tracing::debug;
 
 #[derive(Clone)]
 pub struct FileSearch<'a> {
@@ -44,11 +43,6 @@ impl<'a> FileSearch<'a> {
     ) -> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch { sysroot, triple, search_paths, tlib_path, kind }
-    }
-
-    /// Returns just the directories within the search paths.
-    pub fn search_path_dirs(&self) -> Vec<PathBuf> {
-        self.search_paths().map(|sp| sp.dir.to_path_buf()).collect()
     }
 }
 

@@ -4,7 +4,6 @@ fn range_inclusive_iter_next(_1: &mut RangeInclusive<u32>) -> Option<u32> {
     debug it => _1;
     let mut _0: std::option::Option<u32>;
     scope 1 (inlined iter::range::<impl Iterator for RangeInclusive<u32>>::next) {
-        debug self => _1;
     }
 
     bb0: {

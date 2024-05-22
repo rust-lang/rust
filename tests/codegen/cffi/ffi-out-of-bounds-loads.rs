@@ -33,7 +33,7 @@ extern "C" {
 pub fn test() {
     let s = S { f1: 1, f2: 2, f3: 3 };
     unsafe {
-        // CHECK: [[ALLOCA:%.+]] = alloca { i64, i32 }, align 8
+        // CHECK: [[ALLOCA:%.+]] = alloca [12 x i8], align 8
         // CHECK: [[LOAD:%.+]] = load { i64, i32 }, ptr [[ALLOCA]], align 8
         // CHECK: call void @foo({ i64, i32 } [[LOAD]])
         foo(s);

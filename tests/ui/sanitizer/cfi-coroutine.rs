@@ -14,7 +14,7 @@
 //@ compile-flags: --test -Z unstable-options
 //@ run-pass
 
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 #![feature(coroutine_trait)]
 #![feature(noop_waker)]
 #![feature(gen_blocks)]
@@ -27,7 +27,7 @@ use std::async_iter::AsyncIterator;
 
 #[test]
 fn general_coroutine() {
-    let mut coro = |x: i32| {
+    let mut coro = #[coroutine] |x: i32| {
         yield x;
         "done"
     };

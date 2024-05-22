@@ -5,6 +5,13 @@
 
 use termcolor::WriteColor;
 
+macro_rules! static_regex {
+    ($re:literal) => {{
+        static RE: ::std::sync::OnceLock<::regex::Regex> = ::std::sync::OnceLock::new();
+        RE.get_or_init(|| ::regex::Regex::new($re).unwrap())
+    }};
+}
+
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
 /// * The expression that failed
@@ -67,6 +74,7 @@ pub mod features;
 pub mod fluent_alphabetical;
 mod fluent_used;
 pub(crate) mod iter_header;
+pub mod known_bug;
 pub mod mir_opt_tests;
 pub mod pal;
 pub mod run_make_tests;
@@ -79,6 +87,7 @@ pub mod tests_placement;
 pub mod tests_revision_unpaired_stdout_stderr;
 pub mod ui_tests;
 pub mod unit_tests;
+pub mod unknown_revision;
 pub mod unstable_book;
 pub mod walk;
 pub mod x_version;

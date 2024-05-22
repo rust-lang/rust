@@ -33,7 +33,9 @@ error[E0597]: `a` does not live long enough
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here
-...
+LL |     let a = 22;
+   |         - binding `a` declared here
+LL |     let b = 44;
 LL |     let _closure = || {
    |                    -- value captured here
 LL |         let c = 66;

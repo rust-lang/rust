@@ -1,101 +1,32 @@
-use rustc_data_structures::graph::WithNumNodes;
-use rustc_index::bit_set::BitSet;
+use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_span::{BytePos, Span};
 
-use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
+use crate::coverage::mappings;
 use crate::coverage::spans::from_mir::SpanFromMir;
 use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
-#[derive(Clone, Copy, Debug)]
-pub(super) enum BcbMappingKind {
-    /// Associates an ordinary executable code span with its corresponding BCB.
-    Code(BasicCoverageBlock),
-    /// Associates a branch span with BCBs for its true and false arms.
-    Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
-}
+// FIXME(#124545) It's awkward that we have to re-export this, because it's an
+// internal detail of `from_mir` that is also needed when handling branch and
+// MC/DC spans. Ideally we would find a more natural home for it.
+pub(super) use from_mir::unexpand_into_body_span_with_visible_macro;
 
-#[derive(Debug)]
-pub(super) struct BcbMapping {
-    pub(super) kind: BcbMappingKind,
-    pub(super) span: Span,
-}
-
-pub(super) struct CoverageSpans {
-    bcb_has_mappings: BitSet<BasicCoverageBlock>,
-    mappings: Vec<BcbMapping>,
-}
-
-impl CoverageSpans {
-    pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
-        self.bcb_has_mappings.contains(bcb)
-    }
-
-    pub(super) fn all_bcb_mappings(&self) -> impl Iterator<Item = &BcbMapping> {
-        self.mappings.iter()
-    }
-}
-
-/// Extracts coverage-relevant spans from MIR, and associates them with
-/// their corresponding BCBs.
-///
-/// Returns `None` if no coverage-relevant spans could be extracted.
-pub(super) fn generate_coverage_spans(
+pub(super) fn extract_refined_covspans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Option<CoverageSpans> {
-    let mut mappings = vec![];
-
-    if hir_info.is_async_fn {
-        // An async function desugars into a function that returns a future,
-        // with the user code wrapped in a closure. Any spans in the desugared
-        // outer function will be unhelpful, so just keep the signature span
-        // and ignore all of the spans in the MIR body.
-        if let Some(span) = hir_info.fn_sig_span_extended {
-            mappings.push(BcbMapping { kind: BcbMappingKind::Code(START_BCB), span });
-        }
-    } else {
-        let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        );
-        let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
-        mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
-            // Each span produced by the generator represents an ordinary code region.
-            BcbMapping { kind: BcbMappingKind::Code(bcb), span }
-        }));
-
-        mappings.extend(from_mir::extract_branch_mappings(
-            mir_body,
-            hir_info.body_span,
-            basic_coverage_blocks,
-        ));
-    }
-
-    if mappings.is_empty() {
-        return None;
-    }
-
-    // Identify which BCBs have one or more mappings.
-    let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-    let mut insert = |bcb| {
-        bcb_has_mappings.insert(bcb);
-    };
-    for &BcbMapping { kind, span: _ } in &mappings {
-        match kind {
-            BcbMappingKind::Code(bcb) => insert(bcb),
-            BcbMappingKind::Branch { true_bcb, false_bcb } => {
-                insert(true_bcb);
-                insert(false_bcb);
-            }
-        }
-    }
-
-    Some(CoverageSpans { bcb_has_mappings, mappings })
+    code_mappings: &mut impl Extend<mappings::CodeMapping>,
+) {
+    let sorted_spans =
+        from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
+    let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
+    code_mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
+        // Each span produced by the generator represents an ordinary code region.
+        mappings::CodeMapping { span, bcb }
+    }));
 }
 
 #[derive(Debug)]

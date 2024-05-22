@@ -235,3 +235,8 @@ fn parenthesized_word() {}
 /// OSes
 /// UXes
 fn plural_acronym_test() {}
+
+extern {
+    /// `foo()`
+    fn in_extern();
+}

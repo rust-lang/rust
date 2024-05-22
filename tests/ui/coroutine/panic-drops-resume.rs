@@ -3,7 +3,7 @@
 //@ run-pass
 //@ needs-unwind
 
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -21,7 +21,7 @@ impl Drop for Dropper {
 }
 
 fn main() {
-    let mut gen = |_arg| {
+    let mut gen = #[coroutine] |_arg| {
         if true {
             panic!();
         }

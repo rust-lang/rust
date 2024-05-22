@@ -63,7 +63,6 @@ This API is completely unstable and subject to change.
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![feature(control_flow_enum)]
-#![feature(generic_nonzero)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
@@ -75,9 +74,6 @@ This API is completely unstable and subject to change.
 
 #[macro_use]
 extern crate tracing;
-
-#[macro_use]
-extern crate rustc_middle;
 
 // These are used by Clippy.
 pub mod check;
@@ -97,14 +93,12 @@ mod outlives;
 pub mod structured_errors;
 mod variance;
 
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::util;
 use rustc_session::parse::feature_err;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
@@ -153,11 +147,11 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
+pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     if tcx.features().rustc_attrs {
-        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
+        let _ = tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
     }
 
     tcx.sess.time("coherence_checking", || {
@@ -174,11 +168,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     });
 
     if tcx.features().rustc_attrs {
-        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
+        let _ = tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
     }
 
     if tcx.features().rustc_attrs {
-        collect::test_opaque_hidden_types(tcx)?;
+        let _ = collect::test_opaque_hidden_types(tcx);
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
@@ -187,7 +181,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
             DefKind::Static { .. } => tcx.ensure().eval_static_initializer(item_def_id),
-            DefKind::Const if tcx.generics_of(item_def_id).params.is_empty() => {
+            DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
                 let param_env = ty::ParamEnv::reveal_all();
@@ -213,8 +207,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     });
 
     tcx.ensure().check_unused_traits(());
-
-    Ok(())
 }
 
 /// Lower a [`hir::Ty`] to a [`Ty`].

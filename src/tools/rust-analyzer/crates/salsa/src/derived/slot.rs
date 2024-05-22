@@ -1,4 +1,3 @@
-//!
 use crate::debug::TableEntry;
 use crate::derived::MemoizationPolicy;
 use crate::durability::Durability;

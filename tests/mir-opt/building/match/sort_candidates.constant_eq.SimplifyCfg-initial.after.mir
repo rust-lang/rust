@@ -7,10 +7,10 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     let mut _3: (&str, bool);
     let mut _4: &str;
     let mut _5: bool;
-    let mut _6: bool;
-    let mut _7: bool;
-    let mut _8: &&str;
-    let mut _9: &bool;
+    let mut _6: &&str;
+    let mut _7: &bool;
+    let mut _8: bool;
+    let mut _9: bool;
     let mut _10: bool;
 
     bb0: {
@@ -23,7 +23,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
         StorageDead(_5);
         StorageDead(_4);
         PlaceMention(_3);
-        _7 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb11, unwind: bb19];
+        _9 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb11, unwind: bb19];
     }
 
     bb1: {
@@ -40,7 +40,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb4: {
-        falseEdge -> [real: bb12, imaginary: bb9];
+        falseEdge -> [real: bb12, imaginary: bb7];
     }
 
     bb5: {
@@ -48,11 +48,11 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb6: {
-        falseEdge -> [real: bb16, imaginary: bb3];
+        falseEdge -> [real: bb16, imaginary: bb1];
     }
 
     bb7: {
-        _6 = <str as PartialEq>::eq((_3.0: &str), const "b") -> [return: bb10, unwind: bb19];
+        _8 = <str as PartialEq>::eq((_3.0: &str), const "b") -> [return: bb10, unwind: bb19];
     }
 
     bb8: {
@@ -60,20 +60,20 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb9: {
-        falseEdge -> [real: bb15, imaginary: bb6];
+        falseEdge -> [real: bb15, imaginary: bb5];
     }
 
     bb10: {
-        switchInt(move _6) -> [0: bb1, otherwise: bb8];
+        switchInt(move _8) -> [0: bb1, otherwise: bb8];
     }
 
     bb11: {
-        switchInt(move _7) -> [0: bb7, otherwise: bb4];
+        switchInt(move _9) -> [0: bb7, otherwise: bb4];
     }
 
     bb12: {
-        _8 = &fake (_3.0: &str);
-        _9 = &fake (_3.1: bool);
+        _6 = &fake shallow (_3.0: &str);
+        _7 = &fake shallow (_3.1: bool);
         StorageLive(_10);
         _10 = const true;
         switchInt(move _10) -> [0: bb14, otherwise: bb13];
@@ -81,15 +81,15 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb13: {
         StorageDead(_10);
-        FakeRead(ForMatchGuard, _8);
-        FakeRead(ForMatchGuard, _9);
+        FakeRead(ForMatchGuard, _6);
+        FakeRead(ForMatchGuard, _7);
         _0 = const 1_u32;
         goto -> bb18;
     }
 
     bb14: {
         StorageDead(_10);
-        falseEdge -> [real: bb5, imaginary: bb9];
+        falseEdge -> [real: bb5, imaginary: bb7];
     }
 
     bb15: {

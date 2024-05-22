@@ -74,8 +74,11 @@ fn compare_themes<'a>(
         (noscript_css_line_number, noscript_css_line),
     ) in rustdoc_css_lines.zip(noscript_css_lines)
     {
-        if noscript_css_line.starts_with(":root {")
-            && rustdoc_css_line.starts_with(&format!(r#":root[data-theme="{name}"] {{"#))
+        if noscript_css_line.starts_with(":root, :root:not([data-theme]) {")
+            && (rustdoc_css_line.starts_with(&format!(r#":root[data-theme="{name}"] {{"#))
+                || rustdoc_css_line.starts_with(&format!(
+                    r#":root[data-theme="{name}"], :root:not([data-theme]) {{"#
+                )))
         {
             // selectors are different between rustdoc.css and noscript.css
             // that's why they both exist: one uses JS, the other uses media queries

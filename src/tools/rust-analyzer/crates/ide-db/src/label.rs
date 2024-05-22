@@ -1,6 +1,8 @@
 //! See [`Label`]
 use std::fmt;
 
+use stdx::always;
+
 /// A type to specify UI label, like an entry in the list of assists. Enforces
 /// proper casing:
 ///
@@ -30,7 +32,7 @@ impl From<Label> for String {
 
 impl Label {
     pub fn new(label: String) -> Label {
-        assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
+        always!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
         Label(label)
     }
 }

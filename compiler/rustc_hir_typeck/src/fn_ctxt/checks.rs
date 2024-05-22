@@ -24,23 +24,22 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{ExprKind, HirId, Node, QPath};
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::structured_errors::StructuredDiag;
 use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::traits::ObligationCauseCode::ExprBindingObligation;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -204,7 +203,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
         for (&fn_input_ty, arg_expr) in iter::zip(formal_input_tys, provided_args) {
-            self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
+            self.register_wf_obligation(
+                fn_input_ty.into(),
+                arg_expr.span,
+                ObligationCauseCode::Misc,
+            );
         }
 
         let mut err_code = E0061;
@@ -297,22 +300,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
             );
-            let subtyping_error = match supertype_error {
-                Ok(InferOk { obligations, value: () }) => {
-                    self.register_predicates(obligations);
-                    None
-                }
-                Err(err) => Some(err),
-            };
 
             // If neither check failed, the types are compatible
-            match subtyping_error {
-                None => Compatibility::Compatible,
-                Some(_) => Compatibility::Incompatible(subtyping_error),
+            match supertype_error {
+                Ok(InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                    Compatibility::Compatible
+                }
+                Err(err) => Compatibility::Incompatible(Some(err)),
             }
         };
 
@@ -687,7 +686,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Using probe here, since we don't want this subtyping to affect inference.
             let subtyping_error = self.probe(|_| {
                 self.at(&self.misc(arg_span), self.param_env)
-                    .sup(DefineOpaqueTypes::No, formal_input_ty, coerced_ty)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty)
                     .err()
             });
 
@@ -1493,7 +1492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_struct_path(
         &self,
         qpath: &QPath<'tcx>,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
@@ -1558,7 +1557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_decl_initializer(
         &self,
-        hir_id: hir::HirId,
+        hir_id: HirId,
         pat: &'tcx hir::Pat<'tcx>,
         init: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
@@ -1664,7 +1663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(expr, Ty::new_unit(self.tcx), |err| {
+                self.check_expr_has_type_or_error(expr, self.tcx.types.unit, |err| {
                     if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
                     }
@@ -1680,7 +1679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
-        let unit = Ty::new_unit(self.tcx);
+        let unit = self.tcx.types.unit;
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be
@@ -1775,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // that highlight errors inline.
                     let mut sp = blk.span;
                     let mut fn_span = None;
-                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk.hir_id) {
+                    if let Some((fn_def_id, decl, _)) = self.get_fn_decl(blk.hir_id) {
                         let ret_sp = decl.output.span();
                         if let Some(block_sp) = self.parent_item_span(blk.hir_id) {
                             // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
@@ -1783,7 +1782,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // the span we're aiming at correspond to a `fn` body.
                             if block_sp == blk.span {
                                 sp = ret_sp;
-                                fn_span = Some(ident.span);
+                                fn_span = self.tcx.def_ident_span(fn_def_id);
                             }
                         }
                     }
@@ -1798,7 +1797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         blk.span,
                                         blk.hir_id,
                                         expected_ty,
-                                        Ty::new_unit(self.tcx),
+                                        self.tcx.types.unit,
                                     );
                                 }
                                 if !self.err_ctxt().consider_removing_semicolon(
@@ -1883,7 +1882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
+    fn parent_item_span(&self, id: HirId) -> Option<Span> {
         let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
@@ -1896,15 +1895,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
         None
-    }
-
-    /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
-    pub(crate) fn get_parent_fn_decl(
-        &self,
-        blk_id: hir::HirId,
-    ) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
-        let parent = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
-        self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// If `expr` is a `match` expression that has only one non-`!` arm, use that arm's tail
@@ -1943,12 +1933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr.span
     }
 
-    fn overwrite_local_ty_if_err(
-        &self,
-        hir_id: hir::HirId,
-        pat: &'tcx hir::Pat<'tcx>,
-        ty: Ty<'tcx>,
-    ) {
+    fn overwrite_local_ty_if_err(&self, hir_id: HirId, pat: &'tcx hir::Pat<'tcx>, ty: Ty<'tcx>) {
         if let Err(guar) = ty.error_reported() {
             struct OverwritePatternsWithError {
                 pat_hir_ids: Vec<hir::HirId>,
@@ -1981,7 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &QPath<'tcx>,
         path_span: Span,
-        hir_id: hir::HirId,
+        hir_id: HirId,
     ) -> (Res, LoweredTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {
@@ -2020,12 +2005,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (span, code) in errors_causecode {
             self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
                 if let Some(fn_sig) = self.body_fn_sig()
-                    && let ExprBindingObligation(_, _, hir_id, ..) = code
+                    && let ObligationCauseCode::WhereClauseInExpr(_, _, binding_hir_id, ..) = code
                     && !fn_sig.output().is_unit()
                 {
                     let mut block_num = 0;
                     let mut found_semi = false;
-                    for (_, node) in self.tcx.hir().parent_iter(hir_id) {
+                    for (hir_id, node) in self.tcx.hir().parent_iter(binding_hir_id) {
+                        // Don't proceed into parent bodies
+                        if hir_id.owner != binding_hir_id.owner {
+                            break;
+                        }
                         match node {
                             hir::Node::Stmt(stmt) => {
                                 if let hir::StmtKind::Semi(expr) = stmt.kind {
@@ -2105,7 +2094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // This is because due to normalization, we often register duplicate
         // obligations with misc obligations that are basically impossible to
-        // line back up with a useful ExprBindingObligation.
+        // line back up with a useful WhereClauseInExpr.
         for error in not_adjusted {
             for (span, predicate, cause) in &remap_cause {
                 if *predicate == error.obligation.predicate
@@ -2149,7 +2138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let callee_ty = callee_ty.peel_refs();
             match *callee_ty.kind() {
                 ty::Param(param) => {
-                    let param = self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
+                    let param = self.tcx.generics_of(self.body_id).type_param(param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;
@@ -2185,13 +2174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(
                             self.tcx,
                             self.tcx.fn_trait_kind_to_def_id(call_kind)?,
-                            [
-                                callee_ty,
-                                self.next_ty_var(TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
-                                    span: rustc_span::DUMMY_SP,
-                                }),
-                            ],
+                            [callee_ty, self.next_ty_var(DUMMY_SP)],
                         );
                         let obligation = traits::Obligation::new(
                             self.tcx,

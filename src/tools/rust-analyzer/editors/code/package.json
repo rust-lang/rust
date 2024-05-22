@@ -534,6 +534,12 @@
                         "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
                     ]
                 },
+                "rust-analyzer.assist.termSearch.fuel": {
+                    "markdownDescription": "Term search fuel in \"units of work\" for assists (Defaults to 400).",
+                    "default": 400,
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "rust-analyzer.cachePriming.enable": {
                     "markdownDescription": "Warm up caches on project load.",
                     "default": true,
@@ -545,6 +551,11 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 255
+                },
+                "rust-analyzer.cargo.allTargets": {
+                    "markdownDescription": "Pass `--all-targets` to cargo invocation.",
+                    "default": true,
+                    "type": "boolean"
                 },
                 "rust-analyzer.cargo.autoreload": {
                     "markdownDescription": "Automatically refresh project info via `cargo metadata` on\n`Cargo.toml` or `.cargo/config.toml` changes.",
@@ -605,7 +616,10 @@
                 },
                 "rust-analyzer.cargo.cfgs": {
                     "markdownDescription": "List of cfg options to enable with the given values.",
-                    "default": {},
+                    "default": {
+                        "debug_assertions": null,
+                        "miri": null
+                    },
                     "type": "object"
                 },
                 "rust-analyzer.cargo.extraArgs": {
@@ -691,25 +705,18 @@
                         }
                     ]
                 },
-                "rust-analyzer.cargo.unsetTest": {
-                    "markdownDescription": "Unsets the implicit `#[cfg(test)]` for the specified crates.",
-                    "default": [
-                        "core"
-                    ],
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "rust-analyzer.checkOnSave": {
                     "markdownDescription": "Run the check command for diagnostics on save.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.check.allTargets": {
-                    "markdownDescription": "Check all targets and tests (`--all-targets`).",
-                    "default": true,
-                    "type": "boolean"
+                    "markdownDescription": "Check all targets and tests (`--all-targets`). Defaults to\n`#rust-analyzer.cargo.allTargets#`.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "boolean"
+                    ]
                 },
                 "rust-analyzer.check.command": {
                     "markdownDescription": "Cargo command to use for `cargo check`.",
@@ -797,7 +804,7 @@
                     ]
                 },
                 "rust-analyzer.check.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the futureg.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the future.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -928,6 +935,12 @@
                     "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
                     "default": false,
                     "type": "boolean"
+                },
+                "rust-analyzer.completion.termSearch.fuel": {
+                    "markdownDescription": "Term search fuel in \"units of work\" for autocompletion (Defaults to 200).",
+                    "default": 200,
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "rust-analyzer.diagnostics.disabled": {
                     "markdownDescription": "List of rust-analyzer diagnostics to disable.",
@@ -1144,9 +1157,18 @@
                         }
                     ]
                 },
-                "rust-analyzer.hover.show.structFields": {
-                    "markdownDescription": "How many fields of a struct to display when hovering a struct.",
-                    "default": null,
+                "rust-analyzer.hover.show.enumVariants": {
+                    "markdownDescription": "How many variants of an enum to display when hovering on. Show none if empty.",
+                    "default": 5,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
+                "rust-analyzer.hover.show.fields": {
+                    "markdownDescription": "How many fields of a struct, variant or union to display when hovering on. Show none if empty.",
+                    "default": 5,
                     "type": [
                         "null",
                         "integer"
@@ -1494,7 +1516,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.linkedProjects": {
-                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set\nof projects.\n\nElements must be paths pointing to `Cargo.toml`,\n`rust-project.json`, or JSON objects in `rust-project.json` format.",
+                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set\nof projects.\n\nElements must be paths pointing to `Cargo.toml`,\n`rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON\nobjects in `rust-project.json` format.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -1581,6 +1603,16 @@
                 "rust-analyzer.runnables.extraArgs": {
                     "markdownDescription": "Additional arguments to be passed to cargo for runnables such as\ntests or binaries. For example, it may be `--release`.",
                     "default": [],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rust-analyzer.runnables.extraTestBinaryArgs": {
+                    "markdownDescription": "Additional arguments to be passed through Cargo to launched tests, benchmarks, or\ndoc-tests.\n\nUnless the launched target uses a\n[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),\nthey will end up being interpreted as options to\n[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).",
+                    "default": [
+                        "--show-output"
+                    ],
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -1927,6 +1959,11 @@
                 "description": "Style for const generics"
             },
             {
+                "id": "const",
+                "description": "Style for consts",
+                "superType": "variable"
+            },
+            {
                 "id": "derive",
                 "description": "Style for derives",
                 "superType": "attribute"
@@ -1972,18 +2009,23 @@
                 "superType": "punctuation"
             },
             {
-                "id": "operator",
-                "description": "Style for operators",
-                "superType": "punctuation"
-            },
-            {
                 "id": "parenthesis",
                 "description": "Style for ( or )",
                 "superType": "punctuation"
             },
             {
+                "id": "procMacro",
+                "description": "Style for proc macro code",
+                "superType": "macro"
+            },
+            {
                 "id": "punctuation",
                 "description": "Style for generic punctuation"
+            },
+            {
+                "id": "operator",
+                "description": "Style for operators",
+                "superType": "punctuation"
             },
             {
                 "id": "selfKeyword",
@@ -1999,6 +2041,16 @@
                 "id": "semicolon",
                 "description": "Style for ;",
                 "superType": "punctuation"
+            },
+            {
+                "id": "static",
+                "description": "Style for statics",
+                "superType": "variable"
+            },
+            {
+                "id": "toolModule",
+                "description": "Style for tool module attributes",
+                "superType": "decorator"
             },
             {
                 "id": "typeAlias",
@@ -2057,8 +2109,16 @@
                 "description": "Style for items that are defined outside of the current crate"
             },
             {
+                "id": "macro",
+                "description": "Style for tokens inside of macro calls"
+            },
+            {
                 "id": "mutable",
                 "description": "Style for mutable locals and statics as well as functions taking `&mut self`"
+            },
+            {
+                "id": "procMacro",
+                "description": "Style for tokens inside of proc-macro calls"
             },
             {
                 "id": "public",

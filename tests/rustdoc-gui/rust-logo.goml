@@ -1,4 +1,5 @@
 // This test ensures that the correct style is applied to the rust logo in the sidebar.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
 
 define-function: (
@@ -8,14 +9,12 @@ define-function: (
         // Going to the doc page.
         go-to: "file://" + |DOC_PATH| + "/staged_api/index.html"
         // Changing theme.
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".rust-logo", {"filter": |filter|})
         // Now we check that the non-rust logos don't have a CSS filter set.
         go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
         // Changing theme on the new page (again...).
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
         // Check there is no rust logo
         assert-false: ".rust-logo"
         // Check there is no filter.

@@ -47,7 +47,8 @@ use rustc_index::{Idx, IndexVec};
 use std::fmt;
 use std::ops::ControlFlow;
 
-use crate::{self as ty, BoundVars, Interner, IntoKind, Lrc, TypeFlags};
+use crate::inherent::*;
+use crate::{self as ty, Interner, Lrc, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -89,7 +90,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
     #[cfg(not(feature = "nightly"))]
     type Result: VisitorResult;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         t.super_visit_with(self)
     }
 
@@ -108,6 +109,10 @@ pub trait TypeVisitor<I: Interner>: Sized {
     }
 
     fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
+        p.super_visit_with(self)
+    }
+
+    fn visit_clauses(&mut self, p: I::Clauses) -> Self::Result {
         p.super_visit_with(self)
     }
 }
@@ -223,8 +228,8 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
-    fn has_projections(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    fn has_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_ALIASES)
     }
 
     fn has_inherent_projections(&self) -> bool {
@@ -371,11 +376,11 @@ impl std::fmt::Debug for HasTypeFlagsVisitor {
 impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     type Result = ControlFlow<FoundFlags>;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         // If we're looking for the HAS_BINDER_VARS flag, check if the
         // binder has vars. This won't be present in the binder's bound
         // value, so we need to check here too.
-        if self.flags.intersects(TypeFlags::HAS_BINDER_VARS) && !t.has_no_bound_vars() {
+        if self.flags.intersects(TypeFlags::HAS_BINDER_VARS) && !t.bound_vars().is_empty() {
             return ControlFlow::Break(FoundFlags);
         }
 
@@ -423,6 +428,16 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
             ControlFlow::Continue(())
         }
     }
+
+    #[inline]
+    fn visit_clauses(&mut self, clauses: I::Clauses) -> Self::Result {
+        // Note: no `super_visit_with` call.
+        if clauses.flags().intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -461,7 +476,7 @@ struct HasEscapingVarsVisitor {
 impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     type Result = ControlFlow<FoundEscapingVars>;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.outer_index.shift_out(1);
@@ -510,6 +525,15 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     #[inline]
     fn visit_predicate(&mut self, predicate: I::Predicate) -> Self::Result {
         if predicate.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_clauses(&mut self, clauses: I::Clauses) -> Self::Result {
+        if clauses.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::Continue(())

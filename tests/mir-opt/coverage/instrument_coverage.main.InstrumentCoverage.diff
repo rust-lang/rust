@@ -1,0 +1,53 @@
+- // MIR for `main` before InstrumentCoverage
++ // MIR for `main` after InstrumentCoverage
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: ();
+      let mut _2: bool;
+      let mut _3: !;
+  
++     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Add, rhs: Counter(1) };
++     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:10:1 - 10:11;
++     coverage Code(Expression(0)) => $DIR/instrument_coverage.rs:11:5 - 12:17;
++     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:13:13 - 13:18;
++     coverage Code(Counter(1)) => $DIR/instrument_coverage.rs:14:10 - 14:11;
++     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:16:1 - 16:2;
++ 
+      bb0: {
++         Coverage::CounterIncrement(0);
+          goto -> bb1;
+      }
+  
+      bb1: {
++         Coverage::ExpressionUsed(0);
+          falseUnwind -> [real: bb2, unwind: bb6];
+      }
+  
+      bb2: {
+          StorageLive(_2);
+          _2 = bar() -> [return: bb3, unwind: bb6];
+      }
+  
+      bb3: {
+          switchInt(move _2) -> [0: bb5, otherwise: bb4];
+      }
+  
+      bb4: {
+          _0 = const ();
+          StorageDead(_2);
+          return;
+      }
+  
+      bb5: {
++         Coverage::CounterIncrement(1);
+          _1 = const ();
+          StorageDead(_2);
+          goto -> bb1;
+      }
+  
+      bb6 (cleanup): {
+          resume;
+      }
+  }
+  

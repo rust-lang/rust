@@ -86,12 +86,7 @@ impl Timespec {
         // Please note that Apple OS nonetheless accepts the standard unix format when
         // setting file times, which makes this compensation round-trippable and generally
         // transparent.
-        #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "watchos"
-        ))]
+        #[cfg(target_vendor = "apple")]
         let (tv_sec, tv_nsec) =
             if (tv_sec <= 0 && tv_sec > i64::MIN) && (tv_nsec < 0 && tv_nsec > -1_000_000_000) {
                 (tv_sec - 1, tv_nsec + 1_000_000_000)
@@ -274,19 +269,9 @@ impl Instant {
         //
         // Instant on macos was historically implemented using mach_absolute_time;
         // we preserve this value domain out of an abundance of caution.
-        #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "watchos",
-            target_os = "tvos"
-        ))]
+        #[cfg(target_vendor = "apple")]
         const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
-        #[cfg(not(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "watchos",
-            target_os = "tvos"
-        )))]
+        #[cfg(not(target_vendor = "apple"))]
         const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
         Instant { t: Timespec::now(clock_id) }
     }

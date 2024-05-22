@@ -75,7 +75,7 @@ fn protected_enforces_noalias() {
     }
 }
 
-/// We are going to exhaustively test the possibily of inserting
+/// We are going to exhaustively test the possibility of inserting
 /// a spurious read in some code.
 ///
 /// We choose some pointer `x` through which we want a spurious read to be inserted.
@@ -270,7 +270,7 @@ mod spurious_read {
             match self {
                 TestEvent::Access(acc) => write!(f, "{acc}"),
                 // The fields of the `Ret` variants just serve to make them
-                // impossible to instanciate via the `RetX = NoRet` type; we can
+                // impossible to instantiate via the `RetX = NoRet` type; we can
                 // always ignore their value.
                 TestEvent::RetX(_) => write!(f, "ret x"),
                 TestEvent::RetY(_) => write!(f, "ret y"),
@@ -395,7 +395,7 @@ mod spurious_read {
             match evt {
                 TestEvent::Access(acc) => self.perform_test_access(acc),
                 // The fields of the `Ret` variants just serve to make them
-                // impossible to instanciate via the `RetX = NoRet` type; we can
+                // impossible to instantiate via the `RetX = NoRet` type; we can
                 // always ignore their value.
                 TestEvent::RetX(_) => self.end_protector_x(),
                 TestEvent::RetY(_) => self.end_protector_y(),
@@ -483,7 +483,7 @@ mod spurious_read {
         /// that causes UB in the target but not in the source.
         /// This implementation simply explores the reachable space
         /// by all sequences of `TestEvent`.
-        /// This function can be instanciated with `RetX` and `RetY`
+        /// This function can be instantiated with `RetX` and `RetY`
         /// among `NoRet` or `AllowRet` to resp. forbid/allow `x`/`y` to lose their
         /// protector.
         fn distinguishable<RetX, RetY>(&self, other: &Self) -> bool

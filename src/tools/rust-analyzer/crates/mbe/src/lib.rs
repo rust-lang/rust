@@ -34,7 +34,7 @@ pub use tt::{Delimiter, DelimiterKind, Punct};
 pub use crate::syntax_bridge::{
     parse_exprs_with_sep, parse_to_token_tree, parse_to_token_tree_static_span,
     syntax_node_to_token_tree, syntax_node_to_token_tree_modified, token_tree_to_syntax_node,
-    SpanMapper,
+    DocCommentDesugarMode, SpanMapper,
 };
 
 pub use crate::syntax_bridge::dummy_test_span_utils::*;
@@ -121,6 +121,9 @@ impl fmt::Display for CountError {
         }
     }
 }
+
+/// Index of the matched macro arm on successful expansion.
+pub type MatchedArmIndex = Option<u32>;
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
@@ -250,8 +253,9 @@ impl DeclarativeMacro {
         marker: impl Fn(&mut Span) + Copy,
         new_meta_vars: bool,
         call_site: Span,
-    ) -> ExpandResult<tt::Subtree<Span>> {
-        expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site)
+        def_site_edition: Edition,
+    ) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
+        expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site, def_site_edition)
     }
 }
 
@@ -327,6 +331,10 @@ impl<T, E> ValueResult<T, E> {
         T: Default,
     {
         Self { value: Default::default(), err: Some(err) }
+    }
+
+    pub fn zip_val<U>(self, other: U) -> ValueResult<(T, U), E> {
+        ValueResult { value: (self.value, other), err: self.err }
     }
 
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ValueResult<U, E> {

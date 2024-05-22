@@ -7,7 +7,6 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
-use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
@@ -41,7 +40,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// compares lifetimes directly, so we need to map the inference variables
     /// back to concrete lifetimes: `'static`, `ReEarlyParam` or `ReLateParam`.
     ///
-    /// First we map the regions in the the generic parameters `_Return<'1>` to
+    /// First we map the regions in the generic parameters `_Return<'1>` to
     /// their `external_name` giving `_Return<'a>`. This step is a bit involved.
     /// See the [rustc-dev-guide chapter] for more info.
     ///
@@ -133,6 +132,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             let ty =
                 infcx.infer_opaque_definition_from_instantiation(opaque_type_key, concrete_type);
+
+            // Sometimes, when the hidden type is an inference variable, it can happen that
+            // the hidden type becomes the opaque type itself. In this case, this was an opaque
+            // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
+            // writeback.
+            // FIXME(-Znext-solver): This should be unnecessary with the new solver.
+            if let ty::Alias(ty::Opaque, alias_ty) = ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
+            {
+                continue;
+            }
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
             // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
@@ -202,7 +213,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let scc = self.constraint_sccs.scc(vid);
 
                 // Special handling of higher-ranked regions.
-                if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+                if !self.scc_universes[scc].is_root() {
                     match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {
@@ -321,13 +332,13 @@ fn check_opaque_type_well_formed<'tcx>(
         parent_def_id = tcx.local_parent(parent_def_id);
     }
 
-    // FIXME(-Znext-solver): We probably should use `DefiningAnchor::Bind(&[])`
+    // FIXME(-Znext-solver): We probably should use `&[]` instead of
     // and prepopulate this `InferCtxt` with known opaque values, rather than
-    // using the `Bind` anchor here. For now it's fine.
+    // allowing opaque types to be defined and checking them after the fact.
     let infcx = tcx
         .infer_ctxt()
         .with_next_trait_solver(next_trait_solver)
-        .with_opaque_type_inference(DefiningAnchor::bind(tcx, parent_def_id))
+        .with_opaque_type_inference(parent_def_id)
         .build();
     let ocx = ObligationCtxt::new(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);

@@ -214,7 +214,7 @@ pub struct Permissions(fs_imp::FilePermissions);
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
 #[stable(feature = "file_type", since = "1.1.0")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "FileType")]
 pub struct FileType(fs_imp::FileType);
 
@@ -408,6 +408,9 @@ impl File {
     ///
     /// This function will create a file if it does not exist, or return an error if it does. This
     /// way, if the call succeeds, the file returned is guaranteed to be new.
+    /// If a file exists at the target location, creating a new file will fail with [`AlreadyExists`]
+    /// or another error based on the situation. See [`OpenOptions::open`] for a
+    /// non-exhaustive list of likely errors.
     ///
     /// This option is useful because it is atomic. Otherwise between checking whether a file
     /// exists and creating a new one, the file may have been created by another process (a TOCTOU
@@ -415,6 +418,8 @@ impl File {
     ///
     /// This can also be written using
     /// `File::options().read(true).write(true).create_new(true).open(...)`.
+    ///
+    /// [`AlreadyExists`]: crate::io::ErrorKind::AlreadyExists
     ///
     /// # Examples
     ///
@@ -465,14 +470,20 @@ impl File {
         OpenOptions::new()
     }
 
-    /// Attempts to sync all OS-internal metadata to disk.
+    /// Attempts to sync all OS-internal file content and metadata to disk.
     ///
     /// This function will attempt to ensure that all in-memory data reaches the
     /// filesystem before returning.
     ///
     /// This can be used to handle errors that would otherwise only be caught
-    /// when the `File` is closed.  Dropping a file will ignore errors in
-    /// synchronizing this in-memory data.
+    /// when the `File` is closed, as dropping a `File` will ignore all errors.
+    /// Note, however, that `sync_all` is generally more expensive than closing
+    /// a file by dropping it, because the latter is not required to block until
+    /// the data has been written to the filesystem.
+    ///
+    /// If synchronizing the metadata is not required, use [`sync_data`] instead.
+    ///
+    /// [`sync_data`]: File::sync_data
     ///
     /// # Examples
     ///
@@ -489,6 +500,7 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "fsync")]
     pub fn sync_all(&self) -> io::Result<()> {
         self.inner.fsync()
     }
@@ -520,6 +532,7 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "fdatasync")]
     pub fn sync_data(&self) -> io::Result<()> {
         self.inner.datasync()
     }
@@ -972,20 +985,26 @@ impl OpenOptions {
     /// Note that setting `.write(true).append(true)` has the same effect as
     /// setting only `.append(true)`.
     ///
-    /// For most filesystems, the operating system guarantees that all writes are
-    /// atomic: no writes get mangled because another process writes at the same
-    /// time.
+    /// Append mode guarantees that writes will be positioned at the current end of file,
+    /// even when there are other processes or threads appending to the same file. This is
+    /// unlike <code>[seek]\([SeekFrom]::[End]\(0))</code> followed by `write()`, which
+    /// has a race between seeking and writing during which another writer can write, with
+    /// our `write()` overwriting their data.
     ///
-    /// One maybe obvious note when using append-mode: make sure that all data
-    /// that belongs together is written to the file in one operation. This
-    /// can be done by concatenating strings before passing them to [`write()`],
-    /// or using a buffered writer (with a buffer of adequate size),
-    /// and calling [`flush()`] when the message is complete.
+    /// Keep in mind that this does not necessarily guarantee that data appended by
+    /// different processes or threads does not interleave. The amount of data accepted a
+    /// single `write()` call depends on the operating system and file system. A
+    /// successful `write()` is allowed to write only part of the given data, so even if
+    /// you're careful to provide the whole message in a single call to `write()`, there
+    /// is no guarantee that it will be written out in full. If you rely on the filesystem
+    /// accepting the message in a single write, make sure that all data that belongs
+    /// together is written in one operation. This can be done by concatenating strings
+    /// before passing them to [`write()`].
     ///
     /// If a file is opened with both read and append access, beware that after
     /// opening, and after every write, the position for reading may be set at the
     /// end of the file. So, before writing, save the current position (using
-    /// <code>[seek]\([SeekFrom]::[Current]\(0))</code>), and restore it before the next read.
+    /// <code>[Seek]::[stream_position]</code>), and restore it before the next read.
     ///
     /// ## Note
     ///
@@ -994,8 +1013,10 @@ impl OpenOptions {
     ///
     /// [`write()`]: Write::write "io::Write::write"
     /// [`flush()`]: Write::flush "io::Write::flush"
+    /// [stream_position]: Seek::stream_position "io::Seek::stream_position"
     /// [seek]: Seek::seek "io::Seek::seek"
     /// [Current]: SeekFrom::Current "io::SeekFrom::Current"
+    /// [End]: SeekFrom::End "io::SeekFrom::End"
     ///
     /// # Examples
     ///
@@ -1055,6 +1076,9 @@ impl OpenOptions {
     ///
     /// No file is allowed to exist at the target location, also no (dangling) symlink. In this
     /// way, if the call succeeds, the file returned is guaranteed to be new.
+    /// If a file exists at the target location, creating a new file will fail with [`AlreadyExists`]
+    /// or another error based on the situation. See [`OpenOptions::open`] for a
+    /// non-exhaustive list of likely errors.
     ///
     /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
@@ -1068,6 +1092,7 @@ impl OpenOptions {
     ///
     /// [`.create()`]: OpenOptions::create
     /// [`.truncate()`]: OpenOptions::truncate
+    /// [`AlreadyExists`]: io::ErrorKind::AlreadyExists
     ///
     /// # Examples
     ///
@@ -1394,15 +1419,20 @@ impl Metadata {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Metadata")
-            .field("file_type", &self.file_type())
-            .field("is_dir", &self.is_dir())
-            .field("is_file", &self.is_file())
-            .field("permissions", &self.permissions())
-            .field("modified", &self.modified())
-            .field("accessed", &self.accessed())
-            .field("created", &self.created())
-            .finish_non_exhaustive()
+        let mut debug = f.debug_struct("Metadata");
+        debug.field("file_type", &self.file_type());
+        debug.field("permissions", &self.permissions());
+        debug.field("len", &self.len());
+        if let Ok(modified) = self.modified() {
+            debug.field("modified", &modified);
+        }
+        if let Ok(accessed) = self.accessed() {
+            debug.field("accessed", &accessed);
+        }
+        if let Ok(created) = self.created() {
+            debug.field("created", &created);
+        }
+        debug.finish_non_exhaustive()
     }
 }
 
@@ -1665,6 +1695,17 @@ impl FileType {
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool {
         self.0.is_symlink()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.16.0")]
+impl fmt::Debug for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileType")
+            .field("is_file", &self.is_file())
+            .field("is_dir", &self.is_dir())
+            .field("is_symlink", &self.is_symlink())
+            .finish_non_exhaustive()
     }
 }
 
@@ -2226,7 +2267,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `mkdir` function on Unix
-/// and the `CreateDirectory` function on Windows.
+/// and the `CreateDirectoryW` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
@@ -2266,10 +2307,14 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
+/// If this function returns an error, some of the parent components might have
+/// been created already.
+///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `mkdir` function on Unix
-/// and the `CreateDirectory` function on Windows.
+/// This function currently corresponds to multiple calls to the `mkdir`
+/// function on Unix and the `CreateDirectoryW` function on Windows.
+///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior

@@ -133,6 +133,7 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
@@ -231,8 +232,12 @@ declare_clippy_lint! {
     /// used instead.
     ///
     /// ### Why is this bad?
-    /// When applicable, `filter_map()` is more clear since it shows that
-    /// `Option` is used to produce 0 or 1 items.
+    /// `filter_map()` is known to always produce 0 or 1 output items per input item,
+    /// rather than however many the inner iterator type produces.
+    /// Therefore, it maintains the upper bound in `Iterator::size_hint()`,
+    /// and communicates to the reader that the input items are not being expanded into
+    /// multiple output items without their having to notice that the mapping function
+    /// returns an `Option`.
     ///
     /// ### Example
     /// ```no_run
@@ -1141,11 +1146,16 @@ declare_clippy_lint! {
     /// `str` as an argument, e.g., `_.split("x")`.
     ///
     /// ### Why is this bad?
-    /// Performing these methods using a `char` is faster than
-    /// using a `str`.
+    /// While this can make a perf difference on some systems,
+    /// benchmarks have proven inconclusive. But at least using a
+    /// char literal makes it clear that we are looking at a single
+    /// character.
     ///
     /// ### Known problems
-    /// Does not catch multi-byte unicode characters.
+    /// Does not catch multi-byte unicode characters. This is by
+    /// design, on many machines, splitting by a non-ascii char is
+    /// actually slower. Please do your own measurements instead of
+    /// relying solely on the results of this lint.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -1158,7 +1168,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub SINGLE_CHAR_PATTERN,
-    perf,
+    pedantic,
     "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
@@ -2998,13 +3008,22 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Looks for calls to `<Box<dyn Any> as Any>::type_id`.
+    /// Looks for calls to `.type_id()` on a `Box<dyn _>`.
     ///
     /// ### Why is this bad?
-    /// This most certainly does not do what the user expects and is very easy to miss.
-    /// Calling `type_id` on a `Box<dyn Any>` calls `type_id` on the `Box<..>` itself,
-    /// so this will return the `TypeId` of the `Box<dyn Any>` type (not the type id
-    /// of the value referenced by the box!).
+    /// This almost certainly does not do what the user expects and can lead to subtle bugs.
+    /// Calling `.type_id()` on a `Box<dyn Trait>` returns a fixed `TypeId` of the `Box` itself,
+    /// rather than returning the `TypeId` of the underlying type behind the trait object.
+    ///
+    /// For `Box<dyn Any>` specifically (and trait objects that have `Any` as its supertrait),
+    /// this lint will provide a suggestion, which is to dereference the receiver explicitly
+    /// to go from `Box<dyn Any>` to `dyn Any`.
+    /// This makes sure that `.type_id()` resolves to a dynamic call on the trait object
+    /// and not on the box.
+    ///
+    /// If the fixed `TypeId` of the `Box` is the intended behavior, it's better to be explicit about it
+    /// and write `TypeId::of::<Box<dyn Trait>>()`:
+    /// this makes it clear that a fixed `TypeId` is returned and not the `TypeId` of the implementor.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -3024,7 +3043,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.73.0"]
     pub TYPE_ID_ON_BOX,
     suspicious,
-    "calling `.type_id()` on `Box<dyn Any>`"
+    "calling `.type_id()` on a boxed trait object"
 }
 
 declare_clippy_lint! {
@@ -3925,7 +3944,6 @@ declare_clippy_lint! {
     /// This lint cannot detect if the split is intentionally restricted to a single type of newline (`"\n"` or
     /// `"\r\n"`), for example during the parsing of a specific file format in which precisely one newline type is
     /// valid.
-    /// ```
     #[clippy::version = "1.77.0"]
     pub STR_SPLIT_AT_NEWLINE,
     pedantic,
@@ -3976,7 +3994,7 @@ declare_clippy_lint! {
     /// let x: Result<u32, ()> = Ok(0);
     /// let y = x.unwrap_or_else(|err| handle_error(err));
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.78.0"]
     pub UNNECESSARY_RESULT_MAP_OR_ELSE,
     suspicious,
     "making no use of the \"map closure\" when calling `.map_or_else(|err| handle_error(err), |n| n)`"
@@ -4010,7 +4028,7 @@ declare_clippy_lint! {
     /// needs_cstr(c"Hello");
     /// unsafe { libc::puts(c"World".as_ptr()) }
     /// ```
-    #[clippy::version = "1.76.0"]
+    #[clippy::version = "1.78.0"]
     pub MANUAL_C_STR_LITERALS,
     pedantic,
     r#"creating a `CStr` through functions when `c""` literals can be used"#
@@ -4070,12 +4088,14 @@ declare_clippy_lint! {
     suspicious,
     "is_empty() called on strings known at compile time"
 }
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
     allowed_dotfiles: FxHashSet<String>,
+    format_args: FormatArgsStorage,
 }
 
 impl Methods {
@@ -4086,6 +4106,7 @@ impl Methods {
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
         mut allowed_dotfiles: FxHashSet<String>,
+        format_args: FormatArgsStorage,
     ) -> Self {
         allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
 
@@ -4095,6 +4116,7 @@ impl Methods {
             allow_expect_in_tests,
             allow_unwrap_in_tests,
             allowed_dotfiles,
+            format_args,
         }
     }
 }
@@ -4236,8 +4258,8 @@ impl_lint_pass!(Methods => [
 
 /// Extracts a method call name, args, and `Span` of the method name.
 pub fn method_call<'tcx>(
-    recv: &'tcx hir::Expr<'tcx>,
-) -> Option<(&'tcx str, &'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], Span, Span)> {
+    recv: &'tcx Expr<'tcx>,
+) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
     if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
             let name = path.ident.name.as_str();
@@ -4248,7 +4270,7 @@ pub fn method_call<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -4256,15 +4278,23 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         self.check_methods(cx, expr);
 
         match expr.kind {
-            hir::ExprKind::Call(func, args) => {
+            ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
             },
-            hir::ExprKind::MethodCall(method_call, receiver, args, _) => {
+            ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
                 or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
-                expect_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
+                expect_fun_call::check(
+                    cx,
+                    &self.format_args,
+                    expr,
+                    method_span,
+                    method_call.ident.as_str(),
+                    receiver,
+                    args,
+                );
                 clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
@@ -4273,7 +4303,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 single_char_pattern::check(cx, expr, method_call.ident.name, receiver, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, &self.msrv);
             },
-            hir::ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
+            ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
                     expr,
                     chain: lhs,
@@ -4320,12 +4350,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             cx,
                             SHOULD_IMPLEMENT_TRAIT,
                             impl_item.span,
-                            &format!(
+                            format!(
                                 "method `{}` can be confused for the standard trait method `{}::{}`",
                                 method_config.method_name, method_config.trait_name, method_config.method_name
                             ),
                             None,
-                            &format!(
+                            format!(
                                 "consider implementing the trait `{}` or choosing a less ambiguous method name",
                                 method_config.trait_name
                             ),
@@ -4995,9 +5025,9 @@ fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>,
 /// Used for `lint_binary_expr_with_method_call`.
 #[derive(Copy, Clone)]
 struct BinaryExprInfo<'a> {
-    expr: &'a hir::Expr<'a>,
-    chain: &'a hir::Expr<'a>,
-    other: &'a hir::Expr<'a>,
+    expr: &'a Expr<'a>,
+    chain: &'a Expr<'a>,
+    other: &'a Expr<'a>,
     eq: bool,
 }
 
@@ -5021,7 +5051,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
 }
 
 const FN_HEADER: hir::FnHeader = hir::FnHeader {
-    unsafety: hir::Unsafety::Normal,
+    safety: hir::Safety::Safe,
     constness: hir::Constness::NotConst,
     asyncness: hir::IsAsync::NotAsync,
     abi: rustc_target::spec::abi::Abi::Rust,
@@ -5197,7 +5227,5 @@ impl OutType {
 }
 
 fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
-    expected.constness == actual.constness
-        && expected.unsafety == actual.unsafety
-        && expected.asyncness == actual.asyncness
+    expected.constness == actual.constness && expected.safety == actual.safety && expected.asyncness == actual.asyncness
 }

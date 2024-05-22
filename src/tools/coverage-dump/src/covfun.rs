@@ -70,7 +70,8 @@ pub(crate) fn dump_covfun_mappings(
                     }
                     // If the mapping is a branch region, print both of its arms
                     // in resolved form (even if they aren't expressions).
-                    MappingKind::Branch { r#true, r#false } => {
+                    MappingKind::Branch { r#true, r#false }
+                    | MappingKind::MCDCBranch { r#true, r#false, .. } => {
                         println!("    true  = {}", expression_resolver.format_term(r#true));
                         println!("    false = {}", expression_resolver.format_term(r#false));
                     }
@@ -164,6 +165,26 @@ impl<'a> Parser<'a> {
                     let r#false = self.read_simple_term()?;
                     Ok(MappingKind::Branch { r#true, r#false })
                 }
+                5 => {
+                    let bitmap_idx = self.read_uleb128_u32()?;
+                    let conditions_num = self.read_uleb128_u32()?;
+                    Ok(MappingKind::MCDCDecision { bitmap_idx, conditions_num })
+                }
+                6 => {
+                    let r#true = self.read_simple_term()?;
+                    let r#false = self.read_simple_term()?;
+                    let condition_id = self.read_uleb128_u32()?;
+                    let true_next_id = self.read_uleb128_u32()?;
+                    let false_next_id = self.read_uleb128_u32()?;
+                    Ok(MappingKind::MCDCBranch {
+                        r#true,
+                        r#false,
+                        condition_id,
+                        true_next_id,
+                        false_next_id,
+                    })
+                }
+
                 _ => Err(anyhow!("unknown mapping kind: {raw_mapping_kind:#x}")),
             }
         }
@@ -224,7 +245,28 @@ enum MappingKind {
     // Using raw identifiers here makes the dump output a little bit nicer
     // (via the derived Debug), at the expense of making this tool's source
     // code a little bit uglier.
-    Branch { r#true: CovTerm, r#false: CovTerm },
+    Branch {
+        r#true: CovTerm,
+        r#false: CovTerm,
+    },
+    MCDCBranch {
+        r#true: CovTerm,
+        r#false: CovTerm,
+        // These attributes are printed in Debug but not used directly.
+        #[allow(dead_code)]
+        condition_id: u32,
+        #[allow(dead_code)]
+        true_next_id: u32,
+        #[allow(dead_code)]
+        false_next_id: u32,
+    },
+    MCDCDecision {
+        // These attributes are printed in Debug but not used directly.
+        #[allow(dead_code)]
+        bitmap_idx: u32,
+        #[allow(dead_code)]
+        conditions_num: u32,
+    },
 }
 
 struct MappingRegion {

@@ -6,6 +6,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
@@ -13,6 +14,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use tracing::{debug, instrument};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
@@ -38,6 +41,11 @@ pub struct DepGraph<D: Deps> {
 rustc_index::newtype_index! {
     pub struct DepNodeIndex {}
 }
+
+// We store a large collection of these in `prev_index_to_index` during
+// non-full incremental builds, and want to ensure that the element size
+// doesn't inadvertently increase.
+rustc_data_structures::static_assert_size!(Option<DepNodeIndex>, 4);
 
 impl DepNodeIndex {
     const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
@@ -81,7 +89,7 @@ pub(crate) struct DepGraphData<D: Deps> {
 
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: SerializedDepGraph,
+    previous: Arc<SerializedDepGraph>,
 
     colors: DepNodeColorMap,
 
@@ -113,7 +121,7 @@ where
 impl<D: Deps> DepGraph<D> {
     pub fn new(
         profiler: &SelfProfilerRef,
-        prev_graph: SerializedDepGraph,
+        prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
         encoder: FileEncoder,
         record_graph: bool,
@@ -127,6 +135,7 @@ impl<D: Deps> DepGraph<D> {
             encoder,
             record_graph,
             record_stats,
+            prev_graph.clone(),
         );
 
         let colors = DepNodeColorMap::new(prev_graph_node_count);
@@ -457,7 +466,8 @@ impl<D: Deps> DepGraph<D> {
                     }
                     TaskDepsRef::Ignore => return,
                     TaskDepsRef::Forbid => {
-                        panic!("Illegal read of: {dep_node_index:?}")
+                        // Reading is forbidden in this context. ICE with a useful error message.
+                        panic_on_forbidden_read(data, dep_node_index)
                     }
                 };
                 let task_deps = &mut *task_deps;
@@ -1084,6 +1094,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         encoder: FileEncoder,
         record_graph: bool,
         record_stats: bool,
+        previous: Arc<SerializedDepGraph>,
     ) -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -1102,11 +1113,6 @@ impl<D: Deps> CurrentDepGraph<D> {
             Err(_) => None,
         };
 
-        // We store a large collection of these in `prev_index_to_index` during
-        // non-full incremental builds, and want to ensure that the element size
-        // doesn't inadvertently increase.
-        static_assert_size!(Option<DepNodeIndex>, 4);
-
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
         CurrentDepGraph {
@@ -1116,6 +1122,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                 record_graph,
                 record_stats,
                 profiler,
+                previous,
             ),
             new_node_to_index: Sharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(
@@ -1236,16 +1243,14 @@ impl<D: Deps> CurrentDepGraph<D> {
         match prev_index_to_index[prev_index] {
             Some(dep_node_index) => dep_node_index,
             None => {
-                let key = prev_graph.index_to_node(prev_index);
-                let edges = prev_graph
-                    .edge_targets_from(prev_index)
-                    .map(|i| prev_index_to_index[i].unwrap())
-                    .collect();
-                let fingerprint = prev_graph.fingerprint_by_index(prev_index);
-                let dep_node_index = self.encoder.send(key, fingerprint, edges);
+                let dep_node_index = self.encoder.send_promoted(prev_index, &*prev_index_to_index);
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key, fingerprint);
+                self.record_edge(
+                    dep_node_index,
+                    prev_graph.index_to_node(prev_index),
+                    prev_graph.fingerprint_by_index(prev_index),
+                );
                 dep_node_index
             }
         }
@@ -1363,4 +1368,46 @@ pub(crate) fn print_markframe_trace<D: Deps>(graph: &DepGraph<D>, frame: Option<
     }
 
     eprintln!("end of try_mark_green dep node stack");
+}
+
+#[cold]
+#[inline(never)]
+fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepNodeIndex) -> ! {
+    // We have to do an expensive reverse-lookup of the DepNode that
+    // corresponds to `dep_node_index`, but that's OK since we are about
+    // to ICE anyway.
+    let mut dep_node = None;
+
+    // First try to find the dep node among those that already existed in the
+    // previous session
+    for (prev_index, index) in data.current.prev_index_to_index.lock().iter_enumerated() {
+        if index == &Some(dep_node_index) {
+            dep_node = Some(data.previous.index_to_node(prev_index));
+            break;
+        }
+    }
+
+    if dep_node.is_none() {
+        // Try to find it among the new nodes
+        for shard in data.current.new_node_to_index.lock_shards() {
+            if let Some((node, _)) = shard.iter().find(|(_, index)| **index == dep_node_index) {
+                dep_node = Some(*node);
+                break;
+            }
+        }
+    }
+
+    let dep_node = dep_node.map_or_else(
+        || format!("with index {:?}", dep_node_index),
+        |dep_node| format!("`{:?}`", dep_node),
+    );
+
+    panic!(
+        "Error: trying to record dependency on DepNode {dep_node} in a \
+         context that does not allow it (e.g. during query deserialization). \
+         The most common case of recording a dependency on a DepNode `foo` is \
+         when the correspondng query `foo` is invoked. Invoking queries is not \
+         allowed as part of loading something from the incremental on-disk cache. \
+         See <https://github.com/rust-lang/rust/pull/91919>."
+    )
 }

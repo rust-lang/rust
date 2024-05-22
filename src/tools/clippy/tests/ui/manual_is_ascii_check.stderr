@@ -133,5 +133,45 @@ error: manual check for common ascii range
 LL |     const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_hexdigit()`
 
-error: aborting due to 22 previous errors
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:62:5
+   |
+LL |     ('0'..='9').contains(&&cool_letter);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cool_letter.is_ascii_digit()`
+
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:63:5
+   |
+LL |     ('a'..='z').contains(*cool_letter);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cool_letter.is_ascii_lowercase()`
+
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:81:20
+   |
+LL |     take_while(|c| ('A'..='Z').contains(&c));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     take_while(|c: char| c.is_ascii_uppercase());
+   |                 ~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~
+
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:82:20
+   |
+LL |     take_while(|c| (b'A'..=b'Z').contains(&c));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     take_while(|c: u8| c.is_ascii_uppercase());
+   |                 ~~~~~  ~~~~~~~~~~~~~~~~~~~~~~
+
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:83:26
+   |
+LL |     take_while(|c: char| ('A'..='Z').contains(&c));
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `c.is_ascii_uppercase()`
+
+error: aborting due to 27 previous errors
 

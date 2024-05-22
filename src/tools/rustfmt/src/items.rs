@@ -247,7 +247,7 @@ fn allow_single_line_let_else_block(result: &str, block: &ast::Block) -> bool {
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Item<'a> {
-    unsafety: ast::Unsafe,
+    safety: ast::Safety,
     abi: Cow<'static, str>,
     vis: Option<&'a ast::Visibility>,
     body: Vec<BodyElement<'a>>,
@@ -257,7 +257,7 @@ struct Item<'a> {
 impl<'a> Item<'a> {
     fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
         Item {
-            unsafety: fm.unsafety,
+            safety: fm.safety,
             abi: format_extern(
                 ast::Extern::from_abi(fm.abi, DUMMY_SP),
                 config.force_explicit_abi(),
@@ -290,7 +290,7 @@ pub(crate) struct FnSig<'a> {
     coroutine_kind: Cow<'a, Option<ast::CoroutineKind>>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
-    unsafety: ast::Unsafe,
+    safety: ast::Safety,
     visibility: &'a ast::Visibility,
 }
 
@@ -301,7 +301,7 @@ impl<'a> FnSig<'a> {
         visibility: &'a ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
-            unsafety: method_sig.header.unsafety,
+            safety: method_sig.header.safety,
             coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
             constness: method_sig.header.constness,
             defaultness: ast::Defaultness::Final,
@@ -330,7 +330,7 @@ impl<'a> FnSig<'a> {
                 constness: fn_sig.header.constness,
                 coroutine_kind: Cow::Borrowed(&fn_sig.header.coroutine_kind),
                 defaultness,
-                unsafety: fn_sig.header.unsafety,
+                safety: fn_sig.header.safety,
                 visibility: vis,
             },
             _ => unreachable!(),
@@ -345,7 +345,7 @@ impl<'a> FnSig<'a> {
         result.push_str(format_constness(self.constness));
         self.coroutine_kind
             .map(|coroutine_kind| result.push_str(format_coro(&coroutine_kind)));
-        result.push_str(format_unsafety(self.unsafety));
+        result.push_str(format_safety(self.safety));
         result.push_str(&format_extern(
             self.ext,
             context.config.force_explicit_abi(),
@@ -356,7 +356,7 @@ impl<'a> FnSig<'a> {
 
 impl<'a> FmtVisitor<'a> {
     fn format_item(&mut self, item: &Item<'_>) {
-        self.buffer.push_str(format_unsafety(item.unsafety));
+        self.buffer.push_str(format_safety(item.safety));
         self.buffer.push_str(&item.abi);
 
         let snippet = self.snippet(item.span);
@@ -739,8 +739,8 @@ impl<'a> FmtVisitor<'a> {
                 (_, Const(..)) => Ordering::Greater,
                 (MacCall(..), _) => Ordering::Less,
                 (_, MacCall(..)) => Ordering::Greater,
-                (Delegation(..), _) => Ordering::Less,
-                (_, Delegation(..)) => Ordering::Greater,
+                (Delegation(..), _) | (DelegationMac(..), _) => Ordering::Less,
+                (_, Delegation(..)) | (_, DelegationMac(..)) => Ordering::Greater,
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {
@@ -924,7 +924,7 @@ fn format_impl_ref_and_type(
     offset: Indent,
 ) -> Option<String> {
     let ast::Impl {
-        unsafety,
+        safety,
         polarity,
         defaultness,
         constness,
@@ -937,7 +937,7 @@ fn format_impl_ref_and_type(
 
     result.push_str(&format_visibility(context, &item.vis));
     result.push_str(format_defaultness(defaultness));
-    result.push_str(format_unsafety(unsafety));
+    result.push_str(format_safety(safety));
 
     let shape = if context.config.version() == Version::Two {
         Shape::indented(offset + last_line_width(&result), context.config)
@@ -1137,7 +1137,7 @@ pub(crate) fn format_trait(
     };
     let ast::Trait {
         is_auto,
-        unsafety,
+        safety,
         ref generics,
         ref bounds,
         ref items,
@@ -1147,7 +1147,7 @@ pub(crate) fn format_trait(
     let header = format!(
         "{}{}{}trait ",
         format_visibility(context, &item.vis),
-        format_unsafety(unsafety),
+        format_safety(safety),
         format_auto(is_auto),
     );
     result.push_str(&header);
@@ -3325,11 +3325,11 @@ impl Rewrite for ast::ForeignItem {
                     .map(|(s, _, _)| format!("{};", s))
                 }
             }
-            ast::ForeignItemKind::Static(ref ty, mutability, _) => {
+            ast::ForeignItemKind::Static(ref static_foreign_item) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
-                let mut_str = format_mutability(mutability);
+                let mut_str = format_mutability(static_foreign_item.mutability);
                 let prefix = format!(
                     "{}static {}{}:",
                     vis,
@@ -3340,7 +3340,7 @@ impl Rewrite for ast::ForeignItem {
                 rewrite_assign_rhs(
                     context,
                     prefix,
-                    &**ty,
+                    &static_foreign_item.ty,
                     &RhsAssignKind::Ty,
                     shape.sub_width(1)?,
                 )

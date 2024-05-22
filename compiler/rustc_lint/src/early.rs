@@ -14,7 +14,7 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use crate::context::{EarlyContext, LintContext, LintStore};
+use crate::context::{EarlyContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, walk_list, Visitor};
@@ -44,14 +44,8 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
-            let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.span_lint_with_diagnostics(
-                lint_id.lint,
-                Some(span),
-                msg,
-                |_| {},
-                diagnostic,
-            );
+            let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
+            self.context.span_lint_with_diagnostics(lint_id.lint, span, diagnostic);
         }
     }
 
@@ -99,7 +93,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_foreign_item(&mut self, it: &'a ast::ForeignItem) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
-            ast_visit::walk_foreign_item(cx, it);
+            ast_visit::walk_item(cx, it);
         })
     }
 

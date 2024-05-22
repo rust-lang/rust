@@ -222,3 +222,17 @@ fn supported_types() {
     //~^ ERROR: collection is never read
     x.push_front(1);
 }
+
+fn issue11783() {
+    struct Sender;
+    impl Sender {
+        fn send(&self, msg: String) -> Result<(), ()> {
+            // pretend to send message
+            println!("{msg}");
+            Ok(())
+        }
+    }
+
+    let mut users: Vec<Sender> = vec![];
+    users.retain(|user| user.send("hello".to_string()).is_ok());
+}

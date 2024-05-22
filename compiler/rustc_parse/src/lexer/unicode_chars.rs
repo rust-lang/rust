@@ -9,7 +9,7 @@ use crate::{
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 #[rustfmt::skip] // for line breaks
-pub(crate) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
+pub(super) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
     (' ', "Line Separator", " "),
     (' ', "Paragraph Separator", " "),
     (' ', "Ogham Space mark", " "),

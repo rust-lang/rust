@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_PTR_TO_REF,
                 e.span,
-                &format!("transmute from a pointer type (`{from_ty}`) to a reference type (`{to_ty}`)"),
+                format!("transmute from a pointer type (`{from_ty}`) to a reference type (`{to_ty}`)"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     let (deref, cast) = if *mutbl == Mutability::Mut {

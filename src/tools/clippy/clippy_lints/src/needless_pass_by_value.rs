@@ -9,11 +9,10 @@ use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingAnnotation, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
-    QPath, TyKind,
+    BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind, QPath,
+    TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -134,8 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         // function body.
         let MovedVariablesCtxt { moved_vars } = {
             let mut ctx = MovedVariablesCtxt::default();
-            let infcx = cx.tcx.infer_ctxt().build();
-            euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
+            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
+                .consume_body(body)
+                .into_ok();
             ctx
         };
 
@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait
-                && let PatKind::Binding(BindingAnnotation(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
+                && let PatKind::Binding(BindingMode(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion

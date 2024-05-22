@@ -1,3 +1,4 @@
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
@@ -115,7 +116,7 @@ fn might_permit_raw_init_lax<'tcx>(
 
     // Special magic check for references and boxes (i.e., special pointer types).
     if let Some(pointee) = this.ty.builtin_deref(false) {
-        let pointee = cx.layout_of(pointee.ty)?;
+        let pointee = cx.layout_of(pointee)?;
         // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
         if pointee.align.abi.bytes() > 1 {
             // 0x01-filling is not aligned.

@@ -100,7 +100,6 @@ fn test_const_deallocate_at_runtime() {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[test]
 fn test_three_way_compare_in_const_contexts() {
     use core::cmp::Ordering::{self, *};

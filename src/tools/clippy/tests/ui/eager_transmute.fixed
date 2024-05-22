@@ -1,8 +1,8 @@
 #![feature(rustc_attrs)]
 #![warn(clippy::eager_transmute)]
-#![allow(clippy::transmute_int_to_non_zero)]
+#![allow(clippy::transmute_int_to_non_zero, clippy::missing_transmute_annotations)]
 
-use std::num::NonZeroU8;
+use std::num::NonZero;
 
 #[repr(u8)]
 enum Opcode {
@@ -85,21 +85,21 @@ macro_rules! impls {
 }
 impls!(NonMaxU8, NonZeroNonMaxU8);
 
-fn niche_tests(v1: u8, v2: NonZeroU8, v3: NonZeroNonMaxU8) {
-    // u8 -> NonZeroU8, do lint
-    let _: Option<NonZeroU8> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
+fn niche_tests(v1: u8, v2: NonZero<u8>, v3: NonZeroNonMaxU8) {
+    // u8 -> NonZero<u8>, do lint
+    let _: Option<NonZero<u8>> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
 
-    // NonZeroU8 -> u8, don't lint, target type has no niche and therefore a higher validity range
-    let _: Option<u8> = (v2 > NonZeroU8::new(1).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+    // NonZero<u8> -> u8, don't lint, target type has no niche and therefore a higher validity range
+    let _: Option<u8> = (v2 > NonZero::new(1u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
 
-    // NonZeroU8 -> NonMaxU8, do lint, different niche
-    let _: Option<NonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+    // NonZero<u8> -> NonMaxU8, do lint, different niche
+    let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
 
     // NonZeroNonMaxU8 -> NonMaxU8, don't lint, target type has more validity
     let _: Option<NonMaxU8> = (v3 < 255).then_some(unsafe { std::mem::transmute(v2) });
 
-    // NonZeroU8 -> NonZeroNonMaxU8, do lint, target type has less validity
-    let _: Option<NonZeroNonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+    // NonZero<u8> -> NonZeroNonMaxU8, do lint, target type has less validity
+    let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
 }
 
 fn main() {}

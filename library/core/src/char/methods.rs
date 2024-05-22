@@ -449,10 +449,10 @@ impl char {
             '\"' if args.escape_double_quote => EscapeDebug::backslash(ascii::Char::QuotationMark),
             '\'' if args.escape_single_quote => EscapeDebug::backslash(ascii::Char::Apostrophe),
             _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
-                EscapeDebug::from_unicode(self.escape_unicode())
+                EscapeDebug::unicode(self)
             }
             _ if is_printable(self) => EscapeDebug::printable(self),
-            _ => EscapeDebug::from_unicode(self.escape_unicode()),
+            _ => EscapeDebug::unicode(self),
         }
     }
 
@@ -555,9 +555,9 @@ impl char {
             '\t' => EscapeDefault::backslash(ascii::Char::SmallT),
             '\r' => EscapeDefault::backslash(ascii::Char::SmallR),
             '\n' => EscapeDefault::backslash(ascii::Char::SmallN),
-            '\\' | '\'' | '"' => EscapeDefault::backslash(self.as_ascii().unwrap()),
+            '\\' | '\'' | '\"' => EscapeDefault::backslash(self.as_ascii().unwrap()),
             '\x20'..='\x7e' => EscapeDefault::printable(self.as_ascii().unwrap()),
-            _ => EscapeDefault::from_unicode(self.escape_unicode()),
+            _ => EscapeDefault::unicode(self),
         }
     }
 
@@ -927,7 +927,7 @@ impl char {
     #[must_use]
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
-        self > '\x7f' && unicode::Grapheme_Extend(self)
+        unicode::Grapheme_Extend(self)
     }
 
     /// Returns `true` if this `char` has one of the general categories for numbers.

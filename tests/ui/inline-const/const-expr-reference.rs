@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(inline_const)]
-
 const fn bar() -> i32 {
     const {
         2 + 3

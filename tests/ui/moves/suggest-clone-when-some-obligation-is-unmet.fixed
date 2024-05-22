@@ -18,7 +18,7 @@ pub fn hashmap_copy<T, U>(
     map: &HashMap<T, U, Hash128_1>,
 ) where T: Hash + Clone, U: Clone
 {
-    let mut copy: Vec<U> = <HashMap<T, U, Hash128_1> as Clone>::clone(&map.clone()).into_values().collect(); //~ ERROR
+    let mut copy: Vec<U> = <HashMap<T, U, Hash128_1> as Clone>::clone(&map).into_values().collect(); //~ ERROR
 }
 
 pub fn make_map() -> HashMap<String, i64, Hash128_1>

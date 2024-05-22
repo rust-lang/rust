@@ -11,17 +11,6 @@ use crate::os::linux::process::PidFd;
 #[cfg(target_os = "linux")]
 use crate::os::unix::io::AsRawFd;
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "watchos",
-    target_os = "tvos",
-    target_os = "freebsd",
-    all(target_os = "linux", target_env = "gnu"),
-    all(target_os = "linux", target_env = "musl"),
-    target_os = "nto",
-))]
-use crate::sys::weak::weak;
-
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
 
@@ -364,11 +353,11 @@ impl Command {
             // Inherit the signal mask from the parent rather than resetting it (i.e. do not call
             // pthread_sigmask).
 
-            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
-            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If -Zon-broken-pipe is used, don't reset SIGPIPE to SIG_DFL.
+            // If -Zon-broken-pipe is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
-            // #[unix_sigpipe] is an opportunity to change the default here.
-            if !crate::sys::pal::unix_sigpipe_attr_specified() {
+            // -Zon-broken-pipe is an opportunity to change the default here.
+            if !crate::sys::pal::on_broken_pipe_flag_used() {
                 #[cfg(target_os = "android")] // see issue #88585
                 {
                     let mut action: libc::sigaction = mem::zeroed();
@@ -431,13 +420,11 @@ impl Command {
     }
 
     #[cfg(not(any(
-        target_os = "macos",
-        target_os = "tvos",
-        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
+        target_vendor = "apple",
     )))]
     fn posix_spawn(
         &mut self,
@@ -450,14 +437,11 @@ impl Command {
     // Only support platforms for which posix_spawn() can return ENOENT
     // directly.
     #[cfg(any(
-        target_os = "macos",
-        // FIXME: `target_os = "ios"`?
-        target_os = "tvos",
-        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
+        target_vendor = "apple",
     ))]
     fn posix_spawn(
         &mut self,
@@ -465,7 +449,8 @@ impl Command {
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
-        use crate::sys::{self, cvt_nz, unix_sigpipe_attr_specified};
+        use crate::sys::weak::weak;
+        use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -540,7 +525,7 @@ impl Command {
         }
         let addchdir = match self.get_cwd() {
             Some(cwd) => {
-                if cfg!(any(target_os = "macos", target_os = "tvos", target_os = "watchos")) {
+                if cfg!(target_vendor = "apple") {
                     // There is a bug in macOS where a relative executable
                     // path like "../myprogram" will cause `posix_spawn` to
                     // successfully launch the program, but erroneously return
@@ -627,11 +612,11 @@ impl Command {
             // Inherit the signal mask from this process rather than resetting it (i.e. do not call
             // posix_spawnattr_setsigmask).
 
-            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
-            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If -Zon-broken-pipe is used, don't reset SIGPIPE to SIG_DFL.
+            // If -Zon-broken-pipe is not used, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
-            // #[unix_sigpipe] is an opportunity to change the default here.
-            if !unix_sigpipe_attr_specified() {
+            // -Zon-broken-pipe is an opportunity to change the default here.
+            if !on_broken_pipe_flag_used() {
                 let mut default_set = MaybeUninit::<libc::sigset_t>::uninit();
                 cvt(sigemptyset(default_set.as_mut_ptr()))?;
                 cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGPIPE))?;
@@ -1050,24 +1035,20 @@ fn signal_string(signal: i32) -> &'static str {
         #[cfg(any(target_os = "linux", target_os = "nto"))]
         libc::SIGPWR => " (SIGPWR)",
         #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "dragonfly",
             target_os = "nto",
+            target_vendor = "apple",
         ))]
         libc::SIGEMT => " (SIGEMT)",
         #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
+            target_vendor = "apple",
         ))]
         libc::SIGINFO => " (SIGINFO)",
         #[cfg(target_os = "hurd")]

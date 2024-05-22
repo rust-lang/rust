@@ -1,3 +1,4 @@
+use rustc_middle::bug;
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext,
 };

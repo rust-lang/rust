@@ -71,73 +71,75 @@ LL |         const async unsafe extern "C" fn fi5() {}
    |         `const` because of this
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:46:18
+  --> $DIR/fn-header-semantic-fail.rs:46:9
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
 LL |         async fn fe1();
-   |                  ^^^
-   |
-help: remove the qualifiers
-   |
-LL |         fn fe1();
-   |         ~~
+   |         ^^^^^ help: remove this qualifier
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:47:19
+  --> $DIR/fn-header-semantic-fail.rs:47:9
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
 LL |         async fn fe1();
 LL |         unsafe fn fe2();
-   |                   ^^^
-   |
-help: remove the qualifiers
-   |
-LL |         fn fe2();
-   |         ~~
+   |         ^^^^^^ help: remove this qualifier
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:48:18
+  --> $DIR/fn-header-semantic-fail.rs:48:9
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
 ...
 LL |         const fn fe3();
-   |                  ^^^
-   |
-help: remove the qualifiers
-   |
-LL |         fn fe3();
-   |         ~~
+   |         ^^^^^ help: remove this qualifier
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:49:23
+  --> $DIR/fn-header-semantic-fail.rs:49:9
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
 ...
 LL |         extern "C" fn fe4();
-   |                       ^^^
-   |
-help: remove the qualifiers
-   |
-LL |         fn fe4();
-   |         ~~
+   |         ^^^^^^^^^^ help: remove this qualifier
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:50:42
+  --> $DIR/fn-header-semantic-fail.rs:50:21
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
 ...
 LL |         const async unsafe extern "C" fn fe5();
-   |                                          ^^^
+   |                     ^^^^^^ help: remove this qualifier
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:50:15
    |
-help: remove the qualifiers
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |               ^^^^^ help: remove this qualifier
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:50:9
    |
-LL |         fn fe5();
-   |         ~~
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |         ^^^^^ help: remove this qualifier
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:50:28
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |                            ^^^^^^^^^^ help: remove this qualifier
 
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:50:9
@@ -148,6 +150,6 @@ LL |         const async unsafe extern "C" fn fe5();
    |         |     `async` because of this
    |         `const` because of this
 
-error: aborting due to 14 previous errors
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0379`.

@@ -84,6 +84,10 @@ LL |     let _: E = m::f;
    |                   ~
 help: consider importing one of these items instead
    |
+LL + use std::f128::consts::E;
+   |
+LL + use std::f16::consts::E;
+   |
 LL + use std::f32::consts::E;
    |
 LL + use std::f64::consts::E;
@@ -120,6 +124,10 @@ help: alternatively, the following enum variant is available
 LL |     let _: E = (E::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~
 help: consider importing one of these items instead
+   |
+LL + use std::f128::consts::E;
+   |
+LL + use std::f16::consts::E;
    |
 LL + use std::f32::consts::E;
    |

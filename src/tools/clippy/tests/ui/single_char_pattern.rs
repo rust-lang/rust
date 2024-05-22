@@ -1,5 +1,5 @@
 #![allow(clippy::needless_raw_strings, clippy::needless_raw_string_hashes, unused_must_use)]
-
+#![warn(clippy::single_char_pattern)]
 use std::collections::HashSet;
 
 fn main() {
@@ -34,8 +34,6 @@ fn main() {
     x.rmatch_indices("x");
     x.trim_start_matches("x");
     x.trim_end_matches("x");
-    x.strip_prefix("x");
-    x.strip_suffix("x");
     x.replace("x", "y");
     x.replacen("x", "y", 3);
     // Make sure we escape characters correctly.
@@ -64,4 +62,8 @@ fn main() {
     // Must escape backslash in raw strings when converting to char #8060
     x.split(r#"\"#);
     x.split(r"\");
+
+    // should not warn, the char versions are actually slower in some cases
+    x.strip_prefix("x");
+    x.strip_suffix("x");
 }

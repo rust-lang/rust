@@ -7,11 +7,13 @@ mod returning;
 use std::borrow::Cow;
 
 use cranelift_codegen::ir::SigRef;
+use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_monomorphize::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
@@ -410,7 +412,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Err(instance) => Some(instance),
                 }
             }
-            InstanceDef::DropGlue(_, None) => {
+            InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -595,7 +597,9 @@ pub(crate) fn codegen_drop<'tcx>(
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
 
-    if let ty::InstanceDef::DropGlue(_, None) = drop_instance.def {
+    if let ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) =
+        drop_instance.def
+    {
         // we don't actually need to drop anything
     } else {
         match ty.kind() {

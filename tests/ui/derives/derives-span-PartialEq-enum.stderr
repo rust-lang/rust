@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `Error`
+error[E0369]: binary operation `==` cannot be applied to type `&Error`
   --> $DIR/derives-span-PartialEq-enum.rs:9:6
    |
 LL | #[derive(PartialEq)]

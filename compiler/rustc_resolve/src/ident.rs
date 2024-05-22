@@ -11,6 +11,7 @@ use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContex
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
@@ -523,18 +524,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         match binding {
                             Ok(binding) => {
                                 if let Some(lint_id) = derive_fallback_lint_id {
-                                    this.lint_buffer.buffer_lint_with_diagnostic(
+                                    this.lint_buffer.buffer_lint(
                                         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                         lint_id,
                                         orig_ident.span,
-                                        format!(
-                                            "cannot find {} `{}` in this scope",
-                                            ns.descr(),
-                                            ident
-                                        ),
-                                        BuiltinLintDiag::ProcMacroDeriveResolutionFallback(
-                                            orig_ident.span,
-                                        ),
+                                        BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
+                                            span: orig_ident.span,
+                                            ns,
+                                            ident,
+                                        },
                                     );
                                 }
                                 let misc_flags = if module == this.graph_root {
@@ -605,6 +603,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 && !this.tcx.features().f16
                                 && !ident.span.allows_unstable(sym::f16)
                                 && finalize.is_some()
+                                && innermost_result.is_none()
                             {
                                 feature_err(
                                     this.tcx.sess,
@@ -618,6 +617,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 && !this.tcx.features().f128
                                 && !ident.span.allows_unstable(sym::f128)
                                 && finalize.is_some()
+                                && innermost_result.is_none()
                             {
                                 feature_err(
                                     this.tcx.sess,

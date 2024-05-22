@@ -86,7 +86,7 @@ fn cycle(
 fn main() {
     // Has only one invalid discr. value.
     let gen_u8_tiny_niche = || {
-        || {
+        #[coroutine] || {
             // 3 reserved variants
 
             yield250!(); // 253 variants
@@ -98,7 +98,7 @@ fn main() {
 
     // Uses all values in the u8 discriminant.
     let gen_u8_full = || {
-        || {
+        #[coroutine] || {
             // 3 reserved variants
 
             yield250!(); // 253 variants
@@ -111,7 +111,7 @@ fn main() {
 
     // Barely needs a u16 discriminant.
     let gen_u16 = || {
-        || {
+        #[coroutine] || {
             // 3 reserved variants
 
             yield250!(); // 253 variants

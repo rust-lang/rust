@@ -3,7 +3,7 @@ use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
-#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq)]
 #[derive(HashStable)]
 /// This datastructure is used to represent the value of constants used in the type system.
 ///

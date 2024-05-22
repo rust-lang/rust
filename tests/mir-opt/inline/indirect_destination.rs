@@ -1,6 +1,6 @@
 // Test for inlining with an indirect destination place.
 //
-//@ unit-test: Inline
+//@ test-mir-pass: Inline
 //@ edition: 2021
 //@ needs-unwind
 #![crate_type = "lib"]

@@ -1,9 +1,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(never_type)]
-#![allow(dead_code, unused_variables)]
-
-#[macro_use]
-extern crate tracing;
+#![allow(unused_variables)]
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
@@ -49,6 +46,8 @@ pub enum Reason<T> {
     DstIsNotYetSupported,
     /// The layout of the destination type is bit-incompatible with the source type.
     DstIsBitIncompatible,
+    /// The destination type is uninhabited.
+    DstUninhabited,
     /// The destination type may carry safety invariants.
     DstMayHaveSafetyInvariants,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.

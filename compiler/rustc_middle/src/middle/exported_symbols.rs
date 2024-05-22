@@ -1,7 +1,7 @@
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_macros::HashStable;
+use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -43,6 +43,7 @@ pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
     Generic(DefId, GenericArgsRef<'tcx>),
     DropGlue(Ty<'tcx>),
+    AsyncDropGlueCtorShim(Ty<'tcx>),
     ThreadLocalShim(DefId),
     NoDefId(ty::SymbolName<'tcx>),
 }
@@ -58,6 +59,9 @@ impl<'tcx> ExportedSymbol<'tcx> {
             }
             ExportedSymbol::DropGlue(ty) => {
                 tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))
+            }
+            ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
+                tcx.symbol_name(ty::Instance::resolve_async_drop_in_place(tcx, ty))
             }
             ExportedSymbol::ThreadLocalShim(def_id) => tcx.symbol_name(ty::Instance {
                 def: ty::InstanceDef::ThreadLocalShim(def_id),

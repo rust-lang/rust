@@ -21,9 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://nodejs.org/dist/v16.9.0/node-v16.9.0-linux-x64.tar.xz | tar -xJ
-ENV PATH="/node-v16.9.0-linux-x64/bin:${PATH}"
 ENV RUST_CONFIGURE_ARGS="--set rust.validate-mir-opts=3"
+
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
 
 # Install es-check
 # Pin its version to prevent unrelated CI failures due to future es-check versions.
@@ -40,13 +42,13 @@ COPY host-x86_64/mingw-check/validate-error-codes.sh /scripts/
 
 ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 
-ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
-           # Check library crates on all tier 1 targets.
-           # We disable optimized compiler built-ins because that requires a C toolchain for the target.
-           # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
-           python3 ../x.py check --stage 0 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
+# Check library crates on all tier 1 targets.
+# We disable optimized compiler built-ins because that requires a C toolchain for the target.
+# We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
+ENV SCRIPT python3 ../x.py check --stage 0 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
            python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
-           python3 ../x.py clippy compiler -Aclippy::all -Dclippy::correctness && \
+           python3 ../x.py clippy bootstrap -Dwarnings && \
+           python3 ../x.py clippy compiler library -Aclippy::all -Dclippy::correctness && \
            python3 ../x.py build --stage 0 src/tools/build-manifest && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py test --stage 0 core alloc std test proc_macro && \

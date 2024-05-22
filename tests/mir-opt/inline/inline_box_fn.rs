@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ unit-test: Inline
+//@ test-mir-pass: Inline
 //@ compile-flags: --crate-type=lib
 
 // EMIT_MIR inline_box_fn.call.Inline.diff

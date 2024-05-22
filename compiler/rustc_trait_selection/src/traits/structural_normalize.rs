@@ -1,6 +1,6 @@
 use rustc_infer::infer::at::At;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::{FulfillmentError, TraitEngine};
+use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{NormalizeExt, Obligation};
@@ -19,10 +19,7 @@ impl<'tcx> At<'_, 'tcx> {
                 return Ok(ty);
             };
 
-            let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::NormalizeProjectionType,
-                span: self.cause.span,
-            });
+            let new_infer_ty = self.infcx.next_ty_var(self.cause.span);
 
             // We simply emit an `alias-eq` goal here, since that will take care of
             // normalizing the LHS of the projection until it is a rigid projection

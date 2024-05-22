@@ -10,32 +10,8 @@ LL | impl TheTrait<usize> for isize {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0046]: not all trait items implemented, missing: `the_fn`
-  --> $DIR/coherence-orphan.rs:10:1
-   |
-LL | impl TheTrait<usize> for isize {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
-   |
-   = help: implement the missing item: `fn the_fn(&self) { todo!() }`
-
-error[E0046]: not all trait items implemented, missing: `the_fn`
-  --> $DIR/coherence-orphan.rs:14:1
-   |
-LL | impl TheTrait<TheType> for isize {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
-   |
-   = help: implement the missing item: `fn the_fn(&self) { todo!() }`
-
-error[E0046]: not all trait items implemented, missing: `the_fn`
-  --> $DIR/coherence-orphan.rs:17:1
-   |
-LL | impl TheTrait<isize> for TheType {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
-   |
-   = help: implement the missing item: `fn the_fn(&self) { todo!() }`
-
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/coherence-orphan.rs:20:1
+  --> $DIR/coherence-orphan.rs:17:1
    |
 LL | impl !Send for Vec<isize> {}
    | ^^^^^^^^^^^^^^^----------
@@ -45,7 +21,6 @@ LL | impl !Send for Vec<isize> {}
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0046, E0117.
-For more information about an error, try `rustc --explain E0046`.
+For more information about this error, try `rustc --explain E0117`.

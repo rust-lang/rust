@@ -55,19 +55,19 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // want!
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem. Add `#[unix_sigpipe = "..."]` above `fn main()` to
-    // alter this behavior.
+    // to prevent this problem. Use `-Zon-broken-pipe=...` to alter this
+    // behavior.
     reset_sigpipe(sigpipe);
 
     stack_overflow::init();
     args::init(argc, argv);
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
-    // already exists, we have to call it ourselves. We only do this on macos
+    // already exists, we have to call it ourselves. We only do this on Apple targets
     // because some unix-like operating systems such as Linux share process-id and
     // thread-id for the main thread and so renaming the main thread will rename the
     // process and we only want to enable this on platforms we've tested.
-    if cfg!(target_os = "macos") {
+    if cfg!(target_vendor = "apple") {
         thread::Thread::set_name(&c"main");
     }
 
@@ -78,15 +78,12 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "vxworks",
-            // The poll on Darwin doesn't set POLLNVAL for closed fds.
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "tvos",
-            target_os = "watchos",
             target_os = "redox",
             target_os = "l4re",
             target_os = "horizon",
             target_os = "vita",
+            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            target_vendor = "apple",
         )))]
         'poll: {
             use crate::sys::os::errno;
@@ -193,7 +190,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 _ => unreachable!(),
             };
             if sigpipe_attr_specified {
-                UNIX_SIGPIPE_ATTR_SPECIFIED.store(true, crate::sync::atomic::Ordering::Relaxed);
+                ON_BROKEN_PIPE_FLAG_USED.store(true, crate::sync::atomic::Ordering::Relaxed);
             }
             if let Some(handler) = handler {
                 rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
@@ -213,7 +210,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     target_os = "fuchsia",
     target_os = "horizon",
 )))]
-static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
+static ON_BROKEN_PIPE_FLAG_USED: crate::sync::atomic::AtomicBool =
     crate::sync::atomic::AtomicBool::new(false);
 
 #[cfg(not(any(
@@ -222,8 +219,8 @@ static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
     target_os = "fuchsia",
     target_os = "horizon",
 )))]
-pub(crate) fn unix_sigpipe_attr_specified() -> bool {
-    UNIX_SIGPIPE_ATTR_SPECIFIED.load(crate::sync::atomic::Ordering::Relaxed)
+pub(crate) fn on_broken_pipe_flag_used() -> bool {
+    ON_BROKEN_PIPE_FLAG_USED.load(crate::sync::atomic::Ordering::Relaxed)
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -402,13 +399,12 @@ cfg_if::cfg_if! {
         // Use libumem for the (malloc-compatible) allocator
         #[link(name = "umem")]
         extern "C" {}
-    } else if #[cfg(target_os = "macos")] {
+    } else if #[cfg(target_vendor = "apple")] {
+        // Link to `libSystem.dylib`.
+        //
+        // Don't get confused by the presence of `System.framework`,
+        // it is a deprecated wrapper over the dynamic library.
         #[link(name = "System")]
-        extern "C" {}
-    } else if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
-        #[link(name = "System")]
-        #[link(name = "objc")]
-        #[link(name = "Foundation", kind = "framework")]
         extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {
         #[link(name = "zircon")]
@@ -432,6 +428,6 @@ mod unsupported {
     }
 
     pub fn unsupported_err() -> io::Error {
-        io::const_io_error!(io::ErrorKind::Unsupported, "operation not supported on this platform",)
+        io::Error::UNSUPPORTED_PLATFORM
     }
 }

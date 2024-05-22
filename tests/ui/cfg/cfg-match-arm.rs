@@ -10,9 +10,9 @@ enum Foo {
 fn foo(f: Foo) {
     match f {
         Foo::Bar => {},
-        #[cfg(not(asdfa))]
+        #[cfg(not(FALSE))]
         Foo::Baz => {},
-        #[cfg(afsd)]
+        #[cfg(FALSE)]
         Basdfwe => {}
     }
 }

@@ -7,6 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -213,7 +214,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 }
 
 // Make sure this enum doesn't unintentionally grow
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 
 /// Outlives-constraints can be categorized to determine whether and why they

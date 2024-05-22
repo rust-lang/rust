@@ -1,8 +1,6 @@
 //@ only-wasm32-wasip1
 #![deny(warnings)]
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, tmp_dir};
 
 fn main() {

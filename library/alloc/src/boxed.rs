@@ -135,6 +135,45 @@
 //! is not allowed. For more guidance on working with box from unsafe code, see
 //! [rust-lang/unsafe-code-guidelines#326][ucg#326].
 //!
+//! # Editions
+//!
+//! A special case exists for the implementation of `IntoIterator` for arrays on the Rust 2021
+//! edition, as documented [here][array]. Unfortunately, it was later found that a similar
+//! workaround should be added for boxed slices, and this was applied in the 2024 edition.
+//!
+//! Specifically, `IntoIterator` is implemented for `Box<[T]>` on all editions, but specific calls
+//! to `into_iter()` for boxed slices will defer to the slice implementation on editions before
+//! 2024:
+//!
+#![cfg_attr(bootstrap, doc = "```rust,edition2021,ignore")]
+#![cfg_attr(not(bootstrap), doc = "```rust,edition2021")]
+//! // Rust 2015, 2018, and 2021:
+//!
+//! # #![allow(boxed_slice_into_iter)] // override our `deny(warnings)`
+//! let boxed_slice: Box<[i32]> = vec![0; 3].into_boxed_slice();
+//!
+//! // This creates a slice iterator, producing references to each value.
+//! for item in boxed_slice.into_iter().enumerate() {
+//!     let (i, x): (usize, &i32) = item;
+//!     println!("boxed_slice[{i}] = {x}");
+//! }
+//!
+//! // The `boxed_slice_into_iter` lint suggests this change for future compatibility:
+//! for item in boxed_slice.iter().enumerate() {
+//!     let (i, x): (usize, &i32) = item;
+//!     println!("boxed_slice[{i}] = {x}");
+//! }
+//!
+//! // You can explicitly iterate a boxed slice by value using `IntoIterator::into_iter`
+//! for item in IntoIterator::into_iter(boxed_slice).enumerate() {
+//!     let (i, x): (usize, i32) = item;
+//!     println!("boxed_slice[{i}] = {x}");
+//! }
+//! ```
+//!
+//! Similar to the array implementation, this may be modified in the future to remove this override,
+//! and it's best to avoid relying on this edition-dependent behavior if you wish to preserve
+//! compatibility with future versions of the compiler.
 //!
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
 //! [ucg#326]: https://github.com/rust-lang/unsafe-code-guidelines/issues/326
@@ -165,6 +204,7 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, addr_of_mut, NonNull, Unique};
+use core::slice;
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
@@ -177,6 +217,7 @@ use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
+use crate::vec;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
@@ -1058,7 +1099,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Self) -> *mut T {
-        Self::into_raw_with_allocator(b).0
+        // Make sure Miri realizes that we transition from a noalias pointer to a raw pointer here.
+        unsafe { addr_of_mut!(*&mut *Self::into_raw_with_allocator(b).0) }
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer and the allocator.
@@ -1112,7 +1154,10 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
         let mut b = mem::ManuallyDrop::new(b);
         // We carefully get the raw pointer out in a way that Miri's aliasing model understands what
-        // is happening: using the primitive "deref" of `Box`.
+        // is happening: using the primitive "deref" of `Box`. In case `A` is *not* `Global`, we
+        // want *no* aliasing requirements here!
+        // In case `A` *is* `Global`, this does not quite have the right behavior; `into_raw`
+        // works around that.
         let ptr = addr_of_mut!(**b);
         let alloc = unsafe { ptr::read(&b.1) };
         (ptr, alloc)
@@ -2076,6 +2121,99 @@ impl<I> FromIterator<I> for Box<[I]> {
     }
 }
 
+/// This implementation is required to make sure that the `Box<[I]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, A: Allocator> !Iterator for Box<[I], A> {}
+
+/// This implementation is required to make sure that the `&Box<[I]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> !Iterator for &'a Box<[I], A> {}
+
+/// This implementation is required to make sure that the `&mut Box<[I]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> !Iterator for &'a mut Box<[I], A> {}
+
+// Note: the `#[rustc_skip_during_method_dispatch(boxed_slice)]` on `trait IntoIterator`
+// hides this implementation from explicit `.into_iter()` calls on editions < 2024,
+// so those calls will still resolve to the slice implementation, by reference.
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, A: Allocator> IntoIterator for Box<[I], A> {
+    type IntoIter = vec::IntoIter<I, A>;
+    type Item = I;
+    fn into_iter(self) -> vec::IntoIter<I, A> {
+        self.into_vec().into_iter()
+    }
+}
+
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> IntoIterator for &'a Box<[I], A> {
+    type IntoIter = slice::Iter<'a, I>;
+    type Item = &'a I;
+    fn into_iter(self) -> slice::Iter<'a, I> {
+        self.iter()
+    }
+}
+
+#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, A: Allocator> IntoIterator for &'a mut Box<[I], A> {
+    type IntoIter = slice::IterMut<'a, I>;
+    type Item = &'a mut I;
+    fn into_iter(self) -> slice::IterMut<'a, I> {
+        self.iter_mut()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+impl FromIterator<char> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+        String::from_iter(iter).into_boxed_str()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a> FromIterator<&'a char> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
+        String::from_iter(iter).into_boxed_str()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a> FromIterator<&'a str> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+        String::from_iter(iter).into_boxed_str()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+impl FromIterator<String> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        String::from_iter(iter).into_boxed_str()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<A: Allocator> FromIterator<Box<str, A>> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = Box<str, A>>>(iter: T) -> Self {
+        String::from_iter(iter).into_boxed_str()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = Cow<'a, str>>>(iter: T) -> Self {
+        String::from_iter(iter).into_boxed_str()
+    }
+}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
@@ -2084,11 +2222,29 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
         self.to_vec_in(alloc).into_boxed_slice()
     }
 
-    fn clone_from(&mut self, other: &Self) {
-        if self.len() == other.len() {
-            self.clone_from_slice(&other);
+    /// Copies `source`'s contents into `self` without creating a new allocation,
+    /// so long as the two are of the same length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new([5, 6, 7]);
+    /// let mut y = Box::new([8, 9, 10]);
+    /// let yp: *const [i32] = &*y;
+    ///
+    /// y.clone_from(&x);
+    ///
+    /// // The value is the same
+    /// assert_eq!(x, y);
+    ///
+    /// // And no allocation occurred
+    /// assert_eq!(yp, &*y);
+    /// ```
+    fn clone_from(&mut self, source: &Self) {
+        if self.len() == source.len() {
+            self.clone_from_slice(&source);
         } else {
-            *self = other.clone();
+            *self = source.clone();
         }
     }
 }

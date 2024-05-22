@@ -1,3 +1,134 @@
+Version 1.78.0 (2024-05-02)
+==========================
+
+<a id="1.78.0-Language"></a>
+
+Language
+--------
+- [Stabilize `#[cfg(target_abi = ...)]`](https://github.com/rust-lang/rust/pull/119590/)
+- [Stabilize the `#[diagnostic]` namespace and `#[diagnostic::on_unimplemented]` attribute](https://github.com/rust-lang/rust/pull/119888/)
+- [Make async-fn-in-trait implementable with concrete signatures](https://github.com/rust-lang/rust/pull/120103/)
+- [Make matching on NaN a hard error, and remove the rest of `illegal_floating_point_literal_pattern`](https://github.com/rust-lang/rust/pull/116284/)
+- [static mut: allow mutable reference to arbitrary types, not just slices and arrays](https://github.com/rust-lang/rust/pull/117614/)
+- [Extend `invalid_reference_casting` to include references casting to bigger memory layout](https://github.com/rust-lang/rust/pull/118983/)
+- [Add `non_contiguous_range_endpoints` lint for singleton gaps after exclusive ranges](https://github.com/rust-lang/rust/pull/118879/)
+- [Add `wasm_c_abi` lint for use of older wasm-bindgen versions](https://github.com/rust-lang/rust/pull/117918/)
+  This lint currently only works when using Cargo.
+- [Update `indirect_structural_match` and `pointer_structural_match` lints to match RFC](https://github.com/rust-lang/rust/pull/120423/)
+- [Make non-`PartialEq`-typed consts as patterns a hard error](https://github.com/rust-lang/rust/pull/120805/)
+- [Split `refining_impl_trait` lint into `_reachable`, `_internal` variants](https://github.com/rust-lang/rust/pull/121720/)
+- [Remove unnecessary type inference when using associated types inside of higher ranked `where`-bounds](https://github.com/rust-lang/rust/pull/119849)
+- [Weaken eager detection of cyclic types during type inference](https://github.com/rust-lang/rust/pull/119989)
+- [`trait Trait: Auto {}`: allow upcasting from `dyn Trait` to `dyn Auto`](https://github.com/rust-lang/rust/pull/119338)
+
+<a id="1.78.0-Compiler"></a>
+
+Compiler
+--------
+
+- [Made `INVALID_DOC_ATTRIBUTES` lint deny by default](https://github.com/rust-lang/rust/pull/111505/)
+- [Increase accuracy of redundant `use` checking](https://github.com/rust-lang/rust/pull/117772/)
+- [Suggest moving definition if non-found macro_rules! is defined later](https://github.com/rust-lang/rust/pull/121130/)
+- [Lower transmutes from int to pointer type as gep on null](https://github.com/rust-lang/rust/pull/121282/)
+
+Target changes:
+
+- [Windows tier 1 targets now require at least Windows 10](https://github.com/rust-lang/rust/pull/115141/)
+  - [Enable CMPXCHG16B, SSE3, SAHF/LAHF and 128-bit Atomics in tier 1 Windows](https://github.com/rust-lang/rust/pull/120820/)
+- [Add `wasm32-wasip1` tier 2 (without host tools) target](https://github.com/rust-lang/rust/pull/120468/)
+- [Add `wasm32-wasip2` tier 3 target](https://github.com/rust-lang/rust/pull/119616/)
+- [Rename `wasm32-wasi-preview1-threads` to `wasm32-wasip1-threads`](https://github.com/rust-lang/rust/pull/122170/)
+- [Add `arm64ec-pc-windows-msvc` tier 3 target](https://github.com/rust-lang/rust/pull/119199/)
+- [Add `armv8r-none-eabihf` tier 3 target for the Cortex-R52](https://github.com/rust-lang/rust/pull/110482/)
+- [Add `loongarch64-unknown-linux-musl` tier 3 target](https://github.com/rust-lang/rust/pull/121832/)
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+<a id="1.78.0-Libraries"></a>
+
+Libraries
+---------
+
+- [Bump Unicode to version 15.1.0, regenerate tables](https://github.com/rust-lang/rust/pull/120777/)
+- [Make align_offset, align_to well-behaved in all cases](https://github.com/rust-lang/rust/pull/121201/)
+- [PartialEq, PartialOrd: document expectations for transitive chains](https://github.com/rust-lang/rust/pull/115386/)
+- [Optimize away poison guards when std is built with panic=abort](https://github.com/rust-lang/rust/pull/100603/)
+- [Replace pthread `RwLock` with custom implementation](https://github.com/rust-lang/rust/pull/110211/)
+- [Implement unwind safety for Condvar on all platforms](https://github.com/rust-lang/rust/pull/121768/)
+- [Add ASCII fast-path for `char::is_grapheme_extended`](https://github.com/rust-lang/rust/pull/121138/)
+
+<a id="1.78.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`impl Read for &Stdin`](https://doc.rust-lang.org/stable/std/io/struct.Stdin.html#impl-Read-for-%26Stdin)
+- [Accept non `'static` lifetimes for several `std::error::Error` related implementations](https://github.com/rust-lang/rust/pull/113833/)
+- [Make `impl<Fd: AsFd>` impl take `?Sized`](https://github.com/rust-lang/rust/pull/114655/)
+- [`impl From<TryReserveError> for io::Error`](https://doc.rust-lang.org/stable/std/io/struct.Error.html#impl-From%3CTryReserveError%3E-for-Error)
+
+These APIs are now stable in const contexts:
+
+- [`Barrier::new()`](https://doc.rust-lang.org/stable/std/sync/struct.Barrier.html#method.new)
+
+<a id="1.78.0-Cargo"></a>
+
+Cargo
+-----
+
+- [Stabilize lockfile v4](https://github.com/rust-lang/cargo/pull/12852/)
+- [Respect `rust-version` when generating lockfile](https://github.com/rust-lang/cargo/pull/12861/)
+- [Control `--charset` via auto-detecting config value](https://github.com/rust-lang/cargo/pull/13337/)
+- [Support `target.<triple>.rustdocflags` officially](https://github.com/rust-lang/cargo/pull/13197/)
+- [Stabilize global cache data tracking](https://github.com/rust-lang/cargo/pull/13492/)
+
+<a id="1.78.0-Misc"></a>
+
+Misc
+----
+
+- [rustdoc: add `--test-builder-wrapper` arg to support wrappers such as RUSTC_WRAPPER when building doctests](https://github.com/rust-lang/rust/pull/114651/)
+
+<a id="1.78.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+
+- [Many unsafe precondition checks now run for user code with debug assertions enabled](https://github.com/rust-lang/rust/pull/120594/)
+  This change helps users catch undefined behavior in their code, though the details of how much is checked are generally not stable.
+- [riscv only supports split_debuginfo=off for now](https://github.com/rust-lang/rust/pull/120518/)
+- [Consistently check bounds on hidden types of `impl Trait`](https://github.com/rust-lang/rust/pull/121679)
+- [Change equality of higher ranked types to not rely on subtyping](https://github.com/rust-lang/rust/pull/118247)
+- [When called, additionally check bounds on normalized function return type](https://github.com/rust-lang/rust/pull/118882)
+- [Expand coverage for `arithmetic_overflow` lint](https://github.com/rust-lang/rust/pull/119432/)
+- [Fix detection of potential interior mutability in `const` initializers](https://github.com/rust-lang/rust/issues/121250)
+  This code was accidentally accepted. The fix can break generic code that borrows a value of unknown type,
+  as there is currently no way to declare "this type has no interior mutability". In the future, stabilizing
+  the [`Freeze` trait](https://github.com/rust-lang/rust/issues/121675) will allow proper support for such code.
+
+<a id="1.78.0-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Update to LLVM 18](https://github.com/rust-lang/rust/pull/120055/)
+- [Build `rustc` with 1CGU on `x86_64-pc-windows-msvc`](https://github.com/rust-lang/rust/pull/112267/)
+- [Build `rustc` with 1CGU on `x86_64-apple-darwin`](https://github.com/rust-lang/rust/pull/112268/)
+- [Introduce `run-make` V2 infrastructure, a `run_make_support` library and port over 2 tests as example](https://github.com/rust-lang/rust/pull/113026/)
+- [Windows: Implement condvar, mutex and rwlock using futex](https://github.com/rust-lang/rust/pull/121956/)
+
+Version 1.77.2 (2024-04-09)
+===========================
+
+<a id="1.77.2"></a>
+
+- [CVE-2024-24576: fix escaping of Windows batch file arguments in `std::process::Command`](https://blog.rust-lang.org/2024/04/09/cve-2024-24576.html)
+
 Version 1.77.1 (2024-03-28)
 ===========================
 

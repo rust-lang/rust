@@ -2,7 +2,9 @@
 use std::sync::OnceLock;
 
 use base_db::{CrateId, VersionReq};
-use span::{MacroCallId, Span, SyntaxContextId};
+use mbe::DocCommentDesugarMode;
+use span::{Edition, MacroCallId, Span, SyntaxContextId};
+use stdx::TupleExt;
 use syntax::{ast, AstNode};
 use triomphe::Arc;
 
@@ -30,7 +32,7 @@ impl DeclarativeMacroExpander {
         tt: tt::Subtree,
         call_id: MacroCallId,
         span: Span,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<(tt::Subtree, Option<u32>)> {
         let loc = db.lookup_intern_macro_call(call_id);
         let toolchain = db.toolchain(loc.def.krate);
         let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
@@ -46,7 +48,7 @@ impl DeclarativeMacroExpander {
         });
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),
+                (tt::Subtree::empty(tt::DelimSpan { open: span, close: span }), None),
                 ExpandError::MacroDefinition,
             ),
             None => self
@@ -56,6 +58,7 @@ impl DeclarativeMacroExpander {
                     |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency),
                     new_meta_vars,
                     span,
+                    loc.def.edition,
                 )
                 .map_err(Into::into),
         }
@@ -67,6 +70,7 @@ impl DeclarativeMacroExpander {
         tt: tt::Subtree,
         krate: CrateId,
         call_site: Span,
+        def_site_edition: Edition,
     ) -> ExpandResult<tt::Subtree> {
         let toolchain = db.toolchain(krate);
         let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
@@ -85,7 +89,11 @@ impl DeclarativeMacroExpander {
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::MacroDefinition,
             ),
-            None => self.mac.expand(&tt, |_| (), new_meta_vars, call_site).map_err(Into::into),
+            None => self
+                .mac
+                .expand(&tt, |_| (), new_meta_vars, call_site, def_site_edition)
+                .map(TupleExt::head)
+                .map_err(Into::into),
         }
     }
 
@@ -151,6 +159,7 @@ impl DeclarativeMacroExpander {
                             map.span_for_range(
                                 macro_rules.macro_rules_token().unwrap().text_range(),
                             ),
+                            DocCommentDesugarMode::Mbe,
                         );
 
                         mbe::DeclarativeMacro::parse_macro_rules(&tt, edition, new_meta_vars)
@@ -168,6 +177,7 @@ impl DeclarativeMacroExpander {
                             arg.syntax(),
                             map.as_ref(),
                             map.span_for_range(macro_def.macro_token().unwrap().text_range()),
+                            DocCommentDesugarMode::Mbe,
                         );
 
                         mbe::DeclarativeMacro::parse_macro2(&tt, edition, new_meta_vars)

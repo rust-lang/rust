@@ -4,11 +4,21 @@ error[E0382]: use of moved value: `a`
 LL |     let mut a = NotCopy;
    |         ----- move occurs because `a` has type `NotCopy`, which does not implement the `Copy` trait
 LL |     loop {
+   |     ---- inside of this loop
 LL |         || {
    |         ^^ value moved into closure here, in previous iteration of loop
 LL |             &mut a;
 LL |             a;
    |             - use occurs due to use in closure
+   |
+note: if `NotCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-75904-move-closure-loop.rs:5:1
+   |
+LL | struct NotCopy;
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             a;
+   |             - you could clone this value
 
 error: aborting due to 1 previous error
 

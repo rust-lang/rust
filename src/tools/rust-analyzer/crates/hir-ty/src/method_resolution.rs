@@ -22,10 +22,10 @@ use triomphe::Arc;
 use crate::{
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
-    from_chalk_trait_id, from_foreign_def_id,
+    error_lifetime, from_chalk_trait_id, from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, OverloadedDeref, PointerCast},
     primitive::{FloatTy, IntTy, UintTy},
-    static_lifetime, to_chalk_trait_id,
+    to_chalk_trait_id,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, Goal, Guidance,
     InEnvironment, Interner, Scalar, Solution, Substitution, TraitEnvironment, TraitRef,
@@ -368,7 +368,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
     krate: CrateId,
     fp: TyFingerprint,
 ) -> SmallVec<[CrateId; 2]> {
-    let _p = tracing::span!(tracing::Level::INFO, "inherent_impl_crates_query").entered();
+    let _p = tracing::span!(tracing::Level::INFO, "incoherent_inherent_impl_crates").entered();
     let mut res = SmallVec::new();
     let crate_graph = db.crate_graph();
 
@@ -1035,7 +1035,7 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(receiver_ty.clone(), maybe_reborrowed)?;
 
     let refed = Canonical {
-        value: TyKind::Ref(Mutability::Not, static_lifetime(), receiver_ty.value.clone())
+        value: TyKind::Ref(Mutability::Not, error_lifetime(), receiver_ty.value.clone())
             .intern(Interner),
         binders: receiver_ty.binders.clone(),
     };
@@ -1043,7 +1043,7 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(refed, first_adjustment.with_autoref(Mutability::Not))?;
 
     let ref_muted = Canonical {
-        value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value.clone())
+        value: TyKind::Ref(Mutability::Mut, error_lifetime(), receiver_ty.value.clone())
             .intern(Interner),
         binders: receiver_ty.binders,
     };
@@ -1369,6 +1369,7 @@ pub(crate) fn resolve_indexing_op(
     None
 }
 
+// FIXME: Replace this with a `Try` impl once stable
 macro_rules! check_that {
     ($cond:expr) => {
         if !$cond {
@@ -1377,6 +1378,7 @@ macro_rules! check_that {
     };
 }
 
+#[derive(Debug)]
 enum IsValidCandidate {
     Yes,
     No,

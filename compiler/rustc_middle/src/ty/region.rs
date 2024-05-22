@@ -1,12 +1,12 @@
-use polonius_engine::Atom;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
-use rustc_index::Idx;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::sym;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use rustc_type_ir::RegionKind as IrRegionKind;
+pub use rustc_type_ir::RegionVid;
 use std::ops::Deref;
 
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
@@ -18,7 +18,7 @@ pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
-impl<'tcx> rustc_type_ir::IntoKind for Region<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
     type Kind = RegionKind<'tcx>;
 
     fn kind(self) -> RegionKind<'tcx> {
@@ -136,7 +136,7 @@ impl<'tcx> Region<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::new::Region<TyCtxt<'tcx>> for Region<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon })
     }
@@ -347,21 +347,6 @@ impl std::fmt::Debug for EarlyParamRegion {
     }
 }
 
-rustc_index::newtype_index! {
-    /// A **region** (lifetime) **v**ariable **ID**.
-    #[derive(HashStable)]
-    #[encodable]
-    #[orderable]
-    #[debug_format = "'?{}"]
-    pub struct RegionVid {}
-}
-
-impl Atom for RegionVid {
-    fn index(self) -> usize {
-        Idx::index(self)
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
 /// The parameter representation of late-bound function parameters, "some region
@@ -393,6 +378,16 @@ pub enum BoundRegionKind {
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
+}
+
+impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
+    fn var(self) -> BoundVar {
+        self.var
+    }
+
+    fn assert_eq(self, var: ty::BoundVariableKind) {
+        assert_eq!(self.kind, var.expect_region())
+    }
 }
 
 impl core::fmt::Debug for BoundRegion {

@@ -25,19 +25,20 @@ LL |         ///
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:30:5
+  --> tests/ui/empty_docs.rs:30:13
    |
 LL |     #[doc = ""]
-   |     ^^^^^^^^^^^
+   |             ^^
    |
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:33:5
+  --> tests/ui/empty_docs.rs:33:13
    |
-LL | /     #[doc = ""]
+LL |       #[doc = ""]
+   |  _____________^
 LL | |     #[doc = ""]
-   | |_______________^
+   | |______________^
    |
    = help: consider removing or filling it
 

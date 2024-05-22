@@ -113,9 +113,13 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
         deq
     }
 
-    fn clone_from(&mut self, other: &Self) {
+    /// Overwrites the contents of `self` with a clone of the contents of `source`.
+    ///
+    /// This method is preferred over simply assigning `source.clone()` to `self`,
+    /// as it avoids reallocation if possible.
+    fn clone_from(&mut self, source: &Self) {
         self.clear();
-        self.extend(other.iter().cloned());
+        self.extend(source.iter().cloned());
     }
 }
 
@@ -1614,7 +1618,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
             let old_head = self.head;
             self.head = self.to_physical_idx(1);
             self.len -= 1;
-            Some(unsafe { self.buffer_read(old_head) })
+            unsafe {
+                core::hint::assert_unchecked(self.len < self.capacity());
+                Some(self.buffer_read(old_head))
+            }
         }
     }
 
@@ -1638,7 +1645,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
             None
         } else {
             self.len -= 1;
-            Some(unsafe { self.buffer_read(self.to_physical_idx(self.len)) })
+            unsafe {
+                core::hint::assert_unchecked(self.len < self.capacity());
+                Some(self.buffer_read(self.to_physical_idx(self.len)))
+            }
         }
     }
 

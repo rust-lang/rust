@@ -21,6 +21,8 @@ use rustc_macros::{Decodable_Generic, Encodable_Generic};
 use std::iter::Step;
 
 mod layout;
+#[cfg(test)]
+mod tests;
 
 pub use layout::LayoutCalculator;
 
@@ -155,7 +157,7 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
-    pub fn inhibit_union_abi_opt(&self) -> bool {
+    pub fn inhibits_union_abi_opt(&self) -> bool {
         self.c()
     }
 }
@@ -743,8 +745,18 @@ impl Align {
     }
 
     #[inline]
+    pub fn bytes_usize(self) -> usize {
+        self.bytes().try_into().unwrap()
+    }
+
+    #[inline]
     pub fn bits(self) -> u64 {
         self.bytes() * 8
+    }
+
+    #[inline]
+    pub fn bits_usize(self) -> usize {
+        self.bits().try_into().unwrap()
     }
 
     /// Computes the best alignment possible for the given offset
@@ -914,6 +926,41 @@ impl Integer {
     }
 }
 
+/// Floating-point types.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub enum Float {
+    F16,
+    F32,
+    F64,
+    F128,
+}
+
+impl Float {
+    pub fn size(self) -> Size {
+        use Float::*;
+
+        match self {
+            F16 => Size::from_bits(16),
+            F32 => Size::from_bits(32),
+            F64 => Size::from_bits(64),
+            F128 => Size::from_bits(128),
+        }
+    }
+
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAndPrefAlign {
+        use Float::*;
+        let dl = cx.data_layout();
+
+        match self {
+            F16 => dl.f16_align,
+            F32 => dl.f32_align,
+            F64 => dl.f64_align,
+            F128 => dl.f128_align,
+        }
+    }
+}
+
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
@@ -926,10 +973,7 @@ pub enum Primitive {
     /// a negative integer passed by zero-extension will appear positive in
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
-    F16,
-    F32,
-    F64,
-    F128,
+    Float(Float),
     Pointer(AddressSpace),
 }
 
@@ -940,10 +984,7 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.size(),
-            F16 => Size::from_bits(16),
-            F32 => Size::from_bits(32),
-            F64 => Size::from_bits(64),
-            F128 => Size::from_bits(128),
+            Float(f) => f.size(),
             // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
             // different address spaces can have different sizes
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
@@ -957,10 +998,7 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.align(dl),
-            F16 => dl.f16_align,
-            F32 => dl.f32_align,
-            F64 => dl.f64_align,
-            F128 => dl.f128_align,
+            Float(f) => f.align(dl),
             // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
             // different address spaces can have different alignments
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
@@ -1217,7 +1255,7 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
 
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
-    pub fn index_by_increasing_offset(&self) -> impl Iterator<Item = usize> + '_ {
+    pub fn index_by_increasing_offset(&self) -> impl ExactSizeIterator<Item = usize> + '_ {
         let mut inverse_small = [0u8; 64];
         let mut inverse_big = IndexVec::new();
         let use_small = self.count() <= inverse_small.len();
@@ -1233,7 +1271,12 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
             }
         }
 
-        (0..self.count()).map(move |i| match *self {
+        // Primitives don't really have fields in the way that structs do,
+        // but having this return an empty iterator for them is unhelpful
+        // since that makes them look kinda like ZSTs, which they're not.
+        let pseudofield_count = if let FieldsShape::Primitive = self { 1 } else { self.count() };
+
+        (0..pseudofield_count).map(move |i| match *self {
             FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { .. } => {
                 if use_small {

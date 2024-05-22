@@ -1,5 +1,4 @@
 use crate::const_eval::{CompileTimeEvalContext, CompileTimeInterpreter, InterpretationResult};
-use crate::interpret::{MemPlaceMeta, MemoryKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{Allocation, InterpResult, Pointer};
@@ -9,7 +8,7 @@ use rustc_middle::ty::{
 };
 use std::ops::ControlFlow;
 
-use super::{InterpCx, MPlaceTy};
+use super::{throw_inval, InterpCx, MPlaceTy, MemPlaceMeta, MemoryKind};
 
 /// Checks whether a type contains generic parameters which must be instantiated.
 ///

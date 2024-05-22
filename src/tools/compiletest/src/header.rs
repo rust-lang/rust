@@ -5,8 +5,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -208,6 +208,8 @@ pub struct TestProps {
     pub llvm_cov_flags: Vec<String>,
     /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
     pub filecheck_flags: Vec<String>,
+    /// Don't automatically insert any `--check-cfg` args
+    pub no_auto_check_cfg: bool,
 }
 
 mod directives {
@@ -244,11 +246,12 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
+    pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -265,8 +268,11 @@ impl TestProps {
             aux_bins: vec![],
             aux_crates: vec![],
             revisions: vec![],
-            rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
-            unset_rustc_env: vec![],
+            rustc_env: vec![
+                ("RUSTC_ICE".to_string(), "0".to_string()),
+                ("RUST_BACKTRACE".to_string(), "short".to_string()),
+            ],
+            unset_rustc_env: vec![("RUSTC_LOG_COLOR".to_string())],
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
@@ -301,6 +307,7 @@ impl TestProps {
             remap_src_base: false,
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
+            no_auto_check_cfg: false,
         }
     }
 
@@ -546,7 +553,7 @@ impl TestProps {
 
                     config.set_name_value_directive(
                         ln,
-                        MIR_UNIT_TEST,
+                        TEST_MIR_PASS,
                         &mut self.mir_unit_test,
                         |s| s.trim().to_string(),
                     );
@@ -564,6 +571,8 @@ impl TestProps {
                     if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
                         self.filecheck_flags.extend(split_flags(&flags));
                     }
+
+                    config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
                 },
             );
 
@@ -581,6 +590,16 @@ impl TestProps {
             self.incremental = true;
         }
 
+        if config.mode == Mode::Crashes {
+            // we don't want to pollute anything with backtrace-files
+            // also turn off backtraces in order to save some execution
+            // time on the tests; we only need to know IF it crashes
+            self.rustc_env = vec![
+                ("RUST_BACKTRACE".to_string(), "0".to_string()),
+                ("RUSTC_ICE".to_string(), "0".to_string()),
+            ];
+        }
+
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
                 if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
@@ -596,7 +615,8 @@ impl TestProps {
 
     fn update_fail_mode(&mut self, ln: &str, config: &Config) {
         let check_ui = |mode: &str| {
-            if config.mode != Mode::Ui {
+            // Mode::Crashes may need build-fail in order to trigger llvm errors or stack overflows
+            if config.mode != Mode::Ui && config.mode != Mode::Crashes {
                 panic!("`{}-fail` header is only supported in UI tests", mode);
             }
         };
@@ -625,6 +645,7 @@ impl TestProps {
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (Mode::Ui, _) => (),
+            (Mode::Crashes, _) => (),
             (Mode::Codegen, "build-pass") => (),
             (Mode::Incremental, _) => {
                 if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
@@ -757,6 +778,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-mode-codegen-units",
     "ignore-mode-coverage-map",
     "ignore-mode-coverage-run",
+    "ignore-mode-crashes",
     "ignore-mode-debuginfo",
     "ignore-mode-incremental",
     "ignore-mode-js-doc-test",
@@ -790,15 +812,18 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-thumb",
     "ignore-thumbv8m.base-none-eabi",
     "ignore-thumbv8m.main-none-eabi",
+    "ignore-tvos",
     "ignore-unix",
     "ignore-unknown",
     "ignore-uwp",
+    "ignore-visionos",
     "ignore-vxworks",
     "ignore-wasi",
     "ignore-wasm",
     "ignore-wasm32",
     "ignore-wasm32-bare",
     "ignore-wasm64",
+    "ignore-watchos",
     "ignore-windows",
     "ignore-windows-gnu",
     "ignore-x32",
@@ -819,9 +844,11 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-dynamic-linking",
     "needs-git-hash",
     "needs-llvm-components",
+    "needs-matching-clang",
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
+    "needs-rust-lld",
     "needs-rust-lldb",
     "needs-sanitizer-address",
     "needs-sanitizer-cfi",
@@ -839,6 +866,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-unwind",
     "needs-wasmtime",
     "needs-xray",
+    "no-auto-check-cfg",
     "no-prefer-dynamic",
     "normalize-stderr-32bit",
     "normalize-stderr-64bit",
@@ -855,6 +883,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-cdb",
     "only-gnu",
     "only-i686-pc-windows-msvc",
+    "only-ios",
     "only-linux",
     "only-loongarch64",
     "only-loongarch64-unknown-linux-gnu",
@@ -870,10 +899,13 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-sparc64",
     "only-stable",
     "only-thumb",
+    "only-tvos",
     "only-unix",
+    "only-visionos",
     "only-wasm32",
     "only-wasm32-bare",
     "only-wasm32-wasip1",
+    "only-watchos",
     "only-windows",
     "only-x86",
     "only-x86_64",
@@ -897,9 +929,11 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "should-fail",
     "should-ice",
     "stderr-per-bitwidth",
-    "unit-test",
+    "test-mir-pass",
     "unset-exec-env",
     "unset-rustc-env",
+    // Used by the tidy check `unknown_revision`.
+    "unused-revision-names",
     // tidy-alphabetical-end
 ];
 
@@ -934,16 +968,25 @@ struct HeaderLine<'ln> {
 pub(crate) struct CheckDirectiveResult<'ln> {
     is_known_directive: bool,
     directive_name: &'ln str,
+    trailing_directive: Option<&'ln str>,
 }
 
-// Returns `(is_known_directive, directive_name)`.
 pub(crate) fn check_directive(directive_ln: &str) -> CheckDirectiveResult<'_> {
-    let directive_name =
-        directive_ln.split_once([':', ' ']).map(|(pre, _)| pre).unwrap_or(directive_ln);
+    let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
+
+    let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
+    let trailing_directive = {
+        // 1. is the directive name followed by a space? (to exclude `:`)
+        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(" "))
+            // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
+            && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
+    }
+    .then_some(trailing);
 
     CheckDirectiveResult {
         is_known_directive: KNOWN_DIRECTIVE_NAMES.contains(&directive_name),
         directive_name: directive_ln,
+        trailing_directive,
     }
 }
 
@@ -987,8 +1030,9 @@ fn iter_header(
     let mut line_number = 0;
 
     // Match on error annotations like `//~ERROR`.
-    static REVISION_MAGIC_COMMENT_RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
+    static REVISION_MAGIC_COMMENT_RE: OnceLock<Regex> = OnceLock::new();
+    let revision_magic_comment_re =
+        REVISION_MAGIC_COMMENT_RE.get_or_init(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
 
     loop {
         line_number += 1;
@@ -1013,7 +1057,8 @@ fn iter_header(
             if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
                 let directive_ln = non_revisioned_directive_line.trim();
 
-                let CheckDirectiveResult { is_known_directive, .. } = check_directive(directive_ln);
+                let CheckDirectiveResult { is_known_directive, trailing_directive, .. } =
+                    check_directive(directive_ln);
 
                 if !is_known_directive {
                     *poisoned = true;
@@ -1023,6 +1068,21 @@ fn iter_header(
                         directive_ln,
                         testfile.display(),
                         line_number,
+                    );
+
+                    return;
+                }
+
+                if let Some(trailing_directive) = &trailing_directive {
+                    *poisoned = true;
+
+                    eprintln!(
+                        "error: detected trailing compiletest test directive `{}` in {}:{}\n \
+                          help: put the trailing directive in it's own line: `//@ {}`",
+                        trailing_directive,
+                        testfile.display(),
+                        line_number,
+                        trailing_directive,
                     );
 
                     return;
@@ -1037,7 +1097,7 @@ fn iter_header(
             });
         // Then we try to check for legacy-style candidates, which are not the magic ~ERROR family
         // error annotations.
-        } else if !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
+        } else if !revision_magic_comment_re.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };
@@ -1050,7 +1110,8 @@ fn iter_header(
 
             let rest = rest.trim_start();
 
-            let CheckDirectiveResult { is_known_directive, directive_name } = check_directive(rest);
+            let CheckDirectiveResult { is_known_directive, directive_name, .. } =
+                check_directive(rest);
 
             if is_known_directive {
                 *poisoned = true;

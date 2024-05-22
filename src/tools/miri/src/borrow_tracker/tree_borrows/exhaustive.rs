@@ -2,7 +2,6 @@
 //! (These are used in Tree Borrows `#[test]`s for thorough verification
 //! of the behavior of the state machine of permissions,
 //! but the contents of this file are extremely generic)
-#![cfg(test)]
 
 pub trait Exhaustive: Sized {
     fn exhaustive() -> Box<dyn Iterator<Item = Self>>;

@@ -1,3 +1,5 @@
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
@@ -5,18 +7,16 @@ use rustc_ast::{token, StmtKind};
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
-    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, Recovered,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::*;
-use rustc_parse::parser::Recovered;
+use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
-
-use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
@@ -37,8 +37,6 @@ enum PositionUsedAs {
     Width,
 }
 use PositionUsedAs::*;
-
-use crate::errors;
 
 #[derive(Debug)]
 struct MacroInput {
@@ -113,7 +111,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                         _ => return Err(err),
                     }
                 }
-                Ok(Recovered::Yes) => (),
+                Ok(Recovered::Yes(_)) => (),
                 Ok(Recovered::No) => unreachable!(),
             }
         }
@@ -308,7 +306,7 @@ fn make_format_args(
         return ExpandResult::Ready(Err(guar));
     }
 
-    let to_span = |inner_span: rustc_parse_format::InnerSpan| {
+    let to_span = |inner_span: parse::InnerSpan| {
         is_source_literal.then(|| {
             fmt_span.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end })
         })
@@ -316,7 +314,7 @@ fn make_format_args(
 
     let mut used = vec![false; args.explicit_args().len()];
     let mut invalid_refs = Vec::new();
-    let mut numeric_refences_to_named_arg = Vec::new();
+    let mut numeric_references_to_named_arg = Vec::new();
 
     enum ArgRef<'a> {
         Index(usize),
@@ -337,7 +335,7 @@ fn make_format_args(
                     used[index] = true;
                     if arg.kind.ident().is_some() {
                         // This was a named argument, but it was used as a positional argument.
-                        numeric_refences_to_named_arg.push((index, span, used_as));
+                        numeric_references_to_named_arg.push((index, span, used_as));
                     }
                     Ok(index)
                 } else {
@@ -545,7 +543,7 @@ fn make_format_args(
     // Only check for unused named argument names if there are no other errors to avoid causing
     // too much noise in output errors, such as when a named argument is entirely unused.
     if invalid_refs.is_empty() && !has_unused && !unnamed_arg_after_named_arg {
-        for &(index, span, used_as) in &numeric_refences_to_named_arg {
+        for &(index, span, used_as) in &numeric_references_to_named_arg {
             let (position_sp_to_replace, position_sp_for_msg) = match used_as {
                 Placeholder(pspan) => (span, pspan),
                 Precision => {
@@ -558,7 +556,6 @@ fn make_format_args(
             let arg_name = args.explicit_args()[index].kind.ident().unwrap();
             ecx.buffered_early_lint.push(BufferedEarlyLint {
                 span: arg_name.span.into(),
-                msg: format!("named argument `{}` is not used by name", arg_name.name).into(),
                 node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
                 diagnostic: BuiltinLintDiag::NamedArgumentUsedPositionally {
@@ -578,7 +575,7 @@ fn make_format_args(
 fn invalid_placeholder_type_error(
     ecx: &ExtCtxt<'_>,
     ty: &str,
-    ty_span: Option<rustc_parse_format::InnerSpan>,
+    ty_span: Option<parse::InnerSpan>,
     fmt_span: Span,
 ) {
     let sp = ty_span.map(|sp| fmt_span.from_inner(InnerSpan::new(sp.start, sp.end)));
@@ -1001,7 +998,7 @@ fn expand_format_args_impl<'cx>(
     })
 }
 
-pub fn expand_format_args<'cx>(
+pub(crate) fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -1009,7 +1006,7 @@ pub fn expand_format_args<'cx>(
     expand_format_args_impl(ecx, sp, tts, false)
 }
 
-pub fn expand_format_args_nl<'cx>(
+pub(crate) fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

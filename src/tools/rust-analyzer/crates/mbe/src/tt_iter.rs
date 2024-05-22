@@ -140,10 +140,11 @@ impl<'a, S: Copy + fmt::Debug> TtIter<'a, S> {
     pub(crate) fn expect_fragment(
         &mut self,
         entry_point: parser::PrefixEntryPoint,
+        edition: parser::Edition,
     ) -> ExpandResult<Option<tt::TokenTree<S>>> {
         let buffer = tt::buffer::TokenBuffer::from_tokens(self.inner.as_slice());
         let parser_input = to_parser_input(&buffer);
-        let tree_traversal = entry_point.parse(&parser_input);
+        let tree_traversal = entry_point.parse(&parser_input, edition);
         let mut cursor = buffer.begin();
         let mut error = false;
         for step in tree_traversal.iter() {

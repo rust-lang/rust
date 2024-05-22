@@ -39,26 +39,32 @@ impl MutVisitor for Marker {
 }
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
-enum Frame<'a> {
-    Delimited {
-        tts: &'a [mbe::TokenTree],
-        idx: usize,
-        delim: Delimiter,
-        span: DelimSpan,
-        spacing: DelimSpacing,
-    },
-    Sequence {
-        tts: &'a [mbe::TokenTree],
-        idx: usize,
-        sep: Option<Token>,
-        kleene_op: KleeneOp,
-    },
+struct Frame<'a> {
+    tts: &'a [mbe::TokenTree],
+    idx: usize,
+    kind: FrameKind,
+}
+
+enum FrameKind {
+    Delimited { delim: Delimiter, span: DelimSpan, spacing: DelimSpacing },
+    Sequence { sep: Option<Token>, kleene_op: KleeneOp },
 }
 
 impl<'a> Frame<'a> {
-    /// Construct a new frame around the delimited set of tokens.
-    fn new(src: &'a mbe::Delimited, span: DelimSpan, spacing: DelimSpacing) -> Frame<'a> {
-        Frame::Delimited { tts: &src.tts, idx: 0, delim: src.delim, span, spacing }
+    fn new_delimited(src: &'a mbe::Delimited, span: DelimSpan, spacing: DelimSpacing) -> Frame<'a> {
+        Frame {
+            tts: &src.tts,
+            idx: 0,
+            kind: FrameKind::Delimited { delim: src.delim, span, spacing },
+        }
+    }
+
+    fn new_sequence(
+        src: &'a mbe::SequenceRepetition,
+        sep: Option<Token>,
+        kleene_op: KleeneOp,
+    ) -> Frame<'a> {
+        Frame { tts: &src.tts, idx: 0, kind: FrameKind::Sequence { sep, kleene_op } }
     }
 }
 
@@ -66,13 +72,9 @@ impl<'a> Iterator for Frame<'a> {
     type Item = &'a mbe::TokenTree;
 
     fn next(&mut self) -> Option<&'a mbe::TokenTree> {
-        match self {
-            Frame::Delimited { tts, idx, .. } | Frame::Sequence { tts, idx, .. } => {
-                let res = tts.get(*idx);
-                *idx += 1;
-                res
-            }
-        }
+        let res = self.tts.get(self.idx);
+        self.idx += 1;
+        res
     }
 }
 
@@ -111,13 +113,16 @@ pub(super) fn transcribe<'a>(
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
     // we have yet to expand/are still expanding. We start the stack off with the whole RHS. The
     // choice of spacing values doesn't matter.
-    let mut stack: SmallVec<[Frame<'_>; 1]> =
-        smallvec![Frame::new(src, src_span, DelimSpacing::new(Spacing::Alone, Spacing::Alone))];
+    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new_delimited(
+        src,
+        src_span,
+        DelimSpacing::new(Spacing::Alone, Spacing::Alone)
+    )];
 
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being
     // the most deeply nested sequence. This is used as a stack.
-    let mut repeats = Vec::new();
+    let mut repeats: Vec<(usize, usize)> = Vec::new();
 
     // `result` contains resulting token stream from the TokenTree we just finished processing. At
     // the end, this will contain the full result of transcription, but at arbitrary points during
@@ -142,11 +147,12 @@ pub(super) fn transcribe<'a>(
 
             // Otherwise, if we have just reached the end of a sequence and we can keep repeating,
             // go back to the beginning of the sequence.
-            if let Frame::Sequence { idx, sep, .. } = stack.last_mut().unwrap() {
+            let frame = stack.last_mut().unwrap();
+            if let FrameKind::Sequence { sep, .. } = &frame.kind {
                 let (repeat_idx, repeat_len) = repeats.last_mut().unwrap();
                 *repeat_idx += 1;
                 if repeat_idx < repeat_len {
-                    *idx = 0;
+                    frame.idx = 0;
                     if let Some(sep) = sep {
                         result.push(TokenTree::Token(sep.clone(), Spacing::Alone));
                     }
@@ -157,16 +163,16 @@ pub(super) fn transcribe<'a>(
             // We are done with the top of the stack. Pop it. Depending on what it was, we do
             // different things. Note that the outermost item must be the delimited, wrapped RHS
             // that was passed in originally to `transcribe`.
-            match stack.pop().unwrap() {
+            match stack.pop().unwrap().kind {
                 // Done with a sequence. Pop from repeats.
-                Frame::Sequence { .. } => {
+                FrameKind::Sequence { .. } => {
                     repeats.pop();
                 }
 
                 // We are done processing a Delimited. If this is the top-level delimited, we are
                 // done. Otherwise, we unwind the result_stack to append what we have produced to
                 // any previous results.
-                Frame::Delimited { delim, span, mut spacing, .. } => {
+                FrameKind::Delimited { delim, span, mut spacing, .. } => {
                     // Hack to force-insert a space after `]` in certain case.
                     // See discussion of the `hex-literal` crate in #114571.
                     if delim == Delimiter::Bracket {
@@ -192,7 +198,7 @@ pub(super) fn transcribe<'a>(
             // We are descending into a sequence. We first make sure that the matchers in the RHS
             // and the matches in `interp` have the same shape. Otherwise, either the caller or the
             // macro writer has made a mistake.
-            seq @ mbe::TokenTree::Sequence(_, delimited) => {
+            seq @ mbe::TokenTree::Sequence(_, seq_rep) => {
                 match lockstep_iter_size(seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
                         return Err(cx
@@ -233,12 +239,11 @@ pub(super) fn transcribe<'a>(
                             // The first time we encounter the sequence we push it to the stack. It
                             // then gets reused (see the beginning of the loop) until we are done
                             // repeating.
-                            stack.push(Frame::Sequence {
-                                idx: 0,
-                                sep: seq.separator.clone(),
-                                tts: &delimited.tts,
-                                kleene_op: seq.kleene.op,
-                            });
+                            stack.push(Frame::new_sequence(
+                                seq_rep,
+                                seq.separator.clone(),
+                                seq.kleene.op,
+                            ));
                         }
                     }
                 }
@@ -255,6 +260,16 @@ pub(super) fn transcribe<'a>(
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
                             maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker)
+                        }
+                        MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
+                            marker.visit_span(&mut sp);
+                            let kind = token::NtIdent(*ident, *is_raw);
+                            TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Lifetime(ident)) => {
+                            marker.visit_span(&mut sp);
+                            let kind = token::NtLifetime(*ident);
+                            TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {
                             // Other variables are emitted into the output stream as groups with
@@ -294,13 +309,7 @@ pub(super) fn transcribe<'a>(
             // the previous results (from outside the Delimited).
             mbe::TokenTree::Delimited(mut span, spacing, delimited) => {
                 mut_visit::visit_delim_span(&mut span, &mut marker);
-                stack.push(Frame::Delimited {
-                    tts: &delimited.tts,
-                    delim: delimited.delim,
-                    idx: 0,
-                    span,
-                    spacing: *spacing,
-                });
+                stack.push(Frame::new_delimited(delimited, span, *spacing));
                 result_stack.push(mem::take(&mut result));
             }
 
@@ -358,10 +367,13 @@ fn maybe_use_metavar_location(
 ) -> TokenTree {
     let undelimited_seq = matches!(
         stack.last(),
-        Some(Frame::Sequence {
+        Some(Frame {
             tts: [_],
-            sep: None,
-            kleene_op: KleeneOp::ZeroOrMore | KleeneOp::OneOrMore,
+            kind: FrameKind::Sequence {
+                sep: None,
+                kleene_op: KleeneOp::ZeroOrMore | KleeneOp::OneOrMore,
+                ..
+            },
             ..
         })
     );
@@ -673,14 +685,14 @@ fn transcribe_metavar_expr<'a>(
             }
             None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
         },
-        MetaVarExpr::Length(depth) => match repeats.iter().nth_back(depth) {
+        MetaVarExpr::Len(depth) => match repeats.iter().nth_back(depth) {
             Some((_, length)) => {
                 result.push(TokenTree::token_alone(
                     TokenKind::lit(token::Integer, sym::integer(*length), None),
                     visited_span(),
                 ));
             }
-            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "length")),
+            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "len")),
         },
     }
     Ok(())

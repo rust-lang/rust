@@ -32,7 +32,7 @@ pub fn check(
             cx,
             INEFFICIENT_TO_STRING,
             expr.span,
-            &format!("calling `to_string` on `{arg_ty}`"),
+            format!("calling `to_string` on `{arg_ty}`"),
             |diag| {
                 diag.help(format!(
                     "`{self_ty}` implements `ToString` through a slower blanket impl, but `{deref_self_ty}` has a fast specialization of `ToString`"

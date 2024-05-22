@@ -9,10 +9,8 @@ use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
 use crate::{
-    from_json,
     global_state::GlobalStateSnapshot,
     line_index::{LineIndex, PositionEncoding},
-    lsp::utils::invalid_params_error,
     lsp_ext,
 };
 
@@ -105,16 +103,13 @@ pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind>
 
 pub(crate) fn annotation(
     snap: &GlobalStateSnapshot,
-    code_lens: lsp_types::CodeLens,
+    range: lsp_types::Range,
+    data: lsp_ext::CodeLensResolveData,
 ) -> anyhow::Result<Option<Annotation>> {
-    let data =
-        code_lens.data.ok_or_else(|| invalid_params_error("code lens without data".to_owned()))?;
-    let resolve = from_json::<lsp_ext::CodeLensResolveData>("CodeLensResolveData", &data)?;
-
-    match resolve.kind {
+    match data.kind {
         lsp_ext::CodeLensResolveDataKind::Impls(params) => {
             if snap.url_file_version(&params.text_document_position_params.text_document.uri)
-                != Some(resolve.version)
+                != Some(data.version)
             {
                 return Ok(None);
             }
@@ -123,19 +118,19 @@ pub(crate) fn annotation(
             let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
-                range: text_range(&line_index, code_lens.range)?,
+                range: text_range(&line_index, range)?,
                 kind: AnnotationKind::HasImpls { pos, data: None },
             })
         }
         lsp_ext::CodeLensResolveDataKind::References(params) => {
-            if snap.url_file_version(&params.text_document.uri) != Some(resolve.version) {
+            if snap.url_file_version(&params.text_document.uri) != Some(data.version) {
                 return Ok(None);
             }
             let pos @ FilePosition { file_id, .. } = file_position(snap, params)?;
             let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
-                range: text_range(&line_index, code_lens.range)?,
+                range: text_range(&line_index, range)?,
                 kind: AnnotationKind::HasReferences { pos, data: None },
             })
         }

@@ -7,6 +7,10 @@ use std::ops::Range;
 use std::path::Path;
 use std::path::PathBuf;
 
+// This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
+// See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
+use crate::int_overflow::DebugStrictAdd;
+
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
@@ -65,7 +69,7 @@ impl FileEncoder {
         // Tracking position this way instead of having a `self.position` field
         // means that we only need to update `self.buffered` on a write call,
         // as opposed to updating `self.position` and `self.buffered`.
-        self.flushed + self.buffered
+        self.flushed.debug_strict_add(self.buffered)
     }
 
     #[cold]
@@ -119,7 +123,7 @@ impl FileEncoder {
         }
         if let Some(dest) = self.buffer_empty().get_mut(..buf.len()) {
             dest.copy_from_slice(buf);
-            self.buffered += buf.len();
+            self.buffered = self.buffered.debug_strict_add(buf.len());
         } else {
             self.write_all_cold_path(buf);
         }
@@ -158,7 +162,7 @@ impl FileEncoder {
         if written > N {
             Self::panic_invalid_write::<N>(written);
         }
-        self.buffered += written;
+        self.buffered = self.buffered.debug_strict_add(written);
     }
 
     #[cold]

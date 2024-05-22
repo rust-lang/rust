@@ -9,8 +9,8 @@ LL |     std::ptr::addr_of_mut!(x);
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let mut x: S = todo!();
-   |                  +++++++++
+LL |     let mut x: S = /* value */;
+   |                  +++++++++++++
 
 error: aborting due to 1 previous error
 

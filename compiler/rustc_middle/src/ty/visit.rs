@@ -1,7 +1,6 @@
 use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sso::SsoHashSet;
 use rustc_type_ir::fold::TypeFoldable;
 use std::ops::ControlFlow;
 
@@ -142,103 +141,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = if just_constrained { self.expand_weak_alias_tys(value) } else { value };
         value.visit_with(&mut collector);
         collector.regions
-    }
-}
-
-pub struct ValidateBoundVars<'tcx> {
-    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-    binder_index: ty::DebruijnIndex,
-    // We may encounter the same variable at different levels of binding, so
-    // this can't just be `Ty`
-    visited: SsoHashSet<(ty::DebruijnIndex, Ty<'tcx>)>,
-}
-
-impl<'tcx> ValidateBoundVars<'tcx> {
-    pub fn new(bound_vars: &'tcx ty::List<ty::BoundVariableKind>) -> Self {
-        ValidateBoundVars {
-            bound_vars,
-            binder_index: ty::INNERMOST,
-            visited: SsoHashSet::default(),
-        }
-    }
-}
-
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
-    type Result = ControlFlow<()>;
-
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &Binder<'tcx, T>,
-    ) -> Self::Result {
-        self.binder_index.shift_in(1);
-        let result = t.super_visit_with(self);
-        self.binder_index.shift_out(1);
-        result
-    }
-
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-        if t.outer_exclusive_binder() < self.binder_index
-            || !self.visited.insert((self.binder_index, t))
-        {
-            return ControlFlow::Break(());
-        }
-        match *t.kind() {
-            ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
-                if self.bound_vars.len() <= bound_ty.var.as_usize() {
-                    bug!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
-                }
-                let list_var = self.bound_vars[bound_ty.var.as_usize()];
-                match list_var {
-                    ty::BoundVariableKind::Ty(kind) => {
-                        if kind != bound_ty.kind {
-                            bug!(
-                                "Mismatched type kinds: {:?} doesn't var in list {:?}",
-                                bound_ty.kind,
-                                list_var
-                            );
-                        }
-                    }
-                    _ => {
-                        bug!("Mismatched bound variable kinds! Expected type, found {:?}", list_var)
-                    }
-                }
-            }
-
-            _ => (),
-        };
-
-        t.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
-        match *r {
-            ty::ReBound(index, br) if index == self.binder_index => {
-                if self.bound_vars.len() <= br.var.as_usize() {
-                    bug!("Not enough bound vars: {:?} not found in {:?}", br, self.bound_vars);
-                }
-                let list_var = self.bound_vars[br.var.as_usize()];
-                match list_var {
-                    ty::BoundVariableKind::Region(kind) => {
-                        if kind != br.kind {
-                            bug!(
-                                "Mismatched region kinds: {:?} doesn't match var ({:?}) in list ({:?})",
-                                br.kind,
-                                list_var,
-                                self.bound_vars
-                            );
-                        }
-                    }
-                    _ => bug!(
-                        "Mismatched bound variable kinds! Expected region, found {:?}",
-                        list_var
-                    ),
-                }
-            }
-
-            _ => (),
-        };
-
-        ControlFlow::Continue(())
     }
 }
 

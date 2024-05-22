@@ -6,16 +6,14 @@
 //@ ignore-horizon
 //@ ignore-android
 //@ normalize-stderr-test ".rs:\d+:\d+" -> ".rs:LL:CC"
+//@ compile-flags: -Zon-broken-pipe=error
 
 // Test what the error message looks like when `println!()` panics because of
 // `std::io::ErrorKind::BrokenPipe`
 
-#![feature(unix_sigpipe)]
-
 use std::env;
 use std::process::{Command, Stdio};
 
-#[unix_sigpipe = "sig_ign"]
 fn main() {
     let mut args = env::args();
     let me = args.next().unwrap();

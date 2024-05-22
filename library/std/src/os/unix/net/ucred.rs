@@ -35,8 +35,8 @@ pub(super) use self::impl_linux::peer_cred;
 ))]
 pub(super) use self::impl_bsd::peer_cred;
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
-pub(super) use self::impl_mac::peer_cred;
+#[cfg(target_vendor = "apple")]
+pub(super) use self::impl_apple::peer_cred;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 mod impl_linux {
@@ -97,8 +97,8 @@ mod impl_bsd {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
-mod impl_mac {
+#[cfg(target_vendor = "apple")]
+mod impl_apple {
     use super::UCred;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;

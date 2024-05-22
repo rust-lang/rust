@@ -14,6 +14,7 @@ impl Runnable for Implementor {
 
     fn run(&mut self) -> Self::Coro {
         //~^ ERROR: type mismatch resolving
+        #[coroutine]
         move || {
             yield 1;
         }

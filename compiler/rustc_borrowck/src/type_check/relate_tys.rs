@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::infer::{ObligationEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::traits::{Obligation, PredicateObligations};
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::FnMutDelegate;
@@ -128,13 +128,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         // by using `ty_vid rel B` and then finally and end by equating `ty_vid` to
         // the opaque.
         let mut enable_subtyping = |ty, opaque_is_expected| {
-            let ty_vid = infcx.next_ty_var_id_in_universe(
-                TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: self.span(),
-                },
-                ty::UniverseIndex::ROOT,
-            );
+            let ty_vid = infcx.next_ty_var_id_in_universe(self.span(), ty::UniverseIndex::ROOT);
 
             let variance = if opaque_is_expected {
                 self.ambient_variance
@@ -437,7 +431,7 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        let a = self.type_checker.infcx.shallow_resolve(a);
+        let a = self.type_checker.infcx.shallow_resolve_const(a);
         assert!(!a.has_non_region_infer(), "unexpected inference var {:?}", a);
         assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
 
@@ -552,7 +546,10 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
         self.type_checker.param_env
     }
 
-    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
+    ) {
         self.register_obligations(
             obligations
                 .into_iter()

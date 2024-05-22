@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -82,7 +83,8 @@ impl<'tcx> MirPass<'tcx> for ReferencePropagation {
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let ssa = SsaLocals::new(body);
+    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+    let ssa = SsaLocals::new(tcx, body, param_env);
 
     let mut replacer = compute_replacement(tcx, body, &ssa);
     debug!(?replacer.targets);

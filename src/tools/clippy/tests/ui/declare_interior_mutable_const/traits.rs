@@ -121,13 +121,12 @@ impl SelfType for AtomicUsize {
 // Even though a constant contains a generic type, if it also have an interior mutable type,
 // it should be linted at the definition site.
 trait BothOfCellAndGeneric<T> {
-    // this is a false negative in the current implementation.
-    const DIRECT: Cell<T>;
+    const DIRECT: Cell<T>; //~ ERROR: interior mutable
     const INDIRECT: Cell<*const T>; //~ ERROR: interior mutable
 }
 
 impl<T: ConstDefault> BothOfCellAndGeneric<T> for u64 {
-    const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
+    const DIRECT: Cell<T> = Cell::new(T::DEFAULT); //~ ERROR: interior mutable
     const INDIRECT: Cell<*const T> = Cell::new(std::ptr::null());
 }
 

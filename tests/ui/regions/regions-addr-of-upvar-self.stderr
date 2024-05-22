@@ -20,6 +20,8 @@ LL |             let p: &'static mut usize = &mut self.food;
 error[E0597]: `self` does not live long enough
   --> $DIR/regions-addr-of-upvar-self.rs:8:46
    |
+LL |     pub fn chase_cat(&mut self) {
+   |                      --------- binding `self` declared here
 LL |         let _f = || {
    |                  -- value captured here
 LL |             let p: &'static mut usize = &mut self.food;

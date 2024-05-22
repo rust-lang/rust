@@ -210,6 +210,15 @@ fn read_buf_exact() {
 }
 
 #[test]
+#[should_panic]
+fn borrowed_cursor_advance_overflow() {
+    let mut buf = [0; 512];
+    let mut buf = BorrowedBuf::from(&mut buf[..]);
+    buf.unfilled().advance(1);
+    buf.unfilled().advance(usize::MAX);
+}
+
+#[test]
 fn take_eof() {
     struct R;
 
@@ -642,6 +651,38 @@ fn test_take_wrong_length() {
     let mut reader = LieAboutSize(true).take(4);
     // Primed the `Limit` by lying about the read size.
     let _ = reader.read(&mut buffer[..]);
+}
+
+#[test]
+fn slice_read_exact_eof() {
+    let slice = &b"123456"[..];
+
+    let mut r = slice;
+    assert!(r.read_exact(&mut [0; 10]).is_err());
+    assert!(r.is_empty());
+
+    let mut r = slice;
+    let buf = &mut [0; 10];
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    assert!(r.read_buf_exact(buf.unfilled()).is_err());
+    assert!(r.is_empty());
+    assert_eq!(buf.filled(), b"123456");
+}
+
+#[test]
+fn cursor_read_exact_eof() {
+    let slice = Cursor::new(b"123456");
+
+    let mut r = slice.clone();
+    assert!(r.read_exact(&mut [0; 10]).is_err());
+    assert!(r.is_empty());
+
+    let mut r = slice;
+    let buf = &mut [0; 10];
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    assert!(r.read_buf_exact(buf.unfilled()).is_err());
+    assert!(r.is_empty());
+    assert_eq!(buf.filled(), b"123456");
 }
 
 #[bench]

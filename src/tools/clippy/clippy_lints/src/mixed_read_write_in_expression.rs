@@ -325,7 +325,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                     self.cx,
                     MIXED_READ_WRITE_IN_EXPRESSION,
                     expr.span,
-                    &format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
+                    format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
                     Some(self.write_expr.span),
                     "whether read occurs before this write depends on evaluation order",
                 );

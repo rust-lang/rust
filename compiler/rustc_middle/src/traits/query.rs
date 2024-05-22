@@ -10,11 +10,15 @@ use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
 use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
+// FIXME: Remove this import and import via `traits::solve`.
+pub use rustc_next_trait_solver::solve::NoSolution;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
     use crate::ty::{Predicate, Ty, TyCtxt, UserType};
+    use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
     use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
@@ -86,9 +90,6 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
-
-#[derive(Copy, Clone, Debug, Hash, HashStable, PartialEq, Eq)]
-pub struct NoSolution;
 
 impl<'tcx> From<TypeError<'tcx>> for NoSolution {
     fn from(_: TypeError<'tcx>) -> NoSolution {

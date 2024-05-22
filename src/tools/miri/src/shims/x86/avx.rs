@@ -7,10 +7,10 @@ use rustc_target::spec::abi::Abi;
 
 use super::{
     bin_op_simd_float_all, conditional_dot_product, convert_float_to_int, horizontal_bin_op,
-    round_all, test_bits_masked, test_high_bits_masked, unary_op_ps, FloatBinOp, FloatUnaryOp,
+    mask_load, mask_store, round_all, test_bits_masked, test_high_bits_masked, unary_op_ps,
+    FloatBinOp, FloatUnaryOp,
 };
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
@@ -22,7 +22,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "avx")?;
         // Prefix should have already been checked.
@@ -342,76 +342,8 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
-            _ => return Ok(EmulateForeignItemResult::NotSupported),
+            _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
-}
-
-/// Conditionally loads from `ptr` according the high bit of each
-/// element of `mask`. `ptr` does not need to be aligned.
-fn mask_load<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    ptr: &OpTy<'tcx, Provenance>,
-    mask: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = this.operand_to_simd(mask)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-    assert_eq!(dest_len, mask_len);
-
-    let mask_item_size = mask.layout.field(this, 0).size;
-    let high_bit_offset = mask_item_size.bits().checked_sub(1).unwrap();
-
-    let ptr = this.read_pointer(ptr)?;
-    for i in 0..dest_len {
-        let mask = this.project_index(&mask, i)?;
-        let dest = this.project_index(&dest, i)?;
-
-        if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            // Size * u64 is implemented as always checked
-            #[allow(clippy::arithmetic_side_effects)]
-            let ptr = ptr.wrapping_offset(dest.layout.size * i, &this.tcx);
-            // Unaligned copy, which is what we want.
-            this.mem_copy(ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
-        } else {
-            this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Conditionally stores into `ptr` according the high bit of each
-/// element of `mask`. `ptr` does not need to be aligned.
-fn mask_store<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    ptr: &OpTy<'tcx, Provenance>,
-    mask: &OpTy<'tcx, Provenance>,
-    value: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = this.operand_to_simd(mask)?;
-    let (value, value_len) = this.operand_to_simd(value)?;
-
-    assert_eq!(value_len, mask_len);
-
-    let mask_item_size = mask.layout.field(this, 0).size;
-    let high_bit_offset = mask_item_size.bits().checked_sub(1).unwrap();
-
-    let ptr = this.read_pointer(ptr)?;
-    for i in 0..value_len {
-        let mask = this.project_index(&mask, i)?;
-        let value = this.project_index(&value, i)?;
-
-        if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            // Size * u64 is implemented as always checked
-            #[allow(clippy::arithmetic_side_effects)]
-            let ptr = ptr.wrapping_offset(value.layout.size * i, &this.tcx);
-            // Unaligned copy, which is what we want.
-            this.mem_copy(value.ptr(), ptr, value.layout.size, /*nonoverlapping*/ true)?;
-        }
-    }
-
-    Ok(())
 }

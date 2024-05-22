@@ -1,5 +1,8 @@
 use std::ffi::{OsStr, OsString};
+use std::ops::Range;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::thread;
 
 use anyhow::{anyhow, Context, Result};
 use dunce::canonicalize;
@@ -106,7 +109,7 @@ impl MiriEnv {
     pub fn build(
         &self,
         manifest_path: impl AsRef<OsStr>,
-        args: &[OsString],
+        args: &[String],
         quiet: bool,
     ) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
@@ -122,21 +125,21 @@ impl MiriEnv {
         Ok(())
     }
 
-    pub fn check(&self, manifest_path: impl AsRef<OsStr>, args: &[OsString]) -> Result<()> {
+    pub fn check(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         cmd!(self.sh, "cargo +{toolchain} check {cargo_extra_flags...} --manifest-path {manifest_path} --all-targets {args...}")
             .run()?;
         Ok(())
     }
 
-    pub fn clippy(&self, manifest_path: impl AsRef<OsStr>, args: &[OsString]) -> Result<()> {
+    pub fn clippy(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         cmd!(self.sh, "cargo +{toolchain} clippy {cargo_extra_flags...} --manifest-path {manifest_path} --all-targets {args...}")
             .run()?;
         Ok(())
     }
 
-    pub fn test(&self, manifest_path: impl AsRef<OsStr>, args: &[OsString]) -> Result<()> {
+    pub fn test(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         cmd!(
             self.sh,
@@ -154,7 +157,7 @@ impl MiriEnv {
         files: impl Iterator<Item = Result<PathBuf, walkdir::Error>>,
         toolchain: &str,
         config_path: &Path,
-        flags: &[OsString],
+        flags: &[String],
     ) -> anyhow::Result<()> {
         use itertools::Itertools;
 
@@ -188,5 +191,55 @@ impl MiriEnv {
         }
 
         Ok(())
+    }
+
+    /// Run the given closure many times in parallel with access to the shell, once for each value in the `range`.
+    pub fn run_many_times(
+        &self,
+        range: Range<u32>,
+        run: impl Fn(&Shell, u32) -> Result<()> + Sync,
+    ) -> Result<()> {
+        // `next` is atomic so threads can concurrently fetch their next value to run.
+        let next = AtomicU32::new(range.start);
+        let end = range.end; // exclusive!
+        let failed = AtomicBool::new(false);
+        thread::scope(|s| {
+            let mut handles = Vec::new();
+            // Spawn one worker per core.
+            for _ in 0..thread::available_parallelism()?.get() {
+                // Create a copy of the shell for this thread.
+                let local_shell = self.sh.clone();
+                let handle = s.spawn(|| -> Result<()> {
+                    let local_shell = local_shell; // move the copy into this thread.
+                    // Each worker thread keeps asking for numbers until we're all done.
+                    loop {
+                        let cur = next.fetch_add(1, Ordering::Relaxed);
+                        if cur >= end {
+                            // We hit the upper limit and are done.
+                            break;
+                        }
+                        // Run the command with this seed.
+                        run(&local_shell, cur).map_err(|err| {
+                            // If we failed, tell everyone about this.
+                            failed.store(true, Ordering::Relaxed);
+                            err
+                        })?;
+                        // Check if some other command failed (in which case we'll stop as well).
+                        if failed.load(Ordering::Relaxed) {
+                            return Ok(());
+                        }
+                    }
+                    Ok(())
+                });
+                handles.push(handle);
+            }
+            // Wait for all workers to be done.
+            for handle in handles {
+                handle.join().unwrap()?;
+            }
+            // If all workers succeeded, we can't have failed.
+            assert!(!failed.load(Ordering::Relaxed));
+            Ok(())
+        })
     }
 }

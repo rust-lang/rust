@@ -5,11 +5,11 @@ macro_rules! test { ($nm:ident,
                      $i:item) => (mod $nm { #[$a] $i }); }
 
 test!(a,
-      #[cfg(qux)],
+      #[cfg(FALSE)],
       pub fn bar() { });
 
 test!(b,
-      #[cfg(not(qux))],
+      #[cfg(not(FALSE))],
       pub fn bar() { });
 
 // test1!(#[bar])

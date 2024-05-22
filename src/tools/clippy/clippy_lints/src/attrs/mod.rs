@@ -17,7 +17,7 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::msrvs::Msrv;
-use rustc_ast::{Attribute, Crate, MetaItemKind, NestedMetaItem};
+use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, impl_lint_pass};
@@ -61,11 +61,21 @@ declare_clippy_lint! {
     ///
     /// This lint permits lint attributes for lints emitted on the items themself.
     /// For `use` items these lints are:
+    /// * ambiguous_glob_reexports
+    /// * dead_code
     /// * deprecated
+    /// * hidden_glob_reexports
     /// * unreachable_pub
-    /// * unused_imports
+    /// * unused
+    /// * unused_braces
+    /// * unused_import_braces
+    /// * clippy::disallowed_types
     /// * clippy::enum_glob_use
     /// * clippy::macro_use_imports
+    /// * clippy::module_name_repetitions
+    /// * clippy::redundant_pub_crate
+    /// * clippy::single_component_path_imports
+    /// * clippy::unsafe_removed_from_name
     /// * clippy::wildcard_imports
     ///
     /// For `extern crate` items these lints are:
@@ -465,10 +475,20 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks that an item has only one kind of attributes.
+    /// Checks for items that have the same kind of attributes with mixed styles (inner/outer).
     ///
     /// ### Why is this bad?
-    /// Having both kinds of attributes makes it more complicated to read code.
+    /// Having both style of said attributes makes it more complicated to read code.
+    ///
+    /// ### Known problems
+    /// This lint currently has false-negatives when mixing same attributes
+    /// but they have different path symbols, for example:
+    /// ```ignore
+    /// #[custom_attribute]
+    /// pub fn foo() {
+    ///     #![my_crate::custom_attribute]
+    /// }
+    /// ```
     ///
     /// ### Example
     /// ```no_run
@@ -486,7 +506,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub MIXED_ATTRIBUTES_STYLE,
-    suspicious,
+    style,
     "item has both inner and outer attributes"
 }
 
@@ -523,11 +543,14 @@ declare_lint_pass!(Attributes => [
     USELESS_ATTRIBUTE,
     BLANKET_CLIPPY_RESTRICTION_LINTS,
     SHOULD_PANIC_WITHOUT_EXPECT,
+    MIXED_ATTRIBUTES_STYLE,
+    DUPLICATED_ATTRIBUTES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         blanket_clippy_restriction_lints::check_command_line(cx);
+        duplicated_attributes::check(cx, cx.tcx.hir().krate_attrs());
     }
 
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
@@ -566,6 +589,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => useless_attribute::check(cx, item, attrs),
             _ => {},
         }
+        mixed_attributes_style::check(cx, item.span, attrs);
+        duplicated_attributes::check(cx, attrs);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
@@ -594,19 +619,11 @@ impl_lint_pass!(EarlyAttributes => [
     MAYBE_MISUSED_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
     UNNECESSARY_CLIPPY_CFG,
-    MIXED_ATTRIBUTES_STYLE,
-    DUPLICATED_ATTRIBUTES,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
-        duplicated_attributes::check(cx, &krate.attrs);
-    }
-
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         empty_line_after::check(cx, item);
-        mixed_attributes_style::check(cx, item);
-        duplicated_attributes::check(cx, &item.attrs);
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {

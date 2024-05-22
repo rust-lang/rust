@@ -17,11 +17,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{
-    algo,
-    ast::{self, RecordPat},
-    match_ast, AstNode, Direction, SyntaxToken, T,
-};
+use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T};
 
 use crate::{
     doc_links::{remove_links, rewrite_links},
@@ -101,7 +97,7 @@ pub(super) fn try_expr(
                 if let Some((inner, body)) = error_type_args {
                     inner_ty = inner;
                     body_ty = body;
-                    s = "Try Error".to_owned();
+                    "Try Error".clone_into(&mut s);
                 }
             }
         }
@@ -276,7 +272,7 @@ pub(super) fn keyword(
 pub(super) fn struct_rest_pat(
     sema: &Semantics<'_, RootDatabase>,
     _config: &HoverConfig,
-    pattern: &RecordPat,
+    pattern: &ast::RecordPat,
 ) -> HoverResult {
     let missing_fields = sema.record_pattern_missing_fields(pattern);
 
@@ -403,6 +399,7 @@ pub(super) fn definition(
     def: Definition,
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
+    macro_arm: Option<u32>,
     config: &HoverConfig,
 ) -> Markup {
     let mod_path = definition_mod_path(db, &def);
@@ -410,8 +407,28 @@ pub(super) fn definition(
         Definition::Trait(trait_) => {
             trait_.display_limited(db, config.max_trait_assoc_items_count).to_string()
         }
-        Definition::Adt(Adt::Struct(struct_)) => {
-            struct_.display_limited(db, config.max_struct_field_count).to_string()
+        Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => {
+            adt.display_limited(db, config.max_fields_count).to_string()
+        }
+        Definition::Variant(variant) => {
+            variant.display_limited(db, config.max_fields_count).to_string()
+        }
+        Definition::Adt(adt @ Adt::Enum(_)) => {
+            adt.display_limited(db, config.max_enum_variants_count).to_string()
+        }
+        Definition::SelfType(impl_def) => {
+            let self_ty = &impl_def.self_ty(db);
+            match self_ty.as_adt() {
+                Some(adt) => adt.display_limited(db, config.max_fields_count).to_string(),
+                None => self_ty.display(db).to_string(),
+            }
+        }
+        Definition::Macro(it) => {
+            let mut label = it.display(db).to_string();
+            if let Some(macro_arm) = macro_arm {
+                format_to!(label, " // matched arm #{}", macro_arm);
+            }
+            label
         }
         _ => def.label(db),
     };
@@ -503,6 +520,60 @@ pub(super) fn definition(
     }
 
     markup(docs.map(Into::into), desc, mod_path)
+}
+
+pub(super) fn literal(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Markup> {
+    let lit = token.parent().and_then(ast::Literal::cast)?;
+    let ty = if let Some(p) = lit.syntax().parent().and_then(ast::Pat::cast) {
+        sema.type_of_pat(&p)?
+    } else {
+        sema.type_of_expr(&ast::Expr::Literal(lit))?
+    }
+    .original;
+
+    let value = match_ast! {
+        match token {
+            ast::String(string)     => string.value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
+            ast::ByteString(string) => string.value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("{it:?}")),
+            ast::CString(string)    => string.value().as_ref().map_err(|e| format!("{e:?}")).map(|it| std::str::from_utf8(it).map_or_else(|e| format!("{e:?}"), ToOwned::to_owned)),
+            ast::Char(char)         => char  .value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
+            ast::Byte(byte)         => byte  .value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("0x{it:X}")),
+            ast::FloatNumber(num) => {
+                let (text, _) = num.split_into_parts();
+                let text = text.replace('_', "");
+                if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
+                    match text.parse::<f32>() {
+                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                        Err(e) => Err(e.to_string()),
+                    }
+                } else {
+                    match text.parse::<f64>() {
+                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                        Err(e) => Err(e.to_string()),
+                    }
+                }
+            },
+            ast::IntNumber(num) => match num.value() {
+                Ok(num) => Ok(format!("{num} (0x{num:X}|0b{num:b})")),
+                Err(e) => Err(e.to_string()),
+            },
+            _ => return None
+        }
+    };
+    let ty = ty.display(sema.db);
+
+    let mut s = format!("```rust\n{ty}\n```\n___\n\n");
+    match value {
+        Ok(value) => {
+            if let Some(newline) = value.find('\n') {
+                format_to!(s, "value of literal (truncated up to newline): {}", &value[..newline])
+            } else {
+                format_to!(s, "value of literal: {value}")
+            }
+        }
+        Err(error) => format_to!(s, "invalid literal: {error}"),
+    }
+    Some(s.into())
 }
 
 fn render_notable_trait_comment(
@@ -637,7 +708,7 @@ fn closure_ty(
         })
         .join("\n");
     if captures_rendered.trim().is_empty() {
-        captures_rendered = "This closure captures nothing".to_owned();
+        "This closure captures nothing".clone_into(&mut captures_rendered);
     }
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
@@ -685,15 +756,7 @@ fn closure_ty(
 }
 
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
-    if matches!(
-        def,
-        Definition::GenericParam(_)
-            | Definition::BuiltinType(_)
-            | Definition::Local(_)
-            | Definition::Label(_)
-            | Definition::BuiltinAttr(_)
-            | Definition::ToolModule(_)
-    ) {
+    if matches!(def, Definition::GenericParam(_) | Definition::Local(_) | Definition::Label(_)) {
         return None;
     }
     def.module(db).map(|module| path(db, module, definition_owner_name(db, def)))

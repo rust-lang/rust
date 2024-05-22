@@ -1,6 +1,6 @@
 //@ run-pass
 //@ compile-flags: --cfg foo --cfg qux="foo"
-
+//@ compile-flags: --check-cfg=cfg(foo) --check-cfg=cfg(qux,values("foo"))
 
 pub fn main() {
     // check
@@ -14,11 +14,11 @@ pub fn main() {
     if   cfg!(not(all(foo, qux="foo"))) { panic!() }
     if   cfg!(all(not(all(foo, qux="foo")))) { panic!() }
 
-    if cfg!(not_a_cfg) { panic!() }
-    if cfg!(all(not_a_cfg, foo, qux="foo")) { panic!() }
-    if cfg!(all(not_a_cfg, foo, qux="foo")) { panic!() }
-    if ! cfg!(any(not_a_cfg, foo)) { panic!() }
+    if cfg!(FALSE) { panic!() }
+    if cfg!(all(FALSE, foo, qux="foo")) { panic!() }
+    if cfg!(all(FALSE, foo, qux="foo")) { panic!() }
+    if ! cfg!(any(FALSE, foo)) { panic!() }
 
-    if ! cfg!(not(not_a_cfg)) { panic!() }
-    if ! cfg!(all(not(not_a_cfg), foo, qux="foo")) { panic!() }
+    if ! cfg!(not(FALSE)) { panic!() }
+    if ! cfg!(all(not(FALSE), foo, qux="foo")) { panic!() }
 }

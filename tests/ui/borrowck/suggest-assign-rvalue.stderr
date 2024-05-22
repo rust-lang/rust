@@ -8,8 +8,8 @@ LL |     apple(chaenomeles);
    |
 help: consider assigning a value
    |
-LL |     let chaenomeles = 0;
-   |                     +++
+LL |     let chaenomeles = 42;
+   |                     ++++
 
 error[E0381]: used binding `my_float` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:23:30
@@ -22,8 +22,8 @@ LL |     println!("my_float: {}", my_float);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let my_float: f32 = 0.0;
-   |                       +++++
+LL |     let my_float: f32 = 3.14159;
+   |                       +++++++++
 
 error[E0381]: used binding `demo` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:26:28
@@ -50,8 +50,8 @@ LL |     println!("demo_no: {:?}", demo_no);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let demo_no: DemoNoDef = todo!();
-   |                            +++++++++
+LL |     let demo_no: DemoNoDef = /* value */;
+   |                            +++++++++++++
 
 error[E0381]: used binding `arr` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:34:27
@@ -64,7 +64,7 @@ LL |     println!("arr: {:?}", arr);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let arr: [i32; 5] = todo!();
+LL |     let arr: [i32; 5] = [42; 5];
    |                       +++++++++
 
 error[E0381]: used binding `foo` isn't initialized
@@ -106,8 +106,8 @@ LL |     println!("my_int: {}", *my_int);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let my_int: &i32 = todo!();
-   |                      +++++++++
+LL |     let my_int: &i32 = &42;
+   |                      +++++
 
 error[E0381]: used binding `hello` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:49:27
@@ -120,8 +120,8 @@ LL |     println!("hello: {}", hello);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider assigning a value
    |
-LL |     let hello: &str = todo!();
-   |                     +++++++++
+LL |     let hello: &str = "";
+   |                     ++++
 
 error[E0381]: used binding `never` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:53:27

@@ -19,7 +19,7 @@ use stable_mir::abi::{FnAbi, Layout, LayoutShape};
 use stable_mir::compiler_interface::Context;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{InstanceDef, StaticDef};
-use stable_mir::mir::{Body, Place};
+use stable_mir::mir::{BinOp, Body, Place};
 use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
@@ -500,6 +500,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         matches!(instance.def, ty::InstanceDef::DropGlue(_, None))
     }
 
+    fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool {
+        let tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        matches!(instance.def, ty::InstanceDef::AsyncDropGlueCtorShim(_, None))
+    }
+
     fn mono_instance(&self, def_id: stable_mir::DefId) -> stable_mir::mir::mono::Instance {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
@@ -667,6 +673,15 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         format!("{:?}", place.internal(&mut *tables, tcx))
+    }
+
+    fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let rhs_internal = rhs.internal(&mut *tables, tcx);
+        let lhs_internal = lhs.internal(&mut *tables, tcx);
+        let ty = bin_op.internal(&mut *tables, tcx).ty(tcx, rhs_internal, lhs_internal);
+        ty.stable(&mut *tables)
     }
 }
 

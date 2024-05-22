@@ -14,7 +14,7 @@
   
       bb0: {
           _3 = discriminant(_1);
-          switchInt(move _3) -> [1: bb2, otherwise: bb1];
+          switchInt(move _3) -> [1: bb2, 0: bb1, otherwise: bb6];
       }
   
       bb1: {
@@ -24,7 +24,7 @@
   
       bb2: {
           _4 = discriminant((*_2));
-          switchInt(move _4) -> [1: bb4, otherwise: bb3];
+          switchInt(move _4) -> [1: bb4, 0: bb3, otherwise: bb6];
       }
   
       bb3: {
@@ -42,6 +42,10 @@
   
       bb5: {
           return;
+      }
+  
+      bb6: {
+          unreachable;
       }
   }
   

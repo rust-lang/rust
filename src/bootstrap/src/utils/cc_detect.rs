@@ -41,13 +41,11 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from(ar))
     } else if target.is_msvc() {
         None
-    } else if target.contains("musl") {
-        Some(PathBuf::from("ar"))
-    } else if target.contains("openbsd") {
+    } else if target.contains("musl") || target.contains("openbsd") {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))
-    } else if target.contains("android") {
+    } else if target.contains("android") || target.contains("-wasi") {
         Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
     } else {
         let parent = cc.parent().unwrap();
@@ -221,6 +219,16 @@ fn default_compiler(
             } else {
                 None
             }
+        }
+
+        t if t.contains("-wasi") => {
+            let root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+            let compiler = match compiler {
+                Language::C => format!("{t}-clang"),
+                Language::CPlusPlus => format!("{t}-clang++"),
+            };
+            let compiler = root.join("bin").join(compiler);
+            Some(compiler)
         }
 
         _ => None,

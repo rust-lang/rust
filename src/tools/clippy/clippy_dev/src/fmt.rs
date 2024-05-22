@@ -35,7 +35,6 @@ struct FmtContext {
 }
 
 // the "main" function of cargo dev fmt
-#[allow(clippy::missing_panics_doc)]
 pub fn run(check: bool, verbose: bool) {
     fn try_run(context: &FmtContext) -> Result<bool, CliError> {
         let mut success = true;

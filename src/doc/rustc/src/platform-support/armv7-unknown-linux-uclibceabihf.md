@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-This tier supports the ARMv7 processor running a Linux kernel and uClibc-ng standard library.  It provides full support for rust and the rust standard library.
+This tier supports the Armv7-A processor running a Linux kernel and uClibc-ng standard library.  It provides full support for rust and the rust standard library.
 
 ## Designated Developers
 

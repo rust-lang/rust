@@ -13,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, LetStmt, Pat, PatKind, Stmt};
 use rustc_index::Idx;
+use rustc_middle::bug;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
@@ -654,7 +655,7 @@ fn resolve_local<'tcx>(
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
         match pat.kind {
-            PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes(_), _), ..) => true,
+            PatKind::Binding(hir::BindingMode(hir::ByRef::Yes(_), _), ..) => true,
 
             PatKind::Struct(_, field_pats, _) => field_pats.iter().any(|fp| is_binding_pat(fp.pat)),
 
@@ -671,7 +672,7 @@ fn resolve_local<'tcx>(
             PatKind::Box(subpat) | PatKind::Deref(subpat) => is_binding_pat(subpat),
 
             PatKind::Ref(_, _)
-            | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
+            | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Path(_)
@@ -689,6 +690,8 @@ fn resolve_local<'tcx>(
     ///        | [ ..., E&, ... ]
     ///        | ( ..., E&, ... )
     ///        | {...; E&}
+    ///        | if _ { ...; E& } else { ...; E& }
+    ///        | match _ { ..., _ => E&, ... }
     ///        | box E&
     ///        | E& as ...
     ///        | ( E& )
@@ -725,6 +728,17 @@ fn resolve_local<'tcx>(
             hir::ExprKind::Block(block, _) => {
                 if let Some(subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                }
+            }
+            hir::ExprKind::If(_, then_block, else_block) => {
+                record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
+                if let Some(else_block) = else_block {
+                    record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
+                }
+            }
+            hir::ExprKind::Match(_, arms, _) => {
+                for arm in arms {
+                    record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
                 }
             }
             hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {

@@ -1,6 +1,6 @@
 //@ edition:2018
 //@ check-pass
-#![feature(coroutines)]
+#![feature(coroutines, stmt_expr_attributes)]
 #![warn(unused)]
 #![allow(unreachable_code)]
 
@@ -131,7 +131,7 @@ pub fn async_coroutine() {
 
 pub fn coroutine() {
     let mut s: u32 = 0;
-    let _ = |_| {
+    let _ = #[coroutine] |_| {
         s = 0;
         yield ();
         s = 1; //~ WARN value assigned to `s` is never read

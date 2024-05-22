@@ -11,14 +11,13 @@ use crate::errors;
 use crate::maybe_whole;
 
 use crate::errors::MalformedLoopLabel;
-use crate::parser::Recovered;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
+use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Recovered, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -568,7 +567,7 @@ impl<'a> Parser<'a> {
             if self.token == token::Eof {
                 break;
             }
-            if self.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+            if self.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
                 // Account for `<<<<<<<` diff markers. We can't proactively error here because
                 // that can be a valid path start, so we snapshot and reparse only we've
                 // encountered another parse error.
@@ -577,7 +576,7 @@ impl<'a> Parser<'a> {
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
                     if let Some(ref mut snapshot) = snapshot {
-                        snapshot.recover_diff_marker();
+                        snapshot.recover_vcs_conflict_marker();
                     }
                     if self.token == token::Colon {
                         // if a previous and next token of the current one is
@@ -675,11 +674,8 @@ impl<'a> Parser<'a> {
                 let replace_with_err = 'break_recover: {
                     match expect_result {
                         Ok(Recovered::No) => None,
-                        Ok(Recovered::Yes) => {
+                        Ok(Recovered::Yes(guar)) => {
                             // Skip type error to avoid extra errors.
-                            let guar = self
-                                .dcx()
-                                .span_delayed_bug(self.prev_token.span, "expected `;` or `}`");
                             Some(guar)
                         }
                         Err(e) => {

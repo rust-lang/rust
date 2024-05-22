@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.76"
+rust-version = "1.78"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -22,6 +22,7 @@ smol_str.opt-level = 3
 text-size.opt-level = 3
 # This speeds up `cargo xtask dist`.
 miniz_oxide.opt-level = 3
+salsa.opt-level = 3
 
 [profile.release]
 incremental = true
@@ -84,10 +85,10 @@ tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.44.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.44.0", default-features = false }
-ra-ap-rustc_index = { version = "0.44.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.44.0", default-features = false }
+ra-ap-rustc_lexer = { version = "0.53.0", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.53.0", default-features = false }
+ra-ap-rustc_index = { version = "0.53.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.53.0", default-features = false }
 ra-ap-rustc_pattern_analysis = { version = "0.44.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
@@ -106,10 +107,10 @@ arrayvec = "0.7.4"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
 camino = "1.1.6"
-chalk-solve = { version = "0.96.0", default-features = false }
-chalk-ir = "0.96.0"
-chalk-recursive = { version = "0.96.0", default-features = false }
-chalk-derive = "0.96.0"
+chalk-solve = { version = "0.97.0", default-features = false }
+chalk-ir = "0.97.0"
+chalk-recursive = { version = "0.97.0", default-features = false }
+chalk-derive = "0.97.0"
 command-group = "2.0.1"
 crossbeam-channel = "0.5.8"
 dissimilar = "1.0.7"
@@ -188,6 +189,8 @@ enum_variant_names = "allow"
 new_ret_no_self = "allow"
 # Has a bunch of false positives
 useless_asref = "allow"
+# Has false positives
+assigning_clones = "allow"
 
 ## Following lints should be tackled at some point
 too_many_arguments = "allow"

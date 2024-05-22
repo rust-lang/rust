@@ -4,6 +4,7 @@
 use std::cmp;
 
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use super::{alloc_range, AllocError, AllocRange, AllocResult, CtfeProvenance, Provenance};

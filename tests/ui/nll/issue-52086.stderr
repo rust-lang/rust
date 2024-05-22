@@ -3,12 +3,22 @@ error[E0507]: cannot move out of an `Rc`
    |
 LL |     drop(x.field);
    |          ^^^^^^^ move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.field.clone());
+   |                 ++++++++
 
 error[E0507]: cannot move out of an `Arc`
   --> $DIR/issue-52086.rs:12:10
    |
 LL |     drop(y.field);
    |          ^^^^^^^ move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(y.field.clone());
+   |                 ++++++++
 
 error: aborting due to 2 previous errors
 

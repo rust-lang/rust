@@ -142,3 +142,21 @@ impl PartialOrd for H {
         Some(Ord::cmp(self, other))
     }
 }
+
+// #12683, do not lint
+
+#[derive(Eq, PartialEq)]
+struct I(u32);
+
+impl Ord for I {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for I {
+    #[allow(clippy::needless_return)]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        return Some(self.cmp(other));
+    }
+}

@@ -43,8 +43,8 @@ LL |     match n {}
    |
 help: consider assigning a value
    |
-LL |     let n: Never = todo!();
-   |                  +++++++++
+LL |     let n: Never = /* value */;
+   |                  +++++++++++++
 
 error: aborting due to 4 previous errors
 

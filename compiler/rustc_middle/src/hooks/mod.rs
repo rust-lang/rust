@@ -6,8 +6,10 @@
 use crate::mir;
 use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
-use rustc_span::def_id::LocalDefId;
-use rustc_span::DUMMY_SP;
+use rustc_hir::def_id::{DefId, DefPathHash};
+use rustc_session::StableCrateId;
+use rustc_span::def_id::{CrateNum, LocalDefId};
+use rustc_span::{ExpnHash, ExpnId, DUMMY_SP};
 
 macro_rules! declare_hooks {
     ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
@@ -16,7 +18,6 @@ macro_rules! declare_hooks {
             $(
             $(#[$attr])*
             #[inline(always)]
-            #[must_use]
             pub fn $name(self, $($arg: $K,)*) -> $V
             {
                 self.at(DUMMY_SP).$name($($arg,)*)
@@ -28,7 +29,6 @@ macro_rules! declare_hooks {
             $(
             $(#[$attr])*
             #[inline(always)]
-            #[must_use]
             #[instrument(level = "debug", skip(self), ret)]
             pub fn $name(self, $($arg: $K,)*) -> $V
             {
@@ -47,12 +47,7 @@ macro_rules! declare_hooks {
         impl Default for Providers {
             fn default() -> Self {
                 Providers {
-                    $($name: |_, $($arg,)*| bug!(
-                        "`tcx.{}{:?}` cannot be called as `{}` was never assigned to a provider function.\n",
-                        stringify!($name),
-                        ($($arg,)*),
-                        stringify!($name),
-                    ),)*
+                    $($name: |_, $($arg,)*| default_hook(stringify!($name), &($($arg,)*))),*
                 }
             }
         }
@@ -83,4 +78,35 @@ declare_hooks! {
     /// You do not want to call this yourself, instead use the cached version
     /// via `mir_built`
     hook build_mir(key: LocalDefId) -> mir::Body<'tcx>;
+
+    /// Imports all `SourceFile`s from the given crate into the current session.
+    /// This normally happens automatically when we decode a `Span` from
+    /// that crate's metadata - however, the incr comp cache needs
+    /// to trigger this manually when decoding a foreign `Span`
+    hook import_source_files(key: CrateNum) -> ();
+
+    hook expn_hash_to_expn_id(
+        cnum: CrateNum,
+        index_guess: u32,
+        hash: ExpnHash
+    ) -> ExpnId;
+
+    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
+    /// session, if it still exists. This is used during incremental compilation to
+    /// turn a deserialized `DefPathHash` into its current `DefId`.
+    /// Will fetch a DefId from a DefPathHash for a foreign crate.
+    hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> DefId;
+
+    /// Create a THIR tree for debugging.
+    hook thir_tree(key: LocalDefId) -> String;
+
+    /// Create a list-like THIR representation for debugging.
+    hook thir_flat(key: LocalDefId) -> String;
+}
+
+#[cold]
+fn default_hook(name: &str, args: &dyn std::fmt::Debug) -> ! {
+    bug!(
+        "`tcx.{name}{args:?}` cannot be called as `{name}` was never assigned to a provider function"
+    )
 }

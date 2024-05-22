@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/tuple-mismatch.rs:6:20
+  --> $DIR/tuple-mismatch.rs:7:20
    |
 LL |         yield ((), ());
    |                    ^^ expected `((), ())`, found `()`

@@ -6,8 +6,7 @@ use clippy_utils::visitors::{for_each_expr, for_each_expr_with_closures, is_loca
 use core::ops::ControlFlow;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{
-    BindingAnnotation, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
-    StmtKind,
+    BindingMode, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -274,24 +273,16 @@ fn check<'tcx>(
                 msg_span,
                 "unneeded late initialization",
                 |diag| {
-                    diag.tool_only_span_suggestion(
-                        local_stmt.span,
-                        "remove the local",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
-
-                    diag.span_suggestion(
-                        assign.lhs_span,
-                        format!("declare `{binding_name}` here"),
-                        let_snippet,
+                    diag.multipart_suggestion(
+                        format!("move the declaration `{binding_name}` here"),
+                        vec![(local_stmt.span, String::new()), (assign.lhs_span, let_snippet)],
                         Applicability::MachineApplicable,
                     );
                 },
             );
         },
         ExprKind::If(cond, then_expr, Some(else_expr)) if !contains_let(cond) => {
-            let (applicability, suggestions) = assignment_suggestions(cx, binding_id, [then_expr, else_expr])?;
+            let (applicability, mut suggestions) = assignment_suggestions(cx, binding_id, [then_expr, else_expr])?;
 
             span_lint_and_then(
                 cx,
@@ -299,30 +290,26 @@ fn check<'tcx>(
                 local_stmt.span,
                 "unneeded late initialization",
                 |diag| {
-                    diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
-
-                    diag.span_suggestion_verbose(
-                        usage.stmt.span.shrink_to_lo(),
-                        format!("declare `{binding_name}` here"),
-                        format!("{let_snippet} = "),
-                        applicability,
-                    );
-
-                    diag.multipart_suggestion("remove the assignments from the branches", suggestions, applicability);
+                    suggestions.push((local_stmt.span, String::new()));
+                    suggestions.push((usage.stmt.span.shrink_to_lo(), format!("{let_snippet} = ")));
 
                     if usage.needs_semi {
-                        diag.span_suggestion(
-                            usage.stmt.span.shrink_to_hi(),
-                            "add a semicolon after the `if` expression",
-                            ";",
-                            applicability,
-                        );
+                        suggestions.push((usage.stmt.span.shrink_to_hi(), ";".to_owned()));
                     }
+
+                    diag.multipart_suggestion(
+                        format!(
+                            "move the declaration `{binding_name}` here and remove the assignments from the branches"
+                        ),
+                        suggestions,
+                        applicability,
+                    );
                 },
             );
         },
         ExprKind::Match(_, arms, MatchSource::Normal) => {
-            let (applicability, suggestions) = assignment_suggestions(cx, binding_id, arms.iter().map(|arm| arm.body))?;
+            let (applicability, mut suggestions) =
+                assignment_suggestions(cx, binding_id, arms.iter().map(|arm| arm.body))?;
 
             span_lint_and_then(
                 cx,
@@ -330,29 +317,18 @@ fn check<'tcx>(
                 local_stmt.span,
                 "unneeded late initialization",
                 |diag| {
-                    diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
+                    suggestions.push((local_stmt.span, String::new()));
+                    suggestions.push((usage.stmt.span.shrink_to_lo(), format!("{let_snippet} = ")));
 
-                    diag.span_suggestion_verbose(
-                        usage.stmt.span.shrink_to_lo(),
-                        format!("declare `{binding_name}` here"),
-                        format!("{let_snippet} = "),
-                        applicability,
-                    );
+                    if usage.needs_semi {
+                        suggestions.push((usage.stmt.span.shrink_to_hi(), ";".to_owned()));
+                    }
 
                     diag.multipart_suggestion(
-                        "remove the assignments from the `match` arms",
+                        format!("move the declaration `{binding_name}` here and remove the assignments from the `match` arms"),
                         suggestions,
                         applicability,
                     );
-
-                    if usage.needs_semi {
-                        diag.span_suggestion(
-                            usage.stmt.span.shrink_to_hi(),
-                            "add a semicolon after the `match` expression",
-                            ";",
-                            applicability,
-                        );
-                    }
                 },
             );
         },
@@ -369,7 +345,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
             init: None,
             pat:
                 &Pat {
-                    kind: PatKind::Binding(BindingAnnotation::NONE, binding_id, _, None),
+                    kind: PatKind::Binding(BindingMode::NONE, binding_id, _, None),
                     ..
                 },
             source: LocalSource::Normal,

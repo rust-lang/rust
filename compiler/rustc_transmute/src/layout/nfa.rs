@@ -160,6 +160,7 @@ where
         Self { transitions, start, accepting }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn edges_from(&self, start: State) -> Option<&Map<Transition<R>, Set<State>>> {
         self.transitions.get(&start)
     }

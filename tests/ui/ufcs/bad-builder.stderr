@@ -9,7 +9,7 @@ note: if you're trying to build a new `Vec<Q>` consider using one of the followi
       Vec::<T>::with_capacity
       Vec::<T>::try_with_capacity
       Vec::<T>::from_raw_parts
-      and 4 others
+      and 6 others
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: there is an associated function `new` with a similar name
    |

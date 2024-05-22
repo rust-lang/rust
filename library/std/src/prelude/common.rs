@@ -84,7 +84,6 @@ pub use core::prelude::v1::cfg_eval;
 )]
 pub use core::prelude::v1::type_ascribe;
 
-#[cfg(not(bootstrap))]
 // Do not `doc(no_inline)` either.
 #[unstable(
     feature = "deref_patterns",

@@ -7,6 +7,7 @@ use crate::{
 };
 use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
 use rustc_ast as ast;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{BytePos, Span, Symbol};
 
 declare_lint! {

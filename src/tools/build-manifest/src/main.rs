@@ -56,6 +56,7 @@ static TARGETS: &[&str] = &[
     "aarch64-apple-ios-sim",
     "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
+    "aarch64-pc-windows-gnullvm",
     "aarch64-pc-windows-msvc",
     "aarch64-unknown-hermit",
     "aarch64-unknown-linux-gnu",
@@ -96,6 +97,7 @@ static TARGETS: &[&str] = &[
     "i686-apple-darwin",
     "i686-linux-android",
     "i686-pc-windows-gnu",
+    "i686-pc-windows-gnullvm",
     "i686-pc-windows-msvc",
     "i686-unknown-freebsd",
     "i686-unknown-linux-gnu",
@@ -157,6 +159,7 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-fuchsia",
     "x86_64-linux-android",
     "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-gnullvm",
     "x86_64-pc-windows-msvc",
     "x86_64-pc-solaris",
     "x86_64-unikraft-linux-musl",
@@ -233,7 +236,7 @@ fn main() {
     let num_threads = if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
         num.to_str().unwrap().parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
     } else {
-        std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
+        std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
     };
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
@@ -464,7 +467,8 @@ impl Builder {
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs
-                | PkgType::RustcCodegenCranelift => {
+                | PkgType::RustcCodegenCranelift
+                | PkgType::LlvmBitcodeLinker => {
                     extensions.push(host_component(pkg));
                 }
                 PkgType::RustcDev | PkgType::RustcDocs => {

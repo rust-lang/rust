@@ -6,7 +6,7 @@ use rustc_errors::{
     codes::*, Diag, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
     MultiSpan,
 };
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 

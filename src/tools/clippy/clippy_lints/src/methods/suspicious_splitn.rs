@@ -37,6 +37,6 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
             )
         };
 
-        span_lint_and_note(cx, SUSPICIOUS_SPLITN, expr.span, &msg, None, note_msg);
+        span_lint_and_note(cx, SUSPICIOUS_SPLITN, expr.span, msg, None, note_msg);
     }
 }

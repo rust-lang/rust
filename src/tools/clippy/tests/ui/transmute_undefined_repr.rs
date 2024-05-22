@@ -1,5 +1,10 @@
 #![warn(clippy::transmute_undefined_repr)]
-#![allow(clippy::unit_arg, clippy::transmute_ptr_to_ref, clippy::useless_transmute)]
+#![allow(
+    clippy::unit_arg,
+    clippy::transmute_ptr_to_ref,
+    clippy::useless_transmute,
+    clippy::missing_transmute_annotations
+)]
 
 use core::any::TypeId;
 use core::ffi::c_void;

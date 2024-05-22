@@ -24,7 +24,7 @@ declare_clippy_lint! {
     ///
     /// ### Limitations
     /// This lint does not check for implied bounds transitively. Meaning that
-    /// it does't check for implied bounds from supertraits of supertraits
+    /// it doesn't check for implied bounds from supertraits of supertraits
     /// (e.g. `trait A {} trait B: A {} trait C: B {}`, then having an `fn() -> impl A + C`)
     ///
     /// ### Example
@@ -56,7 +56,7 @@ fn emit_lint(
     index: usize,
     // The bindings that were implied, used for suggestion purposes since removing a bound with associated types
     // means we might need to then move it to a different bound
-    implied_bindings: &[rustc_hir::TypeBinding<'_>],
+    implied_bindings: &[TypeBinding<'_>],
     bound: &ImplTraitBound<'_>,
 ) {
     let implied_by = snippet(cx, bound.span, "..");
@@ -65,7 +65,7 @@ fn emit_lint(
         cx,
         IMPLIED_BOUNDS_IN_IMPLS,
         poly_trait.span,
-        &format!("this bound is already specified as the supertrait of `{implied_by}`"),
+        format!("this bound is already specified as the supertrait of `{implied_by}`"),
         |diag| {
             // If we suggest removing a bound, we may also need to extend the span
             // to include the `+` token that is ahead or behind,
@@ -148,7 +148,7 @@ fn try_resolve_type<'tcx>(
     match args.get(index - 1) {
         Some(GenericArg::Type(ty)) => Some(lower_ty(tcx, ty)),
         Some(_) => None,
-        None => Some(tcx.type_of(generics.params[index].def_id).skip_binder()),
+        None => Some(tcx.type_of(generics.own_params[index].def_id).skip_binder()),
     }
 }
 

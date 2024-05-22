@@ -18,8 +18,6 @@ use html5ever::tendril::ByteTendril;
 use html5ever::tokenizer::{
     BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
 };
-use once_cell::sync::Lazy;
-use regex::Regex;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -69,8 +67,12 @@ const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
 
 ];
 
-static BROKEN_INTRA_DOC_LINK: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"\[<code>(.*)</code>\]"#).unwrap());
+macro_rules! static_regex {
+    ($re:literal) => {{
+        static RE: ::std::sync::OnceLock<::regex::Regex> = ::std::sync::OnceLock::new();
+        RE.get_or_init(|| ::regex::Regex::new($re).unwrap())
+    }};
+}
 
 macro_rules! t {
     ($e:expr) => {
@@ -373,7 +375,7 @@ impl Checker {
         // Search for intra-doc links that rustdoc didn't warn about
         // NOTE: only looks at one line at a time; in practice this should find most links
         for (i, line) in source.lines().enumerate() {
-            for broken_link in BROKEN_INTRA_DOC_LINK.captures_iter(line) {
+            for broken_link in static_regex!(r#"\[<code>(.*)</code>\]"#).captures_iter(line) {
                 if is_intra_doc_exception(file, &broken_link[1]) {
                     report.intra_doc_exceptions += 1;
                 } else {

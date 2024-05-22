@@ -16,6 +16,7 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def::DefKind;
+use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
@@ -23,9 +24,10 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use crate::fluent_generated as fluent;
 
 use super::{
-    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg,
-    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak,
-    Misalignment, Pointer, PointerArithmetic, Provenance, Scalar,
+    alloc_range, err_ub, err_ub_custom, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
+    AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
+    CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
+    PointerArithmetic, Provenance, Scalar,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -165,7 +167,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// This function can fail only if `ptr` points to an `extern static`.
     #[inline]
-    pub fn global_base_pointer(
+    pub fn global_root_pointer(
         &self,
         ptr: Pointer<CtfeProvenance>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
@@ -178,12 +180,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 bug!("global memory cannot point to thread-local static")
             }
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_foreign_item(def_id) => {
-                return M::extern_static_base_pointer(self, def_id);
+                return M::extern_static_pointer(self, def_id);
+            }
+            None => {
+                assert!(
+                    self.memory.extra_fn_ptr_map.contains_key(&alloc_id),
+                    "{alloc_id:?} is neither global nor a function pointer"
+                );
             }
             _ => {}
         }
         // And we need to get the provenance.
-        M::adjust_alloc_base_pointer(self, ptr)
+        M::adjust_alloc_root_pointer(self, ptr, M::GLOBAL_KIND.map(MemoryKind::Machine))
     }
 
     pub fn fn_ptr(&mut self, fn_val: FnVal<'tcx, M::ExtraFnVal>) -> Pointer<M::Provenance> {
@@ -197,9 +205,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 id
             }
         };
-        // Functions are global allocations, so make sure we get the right base pointer.
+        // Functions are global allocations, so make sure we get the right root pointer.
         // We know this is not an `extern static` so this cannot fail.
-        self.global_base_pointer(Pointer::from(id)).unwrap()
+        self.global_root_pointer(Pointer::from(id)).unwrap()
     }
 
     pub fn allocate_ptr(
@@ -227,7 +235,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.allocate_raw_ptr(alloc, kind)
     }
 
-    /// This can fail only if `alloc` contains provenance.
     pub fn allocate_raw_ptr(
         &mut self,
         alloc: Allocation,
@@ -241,7 +248,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
         let alloc = M::adjust_allocation(self, id, Cow::Owned(alloc), Some(kind))?;
         self.memory.alloc_map.insert(id, (kind, alloc.into_owned()));
-        M::adjust_alloc_base_pointer(self, Pointer::from(id))
+        M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
     }
 
     pub fn reallocate_ptr(
@@ -355,6 +362,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (alloc_id, prov),
             size,
             alloc.align,
+            kind,
         )?;
 
         // Don't forget to remember size and align of this now-dead allocation

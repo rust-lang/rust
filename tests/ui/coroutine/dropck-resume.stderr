@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `y` as immutable because it is also borrowed as mutable
-  --> $DIR/dropck-resume.rs:25:13
+  --> $DIR/dropck-resume.rs:26:13
    |
 LL |     let z = &mut y;
    |             ------ mutable borrow occurs here

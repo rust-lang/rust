@@ -3,6 +3,7 @@
 
 fn duplicate_t<T>(t: T) -> (T, T) {
     //~^ HELP consider restricting type parameter `T`
+    //~| HELP if `T` implemented `Clone`, you could clone the value
     (t, t) //~ use of moved value: `t`
 }
 
@@ -72,10 +73,11 @@ where
 #[rustfmt::skip]
 fn existing_colon<T:>(t: T) {
     //~^ HELP consider restricting type parameter `T`
+    //~| HELP if `T` implemented `Clone`, you could clone the value
     [t, t]; //~ use of moved value: `t`
 }
 
-fn existing_colon_in_where<T>(t: T)
+fn existing_colon_in_where<T>(t: T) //~ HELP if `T` implemented `Clone`, you could clone the value
 where
     T:,
     //~^ HELP consider further restricting type parameter `T`

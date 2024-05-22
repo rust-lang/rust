@@ -1,30 +1,15 @@
 use super::Const;
 use crate::mir;
 use crate::ty::abstract_const::CastKind;
-use crate::ty::GenericArgsRef;
 use crate::ty::{self, visit::TypeVisitableExt as _, List, Ty, TyCtxt};
-use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
-/// An unevaluated (potentially generic) constant used in the type-system.
-#[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct UnevaluatedConst<'tcx> {
-    pub def: DefId,
-    pub args: GenericArgsRef<'tcx>,
-}
-
-impl rustc_errors::IntoDiagArg for UnevaluatedConst<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        format!("{self:?}").into_diag_arg()
-    }
-}
-
-impl<'tcx> UnevaluatedConst<'tcx> {
+#[extension(pub(crate) trait UnevaluatedConstEvalExt<'tcx>)]
+impl<'tcx> ty::UnevaluatedConst<'tcx> {
     /// FIXME(RalfJung): I cannot explain what this does or why it makes sense, but not doing this
     /// hurts performance.
     #[inline]
-    pub(crate) fn prepare_for_eval(
+    fn prepare_for_eval(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -55,13 +40,6 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     }
 }
 
-impl<'tcx> UnevaluatedConst<'tcx> {
-    #[inline]
-    pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
-        UnevaluatedConst { def, args }
-    }
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum Expr<'tcx> {
@@ -71,8 +49,5 @@ pub enum Expr<'tcx> {
     Cast(CastKind, Const<'tcx>, Ty<'tcx>),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Expr<'_>, 24);
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(super::ConstKind<'_>, 32);
+#[cfg(target_pointer_width = "64")]
+rustc_data_structures::static_assert_size!(Expr<'_>, 24);

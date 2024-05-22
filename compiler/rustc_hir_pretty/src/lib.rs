@@ -9,9 +9,10 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
-use rustc_hir::LifetimeParamKind;
-use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Node, Term};
-use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
+use rustc_hir::{
+    BindingMode, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
+    LifetimeParamKind, Node, PatKind, RangeEnd, Term, TraitBoundModifier,
+};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileName;
@@ -20,7 +21,7 @@ use rustc_target::spec::abi::Abi;
 use std::cell::Cell;
 use std::vec;
 
-pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
+pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
     to_string(&map, |s| s.print_node(map.hir_node(hir_id)))
 }
 
@@ -28,7 +29,7 @@ pub enum AnnNode<'a> {
     Name(&'a Symbol),
     Block(&'a hir::Block<'a>),
     Item(&'a hir::Item<'a>),
-    SubItem(hir::HirId),
+    SubItem(HirId),
     Expr(&'a hir::Expr<'a>),
     Pat(&'a hir::Pat<'a>),
     Arm(&'a hir::Arm<'a>),
@@ -49,10 +50,6 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
 }
 
-pub struct NoAnn;
-
-impl PpAnn for NoAnn {}
-
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
@@ -69,12 +66,12 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> State<'a> {
-    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+    fn attrs(&self, id: HirId) -> &'a [ast::Attribute] {
         (self.attrs)(id)
     }
 
@@ -99,6 +96,7 @@ impl<'a> State<'a> {
             Node::PatField(a) => self.print_patfield(a),
             Node::Arm(a) => self.print_arm(a),
             Node::Infer(_) => self.word("_"),
+            Node::PreciseCapturingNonLifetimeArg(param) => self.print_ident(param.ident),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(INDENT_UNIT);
@@ -141,8 +139,12 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn comments(&mut self) -> &mut Option<Comments<'a>> {
-        &mut self.comments
+    fn comments(&self) -> Option<&Comments<'a>> {
+        self.comments.as_ref()
+    }
+
+    fn comments_mut(&mut self) -> Option<&mut Comments<'a>> {
+        self.comments.as_mut()
     }
 
     fn ann_post(&mut self, ident: Ident) {
@@ -163,7 +165,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [ast::Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {
@@ -190,16 +192,16 @@ where
     printer.s.eof()
 }
 
-pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_type(ty))
+pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
+    to_string(ann, |s| s.print_type(ty))
 }
 
-pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_qpath(segment, false))
+pub fn qpath_to_string(ann: &dyn PpAnn, segment: &hir::QPath<'_>) -> String {
+    to_string(ann, |s| s.print_qpath(segment, false))
 }
 
-pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
-    to_string(&NoAnn, |s| s.print_pat(pat))
+pub fn pat_to_string(ann: &dyn PpAnn, pat: &hir::Pat<'_>) -> String {
+    to_string(ann, |s| s.print_pat(pat))
 }
 
 impl<'a> State<'a> {
@@ -285,7 +287,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             hir::TyKind::BareFn(f) => {
-                self.print_ty_fn(f.abi, f.unsafety, f.decl, None, f.generic_params, f.param_names);
+                self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_names);
             }
             hir::TyKind::OpaqueDef(..) => self.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
@@ -330,6 +332,11 @@ impl<'a> State<'a> {
                 self.word("_");
             }
             hir::TyKind::AnonAdt(..) => self.word("/* anonymous adt */"),
+            hir::TyKind::Pat(ty, pat) => {
+                self.print_type(ty);
+                self.word(" is ");
+                self.print_pat(pat);
+            }
         }
         self.end()
     }
@@ -344,7 +351,7 @@ impl<'a> State<'a> {
                 self.print_fn(
                     decl,
                     hir::FnHeader {
-                        unsafety: hir::Unsafety::Normal,
+                        safety: hir::Safety::Safe,
                         constness: hir::Constness::NotConst,
                         abi: Abi::Rust,
                         asyncness: hir::IsAsync::NotAsync,
@@ -575,7 +582,7 @@ impl<'a> State<'a> {
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
             hir::ItemKind::Impl(&hir::Impl {
-                unsafety,
+                safety,
                 polarity,
                 defaultness,
                 defaultness_span: _,
@@ -586,7 +593,7 @@ impl<'a> State<'a> {
             }) => {
                 self.head("");
                 self.print_defaultness(defaultness);
-                self.print_unsafety(unsafety);
+                self.print_safety(safety);
                 self.word_nbsp("impl");
 
                 if !generics.params.is_empty() {
@@ -615,10 +622,10 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::Trait(is_auto, unsafety, generics, bounds, trait_items) => {
+            hir::ItemKind::Trait(is_auto, safety, generics, bounds, trait_items) => {
                 self.head("");
                 self.print_is_auto(is_auto);
-                self.print_unsafety(unsafety);
+                self.print_safety(safety);
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(generics.params);
@@ -965,7 +972,7 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    fn print_array_length(&mut self, len: &hir::ArrayLen) {
+    fn print_array_length(&mut self, len: &hir::ArrayLen<'_>) {
         match len {
             hir::ArrayLen::Infer(..) => self.word("_"),
             hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
@@ -1049,7 +1056,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen<'_>) {
         self.ibox(INDENT_UNIT);
         self.word("[");
         self.print_expr(element);
@@ -1137,7 +1144,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
-        let assoc_op = bin_op_to_assoc_op(op.node);
+        let assoc_op = AssocOp::from_ast_binop(op.node);
         let prec = assoc_op.precedence() as i8;
         let fixity = assoc_op.fixity();
 
@@ -1447,7 +1454,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at `}`
-                self.cbox(INDENT_UNIT);
+                self.cbox(0);
                 // head-box, will be closed by print-block after `{`
                 self.ibox(0);
                 self.print_block(blk);
@@ -1720,7 +1727,7 @@ impl<'a> State<'a> {
         match pat.kind {
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
-            PatKind::Binding(BindingAnnotation(by_ref, mutbl), _, ident, sub) => {
+            PatKind::Binding(BindingMode(by_ref, mutbl), _, ident, sub) => {
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }
@@ -2227,7 +2234,7 @@ impl<'a> State<'a> {
     fn print_ty_fn(
         &mut self,
         abi: Abi,
-        unsafety: hir::Unsafety,
+        safety: hir::Safety,
         decl: &hir::FnDecl<'_>,
         name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
@@ -2239,7 +2246,7 @@ impl<'a> State<'a> {
         self.print_fn(
             decl,
             hir::FnHeader {
-                unsafety,
+                safety,
                 abi,
                 constness: hir::Constness::NotConst,
                 asyncness: hir::IsAsync::NotAsync,
@@ -2260,7 +2267,7 @@ impl<'a> State<'a> {
             hir::IsAsync::Async(_) => self.word_nbsp("async"),
         }
 
-        self.print_unsafety(header.unsafety);
+        self.print_safety(header.safety);
 
         if header.abi != Abi::Rust {
             self.word_nbsp("extern");
@@ -2277,10 +2284,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_unsafety(&mut self, s: hir::Unsafety) {
+    fn print_safety(&mut self, s: hir::Safety) {
         match s {
-            hir::Unsafety::Normal => {}
-            hir::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+            hir::Safety::Safe => {}
+            hir::Safety::Unsafe => self.word_nbsp("unsafe"),
         }
     }
 
@@ -2320,33 +2327,6 @@ fn stmt_ends_with_semi(stmt: &hir::StmtKind<'_>) -> bool {
         hir::StmtKind::Item(_) => false,
         hir::StmtKind::Expr(e) => expr_requires_semi_to_be_stmt(e),
         hir::StmtKind::Semi(..) => false,
-    }
-}
-
-fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
-    use crate::hir::BinOpKind::*;
-    match op {
-        Add => AssocOp::Add,
-        Sub => AssocOp::Subtract,
-        Mul => AssocOp::Multiply,
-        Div => AssocOp::Divide,
-        Rem => AssocOp::Modulus,
-
-        And => AssocOp::LAnd,
-        Or => AssocOp::LOr,
-
-        BitXor => AssocOp::BitXor,
-        BitAnd => AssocOp::BitAnd,
-        BitOr => AssocOp::BitOr,
-        Shl => AssocOp::ShiftLeft,
-        Shr => AssocOp::ShiftRight,
-
-        Eq => AssocOp::Equal,
-        Lt => AssocOp::Less,
-        Le => AssocOp::LessEqual,
-        Ne => AssocOp::NotEqual,
-        Ge => AssocOp::GreaterEqual,
-        Gt => AssocOp::Greater,
     }
 }
 

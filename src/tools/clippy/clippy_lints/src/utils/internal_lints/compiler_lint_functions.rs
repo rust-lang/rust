@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
                 path.ident.span,
                 "usage of a compiler lint function",
                 None,
-                &format!("please use the Clippy variant of this function: `{sugg}`"),
+                format!("please use the Clippy variant of this function: `{sugg}`"),
             );
         }
     }

@@ -1,8 +1,7 @@
 //@ run-pass
-//@ compile-flags: --cfg fooA --cfg fooB
+//@ compile-flags: --cfg fooA --cfg fooB --check-cfg=cfg(fooA,fooB,fooC,bar)
 
 // fooA AND !bar
-
 #[cfg(all(fooA, not(bar)))]
 fn foo1() -> isize { 1 }
 

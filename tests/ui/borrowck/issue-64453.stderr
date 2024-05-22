@@ -22,6 +22,11 @@ error[E0507]: cannot move out of static item `settings_dir`
    |
 LL |     let settings_data = from_string(settings_dir);
    |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let settings_data = from_string(settings_dir.clone());
+   |                                                 ++++++++
 
 error: aborting due to 3 previous errors
 

@@ -128,8 +128,8 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     cx,
                     lint,
                     first_segment.ident.span,
-                    &format!("used import from `{used_mod}` instead of `{replace_with}`"),
-                    &format!("consider importing the item from `{replace_with}`"),
+                    format!("used import from `{used_mod}` instead of `{replace_with}`"),
+                    format!("consider importing the item from `{replace_with}`"),
                     replace_with.to_string(),
                     Applicability::MachineApplicable,
                 );

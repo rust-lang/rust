@@ -16,6 +16,7 @@ use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -202,6 +203,16 @@ fn push_debuginfo_type_name<'tcx>(
                 }
             }
         }
+        ty::Pat(inner_type, pat) => {
+            if cpp_like_debuginfo {
+                output.push_str("pat$<");
+                push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+                // FIXME(wg-debugging): implement CPP like printing for patterns.
+                write!(output, ",{:?}>", pat).unwrap();
+            } else {
+                write!(output, "{:?}", t).unwrap();
+            }
+        }
         ty::Slice(inner_type) => {
             if cpp_like_debuginfo {
                 output.push_str("slice2$<");
@@ -354,7 +365,7 @@ fn push_debuginfo_type_name<'tcx>(
                 }
                 output.push_str(" (*)(");
             } else {
-                output.push_str(sig.unsafety.prefix_str());
+                output.push_str(sig.safety.prefix_str());
 
                 if sig.abi != rustc_target::spec::abi::Abi::Rust {
                     output.push_str("extern \"");

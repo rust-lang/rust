@@ -15,6 +15,14 @@ LL | fn takes_fnonce(_: impl FnOnce()) {}
    |    ------------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
+help: if `impl Fn()` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-closures-instead-of-move.rs:1:16
+   |
+LL | fn takes_fn(f: impl Fn()) {
+   |                ^^^^^^^^^ consider constraining this type parameter with `Clone`
+LL |     loop {
+LL |         takes_fnonce(f);
+   |                      - you could clone this value
 help: consider borrowing `f`
    |
 LL |         takes_fnonce(&f);
@@ -39,6 +47,14 @@ LL | fn takes_fnonce(_: impl FnOnce()) {}
    |    ------------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
+help: if `impl FnMut()` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-closures-instead-of-move.rs:9:20
+   |
+LL | fn takes_fn_mut(m: impl FnMut()) {
+   |                    ^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+LL |     if maybe() {
+LL |         takes_fnonce(m);
+   |                      - you could clone this value
 help: consider mutably borrowing `m`
    |
 LL |         takes_fnonce(&mut m);

@@ -11,13 +11,12 @@ pub use graph::{hash_result, DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, W
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
+use self::graph::{print_markframe_trace, MarkFrame};
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_session::Session;
-
 use std::panic;
-
-use self::graph::{print_markframe_trace, MarkFrame};
+use tracing::instrument;
 
 pub trait DepContext: Copy {
     type Deps: Deps;

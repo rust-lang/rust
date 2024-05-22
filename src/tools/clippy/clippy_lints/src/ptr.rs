@@ -8,12 +8,11 @@ use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_i
 use hir::LifetimeName;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::def_id::DefId;
-use rustc_hir::hir_id::HirIdMap;
+use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
-    self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
-    ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
-    TyKind, Unsafety,
+    self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
+    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, Safety, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -177,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             )
             .filter(|arg| arg.mutability() == Mutability::Not)
             {
-                span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, &arg.build_msg(), |diag| {
+                span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, arg.build_msg(), |diag| {
                     diag.span_suggestion(
                         arg.span,
                         "change this to",
@@ -237,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
         for (result, args) in results.iter().zip(lint_args.iter()).filter(|(r, _)| !r.skip) {
-            span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, &args.build_msg(), |diag| {
+            span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, args.build_msg(), |diag| {
                 diag.multipart_suggestion(
                     "change this to",
                     iter::once((args.span, format!("{}{}", args.ref_prefix, args.deref_ty.display(cx))))
@@ -324,7 +323,7 @@ struct PtrArgReplacement {
 
 struct PtrArg<'tcx> {
     idx: usize,
-    emission_id: hir::HirId,
+    emission_id: HirId,
     span: Span,
     ty_did: DefId,
     ty_name: Symbol,
@@ -543,7 +542,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
         if let Some(args) = args
             && !args.is_empty()
             && body.map_or(true, |body| {
-                sig.header.unsafety == Unsafety::Unsafe || contains_unsafe_block(cx, body.value)
+                sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value)
             })
         {
             span_lint_and_then(
@@ -606,7 +605,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                 Some((Node::Stmt(_), _)) => (),
                 Some((Node::LetStmt(l), _)) => {
                     // Only trace simple bindings. e.g `let x = y;`
-                    if let PatKind::Binding(BindingAnnotation::NONE, id, _, None) = l.pat.kind {
+                    if let PatKind::Binding(BindingMode::NONE, id, _, None) = l.pat.kind {
                         self.bindings.insert(id, args_idx);
                     } else {
                         set_skip_flag();
@@ -628,7 +627,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                         }
                     },
                     ExprKind::MethodCall(name, self_arg, expr_args, _) => {
-                        let i = std::iter::once(self_arg)
+                        let i = iter::once(self_arg)
                             .chain(expr_args.iter())
                             .position(|arg| arg.hir_id == child_id)
                             .unwrap_or(0);
@@ -687,9 +686,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             .filter_map(|(i, arg)| {
                 let param = &body.params[arg.idx];
                 match param.pat.kind {
-                    PatKind::Binding(BindingAnnotation::NONE, id, _, None)
-                        if !is_lint_allowed(cx, PTR_ARG, param.hir_id) =>
-                    {
+                    PatKind::Binding(BindingMode::NONE, id, _, None) if !is_lint_allowed(cx, PTR_ARG, param.hir_id) => {
                         Some((id, i))
                     },
                     _ => {

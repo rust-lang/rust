@@ -11,7 +11,10 @@ use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_macros::extension;
+use rustc_macros::{
+    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
@@ -22,6 +25,9 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 use std::ptr::NonNull;
+
+pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
+pub type TermKind<'tcx> = rustc_type_ir::TermKind<TyCtxt<'tcx>>;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
@@ -35,6 +41,32 @@ use std::ptr::NonNull;
 pub struct GenericArg<'tcx> {
     ptr: NonNull<()>,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
+}
+
+impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
+    fn type_at(self, i: usize) -> Ty<'tcx> {
+        self.type_at(i)
+    }
+
+    fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+        GenericArgs::identity_for_item(tcx, def_id)
+    }
+
+    fn extend_with_error(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        original_args: &[ty::GenericArg<'tcx>],
+    ) -> ty::GenericArgsRef<'tcx> {
+        ty::GenericArgs::extend_with_error(tcx, def_id, original_args)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
+    type Kind = GenericArgKind<'tcx>;
+
+    fn kind(self) -> Self::Kind {
+        self.unpack()
+    }
 }
 
 #[cfg(parallel_compiler)]
@@ -67,13 +99,7 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, HashStable)]
-pub enum GenericArgKind<'tcx> {
-    Lifetime(ty::Region<'tcx>),
-    Type(Ty<'tcx>),
-    Const(ty::Const<'tcx>),
-}
-
+#[extension(trait GenericArgPackExt<'tcx>)]
 impl<'tcx> GenericArgKind<'tcx> {
     #[inline]
     fn pack(self) -> GenericArg<'tcx> {
@@ -203,7 +229,7 @@ impl<'tcx> GenericArg<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
     type Lifted = GenericArg<'tcx>;
 
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
@@ -357,8 +383,8 @@ impl<'tcx> GenericArgs<'tcx> {
     ) where
         F: FnMut(&ty::GenericParamDef, &[GenericArg<'tcx>]) -> GenericArg<'tcx>,
     {
-        args.reserve(defs.params.len());
-        for param in &defs.params {
+        args.reserve(defs.own_params.len());
+        for param in &defs.own_params {
             let kind = mk_kind(param, args);
             assert_eq!(param.index as usize, args.len(), "{args:#?}, {defs:#?}");
             args.push(kind);

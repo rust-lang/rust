@@ -214,8 +214,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 _ => cause.code(),
             }
             && let (
-                &ObligationCauseCode::ItemObligation(item_def_id)
-                | &ObligationCauseCode::ExprItemObligation(item_def_id, ..),
+                &ObligationCauseCode::WhereClause(item_def_id, _)
+                | &ObligationCauseCode::WhereClauseInExpr(item_def_id, ..),
                 None,
             ) = (code, override_error_code)
         {
@@ -283,6 +283,7 @@ pub fn suggest_new_region_bound(
             continue;
         }
         match fn_return.kind {
+            // FIXME(precise_captures): Suggest adding to `use<...>` list instead.
             TyKind::OpaqueDef(item_id, _, _) => {
                 let item = tcx.hir().item(item_id);
                 let ItemKind::OpaqueTy(opaque) = &item.kind else {

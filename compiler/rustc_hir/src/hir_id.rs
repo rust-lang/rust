@@ -1,5 +1,6 @@
 use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{def_id::DefPathHash, HashStableContext};
 use std::fmt::{self, Debug};
 

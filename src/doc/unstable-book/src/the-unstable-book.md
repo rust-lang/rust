@@ -5,13 +5,13 @@ each one organized by a "feature flag." That is, when using an unstable
 feature of Rust, you must use a flag, like this:
 
 ```rust
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = || {
+    let mut coroutine = #[coroutine] || {
         yield 1;
         return "foo"
     };

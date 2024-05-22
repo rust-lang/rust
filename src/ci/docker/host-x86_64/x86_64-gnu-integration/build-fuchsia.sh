@@ -5,7 +5,7 @@
 
 set -euf -o pipefail
 
-INTEGRATION_SHA=56310bca298872ffb5ea02e665956d9b6dc41171
+INTEGRATION_SHA=1011e3298775ee7cdf6f6dc73e808d6a86e33bd6
 PICK_REFS=()
 
 checkout=fuchsia

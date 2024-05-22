@@ -28,8 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-system-x86 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz | \
-  tar -xJ
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
 
 WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
@@ -39,14 +40,13 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY host-x86_64/dist-various-2/build-wasi-toolchain.sh /tmp/
-RUN /tmp/build-wasi-toolchain.sh
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0-linux.tar.gz | \
+  tar -xz
+ENV WASI_SDK_PATH=/wasi-sdk-22.0
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
-  --set build.nodejs=/node-v18.12.0-linux-x64/bin/node \
-  --set rust.lld \
-  --set target.wasm32-wasip1.wasi-root=/wasm32-wasip1
+  --set rust.lld
 
 # Some run-make tests have assertions about code size, and enabling debug
 # assertions in libstd causes the binary to be much bigger than it would
@@ -68,9 +68,6 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/codegen \
   tests/assembly \
   library/core
-ENV CC_wasm32_wasip1=clang-11 \
-    CFLAGS_wasm32_wasip1="--sysroot /wasm32-wasip1" \
-    AR_wasm32_wasip1=llvm-ar-11
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \

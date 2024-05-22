@@ -50,6 +50,20 @@ middle_const_not_used_in_type_alias =
 middle_cycle =
     a cycle occurred during layout computation
 
+middle_deprecated = use of deprecated {$kind} `{$path}`{$has_note ->
+        [true] : {$note}
+        *[other] {""}
+    }
+middle_deprecated_in_future = use of {$kind} `{$path}` that will be deprecated in a future Rust version{$has_note ->
+        [true] : {$note}
+        *[other] {""}
+    }
+middle_deprecated_in_version = use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
+        [true] : {$note}
+        *[other] {""}
+    }
+middle_deprecated_suggestion = replace the use of the deprecated {$kind}
+
 middle_drop_check_overflow =
     overflow while adding drop-check rules for {$ty}
     .note = overflowed on {$overflow_ty}

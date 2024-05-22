@@ -10,12 +10,12 @@ use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
-use stable_mir::mir::{Mutability, Place, ProjectionElem, Safety};
+use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Safety};
 use stable_mir::ty::{
     Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
     DynKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
-    GenericArgKind, GenericArgs, IndexedVal, IntTy, Movability, Region, RigidTy, Span, TermKind,
-    TraitRef, Ty, UintTy, VariantDef, VariantIdx,
+    GenericArgKind, GenericArgs, IndexedVal, IntTy, Movability, Pattern, Region, RigidTy, Span,
+    TermKind, TraitRef, Ty, UintTy, VariantDef, VariantIdx,
 };
 use stable_mir::{CrateItem, CrateNum, DefId};
 
@@ -76,6 +76,19 @@ impl RustcInternal for Ty {
     }
 }
 
+impl RustcInternal for Pattern {
+    type T<'tcx> = rustc_ty::Pattern<'tcx>;
+    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        tcx.mk_pat(match self {
+            Pattern::Range { start, end, include_end } => rustc_ty::PatternKind::Range {
+                start: start.as_ref().map(|c| ty_const(c, tables, tcx)),
+                end: end.as_ref().map(|c| ty_const(c, tables, tcx)),
+                include_end: *include_end,
+            },
+        })
+    }
+}
+
 impl RustcInternal for RigidTy {
     type T<'tcx> = rustc_ty::TyKind<'tcx>;
 
@@ -89,6 +102,9 @@ impl RustcInternal for RigidTy {
             RigidTy::Never => rustc_ty::TyKind::Never,
             RigidTy::Array(ty, cnst) => {
                 rustc_ty::TyKind::Array(ty.internal(tables, tcx), ty_const(cnst, tables, tcx))
+            }
+            RigidTy::Pat(ty, pat) => {
+                rustc_ty::TyKind::Pat(ty.internal(tables, tcx), pat.internal(tables, tcx))
             }
             RigidTy::Adt(def, args) => {
                 rustc_ty::TyKind::Adt(def.internal(tables, tcx), args.internal(tables, tcx))
@@ -200,7 +216,7 @@ impl RustcInternal for FnSig {
         tcx.lift(rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
             c_variadic: self.c_variadic,
-            unsafety: self.unsafety.internal(tables, tcx),
+            safety: self.safety.internal(tables, tcx),
             abi: self.abi.internal(tables, tcx),
         })
         .unwrap()
@@ -465,16 +481,15 @@ impl RustcInternal for Abi {
 }
 
 impl RustcInternal for Safety {
-    type T<'tcx> = rustc_hir::Unsafety;
+    type T<'tcx> = rustc_hir::Safety;
 
     fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         match self {
-            Safety::Unsafe => rustc_hir::Unsafety::Unsafe,
-            Safety::Normal => rustc_hir::Unsafety::Normal,
+            Safety::Unsafe => rustc_hir::Safety::Unsafe,
+            Safety::Safe => rustc_hir::Safety::Safe,
         }
     }
 }
-
 impl RustcInternal for Span {
     type T<'tcx> = rustc_span::Span;
 
@@ -531,6 +546,38 @@ impl RustcInternal for ProjectionElem {
             ProjectionElem::Subtype(ty) => {
                 rustc_middle::mir::PlaceElem::Subtype(ty.internal(tables, tcx))
             }
+        }
+    }
+}
+
+impl RustcInternal for BinOp {
+    type T<'tcx> = rustc_middle::mir::BinOp;
+
+    fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            BinOp::Add => rustc_middle::mir::BinOp::Add,
+            BinOp::AddUnchecked => rustc_middle::mir::BinOp::AddUnchecked,
+            BinOp::Sub => rustc_middle::mir::BinOp::Sub,
+            BinOp::SubUnchecked => rustc_middle::mir::BinOp::SubUnchecked,
+            BinOp::Mul => rustc_middle::mir::BinOp::Mul,
+            BinOp::MulUnchecked => rustc_middle::mir::BinOp::MulUnchecked,
+            BinOp::Div => rustc_middle::mir::BinOp::Div,
+            BinOp::Rem => rustc_middle::mir::BinOp::Rem,
+            BinOp::BitXor => rustc_middle::mir::BinOp::BitXor,
+            BinOp::BitAnd => rustc_middle::mir::BinOp::BitAnd,
+            BinOp::BitOr => rustc_middle::mir::BinOp::BitOr,
+            BinOp::Shl => rustc_middle::mir::BinOp::Shl,
+            BinOp::ShlUnchecked => rustc_middle::mir::BinOp::ShlUnchecked,
+            BinOp::Shr => rustc_middle::mir::BinOp::Shr,
+            BinOp::ShrUnchecked => rustc_middle::mir::BinOp::ShrUnchecked,
+            BinOp::Eq => rustc_middle::mir::BinOp::Eq,
+            BinOp::Lt => rustc_middle::mir::BinOp::Lt,
+            BinOp::Le => rustc_middle::mir::BinOp::Le,
+            BinOp::Ne => rustc_middle::mir::BinOp::Ne,
+            BinOp::Ge => rustc_middle::mir::BinOp::Ge,
+            BinOp::Gt => rustc_middle::mir::BinOp::Gt,
+            BinOp::Cmp => rustc_middle::mir::BinOp::Cmp,
+            BinOp::Offset => rustc_middle::mir::BinOp::Offset,
         }
     }
 }

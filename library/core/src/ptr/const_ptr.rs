@@ -358,6 +358,54 @@ impl<T: ?Sized> *const T {
         if self.is_null() { None } else { unsafe { Some(&*self) } }
     }
 
+    /// Returns a shared reference to the value behind the pointer.
+    /// If the pointer may be null or the value may be uninitialized, [`as_uninit_ref`] must be used instead.
+    /// If the pointer may be null, but the value is known to have been initialized, [`as_ref`] must be used instead.
+    ///
+    /// [`as_ref`]: #method.as_ref
+    /// [`as_uninit_ref`]: #method.as_uninit_ref
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    ///
+    /// * The pointer must point to an initialized instance of `T`.
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, while this reference exists, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// [the module documentation]: crate::ptr#safety
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_as_ref_unchecked)]
+    /// let ptr: *const u8 = &10u8 as *const u8;
+    ///
+    /// unsafe {
+    ///     println!("We got back the value: {}!", ptr.as_ref_unchecked());
+    /// }
+    /// ```
+    // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
+    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[inline]
+    #[must_use]
+    pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
+        // SAFETY: the caller must guarantee that `self` is valid for a reference
+        unsafe { &*self }
+    }
+
     /// Returns `None` if the pointer is null, or else returns a shared reference to
     /// the value wrapped in `Some`. In contrast to [`as_ref`], this does not require
     /// that the value has to be initialized.
@@ -1496,7 +1544,7 @@ impl<T: ?Sized> *const T {
     /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
-    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned(self) -> bool
     where
@@ -1647,16 +1695,15 @@ impl<T> *const [T] {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_len)]
-    ///
     /// use std::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn len(self) -> usize {
         metadata(self)
     }
@@ -1666,15 +1713,14 @@ impl<T> *const [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_ptr_len)]
     /// use std::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert!(!slice.is_empty());
     /// ```
     #[inline(always)]
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len", since = "1.79.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
     }
@@ -1804,7 +1850,7 @@ impl<T, const N: usize> *const [T; N] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(array_ptr_get, slice_ptr_len)]
+    /// #![feature(array_ptr_get)]
     ///
     /// let arr: *const [i32; 3] = &[1, 2, 4] as *const [i32; 3];
     /// let slice: *const [i32] = arr.as_slice();

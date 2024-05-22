@@ -1,12 +1,10 @@
 // Ensures that the theme is working when going back in history.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
 // Set the theme to dark.
-set-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
-// We reload the page so the local storage settings are being used.
-reload:
+call-function: ("switch-theme", {"theme": "dark"})
+
 assert-css: ("body", { "background-color": "#353535" })
 assert-local-storage: { "rustdoc-theme": "dark" }
 

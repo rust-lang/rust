@@ -1,5 +1,5 @@
 //@ compile-flags: -Zlint-mir=no
-//@ unit-test: ReferencePropagation
+//@ test-mir-pass: ReferencePropagation
 //@ needs-unwind
 
 #![feature(raw_ref_op)]
@@ -49,7 +49,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         // CHECK: [[a:_.*]] = const 5_usize;
         // CHECK: [[b:_.*]] = &[[a]];
         // CHECK: [[d:_.*]] = &[[b]];
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let b = &a;
@@ -138,8 +138,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         // CHECK: [[a:_.*]] = const 5_usize;
         // CHECK: [[b:_.*]] = &[[a]];
         // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let b = &a;
@@ -363,7 +362,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         // CHECK: [[a:_.*]] = const 5_usize;
         // CHECK: [[b:_.*]] = &raw const [[a]];
         // CHECK: [[d:_.*]] = &[[b]];
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let b = &raw const a;
@@ -467,8 +466,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         // CHECK: [[a:_.*]] = const 5_usize;
         // CHECK: [[b:_.*]] = &raw const [[a]];
         // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = (*[[b]]);
+        // CHECK: [[c:_.*]] = [[a]];
 
         let a = 5_usize;
         let b = &raw const a;

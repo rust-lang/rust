@@ -1588,4 +1588,82 @@ mod bar {
 "#,
         );
     }
+
+    #[test]
+    fn local_inline_import_has_alias() {
+        // FIXME
+        check_assist_not_applicable(
+            auto_import,
+            r#"
+struct S<T>(T);
+use S as IoResult;
+
+mod foo {
+    pub fn bar() -> S$0<()> {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn alias_local() {
+        // FIXME
+        check_assist_not_applicable(
+            auto_import,
+            r#"
+struct S<T>(T);
+use S as IoResult;
+
+mod foo {
+    pub fn bar() -> IoResult$0<()> {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn preserve_raw_identifiers_strict() {
+        check_assist(
+            auto_import,
+            r"
+            r#as$0
+
+            pub mod ffi_mod {
+                pub fn r#as() {};
+            }
+            ",
+            r"
+            use ffi_mod::r#as;
+
+            r#as
+
+            pub mod ffi_mod {
+                pub fn r#as() {};
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn preserve_raw_identifiers_reserved() {
+        check_assist(
+            auto_import,
+            r"
+            r#abstract$0
+
+            pub mod ffi_mod {
+                pub fn r#abstract() {};
+            }
+            ",
+            r"
+            use ffi_mod::r#abstract;
+
+            r#abstract
+
+            pub mod ffi_mod {
+                pub fn r#abstract() {};
+            }
+            ",
+        );
+    }
 }

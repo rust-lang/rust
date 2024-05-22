@@ -48,7 +48,7 @@
 //! One consequence of this difference is that safe/sound Rust allows for more operations on atomic locations
 //! than the C++20 atomic API was intended to allow, such as non-atomically accessing
 //! a previously atomically accessed location, or accessing previously atomically accessed locations with a differently sized operation
-//! (such as accessing the top 16 bits of an AtomicU32). These scenarios are generally undiscussed in formalisations of C++ memory model.
+//! (such as accessing the top 16 bits of an AtomicU32). These scenarios are generally undiscussed in formalizations of C++ memory model.
 //! In Rust, these operations can only be done through a `&mut AtomicFoo` reference or one derived from it, therefore these operations
 //! can only happen after all previous accesses on the same locations. This implementation is adapted to allow these operations.
 //! A mixed atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.
@@ -270,7 +270,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
     ) {
         let store_elem = self.buffer.back();
         if let Some(store_elem) = store_elem {
-            let (index, clocks) = global.current_thread_state(thread_mgr);
+            let (index, clocks) = global.active_thread_state(thread_mgr);
             store_elem.load_impl(index, &clocks, is_seqcst);
         }
     }
@@ -289,7 +289,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         let (store_elem, recency) = {
             // The `clocks` we got here must be dropped before calling validate_atomic_load
             // as the race detector will update it
-            let (.., clocks) = global.current_thread_state(thread_mgr);
+            let (.., clocks) = global.active_thread_state(thread_mgr);
             // Load from a valid entry in the store buffer
             self.fetch_store(is_seqcst, &clocks, &mut *rng)
         };
@@ -300,7 +300,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         // requires access to ThreadClockSet.clock, which is updated by the race detector
         validate()?;
 
-        let (index, clocks) = global.current_thread_state(thread_mgr);
+        let (index, clocks) = global.active_thread_state(thread_mgr);
         let loaded = store_elem.load_impl(index, &clocks, is_seqcst);
         Ok((loaded, recency))
     }
@@ -312,7 +312,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         thread_mgr: &ThreadManager<'_, '_>,
         is_seqcst: bool,
     ) -> InterpResult<'tcx> {
-        let (index, clocks) = global.current_thread_state(thread_mgr);
+        let (index, clocks) = global.active_thread_state(thread_mgr);
 
         self.store_impl(val, index, &clocks.clock, is_seqcst);
         Ok(())
@@ -520,7 +520,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     validate,
                 )?;
                 if global.track_outdated_loads && recency == LoadRecency::Outdated {
-                    this.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad);
+                    this.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad {
+                        ptr: place.ptr(),
+                    });
                 }
 
                 return Ok(loaded);

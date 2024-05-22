@@ -37,6 +37,8 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
+hir_analysis_bad_precise_capture = expected {$kind} parameter in `use<...>` precise captures list, found {$found}
+
 hir_analysis_cannot_capture_late_bound_const =
     cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
@@ -110,6 +112,9 @@ hir_analysis_drop_impl_on_wrong_item =
     .label = must be a struct, enum, or union in the current crate
 
 hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
+
+hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
+    .label = parameter captured again here
 
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
@@ -196,6 +201,12 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
+hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must be `Self` or a type that dereferences to it
+
+hir_analysis_invalid_receiver_ty_help =
+    consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
@@ -213,6 +224,13 @@ hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetim
 
 hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
     .label = type parameter declared here
+
+hir_analysis_lifetime_must_be_first = lifetime parameter `{$name}` must be listed before non-lifetime parameters
+    .label = move the lifetime before this parameter
+
+hir_analysis_lifetime_not_captured = `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+    .label = lifetime captured due to being mentioned in the bounds of the `impl Trait`
+    .param_label = this lifetime parameter is captured
 
 hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     lifetime parameters or bounds on {$item_kind} `{$ident}` do not match the trait declaration
@@ -339,6 +357,10 @@ hir_analysis_param_in_ty_of_assoc_const_binding =
         *[normal] the {$param_def_kind} `{$param_name}` is defined here
     }
 
+hir_analysis_param_not_captured = `impl Trait` must mention all {$kind} parameters in scope in `use<...>`
+    .label = {$kind} parameter is implicitly captured by this `impl Trait`
+    .note = currently, all {$kind} parameters are required to be mentioned in the precise captures list
+
 hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
@@ -349,8 +371,17 @@ hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
     .help = cast the value to `{$cast_ty}`
 
+hir_analysis_pattern_type_non_const_range = "range patterns must have constant range start and end"
+hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pattern types"
+    .label = "this type is the same as the inner type without a pattern"
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
+
+hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
+    .label = `Self` is not a generic argument, but an alias to the type of the {$what}
+
+hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
+    .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
@@ -379,6 +410,10 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
+
+hir_analysis_self_ty_not_captured = `impl Trait` must mention the `Self` type of the trait in `use<...>`
+    .label = `Self` type parameter is implicitly captured by this `impl Trait`
+    .note = currently, all type parameters are required to be mentioned in the precise captures list
 
 hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is highly experimental and may result in invalid code
     .help = add `#![feature(simd_ffi)]` to the crate attributes to enable
@@ -457,13 +492,13 @@ hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$de
 
 hir_analysis_ty_of_assoc_const_binding_note = `{$assoc_const}` has type `{$ty}`
 
-hir_analysis_ty_param_first_local = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
-    .label = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
+hir_analysis_ty_param_first_local = type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)
+    .label = type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)
     .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
     .case_note = in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
 
-hir_analysis_ty_param_some = type parameter `{$param_ty}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param_ty}>`)
-    .label = type parameter `{$param_ty}` must be used as the type parameter for some local type
+hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param}>`)
+    .label = type parameter `{$param}` must be used as the type parameter for some local type
     .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
     .only_note = only traits defined in the current crate can be implemented for a type parameter
 

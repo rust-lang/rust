@@ -300,11 +300,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     e.span,
                     "calling `as_bytes()` on `include_str!(..)`",
                     "consider using `include_bytes!(..)` instead",
-                    snippet_with_applicability(cx, receiver.span, r#""foo""#, &mut applicability).replacen(
-                        "include_str",
-                        "include_bytes",
-                        1,
-                    ),
+                    snippet_with_applicability(cx, receiver.span.source_callsite(), r#""foo""#, &mut applicability)
+                        .replacen("include_str", "include_bytes", 1),
                     applicability,
                 );
             } else if lit_content.as_str().is_ascii()
@@ -392,6 +389,10 @@ declare_lint_pass!(StrToString => [STR_TO_STRING]);
 
 impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if expr.span.from_expansion() {
+            return;
+        }
+
         if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
@@ -440,6 +441,10 @@ declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 
 impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if expr.span.from_expansion() {
+            return;
+        }
+
         if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
@@ -495,8 +500,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
                 cx,
                 TRIM_SPLIT_WHITESPACE,
                 trim_span.with_hi(split_ws_span.lo()),
-                &format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
-                &format!("remove `{trim_fn_name}()`"),
+                format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
+                format!("remove `{trim_fn_name}()`"),
                 String::new(),
                 Applicability::MachineApplicable,
             );

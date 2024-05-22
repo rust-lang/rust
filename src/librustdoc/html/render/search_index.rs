@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 use thin_vec::ThinVec;
 
@@ -59,10 +59,13 @@ pub(crate) fn build_index<'tcx>(
     cache: &mut Cache,
     tcx: TyCtxt<'tcx>,
 ) -> SerializedSearchIndex {
+    // Maps from ID to position in the `crate_paths` array.
     let mut itemid_to_pathid = FxHashMap::default();
     let mut primitives = FxHashMap::default();
     let mut associated_types = FxHashMap::default();
-    let mut crate_paths = vec![];
+
+    // item type, display path, re-exported internal path
+    let mut crate_paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)> = vec![];
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
@@ -72,11 +75,13 @@ pub(crate) fn build_index<'tcx>(
             let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
+                defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
                 path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
+                exact_path: None,
                 impl_id,
                 search_type: get_function_type_for_search(
                     item,
@@ -126,9 +131,10 @@ pub(crate) fn build_index<'tcx>(
             map: &mut FxHashMap<F, isize>,
             itemid: F,
             lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
             item_type: ItemType,
             path: &[Symbol],
+            exact_path: Option<&[Symbol]>,
         ) -> RenderTypeId {
             match map.entry(itemid) {
                 Entry::Occupied(entry) => RenderTypeId::Index(*entry.get()),
@@ -136,7 +142,11 @@ pub(crate) fn build_index<'tcx>(
                     let pathid = *lastpathid;
                     entry.insert(pathid);
                     *lastpathid += 1;
-                    crate_paths.push((item_type, path.to_vec()));
+                    crate_paths.push((
+                        item_type,
+                        path.to_vec(),
+                        exact_path.map(|path| path.to_vec()),
+                    ));
                     RenderTypeId::Index(pathid)
                 }
             }
@@ -149,14 +159,33 @@ pub(crate) fn build_index<'tcx>(
             primitives: &mut FxHashMap<Symbol, isize>,
             associated_types: &mut FxHashMap<Symbol, isize>,
             lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
         ) -> Option<RenderTypeId> {
-            let Cache { ref paths, ref external_paths, .. } = *cache;
+            let Cache { ref paths, ref external_paths, ref exact_paths, .. } = *cache;
             match id {
+                RenderTypeId::Mut => Some(insert_into_map(
+                    primitives,
+                    kw::Mut,
+                    lastpathid,
+                    crate_paths,
+                    ItemType::Keyword,
+                    &[kw::Mut],
+                    None,
+                )),
                 RenderTypeId::DefId(defid) => {
                     if let Some(&(ref fqp, item_type)) =
                         paths.get(&defid).or_else(|| external_paths.get(&defid))
                     {
+                        let exact_fqp = exact_paths
+                            .get(&defid)
+                            .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp))
+                            // Re-exports only count if the name is exactly the same.
+                            // This is a size optimization, since it means we only need
+                            // to store the name once (and the path is re-used for everything
+                            // exported from this same module). It's also likely to Do
+                            // What I Mean, since if a re-export changes the name, it might
+                            // also be a change in semantic meaning.
+                            .filter(|fqp| fqp.last() == fqp.last());
                         Some(insert_into_map(
                             itemid_to_pathid,
                             ItemId::DefId(defid),
@@ -164,6 +193,7 @@ pub(crate) fn build_index<'tcx>(
                             crate_paths,
                             item_type,
                             fqp,
+                            exact_fqp.map(|x| &x[..]).filter(|exact_fqp| exact_fqp != fqp),
                         ))
                     } else {
                         None
@@ -178,6 +208,7 @@ pub(crate) fn build_index<'tcx>(
                         crate_paths,
                         ItemType::Primitive,
                         &[sym],
+                        None,
                     ))
                 }
                 RenderTypeId::Index(_) => Some(id),
@@ -188,6 +219,7 @@ pub(crate) fn build_index<'tcx>(
                     crate_paths,
                     ItemType::AssocType,
                     &[sym],
+                    None,
                 )),
             }
         }
@@ -199,7 +231,7 @@ pub(crate) fn build_index<'tcx>(
             primitives: &mut FxHashMap<Symbol, isize>,
             associated_types: &mut FxHashMap<Symbol, isize>,
             lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
         ) {
             if let Some(generics) = &mut ty.generics {
                 for item in generics {
@@ -296,7 +328,7 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    let Cache { ref paths, .. } = *cache;
+    let Cache { ref paths, ref exact_paths, ref external_paths, .. } = *cache;
 
     // Then, on parent modules
     let crate_items: Vec<&IndexItem> = search_index
@@ -311,13 +343,55 @@ pub(crate) fn build_index<'tcx>(
                         lastpathid += 1;
 
                         if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                            crate_paths.push((short, fqp.clone()));
+                            let exact_fqp = exact_paths
+                                .get(&defid)
+                                .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp))
+                                .filter(|exact_fqp| {
+                                    exact_fqp.last() == Some(&item.name) && *exact_fqp != fqp
+                                });
+                            crate_paths.push((short, fqp.clone(), exact_fqp.cloned()));
                             Some(pathid)
                         } else {
                             None
                         }
                     }
                 });
+
+            if let Some(defid) = item.defid
+                && item.parent_idx.is_none()
+            {
+                // If this is a re-export, retain the original path.
+                // Associated items don't use this.
+                // Their parent carries the exact fqp instead.
+                let exact_fqp = exact_paths
+                    .get(&defid)
+                    .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp));
+                item.exact_path = exact_fqp.and_then(|fqp| {
+                    // Re-exports only count if the name is exactly the same.
+                    // This is a size optimization, since it means we only need
+                    // to store the name once (and the path is re-used for everything
+                    // exported from this same module). It's also likely to Do
+                    // What I Mean, since if a re-export changes the name, it might
+                    // also be a change in semantic meaning.
+                    if fqp.last() != Some(&item.name) {
+                        return None;
+                    }
+                    let path =
+                        if item.ty == ItemType::Macro && tcx.has_attr(defid, sym::macro_export) {
+                            // `#[macro_export]` always exports to the crate root.
+                            tcx.crate_name(defid.krate).to_string()
+                        } else {
+                            if fqp.len() < 2 {
+                                return None;
+                            }
+                            join_with_double_colon(&fqp[..fqp.len() - 1])
+                        };
+                    if path == item.path {
+                        return None;
+                    }
+                    Some(path)
+                });
+            }
 
             // Omit the parent path if it is same to that of the prior item.
             if lastpath == &item.path {
@@ -356,7 +430,7 @@ pub(crate) fn build_index<'tcx>(
 
     struct CrateData<'a> {
         items: Vec<&'a IndexItem>,
-        paths: Vec<(ItemType, Vec<Symbol>)>,
+        paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
@@ -374,6 +448,7 @@ pub(crate) fn build_index<'tcx>(
         ty: ItemType,
         name: Symbol,
         path: Option<usize>,
+        exact_path: Option<usize>,
     }
 
     impl Serialize for Paths {
@@ -385,6 +460,10 @@ pub(crate) fn build_index<'tcx>(
             seq.serialize_element(&self.ty)?;
             seq.serialize_element(self.name.as_str())?;
             if let Some(ref path) = self.path {
+                seq.serialize_element(path)?;
+            }
+            if let Some(ref path) = self.exact_path {
+                assert!(self.path.is_some());
                 seq.serialize_element(path)?;
             }
             seq.end()
@@ -409,14 +488,39 @@ pub(crate) fn build_index<'tcx>(
                 mod_paths.insert(&item.path, index);
             }
             let mut paths = Vec::with_capacity(self.paths.len());
-            for (ty, path) in &self.paths {
+            for (ty, path, exact) in &self.paths {
                 if path.len() < 2 {
-                    paths.push(Paths { ty: *ty, name: path[0], path: None });
+                    paths.push(Paths { ty: *ty, name: path[0], path: None, exact_path: None });
                     continue;
                 }
                 let full_path = join_with_double_colon(&path[..path.len() - 1]);
+                let full_exact_path = exact
+                    .as_ref()
+                    .filter(|exact| exact.last() == path.last() && exact.len() >= 2)
+                    .map(|exact| join_with_double_colon(&exact[..exact.len() - 1]));
+                let exact_path = extra_paths.len() + self.items.len();
+                let exact_path = full_exact_path.as_ref().map(|full_exact_path| match extra_paths
+                    .entry(full_exact_path.clone())
+                {
+                    Entry::Occupied(entry) => *entry.get(),
+                    Entry::Vacant(entry) => {
+                        if let Some(index) = mod_paths.get(&full_exact_path) {
+                            return *index;
+                        }
+                        entry.insert(exact_path);
+                        if !revert_extra_paths.contains_key(&exact_path) {
+                            revert_extra_paths.insert(exact_path, full_exact_path.clone());
+                        }
+                        exact_path
+                    }
+                });
                 if let Some(index) = mod_paths.get(&full_path) {
-                    paths.push(Paths { ty: *ty, name: *path.last().unwrap(), path: Some(*index) });
+                    paths.push(Paths {
+                        ty: *ty,
+                        name: *path.last().unwrap(),
+                        path: Some(*index),
+                        exact_path,
+                    });
                     continue;
                 }
                 // It means it comes from an external crate so the item and its path will be
@@ -424,24 +528,50 @@ pub(crate) fn build_index<'tcx>(
                 //
                 // `index` is put after the last `mod_paths`
                 let index = extra_paths.len() + self.items.len();
-                if !revert_extra_paths.contains_key(&index) {
-                    revert_extra_paths.insert(index, full_path.clone());
-                }
-                match extra_paths.entry(full_path) {
+                match extra_paths.entry(full_path.clone()) {
                     Entry::Occupied(entry) => {
                         paths.push(Paths {
                             ty: *ty,
                             name: *path.last().unwrap(),
                             path: Some(*entry.get()),
+                            exact_path,
                         });
                     }
                     Entry::Vacant(entry) => {
                         entry.insert(index);
+                        if !revert_extra_paths.contains_key(&index) {
+                            revert_extra_paths.insert(index, full_path);
+                        }
                         paths.push(Paths {
                             ty: *ty,
                             name: *path.last().unwrap(),
                             path: Some(index),
+                            exact_path,
                         });
+                    }
+                }
+            }
+
+            // Direct exports use adjacent arrays for the current crate's items,
+            // but re-exported exact paths don't.
+            let mut re_exports = Vec::new();
+            for (item_index, item) in self.items.iter().enumerate() {
+                if let Some(exact_path) = item.exact_path.as_ref() {
+                    if let Some(path_index) = mod_paths.get(&exact_path) {
+                        re_exports.push((item_index, *path_index));
+                    } else {
+                        let path_index = extra_paths.len() + self.items.len();
+                        let path_index = match extra_paths.entry(exact_path.clone()) {
+                            Entry::Occupied(entry) => *entry.get(),
+                            Entry::Vacant(entry) => {
+                                entry.insert(path_index);
+                                if !revert_extra_paths.contains_key(&path_index) {
+                                    revert_extra_paths.insert(path_index, exact_path.clone());
+                                }
+                                path_index
+                            }
+                        };
+                        re_exports.push((item_index, path_index));
                     }
                 }
             }
@@ -501,6 +631,7 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("f", &functions)?;
             crate_data.serialize_field("D", &self.desc_index)?;
             crate_data.serialize_field("p", &paths)?;
+            crate_data.serialize_field("r", &re_exports)?;
             crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
             crate_data.serialize_field("c", &bitmap_to_string(&deprecated))?;
             crate_data.serialize_field("e", &bitmap_to_string(&self.empty_desc))?;
@@ -643,9 +774,8 @@ fn get_index_type_id(
             bounds.get(0).map(|b| RenderTypeId::DefId(b.trait_.def_id()))
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
-        clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
-            get_index_type_id(type_, rgen)
-        }
+        clean::BorrowedRef { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::Reference)),
+        clean::RawPointer(_, ref type_) => get_index_type_id(type_, rgen),
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
@@ -668,7 +798,7 @@ fn get_index_type_id(
             }
         }
         // Not supported yet
-        clean::Generic(_) | clean::ImplTrait(_) | clean::Infer => None,
+        clean::Type::Pat(..) | clean::Generic(_) | clean::ImplTrait(_) | clean::Infer => None,
     }
 }
 
@@ -711,27 +841,13 @@ fn simplify_fn_type<'tcx, 'a>(
     }
 
     // First, check if it's "Self".
-    let mut is_self = false;
-    let mut arg = if let Some(self_) = self_ {
-        match &*arg {
-            Type::BorrowedRef { type_, .. } if type_.is_self_type() => {
-                is_self = true;
-                self_
-            }
-            type_ if type_.is_self_type() => {
-                is_self = true;
-                self_
-            }
-            arg => arg,
-        }
+    let (is_self, arg) = if let Some(self_) = self_
+        && arg.is_self_type()
+    {
+        (true, self_)
     } else {
-        arg
+        (false, arg)
     };
-
-    // strip references from the argument type
-    while let Type::BorrowedRef { type_, .. } = &*arg {
-        arg = &*type_;
-    }
 
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
@@ -905,6 +1021,27 @@ fn simplify_fn_type<'tcx, 'a>(
             bindings: Some(ty_bindings),
             generics: Some(ty_generics),
         });
+    } else if let Type::BorrowedRef { lifetime: _, mutability, ref type_ } = *arg {
+        let mut ty_generics = Vec::new();
+        if mutability.is_mut() {
+            ty_generics.push(RenderType {
+                id: Some(RenderTypeId::Mut),
+                generics: None,
+                bindings: None,
+            });
+        }
+        simplify_fn_type(
+            self_,
+            generics,
+            &type_,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            rgen,
+            is_return,
+            cache,
+        );
+        res.push(get_index_type(arg, ty_generics, rgen));
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
         // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.

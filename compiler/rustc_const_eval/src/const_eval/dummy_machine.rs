@@ -1,9 +1,12 @@
-use crate::interpret::{self, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic};
+use crate::interpret::{
+    self, throw_machine_stop, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic,
+};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 
 /// Macro for machine-specific `InterpError` without allocation.
@@ -45,6 +48,9 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     interpret::compile_time_machine!(<'mir, 'tcx>);
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
+
+    // We want to just eval random consts in the program, so `eval_mir_const` can fail.
+    const ALL_CONSTS_ARE_PRECHECKED: bool = false;
 
     #[inline(always)]
     fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -102,7 +108,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
-    ) -> interpret::InterpResult<'tcx> {
+    ) -> interpret::InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         unimplemented!()
     }
 

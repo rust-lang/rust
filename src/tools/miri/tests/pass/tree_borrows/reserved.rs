@@ -27,9 +27,8 @@ fn main() {
     }
 }
 
-unsafe fn print(msg: &str) {
-    utils::miri_write_to_stderr(msg.as_bytes());
-    utils::miri_write_to_stderr("\n".as_bytes());
+fn print(msg: &str) {
+    eprintln!("{msg}");
 }
 
 unsafe fn read_second<T>(x: &mut T, y: *mut u8) {

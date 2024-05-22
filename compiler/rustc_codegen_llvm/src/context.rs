@@ -11,7 +11,8 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
@@ -132,6 +133,15 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
+    if llvm_version < (19, 0, 0) {
+        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
+            // LLVM 19 sets -Fn32 in its data layout string for 64-bit ARM
+            // Earlier LLVMs leave this default, so remove it.
+            // See https://github.com/llvm/llvm-project/pull/90702
+            target_data_layout = target_data_layout.replace("-Fn32", "");
+        }
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
@@ -180,13 +190,13 @@ pub unsafe fn create_module<'ll>(
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
         let avoid_plt = c"RtLibUseGOT".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
+        llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
     }
 
     // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
     if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
         let canonical_jump_tables = c"CFI Canonical Jump Tables".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             canonical_jump_tables,
@@ -197,7 +207,7 @@ pub unsafe fn create_module<'ll>(
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
         let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             enable_split_lto_unit,
@@ -208,7 +218,7 @@ pub unsafe fn create_module<'ll>(
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
         let kcfi = c"kcfi".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
+        llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
@@ -217,7 +227,7 @@ pub unsafe fn create_module<'ll>(
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
                 // Set `cfguard=1` module flag to emit metadata only.
-                llvm::LLVMRustAddModuleFlag(
+                llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     c"cfguard".as_ptr() as *const _,
@@ -226,7 +236,7 @@ pub unsafe fn create_module<'ll>(
             }
             CFGuard::Checks => {
                 // Set `cfguard=2` module flag to emit metadata and checks.
-                llvm::LLVMRustAddModuleFlag(
+                llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     c"cfguard".as_ptr() as *const _,
@@ -238,26 +248,26 @@ pub unsafe fn create_module<'ll>(
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch == "aarch64" {
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Min,
                 c"branch-target-enforcement".as_ptr().cast(),
                 bti.into(),
             );
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Min,
                 c"sign-return-address".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Min,
                 c"sign-return-address-all".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
-            llvm::LLVMRustAddModuleFlag(
+            llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Min,
                 c"sign-return-address-with-bkey".as_ptr().cast(),
@@ -273,7 +283,7 @@ pub unsafe fn create_module<'ll>(
 
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
     if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             c"cf-protection-branch".as_ptr().cast(),
@@ -281,7 +291,7 @@ pub unsafe fn create_module<'ll>(
         )
     }
     if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
             c"cf-protection-return".as_ptr().cast(),
@@ -290,7 +300,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     if sess.opts.unstable_opts.virtual_function_elimination {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
             c"Virtual Function Elim".as_ptr().cast(),
@@ -300,7 +310,7 @@ pub unsafe fn create_module<'ll>(
 
     // Set module flag to enable Windows EHCont Guard (/guard:ehcont).
     if sess.opts.unstable_opts.ehcont_guard {
-        llvm::LLVMRustAddModuleFlag(
+        llvm::LLVMRustAddModuleFlagU32(
             llmod,
             llvm::LLVMModFlagBehavior::Warning,
             c"ehcontguard".as_ptr() as *const _,
@@ -326,6 +336,22 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
 
+    // Emit RISC-V specific target-abi metadata
+    // to workaround lld as the LTO plugin not
+    // correctly setting target-abi for the LTO object
+    // FIXME: https://github.com/llvm/llvm-project/issues/50591
+    // If llvm_abiname is empty, emit nothing.
+    let llvm_abiname = &sess.target.options.llvm_abiname;
+    if matches!(sess.target.arch.as_ref(), "riscv32" | "riscv64") && !llvm_abiname.is_empty() {
+        llvm::LLVMRustAddModuleFlagString(
+            llmod,
+            llvm::LLVMModFlagBehavior::Error,
+            c"target-abi".as_ptr(),
+            llvm_abiname.as_ptr().cast(),
+            llvm_abiname.len(),
+        );
+    }
+
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, behavior) in &sess.opts.unstable_opts.llvm_module_flag {
         let key = format!("{key}\0");
@@ -341,7 +367,7 @@ pub unsafe fn create_module<'ll>(
             // We already checked this during option parsing
             _ => unreachable!(),
         };
-        llvm::LLVMRustAddModuleFlag(llmod, behavior, key.as_ptr().cast(), *value)
+        llvm::LLVMRustAddModuleFlagU32(llmod, behavior, key.as_ptr().cast(), *value)
     }
 
     llmod
@@ -999,7 +1025,7 @@ impl CodegenCx<'_, '_> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

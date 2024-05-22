@@ -23,28 +23,32 @@ use crate::str;
 ///
 /// This type represents a borrowed reference to a nul-terminated
 /// array of bytes. It can be constructed safely from a <code>&[[u8]]</code>
-/// slice, or unsafely from a raw `*const c_char`. It can then be
-/// converted to a Rust <code>&[str]</code> by performing UTF-8 validation, or
-/// into an owned `CString`.
+/// slice, or unsafely from a raw `*const c_char`. It can be expressed as a
+/// literal in the form `c"Hello world"`.
+///
+/// The `CStr` can then be converted to a Rust <code>&[str]</code> by performing
+/// UTF-8 validation, or into an owned `CString`.
 ///
 /// `&CStr` is to `CString` as <code>&[str]</code> is to `String`: the former
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
 /// Note that this structure does **not** have a guaranteed layout (the `repr(transparent)`
-/// notwithstanding) and is not recommended to be placed in the signatures of FFI functions.
-/// Instead, safe wrappers of FFI functions may leverage the unsafe [`CStr::from_ptr`] constructor
-/// to provide a safe interface to other consumers.
+/// notwithstanding) and should not be placed in the signatures of FFI functions.
+/// Instead, safe wrappers of FFI functions may leverage [`CStr::as_ptr`] and the unsafe
+/// [`CStr::from_ptr`] constructor to provide a safe interface to other consumers.
 ///
 /// # Examples
 ///
 /// Inspecting a foreign C string:
 ///
-/// ```ignore (extern-declaration)
+/// ```
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
+/// # /* Extern functions are awkward in doc comments - fake it instead
 /// extern "C" { fn my_string() -> *const c_char; }
+/// # */ unsafe extern "C" fn my_string() -> *const c_char { c"hello".as_ptr() }
 ///
 /// unsafe {
 ///     let slice = CStr::from_ptr(my_string());
@@ -54,12 +58,14 @@ use crate::str;
 ///
 /// Passing a Rust-originating C string:
 ///
-/// ```ignore (extern-declaration)
+/// ```
 /// use std::ffi::{CString, CStr};
 /// use std::os::raw::c_char;
 ///
 /// fn work(data: &CStr) {
+/// #   /* Extern functions are awkward in doc comments - fake it instead
 ///     extern "C" { fn work_with(data: *const c_char); }
+/// #   */ unsafe extern "C" fn work_with(s: *const c_char) {}
 ///
 ///     unsafe { work_with(data.as_ptr()) }
 /// }
@@ -70,11 +76,13 @@ use crate::str;
 ///
 /// Converting a foreign C string into a Rust `String`:
 ///
-/// ```ignore (extern-declaration)
+/// ```
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
+/// # /* Extern functions are awkward in doc comments - fake it instead
 /// extern "C" { fn my_string() -> *const c_char; }
+/// # */ unsafe extern "C" fn my_string() -> *const c_char { c"hello".as_ptr() }
 ///
 /// fn my_string_safe() -> String {
 ///     let cstr = unsafe { CStr::from_ptr(my_string()) };
@@ -241,16 +249,16 @@ impl CStr {
     ///
     /// # Examples
     ///
-    /// ```ignore (extern-declaration)
+    /// ```
     /// use std::ffi::{c_char, CStr};
     ///
-    /// extern "C" {
-    ///     fn my_string() -> *const c_char;
+    /// fn my_string() -> *const c_char {
+    ///     c"hello".as_ptr()
     /// }
     ///
     /// unsafe {
     ///     let slice = CStr::from_ptr(my_string());
-    ///     println!("string returned: {}", slice.to_str().unwrap());
+    ///     assert_eq!(slice.to_str().unwrap(), "hello");
     /// }
     /// ```
     ///
@@ -264,6 +272,8 @@ impl CStr {
     ///     BYTES.as_ptr().cast()
     /// };
     /// const HELLO: &CStr = unsafe { CStr::from_ptr(HELLO_PTR) };
+    ///
+    /// assert_eq!(c"Hello, world!", HELLO);
     /// ```
     ///
     /// [valid]: core::ptr#safety
@@ -517,8 +527,6 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cstr_count_bytes)]
-    ///
     /// use std::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"foo\0").unwrap();
@@ -530,7 +538,7 @@ impl CStr {
     #[inline]
     #[must_use]
     #[doc(alias("len", "strlen"))]
-    #[unstable(feature = "cstr_count_bytes", issue = "114441")]
+    #[stable(feature = "cstr_count_bytes", since = "1.79.0")]
     #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
     pub const fn count_bytes(&self) -> usize {
         self.inner.len() - 1
@@ -551,6 +559,7 @@ impl CStr {
     ///
     /// let empty_cstr = CStr::from_bytes_with_nul(b"\0")?;
     /// assert!(empty_cstr.is_empty());
+    /// assert!(c"".is_empty());
     /// # Ok(())
     /// # }
     /// ```

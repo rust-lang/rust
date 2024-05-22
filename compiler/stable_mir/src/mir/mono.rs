@@ -41,12 +41,21 @@ impl Instance {
         with(|cx| cx.instance_args(self.def))
     }
 
-    /// Get the body of an Instance. The body will be eagerly monomorphized.
+    /// Get the body of an Instance.
+    ///
+    /// The body will be eagerly monomorphized and all constants will already be evaluated.
+    ///
+    /// This method will return the intrinsic fallback body if one was defined.
     pub fn body(&self) -> Option<Body> {
         with(|context| context.instance_body(self.def))
     }
 
     /// Check whether this instance has a body available.
+    ///
+    /// For intrinsics with fallback body, this will return `true`. It is up to the user to decide
+    /// whether to specialize the intrinsic or to use its fallback body.
+    ///
+    /// For more information on fallback body, see <https://github.com/rust-lang/rust/issues/93145>.
     ///
     /// This call is much cheaper than `instance.body().is_some()`, since it doesn't try to build
     /// the StableMIR body.
@@ -148,7 +157,10 @@ impl Instance {
     /// When generating code for a Drop terminator, users can ignore an empty drop glue.
     /// These shims are only needed to generate a valid Drop call done via VTable.
     pub fn is_empty_shim(&self) -> bool {
-        self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
+        self.kind == InstanceKind::Shim
+            && with(|cx| {
+                cx.is_empty_drop_shim(self.def) || cx.is_empty_async_drop_ctor_shim(self.def)
+            })
     }
 
     /// Try to constant evaluate the instance into a constant with the given type.

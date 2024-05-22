@@ -43,11 +43,15 @@ const DAYS_PER_WEEK: u64 = 7;
 #[rustc_layout_scalar_valid_range_end(999_999_999)]
 struct Nanoseconds(u32);
 
+impl Nanoseconds {
+    // SAFETY: 0 is within the valid range
+    const ZERO: Self = unsafe { Nanoseconds(0) };
+}
+
 impl Default for Nanoseconds {
     #[inline]
     fn default() -> Self {
-        // SAFETY: 0 is within the valid range
-        unsafe { Nanoseconds(0) }
+        Self::ZERO
     }
 }
 
@@ -236,7 +240,7 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_secs(secs: u64) -> Duration {
-        Duration::new(secs, 0)
+        Duration { secs, nanos: Nanoseconds::ZERO }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
@@ -256,7 +260,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_millis(millis: u64) -> Duration {
-        Duration::new(millis / MILLIS_PER_SEC, ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI)
+        let secs = millis / MILLIS_PER_SEC;
+        let subsec_millis = (millis % MILLIS_PER_SEC) as u32;
+        // SAFETY: (x % 1_000) * 1_000_000 < 1_000_000_000
+        //         => x % 1_000 < 1_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_millis * NANOS_PER_MILLI) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of microseconds.
@@ -276,7 +286,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_micros(micros: u64) -> Duration {
-        Duration::new(micros / MICROS_PER_SEC, ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO)
+        let secs = micros / MICROS_PER_SEC;
+        let subsec_micros = (micros % MICROS_PER_SEC) as u32;
+        // SAFETY: (x % 1_000_000) * 1_000 < 1_000_000_000
+        //         => x % 1_000_000 < 1_000_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_micros * NANOS_PER_MICRO) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of nanoseconds.
@@ -301,7 +317,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
-        Duration::new(nanos / (NANOS_PER_SEC as u64), (nanos % (NANOS_PER_SEC as u64)) as u32)
+        const NANOS_PER_SEC: u64 = self::NANOS_PER_SEC as u64;
+        let secs = nanos / NANOS_PER_SEC;
+        let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
+        // SAFETY: x % 1_000_000_000 < 1_000_000_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_nanos) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of weeks.
@@ -1437,10 +1459,10 @@ impl TryFromFloatSecsError {
     const fn description(&self) -> &'static str {
         match self.kind {
             TryFromFloatSecsErrorKind::Negative => {
-                "can not convert float seconds to Duration: value is negative"
+                "cannot convert float seconds to Duration: value is negative"
             }
             TryFromFloatSecsErrorKind::OverflowOrNan => {
-                "can not convert float seconds to Duration: value is either too big or NaN"
+                "cannot convert float seconds to Duration: value is either too big or NaN"
             }
         }
     }

@@ -12,6 +12,7 @@ fn b() {
 fn c() {
     [0; [|&_: _ &_| {}; 0 ].len()]
     //~^ ERROR expected `,`, found `&`
+    //~| ERROR type annotations needed
 }
 
 fn d() {

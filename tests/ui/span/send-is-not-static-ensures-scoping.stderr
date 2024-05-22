@@ -16,6 +16,9 @@ error[E0597]: `y` does not live long enough
    |
 LL |     let bad = {
    |         --- borrow later stored here
+LL |         let x = 1;
+LL |         let y = &x;
+   |             - binding `y` declared here
 ...
 LL |         scoped(|| {
    |                -- value captured here

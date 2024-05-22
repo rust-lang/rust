@@ -2,11 +2,15 @@
 #![warn(unused_imports)]
 
 
-use std::option::Option::Some;//~ WARNING the item `Some` is imported redundantly
-use std::option::Option::None; //~ WARNING the item `None` is imported redundantly
+use std::option::Option::Some;
+//FIXME(unused_imports): ~^ WARNING the item `Some` is imported redundantly
+use std::option::Option::None;
+//FIXME(unused_imports): ~ WARNING the item `None` is imported redundantly
 
-use std::result::Result::Ok;//~ WARNING the item `Ok` is imported redundantly
-use std::result::Result::Err;//~ WARNING the item `Err` is imported redundantly
+use std::result::Result::Ok;
+//FIXME(unused_imports): ~^ WARNING the item `Ok` is imported redundantly
+use std::result::Result::Err;
+//FIXME(unused_imports): ~^ WARNING the item `Err` is imported redundantly
 use std::convert::{TryFrom, TryInto};
 
 fn main() {

@@ -4,7 +4,7 @@
 // Check that attributes get removed too. See #87973.
 #[deprecated]
 #[allow(unsafe_code)]
-#[cfg(not(foo))]
+#[cfg(not(FALSE))]
 use std::fs;
 //~^ ERROR unused import
 

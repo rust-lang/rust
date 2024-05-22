@@ -1,6 +1,6 @@
 use rustc_ast::ast;
 use rustc_errors::codes::*;
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
@@ -150,29 +150,6 @@ pub(crate) struct HelperAttributeNameInvalid {
     #[primary_span]
     pub span: Span,
     pub name: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag(expand_expected_comma_in_list)]
-pub(crate) struct ExpectedCommaInList {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(expand_only_one_argument)]
-pub(crate) struct OnlyOneArgument<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(expand_takes_no_arguments)]
-pub(crate) struct TakesNoArguments<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub name: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -455,4 +432,11 @@ pub struct ExpectedParenOrBrace<'a> {
     #[primary_span]
     pub span: Span,
     pub token: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_empty_delegation_list)]
+pub(crate) struct EmptyDelegationList {
+    #[primary_span]
+    pub span: Span,
 }

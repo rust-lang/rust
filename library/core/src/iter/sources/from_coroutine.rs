@@ -14,7 +14,7 @@ use crate::pin::Pin;
 /// #![feature(coroutines)]
 /// #![feature(iter_from_coroutine)]
 ///
-/// let it = std::iter::from_coroutine(|| {
+/// let it = std::iter::from_coroutine(#[coroutine] || {
 ///     yield 1;
 ///     yield 2;
 ///     yield 3;

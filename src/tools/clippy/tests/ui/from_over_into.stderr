@@ -54,7 +54,7 @@ help: replace the `Into` implementation with `From<ExplicitPaths>`
 LL ~ impl core::convert::From<crate::ExplicitPaths> for bool {
 LL ~     fn from(mut val: crate::ExplicitPaths) -> Self {
 LL ~         let in_closure = || val.0;
-LL | 
+LL |
 LL ~         val.0 = false;
 LL ~         val.0
    |

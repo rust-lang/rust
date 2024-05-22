@@ -3,14 +3,14 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{get_path_from_caller_to_method_type, higher, is_adjusted, path_to_local, path_to_local_id};
+use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, path_to_local, path_to_local_id};
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
+use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, Binder, ClosureArgs, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, RegionKind,
-    Ty, TypeVisitableExt, TypeckResults,
+    self, Binder, ClosureArgs, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, RegionKind, Ty,
+    TypeVisitableExt, TypeckResults,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
         if body.value.span.from_expansion() {
             if body.params.is_empty() {
-                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, body.value) {
+                if let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, body.value) {
                     // replace `|| vec![]` with `Vec::new`
                     span_lint_and_sugg(
                         cx,
@@ -146,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     ty::FnPtr(sig) => sig.skip_binder(),
                     ty::Closure(_, subs) => cx
                         .tcx
-                        .signature_unclosure(subs.as_closure().sig(), Unsafety::Normal)
+                        .signature_unclosure(subs.as_closure().sig(), Safety::Safe)
                         .skip_binder(),
                     _ => {
                         if typeck.type_dependent_def_id(body.value.hir_id).is_some()
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                             && let output = typeck.expr_ty(body.value)
                             && let ty::Tuple(tys) = *subs.type_at(1).kind()
                         {
-                            cx.tcx.mk_fn_sig(tys, output, false, Unsafety::Normal, Abi::Rust)
+                            cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, Abi::Rust)
                         } else {
                             return;
                         }
@@ -229,7 +229,7 @@ fn check_inputs(
         && params.iter().zip(self_arg.into_iter().chain(args)).all(|(p, arg)| {
             matches!(
                 p.pat.kind,
-                PatKind::Binding(BindingAnnotation::NONE, id, _, None)
+                PatKind::Binding(BindingMode::NONE, id, _, None)
                 if path_to_local_id(arg, id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).
@@ -241,11 +241,9 @@ fn check_inputs(
 }
 
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure: ClosureArgs<'tcx>, call_sig: FnSig<'_>) -> bool {
-    call_sig.unsafety == Unsafety::Normal
+    call_sig.safety == Safety::Safe
         && !has_late_bound_to_non_late_bound_regions(
-            cx.tcx
-                .signature_unclosure(closure.sig(), Unsafety::Normal)
-                .skip_binder(),
+            cx.tcx.signature_unclosure(closure.sig(), Safety::Safe).skip_binder(),
             call_sig,
         )
 }

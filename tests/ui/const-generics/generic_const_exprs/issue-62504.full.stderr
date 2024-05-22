@@ -18,7 +18,7 @@ help: try adding a `where` bound
 LL |     pub const fn new() -> Self where [(); Self::SIZE]: {
    |                                +++++++++++++++++++++++
 
-error[E0282]: type annotations needed for `ArrayHolder<X>`
+error[E0282]: type annotations needed for `ArrayHolder<_>`
   --> $DIR/issue-62504.rs:26:9
    |
 LL |     let mut array = ArrayHolder::new();

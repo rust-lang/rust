@@ -19,7 +19,7 @@ pub unsafe extern "C" fn naked_empty() {
 }
 
 // CHECK: Function Attrs: naked
-// CHECK-NEXT: define{{.*}}i{{[0-9]+}} @naked_with_args_and_return(i64 %a, i64 %b)
+// CHECK-NEXT: define{{.*}}i{{[0-9]+}} @naked_with_args_and_return(i64 %0, i64 %1)
 #[no_mangle]
 #[naked]
 pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {

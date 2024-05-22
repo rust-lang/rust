@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
+use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
@@ -206,7 +206,7 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             TRIVIALLY_COPY_PASS_BY_REF,
                             input.span,
-                            &format!(
+                            format!(
                                 "this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)",
                                 self.ref_min_size
                             ),
@@ -221,7 +221,7 @@ impl<'tcx> PassByRefOrValue {
                     // if function has a body and parameter is annotated with mut, ignore
                     if let Some(param) = fn_body.and_then(|body| body.params.get(index)) {
                         match param.pat.kind {
-                            PatKind::Binding(BindingAnnotation::NONE, _, _, _) => {},
+                            PatKind::Binding(BindingMode::NONE, _, _, _) => {},
                             _ => continue,
                         }
                     }
@@ -236,7 +236,7 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             LARGE_TYPES_PASSED_BY_VALUE,
                             input.span,
-                            &format!(
+                            format!(
                                 "this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)",
                                 self.value_max_size
                             ),

@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `thing` as mutable more than once at a time
-  --> $DIR/retain-resume-ref.rs:23:25
+  --> $DIR/retain-resume-ref.rs:24:25
    |
 LL |     gen.as_mut().resume(&mut thing);
    |                         ---------- first mutable borrow occurs here

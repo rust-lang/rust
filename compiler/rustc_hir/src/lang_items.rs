@@ -1,4 +1,4 @@
-//! Defines language items.
+//! Defines lang items.
 //!
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
@@ -12,11 +12,11 @@ use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-/// All of the language items, defined or not.
+/// All of the lang items, defined or not.
 /// Defined lang items can come from the current crate or its dependencies.
 #[derive(HashStable_Generic, Debug)]
 pub struct LanguageItems {
@@ -55,21 +55,27 @@ macro_rules! language_item_table {
     (
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
-
-        enum_from_u32! {
-            /// A representation of all the valid language items in Rust.
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
-            pub enum LangItem {
-                $(
-                    #[doc = concat!("The `", stringify!($name), "` lang item.")]
-                    ///
-                    $(#[$attr])*
-                    $variant,
-                )*
-            }
+        /// A representation of all the valid lang items in Rust.
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
+        pub enum LangItem {
+            $(
+                #[doc = concat!("The `", stringify!($name), "` lang item.")]
+                $(#[$attr])*
+                $variant,
+            )*
         }
 
         impl LangItem {
+            fn from_u32(u: u32) -> Option<LangItem> {
+                // This implementation is clumsy, but makes no assumptions
+                // about how discriminant tags are allocated within the
+                // range `0 .. std::mem::variant_count::<LangItem>()`.
+                $(if u == LangItem::$variant as u32 {
+                    return Some(LangItem::$variant)
+                })*
+                None
+            }
+
             /// Returns the `name` symbol in `#[lang = "$name"]`.
             /// For example, [`LangItem::PartialEq`]`.name()`
             /// would result in [`sym::eq`] since it is `#[lang = "eq"]`.
@@ -147,7 +153,7 @@ language_item_table! {
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
-    /// The associated item of the [`DiscriminantKind`] trait.
+    /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait,          GenericRequirement::None;
@@ -162,10 +168,22 @@ language_item_table! {
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
 
+    AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::Exact(0);
+    AsyncDestruct,           sym::async_destruct,      async_destruct_trait,       Target::Trait,          GenericRequirement::Exact(0);
+    AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
+    SurfaceAsyncDropInPlace, sym::surface_async_drop_in_place, surface_async_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
+    AsyncDropSurfaceDropInPlace, sym::async_drop_surface_drop_in_place, async_drop_surface_drop_in_place_fn, Target::Fn, GenericRequirement::Exact(1);
+    AsyncDropSlice,          sym::async_drop_slice,    async_drop_slice_fn,        Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropChain,          sym::async_drop_chain,    async_drop_chain_fn,        Target::Fn,             GenericRequirement::Exact(2);
+    AsyncDropNoop,           sym::async_drop_noop,     async_drop_noop_fn,         Target::Fn,             GenericRequirement::Exact(0);
+    AsyncDropFuse,           sym::async_drop_fuse,     async_drop_fuse_fn,         Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropDefer,          sym::async_drop_defer,    async_drop_defer_fn,        Target::Fn,             GenericRequirement::Exact(1);
+    AsyncDropEither,         sym::async_drop_either,   async_drop_either_fn,       Target::Fn,             GenericRequirement::Exact(3);
+
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
 
-    // language items relating to transmutability
+    // lang items relating to transmutability
     TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
     TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(2);
 
@@ -281,6 +299,7 @@ language_item_table! {
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
+    FallbackSurfaceDrop,     sym::fallback_surface_drop, fallback_surface_drop_fn, Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
 
     Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
@@ -291,7 +310,7 @@ language_item_table! {
     OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
     GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct,         GenericRequirement::None;
 
-    // Experimental language item for Miri
+    // Experimental lang item for Miri
     PtrUnique,               sym::ptr_unique,          ptr_unique,                 Target::Struct,         GenericRequirement::Exact(1);
 
     PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct,         GenericRequirement::Exact(1);

@@ -8,6 +8,8 @@
 )]
 
 use std::fmt::Debug;
+use std::rc::{Rc, Weak as RcWeak};
+use std::sync::{Arc, Weak as ArcWeak};
 
 struct FakeAsRef;
 
@@ -178,6 +180,22 @@ mod issue12135 {
 
         x.field.as_ref().map(|v| v.method().clone())
     }
+}
+
+fn issue_12528() {
+    struct Foo;
+
+    let opt = Some(Arc::new(Foo));
+    let _ = opt.as_ref().map(Arc::clone);
+
+    let opt = Some(Rc::new(Foo));
+    let _ = opt.as_ref().map(Rc::clone);
+
+    let opt = Some(Arc::downgrade(&Arc::new(Foo)));
+    let _ = opt.as_ref().map(ArcWeak::clone);
+
+    let opt = Some(Rc::downgrade(&Rc::new(Foo)));
+    let _ = opt.as_ref().map(RcWeak::clone);
 }
 
 fn main() {

@@ -72,14 +72,24 @@ pub type Result = result::Result<(), Error>;
 /// The error type which is returned from formatting a message into a stream.
 ///
 /// This type does not support transmission of an error other than that an error
-/// occurred. Any extra information must be arranged to be transmitted through
-/// some other means.
+/// occurred. This is because, despite the existence of this error,
+/// string formatting is considered an infallible operation.
+/// `fmt()` implementors should not return this `Error` unless they received it from their
+/// [`Formatter`]. The only time your code should create a new instance of this
+/// error is when implementing `fmt::Write`, in order to cancel the formatting operation when
+/// writing to the underlying stream fails.
 ///
-/// An important thing to remember is that the type `fmt::Error` should not be
+/// Any extra information must be arranged to be transmitted through some other means,
+/// such as storing it in a field to be consulted after the formatting operation has been
+/// cancelled. (For example, this is how [`std::io::Write::write_fmt()`] propagates IO errors
+/// during writing.)
+///
+/// This type, `fmt::Error`, should not be
 /// confused with [`std::io::Error`] or [`std::error::Error`], which you may also
 /// have in scope.
 ///
 /// [`std::io::Error`]: ../../std/io/struct.Error.html
+/// [`std::io::Write::write_fmt()`]: ../../std/io/trait.Write.html#method.write_fmt
 /// [`std::error::Error`]: ../../std/error/trait.Error.html
 ///
 /// # Examples
@@ -118,8 +128,10 @@ pub trait Write {
     /// This function will return an instance of [`std::fmt::Error`][Error] on error.
     ///
     /// The purpose of that error is to abort the formatting operation when the underlying
-    /// destination encounters some error preventing it from accepting more text; it should
-    /// generally be propagated rather than handled, at least when implementing formatting traits.
+    /// destination encounters some error preventing it from accepting more text;
+    /// in particular, it does not communicate any information about *what* error occurred.
+    /// It should generally be propagated rather than handled, at least when implementing
+    /// formatting traits.
     ///
     /// # Examples
     ///
@@ -586,7 +598,7 @@ impl Display for Arguments<'_> {
 #[rustc_diagnostic_item = "Debug"]
 #[rustc_trivial_field_reads]
 pub trait Debug {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
     /// # Examples
     ///
@@ -703,7 +715,7 @@ pub use macros::Debug;
 #[rustc_diagnostic_item = "Display"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
     /// # Examples
     ///
@@ -777,7 +789,7 @@ pub trait Display {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Octal {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -836,7 +848,7 @@ pub trait Octal {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Binary {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -860,10 +872,10 @@ pub trait Binary {
 /// Basic usage with `i32`:
 ///
 /// ```
-/// let x = 42; // 42 is '2a' in hex
+/// let y = 42; // 42 is '2a' in hex
 ///
-/// assert_eq!(format!("{x:x}"), "2a");
-/// assert_eq!(format!("{x:#x}"), "0x2a");
+/// assert_eq!(format!("{y:x}"), "2a");
+/// assert_eq!(format!("{y:#x}"), "0x2a");
 ///
 /// assert_eq!(format!("{:x}", -16), "fffffff0");
 /// ```
@@ -891,7 +903,7 @@ pub trait Binary {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerHex {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -915,10 +927,10 @@ pub trait LowerHex {
 /// Basic usage with `i32`:
 ///
 /// ```
-/// let x = 42; // 42 is '2A' in hex
+/// let y = 42; // 42 is '2A' in hex
 ///
-/// assert_eq!(format!("{x:X}"), "2A");
-/// assert_eq!(format!("{x:#X}"), "0x2A");
+/// assert_eq!(format!("{y:X}"), "2A");
+/// assert_eq!(format!("{y:#X}"), "0x2A");
 ///
 /// assert_eq!(format!("{:X}", -16), "FFFFFFF0");
 /// ```
@@ -946,7 +958,7 @@ pub trait LowerHex {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperHex {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -997,7 +1009,7 @@ pub trait UpperHex {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Pointer"]
 pub trait Pointer {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -1048,7 +1060,7 @@ pub trait Pointer {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerExp {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -1099,7 +1111,7 @@ pub trait LowerExp {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperExp {
-    /// Formats the value using the given formatter.
+    #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
@@ -1150,7 +1162,12 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
-                arg.fmt(&mut formatter)?;
+
+                // SAFETY: There are no formatting parameters and hence no
+                // count arguments.
+                unsafe {
+                    arg.fmt(&mut formatter)?;
+                }
                 idx += 1;
             }
         }
@@ -1198,7 +1215,8 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
     let value = unsafe { args.get_unchecked(arg.position) };
 
     // Then actually do some printing
-    value.fmt(fmt)
+    // SAFETY: this is a placeholder argument.
+    unsafe { value.fmt(fmt) }
 }
 
 unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {

@@ -237,6 +237,11 @@ impl<'tcx> PlaceRef<'tcx> {
     }
 
     #[inline]
+    pub fn to_place(&self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        Place { local: self.local, projection: tcx.mk_place_elems(self.projection) }
+    }
+
+    #[inline]
     pub fn last_projection(&self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
         if let &[ref proj_base @ .., elem] = self.projection {
             Some((PlaceRef { local: self.local, projection: proj_base }, elem))
@@ -433,7 +438,6 @@ impl<'tcx> Rvalue<'tcx> {
                 _,
             )
             | Rvalue::BinaryOp(_, _)
-            | Rvalue::CheckedBinaryOp(_, _)
             | Rvalue::NullaryOp(_, _)
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
@@ -446,7 +450,7 @@ impl<'tcx> Rvalue<'tcx> {
 impl BorrowKind {
     pub fn mutability(&self) -> Mutability {
         match *self {
-            BorrowKind::Shared | BorrowKind::Fake => Mutability::Not,
+            BorrowKind::Shared | BorrowKind::Fake(_) => Mutability::Not,
             BorrowKind::Mut { .. } => Mutability::Mut,
         }
     }
@@ -454,7 +458,7 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared
-            | BorrowKind::Fake
+            | BorrowKind::Fake(_)
             | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
                 false
             }

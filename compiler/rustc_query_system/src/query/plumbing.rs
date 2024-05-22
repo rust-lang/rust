@@ -27,6 +27,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
+use tracing::instrument;
 
 use super::QueryConfig;
 

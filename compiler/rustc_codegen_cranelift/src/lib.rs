@@ -87,21 +87,17 @@ mod prelude {
         AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
         StackSlotData, StackSlotKind, TrapCode, Type, Value,
     };
-    pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
-    pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
     pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_index::Idx;
-    pub(crate) use rustc_middle::bug;
     pub(crate) use rustc_middle::mir::{self, *};
-    pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
+    pub(crate) use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable, TypeVisitableExt, UintTy,
+        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, UintTy,
     };
-    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
+    pub(crate) use rustc_span::Span;
     pub(crate) use rustc_target::abi::{Abi, FieldIdx, Scalar, Size, VariantIdx, FIRST_VARIANT};
 
     pub(crate) use crate::abi::*;
@@ -261,7 +257,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     }
 }
 
-fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
@@ -335,9 +331,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
                     sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
-                // Don't use "haswell" as the default, as it implies `has_lzcnt`.
-                // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.
-                builder.enable("nehalem").unwrap();
+                // Only set the target cpu on x86_64 as Cranelift is missing
+                // the target cpu list for most other targets.
+                builder.enable(sess.target.cpu.as_ref()).unwrap();
             }
             builder
         }

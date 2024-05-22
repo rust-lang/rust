@@ -1,4 +1,4 @@
-//@ unit-test: LowerIntrinsics
+//@ test-mir-pass: LowerIntrinsics
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(core_intrinsics, intrinsics, rustc_attrs)]
@@ -184,9 +184,9 @@ pub fn assume() {
 // EMIT_MIR lower_intrinsics.with_overflow.LowerIntrinsics.diff
 pub fn with_overflow(a: i32, b: i32) {
     // CHECK-LABEL: fn with_overflow(
-    // CHECK: CheckedAdd(
-    // CHECK: CheckedSub(
-    // CHECK: CheckedMul(
+    // CHECK: AddWithOverflow(
+    // CHECK: SubWithOverflow(
+    // CHECK: MulWithOverflow(
 
     let _x = core::intrinsics::add_with_overflow(a, b);
     let _y = core::intrinsics::sub_with_overflow(a, b);
@@ -247,4 +247,14 @@ pub fn three_way_compare_signed(a: i16, b: i16) {
 // EMIT_MIR lower_intrinsics.three_way_compare_unsigned.LowerIntrinsics.diff
 pub fn three_way_compare_unsigned(a: u32, b: u32) {
     let _x = core::intrinsics::three_way_compare(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.make_pointers.LowerIntrinsics.diff
+pub fn make_pointers(a: *const u8, b: *mut (), n: usize) {
+    use std::intrinsics::aggregate_raw_ptr;
+
+    let _thin_const: *const i32 = aggregate_raw_ptr(a, ());
+    let _thin_mut: *mut u8 = aggregate_raw_ptr(b, ());
+    let _slice_const: *const [u16] = aggregate_raw_ptr(a, n);
+    let _slice_mut: *mut [u64] = aggregate_raw_ptr(b, n);
 }

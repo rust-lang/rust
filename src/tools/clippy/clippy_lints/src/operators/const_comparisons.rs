@@ -89,7 +89,7 @@ pub(super) fn check<'tcx>(
                     span,
                     "left-hand side of `&&` operator has no effect",
                     Some(left_cond.span.until(right_cond.span)),
-                    &format!("`if `{rhs_str}` evaluates to true, {lhs_str}` will always evaluate to true as well"),
+                    format!("`if `{rhs_str}` evaluates to true, {lhs_str}` will always evaluate to true as well"),
                 );
             } else {
                 span_lint_and_note(
@@ -98,7 +98,7 @@ pub(super) fn check<'tcx>(
                     span,
                     "right-hand side of `&&` operator has no effect",
                     Some(and_op.span.to(right_cond.span)),
-                    &format!("`if `{lhs_str}` evaluates to true, {rhs_str}` will always evaluate to true as well"),
+                    format!("`if `{lhs_str}` evaluates to true, {rhs_str}` will always evaluate to true as well"),
                 );
             }
             // We could autofix this error but choose not to,
@@ -124,7 +124,7 @@ pub(super) fn check<'tcx>(
                 span,
                 "boolean expression will never evaluate to 'true'",
                 None,
-                &note,
+                note,
             );
         };
     }

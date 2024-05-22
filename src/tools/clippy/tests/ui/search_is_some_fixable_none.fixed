@@ -213,3 +213,53 @@ mod issue7392 {
         let _ = !v.iter().any(|fp| test_u32_2(*fp.field));
     }
 }
+
+mod issue_11910 {
+    fn computations() -> u32 {
+        0
+    }
+
+    struct Foo;
+    impl Foo {
+        fn bar(&self, _: bool) {}
+    }
+
+    fn test_normal_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        let _ = !v.iter().any(|x| *x == 42);
+        Foo.bar(!v.iter().any(|x| *x == 42));
+    }
+
+    fn test_then_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        (!v.iter().any(|x| *x == 42)).then(computations);
+    }
+
+    fn test_then_some_for_iter() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        (!v.iter().any(|x| *x == 42)).then_some(0);
+    }
+
+    fn test_normal_for_str() {
+        let s = "hello";
+        let _ = !s.contains("world");
+        Foo.bar(!s.contains("world"));
+        let s = String::from("hello");
+        let _ = !s.contains("world");
+        Foo.bar(!s.contains("world"));
+    }
+
+    fn test_then_for_str() {
+        let s = "hello";
+        let _ = (!s.contains("world")).then(computations);
+        let s = String::from("hello");
+        let _ = (!s.contains("world")).then(computations);
+    }
+
+    fn test_then_some_for_str() {
+        let s = "hello";
+        let _ = (!s.contains("world")).then_some(0);
+        let s = String::from("hello");
+        let _ = (!s.contains("world")).then_some(0);
+    }
+}

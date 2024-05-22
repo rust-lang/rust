@@ -239,7 +239,7 @@ use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
 use crate::mem::{self, size_of};
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::ptr::{self, NonNull};
 
 mod lazy;
@@ -1277,11 +1277,11 @@ impl<T: Clone> Clone for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if `other` is currently mutably borrowed.
+    /// Panics if `source` is currently mutably borrowed.
     #[inline]
     #[track_caller]
-    fn clone_from(&mut self, other: &Self) {
-        self.get_mut().clone_from(&other.borrow())
+    fn clone_from(&mut self, source: &Self) {
+        self.get_mut().clone_from(&source.borrow())
     }
 }
 
@@ -1451,6 +1451,9 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
         unsafe { self.value.as_ref() }
     }
 }
+
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized> DerefPure for Ref<'_, T> {}
 
 impl<'b, T: ?Sized> Ref<'b, T> {
     /// Copies a `Ref`.
@@ -1844,6 +1847,9 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     }
 }
 
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized> DerefPure for RefMut<'_, T> {}
+
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
 
@@ -2071,6 +2077,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    // When this is const stabilized, please remove `primitive_into_inner` below.
     #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
     pub const fn into_inner(self) -> T {
         self.value
@@ -2216,6 +2223,47 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 // `self: UnsafeCellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
+
+// Special cases of UnsafeCell::into_inner where T is a primitive. These are
+// used by Atomic*::into_inner.
+//
+// The real UnsafeCell::into_inner cannot be used yet in a stable const function.
+// That is blocked on a "precise drop analysis" unstable const feature.
+// https://github.com/rust-lang/rust/issues/73255
+macro_rules! unsafe_cell_primitive_into_inner {
+    ($($primitive:ident $atomic:literal)*) => {
+        $(
+            #[cfg(target_has_atomic_load_store = $atomic)]
+            impl UnsafeCell<$primitive> {
+                pub(crate) const fn primitive_into_inner(self) -> $primitive {
+                    self.value
+                }
+            }
+        )*
+    };
+}
+
+unsafe_cell_primitive_into_inner! {
+    i8 "8"
+    u8 "8"
+    i16 "16"
+    u16 "16"
+    i32 "32"
+    u32 "32"
+    i64 "64"
+    u64 "64"
+    i128 "128"
+    u128 "128"
+    isize "ptr"
+    usize "ptr"
+}
+
+#[cfg(target_has_atomic_load_store = "ptr")]
+impl<T> UnsafeCell<*mut T> {
+    pub(crate) const fn primitive_into_inner(self) -> *mut T {
+        self.value
+    }
+}
 
 /// [`UnsafeCell`], but [`Sync`].
 ///

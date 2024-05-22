@@ -58,16 +58,25 @@
 //! borrowing from the outer closure, and we simply peel off a `deref` projection
 //! from them. This second body is stored alongside the first body, and optimized
 //! with it in lockstep. When we need to resolve a body for `FnOnce` or `AsyncFnOnce`,
-//! we use this "by move" body instead.
+//! we use this "by-move" body instead.
+//!
+//! ## How does this work?
+//!
+//! This pass essentially remaps the body of the (child) closure of the coroutine-closure
+//! to take the set of upvars of the parent closure by value. This at least requires
+//! changing a by-ref upvar to be by-value in the case that the outer coroutine-closure
+//! captures something by value; however, it may also require renumbering field indices
+//! in case precise captures (edition 2021 closure capture rules) caused the inner coroutine
+//! to split one field capture into two.
 
-use itertools::Itertools;
-
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
+use rustc_middle::bug;
+use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir, MirPass};
 use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, TypeVisitableExt};
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct ByMoveBody;
 
@@ -91,14 +100,16 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             return;
         }
 
-        let ty::Coroutine(_, coroutine_args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
-        // We don't need to generate a by-move coroutine if the kind of the coroutine is
-        // already `FnOnce` -- that means that any upvars that the closure consumes have
-        // already been taken by-value.
-        let coroutine_kind = coroutine_args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap();
-        if coroutine_kind == ty::ClosureKind::FnOnce {
+        // We don't need to generate a by-move coroutine if the coroutine body was
+        // produced by the `CoroutineKindShim`, since it's already by-move.
+        if matches!(body.source.instance, ty::InstanceDef::CoroutineKindShim { .. }) {
             return;
         }
+
+        let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
+        let args = args.as_coroutine();
+
+        let coroutine_kind = args.kind_ty().to_opt_closure_kind().unwrap();
 
         let parent_def_id = tcx.local_parent(coroutine_def_id);
         let ty::CoroutineClosure(_, parent_args) =
@@ -114,26 +125,56 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             .tuple_fields()
             .len();
 
-        let mut by_ref_fields = UnordSet::default();
-        for (idx, (coroutine_capture, parent_capture)) in tcx
-            .closure_captures(coroutine_def_id)
-            .iter()
-            // By construction we capture all the args first.
-            .skip(num_args)
-            .zip_eq(tcx.closure_captures(parent_def_id))
-            .enumerate()
-        {
-            // This upvar is captured by-move from the parent closure, but by-ref
-            // from the inner async block. That means that it's being borrowed from
-            // the outer closure body -- we need to change the coroutine to take the
-            // upvar by value.
-            if coroutine_capture.is_by_ref() && !parent_capture.is_by_ref() {
-                by_ref_fields.insert(FieldIdx::from_usize(num_args + idx));
-            }
+        let field_remapping: UnordMap<_, _> = ty::analyze_coroutine_closure_captures(
+            tcx.closure_captures(parent_def_id).iter().copied(),
+            tcx.closure_captures(coroutine_def_id).iter().skip(num_args).copied(),
+            |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
+                // Store this set of additional projections (fields and derefs).
+                // We need to re-apply them later.
+                let child_precise_captures =
+                    &child_capture.place.projections[parent_capture.place.projections.len()..];
 
-            // Make sure we're actually talking about the same capture.
-            // FIXME(async_closures): We could look at the `hir::Upvar` instead?
-            assert_eq!(coroutine_capture.place.ty(), parent_capture.place.ty());
+                // If the parent captures by-move, and the child captures by-ref, then we
+                // need to peel an additional `deref` off of the body of the child.
+                let needs_deref = child_capture.is_by_ref() && !parent_capture.is_by_ref();
+                if needs_deref {
+                    assert_ne!(
+                        coroutine_kind,
+                        ty::ClosureKind::FnOnce,
+                        "`FnOnce` coroutine-closures return coroutines that capture from \
+                        their body; it will always result in a borrowck error!"
+                    );
+                }
+
+                // Finally, store the type of the parent's captured place. We need
+                // this when building the field projection in the MIR body later on.
+                let mut parent_capture_ty = parent_capture.place.ty();
+                parent_capture_ty = match parent_capture.info.capture_kind {
+                    ty::UpvarCapture::ByValue => parent_capture_ty,
+                    ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
+                        tcx,
+                        tcx.lifetimes.re_erased,
+                        parent_capture_ty,
+                        kind.to_mutbl_lossy(),
+                    ),
+                };
+
+                (
+                    FieldIdx::from_usize(child_field_idx + num_args),
+                    (
+                        FieldIdx::from_usize(parent_field_idx + num_args),
+                        parent_capture_ty,
+                        needs_deref,
+                        child_precise_captures,
+                    ),
+                )
+            },
+        )
+        .collect();
+
+        if coroutine_kind == ty::ClosureKind::FnOnce {
+            assert_eq!(field_remapping.len(), tcx.closure_captures(parent_def_id).len());
+            return;
         }
 
         let by_move_coroutine_ty = tcx
@@ -149,8 +190,9 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             );
 
         let mut by_move_body = body.clone();
-        MakeByMoveBody { tcx, by_ref_fields, by_move_coroutine_ty }.visit_body(&mut by_move_body);
+        MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
         dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
+        // FIXME: use query feeding to generate the body right here and then only store the `DefId` of the new body.
         by_move_body.source = mir::MirSource::from_instance(InstanceDef::CoroutineKindShim {
             coroutine_def_id: coroutine_def_id.to_def_id(),
         });
@@ -160,7 +202,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
 
 struct MakeByMoveBody<'tcx> {
     tcx: TyCtxt<'tcx>,
-    by_ref_fields: UnordSet<FieldIdx>,
+    field_remapping: UnordMap<FieldIdx, (FieldIdx, Ty<'tcx>, bool, &'tcx [Projection<'tcx>])>,
     by_move_coroutine_ty: Ty<'tcx>,
 }
 
@@ -175,24 +217,57 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         context: mir::visit::PlaceContext,
         location: mir::Location,
     ) {
+        // Initializing an upvar local always starts with `CAPTURE_STRUCT_LOCAL` and a
+        // field projection. If this is in `field_remapping`, then it must not be an
+        // arg from calling the closure, but instead an upvar.
         if place.local == ty::CAPTURE_STRUCT_LOCAL
-            && let Some((&mir::ProjectionElem::Field(idx, ty), projection)) =
+            && let Some((&mir::ProjectionElem::Field(idx, _), projection)) =
                 place.projection.split_first()
-            && self.by_ref_fields.contains(&idx)
+            && let Some(&(remapped_idx, remapped_ty, needs_deref, bridging_projections)) =
+                self.field_remapping.get(&idx)
         {
-            let (begin, end) = projection.split_first().unwrap();
-            // FIXME(async_closures): I'm actually a bit surprised to see that we always
-            // initially deref the by-ref upvars. If this is not actually true, then we
-            // will at least get an ICE that explains why this isn't true :^)
-            assert_eq!(*begin, mir::ProjectionElem::Deref);
-            // Peel one ref off of the ty.
-            let peeled_ty = ty.builtin_deref(true).unwrap().ty;
+            // As noted before, if the parent closure captures a field by value, and
+            // the child captures a field by ref, then for the by-move body we're
+            // generating, we also are taking that field by value. Peel off a deref,
+            // since a layer of ref'ing has now become redundant.
+            let final_projections = if needs_deref {
+                let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
+                else {
+                    bug!(
+                        "There should be at least a single deref for an upvar local initialization, found {projection:#?}"
+                    );
+                };
+                // There may be more derefs, since we may also implicitly reborrow
+                // a captured mut pointer.
+                projection
+            } else {
+                projection
+            };
+
+            // These projections are applied in order to "bridge" the local that we are
+            // currently transforming *from* the old upvar that the by-ref coroutine used
+            // to capture *to* the upvar of the parent coroutine-closure. For example, if
+            // the parent captures `&s` but the child captures `&(s.field)`, then we will
+            // apply a field projection.
+            let bridging_projections = bridging_projections.iter().map(|elem| match elem.kind {
+                ProjectionKind::Deref => mir::ProjectionElem::Deref,
+                ProjectionKind::Field(idx, VariantIdx::ZERO) => {
+                    mir::ProjectionElem::Field(idx, elem.ty)
+                }
+                _ => unreachable!("precise captures only through fields and derefs"),
+            });
+
+            // We start out with an adjusted field index (and ty), representing the
+            // upvar that we get from our parent closure. We apply any of the additional
+            // projections to make sure that to the rest of the body of the closure, the
+            // place looks the same, and then apply that final deref if necessary.
             *place = mir::Place {
                 local: place.local,
                 projection: self.tcx.mk_place_elems_from_iter(
-                    [mir::ProjectionElem::Field(idx, peeled_ty)]
+                    [mir::ProjectionElem::Field(remapped_idx, remapped_ty)]
                         .into_iter()
-                        .chain(end.iter().copied()),
+                        .chain(bridging_projections)
+                        .chain(final_projections.iter().copied()),
                 ),
             };
         }

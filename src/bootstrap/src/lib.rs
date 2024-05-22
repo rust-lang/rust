@@ -76,6 +76,7 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
+#[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
@@ -92,8 +93,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx", "p2"])),
-    // (Some(Mode::Std), "target_os", Some(&[])),
+    (Some(Mode::Std), "target_os", Some(&["visionos"])),
     (Some(Mode::Std), "target_arch", Some(&["arm64ec", "spirv", "nvptx", "xtensa"])),
+    (Some(Mode::ToolStd), "target_os", Some(&["visionos"])),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
@@ -374,11 +376,16 @@ impl Build {
             .expect("failed to read src/version");
         let version = version.trim();
 
-        let bootstrap_out = std::env::current_exe()
+        let mut bootstrap_out = std::env::current_exe()
             .expect("could not determine path to running process")
             .parent()
             .unwrap()
             .to_path_buf();
+        // Since bootstrap is hardlink to deps/bootstrap-*, Solaris can sometimes give
+        // path with deps/ which is bad and needs to be avoided.
+        if bootstrap_out.ends_with("deps") {
+            bootstrap_out.pop();
+        }
         if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
             // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
             panic!(
@@ -629,6 +636,18 @@ impl Build {
         }
     }
 
+    /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
+    pub fn update_existing_submodule(&self, submodule: &Path) {
+        // Avoid running git when there isn't a git checkout.
+        if !self.config.submodules(self.rust_info()) {
+            return;
+        }
+
+        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            self.update_submodule(submodule);
+        }
+    }
+
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
@@ -664,6 +683,8 @@ impl Build {
 
         if !self.config.dry_run() {
             {
+                // We first do a dry-run. This is a sanity-check to ensure that
+                // steps don't do anything expensive in the dry-run.
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
@@ -1079,6 +1100,16 @@ impl Build {
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
+    fn msg_clippy(
+        &self,
+        what: impl Display,
+        target: impl Into<Option<TargetSelection>>,
+    ) -> Option<gha::Group> {
+        self.msg(Kind::Clippy, self.config.stage, what, self.config.build, target)
+    }
+
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_check(
         &self,
         what: impl Display,
@@ -1350,9 +1381,24 @@ impl Build {
         self.musl_root(target).map(|root| root.join("lib"))
     }
 
-    /// Returns the sysroot for the wasi target, if defined
-    fn wasi_root(&self, target: TargetSelection) -> Option<&Path> {
-        self.config.target_config.get(&target).and_then(|t| t.wasi_root.as_ref()).map(|p| &**p)
+    /// Returns the `lib` directory for the WASI target specified, if
+    /// configured.
+    ///
+    /// This first consults `wasi-root` as configured in per-target
+    /// configuration, and failing that it assumes that `$WASI_SDK_PATH` is
+    /// set in the environment, and failing that `None` is returned.
+    fn wasi_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
+        let configured =
+            self.config.target_config.get(&target).and_then(|t| t.wasi_root.as_ref()).map(|p| &**p);
+        if let Some(path) = configured {
+            return Some(path.join("lib").join(target.to_string()));
+        }
+        let mut env_root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+        env_root.push("share");
+        env_root.push("wasi-sysroot");
+        env_root.push("lib");
+        env_root.push(target.to_string());
+        Some(env_root)
     }
 
     /// Returns `true` if this is a no-std `target`, if defined
@@ -1587,10 +1633,7 @@ impl Build {
     /// Returns `true` if unstable features should be enabled for the compiler
     /// we're building.
     fn unstable_features(&self) -> bool {
-        match &self.config.channel[..] {
-            "stable" | "beta" => false,
-            "nightly" | _ => true,
-        }
+        !matches!(&self.config.channel[..], "stable" | "beta")
     }
 
     /// Returns a Vec of all the dependencies of the given root crate,
@@ -1682,7 +1725,7 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(dst);
-        let metadata = t!(src.symlink_metadata());
+        let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {
@@ -1909,15 +1952,6 @@ impl Compiler {
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
-    }
-
-    /// Returns if this compiler should be treated as a final stage one in the
-    /// current build session.
-    /// This takes into account whether we're performing a full bootstrap or
-    /// not; don't directly compare the stage with `2`!
-    pub fn is_final_stage(&self, build: &Build) -> bool {
-        let final_stage = if build.config.full_bootstrap { 2 } else { 1 };
-        self.stage >= final_stage
     }
 }
 

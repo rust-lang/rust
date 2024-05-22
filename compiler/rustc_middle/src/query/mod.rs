@@ -72,6 +72,7 @@ use rustc_hir::def_id::{
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
+use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{try_get_cached, QueryCache, QueryMode, QueryState};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -398,15 +399,15 @@ rustc_queries! {
     /// ```
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
+    query item_bounds(key: DefId) -> ty::EarlyBinder<ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
-    query item_super_predicates(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
+    query item_super_predicates(key: DefId) -> ty::EarlyBinder<ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item assumptions for `{}`", tcx.def_path_str(key) }
     }
 
-    query item_non_self_assumptions(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
+    query item_non_self_assumptions(key: DefId) -> ty::EarlyBinder<ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item assumptions for `{}`", tcx.def_path_str(key) }
     }
 
@@ -472,20 +473,6 @@ rustc_queries! {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash
         desc { |tcx| "building THIR for `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Create a THIR tree for debugging.
-    query thir_tree(key: LocalDefId) -> &'tcx String {
-        no_hash
-        arena_cache
-        desc { |tcx| "constructing THIR tree for `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Create a list-like THIR representation for debugging.
-    query thir_flat(key: LocalDefId) -> &'tcx String {
-        no_hash
-        arena_cache
-        desc { |tcx| "constructing flat THIR representation for `{}`", tcx.def_path_str(key) }
     }
 
     /// Set of all the `DefId`s in this crate that have MIR associated with
@@ -860,8 +847,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query issue33140_self_ty(key: DefId) -> Option<ty::EarlyBinder<ty::Ty<'tcx>>> {
-        desc { |tcx| "computing Self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
+    query self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
+        key: DefId
+    ) -> Option<ty::EarlyBinder<ty::Ty<'tcx>>> {
+        desc { |tcx| "computing self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
     /// Maps a `DefId` of a type to a list of its inherent impls.
@@ -987,10 +976,6 @@ rustc_queries! {
     query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         desc { |tcx| "finding used_trait_imports `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
-    }
-
-    query has_typeck_results(def_id: DefId) -> bool {
-        desc { |tcx| "checking whether `{}` has a body", tcx.def_path_str(def_id) }
     }
 
     query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
@@ -1357,6 +1342,14 @@ rustc_queries! {
     /// Query backing `Ty::is_unpin`.
     query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
+    }
+    /// Query backing `Ty::has_surface_async_drop`.
+    query has_surface_async_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` has `AsyncDrop` implementation", env.value }
+    }
+    /// Query backing `Ty::has_surface_drop`.
+    query has_surface_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` has `Drop` implementation", env.value }
     }
     /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
@@ -2156,7 +2149,7 @@ rustc_queries! {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
     }
 
-    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Clause<'tcx>>) -> &'tcx ty::List<ty::Clause<'tcx>> {
+    query reveal_opaque_types_in_bounds(key: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
         desc { "revealing opaque types in `{:?}`", key }
     }
 

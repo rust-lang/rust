@@ -9,8 +9,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_hir::{Expr, FnDecl, Safety, LangItem, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;
@@ -19,7 +18,7 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, List, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt,
+    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, Upcast, TraitRef, Ty, TyCtxt,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
@@ -29,9 +28,10 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::assert_matches::debug_assert_matches;
+use std::collections::hash_map::Entry;
 use std::iter;
 
-use crate::{match_def_path, path_res};
+use crate::{def_path_def_ids, match_def_path, path_res};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -91,12 +91,16 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     return true;
                 }
 
-                if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *inner_ty.kind() {
+                if let ty::Alias(ty::Opaque, AliasTy { def_id, .. }) = *inner_ty.kind() {
                     if !seen.insert(def_id) {
                         return false;
                     }
 
-                    for (predicate, _span) in cx.tcx.explicit_item_super_predicates(def_id).instantiate_identity_iter_copied() {
+                    for (predicate, _span) in cx
+                        .tcx
+                        .explicit_item_super_predicates(def_id)
+                        .instantiate_identity_iter_copied()
+                    {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
@@ -157,6 +161,16 @@ pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symb
         ty::Adt(adt, _) => cx.tcx.get_diagnostic_name(adt.did()),
         _ => None,
     }
+}
+
+/// Returns true if `ty` is a type on which calling `Clone` through a function instead of
+/// as a method, such as `Arc::clone()` is considered idiomatic. Lints should avoid suggesting to
+/// replace instances of `ty::Clone()` by `.clone()` for objects of those types.
+pub fn should_call_clone_as_function(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    matches!(
+        get_type_diagnostic_name(cx, ty),
+        Some(sym::Arc | sym::ArcWeak | sym::Rc | sym::RcWeak)
+    )
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
@@ -259,15 +273,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let args = args
         .into_iter()
-        .map(|arg| {
-            arg.into().unwrap_or_else(|| {
-                let orig = TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: DUMMY_SP,
-                };
-                infcx.next_ty_var(orig).into()
-            })
-        })
+        .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
         .collect::<Vec<_>>();
 
     // If an effect arg was not specified, we need to specify it.
@@ -301,7 +307,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
+        predicate: trait_ref.upcast(tcx),
     };
     infcx
         .evaluate_obligation(&obligation)
@@ -327,7 +333,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+        ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_super_predicates(def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
@@ -356,13 +362,13 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 // not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
 }
 
 fn is_normalizable_helper<'tcx>(
     cx: &LateContext<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     cache: &mut FxHashMap<Ty<'tcx>, bool>,
 ) -> bool {
@@ -372,7 +378,7 @@ fn is_normalizable_helper<'tcx>(
     // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
     cache.insert(ty, false);
     let infcx = cx.tcx.infer_ctxt().build();
-    let cause = rustc_middle::traits::ObligationCause::dummy();
+    let cause = ObligationCause::dummy();
     let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
         match ty.kind() {
             ty::Adt(def, args) => def.variants().iter().all(|variant| {
@@ -446,7 +452,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Checks if the type is equal to a lang item.
 ///
 /// Returns `false` if the `LangItem` is not defined.
-pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
+pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
         _ => false,
@@ -552,7 +558,7 @@ pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
+        ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).safety() == Safety::Unsafe,
         _ => false,
     }
 }
@@ -726,7 +732,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs), Some(id))),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => sig_from_bounds(
+        ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) => sig_from_bounds(
             cx,
             ty,
             cx.tcx.item_super_predicates(def_id).iter_instantiated(cx.tcx, args),
@@ -785,7 +791,8 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             ty::ClauseKind::Projection(p)
-                if Some(p.projection_ty.def_id) == lang_items.fn_once_output() && p.projection_ty.self_ty() == ty =>
+                if Some(p.projection_term.def_id) == lang_items.fn_once_output()
+                    && p.projection_term.self_ty() == ty =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -807,7 +814,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
 
     for (pred, _) in cx
         .tcx
-        .explicit_item_super_predicates(ty.def_id)
+        .explicit_item_bounds(ty.def_id)
         .iter_instantiated_copied(cx.tcx, ty.args)
     {
         match pred.kind().skip_binder() {
@@ -824,7 +831,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                 }
                 inputs = Some(i);
             },
-            ty::ClauseKind::Projection(p) if Some(p.projection_ty.def_id) == lang_items.fn_once_output() => {
+            ty::ClauseKind::Projection(p) if Some(p.projection_term.def_id) == lang_items.fn_once_output() => {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -899,7 +906,7 @@ pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.kind()
         && let &[krate, .., name] = &*cx.get_def_path(adt.did())
         && let sym::libc | sym::core | sym::std = krate
-        && name == rustc_span::sym::c_void
+        && name == sym::c_void
     {
         true
     } else {
@@ -946,7 +953,7 @@ pub struct AdtVariantInfo {
 
 impl AdtVariantInfo {
     /// Returns ADT variants ordered by size
-    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: &'tcx List<GenericArg<'tcx>>) -> Vec<Self> {
+    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: GenericArgsRef<'tcx>) -> Vec<Self> {
         let mut variants_size = adt
             .variants()
             .iter()
@@ -1055,11 +1062,11 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));
-    let count = g.parent_count + g.params.len();
+    let count = g.parent_count + g.own_params.len();
     let params = parent
-        .map_or([].as_slice(), |p| p.params.as_slice())
+        .map_or([].as_slice(), |p| p.own_params.as_slice())
         .iter()
-        .chain(&g.params)
+        .chain(&g.own_params)
         .map(|x| &x.kind);
 
     assert!(
@@ -1134,7 +1141,7 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(ty::AliasTy::new(tcx, assoc_item.def_id, args))
+        Some(AliasTy::new(tcx, assoc_item.def_id, args))
     }
     helper(
         tcx,
@@ -1184,47 +1191,88 @@ pub fn make_normalized_projection<'tcx>(
     helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, args)?)
 }
 
-/// Check if given type has inner mutability such as [`std::cell::Cell`] or [`std::cell::RefCell`]
-/// etc.
-pub fn is_interior_mut_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match *ty.kind() {
-        ty::Ref(_, inner_ty, mutbl) => mutbl == Mutability::Mut || is_interior_mut_ty(cx, inner_ty),
-        ty::Slice(inner_ty) => is_interior_mut_ty(cx, inner_ty),
-        ty::Array(inner_ty, size) => {
-            size.try_eval_target_usize(cx.tcx, cx.param_env)
-                .map_or(true, |u| u != 0)
-                && is_interior_mut_ty(cx, inner_ty)
-        },
-        ty::Tuple(fields) => fields.iter().any(|ty| is_interior_mut_ty(cx, ty)),
-        ty::Adt(def, args) => {
-            // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
-            // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
-            // because they have no impl for `Hash` or `Ord`.
-            let def_id = def.did();
-            let is_std_collection = [
-                sym::Option,
-                sym::Result,
-                sym::LinkedList,
-                sym::Vec,
-                sym::VecDeque,
-                sym::BTreeMap,
-                sym::BTreeSet,
-                sym::Rc,
-                sym::Arc,
-            ]
+/// Helper to check if given type has inner mutability such as [`std::cell::Cell`] or
+/// [`std::cell::RefCell`].
+#[derive(Default, Debug)]
+pub struct InteriorMut<'tcx> {
+    ignored_def_ids: FxHashSet<DefId>,
+    ignore_pointers: bool,
+    tys: FxHashMap<Ty<'tcx>, Option<bool>>,
+}
+
+impl<'tcx> InteriorMut<'tcx> {
+    pub fn new(cx: &LateContext<'tcx>, ignore_interior_mutability: &[String]) -> Self {
+        let ignored_def_ids = ignore_interior_mutability
             .iter()
-            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def_id));
-            let is_box = Some(def_id) == cx.tcx.lang_items().owned_box();
-            if is_std_collection || is_box {
-                // The type is mutable if any of its type parameters are
-                args.types().any(|ty| is_interior_mut_ty(cx, ty))
-            } else {
-                !ty.has_escaping_bound_vars()
-                    && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
-                    && !ty.is_freeze(cx.tcx, cx.param_env)
-            }
-        },
-        _ => false,
+            .flat_map(|ignored_ty| {
+                let path: Vec<&str> = ignored_ty.split("::").collect();
+                def_path_def_ids(cx, path.as_slice())
+            })
+            .collect();
+
+        Self {
+            ignored_def_ids,
+            ..Self::default()
+        }
+    }
+
+    pub fn without_pointers(cx: &LateContext<'tcx>, ignore_interior_mutability: &[String]) -> Self {
+        Self {
+            ignore_pointers: true,
+            ..Self::new(cx, ignore_interior_mutability)
+        }
+    }
+
+    /// Check if given type has inner mutability such as [`std::cell::Cell`] or
+    /// [`std::cell::RefCell`] etc.
+    pub fn is_interior_mut_ty(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        match self.tys.entry(ty) {
+            Entry::Occupied(o) => return *o.get() == Some(true),
+            // Temporarily insert a `None` to break cycles
+            Entry::Vacant(v) => v.insert(None),
+        };
+
+        let interior_mut = match *ty.kind() {
+            ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.is_interior_mut_ty(cx, inner_ty),
+            ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.is_interior_mut_ty(cx, inner_ty),
+            ty::Array(inner_ty, size) => {
+                size.try_eval_target_usize(cx.tcx, cx.param_env)
+                    .map_or(true, |u| u != 0)
+                    && self.is_interior_mut_ty(cx, inner_ty)
+            },
+            ty::Tuple(fields) => fields.iter().any(|ty| self.is_interior_mut_ty(cx, ty)),
+            ty::Adt(def, _) if def.is_unsafe_cell() => true,
+            ty::Adt(def, args) => {
+                let is_std_collection = matches!(
+                    cx.tcx.get_diagnostic_name(def.did()),
+                    Some(
+                        sym::LinkedList
+                            | sym::Vec
+                            | sym::VecDeque
+                            | sym::BTreeMap
+                            | sym::BTreeSet
+                            | sym::HashMap
+                            | sym::HashSet
+                            | sym::Arc
+                            | sym::Rc
+                    )
+                );
+
+                if is_std_collection || def.is_box() {
+                    // Include the types from std collections that are behind pointers internally
+                    args.types().any(|ty| self.is_interior_mut_ty(cx, ty))
+                } else if self.ignored_def_ids.contains(&def.did()) || def.is_phantom_data() {
+                    false
+                } else {
+                    def.all_fields()
+                        .any(|f| self.is_interior_mut_ty(cx, f.ty(cx.tcx, args)))
+                }
+            },
+            _ => false,
+        };
+
+        self.tys.insert(ty, Some(interior_mut));
+        interior_mut
     }
 }
 
@@ -1251,7 +1299,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             );
             return None;
         }
-        let cause = rustc_middle::traits::ObligationCause::dummy();
+        let cause = ObligationCause::dummy();
         match tcx
             .infer_ctxt()
             .build()
@@ -1269,7 +1317,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 }
 
 pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let cause = rustc_middle::traits::ObligationCause::dummy();
+    let cause = ObligationCause::dummy();
     match tcx.infer_ctxt().build().at(&cause, param_env).query_normalize(ty) {
         Ok(ty) => ty.value,
         Err(_) => ty,

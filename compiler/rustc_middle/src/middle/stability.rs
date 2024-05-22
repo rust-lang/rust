@@ -9,14 +9,15 @@ use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
+use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiag, Level, Lint, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -124,90 +125,107 @@ pub fn report_unstable(
     }
 }
 
-pub fn deprecation_suggestion(
-    diag: &mut Diag<'_, ()>,
-    kind: &str,
-    suggestion: Option<Symbol>,
-    span: Span,
-) {
-    if let Some(suggestion) = suggestion {
-        diag.span_suggestion_verbose(
-            span,
-            format!("replace the use of the deprecated {kind}"),
-            suggestion,
-            Applicability::MachineApplicable,
-        );
-    }
-}
-
 fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
     if is_in_effect { DEPRECATED } else { DEPRECATED_IN_FUTURE }
 }
 
-fn deprecation_message(
-    is_in_effect: bool,
-    since: DeprecatedSince,
-    note: Option<Symbol>,
-    kind: &str,
-    path: &str,
-) -> String {
-    let message = if is_in_effect {
-        format!("use of deprecated {kind} `{path}`")
+#[derive(Subdiagnostic)]
+#[suggestion(
+    middle_deprecated_suggestion,
+    code = "{suggestion}",
+    style = "verbose",
+    applicability = "machine-applicable"
+)]
+pub struct DeprecationSuggestion {
+    #[primary_span]
+    pub span: Span,
+
+    pub kind: String,
+    pub suggestion: Symbol,
+}
+
+pub struct Deprecated {
+    pub sub: Option<DeprecationSuggestion>,
+
+    // FIXME: make this translatable
+    pub kind: String,
+    pub path: String,
+    pub note: Option<Symbol>,
+    pub since_kind: DeprecatedSinceKind,
+}
+
+impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.arg("kind", self.kind);
+        diag.arg("path", self.path);
+        if let DeprecatedSinceKind::InVersion(version) = self.since_kind {
+            diag.arg("version", version);
+        }
+        if let Some(note) = self.note {
+            diag.arg("has_note", true);
+            diag.arg("note", note);
+        } else {
+            diag.arg("has_note", false);
+        }
+        if let Some(sub) = self.sub {
+            diag.subdiagnostic(diag.dcx, sub);
+        }
+    }
+
+    fn msg(&self) -> rustc_errors::DiagMessage {
+        match &self.since_kind {
+            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
+            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
+            DeprecatedSinceKind::InVersion(_) => {
+                crate::fluent_generated::middle_deprecated_in_version
+            }
+        }
+    }
+}
+
+fn deprecated_since_kind(is_in_effect: bool, since: DeprecatedSince) -> DeprecatedSinceKind {
+    if is_in_effect {
+        DeprecatedSinceKind::InEffect
     } else {
         match since {
-            DeprecatedSince::RustcVersion(version) => format!(
-                "use of {kind} `{path}` that will be deprecated in future version {version}"
-            ),
-            DeprecatedSince::Future => {
-                format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
+            DeprecatedSince::RustcVersion(version) => {
+                DeprecatedSinceKind::InVersion(version.to_string())
             }
+            DeprecatedSince::Future => DeprecatedSinceKind::InFuture,
             DeprecatedSince::NonStandard(_)
             | DeprecatedSince::Unspecified
             | DeprecatedSince::Err => {
                 unreachable!("this deprecation is always in effect; {since:?}")
             }
         }
-    };
-
-    match note {
-        Some(reason) => format!("{message}: {reason}"),
-        None => message,
     }
 }
 
-pub fn deprecation_message_and_lint(
-    depr: &Deprecation,
-    kind: &str,
-    path: &str,
-) -> (String, &'static Lint) {
-    let is_in_effect = depr.is_in_effect();
-    (
-        deprecation_message(is_in_effect, depr.since, depr.note, kind, path),
-        deprecation_lint(is_in_effect),
-    )
-}
-
-pub fn early_report_deprecation(
+pub fn early_report_macro_deprecation(
     lint_buffer: &mut LintBuffer,
-    message: String,
-    suggestion: Option<Symbol>,
-    lint: &'static Lint,
+    depr: &Deprecation,
     span: Span,
     node_id: NodeId,
+    path: String,
 ) {
     if span.in_derive_expansion() {
         return;
     }
 
-    let diag = BuiltinLintDiag::DeprecatedMacro(suggestion, span);
-    lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, message, diag);
+    let is_in_effect = depr.is_in_effect();
+    let diag = BuiltinLintDiag::DeprecatedMacro {
+        suggestion: depr.suggestion,
+        suggestion_span: span,
+        note: depr.note,
+        path,
+        since_kind: deprecated_since_kind(is_in_effect, depr.since.clone()),
+    };
+    lint_buffer.buffer_lint(deprecation_lint(is_in_effect), node_id, span, diag);
 }
 
 fn late_report_deprecation(
     tcx: TyCtxt<'_>,
-    message: String,
-    suggestion: Option<Symbol>,
-    lint: &'static Lint,
+    depr: &Deprecation,
     span: Span,
     method_span: Option<Span>,
     hir_id: HirId,
@@ -216,13 +234,26 @@ fn late_report_deprecation(
     if span.in_derive_expansion() {
         return;
     }
+
+    let def_path = with_no_trimmed_paths!(tcx.def_path_str(def_id));
+    let def_kind = tcx.def_descr(def_id);
+    let is_in_effect = depr.is_in_effect();
+
     let method_span = method_span.unwrap_or(span);
-    tcx.node_span_lint(lint, hir_id, method_span, message, |diag| {
-        if let hir::Node::Expr(_) = tcx.hir_node(hir_id) {
-            let kind = tcx.def_descr(def_id);
-            deprecation_suggestion(diag, kind, suggestion, method_span);
-        }
-    });
+    let suggestion =
+        if let hir::Node::Expr(_) = tcx.hir_node(hir_id) { depr.suggestion } else { None };
+    let diag = Deprecated {
+        sub: suggestion.map(|suggestion| DeprecationSuggestion {
+            span: method_span,
+            kind: def_kind.to_owned(),
+            suggestion,
+        }),
+        kind: def_kind.to_owned(),
+        path: def_path,
+        note: depr.note,
+        since_kind: deprecated_since_kind(is_in_effect, depr.since),
+    };
+    tcx.emit_node_span_lint(deprecation_lint(is_in_effect), hir_id, method_span, diag);
 }
 
 /// Result of `TyCtxt::eval_stability`.
@@ -351,28 +382,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     // Calculating message for lint involves calling `self.def_path_str`.
                     // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
                     // So we skip message calculation altogether, if lint is allowed.
-                    let is_in_effect = depr_attr.is_in_effect();
-                    let lint = deprecation_lint(is_in_effect);
+                    let lint = deprecation_lint(depr_attr.is_in_effect());
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
-                        let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));
-                        let def_kind = self.def_descr(def_id);
-
-                        late_report_deprecation(
-                            self,
-                            deprecation_message(
-                                is_in_effect,
-                                depr_attr.since,
-                                depr_attr.note,
-                                def_kind,
-                                &def_path,
-                            ),
-                            depr_attr.suggestion,
-                            lint,
-                            span,
-                            method_span,
-                            id,
-                            def_id,
-                        );
+                        late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
                     }
                 }
             };

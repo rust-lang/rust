@@ -1,4 +1,4 @@
-print-type-size type: `{coroutine@$DIR/coroutine_discr_placement.rs:12:13: 12:15}`: 8 bytes, alignment: 4 bytes
+print-type-size type: `{coroutine@$DIR/coroutine_discr_placement.rs:13:5: 13:7}`: 8 bytes, alignment: 4 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
 print-type-size     variant `Suspend0`: 7 bytes

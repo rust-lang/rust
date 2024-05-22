@@ -39,6 +39,9 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
 ];
 const DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
 const DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z", "w", "n"];
+const DEFAULT_ALLOWED_PREFIXES: &[&str] = &["to", "as", "into", "from", "try_into", "try_from"];
+const DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS: &[&str] =
+    &["core::convert::From", "core::convert::TryFrom", "core::str::FromStr"];
 
 /// Conf with parse errors
 #[derive(Default)]
@@ -262,7 +265,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE, ITER_KV_MAP, MANUAL_C_STR_LITERALS, ASSIGNING_CLONES.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE, ITER_KV_MAP, MANUAL_C_STR_LITERALS, ASSIGNING_CLONES, LEGACY_NUMERIC_CONSTANTS.
     ///
     /// The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
     #[default_text = ""]
@@ -454,6 +457,10 @@ define_Conf! {
     ///
     /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
     (allow_unwrap_in_tests: bool = false),
+    /// Lint: PANIC.
+    ///
+    /// Whether `panic` should be allowed in test functions or `#[cfg(test)]`
+    (allow_panic_in_tests: bool = false),
     /// Lint: DBG_MACRO.
     ///
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
@@ -462,14 +469,17 @@ define_Conf! {
     ///
     /// Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
     (allow_print_in_tests: bool = false),
+    /// Lint: USELESS_VEC.
+    ///
+    /// Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
+    (allow_useless_vec_in_tests: bool = false),
     /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
-    /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND.
+    /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND, BORROW_INTERIOR_MUTABLE_CONST, DECLARE_INTERIOR_MUTABLE_CONST.
     ///
-    /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
-    /// for the generic parameters for determining interior mutability
+    /// A list of paths to types that should be treated as if they do not contain interior mutability
     (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
     /// Lint: UNINLINED_FORMAT_ARGS.
     ///
@@ -589,6 +599,47 @@ define_Conf! {
     /// 2. Paths with any segment that containing the word 'prelude'
     /// are already allowed by default.
     (allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default()),
+    /// Lint: MODULE_NAME_REPETITIONS.
+    ///
+    /// List of prefixes to allow when determining whether an item's name ends with the module's name.
+    /// If the rest of an item's name is an allowed prefix (e.g. item `ToFoo` or `to_foo` in module `foo`),
+    /// then don't emit a warning.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// allowed-prefixes = [ "to", "from" ]
+    /// ```
+    ///
+    /// #### Noteworthy
+    ///
+    /// - By default, the following prefixes are allowed: `to`, `as`, `into`, `from`, `try_into` and `try_from`
+    /// - PascalCase variant is included automatically for each snake_case variant (e.g. if `try_into` is included,
+    ///   `TryInto` will also be included)
+    /// - Use `".."` as part of the list to indicate that the configured values should be appended to the
+    /// default configuration of Clippy. By default, any configuration will replace the default value
+    (allowed_prefixes: Vec<String> = DEFAULT_ALLOWED_PREFIXES.iter().map(ToString::to_string).collect()),
+    /// Lint: RENAMED_FUNCTION_PARAMS.
+    ///
+    /// List of trait paths to ignore when checking renamed function parameters.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// allow-renamed-params-for = [ "std::convert::From" ]
+    /// ```
+    ///
+    /// #### Noteworthy
+    ///
+    /// - By default, the following traits are ignored: `From`, `TryFrom`, `FromStr`
+    /// - `".."` can be used as part of the list to indicate that the configured values should be appended to the
+    /// default configuration of Clippy. By default, any configuration will replace the default value.
+    (allow_renamed_params_for: Vec<String> =
+        DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS.iter().map(ToString::to_string).collect()),
+    /// Lint: MACRO_METAVARS_IN_UNSAFE.
+    ///
+    /// Whether to also emit warnings for unsafe blocks with metavariable expansions in **private** macros.
+    (warn_unsafe_macro_metavars_in_private_macros: bool = false),
 }
 
 /// Search for the configuration file.
@@ -649,6 +700,11 @@ fn deserialize(file: &SourceFile) -> TryConf {
         Ok(mut conf) => {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
+            extend_vec_if_indicator_present(&mut conf.conf.allowed_prefixes, DEFAULT_ALLOWED_PREFIXES);
+            extend_vec_if_indicator_present(
+                &mut conf.conf.allow_renamed_params_for,
+                DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS,
+            );
             // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
             if conf.conf.allowed_idents_below_min_chars.contains("..") {
                 conf.conf
@@ -855,11 +911,6 @@ mod tests {
                 }
             }
         }
-
-        assert!(
-            names.remove("allow-one-hash-in-raw-strings"),
-            "remove this when #11481 is fixed"
-        );
 
         assert!(
             names.is_empty(),

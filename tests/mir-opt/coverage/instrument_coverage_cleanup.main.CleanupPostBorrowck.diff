@@ -1,0 +1,54 @@
+- // MIR for `main` before CleanupPostBorrowck
++ // MIR for `main` after CleanupPostBorrowck
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: bool;
+  
+      coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0)
+  
+      coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Subtract, rhs: Counter(1) };
+      coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:13:1 - 14:36;
+      coverage Code(Expression(0)) => $DIR/instrument_coverage_cleanup.rs:14:37 - 14:39;
+      coverage Code(Counter(1)) => $DIR/instrument_coverage_cleanup.rs:14:39 - 14:40;
+      coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:15:1 - 15:2;
+      coverage Branch { true_term: Expression(0), false_term: Counter(1) } => $DIR/instrument_coverage_cleanup.rs:14:8 - 14:36;
+  
+      bb0: {
+          Coverage::CounterIncrement(0);
+-         Coverage::SpanMarker;
++         nop;
+          StorageLive(_1);
+          _1 = std::hint::black_box::<bool>(const true) -> [return: bb1, unwind: bb5];
+      }
+  
+      bb1: {
+          switchInt(move _1) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          Coverage::CounterIncrement(1);
+-         Coverage::BlockMarker(1);
++         nop;
+          _0 = const ();
+          goto -> bb4;
+      }
+  
+      bb3: {
+          Coverage::ExpressionUsed(0);
+-         Coverage::BlockMarker(0);
++         nop;
+          _0 = const ();
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb5 (cleanup): {
+          resume;
+      }
+  }
+  

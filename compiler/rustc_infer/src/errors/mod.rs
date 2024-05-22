@@ -1,9 +1,11 @@
 use hir::GenericParamKind;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee, IntoDiagArg,
     MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
+use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::FnRetTy;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::TraitRefPrintOnlyTraitPath;
@@ -17,6 +19,8 @@ use crate::infer::error_reporting::{
     need_type_info::UnderspecifiedArgKind, nice_region_error::placeholder_error::Highlighted,
     ObligationCauseAsDiagArg,
 };
+
+use std::path::PathBuf;
 
 pub mod note_and_explain;
 
@@ -47,6 +51,9 @@ pub struct AnnotationRequired<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -65,6 +72,9 @@ pub struct AmbiguousImpl<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -83,6 +93,9 @@ pub struct AmbiguousReturn<'a> {
     pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    #[note(infer_full_type_written)]
+    pub was_written: Option<()>,
+    pub path: PathBuf,
 }
 
 // Used when a better one isn't available
@@ -228,7 +241,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut label_or_note = |span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
@@ -293,7 +306,7 @@ impl Subdiagnostic for LifetimeMismatchLabels {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
@@ -341,34 +354,36 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         let mut mk_suggestion = || {
-            let (
-                hir::Ty { kind: hir::TyKind::Ref(lifetime_sub, _), .. },
-                hir::Ty { kind: hir::TyKind::Ref(lifetime_sup, _), .. },
-            ) = (self.ty_sub, self.ty_sup)
-            else {
-                return false;
-            };
-
-            if !lifetime_sub.is_anonymous() || !lifetime_sup.is_anonymous() {
-                return false;
-            };
-
             let Some(anon_reg) = self.tcx.is_suitable_region(self.sub) else {
                 return false;
             };
 
             let node = self.tcx.hir_node_by_def_id(anon_reg.def_id);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
-            let generics = match node {
+            let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
                     kind: hir::ItemKind::Fn(_, ref generics, ..),
                     ..
                 })
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
-                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => generics,
+                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
+                    generics,
+                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.def_id))
+                    {
+                        hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Trait(_, _, ref generics, ..),
+                            ..
+                        })
+                        | hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl(hir::Impl { ref generics, .. }),
+                            ..
+                        }) => Some(generics),
+                        _ => None,
+                    },
+                ),
                 _ => return false,
             };
 
@@ -379,24 +394,112 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 .map(|p| p.name.ident().name)
                 .find(|i| *i != kw::UnderscoreLifetime);
             let introduce_new = suggestion_param_name.is_none();
+
+            let mut default = "'a".to_string();
+            if let Some(parent_generics) = parent_generics {
+                let used: FxHashSet<_> = parent_generics
+                    .params
+                    .iter()
+                    .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                    .map(|p| p.name.ident().name)
+                    .filter(|i| *i != kw::UnderscoreLifetime)
+                    .map(|l| l.to_string())
+                    .collect();
+                if let Some(lt) =
+                    ('a'..='z').map(|it| format!("'{it}")).find(|it| !used.contains(it))
+                {
+                    // We want a lifetime that *isn't* present in the `trait` or `impl` that assoc
+                    // `fn` belongs to. We could suggest reusing one of their lifetimes, but it is
+                    // likely to be an over-constraining lifetime requirement, so we always add a
+                    // lifetime to the `fn`.
+                    default = lt;
+                }
+            }
             let suggestion_param_name =
-                suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
+                suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| default);
 
-            debug!(?lifetime_sup.ident.span);
-            debug!(?lifetime_sub.ident.span);
-            let make_suggestion = |ident: Ident| {
-                let sugg = if ident.name == kw::Empty {
-                    format!("{suggestion_param_name}, ")
-                } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
-                    format!("{suggestion_param_name} ")
-                } else {
-                    suggestion_param_name.clone()
-                };
-                (ident.span, sugg)
+            struct ImplicitLifetimeFinder {
+                suggestions: Vec<(Span, String)>,
+                suggestion_param_name: String,
+            }
+
+            impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                    let make_suggestion = |ident: Ident| {
+                        if ident.name == kw::Empty && ident.span.is_empty() {
+                            format!("{}, ", self.suggestion_param_name)
+                        } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
+                            format!("{} ", self.suggestion_param_name)
+                        } else {
+                            self.suggestion_param_name.clone()
+                        }
+                    };
+                    match ty.kind {
+                        hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
+                            for segment in path.segments {
+                                if let Some(args) = segment.args {
+                                    if args.args.iter().all(|arg| {
+                                        matches!(
+                                            arg,
+                                            hir::GenericArg::Lifetime(lifetime)
+                                            if lifetime.ident.name == kw::Empty
+                                        )
+                                    }) {
+                                        self.suggestions.push((
+                                            segment.ident.span.shrink_to_hi(),
+                                            format!(
+                                                "<{}>",
+                                                args.args
+                                                    .iter()
+                                                    .map(|_| self.suggestion_param_name.clone())
+                                                    .collect::<Vec<_>>()
+                                                    .join(", ")
+                                            ),
+                                        ));
+                                    } else {
+                                        for arg in args.args {
+                                            if let hir::GenericArg::Lifetime(lifetime) = arg
+                                                && lifetime.is_anonymous()
+                                            {
+                                                self.suggestions.push((
+                                                    lifetime.ident.span,
+                                                    make_suggestion(lifetime.ident),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        hir::TyKind::Ref(lifetime, ..) if lifetime.is_anonymous() => {
+                            self.suggestions
+                                .push((lifetime.ident.span, make_suggestion(lifetime.ident)));
+                        }
+                        _ => {}
+                    }
+                    walk_ty(self, ty);
+                }
+            }
+            let mut visitor = ImplicitLifetimeFinder {
+                suggestions: vec![],
+                suggestion_param_name: suggestion_param_name.clone(),
             };
-            let mut suggestions =
-                vec![make_suggestion(lifetime_sub.ident), make_suggestion(lifetime_sup.ident)];
-
+            if let Some(fn_decl) = node.fn_decl()
+                && let hir::FnRetTy::Return(ty) = fn_decl.output
+            {
+                visitor.visit_ty(ty);
+            }
+            if visitor.suggestions.is_empty() {
+                // Do not suggest constraining the `&self` param, but rather the return type.
+                // If that is wrong (because it is not sufficient), a follow up error will tell the
+                // user to fix it. This way we lower the chances of *over* constraining, but still
+                // get the cake of "correctly" contrained in two steps.
+                visitor.visit_ty(self.ty_sup);
+            }
+            visitor.visit_ty(self.ty_sub);
+            if visitor.suggestions.is_empty() {
+                return false;
+            }
             if introduce_new {
                 let new_param_suggestion = if let Some(first) =
                     generics.params.iter().find(|p| !p.name.ident().span.is_empty())
@@ -406,15 +509,16 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                     (generics.span, format!("<{suggestion_param_name}>"))
                 };
 
-                suggestions.push(new_param_suggestion);
+                visitor.suggestions.push(new_param_suggestion);
             }
-
-            diag.multipart_suggestion(
+            diag.multipart_suggestion_verbose(
                 fluent::infer_lifetime_param_suggestion,
-                suggestions,
+                visitor.suggestions,
                 Applicability::MaybeIncorrect,
             );
             diag.arg("is_impl", is_impl);
+            diag.arg("is_reuse", !introduce_new);
+
             true
         };
         if mk_suggestion() && self.add_note {
@@ -443,7 +547,7 @@ impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         self.unmet_requirements
             .push_span_label(self.binding_span, fluent::infer_msl_introduces_static);
@@ -762,7 +866,7 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
@@ -807,7 +911,7 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         let mut multi_span: MultiSpan = vec![self.span].into();
         multi_span.push_span_label(self.span, fluent::infer_dtcs_has_lifetime_req_label);
@@ -854,7 +958,7 @@ impl Subdiagnostic for ReqIntroducedLocations {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         mut self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         for sp in self.spans {
             self.span.push_span_label(sp, fluent::infer_ril_introduced_here);
@@ -877,7 +981,7 @@ impl Subdiagnostic for MoreTargeted {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        _f: F,
+        _f: &F,
     ) {
         diag.code(E0772);
         diag.primary_message(fluent::infer_more_targeted);
@@ -1282,7 +1386,7 @@ impl Subdiagnostic for SuggestTuplePatternMany {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
-        f: F,
+        f: &F,
     ) {
         diag.arg("path", self.path);
         let message = f(diag, crate::fluent_generated::infer_stp_wrap_many.into());

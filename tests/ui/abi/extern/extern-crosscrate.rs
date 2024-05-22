@@ -1,15 +1,12 @@
 //@ run-pass
 //@ aux-build:extern-crosscrate-source.rs
 
-#![feature(rustc_private)]
-
 extern crate externcallback;
-extern crate libc;
 
-fn fact(n: libc::uintptr_t) -> libc::uintptr_t {
+fn fact(n: u64) -> u64 {
     unsafe {
-        println!("n = {}", n);
-        externcallback::rustrt::rust_dbg_call(externcallback::cb, n)
+        println!("n = {:?}", n);
+        externcallback::rust_dbg_call(externcallback::cb, n)
     }
 }
 

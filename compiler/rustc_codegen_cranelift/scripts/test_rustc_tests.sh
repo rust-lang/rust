@@ -10,14 +10,13 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-# FIXME remove this workaround once ICE tests no longer emit an outdated nightly message
-for test in $(rg -i --files-with-matches "//@(\[.*\])? failure-status: 101" tests/ui); do
-  echo "rm $test"
+rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
+for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
-rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
+# should-fail tests don't work when compiletest is compiled with panic=abort
+for test in $(rg --files-with-matches "//@ should-fail" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
@@ -45,6 +44,7 @@ rm tests/incremental/hashes/statics.rs # same
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
+rm tests/ui/delegation/fn-header.rs
 
 # unsized locals
 rm -r tests/run-pass-valgrind/unsized-locals
@@ -79,7 +79,6 @@ rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 rm -r tests/run-make/cross-lang-lto # same
-rm -r tests/run-make/issue-7349 # same
 rm -r tests/run-make/sepcomp-inlining # same
 rm -r tests/run-make/sepcomp-separate # same
 rm -r tests/run-make/sepcomp-cci-copies # same
@@ -89,6 +88,7 @@ rm -r tests/run-make/no-builtins-attribute # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
+rm -r tests/run-make/print-to-output # requires --print relocation-models
 
 # requires asm, llvm-ir and/or llvm-bc emit support
 # =============================================
@@ -116,8 +116,6 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 
 # genuine bugs
 # ============
-rm tests/incremental/spike-neg1.rs # errors out for some reason
-rm tests/incremental/spike-neg2.rs # same
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
@@ -155,7 +153,7 @@ index 9607ff02f96..b7d97caf9a2 100644
          let mut cmd = setup_common();
 -        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
 -        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-         Self { cmd }
+         Self { cmd, stdin: None }
      }
 
 EOF

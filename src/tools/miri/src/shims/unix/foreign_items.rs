@@ -3,21 +3,19 @@ use std::str;
 
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
-use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::alloc::EvalContextExt as _;
+use crate::shims::unix::*;
 use crate::*;
-use shims::foreign_items::EmulateForeignItemResult;
-use shims::unix::fs::EvalContextExt as _;
-use shims::unix::mem::EvalContextExt as _;
-use shims::unix::sync::EvalContextExt as _;
-use shims::unix::thread::EvalContextExt as _;
 
+use shims::unix::android::foreign_items as android;
 use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
+use shims::unix::solarish::foreign_items as solarish;
 
-fn is_dyn_sym(name: &str, target_os: &str) -> bool {
+pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
         // Used for tests.
         "isatty" => true,
@@ -25,13 +23,15 @@ fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         // well allow it in `dlsym`.
         "signal" => true,
         // needed at least on macOS to avoid file-based fallback in getrandom
-        "getentropy" => true,
+        "getentropy" | "getrandom" => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match target_os {
+                "android" => android::is_dyn_sym(name),
                 "freebsd" => freebsd::is_dyn_sym(name),
                 "linux" => linux::is_dyn_sym(name),
                 "macos" => macos::is_dyn_sym(name),
+                "solaris" | "illumos" => solarish::is_dyn_sym(name),
                 _ => false,
             },
     }
@@ -45,13 +45,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, EmulateForeignItemResult> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
         #[rustfmt::skip]
         match link_name.as_str() {
-            // Environment related shims
+            // Environment variables
             "getenv" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.getenv(name)?;
@@ -79,25 +79,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-            // File related shims
-            "open" | "open64" => {
-                // `open` is variadic, the third argument is only present when the second argument has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
-                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
-                let result = this.open(args)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-            "close" => {
-                let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.close(fd)?;
-                this.write_scalar(result, dest)?;
-            }
-            "fcntl" => {
-                // `fcntl` is variadic. The argument count is checked based on the first argument
-                // in `this.fcntl()`, so we do not use `check_shim` here.
-                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
-                let result = this.fcntl(args)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
+            // File descriptors
             "read" => {
                 let [fd, buf, count] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
@@ -115,6 +97,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.write(fd, buf, count)?;
                 // Now, `result` is the value we return back to the program.
                 this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+            }
+            "close" => {
+                let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.close(fd)?;
+                this.write_scalar(result, dest)?;
+            }
+            "fcntl" => {
+                // `fcntl` is variadic. The argument count is checked based on the first argument
+                // in `this.fcntl()`, so we do not use `check_shim` here.
+                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
+                let result = this.fcntl(args)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+
+            // File and file system access
+            "open" | "open64" => {
+                // `open` is variadic, the third argument is only present when the second argument has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
+                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
+                let result = this.open(args)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "unlink" => {
                 let [path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -219,11 +221,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-            // Time related shims
+            // Sockets
+            "socketpair" => {
+                let [domain, type_, protocol, sv] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                let result = this.socketpair(domain, type_, protocol, sv)?;
+                this.write_scalar(result, dest)?;
+            }
+
+            // Time
             "gettimeofday" => {
                 let [tv, tz] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.gettimeofday(tv, tz)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "localtime_r" => {
+                let [timep, result_op] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let result = this.localtime_r(timep, result_op)?;
+                this.write_pointer(result, dest)?;
             }
             "clock_gettime" => {
                 let [clk_id, tp] =
@@ -234,28 +250,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             // Allocation
             "posix_memalign" => {
-                let [ret, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let ret = this.deref_pointer(ret)?;
-                let align = this.read_target_usize(align)?;
-                let size = this.read_target_usize(size)?;
-                // Align must be power of 2, and also at least ptr-sized (POSIX rules).
-                // But failure to adhere to this is not UB, it's an error condition.
-                if !align.is_power_of_two() || align < this.pointer_size().bytes() {
-                    let einval = this.eval_libc_i32("EINVAL");
-                    this.write_int(einval, dest)?;
-                } else {
-                    if size == 0 {
-                        this.write_null(&ret)?;
-                    } else {
-                        let ptr = this.allocate_ptr(
-                            Size::from_bytes(size),
-                            Align::from_bytes(align).unwrap(),
-                            MiriMemoryKind::C.into(),
-                        )?;
-                        this.write_pointer(ptr, &ret)?;
-                    }
-                    this.write_null(dest)?;
-                }
+                let [memptr, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.posix_memalign(memptr, align, size)?;
+                this.write_scalar(result, dest)?;
             }
 
             "mmap" => {
@@ -272,7 +269,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "reallocarray" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "android") {
                     throw_unsup_format!(
                         "`reallocarray` is not supported on {}",
                         this.tcx.sess.target.os
@@ -295,10 +292,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         this.write_null(dest)?;
                     }
                     Some(len) => {
-                        let res = this.realloc(ptr, len, MiriMemoryKind::C)?;
+                        let res = this.realloc(ptr, len)?;
                         this.write_pointer(res, dest)?;
                     }
                 }
+            }
+            "aligned_alloc" => {
+                // This is a C11 function, we assume all Unixes have it.
+                // (MSVC explicitly does not support this.)
+                let [align, size] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.aligned_alloc(align, size)?;
+                this.write_pointer(res, dest)?;
             }
 
             // Dynamic symbol loading
@@ -363,8 +368,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     .builtin_deref(true)
                     .ok_or_else(|| err_ub_format!(
                         "wrong signature used for `pthread_key_create`: first argument must be a raw pointer."
-                    ))?
-                    .ty;
+                    ))?;
                 let key_layout = this.layout_of(key_type)?;
 
                 // Create key and write it into the memory where `key_ptr` wants it.
@@ -475,6 +479,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.pthread_condattr_init(attr)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "pthread_condattr_setclock" => {
+                let [attr, clock_id] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.pthread_condattr_setclock(attr, clock_id)?;
+                this.write_scalar(result, dest)?;
+            }
+            "pthread_condattr_getclock" => {
+                let [attr, clock_id] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.pthread_condattr_getclock(attr, clock_id)?;
+                this.write_scalar(result, dest)?;
+            }
             "pthread_condattr_destroy" => {
                 let [attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_condattr_destroy(attr)?;
@@ -578,8 +594,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
-                // Linux, macOS, and FreeBSD.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd") {
+                // Linux, macOS, FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd" | "illumos" | "solaris" | "android") {
                     throw_unsup_format!(
                         "`getentropy` is not supported on {}",
                         this.tcx.sess.target.os
@@ -595,14 +611,58 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=getentropy&sektion=3&format=html
                 // Linux: https://man7.org/linux/man-pages/man3/getentropy.3.html
                 // macOS: https://keith.github.io/xcode-man-pages/getentropy.2.html
+                // Solaris/Illumos: https://illumos.org/man/3C/getentropy
                 if bufsize > 256 {
                     let err = this.eval_libc("EIO");
                     this.set_last_error(err)?;
-                    this.write_scalar(Scalar::from_i32(-1), dest)?
+                    this.write_scalar(Scalar::from_i32(-1), dest)?;
                 } else {
                     this.gen_random(buf, bufsize)?;
                     this.write_scalar(Scalar::from_i32(0), dest)?;
                 }
+            }
+            "getrandom" => {
+                // This function is non-standard but exists with the same signature and behavior on
+                // Linux, FreeBSD and Solaris/Illumos.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris" | "android") {
+                    throw_unsup_format!(
+                        "`getrandom` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, len, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                let _flags = this.read_scalar(flags)?.to_i32()?;
+                // We ignore the flags, just always use the same PRNG / host RNG.
+                this.gen_random(ptr, len)?;
+                this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
+            }
+            "_Unwind_RaiseException" => {
+                // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
+                // It was originally specified as part of the Itanium C++ ABI:
+                // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
+                // On Linux it is
+                // documented as part of the LSB:
+                // https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/baselib--unwind-raiseexception.html
+                // Basically every other UNIX uses the exact same api though. Arm also references
+                // back to the Itanium C++ ABI for the definition of `_Unwind_RaiseException` for
+                // arm64:
+                // https://github.com/ARM-software/abi-aa/blob/main/cppabi64/cppabi64.rst#toc-entry-35
+                // For arm32 they did something custom, but similar enough that the same
+                // `_Unwind_RaiseException` impl in miri should work:
+                // https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris" | "android" | "macos") {
+                    throw_unsup_format!(
+                        "`_Unwind_RaiseException` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                // This function looks and behaves excatly like miri_start_unwind.
+                let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
+                this.handle_miri_start_unwind(payload)?;
+                return Ok(EmulateItemResult::NeedsUnwind);
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -673,8 +733,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_int(super::UID, dest)?;
             }
 
-            "getpwuid_r"
+            "getpwuid_r" | "__posix_getpwuid_r"
             if this.frame_in_std() => {
+                // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
                 let [uid, pwd, buf, buflen, result] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.check_no_isolation("`getpwuid_r`")?;
@@ -710,37 +771,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            "sched_getaffinity" => {
-                // FreeBSD supports it as well since 13.1 (as a wrapper of cpuset_getaffinity)
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
-                    throw_unsup_format!(
-                        "`sched_getaffinity` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
-                let [pid, cpusetsize, mask] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_scalar(pid)?.to_i32()?;
-                this.read_target_usize(cpusetsize)?;
-                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
-                // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                this.write_scalar(Scalar::from_i32(-1), dest)?;
-            }
-
             // Platform-specific shims
             _ => {
                 let target_os = &*this.tcx.sess.target.os;
                 return match target_os {
+                    "android" => android::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
-                    _ => Ok(EmulateForeignItemResult::NotSupported),
+                    "solaris" | "illumos" => solarish::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
+                    _ => Ok(EmulateItemResult::NotSupported),
                 };
             }
         };
 
-        Ok(EmulateForeignItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

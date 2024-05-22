@@ -303,6 +303,7 @@ pub mod known {
         rust_2015,
         rust_2018,
         rust_2021,
+        rust_2024,
         v1,
         new_display,
         new_debug,

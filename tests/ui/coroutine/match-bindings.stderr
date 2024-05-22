@@ -1,7 +1,8 @@
 warning: unused coroutine that must be used
-  --> $DIR/match-bindings.rs:12:5
+  --> $DIR/match-bindings.rs:12:18
    |
-LL | /     || {
+LL |       #[coroutine] || {
+   |  __________________^
 LL | |         loop {
 LL | |             if let true = true {
 LL | |                 match Enum::A(String::new()) {

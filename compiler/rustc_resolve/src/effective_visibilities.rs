@@ -11,6 +11,7 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
 use rustc_middle::ty::Visibility;
 use std::mem;
+use tracing::info;
 
 #[derive(Clone, Copy)]
 enum ParentId<'a> {
@@ -236,7 +237,7 @@ impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 't
             ast::ItemKind::Impl(..) => return,
 
             // Should be unreachable at this stage
-            ast::ItemKind::MacCall(..) => panic!(
+            ast::ItemKind::MacCall(..) | ast::ItemKind::DelegationMac(..) => panic!(
                 "ast::ItemKind::MacCall encountered, this should not anymore appear at this stage"
             ),
 

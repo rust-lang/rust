@@ -17,14 +17,14 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::SyntaxContext;
 use rustc_target::abi::Size;
-use std::cmp::Ordering::{self, Equal};
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::iter;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
 pub enum Constant<'tcx> {
-    Adt(rustc_middle::mir::Const<'tcx>),
+    Adt(mir::Const<'tcx>),
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
@@ -230,7 +230,7 @@ impl<'tcx> Constant<'tcx> {
                     lv,
                     rv,
                 ) {
-                    Some(Equal) => Some(ls.cmp(rs)),
+                    Some(Ordering::Equal) => Some(ls.cmp(rs)),
                     x => x,
                 }
             },
@@ -579,7 +579,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Lookup a possibly constant expression from an `ExprKind::Path` and apply a function on it.
     fn fetch_path_and_apply<T, F>(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>, f: F) -> Option<T>
     where
-        F: FnOnce(&mut Self, rustc_middle::mir::Const<'tcx>) -> Option<T>,
+        F: FnOnce(&mut Self, mir::Const<'tcx>) -> Option<T>,
     {
         let res = self.typeck_results.qpath_res(qpath, id);
         match res {
@@ -612,7 +612,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .tcx
                     .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), qpath.span())
                     .ok()
-                    .map(|val| rustc_middle::mir::Const::from_value(val, ty))?;
+                    .map(|val| mir::Const::from_value(val, ty))?;
                 f(self, result)
             },
             _ => None,

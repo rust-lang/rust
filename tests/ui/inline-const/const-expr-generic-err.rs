@@ -1,5 +1,4 @@
 //@ build-fail
-#![feature(inline_const)]
 
 fn foo<T>() {
     const { assert!(std::mem::size_of::<T>() == 0); } //~ ERROR E0080

@@ -1,7 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
 
@@ -87,6 +86,20 @@ fn reserved_x18(
     }
 }
 
+fn restricted_for_arm64ec(
+    arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    _target_features: &FxIndexSet<Symbol>,
+    _target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    if arch == InlineAsmArch::Arm64EC {
+        Err("x13, x14, x23, x24, x28, v16-v31 cannot be used for Arm64EC")
+    } else {
+        Ok(())
+    }
+}
+
 def_regs! {
     AArch64 AArch64InlineAsmReg AArch64InlineAsmRegClass {
         x0: reg = ["x0", "w0"],
@@ -102,8 +115,8 @@ def_regs! {
         x10: reg = ["x10", "w10"],
         x11: reg = ["x11", "w11"],
         x12: reg = ["x12", "w12"],
-        x13: reg = ["x13", "w13"],
-        x14: reg = ["x14", "w14"],
+        x13: reg = ["x13", "w13"] % restricted_for_arm64ec,
+        x14: reg = ["x14", "w14"] % restricted_for_arm64ec,
         x15: reg = ["x15", "w15"],
         x16: reg = ["x16", "w16"],
         x17: reg = ["x17", "w17"],
@@ -111,12 +124,12 @@ def_regs! {
         x20: reg = ["x20", "w20"],
         x21: reg = ["x21", "w21"],
         x22: reg = ["x22", "w22"],
-        x23: reg = ["x23", "w23"],
-        x24: reg = ["x24", "w24"],
+        x23: reg = ["x23", "w23"] % restricted_for_arm64ec,
+        x24: reg = ["x24", "w24"] % restricted_for_arm64ec,
         x25: reg = ["x25", "w25"],
         x26: reg = ["x26", "w26"],
         x27: reg = ["x27", "w27"],
-        x28: reg = ["x28", "w28"],
+        x28: reg = ["x28", "w28"] % restricted_for_arm64ec,
         x30: reg = ["x30", "w30", "lr", "wlr"],
         v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0", "z0"],
         v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1", "z1"],
@@ -134,22 +147,22 @@ def_regs! {
         v13: vreg, vreg_low16 = ["v13", "b13", "h13", "s13", "d13", "q13", "z13"],
         v14: vreg, vreg_low16 = ["v14", "b14", "h14", "s14", "d14", "q14", "z14"],
         v15: vreg, vreg_low16 = ["v15", "b15", "h15", "s15", "d15", "q15", "z15"],
-        v16: vreg = ["v16", "b16", "h16", "s16", "d16", "q16", "z16"],
-        v17: vreg = ["v17", "b17", "h17", "s17", "d17", "q17", "z17"],
-        v18: vreg = ["v18", "b18", "h18", "s18", "d18", "q18", "z18"],
-        v19: vreg = ["v19", "b19", "h19", "s19", "d19", "q19", "z19"],
-        v20: vreg = ["v20", "b20", "h20", "s20", "d20", "q20", "z20"],
-        v21: vreg = ["v21", "b21", "h21", "s21", "d21", "q21", "z21"],
-        v22: vreg = ["v22", "b22", "h22", "s22", "d22", "q22", "z22"],
-        v23: vreg = ["v23", "b23", "h23", "s23", "d23", "q23", "z23"],
-        v24: vreg = ["v24", "b24", "h24", "s24", "d24", "q24", "z24"],
-        v25: vreg = ["v25", "b25", "h25", "s25", "d25", "q25", "z25"],
-        v26: vreg = ["v26", "b26", "h26", "s26", "d26", "q26", "z26"],
-        v27: vreg = ["v27", "b27", "h27", "s27", "d27", "q27", "z27"],
-        v28: vreg = ["v28", "b28", "h28", "s28", "d28", "q28", "z28"],
-        v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29", "z29"],
-        v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30", "z30"],
-        v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31", "z31"],
+        v16: vreg = ["v16", "b16", "h16", "s16", "d16", "q16", "z16"] % restricted_for_arm64ec,
+        v17: vreg = ["v17", "b17", "h17", "s17", "d17", "q17", "z17"] % restricted_for_arm64ec,
+        v18: vreg = ["v18", "b18", "h18", "s18", "d18", "q18", "z18"] % restricted_for_arm64ec,
+        v19: vreg = ["v19", "b19", "h19", "s19", "d19", "q19", "z19"] % restricted_for_arm64ec,
+        v20: vreg = ["v20", "b20", "h20", "s20", "d20", "q20", "z20"] % restricted_for_arm64ec,
+        v21: vreg = ["v21", "b21", "h21", "s21", "d21", "q21", "z21"] % restricted_for_arm64ec,
+        v22: vreg = ["v22", "b22", "h22", "s22", "d22", "q22", "z22"] % restricted_for_arm64ec,
+        v23: vreg = ["v23", "b23", "h23", "s23", "d23", "q23", "z23"] % restricted_for_arm64ec,
+        v24: vreg = ["v24", "b24", "h24", "s24", "d24", "q24", "z24"] % restricted_for_arm64ec,
+        v25: vreg = ["v25", "b25", "h25", "s25", "d25", "q25", "z25"] % restricted_for_arm64ec,
+        v26: vreg = ["v26", "b26", "h26", "s26", "d26", "q26", "z26"] % restricted_for_arm64ec,
+        v27: vreg = ["v27", "b27", "h27", "s27", "d27", "q27", "z27"] % restricted_for_arm64ec,
+        v28: vreg = ["v28", "b28", "h28", "s28", "d28", "q28", "z28"] % restricted_for_arm64ec,
+        v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29", "z29"] % restricted_for_arm64ec,
+        v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30", "z30"] % restricted_for_arm64ec,
+        v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31", "z31"] % restricted_for_arm64ec,
         p0: preg = ["p0"],
         p1: preg = ["p1"],
         p2: preg = ["p2"],

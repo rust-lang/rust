@@ -220,7 +220,7 @@ mod tests {
     use super::*;
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let file = SourceFile::parse(ra_fixture).ok().unwrap();
+        let file = SourceFile::parse(ra_fixture, span::Edition::CURRENT).ok().unwrap();
         let structure = file_structure(&file);
         expect.assert_debug_eq(&structure)
     }

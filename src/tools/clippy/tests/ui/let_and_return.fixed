@@ -203,4 +203,11 @@ fn_in_macro!({
     return 1;
 });
 
+fn issue9150() -> usize {
+    let x = 1;
+    #[cfg(any())]
+    panic!("can't see me");
+    x
+}
+
 fn main() {}

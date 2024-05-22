@@ -4,6 +4,7 @@ pub mod unify_key;
 use crate::ty::Region;
 use crate::ty::{OpaqueTypeKey, Ty};
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
 /// Requires that `region` must be equal to one of the regions in `choice_regions`.

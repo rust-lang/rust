@@ -5,7 +5,7 @@ enum Test { A(i32), B, }
 fn main() { }
 
 fn fun(test: Test) {
-    move || {
+    #[coroutine] move || {
         if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when coroutine yields
             yield ();
             _a.use_ref();

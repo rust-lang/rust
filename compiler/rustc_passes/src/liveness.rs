@@ -94,6 +94,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -602,7 +603,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         String::from_utf8(wr).unwrap()
     }
 
-    fn log_liveness(&self, entry_ln: LiveNode, hir_id: hir::HirId) {
+    fn log_liveness(&self, entry_ln: LiveNode, hir_id: HirId) {
         // hack to skip the loop unless debug! is enabled:
         debug!(
             "^^ liveness computation results for body {} (entry={:?})",

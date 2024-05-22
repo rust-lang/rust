@@ -30,6 +30,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
 
+note: please make sure that you have updated to the latest nightly
+
 note: rustc $VERSION running on $TARGET
 
 note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics

@@ -270,9 +270,10 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
             "sve2-bitperm",
             TargetFeatureFoldStrength::EnableOnly("neon"),
         ),
-        // The unaligned-scalar-mem feature was renamed to fast-unaligned-access.
-        ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 17 => {
-            LLVMFeature::new("unaligned-scalar-mem")
+        // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single feature called
+        // `fast-unaligned-access`. In LLVM 19, it was split back out.
+        ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
+            LLVMFeature::new("fast-unaligned-access")
         }
         // For LLVM 18, enable the evex512 target feature if a avx512 target feature is enabled.
         ("x86", s) if get_version().0 >= 18 && s.starts_with("avx512") => {

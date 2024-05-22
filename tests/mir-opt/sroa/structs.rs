@@ -1,4 +1,4 @@
-//@ unit-test: ScalarReplacementOfAggregates
+//@ test-mir-pass: ScalarReplacementOfAggregates
 //@ compile-flags: -Cpanic=abort
 //@ no-prefer-dynamic
 

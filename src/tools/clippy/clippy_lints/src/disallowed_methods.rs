@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
             None => return,
         };
         let msg = format!("use of a disallowed method `{}`", conf.path());
-        span_lint_and_then(cx, DISALLOWED_METHODS, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, DISALLOWED_METHODS, expr.span, msg, |diag| {
             if let Some(reason) = conf.reason() {
                 diag.note(reason);
             }

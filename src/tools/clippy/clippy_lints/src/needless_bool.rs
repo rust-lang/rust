@@ -6,11 +6,12 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    higher, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt, span_extract_comment, SpanlessEq,
+    higher, is_else_clause, is_expn_of, is_parent_stmt, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
+    SpanlessEq,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Node, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -133,13 +134,6 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
         inner = i;
     }
     false
-}
-
-fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
-    matches!(
-        cx.tcx.parent_hir_node(id),
-        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
-    )
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
@@ -323,11 +317,11 @@ fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr
 fn check_comparison<'a, 'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx Expr<'_>,
-    left_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    left_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    right_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
-    no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &str)>,
+    left_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    left_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    right_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &'static str)>,
+    no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &'static str)>,
 ) {
     if let ExprKind::Binary(op, left_side, right_side) = e.kind {
         let (l_ty, r_ty) = (
@@ -397,7 +391,7 @@ fn check_comparison<'a, 'tcx>(
                         binop_span,
                         m,
                         "try simplifying it as shown",
-                        h(left_side, right_side).to_string(),
+                        h(left_side, right_side).into_string(),
                         applicability,
                     );
                 }),
@@ -412,7 +406,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
     span: Span,
     expr: &Expr<'_>,
     mut app: Applicability,
-    message: &str,
+    message: &'static str,
     conv_hint: impl FnOnce(Sugg<'a>) -> Sugg<'a>,
 ) {
     let hint = Sugg::hir_with_context(cx, expr, span.ctxt(), "..", &mut app);
@@ -422,7 +416,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
         span,
         message,
         "try simplifying it as shown",
-        conv_hint(hint).to_string(),
+        conv_hint(hint).into_string(),
         app,
     );
 }

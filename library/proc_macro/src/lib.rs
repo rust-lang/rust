@@ -26,10 +26,10 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(generic_nonzero)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
+#![feature(panic_can_unwind)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
@@ -810,7 +810,7 @@ pub enum Delimiter {
     /// `[ ... ]`
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Bracket,
-    /// `Ø ... Ø`
+    /// `∅ ... ∅`
     /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
@@ -1360,7 +1360,7 @@ impl Literal {
     }
 
     /// Byte character literal.
-    #[unstable(feature = "proc_macro_byte_character", issue = "115268")]
+    #[stable(feature = "proc_macro_byte_character", since = "1.79.0")]
     pub fn byte_character(byte: u8) -> Literal {
         let string = [byte].escape_ascii().to_string();
         Literal::new(bridge::LitKind::Byte, &string, None)
@@ -1374,7 +1374,7 @@ impl Literal {
     }
 
     /// C string literal.
-    #[unstable(feature = "proc_macro_c_str_literals", issue = "119750")]
+    #[stable(feature = "proc_macro_c_str_literals", since = "1.79.0")]
     pub fn c_string(string: &CStr) -> Literal {
         let string = string.to_bytes().escape_ascii().to_string();
         Literal::new(bridge::LitKind::CStr, &string, None)

@@ -2,11 +2,6 @@
 
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
-
 mod codegen;
 mod dropck_outlives;
 mod evaluate_obligation;

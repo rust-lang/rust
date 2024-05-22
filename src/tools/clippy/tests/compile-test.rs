@@ -4,6 +4,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
+use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
 use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, Mode, OutputConflictHandling};
 
@@ -122,10 +123,11 @@ fn base_config(test_dir: &str) -> (Config, Args) {
         out_dir: target_dir.join("ui_test"),
         ..Config::rustc(Path::new("tests").join(test_dir))
     };
-    config.comment_defaults.base().mode = Some(Spanned::dummy(Mode::Yolo {
-        rustfix: ui_test::RustfixMode::Everything,
-    }))
-    .into();
+    config.comment_defaults.base().mode = Some(Spanned::dummy(Mode::Yolo)).into();
+    config
+        .comment_defaults
+        .base()
+        .set_custom("rustfix", RustfixMode::Everything);
     config.comment_defaults.base().diagnostic_code_prefix = Some(Spanned::dummy("clippy::".into())).into();
     config.with_args(&args);
     let current_exe_path = env::current_exe().unwrap();
@@ -146,6 +148,8 @@ fn base_config(test_dir: &str) -> (Config, Args) {
     );
 
     config.program.args.extend(EXTERN_FLAGS.iter().map(OsString::from));
+    // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
+    config.program.envs.push(("RUSTC_ICE".into(), Some("0".into())));
 
     if let Some(host_libs) = option_env!("HOST_LIBS") {
         let dep = format!("-Ldependency={}", Path::new(host_libs).join("deps").display());
@@ -233,13 +237,12 @@ fn run_ui_cargo() {
         .push(("RUSTFLAGS".into(), Some("-Dwarnings".into())));
     // We need to do this while we still have a rustc in the `program` field.
     config.fill_host_and_target().unwrap();
-    config.dependencies_crate_manifest_path = None;
     config.program.program.set_file_name(if cfg!(windows) {
         "cargo-clippy.exe"
     } else {
         "cargo-clippy"
     });
-    config.comment_defaults.base().edition = Default::default();
+    config.comment_defaults.base().custom.clear();
 
     config
         .comment_defaults

@@ -1,10 +1,11 @@
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
 use std::fmt::{self, Write};
 
-pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
-    match super::cx::thir_body(tcx, owner_def) {
+pub(crate) fn thir_tree(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
+    match super::cx::thir_body(*tcx, owner_def) {
         Ok((thir, _)) => {
             let thir = thir.steal();
             let mut printer = ThirPrinter::new(&thir);
@@ -15,8 +16,8 @@ pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
     }
 }
 
-pub(crate) fn thir_flat(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
-    match super::cx::thir_body(tcx, owner_def) {
+pub(crate) fn thir_flat(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
+    match super::cx::thir_body(*tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),
     }
@@ -687,7 +688,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::DerefPattern { subpattern } => {
+            PatKind::DerefPattern { subpattern, .. } => {
                 print_indented!(self, "DerefPattern { ", depth_lvl + 1);
                 print_indented!(self, "subpattern:", depth_lvl + 2);
                 self.print_pat(subpattern, depth_lvl + 2);

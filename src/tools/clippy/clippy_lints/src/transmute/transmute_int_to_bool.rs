@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_INT_TO_BOOL,
                 e.span,
-                &format!("transmute from a `{from_ty}` to a `bool`"),
+                format!("transmute from a `{from_ty}` to a `bool`"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     let zero = sugg::Sugg::NonParen(Cow::from("0"));

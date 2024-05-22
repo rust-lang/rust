@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
@@ -57,7 +58,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
-            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
+            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty)
+            || self.suggest_returning_value_after_loop(err, expr, expected);
 
         if !suggested {
             self.note_source_of_type_mismatch_constraint(
@@ -329,18 +331,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
         expr_finder.visit_expr(body.value);
 
-        use rustc_infer::infer::type_variable::*;
-        use rustc_middle::infer::unify_key::*;
         // Replaces all of the variables in the given type with a fresh inference variable.
         let mut fudger = BottomUpFolder {
             tcx: self.tcx,
             ty_op: |ty| {
                 if let ty::Infer(infer) = ty.kind() {
                     match infer {
-                        ty::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        }),
+                        ty::TyVar(_) => self.next_ty_var(DUMMY_SP),
                         ty::IntVar(_) => self.next_int_var(),
                         ty::FloatVar(_) => self.next_float_var(),
                         ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
@@ -354,13 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |ct| {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
-                    self.next_const_var(
-                        ct.ty(),
-                        ConstVariableOrigin {
-                            kind: ConstVariableOriginKind::MiscVariable,
-                            span: DUMMY_SP,
-                        },
-                    )
+                    self.next_const_var(ct.ty(), DUMMY_SP)
                 } else {
                     ct
                 }
@@ -382,8 +373,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(arg_ty) = self.node_ty_opt(args[idx].hir_id) else {
                     return false;
                 };
-                let possible_rcvr_ty = expr_finder.uses.iter().find_map(|binding| {
+                let possible_rcvr_ty = expr_finder.uses.iter().rev().find_map(|binding| {
                     let possible_rcvr_ty = self.node_ty_opt(binding.hir_id)?;
+                    if possible_rcvr_ty.is_ty_var() {
+                        return None;
+                    }
                     // Fudge the receiver, so we can do new inference on it.
                     let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
                     let method = self
@@ -395,12 +389,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             binding,
                         )
                         .ok()?;
+                    // Make sure we select the same method that we started with...
+                    if Some(method.def_id)
+                        != self.typeck_results.borrow().type_dependent_def_id(call_expr.hir_id)
+                    {
+                        return None;
+                    }
                     // Unify the method signature with our incompatible arg, to
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .eq(DefineOpaqueTypes::No, method.sig.inputs()[idx + 1], arg_ty)
+                        .eq(DefineOpaqueTypes::Yes, method.sig.inputs()[idx + 1], arg_ty)
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.
@@ -465,6 +465,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) else {
                     continue;
                 };
+                // Make sure we select the same method that we started with...
+                if Some(method.def_id)
+                    != self.typeck_results.borrow().type_dependent_def_id(parent_expr.hir_id)
+                {
+                    continue;
+                }
 
                 let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let ideal_method = self
@@ -479,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|method| {
                         let _ = self
                             .at(&ObligationCause::dummy(), self.param_env)
-                            .eq(DefineOpaqueTypes::No, ideal_rcvr_ty, expected_ty)
+                            .eq(DefineOpaqueTypes::Yes, ideal_rcvr_ty, expected_ty)
                             .ok()?;
                         Some(method)
                     });
@@ -514,13 +520,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // blame arg, if possible. Don't do this if we're coming from
                     // arg mismatch code, because we'll possibly suggest a mutually
                     // incompatible fix at the original mismatch site.
+                    // HACK(compiler-errors): We don't actually consider the implications
+                    // of our inference guesses in `emit_type_mismatch_suggestions`, so
+                    // only suggest things when we know our type error is precisely due to
+                    // a type mismatch, and not via some projection or something. See #116155.
                     if matches!(source, TypeMismatchSource::Ty(_))
                         && let Some(ideal_method) = ideal_method
-                        && let ideal_arg_ty = self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
-                        // HACK(compiler-errors): We don't actually consider the implications
-                        // of our inference guesses in `emit_type_mismatch_suggestions`, so
-                        // only suggest things when we know our type error is precisely due to
-                        // a type mismatch, and not via some projection or something. See #116155.
+                        && Some(ideal_method.def_id)
+                            == self
+                                .typeck_results
+                                .borrow()
+                                .type_dependent_def_id(parent_expr.hir_id)
+                        && let ideal_arg_ty =
+                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(
@@ -894,7 +906,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [candidate] => format!(
                 "the method of the same name on {} `{}`",
                 match candidate.kind {
-                    probe::CandidateKind::InherentImplCandidate(..) => "the inherent impl for",
+                    probe::CandidateKind::InherentImplCandidate(_) => "the inherent impl for",
                     _ => "trait",
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
@@ -947,14 +959,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    pub fn get_conversion_methods(
+    pub fn get_conversion_methods_for_diagnostic(
         &self,
         span: Span,
         expected: Ty<'tcx>,
         checked_ty: Ty<'tcx>,
         hir_id: hir::HirId,
     ) -> Vec<AssocItem> {
-        let methods = self.probe_for_return_type(
+        let methods = self.probe_for_return_type_for_diagnostic(
             span,
             probe::Mode::MethodCall,
             expected,

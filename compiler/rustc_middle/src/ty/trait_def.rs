@@ -1,5 +1,5 @@
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject::{self, SimplifiedType, TreatParams, TreatProjections};
+use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use crate::ty::{Ident, Ty, TyCtxt};
 use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
@@ -8,14 +8,14 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_macros::HashStable;
+use rustc_macros::{Decodable, Encodable, HashStable};
 
 /// A trait's definition with type information.
 #[derive(HashStable, Encodable, Decodable)]
 pub struct TraitDef {
     pub def_id: DefId,
 
-    pub unsafety: hir::Unsafety,
+    pub safety: hir::Safety,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
@@ -39,10 +39,15 @@ pub struct TraitDef {
     /// also have already switched to the new trait solver.
     pub is_coinductive: bool,
 
-    /// If `true`, then this trait has the `#[rustc_skip_array_during_method_dispatch]`
+    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(array)]`
     /// attribute, indicating that editions before 2021 should not consider this trait
     /// during method dispatch if the receiver is an array.
     pub skip_array_during_method_dispatch: bool,
+
+    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(boxed_slice)]`
+    /// attribute, indicating that editions before 2024 should not consider this trait
+    /// during method dispatch if the receiver is a boxed slice.
+    pub skip_boxed_slice_during_method_dispatch: bool,
 
     /// Used to determine whether the standard library is allowed to specialize
     /// on this trait.
@@ -135,21 +140,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        f: impl FnMut(DefId),
-    ) {
-        self.for_each_relevant_impl_treating_projections(
-            trait_def_id,
-            self_ty,
-            TreatProjections::ForLookup,
-            f,
-        )
-    }
-
-    pub fn for_each_relevant_impl_treating_projections(
-        self,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        treat_projections: TreatProjections,
         mut f: impl FnMut(DefId),
     ) {
         // FIXME: This depends on the set of all impls for the trait. That is
@@ -163,17 +153,13 @@ impl<'tcx> TyCtxt<'tcx> {
             f(impl_def_id);
         }
 
-        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` while using
-        // `TreatParams::AsCandidateKey` while actually adding them.
-        let treat_params = match treat_projections {
-            TreatProjections::NextSolverLookup => TreatParams::NextSolverLookup,
-            TreatProjections::ForLookup => TreatParams::ForLookup,
-        };
         // This way, when searching for some impl for `T: Trait`, we do not look at any impls
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, treat_params) {
+        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` while using
+        // `TreatParams::AsCandidateKey` while actually adding them.
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::ForLookup) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     f(impl_def_id);

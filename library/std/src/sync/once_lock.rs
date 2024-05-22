@@ -252,6 +252,46 @@ impl<T> OnceLock<T> {
         }
     }
 
+    /// Gets the mutable reference of the contents of the cell, initializing
+    /// it with `f` if the cell was empty.
+    ///
+    /// Many threads may call `get_mut_or_init` concurrently with different
+    /// initializing functions, but it is guaranteed that only one function
+    /// will be executed.
+    ///
+    /// # Panics
+    ///
+    /// If `f` panics, the panic is propagated to the caller, and the cell
+    /// remains uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_get_mut)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// let mut cell = OnceLock::new();
+    /// let value = cell.get_mut_or_init(|| 92);
+    /// assert_eq!(*value, 92);
+    ///
+    /// *value += 2;
+    /// assert_eq!(*value, 94);
+    ///
+    /// let value = cell.get_mut_or_init(|| unreachable!());
+    /// assert_eq!(*value, 94);
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_cell_get_mut", issue = "121641")]
+    pub fn get_mut_or_init<F>(&mut self, f: F) -> &mut T
+    where
+        F: FnOnce() -> T,
+    {
+        match self.get_mut_or_try_init(|| Ok::<T, !>(f())) {
+            Ok(val) => val,
+        }
+    }
+
     /// Gets the contents of the cell, initializing it with `f` if
     /// the cell was empty. If the cell was empty and `f` failed, an
     /// error is returned.
@@ -301,6 +341,47 @@ impl<T> OnceLock<T> {
 
         // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
+    }
+
+    /// Gets the mutable reference of the contents of the cell, initializing
+    /// it with `f` if the cell was empty. If the cell was empty and `f` failed,
+    /// an error is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `f` panics, the panic is propagated to the caller, and
+    /// the cell remains uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_get_mut)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// let mut cell: OnceLock<u32> = OnceLock::new();
+    ///
+    /// // Failed initializers do not change the value
+    /// assert!(cell.get_mut_or_try_init(|| "not a number!".parse()).is_err());
+    /// assert!(cell.get().is_none());
+    ///
+    /// let value = cell.get_mut_or_try_init(|| "1234".parse());
+    /// assert_eq!(value, Ok(&mut 1234));
+    /// *value.unwrap() += 2;
+    /// assert_eq!(cell.get(), Some(&1236))
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_cell_get_mut", issue = "121641")]
+    pub fn get_mut_or_try_init<F, E>(&mut self, f: F) -> Result<&mut T, E>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        if self.get().is_none() {
+            self.initialize(f)?;
+        }
+        debug_assert!(self.is_initialized());
+        // SAFETY: The inner value has been initialized
+        Ok(unsafe { self.get_unchecked_mut() })
     }
 
     /// Consumes the `OnceLock`, returning the wrapped value. Returns

@@ -1,5 +1,5 @@
 //@ build-pass
-#![feature(coroutines, negative_impls)]
+#![feature(coroutines, negative_impls, stmt_expr_attributes)]
 #![allow(dropping_references, dropping_copy_types)]
 
 macro_rules! type_combinations {
@@ -21,7 +21,7 @@ macro_rules! type_combinations {
 
         // This is the same bug as issue 57017, but using yield instead of await
         {
-            let g = move || match drop(&$name::unsync::Client::default()) {
+            let g = #[coroutine] move || match drop(&$name::unsync::Client::default()) {
                 _status => yield,
             };
             assert_send(g);
@@ -30,7 +30,7 @@ macro_rules! type_combinations {
         // This tests that `Client` is properly considered to be dropped after moving it into the
         // function.
         {
-            let g = move || match drop($name::unsend::Client::default()) {
+            let g = #[coroutine] move || match drop($name::unsend::Client::default()) {
                 _status => yield,
             };
             assert_send(g);

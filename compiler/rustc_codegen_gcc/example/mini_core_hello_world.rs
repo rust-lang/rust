@@ -2,7 +2,7 @@
 
 #![feature(
     no_core, unboxed_closures, start, lang_items, never_type, linkage,
-    extern_types, thread_local
+    extern_types, thread_local, raw_ref_op
 )]
 #![no_core]
 #![allow(dead_code, internal_features, non_camel_case_types)]
@@ -99,9 +99,7 @@ fn start<T: Termination + 'static>(
 
 static mut NUM: u8 = 6 * 7;
 
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-#[allow(static_mut_refs)]
-static NUM_REF: &'static u8 = unsafe { &NUM };
+static NUM_REF: &'static u8 = unsafe { &* &raw const NUM };
 
 macro_rules! assert {
     ($e:expr) => {

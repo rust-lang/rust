@@ -1,4 +1,4 @@
-//@ revisions: one two three
+//@ revisions: one two three four
 //@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
 //

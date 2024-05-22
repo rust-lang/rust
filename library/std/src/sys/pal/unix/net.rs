@@ -86,7 +86,14 @@ impl Socket {
                     // flag to atomically create the socket and set it as
                     // CLOEXEC. On Linux this was added in 2.6.27.
                     let fd = cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0))?;
-                    Ok(Socket(FileDesc::from_raw_fd(fd)))
+                    let socket = Socket(FileDesc::from_raw_fd(fd));
+
+                    // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
+                    // flag to disable `SIGPIPE` emission on socket.
+                    #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+
+                    Ok(socket)
                 } else {
                     let fd = cvt(libc::socket(fam, ty, 0))?;
                     let fd = FileDesc::from_raw_fd(fd);
@@ -175,10 +182,7 @@ impl Socket {
         let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::const_io_error!(
-                io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
-            ));
+            return Err(io::Error::ZERO_TIMEOUT);
         }
 
         let start = Instant::now();
@@ -360,10 +364,7 @@ impl Socket {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
-                    return Err(io::const_io_error!(
-                        io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
-                    ));
+                    return Err(io::Error::ZERO_TIMEOUT);
                 }
 
                 let secs = if dur.as_secs() > libc::time_t::MAX as u64 {

@@ -143,7 +143,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         arg.span,
-                        &format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
+                        format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
                         |diag| {
                             multispan_sugg(
                                 diag,
@@ -169,7 +169,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         arg.span,
-                        &format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
+                        format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
                         |diag| {
                             multispan_sugg(
                                 diag,
@@ -357,7 +357,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
                     self.cx.tcx.fn_sig(def_id).instantiate_identity().inputs().skip_binder(),
-                    std::iter::once(receiver).chain(args.iter()),
+                    iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = *ty.kind() {

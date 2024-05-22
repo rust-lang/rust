@@ -1,5 +1,5 @@
 // This does not currently propagate (#67862)
-//@ unit-test: GVN
+//@ test-mir-pass: GVN
 
 // EMIT_MIR ref_deref_project.main.GVN.diff
 fn main() {

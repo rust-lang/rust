@@ -288,7 +288,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(generic_nonzero, iter_advance_by)]
+    /// #![feature(iter_advance_by)]
+    ///
     /// use std::num::NonZero;
     ///
     /// let a = [1, 2, 3, 4];
@@ -973,6 +974,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_do_not_const_check]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "enumerate_method")]
     fn enumerate(self) -> Enumerate<Self>
     where
         Self: Sized,
@@ -1572,7 +1574,7 @@ pub trait Iterator {
     ///
     /// The returned iterator implements [`FusedIterator`], because once `self`
     /// returns `None`, even if it returns a `Some(T)` again in the next iterations,
-    /// we cannot put it into a contigious array buffer, and thus the returned iterator
+    /// we cannot put it into a contiguous array buffer, and thus the returned iterator
     /// should be fused.
     ///
     /// [`slice::windows()`]: slice::windows
@@ -2939,7 +2941,8 @@ pub trait Iterator {
     /// This also supports other types which implement [`Try`], not just [`Result`].
     ///
     /// ```
-    /// #![feature(generic_nonzero, try_find)]
+    /// #![feature(try_find)]
+    ///
     /// use std::num::NonZero;
     ///
     /// let a = [3, 5, 7, 4, 9, 0, 11u32];

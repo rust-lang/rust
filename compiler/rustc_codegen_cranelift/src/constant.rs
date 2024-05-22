@@ -110,7 +110,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 if fx.clif_type(layout.ty).is_some() {
                     return CValue::const_val(fx, layout, int);
                 } else {
-                    let raw_val = int.size().truncate(int.to_bits(int.size()).unwrap());
+                    let raw_val = int.size().truncate(int.assert_bits(int.size()));
                     let val = match int.size().bytes() {
                         1 => fx.bcx.ins().iconst(types::I8, raw_val as i64),
                         2 => fx.bcx.ins().iconst(types::I16, raw_val as i64),
@@ -137,18 +137,23 @@ pub(crate) fn codegen_const_value<'tcx>(
                 let alloc_id = prov.alloc_id();
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
-                        let data_id = data_id_for_alloc_id(
-                            &mut fx.constants_cx,
-                            fx.module,
-                            alloc_id,
-                            alloc.inner().mutability,
-                        );
-                        let local_data_id =
-                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                        if fx.clif_comments.enabled() {
-                            fx.add_comment(local_data_id, format!("{:?}", alloc_id));
+                        if alloc.inner().len() == 0 {
+                            assert_eq!(offset, Size::ZERO);
+                            fx.bcx.ins().iconst(fx.pointer_type, alloc.inner().align.bytes() as i64)
+                        } else {
+                            let data_id = data_id_for_alloc_id(
+                                &mut fx.constants_cx,
+                                fx.module,
+                                alloc_id,
+                                alloc.inner().mutability,
+                            );
+                            let local_data_id =
+                                fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                            if fx.clif_comments.enabled() {
+                                fx.add_comment(local_data_id, format!("{:?}", alloc_id));
+                            }
+                            fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
-                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
                     GlobalAlloc::Function(instance) => {
                         let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
@@ -253,7 +258,7 @@ fn data_id_for_static(
 ) -> DataId {
     let attrs = tcx.codegen_fn_attrs(def_id);
 
-    let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
+    let instance = Instance::mono(tcx, def_id);
     let symbol_name = tcx.symbol_name(instance).name;
 
     if let Some(import_linkage) = attrs.import_linkage {
@@ -491,27 +496,24 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                         return None;
                                     }
                                     let scalar_int = mir_operand_get_const_val(fx, operand)?;
-                                    let scalar_int = match fx
-                                        .layout_of(*ty)
-                                        .size
-                                        .cmp(&scalar_int.size())
-                                    {
-                                        Ordering::Equal => scalar_int,
-                                        Ordering::Less => match ty.kind() {
-                                            ty::Uint(_) => ScalarInt::try_from_uint(
-                                                scalar_int.try_to_uint(scalar_int.size()).unwrap(),
-                                                fx.layout_of(*ty).size,
-                                            )
-                                            .unwrap(),
-                                            ty::Int(_) => ScalarInt::try_from_int(
-                                                scalar_int.try_to_int(scalar_int.size()).unwrap(),
-                                                fx.layout_of(*ty).size,
-                                            )
-                                            .unwrap(),
-                                            _ => unreachable!(),
-                                        },
-                                        Ordering::Greater => return None,
-                                    };
+                                    let scalar_int =
+                                        match fx.layout_of(*ty).size.cmp(&scalar_int.size()) {
+                                            Ordering::Equal => scalar_int,
+                                            Ordering::Less => match ty.kind() {
+                                                ty::Uint(_) => ScalarInt::try_from_uint(
+                                                    scalar_int.assert_uint(scalar_int.size()),
+                                                    fx.layout_of(*ty).size,
+                                                )
+                                                .unwrap(),
+                                                ty::Int(_) => ScalarInt::try_from_int(
+                                                    scalar_int.assert_int(scalar_int.size()),
+                                                    fx.layout_of(*ty).size,
+                                                )
+                                                .unwrap(),
+                                                _ => unreachable!(),
+                                            },
+                                            Ordering::Greater => return None,
+                                        };
                                     computed_scalar_int = Some(scalar_int);
                                 }
                                 Rvalue::Use(operand) => {

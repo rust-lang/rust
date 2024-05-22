@@ -4,18 +4,19 @@
 //! 1. instantiate generic parameters,
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, QueryResult};
 use rustc_middle::ty;
 
 use crate::solve::EvalCtxt;
 
-impl<'tcx> EvalCtxt<'_, 'tcx> {
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     pub(super) fn normalize_inherent_associated_type(
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
-        let inherent = goal.predicate.alias;
+        let inherent = goal.predicate.alias.expect_ty(tcx);
 
         let impl_def_id = tcx.parent(inherent.def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id);

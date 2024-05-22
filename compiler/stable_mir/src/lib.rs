@@ -16,8 +16,6 @@
 //!
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
-#[macro_use]
-extern crate scoped_tls;
 
 use std::fmt;
 use std::fmt::Debug;

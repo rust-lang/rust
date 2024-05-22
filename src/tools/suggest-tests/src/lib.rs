@@ -5,7 +5,7 @@ use std::{
 
 use dynamic_suggestions::DYNAMIC_SUGGESTIONS;
 use glob::Pattern;
-use static_suggestions::STATIC_SUGGESTIONS;
+use static_suggestions::static_suggestions;
 
 mod dynamic_suggestions;
 mod static_suggestions;
@@ -33,7 +33,7 @@ pub fn get_suggestions<T: AsRef<str>>(modified_files: &[T]) -> Vec<Suggestion> {
     let mut suggestions = Vec::new();
 
     // static suggestions
-    for (globs, sugs) in STATIC_SUGGESTIONS.iter() {
+    for (globs, sugs) in static_suggestions().iter() {
         let globs = globs
             .iter()
             .map(|glob| Pattern::new(glob).expect("Found invalid glob pattern!"))

@@ -36,20 +36,17 @@
 extern crate self as rustc_span;
 
 #[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
 extern crate tracing;
 
 use rustc_data_structures::{outline, AtomicRef};
-use rustc_macros::HashStable_Generic;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 mod caching_source_map_view;
 pub mod source_map;
 pub use self::caching_source_map_view::CachingSourceMapView;
-use source_map::SourceMap;
+use source_map::{SourceMap, SourceMapInputs};
 
 pub mod edition;
 use edition::Edition;
@@ -104,35 +101,35 @@ pub struct SessionGlobals {
     metavar_spans: Lock<FxHashMap<Span, Span>>,
     hygiene_data: Lock<hygiene::HygieneData>,
 
-    /// A reference to the source map in the `Session`. It's an `Option`
-    /// because it can't be initialized until `Session` is created, which
-    /// happens after `SessionGlobals`. `set_source_map` does the
-    /// initialization.
-    ///
-    /// This field should only be used in places where the `Session` is truly
-    /// not available, such as `<Span as Debug>::fmt`.
-    source_map: Lock<Option<Lrc<SourceMap>>>,
+    /// The session's source map, if there is one. This field should only be
+    /// used in places where the `Session` is truly not available, such as
+    /// `<Span as Debug>::fmt`.
+    source_map: Option<Lrc<SourceMap>>,
 }
 
 impl SessionGlobals {
-    pub fn new(edition: Edition) -> SessionGlobals {
+    pub fn new(edition: Edition, sm_inputs: Option<SourceMapInputs>) -> SessionGlobals {
         SessionGlobals {
             symbol_interner: symbol::Interner::fresh(),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             metavar_spans: Default::default(),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
-            source_map: Lock::new(None),
+            source_map: sm_inputs.map(|inputs| Lrc::new(SourceMap::with_inputs(inputs))),
         }
     }
 }
 
-pub fn create_session_globals_then<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
+pub fn create_session_globals_then<R>(
+    edition: Edition,
+    sm_inputs: Option<SourceMapInputs>,
+    f: impl FnOnce() -> R,
+) -> R {
     assert!(
         !SESSION_GLOBALS.is_set(),
         "SESSION_GLOBALS should never be overwritten! \
          Use another thread if you need another SessionGlobals"
     );
-    let session_globals = SessionGlobals::new(edition);
+    let session_globals = SessionGlobals::new(edition, sm_inputs);
     SESSION_GLOBALS.set(&session_globals, f)
 }
 
@@ -145,12 +142,13 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
     SESSION_GLOBALS.set(session_globals, f)
 }
 
+/// No source map.
 pub fn create_session_if_not_set_then<R, F>(edition: Edition, f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
 {
     if !SESSION_GLOBALS.is_set() {
-        let session_globals = SessionGlobals::new(edition);
+        let session_globals = SessionGlobals::new(edition, None);
         SESSION_GLOBALS.set(&session_globals, || SESSION_GLOBALS.with(f))
     } else {
         SESSION_GLOBALS.with(f)
@@ -164,8 +162,9 @@ where
     SESSION_GLOBALS.with(f)
 }
 
+/// Default edition, no source map.
 pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
-    create_session_globals_then(edition::DEFAULT_EDITION, f)
+    create_session_globals_then(edition::DEFAULT_EDITION, None, f)
 }
 
 // If this ever becomes non thread-local, `decode_syntax_context`
@@ -743,6 +742,45 @@ impl Span {
         Some(self)
     }
 
+    /// Recursively walk down the expansion ancestors to find the oldest ancestor span with the same
+    /// [`SyntaxContext`] the initial span.
+    ///
+    /// This method is suitable for peeling through *local* macro expansions to find the "innermost"
+    /// span that is still local and shares the same [`SyntaxContext`]. For example, given
+    ///
+    /// ```ignore (illustrative example, contains type error)
+    ///  macro_rules! outer {
+    ///      ($x: expr) => {
+    ///          inner!($x)
+    ///      }
+    ///  }
+    ///
+    ///  macro_rules! inner {
+    ///      ($x: expr) => {
+    ///          format!("error: {}", $x)
+    ///          //~^ ERROR mismatched types
+    ///      }
+    ///  }
+    ///
+    ///  fn bar(x: &str) -> Result<(), Box<dyn std::error::Error>> {
+    ///      Err(outer!(x))
+    ///  }
+    /// ```
+    ///
+    /// if provided the initial span of `outer!(x)` inside `bar`, this method will recurse
+    /// the parent callsites until we reach `format!("error: {}", $x)`, at which point it is the
+    /// oldest ancestor span that is both still local and shares the same [`SyntaxContext`] as the
+    /// initial span.
+    pub fn find_oldest_ancestor_in_same_ctxt(self) -> Span {
+        let mut cur = self;
+        while cur.eq_ctxt(self)
+            && let Some(parent_callsite) = cur.parent_callsite()
+        {
+            cur = parent_callsite;
+        }
+        cur
+    }
+
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
         self.ctxt().edition()
@@ -1279,25 +1317,6 @@ impl<D: SpanDecoder> Decodable<D> for AttrId {
     }
 }
 
-/// Insert `source_map` into the session globals for the duration of the
-/// closure's execution.
-pub fn set_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
-    with_session_globals(|session_globals| {
-        *session_globals.source_map.borrow_mut() = Some(source_map);
-    });
-    struct ClearSourceMap;
-    impl Drop for ClearSourceMap {
-        fn drop(&mut self) {
-            with_session_globals(|session_globals| {
-                session_globals.source_map.borrow_mut().take();
-            });
-        }
-    }
-
-    let _guard = ClearSourceMap;
-    f()
-}
-
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Use the global `SourceMap` to print the span. If that's not
@@ -1313,7 +1332,7 @@ impl fmt::Debug for Span {
 
         if SESSION_GLOBALS.is_set() {
             with_session_globals(|session_globals| {
-                if let Some(source_map) = &*session_globals.source_map.borrow() {
+                if let Some(source_map) = &session_globals.source_map {
                     write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(*self), self.ctxt())
                 } else {
                     fallback(*self, f)

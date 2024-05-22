@@ -107,6 +107,10 @@ LL |     (E::TupleWithFields(/* fields */)).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: consider importing one of these items instead
    |
+LL + use std::f128::consts::E;
+   |
+LL + use std::f16::consts::E;
+   |
 LL + use std::f32::consts::E;
    |
 LL + use std::f64::consts::E;

@@ -1087,7 +1087,7 @@ fn unescape_string(string: &str) -> Option<string::String> {
 }
 
 // Assert a reasonable size for `Piece`
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(target_pointer_width = "64")]
 rustc_index::static_assert_size!(Piece<'_>, 16);
 
 #[cfg(test)]

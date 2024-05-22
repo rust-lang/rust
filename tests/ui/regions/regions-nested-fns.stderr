@@ -27,6 +27,9 @@ LL | }
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:10:15
    |
+LL |     let y = 3;
+   |         - binding `y` declared here
+...
 LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
    |                                                          --- value captured here
 LL |         ay = x;

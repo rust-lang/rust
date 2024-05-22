@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use rustc_span::SyntaxContext;
@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
             vec.span,
             "it looks like the same item is being pushed into this Vec",
             None,
-            &format!("consider using vec![{item_str};SIZE] or {vec_str}.resize(NEW_SIZE, {item_str})"),
+            format!("consider using vec![{item_str};SIZE] or {vec_str}.resize(NEW_SIZE, {item_str})"),
         );
     }
 
@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
                         let node = cx.tcx.hir_node(hir_id);
                         if let Node::Pat(pat) = node
                             && let PatKind::Binding(bind_ann, ..) = pat.kind
-                            && !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut))
+                            && !matches!(bind_ann, BindingMode(_, Mutability::Mut))
                             && let Node::LetStmt(parent_let_expr) = cx.tcx.parent_hir_node(hir_id)
                             && let Some(init) = parent_let_expr.init
                         {

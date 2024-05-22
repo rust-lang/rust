@@ -13,9 +13,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::HirId;
 use rustc_hir::Node;
+use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
@@ -39,7 +40,7 @@ pub(crate) fn thir_body(
         // It will always be `()` in this case.
         if tcx.is_coroutine(owner_def.to_def_id()) && body.params.is_empty() {
             cx.thir.params.push(Param {
-                ty: Ty::new_unit(tcx),
+                ty: tcx.types.unit,
                 pat: None,
                 ty_span: None,
                 self_kind: None,

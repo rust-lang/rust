@@ -119,7 +119,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         attrs: Default::default(),
         item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
         kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-            unsafety: hir::Unsafety::Normal,
+            safety: hir::Safety::Safe,
             generics,
             trait_: Some(clean_trait_ref_with_bindings(cx, trait_ref, ThinVec::new())),
             for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
@@ -150,7 +150,7 @@ fn clean_param_env<'tcx>(
     let generics = tcx.generics_of(item_def_id);
 
     let params: ThinVec<_> = generics
-        .params
+        .own_params
         .iter()
         .inspect(|param| {
             if cfg!(debug_assertions) {
@@ -168,7 +168,7 @@ fn clean_param_env<'tcx>(
 
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
     let item_predicates: FxIndexSet<_> =
-        tcx.predicates_of(item_def_id).predicates.iter().map(|(pred, _)| pred).collect();
+        tcx.param_env(item_def_id).caller_bounds().iter().collect();
     let where_predicates = param_env
         .caller_bounds()
         .iter()
@@ -326,7 +326,7 @@ fn clean_region_outlives_constraints<'tcx>(
     }
 
     let region_params: FxIndexSet<_> = generics
-        .params
+        .own_params
         .iter()
         .filter_map(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime => Some(param.name),

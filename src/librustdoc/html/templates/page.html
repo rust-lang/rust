@@ -6,13 +6,9 @@
     <meta name="generator" content="rustdoc"> {# #}
     <meta name="description" content="{{page.description}}"> {# #}
     <title>{{page.title}}</title> {# #}
-    <script> if (window.location.protocol !== "file:") document.write(` {# Hack to skip preloading fonts locally - see #98769 #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_serif_4_regular}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_regular}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.fira_sans_medium}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_regular}}"> {# #}
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}{{files.source_code_pro_semibold}}"> {# #}
-    `)</script> {# #}
+    <script>if(window.location.protocol!=="file:") {# Hack to skip preloading fonts locally - see #98769 #}
+    document.head.insertAdjacentHTML("beforeend","{{files.source_serif_4_regular}},{{files.fira_sans_regular}},{{files.fira_sans_medium}},{{files.source_code_pro_regular}},{{files.source_code_pro_semibold}}".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}${f}">`).join("")) {# #}
+    </script> {# #}
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}
     <link rel="stylesheet" {#+ #}
@@ -61,8 +57,6 @@
     {% if !layout.favicon.is_empty() %}
         <link rel="icon" href="{{layout.favicon}}"> {# #}
     {% else %}
-        <link rel="alternate icon" type="image/png" {#+ #}
-            href="{{static_root_path|safe}}{{files.rust_favicon_png_16}}"> {# #}
         <link rel="alternate icon" type="image/png" {#+ #}
             href="{{static_root_path|safe}}{{files.rust_favicon_png_32}}"> {# #}
         <link rel="icon" type="image/svg+xml" {#+ #}
@@ -114,40 +108,18 @@
         <div class="version">{{+ display_krate_version_extra}}</div> {# #}
         {% endif %}
         {% else %}
-        <div class="src-sidebar-title">
+        <div class="src-sidebar-title"> {# #}
             <h2>Files</h2> {# #}
         </div> {# #}
         {% endif %}
         {{ sidebar|safe }}
     </nav> {# #}
-    <div class="sidebar-resizer"></div>
+    <div class="sidebar-resizer"></div> {# #}
     <main> {# #}
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
-            <nav class="sub"> {# #}
-                <form class="search-form"> {# #}
-                    <span></span> {# This empty span is a hacky fix for Safari - See #93184 #}
-                    <div id="sidebar-button" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}{{layout.krate|safe}}/all.html" title="show sidebar"></a> {# #}
-                    </div> {# #}
-                    <input {#+ #}
-                        class="search-input" {#+ #}
-                        name="search" {#+ #}
-                        aria-label="Run search in the documentation" {#+ #}
-                        autocomplete="off" {#+ #}
-                        spellcheck="false" {#+ #}
-                        placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {#+ #}
-                        type="search"> {# #}
-                    <div id="help-button" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}help.html" title="help">?</a> {# #}
-                    </div> {# #}
-                    <div id="settings-menu" tabindex="-1"> {# #}
-                        <a href="{{page.root_path|safe}}settings.html" title="settings"> {# #}
-                            <img width="22" height="22" alt="Change settings" {#+ #}
-                            src="{{static_root_path|safe}}{{files.wheel_svg}}"> {# #}
-                        </a> {# #}
-                    </div> {# #}
-                </form> {# #}
-            </nav> {# #}
+            {# defined in storage.js to avoid duplicating complex UI across every page #}
+            {# and because the search form only works if JS is enabled anyway #}
+            <rustdoc-search></rustdoc-search> {# #}
             <section id="main-content" class="content">{{ content|safe }}</section> {# #}
         {% if page.css_class != "src" %}</div>{% endif %}
     </main> {# #}

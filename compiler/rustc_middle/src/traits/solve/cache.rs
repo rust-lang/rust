@@ -14,11 +14,11 @@ pub struct EvaluationCache<'tcx> {
     map: Lock<FxHashMap<CanonicalInput<'tcx>, CacheEntry<'tcx>>>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CacheData<'tcx> {
     pub result: QueryResult<'tcx>,
-    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
-    pub reached_depth: usize,
+    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]>,
+    pub additional_depth: usize,
     pub encountered_overflow: bool,
 }
 
@@ -28,8 +28,8 @@ impl<'tcx> EvaluationCache<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         key: CanonicalInput<'tcx>,
-        proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
-        reached_depth: usize,
+        proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]>,
+        additional_depth: usize,
         encountered_overflow: bool,
         cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
         dep_node: DepNodeIndex,
@@ -40,17 +40,17 @@ impl<'tcx> EvaluationCache<'tcx> {
         let data = WithDepNode::new(dep_node, QueryData { result, proof_tree });
         entry.cycle_participants.extend(cycle_participants);
         if encountered_overflow {
-            entry.with_overflow.insert(reached_depth, data);
+            entry.with_overflow.insert(additional_depth, data);
         } else {
-            entry.success = Some(Success { data, reached_depth });
+            entry.success = Some(Success { data, additional_depth });
         }
 
         if cfg!(debug_assertions) {
             drop(map);
-            if Some(CacheData { result, proof_tree, reached_depth, encountered_overflow })
-                != self.get(tcx, key, |_| false, Limit(reached_depth))
-            {
-                bug!("unable to retrieve inserted element from cache: {key:?}");
+            let expected = CacheData { result, proof_tree, additional_depth, encountered_overflow };
+            let actual = self.get(tcx, key, [], Limit(additional_depth));
+            if !actual.as_ref().is_some_and(|actual| expected == *actual) {
+                bug!("failed to lookup inserted element for {key:?}: {expected:?} != {actual:?}");
             }
         }
     }
@@ -63,23 +63,25 @@ impl<'tcx> EvaluationCache<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         key: CanonicalInput<'tcx>,
-        cycle_participant_in_stack: impl FnOnce(&FxHashSet<CanonicalInput<'tcx>>) -> bool,
+        stack_entries: impl IntoIterator<Item = CanonicalInput<'tcx>>,
         available_depth: Limit,
     ) -> Option<CacheData<'tcx>> {
         let map = self.map.borrow();
         let entry = map.get(&key)?;
 
-        if cycle_participant_in_stack(&entry.cycle_participants) {
-            return None;
+        for stack_entry in stack_entries {
+            if entry.cycle_participants.contains(&stack_entry) {
+                return None;
+            }
         }
 
         if let Some(ref success) = entry.success {
-            if available_depth.value_within_limit(success.reached_depth) {
+            if available_depth.value_within_limit(success.additional_depth) {
                 let QueryData { result, proof_tree } = success.data.get(tcx);
                 return Some(CacheData {
                     result,
                     proof_tree,
-                    reached_depth: success.reached_depth,
+                    additional_depth: success.additional_depth,
                     encountered_overflow: false,
                 });
             }
@@ -90,7 +92,7 @@ impl<'tcx> EvaluationCache<'tcx> {
             CacheData {
                 result,
                 proof_tree,
-                reached_depth: available_depth.0,
+                additional_depth: available_depth.0,
                 encountered_overflow: true,
             }
         })
@@ -99,13 +101,13 @@ impl<'tcx> EvaluationCache<'tcx> {
 
 struct Success<'tcx> {
     data: WithDepNode<QueryData<'tcx>>,
-    reached_depth: usize,
+    additional_depth: usize,
 }
 
 #[derive(Clone, Copy)]
 pub struct QueryData<'tcx> {
     pub result: QueryResult<'tcx>,
-    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
+    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<TyCtxt<'tcx>>]>,
 }
 
 /// The cache entry for a goal `CanonicalInput`.

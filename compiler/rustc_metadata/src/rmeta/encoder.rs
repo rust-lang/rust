@@ -20,6 +20,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::util::common::to_readable_str;
+use rustc_middle::{bug, span_bug};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
@@ -1402,7 +1403,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
 
-                for param in &g.params {
+                for param in &g.own_params {
                     if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
                         let default = self.tcx.const_param_default(param.def_id);
                         record!(self.tables.const_param_default[param.def_id] <- default);
@@ -2009,7 +2010,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
 
                 let trait_def = tcx.trait_def(trait_ref.def_id);
-                if let Some(mut an) = trait_def.ancestors(tcx, def_id).ok() {
+                if let Ok(mut an) = trait_def.ancestors(tcx, def_id) {
                     if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
                         self.tables.impl_parent.set_some(def_id.index, parent.into());
                     }

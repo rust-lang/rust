@@ -3,6 +3,11 @@ error[E0229]: associated type bindings are not allowed here
    |
 LL |     fn bar(foo: Foo<Target = usize>) {}
    |                     ^^^^^^^^^^^^^^ associated type not allowed here
+   |
+help: consider removing this type binding
+   |
+LL |     fn bar(foo: Foo<Target = usize>) {}
+   |                    ~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

@@ -8,10 +8,11 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_middle::ty::{Instance, InstanceDef, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
@@ -168,7 +169,7 @@ impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'm
         match t.kind() {
             ty::FnPtr(_) => {}
             ty::Ref(_, _, hir::Mutability::Mut) => {
-                self.checker.check_op(ops::ty::MutRef(self.kind));
+                self.checker.check_op(ops::mut_ref::MutRef(self.kind));
                 t.super_visit_with(self)
             }
             _ => t.super_visit_with(self),
@@ -331,6 +332,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         if self.tcx.is_thread_local_static(def_id) {
             self.tcx.dcx().span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
+        if let Some(def_id) = def_id.as_local()
+            && let Err(guar) = self.tcx.at(span).check_well_formed(hir::OwnerId { def_id })
+        {
+            self.error_emitted = Some(guar);
+        }
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
@@ -409,7 +415,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         BorrowKind::Shared => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
                         }
-                        BorrowKind::Fake => {
+                        BorrowKind::Fake(_) => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::FakeBorrow)
                         }
                         BorrowKind::Mut { .. } => {
@@ -482,7 +488,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
+            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake(_), place)
             | Rvalue::AddressOf(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
@@ -574,7 +580,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -733,7 +739,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let cause = ObligationCause::new(
                     terminator.source_info.span,
                     self.body.source.def_id().expect_local(),
-                    ObligationCauseCode::ItemObligation(callee),
+                    ObligationCauseCode::WhereClause(callee, DUMMY_SP),
                 );
                 let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
                 ocx.register_obligations(traits::predicates_for_generics(

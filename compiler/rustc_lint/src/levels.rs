@@ -22,6 +22,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
     lint_level, reveal_actual_level, LevelAndSource, LintExpectation, LintLevelSource,

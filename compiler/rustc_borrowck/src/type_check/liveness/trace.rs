@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
@@ -64,7 +63,10 @@ pub(super) fn trace<'mir, 'tcx>(
         // Traverse each issuing region's constraints, and record the loan as flowing into the
         // outlived region.
         for (loan, issuing_region_data) in borrow_set.iter_enumerated() {
-            for succ in region_graph.depth_first_search(issuing_region_data.region) {
+            for succ in rustc_data_structures::graph::depth_first_search(
+                &region_graph,
+                issuing_region_data.region,
+            ) {
                 // We don't need to mention that a loan flows into its issuing region.
                 if succ == issuing_region_data.region {
                     continue;

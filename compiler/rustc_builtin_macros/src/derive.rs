@@ -3,14 +3,18 @@ use crate::errors;
 
 use rustc_ast as ast;
 use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
-use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
+use rustc_expand::base::{
+    Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
+};
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
 
-pub(crate) struct Expander(pub bool);
+pub(crate) struct Expander {
+    pub is_const: bool,
+}
 
 impl MultiItemModifier for Expander {
     fn expand(
@@ -58,7 +62,12 @@ impl MultiItemModifier for Expander {
                                 report_path_args(sess, meta);
                                 meta.path.clone()
                             })
-                            .map(|path| (path, dummy_annotatable(), None, self.0))
+                            .map(|path| DeriveResolution {
+                                path,
+                                item: dummy_annotatable(),
+                                exts: None,
+                                is_const: self.is_const,
+                            })
                             .collect()
                     }
                     _ => vec![],
@@ -67,15 +76,15 @@ impl MultiItemModifier for Expander {
                 // Do not configure or clone items unless necessary.
                 match &mut resolutions[..] {
                     [] => {}
-                    [(_, first_item, ..), others @ ..] => {
-                        *first_item = cfg_eval(
+                    [first, others @ ..] => {
+                        first.item = cfg_eval(
                             sess,
                             features,
                             item.clone(),
                             ecx.current_expansion.lint_node_id,
                         );
-                        for (_, item, _, _) in others {
-                            *item = first_item.clone();
+                        for other in others {
+                            other.item = first.item.clone();
                         }
                     }
                 }

@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                         cx,
                         IMPLICIT_HASHER,
                         target.span(),
-                        &format!(
+                        format!(
                             "impl for `{}` should be generalized over different hashers",
                             target.type_name()
                         ),
@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             cx,
                             IMPLICIT_HASHER,
                             target.span(),
-                            &format!(
+                            format!(
                                 "parameter of type `{}` should be generalized over different hashers",
                                 target.type_name()
                             ),

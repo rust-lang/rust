@@ -50,8 +50,6 @@ cfg_if::cfg_if! {
     } else {
         #[path = "../unsupported/thread.rs"]
         pub mod thread;
-        #[path = "../unsupported/thread_parking.rs"]
-        pub mod thread_parking;
     }
 }
 
