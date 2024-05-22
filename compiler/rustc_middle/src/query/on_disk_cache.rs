@@ -154,7 +154,10 @@ impl EncodedSourceFileId {
 
 impl<'sess> OnDiskCache<'sess> {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Option<Self> {
+    ///
+    /// The serialized cache has some basic integrity checks, if those checks indicate that the
+    /// on-disk data is corrupt, an error is returned.
+    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Result<Self, ()> {
         assert!(sess.opts.incremental.is_some());
 
         let mut decoder = MemDecoder::new(&data, start_pos)?;
@@ -169,7 +172,7 @@ impl<'sess> OnDiskCache<'sess> {
         let footer: Footer =
             decoder.with_position(footer_pos, |decoder| decode_tagged(decoder, TAG_FILE_FOOTER));
 
-        Some(Self {
+        Ok(Self {
             serialized_data: RwLock::new(Some(data)),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),

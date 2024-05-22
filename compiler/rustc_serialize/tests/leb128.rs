@@ -1,5 +1,6 @@
 use rustc_serialize::leb128::*;
 use rustc_serialize::opaque::MemDecoder;
+use rustc_serialize::opaque::MAGIC_END_BYTES;
 use rustc_serialize::Decoder;
 
 macro_rules! impl_test_unsigned_leb128 {
@@ -27,7 +28,7 @@ macro_rules! impl_test_unsigned_leb128 {
                 stream.extend(&buf[..n]);
             }
             let stream_end = stream.len();
-            stream.extend(b"rust-end-file");
+            stream.extend(MAGIC_END_BYTES);
 
             let mut decoder = MemDecoder::new(&stream, 0).unwrap();
             for &expected in &values {
@@ -76,7 +77,7 @@ macro_rules! impl_test_signed_leb128 {
                 stream.extend(&buf[..n]);
             }
             let stream_end = stream.len();
-            stream.extend(b"rust-end-file");
+            stream.extend(MAGIC_END_BYTES);
 
             let mut decoder = MemDecoder::new(&stream, 0).unwrap();
             for &expected in &values {

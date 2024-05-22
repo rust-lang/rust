@@ -115,7 +115,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
-            let Some(mut work_product_decoder) =
+            let Ok(mut work_product_decoder) =
                 MemDecoder::new(&work_products_data[..], start_pos)
             else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &work_products_path });
@@ -150,7 +150,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
         LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
         LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
         LoadResult::Ok { data: (bytes, start_pos) } => {
-            let Some(mut decoder) = MemDecoder::new(&bytes, start_pos) else {
+            let Ok(mut decoder) = MemDecoder::new(&bytes, start_pos) else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
@@ -192,7 +192,7 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
     let path = query_cache_path(sess);
     match load_data(&path, sess) {
         LoadResult::Ok { data: (bytes, start_pos) } => {
-            let cache = OnDiskCache::new(sess, bytes, start_pos).unwrap_or_else(|| {
+            let cache = OnDiskCache::new(sess, bytes, start_pos).unwrap_or_else(|()| {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 OnDiskCache::new_empty(sess.source_map())
             });

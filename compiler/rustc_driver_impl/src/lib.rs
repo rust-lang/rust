@@ -654,7 +654,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                         })
                     }
                     CodegenErrors::CorruptFile => {
-                        dcx.emit_fatal(RlinkCorruptFile { file: file.display().to_string() });
+                        dcx.emit_fatal(RlinkCorruptFile { file });
                     }
                 };
             }

@@ -266,7 +266,7 @@ impl CodegenResults {
             });
         }
 
-        let Some(mut decoder) = MemDecoder::new(&data[4..], 0) else {
+        let Ok(mut decoder) = MemDecoder::new(&data[4..], 0) else {
             return Err(CodegenErrors::CorruptFile);
         };
         let rustc_version = decoder.read_str();

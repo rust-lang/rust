@@ -54,10 +54,13 @@ impl std::ops::Deref for MetadataBlob {
 }
 
 impl MetadataBlob {
-    pub fn new(slice: OwnedSlice) -> Option<Self> {
-        if MemDecoder::new(&*slice, 0).is_some() { Some(Self(slice)) } else { None }
+    /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`MetadataBlob`].
+    pub fn new(slice: OwnedSlice) -> Result<Self, ()> {
+        if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
     }
 
+    /// Since this has passed the validation of [`MetadataBlob::new`], this returns bytes which are
+    /// known to pass the [`MemDecoder`] validation.
     pub fn bytes(&self) -> &OwnedSlice {
         &self.0
     }
