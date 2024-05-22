@@ -401,6 +401,45 @@ impl<'tcx> CoroutineClosureArgs<'tcx> {
     pub fn coroutine_witness_ty(self) -> Ty<'tcx> {
         self.split().coroutine_witness_ty
     }
+
+    pub fn has_self_borrows(&self) -> bool {
+        match self.coroutine_captures_by_ref_ty().kind() {
+            ty::FnPtr(sig) => sig
+                .skip_binder()
+                .visit_with(&mut HasRegionsBoundAt { binder: ty::INNERMOST })
+                .is_break(),
+            ty::Error(_) => true,
+            _ => bug!(),
+        }
+    }
+}
+/// Unlike `has_escaping_bound_vars` or `outermost_exclusive_binder`, this will
+/// detect only regions bound *at* the debruijn index.
+struct HasRegionsBoundAt {
+    binder: ty::DebruijnIndex,
+}
+// FIXME: Could be optimized to not walk into components with no escaping bound vars.
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRegionsBoundAt {
+    type Result = ControlFlow<()>;
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> Self::Result {
+        self.binder.shift_in(1);
+        t.super_visit_with(self)?;
+        self.binder.shift_out(1);
+        ControlFlow::Continue(())
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
+        if let ty::ReBound(binder, _) = *r
+            && self.binder == binder
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
