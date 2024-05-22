@@ -22,7 +22,7 @@ note: the crate import `core` is defined here
 LL |         extern crate core;
    |         ^^^^^^^^^^^^^^^^^^
 
-error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+error[E0365]: extern crate `core` is private, and cannot be re-exported, consider declaring with `pub`
   --> $DIR/pub-reexport-priv-extern-crate.rs:2:9
    |
 LL | pub use core as reexported_core;
@@ -34,4 +34,5 @@ LL | pub use core as reexported_core;
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0603`.
+Some errors have detailed explanations: E0365, E0603.
+For more information about an error, try `rustc --explain E0365`.
