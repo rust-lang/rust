@@ -230,6 +230,7 @@ mod spurious_read {
     /// - any access to the same location
     /// - end of one of them being protected
     /// - a retag that would change their relative position
+    ///
     /// The type `TestEvent` models these kinds of events.
     ///
     /// In order to prevent `x` or `y` from losing their protector,

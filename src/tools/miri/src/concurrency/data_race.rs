@@ -1106,9 +1106,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     /// Temporarily allow data-races to occur. This should only be used in
     /// one of these cases:
     /// - One of the appropriate `validate_atomic` functions will be called to
-    /// to treat a memory access as atomic.
+    ///   treat a memory access as atomic.
     /// - The memory being accessed should be treated as internal state, that
-    /// cannot be accessed by the interpreted program.
+    ///   cannot be accessed by the interpreted program.
     /// - Execution of the interpreted program execution has halted.
     #[inline]
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriInterpCx<'mir, 'tcx>) -> R) -> R {
