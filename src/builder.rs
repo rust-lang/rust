@@ -253,6 +253,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         self.context.new_cast(self.location, actual_val, expected_ty)
                     } else if on_stack_param_indices.contains(&index) {
                         let ty = actual_val.get_type();
+                        // It's possible that the value behind the pointer is actually not exactly
+                        // the expected type, so to go around that, we add a cast before
+                        // dereferencing the value.
                         if let Some(pointee_val) = ty.get_pointee()
                             && pointee_val != expected_ty
                         {
