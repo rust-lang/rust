@@ -84,84 +84,44 @@ pub enum MalformedGenerics {
 
 /// Removes excess indentation on comments in order for the Markdown
 /// to be parsed correctly. This is necessary because the convention for
-/// writing documentation is to provide a space between the /// or //! marker
+/// writing documentation is to provide a space between the `///` or `//!` marker
 /// and the doc text, but Markdown is whitespace-sensitive. For example,
 /// a block of text with four-space indentation is parsed as a code block,
 /// so if we didn't unindent comments, these list items
 ///
+/// ```
 /// /// A list:
 /// ///
 /// ///    - Foo
 /// ///    - Bar
+/// # fn foo() {}
+/// ```
 ///
 /// would be parsed as if they were in a code block, which is likely not what the user intended.
 pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
-    // `add` is used in case the most common sugared doc syntax is used ("/// "). The other
-    // fragments kind's lines are never starting with a whitespace unless they are using some
-    // markdown formatting requiring it. Therefore, if the doc block have a mix between the two,
-    // we need to take into account the fact that the minimum indent minus one (to take this
-    // whitespace into account).
-    //
-    // For example:
-    //
-    // /// hello!
-    // #[doc = "another"]
-    //
-    // In this case, you want "hello! another" and not "hello!  another".
-    let add = if docs.windows(2).any(|arr| arr[0].kind != arr[1].kind)
-        && docs.iter().any(|d| d.kind == DocFragmentKind::SugaredDoc)
-    {
-        // In case we have a mix of sugared doc comments and "raw" ones, we want the sugared one to
-        // "decide" how much the minimum indent will be.
-        1
-    } else {
-        0
-    };
-
-    // `min_indent` is used to know how much whitespaces from the start of each lines must be
-    // removed. Example:
-    //
-    // ///     hello!
-    // #[doc = "another"]
-    //
-    // In here, the `min_indent` is 1 (because non-sugared fragment are always counted with minimum
-    // 1 whitespace), meaning that "hello!" will be considered a codeblock because it starts with 4
-    // (5 - 1) whitespaces.
-    let Some(min_indent) = docs
+    // Only sugared docs have the concept of indentation.
+    // We assume the docs overall are indented by the amount that the least-indented line is indented.
+    // Raw docs are taken literally.
+    let min_indent = docs
         .iter()
-        .map(|fragment| {
-            fragment
-                .doc
-                .as_str()
-                .lines()
-                .filter(|line| line.chars().any(|c| !c.is_whitespace()))
-                .map(|line| {
-                    // Compare against either space or tab, ignoring whether they are
-                    // mixed or not.
-                    let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
-                    whitespace
-                        + (if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add })
-                })
-                .min()
-                .unwrap_or(usize::MAX)
-        })
+        .filter(|frag| frag.kind == DocFragmentKind::SugaredDoc)
+        .flat_map(|frag| frag.doc.as_str().lines())
+        .filter(|line| line.chars().any(|c| !c.is_whitespace()))
+        // FIXME: we should be more careful when spaces and tabs are mixed
+        .map(|line| line.chars().take_while(|c| *c == ' ' || *c == '\t').count())
         .min()
-    else {
-        return;
-    };
+        .unwrap_or(0);
 
     for fragment in docs {
         if fragment.doc == kw::Empty {
             continue;
         }
 
-        let indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
-            min_indent - add
-        } else {
-            min_indent
+        fragment.indent = match fragment.kind {
+            // Raw docs are taken literally.
+            DocFragmentKind::RawDoc => 0,
+            DocFragmentKind::SugaredDoc => min_indent,
         };
-
-        fragment.indent = indent;
     }
 }
 
@@ -171,6 +131,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
 ///
 /// Note: remove the trailing newline where appropriate
 pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
+    debug!("add_doc_fragment: {:?}", frag);
     if frag.doc == kw::Empty {
         out.push('\n');
         return;
