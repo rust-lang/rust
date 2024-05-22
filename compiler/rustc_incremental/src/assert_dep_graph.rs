@@ -49,10 +49,10 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-
 use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
+use tracing::debug;
 
 #[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {

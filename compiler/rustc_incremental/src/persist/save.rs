@@ -11,6 +11,7 @@ use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
 use std::sync::Arc;
+use tracing::debug;
 
 use super::data::*;
 use super::dirty_clean;
