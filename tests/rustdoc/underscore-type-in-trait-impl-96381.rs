@@ -1,4 +1,5 @@
 //@ should-fail
+// https://github.com/rust-lang/rust/issues/96381
 
 #![allow(unused)]
 

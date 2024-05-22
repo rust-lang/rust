@@ -1,4 +1,6 @@
 // This test ensure that #[doc(hidden)] is applied correctly in enum variant fields.
+// https://github.com/rust-lang/rust/issues/88600
+#![crate_name = "foo"]
 
 // Denotes a field which should be hidden.
 pub struct H;
@@ -6,7 +8,7 @@ pub struct H;
 // Denotes a field which should not be hidden (shown).
 pub struct S;
 
-// @has issue_88600/enum.FooEnum.html
+// @has foo/enum.FooEnum.html
 pub enum FooEnum {
     // @has - '//*[@id="variant.HiddenTupleItem"]//h3' 'HiddenTupleItem(/* private fields */)'
     // @count - '//*[@id="variant.HiddenTupleItem.field.0"]' 0
