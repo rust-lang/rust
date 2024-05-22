@@ -153,7 +153,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_panic(&self, expr_str: &str, panic_path: Path) -> P<Expr> {
         let escaped_expr_str = escape_to_fmt(expr_str);
         let initial = [
-            TokenTree::token_joint_hidden(
+            TokenTree::token_joint(
                 token::Literal(token::Lit {
                     kind: token::LitKind::Str,
                     symbol: Symbol::intern(&if self.fmt_string.is_empty() {
@@ -172,7 +172,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         ];
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
-                TokenTree::token_joint_hidden(
+                TokenTree::token_joint(
                     token::Ident(cap.ident.name, IdentIsRaw::No),
                     cap.ident.span,
                 ),

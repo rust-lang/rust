@@ -253,8 +253,23 @@ pub(super) fn transcribe<'a>(
             mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
+                //
+                // We use `Spacing::Alone` everywhere here, because that's the conservative choice
+                // and spacing of declarative macros is tricky. E.g. in this macro:
+                // ```
+                // macro_rules! idents {
+                //     ($($a:ident,)*) => { stringify!($($a)*) }
+                // }
+                // ```
+                // `$a` has no whitespace after it and will be marked `JointHidden`. If you then
+                // call `idents!(x,y,z,)`, each of `x`, `y`, and `z` will be marked as `Joint`. So
+                // if you choose to use `$x`'s spacing or the identifier's spacing, you'll end up
+                // producing "xyz", which is bad because it effectively merges tokens.
+                // `Spacing::Alone` is the safer option. Fortunately, `space_between` will avoid
+                // some of the unnecessary whitespace.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
+                    // njn: explain the use of alone here
                     let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
