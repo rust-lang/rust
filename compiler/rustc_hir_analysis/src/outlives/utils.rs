@@ -9,7 +9,7 @@ use smallvec::smallvec;
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
 pub(crate) type RequiredPredicates<'tcx> =
-    FxIndexMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, Span>;
+    FxIndexMap<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>, Span>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`

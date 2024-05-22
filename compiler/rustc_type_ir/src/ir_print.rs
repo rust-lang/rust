@@ -1,8 +1,9 @@
 use std::fmt;
 
 use crate::{
-    AliasTerm, AliasTy, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    Interner, NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
+    Interner, NormalizesTo, OutlivesPredicate, ProjectionPredicate, SubtypePredicate,
+    TraitPredicate, TraitRef,
 };
 
 pub trait IrPrint<T> {
@@ -19,6 +20,15 @@ macro_rules! define_display_via_print {
                 }
             }
         )*
+    }
+}
+
+impl<I: Interner, T> fmt::Display for Binder<I, T>
+where
+    I: IrPrint<Binder<I, T>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Binder<I, T>>>::print(self, fmt)
     }
 }
 
@@ -49,3 +59,12 @@ define_display_via_print!(
 );
 
 define_debug_via_print!(TraitRef, ExistentialTraitRef, ExistentialProjection);
+
+impl<I: Interner, T> fmt::Display for OutlivesPredicate<I, T>
+where
+    I: IrPrint<OutlivesPredicate<I, T>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<OutlivesPredicate<I, T>>>::print(self, fmt)
+    }
+}

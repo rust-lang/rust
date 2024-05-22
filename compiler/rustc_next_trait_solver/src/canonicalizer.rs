@@ -217,10 +217,9 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
         self.infcx.interner()
     }
 
-    fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
     where
         T: TypeFoldable<I>,
-        I::Binder<T>: TypeSuperFoldable<I>,
     {
         self.binder_index.shift_in(1);
         let t = t.super_fold_with(self);
@@ -455,10 +454,9 @@ impl<I: Interner> TypeFolder<I> for RegionsToStatic<I> {
         self.interner
     }
 
-    fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
     where
         T: TypeFoldable<I>,
-        I::Binder<T>: TypeSuperFoldable<I>,
     {
         self.binder.shift_in(1);
         let t = t.super_fold_with(self);

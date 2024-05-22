@@ -5,7 +5,7 @@ use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::ConstKind::*;
 
@@ -29,7 +29,7 @@ pub enum ConstKind<I: Interner> {
     /// An unnormalized const item such as an anon const or assoc const or free const item.
     /// Right now anything other than anon consts does not actually work properly but this
     /// should
-    Unevaluated(I::AliasConst),
+    Unevaluated(ty::UnevaluatedConst<I>),
 
     /// Used to hold computed value.
     Value(I::ValueConst),

@@ -47,7 +47,8 @@ use crate::infer::InferCtxtExt as _;
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, with_no_trimmed_paths, PrintTraitPredicateExt as _,
+    with_forced_trimmed_paths, with_no_trimmed_paths, PrintPolyTraitPredicateExt as _,
+    PrintTraitPredicateExt as _,
 };
 
 use itertools::EitherOrBoth;
