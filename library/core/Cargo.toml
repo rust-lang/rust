@@ -36,3 +36,16 @@ optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when
 # a borrow error occurs
 debug_refcell = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+# x.py uses beta cargo, so `check-cfg` entries do not yet take effect
+# for rust-lang/rust. But for users of `-Zbuild-std` it does.
+# The unused warning is waiting for rust-lang/cargo#13925 to reach beta.
+check-cfg = [
+    'cfg(bootstrap)',
+    'cfg(no_fp_fmt_parse)',
+    'cfg(stdarch_intel_sde)',
+    # This matches `EXTRA_CHECK_CFGS` in `src/bootstrap/src/lib.rs`.
+    'cfg(feature, values(any()))',
+]

@@ -97,3 +97,13 @@ heap_size = 0x8000000
 name = "stdbenches"
 path = "benches/lib.rs"
 test = true
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(bootstrap)',
+    'cfg(backtrace_in_libstd)',
+    'cfg(netbsd10)',
+    'cfg(target_arch, values("xtensa"))',
+    'cfg(feature, values("std", "as_crate"))',
+]
