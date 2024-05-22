@@ -1521,7 +1521,7 @@ mod foo {
 }
 "#,
             r#"
-use crate::foo::Bool;
+use foo::Bool;
 
 fn main() {
     use foo::FOO;
@@ -1602,7 +1602,7 @@ pub mod bar {
 "#,
             r#"
 //- /main.rs
-use crate::foo::bar::Bool;
+use foo::bar::Bool;
 
 mod foo;
 

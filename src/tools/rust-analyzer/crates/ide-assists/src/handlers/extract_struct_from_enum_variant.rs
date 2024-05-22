@@ -881,7 +881,7 @@ fn another_fn() {
             r#"use my_mod::my_other_mod::MyField;
 
 mod my_mod {
-    use self::my_other_mod::MyField;
+    use my_other_mod::MyField;
 
     fn another_fn() {
         let m = my_other_mod::MyEnum::MyField(MyField(1, 1));

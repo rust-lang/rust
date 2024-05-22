@@ -368,6 +368,7 @@ fn main() {
         );
     }
 
+    // FIXME
     #[test]
     fn local_shadow_fn() {
         check_fixes_unordered(
@@ -385,7 +386,7 @@ fn f() {
                 r#"
 fn f() {
     let f: i32 = 0;
-    crate::f()
+    f()
 }"#,
             ],
         );

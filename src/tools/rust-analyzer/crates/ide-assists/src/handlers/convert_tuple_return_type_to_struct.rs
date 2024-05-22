@@ -811,7 +811,7 @@ pub mod bar {
 "#,
             r#"
 //- /main.rs
-use crate::foo::bar::BarResult;
+use foo::bar::BarResult;
 
 mod foo;
 
