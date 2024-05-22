@@ -13,7 +13,7 @@ use either::Either;
 use hir_def::{
     data::adt::VariantData,
     db::DefDatabase,
-    find_path,
+    find_path::{self, PrefixKind},
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_scope::ItemInNs,
     lang_item::{LangItem, LangItemTarget},
@@ -999,6 +999,8 @@ impl HirDisplay for Ty {
                             db.upcast(),
                             ItemInNs::Types((*def_id).into()),
                             module_id,
+                            PrefixKind::Plain,
+                            false,
                             false,
                             true,
                         ) {

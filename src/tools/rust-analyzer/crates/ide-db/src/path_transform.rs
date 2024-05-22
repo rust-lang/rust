@@ -308,7 +308,7 @@ impl Ctx<'_> {
                             parent.segment()?.name_ref()?,
                         )
                         .and_then(|trait_ref| {
-                            let found_path = self.target_module.find_use_path(
+                            let found_path = self.target_module.find_path(
                                 self.source_scope.db.upcast(),
                                 hir::ModuleDef::Trait(trait_ref),
                                 false,
@@ -347,7 +347,7 @@ impl Ctx<'_> {
                     }
                 }
 
-                let found_path = self.target_module.find_use_path(
+                let found_path = self.target_module.find_path(
                     self.source_scope.db.upcast(),
                     def,
                     false,
@@ -385,7 +385,7 @@ impl Ctx<'_> {
 
                 if let Some(adt) = ty.as_adt() {
                     if let ast::Type::PathType(path_ty) = &ast_ty {
-                        let found_path = self.target_module.find_use_path(
+                        let found_path = self.target_module.find_path(
                             self.source_scope.db.upcast(),
                             ModuleDef::from(adt),
                             false,

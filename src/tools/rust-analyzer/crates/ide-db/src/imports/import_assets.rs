@@ -638,7 +638,7 @@ fn get_mod_path(
     prefer_prelude: bool,
 ) -> Option<ModPath> {
     if let Some(prefix_kind) = prefixed {
-        module_with_candidate.find_use_path_prefixed(
+        module_with_candidate.find_use_path(
             db,
             item_to_search,
             prefix_kind,
@@ -646,7 +646,7 @@ fn get_mod_path(
             prefer_prelude,
         )
     } else {
-        module_with_candidate.find_use_path(db, item_to_search, prefer_no_std, prefer_prelude)
+        module_with_candidate.find_path(db, item_to_search, prefer_no_std, prefer_prelude)
     }
 }
 

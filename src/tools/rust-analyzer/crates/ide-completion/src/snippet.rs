@@ -174,7 +174,7 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<V
             hir::PathResolution::Def(def) => def.into(),
             _ => return None,
         };
-        let path = ctx.module.find_use_path_prefixed(
+        let path = ctx.module.find_use_path(
             ctx.db,
             item,
             ctx.config.insert_use.prefix_kind,

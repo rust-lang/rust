@@ -333,7 +333,7 @@ pub(crate) fn render_expr(
     });
     for trait_ in expr.traits_used(ctx.db) {
         let trait_item = hir::ItemInNs::from(hir::ModuleDef::from(trait_));
-        let Some(path) = ctx.module.find_use_path(
+        let Some(path) = ctx.module.find_path(
             ctx.db,
             trait_item,
             ctx.config.prefer_no_std,

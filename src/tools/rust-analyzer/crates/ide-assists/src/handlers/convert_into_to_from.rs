@@ -50,7 +50,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
             _ => return None,
         };
 
-        mod_path_to_ast(&module.find_use_path(
+        mod_path_to_ast(&module.find_path(
             ctx.db(),
             src_type_def,
             ctx.config.prefer_no_std,

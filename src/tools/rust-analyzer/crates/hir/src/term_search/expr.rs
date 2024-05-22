@@ -1,6 +1,5 @@
 //! Type tree for term search
 
-use hir_def::find_path::PrefixKind;
 use hir_expand::mod_path::ModPath;
 use hir_ty::{
     db::HirDatabase,
@@ -21,28 +20,8 @@ fn mod_item_path(
     prefer_prelude: bool,
 ) -> Option<ModPath> {
     let db = sema_scope.db;
-    // Account for locals shadowing items from module
-    let name_hit_count = def.name(db).map(|def_name| {
-        let mut name_hit_count = 0;
-        sema_scope.process_all_names(&mut |name, _| {
-            if name == def_name {
-                name_hit_count += 1;
-            }
-        });
-        name_hit_count
-    });
-
     let m = sema_scope.module();
-    match name_hit_count {
-        Some(0..=1) | None => m.find_use_path(db.upcast(), *def, prefer_no_std, prefer_prelude),
-        Some(_) => m.find_use_path_prefixed(
-            db.upcast(),
-            *def,
-            PrefixKind::ByCrate,
-            prefer_no_std,
-            prefer_prelude,
-        ),
-    }
+    m.find_path(db.upcast(), *def, prefer_no_std, prefer_prelude)
 }
 
 /// Helper function to get path to `ModuleDef` as string

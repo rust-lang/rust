@@ -260,7 +260,7 @@ pub fn resolve_completion_edits(
         );
         let import = items_with_name
             .filter_map(|candidate| {
-                current_module.find_use_path_prefixed(
+                current_module.find_use_path(
                     db,
                     candidate,
                     config.insert_use.prefix_kind,

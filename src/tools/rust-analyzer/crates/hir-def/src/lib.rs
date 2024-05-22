@@ -106,6 +106,9 @@ use crate::{
     },
 };
 
+type FxIndexMap<K, V> =
+    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+
 #[derive(Debug)]
 pub struct ItemLoc<N: ItemTreeNode> {
     pub container: ModuleId,
@@ -454,6 +457,26 @@ impl ModuleId {
 
     pub fn is_block_module(self) -> bool {
         self.block.is_some() && self.local_id == DefMap::ROOT
+    }
+
+    pub fn is_within_block(self) -> bool {
+        self.block.is_some()
+    }
+
+    pub fn as_crate_root(&self) -> Option<CrateRootModuleId> {
+        if self.local_id == DefMap::ROOT && self.block.is_none() {
+            Some(CrateRootModuleId { krate: self.krate })
+        } else {
+            None
+        }
+    }
+
+    pub fn derive_crate_root(&self) -> CrateRootModuleId {
+        CrateRootModuleId { krate: self.krate }
+    }
+
+    fn is_crate_root(&self) -> bool {
+        self.local_id == DefMap::ROOT && self.block.is_none()
     }
 }
 

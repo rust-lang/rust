@@ -1,6 +1,9 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::{cmp::Ordering, iter};
+use std::{
+    cmp::Ordering,
+    iter::{self, once},
+};
 
 use hir_expand::{
     name::{known, AsName, Name},
@@ -14,7 +17,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, PathKind},
     visibility::{Visibility, VisibilityExplicitness},
-    CrateRootModuleId, ModuleDefId, ModuleId,
+    ModuleDefId, ModuleId,
 };
 
 /// Find a path that can be used to refer to a certain item. This can depend on
@@ -23,26 +26,20 @@ pub fn find_path(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
+    prefix_kind: PrefixKind,
+    ignore_local_imports: bool,
     prefer_no_std: bool,
     prefer_prelude: bool,
 ) -> Option<ModPath> {
     let _p = tracing::span!(tracing::Level::INFO, "find_path").entered();
-    find_path_inner(FindPathCtx { db, prefixed: None, prefer_no_std, prefer_prelude }, item, from)
-}
-
-/// Find a path that can be used to refer to a certain item. This can depend on
-/// *from where* you're referring to the item, hence the `from` parameter.
-pub fn find_path_prefixed(
-    db: &dyn DefDatabase,
-    item: ItemInNs,
-    from: ModuleId,
-    prefix_kind: PrefixKind,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
-) -> Option<ModPath> {
-    let _p = tracing::span!(tracing::Level::INFO, "find_path_prefixed").entered();
     find_path_inner(
-        FindPathCtx { db, prefixed: Some(prefix_kind), prefer_no_std, prefer_prelude },
+        FindPathCtx {
+            db,
+            prefix: prefix_kind,
+            prefer_no_std,
+            prefer_prelude,
+            ignore_local_imports,
+        },
         item,
         from,
     )
@@ -70,7 +67,7 @@ pub enum PrefixKind {
     /// This is the same as plain, just that paths will start with `self` prepended if the path
     /// starts with an identifier that is not a crate.
     BySelf,
-    /// Causes paths to ignore imports in the local module.
+    /// Causes paths to not use a self, super or crate prefix.
     Plain,
     /// Causes paths to start with `crate` where applicable, effectively forcing paths to be absolute.
     ByCrate,
@@ -78,37 +75,33 @@ pub enum PrefixKind {
 
 impl PrefixKind {
     #[inline]
-    fn prefix(self) -> PathKind {
+    fn path_kind(self) -> PathKind {
         match self {
             PrefixKind::BySelf => PathKind::Super(0),
             PrefixKind::Plain => PathKind::Plain,
             PrefixKind::ByCrate => PathKind::Crate,
         }
     }
-
-    #[inline]
-    fn is_absolute(&self) -> bool {
-        self == &PrefixKind::ByCrate
-    }
 }
 
 #[derive(Copy, Clone)]
 struct FindPathCtx<'db> {
     db: &'db dyn DefDatabase,
-    prefixed: Option<PrefixKind>,
+    prefix: PrefixKind,
     prefer_no_std: bool,
     prefer_prelude: bool,
+    ignore_local_imports: bool,
 }
 
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
 fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     // - if the item is a builtin, it's in scope
     if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
-        return Some(ModPath::from_segments(PathKind::Plain, Some(builtin.as_name())));
+        return Some(ModPath::from_segments(PathKind::Plain, once(builtin.as_name())));
     }
 
     let def_map = from.def_map(ctx.db);
-    let crate_root = def_map.crate_root();
+    let crate_root = from.derive_crate_root();
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
@@ -119,7 +112,6 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
             },
             &def_map,
             &mut visited_modules,
-            crate_root,
             from,
             module_id,
             MAX_PATH_LEN,
@@ -127,11 +119,20 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
         .map(|(item, _)| item);
     }
 
-    // - if the item is already in scope, return the name under which it is
-    let scope_name = find_in_scope(ctx.db, &def_map, from, item);
-    if ctx.prefixed.is_none() {
+    let prefix = if item.module(ctx.db).is_some_and(|it| it.is_within_block()) {
+        PrefixKind::Plain
+    } else {
+        ctx.prefix
+    };
+    let may_be_in_scope = match prefix {
+        PrefixKind::Plain | PrefixKind::BySelf => true,
+        PrefixKind::ByCrate => from.is_crate_root(),
+    };
+    if may_be_in_scope {
+        // - if the item is already in scope, return the name under which it is
+        let scope_name = find_in_scope(ctx.db, &def_map, from, item, ctx.ignore_local_imports);
         if let Some(scope_name) = scope_name {
-            return Some(ModPath::from_segments(PathKind::Plain, Some(scope_name)));
+            return Some(ModPath::from_segments(prefix.path_kind(), Some(scope_name)));
         }
     }
 
@@ -164,11 +165,9 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
         },
         &def_map,
         &mut visited_modules,
-        crate_root,
         MAX_PATH_LEN,
         item,
         from,
-        scope_name,
     )
     .map(|(item, _)| item)
 }
@@ -178,7 +177,6 @@ fn find_path_for_module(
     ctx: FindPathCtx<'_>,
     def_map: &DefMap,
     visited_modules: &mut FxHashSet<ModuleId>,
-    crate_root: CrateRootModuleId,
     from: ModuleId,
     module_id: ModuleId,
     max_len: usize,
@@ -187,38 +185,25 @@ fn find_path_for_module(
         return None;
     }
 
-    // Base cases:
-    // - if the item is already in scope, return the name under which it is
-    let scope_name = find_in_scope(ctx.db, def_map, from, ItemInNs::Types(module_id.into()));
-    if ctx.prefixed.is_none() {
-        if let Some(scope_name) = scope_name {
-            return Some((ModPath::from_segments(PathKind::Plain, Some(scope_name)), Stable));
-        }
-    }
-
+    let is_crate_root = module_id.as_crate_root();
     // - if the item is the crate root, return `crate`
-    if module_id == crate_root {
+    if is_crate_root.is_some_and(|it| it == from.derive_crate_root()) {
         return Some((ModPath::from_segments(PathKind::Crate, None), Stable));
     }
 
-    // - if relative paths are fine, check if we are searching for a parent
-    if ctx.prefixed.filter(PrefixKind::is_absolute).is_none() {
-        if let modpath @ Some(_) = find_self_super(def_map, module_id, from) {
-            return modpath.zip(Some(Stable));
-        }
-    }
-
+    let root_def_map = from.derive_crate_root().def_map(ctx.db);
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
-    let root_def_map = crate_root.def_map(ctx.db);
-    for (name, (def_id, _extern_crate)) in root_def_map.extern_prelude() {
-        if module_id == def_id {
-            let name = scope_name.unwrap_or_else(|| name.clone());
-
+    if let Some(crate_root) = is_crate_root {
+        // rev here so we prefer looking at renamed extern decls first
+        for (name, (def_id, _extern_crate)) in root_def_map.extern_prelude().rev() {
+            if crate_root != def_id {
+                continue;
+            }
             let name_already_occupied_in_type_ns = def_map
                 .with_ancestor_maps(ctx.db, from.local_id, &mut |def_map, local_id| {
                     def_map[local_id]
                         .scope
-                        .type_(&name)
+                        .type_(name)
                         .filter(|&(id, _)| id != ModuleDefId::ModuleId(def_id.into()))
                 })
                 .is_some();
@@ -228,24 +213,48 @@ fn find_path_for_module(
             } else {
                 PathKind::Plain
             };
-            return Some((ModPath::from_segments(kind, Some(name)), Stable));
+            return Some((ModPath::from_segments(kind, once(name.clone())), Stable));
+        }
+    }
+    let prefix = if module_id.is_within_block() { PrefixKind::Plain } else { ctx.prefix };
+    let may_be_in_scope = match prefix {
+        PrefixKind::Plain | PrefixKind::BySelf => true,
+        PrefixKind::ByCrate => from.is_crate_root(),
+    };
+    if may_be_in_scope {
+        let scope_name = find_in_scope(
+            ctx.db,
+            def_map,
+            from,
+            ItemInNs::Types(module_id.into()),
+            ctx.ignore_local_imports,
+        );
+        if let Some(scope_name) = scope_name {
+            // - if the item is already in scope, return the name under which it is
+            return Some((ModPath::from_segments(prefix.path_kind(), once(scope_name)), Stable));
         }
     }
 
-    if let value @ Some(_) =
+    // - if the module can be referenced as self, super or crate, do that
+    if let Some(mod_path) = is_kw_kind_relative_to_from(def_map, module_id, from) {
+        if ctx.prefix != PrefixKind::ByCrate || mod_path.kind == PathKind::Crate {
+            return Some((mod_path, Stable));
+        }
+    }
+
+    // - if the module is in the prelude, return it by that path
+    if let Some(mod_path) =
         find_in_prelude(ctx.db, &root_def_map, def_map, ItemInNs::Types(module_id.into()), from)
     {
-        return value.zip(Some(Stable));
+        return Some((mod_path, Stable));
     }
     calculate_best_path(
         ctx,
         def_map,
         visited_modules,
-        crate_root,
         max_len,
         ItemInNs::Types(module_id.into()),
         from,
-        scope_name,
     )
 }
 
@@ -255,9 +264,13 @@ fn find_in_scope(
     def_map: &DefMap,
     from: ModuleId,
     item: ItemInNs,
+    ignore_local_imports: bool,
 ) -> Option<Name> {
+    // FIXME: We could have multiple applicable names here, but we currently only return the first
     def_map.with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
-        def_map[local_id].scope.names_of(item, |name, _, _| Some(name.clone()))
+        def_map[local_id].scope.names_of(item, |name, _, declared| {
+            (declared || !ignore_local_imports).then(|| name.clone())
+        })
     })
 }
 
@@ -292,21 +305,32 @@ fn find_in_prelude(
         });
 
     if found_and_same_def.unwrap_or(true) {
-        Some(ModPath::from_segments(PathKind::Plain, Some(name.clone())))
+        Some(ModPath::from_segments(PathKind::Plain, once(name.clone())))
     } else {
         None
     }
 }
 
-fn find_self_super(def_map: &DefMap, item: ModuleId, from: ModuleId) -> Option<ModPath> {
+fn is_kw_kind_relative_to_from(
+    def_map: &DefMap,
+    item: ModuleId,
+    from: ModuleId,
+) -> Option<ModPath> {
+    if item.krate != from.krate || item.is_within_block() || from.is_within_block() {
+        return None;
+    }
+    let item = item.local_id;
+    let from = from.local_id;
     if item == from {
         // - if the item is the module we're in, use `self`
         Some(ModPath::from_segments(PathKind::Super(0), None))
-    } else if let Some(parent_id) = def_map[from.local_id].parent {
-        // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
-        let parent_id = def_map.module_id(parent_id);
+    } else if let Some(parent_id) = def_map[from].parent {
         if item == parent_id {
-            Some(ModPath::from_segments(PathKind::Super(1), None))
+            // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
+            Some(ModPath::from_segments(
+                if parent_id == DefMap::ROOT { PathKind::Crate } else { PathKind::Super(1) },
+                None,
+            ))
         } else {
             None
         }
@@ -320,11 +344,9 @@ fn calculate_best_path(
     ctx: FindPathCtx<'_>,
     def_map: &DefMap,
     visited_modules: &mut FxHashSet<ModuleId>,
-    crate_root: CrateRootModuleId,
     max_len: usize,
     item: ItemInNs,
     from: ModuleId,
-    scope_name: Option<Name>,
 ) -> Option<(ModPath, Stability)> {
     if max_len <= 1 {
         return None;
@@ -346,14 +368,12 @@ fn calculate_best_path(
         // dependency in this case.
         for (module_id, name) in find_local_import_locations(ctx.db, item, from) {
             if !visited_modules.insert(module_id) {
-                cov_mark::hit!(recursive_imports);
                 continue;
             }
             if let Some(mut path) = find_path_for_module(
                 ctx,
                 def_map,
                 visited_modules,
-                crate_root,
                 from,
                 module_id,
                 best_path_len - 1,
@@ -390,7 +410,6 @@ fn calculate_best_path(
                     ctx,
                     def_map,
                     visited_modules,
-                    crate_root,
                     from,
                     info.container,
                     max_len - 1,
@@ -418,19 +437,7 @@ fn calculate_best_path(
             }
         }
     }
-    let mut prefixed = ctx.prefixed;
-    if let Some(module) = item.module(ctx.db) {
-        if module.containing_block().is_some() && ctx.prefixed.is_some() {
-            cov_mark::hit!(prefixed_in_block_expression);
-            prefixed = Some(PrefixKind::Plain);
-        }
-    }
-    match prefixed.map(PrefixKind::prefix) {
-        Some(prefix) => best_path.or_else(|| {
-            scope_name.map(|scope_name| (ModPath::from_segments(prefix, Some(scope_name)), Stable))
-        }),
-        None => best_path,
-    }
+    best_path
 }
 
 /// Select the best (most relevant) path between two paths.
@@ -535,7 +542,6 @@ fn find_local_import_locations(
         if !seen.insert(module) {
             continue; // already processed this module
         }
-
         let ext_def_map;
         let data = if module.krate == from.krate {
             if module.block.is_some() {
@@ -571,7 +577,7 @@ fn find_local_import_locations(
                 // what the user wants; and if this module can import
                 // the item and we're a submodule of it, so can we.
                 // Also this keeps the cached data smaller.
-                if is_pub_or_explicit || declared {
+                if declared || is_pub_or_explicit {
                     locations.push((module, name.clone()));
                 }
             }
@@ -590,7 +596,10 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::{expect, Expect};
     use hir_expand::db::ExpandDatabase;
+    use itertools::Itertools;
+    use stdx::format_to;
     use syntax::ast::AstNode;
     use test_fixture::WithFixture;
 
@@ -602,12 +611,7 @@ mod tests {
     /// item the `path` refers to returns that same path when called from the
     /// module the cursor is in.
     #[track_caller]
-    fn check_found_path_(
-        ra_fixture: &str,
-        path: &str,
-        prefix_kind: Option<PrefixKind>,
-        prefer_prelude: bool,
-    ) {
+    fn check_found_path_(ra_fixture: &str, path: &str, prefer_prelude: bool, expect: Expect) {
         let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_at_position(pos);
         let parsed_path_file =
@@ -628,43 +632,48 @@ mod tests {
                 crate::item_scope::BuiltinShadowMode::Module,
                 None,
             )
-            .0
+            .0;
+        let resolved = resolved
             .take_types()
-            .expect("path does not resolve to a type");
+            .map(ItemInNs::Types)
+            .or_else(|| resolved.take_values().map(ItemInNs::Values))
+            .expect("path does not resolve to a type or value");
 
-        let found_path = find_path_inner(
-            FindPathCtx { prefer_no_std: false, db: &db, prefixed: prefix_kind, prefer_prelude },
-            ItemInNs::Types(resolved),
-            module,
-        );
-        assert_eq!(found_path, Some(mod_path), "on kind: {prefix_kind:?}");
+        let mut res = String::new();
+        for (prefix, ignore_local_imports) in
+            [PrefixKind::Plain, PrefixKind::ByCrate, PrefixKind::BySelf]
+                .into_iter()
+                .cartesian_product([false, true])
+        {
+            let found_path = find_path_inner(
+                FindPathCtx {
+                    prefer_no_std: false,
+                    db: &db,
+                    prefix,
+                    prefer_prelude,
+                    ignore_local_imports,
+                },
+                resolved,
+                module,
+            );
+            format_to!(
+                res,
+                "{:7}(imports {}): {}\n",
+                format!("{:?}", prefix),
+                if ignore_local_imports { '✖' } else { '✔' },
+                found_path
+                    .map_or_else(|| "<unresolvable>".to_owned(), |it| it.display(&db).to_string()),
+            );
+        }
+        expect.assert_eq(&res);
     }
 
-    #[track_caller]
-    fn check_found_path(
-        ra_fixture: &str,
-        unprefixed: &str,
-        prefixed: &str,
-        absolute: &str,
-        self_prefixed: &str,
-    ) {
-        check_found_path_(ra_fixture, unprefixed, None, false);
-        check_found_path_(ra_fixture, prefixed, Some(PrefixKind::Plain), false);
-        check_found_path_(ra_fixture, absolute, Some(PrefixKind::ByCrate), false);
-        check_found_path_(ra_fixture, self_prefixed, Some(PrefixKind::BySelf), false);
+    fn check_found_path(ra_fixture: &str, path: &str, expect: Expect) {
+        check_found_path_(ra_fixture, path, false, expect);
     }
 
-    fn check_found_path_prelude(
-        ra_fixture: &str,
-        unprefixed: &str,
-        prefixed: &str,
-        absolute: &str,
-        self_prefixed: &str,
-    ) {
-        check_found_path_(ra_fixture, unprefixed, None, true);
-        check_found_path_(ra_fixture, prefixed, Some(PrefixKind::Plain), true);
-        check_found_path_(ra_fixture, absolute, Some(PrefixKind::ByCrate), true);
-        check_found_path_(ra_fixture, self_prefixed, Some(PrefixKind::BySelf), true);
+    fn check_found_path_prelude(ra_fixture: &str, path: &str, expect: Expect) {
+        check_found_path_(ra_fixture, path, true, expect);
     }
 
     #[test]
@@ -675,9 +684,14 @@ struct S;
 $0
         "#,
             "S",
-            "S",
-            "crate::S",
-            "self::S",
+            expect![[r#"
+                Plain  (imports ✔): S
+                Plain  (imports ✖): S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): crate::S
+                BySelf (imports ✔): self::S
+                BySelf (imports ✖): self::S
+            "#]],
         );
     }
 
@@ -689,9 +703,14 @@ enum E { A }
 $0
         "#,
             "E::A",
-            "E::A",
-            "crate::E::A",
-            "self::E::A",
+            expect![[r#"
+                Plain  (imports ✔): E::A
+                Plain  (imports ✖): E::A
+                ByCrate(imports ✔): crate::E::A
+                ByCrate(imports ✖): crate::E::A
+                BySelf (imports ✔): self::E::A
+                BySelf (imports ✖): self::E::A
+            "#]],
         );
     }
 
@@ -705,9 +724,14 @@ mod foo {
 $0
         "#,
             "foo::S",
-            "foo::S",
-            "crate::foo::S",
-            "self::foo::S",
+            expect![[r#"
+                Plain  (imports ✔): foo::S
+                Plain  (imports ✖): foo::S
+                ByCrate(imports ✔): crate::foo::S
+                ByCrate(imports ✖): crate::foo::S
+                BySelf (imports ✔): self::foo::S
+                BySelf (imports ✖): self::foo::S
+            "#]],
         );
     }
 
@@ -724,9 +748,14 @@ struct S;
 $0
         "#,
             "super::S",
-            "super::S",
-            "crate::foo::S",
-            "super::S",
+            expect![[r#"
+                Plain  (imports ✔): super::S
+                Plain  (imports ✖): super::S
+                ByCrate(imports ✔): crate::foo::S
+                ByCrate(imports ✖): crate::foo::S
+                BySelf (imports ✔): super::S
+                BySelf (imports ✖): super::S
+            "#]],
         );
     }
 
@@ -740,9 +769,14 @@ mod foo;
 $0
         "#,
             "self",
-            "self",
-            "crate::foo",
-            "self",
+            expect![[r#"
+                Plain  (imports ✔): self
+                Plain  (imports ✖): self
+                ByCrate(imports ✔): crate::foo
+                ByCrate(imports ✖): crate::foo
+                BySelf (imports ✔): self
+                BySelf (imports ✖): self
+            "#]],
         );
     }
 
@@ -756,9 +790,14 @@ mod foo;
 $0
         "#,
             "crate",
-            "crate",
-            "crate",
-            "crate",
+            expect![[r#"
+                Plain  (imports ✔): crate
+                Plain  (imports ✖): crate
+                ByCrate(imports ✔): crate
+                ByCrate(imports ✖): crate
+                BySelf (imports ✔): crate
+                BySelf (imports ✖): crate
+            "#]],
         );
     }
 
@@ -773,9 +812,14 @@ struct S;
 $0
         "#,
             "crate::S",
-            "crate::S",
-            "crate::S",
-            "crate::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::S
+                Plain  (imports ✖): crate::S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): crate::S
+                BySelf (imports ✔): crate::S
+                BySelf (imports ✖): crate::S
+            "#]],
         );
     }
 
@@ -789,9 +833,14 @@ $0
 pub struct S;
         "#,
             "std::S",
-            "std::S",
-            "std::S",
-            "std::S",
+            expect![[r#"
+                Plain  (imports ✔): std::S
+                Plain  (imports ✖): std::S
+                ByCrate(imports ✔): std::S
+                ByCrate(imports ✖): std::S
+                BySelf (imports ✔): std::S
+                BySelf (imports ✖): std::S
+            "#]],
         );
     }
 
@@ -806,9 +855,14 @@ $0
 pub struct S;
         "#,
             "std_renamed::S",
-            "std_renamed::S",
-            "std_renamed::S",
-            "std_renamed::S",
+            expect![[r#"
+                Plain  (imports ✔): std_renamed::S
+                Plain  (imports ✖): std_renamed::S
+                ByCrate(imports ✔): std_renamed::S
+                ByCrate(imports ✖): std_renamed::S
+                BySelf (imports ✔): std_renamed::S
+                BySelf (imports ✖): std_renamed::S
+            "#]],
         );
     }
 
@@ -831,10 +885,15 @@ pub mod ast {
     }
 }
         "#,
-            "ast::ModuleItem",
             "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
+            expect![[r#"
+                Plain  (imports ✔): ast::ModuleItem
+                Plain  (imports ✖): syntax::ast::ModuleItem
+                ByCrate(imports ✔): crate::ast::ModuleItem
+                ByCrate(imports ✖): syntax::ast::ModuleItem
+                BySelf (imports ✔): self::ast::ModuleItem
+                BySelf (imports ✖): syntax::ast::ModuleItem
+            "#]],
         );
 
         check_found_path(
@@ -850,9 +909,14 @@ pub mod ast {
 }
         "#,
             "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
+            expect![[r#"
+                Plain  (imports ✔): syntax::ast::ModuleItem
+                Plain  (imports ✖): syntax::ast::ModuleItem
+                ByCrate(imports ✔): syntax::ast::ModuleItem
+                ByCrate(imports ✖): syntax::ast::ModuleItem
+                BySelf (imports ✔): syntax::ast::ModuleItem
+                BySelf (imports ✖): syntax::ast::ModuleItem
+            "#]],
         );
     }
 
@@ -867,9 +931,14 @@ mod bar {
 $0
         "#,
             "bar::S",
-            "bar::S",
-            "crate::bar::S",
-            "self::bar::S",
+            expect![[r#"
+                Plain  (imports ✔): bar::S
+                Plain  (imports ✖): bar::S
+                ByCrate(imports ✔): crate::bar::S
+                ByCrate(imports ✖): crate::bar::S
+                BySelf (imports ✔): self::bar::S
+                BySelf (imports ✖): self::bar::S
+            "#]],
         );
     }
 
@@ -884,9 +953,14 @@ mod bar {
 $0
         "#,
             "bar::U",
-            "bar::U",
-            "crate::bar::U",
-            "self::bar::U",
+            expect![[r#"
+                Plain  (imports ✔): bar::U
+                Plain  (imports ✖): bar::U
+                ByCrate(imports ✔): crate::bar::U
+                ByCrate(imports ✖): crate::bar::U
+                BySelf (imports ✔): self::bar::U
+                BySelf (imports ✖): self::bar::U
+            "#]],
         );
     }
 
@@ -902,9 +976,14 @@ pub use core::S;
 pub struct S;
         "#,
             "std::S",
-            "std::S",
-            "std::S",
-            "std::S",
+            expect![[r#"
+                Plain  (imports ✔): std::S
+                Plain  (imports ✖): std::S
+                ByCrate(imports ✔): std::S
+                ByCrate(imports ✖): std::S
+                BySelf (imports ✔): std::S
+                BySelf (imports ✖): std::S
+            "#]],
         );
     }
 
@@ -922,9 +1001,14 @@ pub mod prelude {
 }
         "#,
             "S",
-            "S",
-            "S",
-            "S",
+            expect![[r#"
+                Plain  (imports ✔): S
+                Plain  (imports ✖): S
+                ByCrate(imports ✔): S
+                ByCrate(imports ✖): S
+                BySelf (imports ✔): S
+                BySelf (imports ✖): S
+            "#]],
         );
     }
 
@@ -943,9 +1027,14 @@ pub mod prelude {
 }
 "#,
             "std::prelude::rust_2018::S",
-            "std::prelude::rust_2018::S",
-            "std::prelude::rust_2018::S",
-            "std::prelude::rust_2018::S",
+            expect![[r#"
+                Plain  (imports ✔): std::prelude::rust_2018::S
+                Plain  (imports ✖): std::prelude::rust_2018::S
+                ByCrate(imports ✔): std::prelude::rust_2018::S
+                ByCrate(imports ✖): std::prelude::rust_2018::S
+                BySelf (imports ✔): std::prelude::rust_2018::S
+                BySelf (imports ✖): std::prelude::rust_2018::S
+            "#]],
         );
     }
 
@@ -964,9 +1053,14 @@ pub mod prelude {
 }
 "#,
             "S",
-            "S",
-            "S",
-            "S",
+            expect![[r#"
+                Plain  (imports ✔): S
+                Plain  (imports ✖): S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): S
+                BySelf (imports ✔): self::S
+                BySelf (imports ✖): S
+            "#]],
         );
     }
 
@@ -983,8 +1077,30 @@ pub mod prelude {
     }
 }
         "#;
-        check_found_path(code, "None", "None", "None", "None");
-        check_found_path(code, "Some", "Some", "Some", "Some");
+        check_found_path(
+            code,
+            "None",
+            expect![[r#"
+                Plain  (imports ✔): None
+                Plain  (imports ✖): None
+                ByCrate(imports ✔): None
+                ByCrate(imports ✖): None
+                BySelf (imports ✔): None
+                BySelf (imports ✖): None
+            "#]],
+        );
+        check_found_path(
+            code,
+            "Some",
+            expect![[r#"
+                Plain  (imports ✔): Some
+                Plain  (imports ✖): Some
+                ByCrate(imports ✔): Some
+                ByCrate(imports ✖): Some
+                BySelf (imports ✔): Some
+                BySelf (imports ✖): Some
+            "#]],
+        );
     }
 
     #[test]
@@ -1002,9 +1118,14 @@ pub mod bar { pub struct S; }
 pub use crate::foo::bar::S;
         "#,
             "baz::S",
-            "baz::S",
-            "crate::baz::S",
-            "self::baz::S",
+            expect![[r#"
+                Plain  (imports ✔): baz::S
+                Plain  (imports ✖): baz::S
+                ByCrate(imports ✔): crate::baz::S
+                ByCrate(imports ✖): crate::baz::S
+                BySelf (imports ✔): self::baz::S
+                BySelf (imports ✖): self::baz::S
+            "#]],
         );
     }
 
@@ -1022,9 +1143,14 @@ $0
         "#,
             // crate::S would be shorter, but using private imports seems wrong
             "crate::bar::S",
-            "crate::bar::S",
-            "crate::bar::S",
-            "crate::bar::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::bar::S
+                Plain  (imports ✖): crate::bar::S
+                ByCrate(imports ✔): crate::bar::S
+                ByCrate(imports ✖): crate::bar::S
+                BySelf (imports ✔): crate::bar::S
+                BySelf (imports ✖): crate::bar::S
+            "#]],
         );
     }
 
@@ -1041,9 +1167,14 @@ pub(crate) use bar::S;
 $0
         "#,
             "crate::S",
-            "crate::S",
-            "crate::S",
-            "crate::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::S
+                Plain  (imports ✖): crate::S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): crate::S
+                BySelf (imports ✔): crate::S
+                BySelf (imports ✖): crate::S
+            "#]],
         );
     }
 
@@ -1063,9 +1194,14 @@ pub mod bar {
 $0
         "#,
             "super::S",
-            "super::S",
-            "crate::bar::S",
-            "super::S",
+            expect![[r#"
+                Plain  (imports ✔): super::S
+                Plain  (imports ✖): super::S
+                ByCrate(imports ✔): crate::bar::S
+                ByCrate(imports ✖): crate::bar::S
+                BySelf (imports ✔): super::S
+                BySelf (imports ✖): super::S
+            "#]],
         );
     }
 
@@ -1086,9 +1222,14 @@ pub struct S;
 pub use super::foo;
         "#,
             "crate::foo::S",
-            "crate::foo::S",
-            "crate::foo::S",
-            "crate::foo::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::foo::S
+                Plain  (imports ✖): crate::foo::S
+                ByCrate(imports ✔): crate::foo::S
+                ByCrate(imports ✖): crate::foo::S
+                BySelf (imports ✔): crate::foo::S
+                BySelf (imports ✖): crate::foo::S
+            "#]],
         );
     }
 
@@ -1110,9 +1251,14 @@ pub mod sync {
 }
         "#,
             "std::sync::Arc",
-            "std::sync::Arc",
-            "std::sync::Arc",
-            "std::sync::Arc",
+            expect![[r#"
+                Plain  (imports ✔): std::sync::Arc
+                Plain  (imports ✖): std::sync::Arc
+                ByCrate(imports ✔): std::sync::Arc
+                ByCrate(imports ✖): std::sync::Arc
+                BySelf (imports ✔): std::sync::Arc
+                BySelf (imports ✖): std::sync::Arc
+            "#]],
         );
     }
 
@@ -1138,9 +1284,14 @@ pub mod fmt {
 }
         "#,
             "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
         );
 
         // Should also work (on a best-effort basis) if `no_std` is conditional.
@@ -1164,9 +1315,14 @@ pub mod fmt {
 }
         "#,
             "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
         );
     }
 
@@ -1194,9 +1350,14 @@ pub mod sync {
 }
             "#,
             "alloc::sync::Arc",
-            "alloc::sync::Arc",
-            "alloc::sync::Arc",
-            "alloc::sync::Arc",
+            expect![[r#"
+                Plain  (imports ✔): alloc::sync::Arc
+                Plain  (imports ✖): alloc::sync::Arc
+                ByCrate(imports ✔): alloc::sync::Arc
+                ByCrate(imports ✖): alloc::sync::Arc
+                BySelf (imports ✔): alloc::sync::Arc
+                BySelf (imports ✖): alloc::sync::Arc
+            "#]],
         );
     }
 
@@ -1216,9 +1377,14 @@ pub mod sync {
 pub struct Arc;
             "#,
             "megaalloc::Arc",
-            "megaalloc::Arc",
-            "megaalloc::Arc",
-            "megaalloc::Arc",
+            expect![[r#"
+                Plain  (imports ✔): megaalloc::Arc
+                Plain  (imports ✖): megaalloc::Arc
+                ByCrate(imports ✔): megaalloc::Arc
+                ByCrate(imports ✖): megaalloc::Arc
+                BySelf (imports ✔): megaalloc::Arc
+                BySelf (imports ✖): megaalloc::Arc
+            "#]],
         );
     }
 
@@ -1231,8 +1397,30 @@ pub mod primitive {
     pub use u8;
 }
         "#;
-        check_found_path(code, "u8", "u8", "u8", "u8");
-        check_found_path(code, "u16", "u16", "u16", "u16");
+        check_found_path(
+            code,
+            "u8",
+            expect![[r#"
+                Plain  (imports ✔): u8
+                Plain  (imports ✖): u8
+                ByCrate(imports ✔): u8
+                ByCrate(imports ✖): u8
+                BySelf (imports ✔): u8
+                BySelf (imports ✖): u8
+            "#]],
+        );
+        check_found_path(
+            code,
+            "u16",
+            expect![[r#"
+                Plain  (imports ✔): u16
+                Plain  (imports ✖): u16
+                ByCrate(imports ✔): u16
+                ByCrate(imports ✖): u16
+                BySelf (imports ✔): u16
+                BySelf (imports ✖): u16
+            "#]],
+        );
     }
 
     #[test]
@@ -1245,9 +1433,14 @@ fn main() {
 }
         "#,
             "Inner",
-            "Inner",
-            "Inner",
-            "Inner",
+            expect![[r#"
+                Plain  (imports ✔): Inner
+                Plain  (imports ✖): Inner
+                ByCrate(imports ✔): Inner
+                ByCrate(imports ✖): Inner
+                BySelf (imports ✔): Inner
+                BySelf (imports ✖): Inner
+            "#]],
         );
     }
 
@@ -1263,20 +1456,24 @@ fn main() {
 }
         "#,
             "Struct",
-            "Struct",
-            "Struct",
-            "Struct",
+            expect![[r#"
+                Plain  (imports ✔): Struct
+                Plain  (imports ✖): Struct
+                ByCrate(imports ✔): Struct
+                ByCrate(imports ✖): Struct
+                BySelf (imports ✔): Struct
+                BySelf (imports ✖): Struct
+            "#]],
         );
     }
 
     #[test]
     fn inner_items_from_inner_module() {
-        cov_mark::check!(prefixed_in_block_expression);
         check_found_path(
             r#"
 fn main() {
     mod module {
-        struct Struct {}
+        pub struct Struct {}
     }
     {
         $0
@@ -1284,9 +1481,14 @@ fn main() {
 }
         "#,
             "module::Struct",
-            "module::Struct",
-            "module::Struct",
-            "module::Struct",
+            expect![[r#"
+                Plain  (imports ✔): module::Struct
+                Plain  (imports ✖): module::Struct
+                ByCrate(imports ✔): module::Struct
+                ByCrate(imports ✖): module::Struct
+                BySelf (imports ✔): module::Struct
+                BySelf (imports ✖): module::Struct
+            "#]],
         );
     }
 
@@ -1303,11 +1505,15 @@ fn main() {
     $0
 }
             "#,
-            // FIXME: these could use fewer/better prefixes
             "module::CompleteMe",
-            "crate::module::CompleteMe",
-            "crate::module::CompleteMe",
-            "crate::module::CompleteMe",
+            expect![[r#"
+                Plain  (imports ✔): module::CompleteMe
+                Plain  (imports ✖): module::CompleteMe
+                ByCrate(imports ✔): crate::module::CompleteMe
+                ByCrate(imports ✖): crate::module::CompleteMe
+                BySelf (imports ✔): self::module::CompleteMe
+                BySelf (imports ✖): self::module::CompleteMe
+            "#]],
         )
     }
 
@@ -1328,9 +1534,14 @@ mod bar {
 }
             "#,
             "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
+            expect![[r#"
+                Plain  (imports ✔): crate::baz::Foo
+                Plain  (imports ✖): crate::baz::Foo
+                ByCrate(imports ✔): crate::baz::Foo
+                ByCrate(imports ✖): crate::baz::Foo
+                BySelf (imports ✔): crate::baz::Foo
+                BySelf (imports ✖): crate::baz::Foo
+            "#]],
         )
     }
 
@@ -1350,15 +1561,19 @@ mod bar {
 }
             "#,
             "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
+            expect![[r#"
+                Plain  (imports ✔): crate::baz::Foo
+                Plain  (imports ✖): crate::baz::Foo
+                ByCrate(imports ✔): crate::baz::Foo
+                ByCrate(imports ✖): crate::baz::Foo
+                BySelf (imports ✔): crate::baz::Foo
+                BySelf (imports ✖): crate::baz::Foo
+            "#]],
         )
     }
 
     #[test]
     fn recursive_pub_mod_reexport() {
-        cov_mark::check!(recursive_imports);
         check_found_path(
             r#"
 fn main() {
@@ -1378,9 +1593,14 @@ pub mod name {
 }
 "#,
             "name::AsName",
-            "name::AsName",
-            "crate::name::AsName",
-            "self::name::AsName",
+            expect![[r#"
+                Plain  (imports ✔): name::AsName
+                Plain  (imports ✖): name::AsName
+                ByCrate(imports ✔): crate::name::AsName
+                ByCrate(imports ✖): crate::name::AsName
+                BySelf (imports ✔): self::name::AsName
+                BySelf (imports ✖): self::name::AsName
+            "#]],
         );
     }
 
@@ -1393,9 +1613,14 @@ $0
 //- /dep.rs crate:dep
 "#,
             "dep",
-            "dep",
-            "dep",
-            "dep",
+            expect![[r#"
+                Plain  (imports ✔): dep
+                Plain  (imports ✖): dep
+                ByCrate(imports ✔): dep
+                ByCrate(imports ✖): dep
+                BySelf (imports ✔): dep
+                BySelf (imports ✖): dep
+            "#]],
         );
 
         check_found_path(
@@ -1408,9 +1633,14 @@ fn f() {
 //- /dep.rs crate:dep
 "#,
             "dep",
-            "dep",
-            "dep",
-            "dep",
+            expect![[r#"
+                Plain  (imports ✔): dep
+                Plain  (imports ✖): dep
+                ByCrate(imports ✔): dep
+                ByCrate(imports ✖): dep
+                BySelf (imports ✔): dep
+                BySelf (imports ✖): dep
+            "#]],
         );
     }
 
@@ -1432,9 +1662,14 @@ pub mod prelude {
 }
         "#,
             "None",
-            "None",
-            "None",
-            "None",
+            expect![[r#"
+                Plain  (imports ✔): None
+                Plain  (imports ✖): None
+                ByCrate(imports ✔): None
+                ByCrate(imports ✖): None
+                BySelf (imports ✔): None
+                BySelf (imports ✖): None
+            "#]],
         );
     }
 
@@ -1450,9 +1685,14 @@ pub extern crate std as std_renamed;
 pub struct S;
     "#,
             "intermediate::std_renamed::S",
-            "intermediate::std_renamed::S",
-            "intermediate::std_renamed::S",
-            "intermediate::std_renamed::S",
+            expect![[r#"
+                Plain  (imports ✔): intermediate::std_renamed::S
+                Plain  (imports ✖): intermediate::std_renamed::S
+                ByCrate(imports ✔): intermediate::std_renamed::S
+                ByCrate(imports ✖): intermediate::std_renamed::S
+                BySelf (imports ✔): intermediate::std_renamed::S
+                BySelf (imports ✖): intermediate::std_renamed::S
+            "#]],
         );
     }
 
@@ -1470,9 +1710,14 @@ pub extern crate std as longer;
 pub struct S;
     "#,
             "intermediate::longer::S",
-            "intermediate::longer::S",
-            "intermediate::longer::S",
-            "intermediate::longer::S",
+            expect![[r#"
+                Plain  (imports ✔): intermediate::longer::S
+                Plain  (imports ✖): intermediate::longer::S
+                ByCrate(imports ✔): intermediate::longer::S
+                ByCrate(imports ✖): intermediate::longer::S
+                BySelf (imports ✔): intermediate::longer::S
+                BySelf (imports ✖): intermediate::longer::S
+            "#]],
         );
     }
 
@@ -1493,9 +1738,14 @@ pub mod ops {
 }
     "#,
             "std::ops::Deref",
-            "std::ops::Deref",
-            "std::ops::Deref",
-            "std::ops::Deref",
+            expect![[r#"
+                Plain  (imports ✔): std::ops::Deref
+                Plain  (imports ✖): std::ops::Deref
+                ByCrate(imports ✔): std::ops::Deref
+                ByCrate(imports ✖): std::ops::Deref
+                BySelf (imports ✔): std::ops::Deref
+                BySelf (imports ✖): std::ops::Deref
+            "#]],
         );
     }
 
@@ -1518,9 +1768,14 @@ pub mod error {
 }
 "#,
             "std::error::Error",
-            "std::error::Error",
-            "std::error::Error",
-            "std::error::Error",
+            expect![[r#"
+                Plain  (imports ✔): std::error::Error
+                Plain  (imports ✖): std::error::Error
+                ByCrate(imports ✔): std::error::Error
+                ByCrate(imports ✖): std::error::Error
+                BySelf (imports ✔): std::error::Error
+                BySelf (imports ✖): std::error::Error
+            "#]],
         );
     }
 
@@ -1541,16 +1796,26 @@ pub mod foo {
         check_found_path(
             ra_fixture,
             "krate::foo::Foo",
-            "krate::foo::Foo",
-            "krate::foo::Foo",
-            "krate::foo::Foo",
+            expect![[r#"
+                Plain  (imports ✔): krate::foo::Foo
+                Plain  (imports ✖): krate::foo::Foo
+                ByCrate(imports ✔): krate::foo::Foo
+                ByCrate(imports ✖): krate::foo::Foo
+                BySelf (imports ✔): krate::foo::Foo
+                BySelf (imports ✖): krate::foo::Foo
+            "#]],
         );
         check_found_path_prelude(
             ra_fixture,
             "krate::prelude::Foo",
-            "krate::prelude::Foo",
-            "krate::prelude::Foo",
-            "krate::prelude::Foo",
+            expect![[r#"
+                Plain  (imports ✔): krate::prelude::Foo
+                Plain  (imports ✖): krate::prelude::Foo
+                ByCrate(imports ✔): krate::prelude::Foo
+                ByCrate(imports ✖): krate::prelude::Foo
+                BySelf (imports ✔): krate::prelude::Foo
+                BySelf (imports ✖): krate::prelude::Foo
+            "#]],
         );
     }
 
@@ -1582,9 +1847,40 @@ pub mod prelude {
 }
 "#,
             "petgraph::graph::NodeIndex",
-            "petgraph::graph::NodeIndex",
-            "petgraph::graph::NodeIndex",
-            "petgraph::graph::NodeIndex",
+            expect![[r#"
+                Plain  (imports ✔): petgraph::graph::NodeIndex
+                Plain  (imports ✖): petgraph::graph::NodeIndex
+                ByCrate(imports ✔): petgraph::graph::NodeIndex
+                ByCrate(imports ✖): petgraph::graph::NodeIndex
+                BySelf (imports ✔): petgraph::graph::NodeIndex
+                BySelf (imports ✖): petgraph::graph::NodeIndex
+            "#]],
+        );
+    }
+
+    #[test]
+    fn regression_17271() {
+        check_found_path(
+            r#"
+//- /lib.rs crate:main
+mod foo;
+
+//- /foo.rs
+mod bar;
+
+pub fn b() {$0}
+//- /foo/bar.rs
+pub fn c() {}
+"#,
+            "bar::c",
+            expect![[r#"
+                Plain  (imports ✔): bar::c
+                Plain  (imports ✖): bar::c
+                ByCrate(imports ✔): crate::foo::bar::c
+                ByCrate(imports ✖): crate::foo::bar::c
+                BySelf (imports ✔): self::bar::c
+                BySelf (imports ✖): self::bar::c
+            "#]],
         );
     }
 }

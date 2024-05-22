@@ -201,7 +201,7 @@ fn augment_references_with_imports(
                 let import_scope =
                     ImportScope::find_insert_use_container(new_name.syntax(), &ctx.sema);
                 let path = ref_module
-                    .find_use_path_prefixed(
+                    .find_use_path(
                         ctx.sema.db,
                         ModuleDef::Module(*target_module),
                         ctx.config.insert_use.prefix_kind,
@@ -811,7 +811,7 @@ pub mod bar {
 "#,
             r#"
 //- /main.rs
-use crate::foo::bar::BarResult;
+use foo::bar::BarResult;
 
 mod foo;
 

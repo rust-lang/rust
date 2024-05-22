@@ -63,7 +63,7 @@ pub(crate) fn complete_postfix(
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
             if let Some(drop_fn) = ctx.famous_defs().core_mem_drop() {
-                if let Some(path) = ctx.module.find_use_path(
+                if let Some(path) = ctx.module.find_path(
                     ctx.db,
                     ItemInNs::Values(drop_fn.into()),
                     ctx.config.prefer_no_std,
