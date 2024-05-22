@@ -926,4 +926,25 @@ struct Foo;
         let navs = analysis.symbol_search(Query::new("foo".to_owned()), !0).unwrap();
         assert_eq!(navs.len(), 2)
     }
+
+    #[test]
+    fn test_ensure_hidden_symbols_are_not_returned() {
+        let (analysis, _) = fixture::file(
+            r#"
+fn foo() {}
+struct Foo;
+static __FOO_CALLSITE: () = ();
+"#,
+        );
+
+        // It doesn't show the hidden symbol
+        let navs = analysis.symbol_search(Query::new("foo".to_owned()), !0).unwrap();
+        assert_eq!(navs.len(), 2);
+
+        // Unless we configure a query to show hidden symbols
+        let mut query = Query::new("foo".to_owned());
+        query.include_hidden();
+        let navs = analysis.symbol_search(query, !0).unwrap();
+        assert_eq!(navs.len(), 3);
+    }
 }

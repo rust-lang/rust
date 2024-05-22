@@ -53,6 +53,7 @@ pub struct Query {
     case_sensitive: bool,
     only_types: bool,
     libs: bool,
+    include_hidden: bool,
 }
 
 impl Query {
@@ -66,7 +67,12 @@ impl Query {
             mode: SearchMode::Fuzzy,
             assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
+            include_hidden: false,
         }
+    }
+
+    pub fn include_hidden(&mut self) {
+        self.include_hidden = true;
     }
 
     pub fn only_types(&mut self) {
@@ -192,7 +198,8 @@ impl<DB> std::ops::Deref for Snap<DB> {
 // Note that filtering does not currently work in VSCode due to the editor never
 // sending the special symbols to the language server. Instead, you can configure
 // the filtering via the `rust-analyzer.workspace.symbol.search.scope` and
-// `rust-analyzer.workspace.symbol.search.kind` settings.
+// `rust-analyzer.workspace.symbol.search.kind` settings. Symbols prefixed
+// with `__` are hidden from the search results unless configured otherwise.
 //
 // |===
 // | Editor  | Shortcut
@@ -372,6 +379,9 @@ impl Query {
                                 | hir::ModuleDef::Trait(..)
                         );
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
+                        continue;
+                    }
+                    if !self.include_hidden && symbol.name.starts_with("__") {
                         continue;
                     }
                     if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
