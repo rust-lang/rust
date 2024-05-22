@@ -539,7 +539,9 @@ impl EarlyContext<'_> {
         span: MultiSpan,
         diagnostic: BuiltinLintDiag,
     ) {
-        diagnostics::emit_buffered_lint(self, lint, span, diagnostic)
+        self.opt_span_lint(lint, Some(span), |diag| {
+            diagnostics::decorate_lint(self.sess(), diagnostic, diag);
+        });
     }
 }
 
