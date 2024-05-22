@@ -1,4 +1,4 @@
-use hir::{InFile, MacroFileIdExt, ModuleDef};
+use hir::{ImportPathConfig, InFile, MacroFileIdExt, ModuleDef};
 use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
 use itertools::Itertools;
 use syntax::{
@@ -86,8 +86,10 @@ pub(crate) fn replace_derive_with_manual_impl(
             .find_path(
                 ctx.sema.db,
                 hir::ModuleDef::Trait(trait_),
-                ctx.config.prefer_no_std,
-                ctx.config.prefer_prelude,
+                ImportPathConfig {
+                    prefer_no_std: ctx.config.prefer_no_std,
+                    prefer_prelude: ctx.config.prefer_prelude,
+                },
             )
             .as_ref()
             .map(mod_path_to_ast)

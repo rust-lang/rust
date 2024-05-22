@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use hir::{db::HirDatabase, Module};
+use hir::{db::HirDatabase, ImportPathConfig, Module};
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
@@ -90,14 +90,14 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
     let mut proposed_imports: Vec<_> = import_assets
-        .search_for_imports(
-            &ctx.sema,
-            ctx.config.insert_use.prefix_kind,
-            ctx.config.prefer_no_std,
-            ctx.config.prefer_no_std,
-        )
+        .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
         .collect();
     if proposed_imports.is_empty() {
         return None;

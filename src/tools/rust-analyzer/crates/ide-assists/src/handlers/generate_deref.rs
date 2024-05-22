@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use hir::{ModPath, ModuleDef};
+use hir::{ImportPathConfig, ModPath, ModuleDef};
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::{
     ast::{self, HasName},
@@ -61,8 +61,10 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let trait_path = module.find_path(
         ctx.db(),
         ModuleDef::Trait(trait_),
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
+        ImportPathConfig {
+            prefer_no_std: ctx.config.prefer_no_std,
+            prefer_prelude: ctx.config.prefer_prelude,
+        },
     )?;
 
     let field_type = field.ty()?;
@@ -106,8 +108,10 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     let trait_path = module.find_path(
         ctx.db(),
         ModuleDef::Trait(trait_),
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
+        ImportPathConfig {
+            prefer_no_std: ctx.config.prefer_no_std,
+            prefer_prelude: ctx.config.prefer_prelude,
+        },
     )?;
 
     let field_type = field.ty()?;

@@ -21,7 +21,8 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
+    HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
+    TraitId,
 };
 use hir_expand::name::Name;
 use intern::{Internable, Interned};
@@ -1001,8 +1002,7 @@ impl HirDisplay for Ty {
                             module_id,
                             PrefixKind::Plain,
                             false,
-                            false,
-                            true,
+                            ImportPathConfig { prefer_no_std: false, prefer_prelude: true },
                         ) {
                             write!(f, "{}", path.display(f.db.upcast()))?;
                         } else {

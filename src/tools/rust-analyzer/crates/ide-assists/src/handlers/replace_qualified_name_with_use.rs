@@ -1,4 +1,4 @@
-use hir::AsAssocItem;
+use hir::{AsAssocItem, ImportPathConfig};
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope},
@@ -67,8 +67,10 @@ pub(crate) fn replace_qualified_name_with_use(
                 ctx.sema.db,
                 module,
                 ctx.config.insert_use.prefix_kind,
-                ctx.config.prefer_no_std,
-                ctx.config.prefer_prelude,
+                ImportPathConfig {
+                    prefer_no_std: ctx.config.prefer_no_std,
+                    prefer_prelude: ctx.config.prefer_prelude,
+                },
             )
         })
         .flatten();

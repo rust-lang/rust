@@ -1,7 +1,7 @@
 use hir::{
     db::ExpandDatabase,
     term_search::{term_search, TermSearchConfig, TermSearchCtx},
-    ClosureStyle, HirDisplay,
+    ClosureStyle, HirDisplay, ImportPathConfig,
 };
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, GroupLabel},
@@ -59,8 +59,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
             path.gen_source_code(
                 &scope,
                 &mut formatter,
-                ctx.config.prefer_no_std,
-                ctx.config.prefer_prelude,
+                ImportPathConfig {
+                    prefer_no_std: ctx.config.prefer_no_std,
+                    prefer_prelude: ctx.config.prefer_prelude,
+                },
             )
             .ok()
         })

@@ -122,6 +122,7 @@ pub use {
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
+        ImportPathConfig,
         // FIXME: This is here since some queries take it as input that are used
         // outside of hir.
         {AdtId, MacroId, ModuleDefId},
@@ -792,8 +793,7 @@ impl Module {
         self,
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
-        prefer_no_std: bool,
-        prefer_prelude: bool,
+        cfg: ImportPathConfig,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path(
             db,
@@ -801,8 +801,7 @@ impl Module {
             self.into(),
             PrefixKind::Plain,
             false,
-            prefer_no_std,
-            prefer_prelude,
+            cfg,
         )
     }
 
@@ -813,18 +812,9 @@ impl Module {
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
-        prefer_no_std: bool,
-        prefer_prelude: bool,
+        cfg: ImportPathConfig,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path(
-            db,
-            item.into().into(),
-            self.into(),
-            prefix_kind,
-            true,
-            prefer_no_std,
-            prefer_prelude,
-        )
+        hir_def::find_path::find_path(db, item.into().into(), self.into(), prefix_kind, true, cfg)
     }
 }
 

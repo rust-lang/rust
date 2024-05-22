@@ -1,9 +1,6 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::{
-    cmp::Ordering,
-    iter::{self, once},
-};
+use std::{cmp::Ordering, iter};
 
 use hir_expand::{
     name::{known, AsName, Name},
@@ -17,7 +14,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, PathKind},
     visibility::{Visibility, VisibilityExplicitness},
-    ModuleDefId, ModuleId,
+    ImportPathConfig, ModuleDefId, ModuleId,
 };
 
 /// Find a path that can be used to refer to a certain item. This can depend on
@@ -28,21 +25,10 @@ pub fn find_path(
     from: ModuleId,
     prefix_kind: PrefixKind,
     ignore_local_imports: bool,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> Option<ModPath> {
     let _p = tracing::span!(tracing::Level::INFO, "find_path").entered();
-    find_path_inner(
-        FindPathCtx {
-            db,
-            prefix: prefix_kind,
-            prefer_no_std,
-            prefer_prelude,
-            ignore_local_imports,
-        },
-        item,
-        from,
-    )
+    find_path_inner(FindPathCtx { db, prefix: prefix_kind, cfg, ignore_local_imports }, item, from)
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -88,8 +74,7 @@ impl PrefixKind {
 struct FindPathCtx<'db> {
     db: &'db dyn DefDatabase,
     prefix: PrefixKind,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
     ignore_local_imports: bool,
 }
 
@@ -97,7 +82,7 @@ struct FindPathCtx<'db> {
 fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     // - if the item is a builtin, it's in scope
     if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
-        return Some(ModPath::from_segments(PathKind::Plain, once(builtin.as_name())));
+        return Some(ModPath::from_segments(PathKind::Plain, iter::once(builtin.as_name())));
     }
 
     let def_map = from.def_map(ctx.db);
@@ -107,7 +92,11 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
         let mut visited_modules = FxHashSet::default();
         return find_path_for_module(
             FindPathCtx {
-                prefer_no_std: ctx.prefer_no_std || ctx.db.crate_supports_no_std(crate_root.krate),
+                cfg: ImportPathConfig {
+                    prefer_no_std: ctx.cfg.prefer_no_std
+                        || ctx.db.crate_supports_no_std(crate_root.krate),
+                    ..ctx.cfg
+                },
                 ..ctx
             },
             &def_map,
@@ -132,7 +121,7 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
         // - if the item is already in scope, return the name under which it is
         let scope_name = find_in_scope(ctx.db, &def_map, from, item, ctx.ignore_local_imports);
         if let Some(scope_name) = scope_name {
-            return Some(ModPath::from_segments(prefix.path_kind(), Some(scope_name)));
+            return Some(ModPath::from_segments(prefix.path_kind(), iter::once(scope_name)));
         }
     }
 
@@ -160,7 +149,11 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
 
     calculate_best_path(
         FindPathCtx {
-            prefer_no_std: ctx.prefer_no_std || ctx.db.crate_supports_no_std(crate_root.krate),
+            cfg: ImportPathConfig {
+                prefer_no_std: ctx.cfg.prefer_no_std
+                    || ctx.db.crate_supports_no_std(crate_root.krate),
+                ..ctx.cfg
+            },
             ..ctx
         },
         &def_map,
@@ -213,7 +206,7 @@ fn find_path_for_module(
             } else {
                 PathKind::Plain
             };
-            return Some((ModPath::from_segments(kind, once(name.clone())), Stable));
+            return Some((ModPath::from_segments(kind, iter::once(name.clone())), Stable));
         }
     }
     let prefix = if module_id.is_within_block() { PrefixKind::Plain } else { ctx.prefix };
@@ -231,7 +224,10 @@ fn find_path_for_module(
         );
         if let Some(scope_name) = scope_name {
             // - if the item is already in scope, return the name under which it is
-            return Some((ModPath::from_segments(prefix.path_kind(), once(scope_name)), Stable));
+            return Some((
+                ModPath::from_segments(prefix.path_kind(), iter::once(scope_name)),
+                Stable,
+            ));
         }
     }
 
@@ -305,7 +301,7 @@ fn find_in_prelude(
         });
 
     if found_and_same_def.unwrap_or(true) {
-        Some(ModPath::from_segments(PathKind::Plain, once(name.clone())))
+        Some(ModPath::from_segments(PathKind::Plain, iter::once(name.clone())))
     } else {
         None
     }
@@ -381,9 +377,7 @@ fn calculate_best_path(
                 path.0.push_segment(name);
 
                 let new_path = match best_path.take() {
-                    Some(best_path) => {
-                        select_best_path(best_path, path, ctx.prefer_no_std, ctx.prefer_prelude)
-                    }
+                    Some(best_path) => select_best_path(best_path, path, ctx.cfg),
                     None => path,
                 };
                 best_path_len = new_path.0.len();
@@ -425,12 +419,7 @@ fn calculate_best_path(
                 );
 
                 let new_path_with_stab = match best_path.take() {
-                    Some(best_path) => select_best_path(
-                        best_path,
-                        path_with_stab,
-                        ctx.prefer_no_std,
-                        ctx.prefer_prelude,
-                    ),
+                    Some(best_path) => select_best_path(best_path, path_with_stab, ctx.cfg),
                     None => path_with_stab,
                 };
                 update_best_path(&mut best_path, new_path_with_stab);
@@ -446,8 +435,7 @@ fn calculate_best_path(
 fn select_best_path(
     old_path @ (_, old_stability): (ModPath, Stability),
     new_path @ (_, new_stability): (ModPath, Stability),
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> (ModPath, Stability) {
     match (old_stability, new_stability) {
         (Stable, Unstable) => return old_path,
@@ -461,7 +449,7 @@ fn select_best_path(
         let (old_path, _) = &old;
         let new_has_prelude = new_path.segments().iter().any(|seg| seg == &known::prelude);
         let old_has_prelude = old_path.segments().iter().any(|seg| seg == &known::prelude);
-        match (new_has_prelude, old_has_prelude, prefer_prelude) {
+        match (new_has_prelude, old_has_prelude, cfg.prefer_prelude) {
             (true, false, true) | (false, true, false) => new,
             (true, false, false) | (false, true, true) => old,
             // no prelude difference in the paths, so pick the shorter one
@@ -482,7 +470,7 @@ fn select_best_path(
 
     match (old_path.0.segments().first(), new_path.0.segments().first()) {
         (Some(old), Some(new)) if STD_CRATES.contains(old) && STD_CRATES.contains(new) => {
-            let rank = match prefer_no_std {
+            let rank = match cfg.prefer_no_std {
                 false => |name: &Name| match name {
                     name if name == &known::core => 0,
                     name if name == &known::alloc => 1,
@@ -647,10 +635,9 @@ mod tests {
         {
             let found_path = find_path_inner(
                 FindPathCtx {
-                    prefer_no_std: false,
                     db: &db,
                     prefix,
-                    prefer_prelude,
+                    cfg: ImportPathConfig { prefer_no_std: false, prefer_prelude },
                     ignore_local_imports,
                 },
                 resolved,

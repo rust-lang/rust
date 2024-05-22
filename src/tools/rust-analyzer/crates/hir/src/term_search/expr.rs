@@ -1,5 +1,6 @@
 //! Type tree for term search
 
+use hir_def::ImportPathConfig;
 use hir_expand::mod_path::ModPath;
 use hir_ty::{
     db::HirDatabase,
@@ -16,22 +17,20 @@ use crate::{
 fn mod_item_path(
     sema_scope: &SemanticsScope<'_>,
     def: &ModuleDef,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> Option<ModPath> {
     let db = sema_scope.db;
     let m = sema_scope.module();
-    m.find_path(db.upcast(), *def, prefer_no_std, prefer_prelude)
+    m.find_path(db.upcast(), *def, cfg)
 }
 
 /// Helper function to get path to `ModuleDef` as string
 fn mod_item_path_str(
     sema_scope: &SemanticsScope<'_>,
     def: &ModuleDef,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> Result<String, DisplaySourceCodeError> {
-    let path = mod_item_path(sema_scope, def, prefer_no_std, prefer_prelude);
+    let path = mod_item_path(sema_scope, def, cfg);
     path.map(|it| it.display(sema_scope.db.upcast()).to_string())
         .ok_or(DisplaySourceCodeError::PathNotFound)
 }
@@ -40,8 +39,7 @@ fn mod_item_path_str(
 fn type_path(
     sema_scope: &SemanticsScope<'_>,
     ty: &Type,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> Result<String, DisplaySourceCodeError> {
     let db = sema_scope.db;
     let m = sema_scope.module();
@@ -50,9 +48,7 @@ fn type_path(
         Some(adt) => {
             let ty_name = ty.display_source_code(db, m.id, true)?;
 
-            let mut path =
-                mod_item_path(sema_scope, &ModuleDef::Adt(adt), prefer_no_std, prefer_prelude)
-                    .unwrap();
+            let mut path = mod_item_path(sema_scope, &ModuleDef::Adt(adt), cfg).unwrap();
             path.pop_segment();
             let path = path.display(db.upcast()).to_string();
             let res = match path.is_empty() {
@@ -137,11 +133,10 @@ impl Expr {
         &self,
         sema_scope: &SemanticsScope<'_>,
         many_formatter: &mut dyn FnMut(&Type) -> String,
-        prefer_no_std: bool,
-        prefer_prelude: bool,
+        cfg: ImportPathConfig,
     ) -> Result<String, DisplaySourceCodeError> {
         let db = sema_scope.db;
-        let mod_item_path_str = |s, def| mod_item_path_str(s, def, prefer_no_std, prefer_prelude);
+        let mod_item_path_str = |s, def| mod_item_path_str(s, def, cfg);
         match self {
             Expr::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
             Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
@@ -151,9 +146,7 @@ impl Expr {
             Expr::Function { func, params, .. } => {
                 let args = params
                     .iter()
-                    .map(|f| {
-                        f.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
-                    })
+                    .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg))
                     .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                     .into_iter()
                     .join(", ");
@@ -167,14 +160,10 @@ impl Expr {
                             crate::AssocItemContainer::Impl(imp) => {
                                 let self_ty = imp.self_ty(db);
                                 // Should it be guaranteed that `mod_item_path` always exists?
-                                match self_ty.as_adt().and_then(|adt| {
-                                    mod_item_path(
-                                        sema_scope,
-                                        &adt.into(),
-                                        prefer_no_std,
-                                        prefer_prelude,
-                                    )
-                                }) {
+                                match self_ty
+                                    .as_adt()
+                                    .and_then(|adt| mod_item_path(sema_scope, &adt.into(), cfg))
+                                {
                                     Some(path) => path.display(sema_scope.db.upcast()).to_string(),
                                     None => self_ty.display(db).to_string(),
                                 }
@@ -196,17 +185,10 @@ impl Expr {
 
                 let func_name = func.name(db).display(db.upcast()).to_string();
                 let self_param = func.self_param(db).unwrap();
-                let target_str = target.gen_source_code(
-                    sema_scope,
-                    many_formatter,
-                    prefer_no_std,
-                    prefer_prelude,
-                )?;
+                let target_str = target.gen_source_code(sema_scope, many_formatter, cfg)?;
                 let args = params
                     .iter()
-                    .map(|f| {
-                        f.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
-                    })
+                    .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg))
                     .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                     .into_iter()
                     .join(", ");
@@ -238,7 +220,7 @@ impl Expr {
                     false => {
                         let generics = generics
                             .iter()
-                            .map(|it| type_path(sema_scope, it, prefer_no_std, prefer_prelude))
+                            .map(|it| type_path(sema_scope, it, cfg))
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
@@ -249,14 +231,7 @@ impl Expr {
                     StructKind::Tuple => {
                         let args = params
                             .iter()
-                            .map(|f| {
-                                f.gen_source_code(
-                                    sema_scope,
-                                    many_formatter,
-                                    prefer_no_std,
-                                    prefer_prelude,
-                                )
-                            })
+                            .map(|f| f.gen_source_code(sema_scope, many_formatter, cfg))
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
@@ -271,12 +246,7 @@ impl Expr {
                                 let tmp = format!(
                                     "{}: {}",
                                     f.name(db).display(db.upcast()),
-                                    a.gen_source_code(
-                                        sema_scope,
-                                        many_formatter,
-                                        prefer_no_std,
-                                        prefer_prelude
-                                    )?
+                                    a.gen_source_code(sema_scope, many_formatter, cfg)?
                                 );
                                 Ok(tmp)
                             })
@@ -297,14 +267,7 @@ impl Expr {
                     StructKind::Tuple => {
                         let args = params
                             .iter()
-                            .map(|a| {
-                                a.gen_source_code(
-                                    sema_scope,
-                                    many_formatter,
-                                    prefer_no_std,
-                                    prefer_prelude,
-                                )
-                            })
+                            .map(|a| a.gen_source_code(sema_scope, many_formatter, cfg))
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
@@ -319,12 +282,7 @@ impl Expr {
                                 let tmp = format!(
                                     "{}: {}",
                                     f.name(db).display(db.upcast()),
-                                    a.gen_source_code(
-                                        sema_scope,
-                                        many_formatter,
-                                        prefer_no_std,
-                                        prefer_prelude
-                                    )?
+                                    a.gen_source_code(sema_scope, many_formatter, cfg)?
                                 );
                                 Ok(tmp)
                             })
@@ -338,7 +296,7 @@ impl Expr {
                         false => {
                             let generics = generics
                                 .iter()
-                                .map(|it| type_path(sema_scope, it, prefer_no_std, prefer_prelude))
+                                .map(|it| type_path(sema_scope, it, cfg))
                                 .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                                 .into_iter()
                                 .join(", ");
@@ -353,9 +311,7 @@ impl Expr {
             Expr::Tuple { params, .. } => {
                 let args = params
                     .iter()
-                    .map(|a| {
-                        a.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
-                    })
+                    .map(|a| a.gen_source_code(sema_scope, many_formatter, cfg))
                     .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                     .into_iter()
                     .join(", ");
@@ -367,12 +323,7 @@ impl Expr {
                     return Ok(many_formatter(&expr.ty(db)));
                 }
 
-                let strukt = expr.gen_source_code(
-                    sema_scope,
-                    many_formatter,
-                    prefer_no_std,
-                    prefer_prelude,
-                )?;
+                let strukt = expr.gen_source_code(sema_scope, many_formatter, cfg)?;
                 let field = field.name(db).display(db.upcast()).to_string();
                 Ok(format!("{strukt}.{field}"))
             }
@@ -381,12 +332,7 @@ impl Expr {
                     return Ok(many_formatter(&expr.ty(db)));
                 }
 
-                let inner = expr.gen_source_code(
-                    sema_scope,
-                    many_formatter,
-                    prefer_no_std,
-                    prefer_prelude,
-                )?;
+                let inner = expr.gen_source_code(sema_scope, many_formatter, cfg)?;
                 Ok(format!("&{inner}"))
             }
             Expr::Many(ty) => Ok(many_formatter(ty)),
