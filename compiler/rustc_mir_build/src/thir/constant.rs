@@ -2,6 +2,7 @@ use rustc_ast as ast;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, ParamEnv, ScalarInt, TyCtxt};
+use tracing::trace;
 
 use crate::build::parse_float_into_scalar;
 

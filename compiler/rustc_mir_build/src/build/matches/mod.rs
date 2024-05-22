@@ -20,6 +20,8 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
+use tracing::{debug, instrument};
+
 // helper functions, broken out by category:
 mod simplify;
 mod test;

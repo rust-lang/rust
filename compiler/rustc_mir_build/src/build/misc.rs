@@ -7,6 +7,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::debug;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of

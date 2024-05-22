@@ -6,6 +6,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use tracing::{debug, instrument};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building

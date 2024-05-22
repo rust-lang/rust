@@ -14,6 +14,7 @@
 
 use crate::build::matches::{MatchPair, PatternExtraData, TestCase};
 use crate::build::Builder;
+use tracing::{debug, instrument};
 
 use std::mem;
 

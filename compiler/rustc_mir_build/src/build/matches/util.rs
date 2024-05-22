@@ -7,6 +7,7 @@ use rustc_middle::thir::{self, *};
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
+use tracing::debug;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn field_match_pairs<'pat>(

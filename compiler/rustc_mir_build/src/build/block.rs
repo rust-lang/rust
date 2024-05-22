@@ -5,6 +5,7 @@ use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::{mir::*, ty};
 use rustc_span::Span;
+use tracing::debug;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn ast_block(
