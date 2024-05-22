@@ -386,7 +386,7 @@ fn process_references(
             let segment = builder.make_mut(segment);
             let scope_node = builder.make_syntax_mut(scope_node);
             if !visited_modules.contains(&module) {
-                let mod_path = module.find_use_path_prefixed(
+                let mod_path = module.find_use_path(
                     ctx.sema.db,
                     *enum_module_def,
                     ctx.config.insert_use.prefix_kind,

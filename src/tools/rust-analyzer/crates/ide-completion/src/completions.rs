@@ -633,7 +633,7 @@ fn enum_variants_with_paths(
     }
 
     for variant in variants {
-        if let Some(path) = ctx.module.find_use_path(
+        if let Some(path) = ctx.module.find_path(
             ctx.db,
             hir::ModuleDef::from(variant),
             ctx.config.prefer_no_std,

@@ -58,7 +58,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
                 let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
-                let type_path = current_module.find_use_path(
+                let type_path = current_module.find_path(
                     ctx.sema.db,
                     item_for_path_search(ctx.sema.db, item_in_ns)?,
                     ctx.config.prefer_no_std,

@@ -90,7 +90,7 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let module = ctx.sema.scope(ident_pat.syntax())?.module();
     let struct_def = hir::ModuleDef::from(struct_type);
     let kind = struct_type.kind(ctx.db());
-    let struct_def_path = module.find_use_path(
+    let struct_def_path = module.find_path(
         ctx.db(),
         struct_def,
         ctx.config.prefer_no_std,

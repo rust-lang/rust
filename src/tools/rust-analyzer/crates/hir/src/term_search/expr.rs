@@ -33,16 +33,11 @@ fn mod_item_path(
     });
 
     let m = sema_scope.module();
-    match name_hit_count {
-        Some(0..=1) | None => m.find_use_path(db.upcast(), *def, prefer_no_std, prefer_prelude),
-        Some(_) => m.find_use_path_prefixed(
-            db.upcast(),
-            *def,
-            PrefixKind::ByCrate,
-            prefer_no_std,
-            prefer_prelude,
-        ),
-    }
+    let prefix = match name_hit_count {
+        Some(0..=1) | None => PrefixKind::Plain,
+        Some(_) => PrefixKind::ByCrate,
+    };
+    m.find_use_path(db.upcast(), *def, prefix, prefer_no_std, prefer_prelude)
 }
 
 /// Helper function to get path to `ModuleDef` as string

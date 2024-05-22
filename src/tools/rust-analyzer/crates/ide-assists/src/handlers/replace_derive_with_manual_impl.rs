@@ -83,7 +83,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     })
     .flat_map(|trait_| {
         current_module
-            .find_use_path(
+            .find_path(
                 ctx.sema.db,
                 hir::ModuleDef::Trait(trait_),
                 ctx.config.prefer_no_std,

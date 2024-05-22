@@ -462,7 +462,7 @@ fn build_pat(
 ) -> Option<ast::Pat> {
     match var {
         ExtendedVariant::Variant(var) => {
-            let path = mod_path_to_ast(&module.find_use_path(
+            let path = mod_path_to_ast(&module.find_path(
                 db,
                 ModuleDef::from(var),
                 prefer_no_std,

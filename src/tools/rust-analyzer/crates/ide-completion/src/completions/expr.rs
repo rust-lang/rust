@@ -171,7 +171,7 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Struct(strukt) => {
                         let path = ctx
                             .module
-                            .find_use_path(
+                            .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
                                 ctx.config.prefer_no_std,
@@ -194,7 +194,7 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Union(un) => {
                         let path = ctx
                             .module
-                            .find_use_path(
+                            .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
                                 ctx.config.prefer_no_std,

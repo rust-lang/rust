@@ -58,7 +58,7 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_use_path(
+    let trait_path = module.find_path(
         ctx.db(),
         ModuleDef::Trait(trait_),
         ctx.config.prefer_no_std,
@@ -103,7 +103,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_use_path(
+    let trait_path = module.find_path(
         ctx.db(),
         ModuleDef::Trait(trait_),
         ctx.config.prefer_no_std,

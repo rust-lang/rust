@@ -789,7 +789,7 @@ impl Module {
 
     /// Finds a path that can be used to refer to the given item from within
     /// this module, if possible.
-    pub fn find_use_path(
+    pub fn find_path(
         self,
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
@@ -800,6 +800,8 @@ impl Module {
             db,
             item.into().into(),
             self.into(),
+            PrefixKind::Plain,
+            false,
             prefer_no_std,
             prefer_prelude,
         )
@@ -807,7 +809,7 @@ impl Module {
 
     /// Finds a path that can be used to refer to the given item from within
     /// this module, if possible. This is used for returning import paths for use-statements.
-    pub fn find_use_path_prefixed(
+    pub fn find_use_path(
         self,
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
@@ -815,11 +817,12 @@ impl Module {
         prefer_no_std: bool,
         prefer_prelude: bool,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path_prefixed(
+        hir_def::find_path::find_path(
             db,
             item.into().into(),
             self.into(),
             prefix_kind,
+            true,
             prefer_no_std,
             prefer_prelude,
         )

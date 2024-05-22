@@ -144,7 +144,7 @@ pub(crate) fn json_in_items(
                         let current_module = semantics_scope.module();
                         if !scope_has("Serialize") {
                             if let Some(PathResolution::Def(it)) = serialize_resolved {
-                                if let Some(it) = current_module.find_use_path_prefixed(
+                                if let Some(it) = current_module.find_use_path(
                                     sema.db,
                                     it,
                                     config.insert_use.prefix_kind,
@@ -157,7 +157,7 @@ pub(crate) fn json_in_items(
                         }
                         if !scope_has("Deserialize") {
                             if let Some(PathResolution::Def(it)) = deserialize_resolved {
-                                if let Some(it) = current_module.find_use_path_prefixed(
+                                if let Some(it) = current_module.find_use_path(
                                     sema.db,
                                     it,
                                     config.insert_use.prefix_kind,

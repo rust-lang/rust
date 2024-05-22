@@ -637,17 +637,13 @@ fn get_mod_path(
     prefer_no_std: bool,
     prefer_prelude: bool,
 ) -> Option<ModPath> {
-    if let Some(prefix_kind) = prefixed {
-        module_with_candidate.find_use_path_prefixed(
-            db,
-            item_to_search,
-            prefix_kind,
-            prefer_no_std,
-            prefer_prelude,
-        )
-    } else {
-        module_with_candidate.find_use_path(db, item_to_search, prefer_no_std, prefer_prelude)
-    }
+    module_with_candidate.find_use_path(
+        db,
+        item_to_search,
+        prefixed.unwrap_or(PrefixKind::Plain),
+        prefer_no_std,
+        prefer_prelude,
+    )
 }
 
 impl ImportCandidate {
