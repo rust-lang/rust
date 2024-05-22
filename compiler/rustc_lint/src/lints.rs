@@ -145,11 +145,8 @@ pub struct BuiltinMissingDebugImpl<'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for BuiltinMissingDebugImpl<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_builtin_missing_debug_impl);
         diag.arg("debug", self.tcx.def_path_str(self.def_id));
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_builtin_missing_debug_impl
     }
 }
 
@@ -250,16 +247,13 @@ pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
 
 impl<'a> LintDiagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_ungated_async_fn_track_caller);
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
             self.session,
             sym::async_fn_track_caller,
         );
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_ungated_async_fn_track_caller
     }
 }
 
@@ -432,6 +426,7 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
 
 impl<'a> LintDiagnostic<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(self.msg);
         diag.arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
@@ -442,10 +437,6 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
             );
         }
         self.sub.add_to_diag(diag);
-    }
-
-    fn msg(&self) -> DiagMessage {
-        self.msg.clone()
     }
 }
 
@@ -1168,6 +1159,7 @@ pub struct NonFmtPanicUnused {
 // Used because of two suggestions based on one Option<Span>
 impl<'a> LintDiagnostic<'a, ()> for NonFmtPanicUnused {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_non_fmt_panic_unused);
         diag.arg("count", self.count);
         diag.note(fluent::lint_note);
         if let Some(span) = self.suggestion {
@@ -1184,10 +1176,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonFmtPanicUnused {
                 Applicability::MachineApplicable,
             );
         }
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_non_fmt_panic_unused
     }
 }
 
@@ -1410,12 +1398,9 @@ pub struct DropTraitConstraintsDiag<'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_drop_trait_constraints);
         diag.arg("predicate", self.predicate);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_drop_trait_constraints
     }
 }
 
@@ -1427,11 +1412,8 @@ pub struct DropGlue<'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_drop_glue);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_drop_glue
     }
 }
 
@@ -1710,6 +1692,7 @@ pub struct ImproperCTypes<'a> {
 // Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
 impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_improper_ctypes);
         diag.arg("ty", self.ty);
         diag.arg("desc", self.desc);
         diag.span_label(self.label, fluent::lint_label);
@@ -1720,10 +1703,6 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
         if let Some(note) = self.span_note {
             diag.span_note(note, fluent::lint_note);
         }
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_improper_ctypes
     }
 }
 
@@ -1853,6 +1832,7 @@ pub enum UnusedDefSuggestion {
 // Needed because of def_path_str
 impl<'a> LintDiagnostic<'a, ()> for UnusedDef<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_unused_def);
         diag.arg("pre", self.pre);
         diag.arg("post", self.post);
         diag.arg("def", self.cx.tcx.def_path_str(self.def_id));
@@ -1863,10 +1843,6 @@ impl<'a> LintDiagnostic<'a, ()> for UnusedDef<'_, '_> {
         if let Some(sugg) = self.suggestion {
             diag.subdiagnostic(diag.dcx, sugg);
         }
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_unused_def
     }
 }
 
@@ -1936,14 +1912,11 @@ pub struct AsyncFnInTraitDiag {
 
 impl<'a> LintDiagnostic<'a, ()> for AsyncFnInTraitDiag {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_async_fn_in_trait);
         diag.note(fluent::lint_note);
         if let Some(sugg) = self.sugg {
             diag.multipart_suggestion(fluent::lint_suggestion, sugg, Applicability::MaybeIncorrect);
         }
-    }
-
-    fn msg(&self) -> DiagMessage {
-        fluent::lint_async_fn_in_trait
     }
 }
 
@@ -2260,10 +2233,8 @@ pub struct UnstableFeature {
 }
 
 impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
-    fn decorate_lint<'b>(self, _diag: &'b mut Diag<'a, ()>) {}
-
-    fn msg(&self) -> DiagMessage {
-        self.msg.clone()
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(self.msg);
     }
 }
 
@@ -2725,11 +2696,8 @@ pub struct AmbiguousGlobImports {
 
 impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for AmbiguousGlobImports {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.primary_message(self.ambiguity.msg.clone());
         rustc_errors::report_ambiguity_error(diag, self.ambiguity);
-    }
-
-    fn msg(&self) -> DiagMessage {
-        DiagMessage::Str(self.ambiguity.msg.clone().into())
     }
 }
 

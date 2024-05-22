@@ -156,6 +156,13 @@ pub struct Deprecated {
 
 impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.primary_message(match &self.since_kind {
+            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
+            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
+            DeprecatedSinceKind::InVersion(_) => {
+                crate::fluent_generated::middle_deprecated_in_version
+            }
+        });
         diag.arg("kind", self.kind);
         diag.arg("path", self.path);
         if let DeprecatedSinceKind::InVersion(version) = self.since_kind {
@@ -169,16 +176,6 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
         }
         if let Some(sub) = self.sub {
             diag.subdiagnostic(diag.dcx, sub);
-        }
-    }
-
-    fn msg(&self) -> rustc_errors::DiagMessage {
-        match &self.since_kind {
-            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
-            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
-            DeprecatedSinceKind::InVersion(_) => {
-                crate::fluent_generated::middle_deprecated_in_version
-            }
         }
     }
 }
@@ -597,7 +594,9 @@ impl<'tcx> TyCtxt<'tcx> {
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
+            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
+                lint.primary_message(msg);
+            })
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

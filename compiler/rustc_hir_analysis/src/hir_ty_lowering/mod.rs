@@ -1164,33 +1164,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let ty = self.lower_assoc_ty(span, assoc_ty_did, assoc_segment, bound);
 
         if let Some(variant_def_id) = variant_resolution {
-            tcx.node_span_lint(
-                AMBIGUOUS_ASSOCIATED_ITEMS,
-                hir_ref_id,
-                span,
-                "ambiguous associated item",
-                |lint| {
-                    let mut could_refer_to = |kind: DefKind, def_id, also| {
-                        let note_msg = format!(
-                            "`{}` could{} refer to the {} defined here",
-                            assoc_ident,
-                            also,
-                            tcx.def_kind_descr(kind, def_id)
-                        );
-                        lint.span_note(tcx.def_span(def_id), note_msg);
-                    };
-
-                    could_refer_to(DefKind::Variant, variant_def_id, "");
-                    could_refer_to(DefKind::AssocTy, assoc_ty_did, " also");
-
-                    lint.span_suggestion(
-                        span,
-                        "use fully-qualified syntax",
-                        format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
-                        Applicability::MachineApplicable,
+            tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span, |lint| {
+                lint.primary_message("ambiguous associated item");
+                let mut could_refer_to = |kind: DefKind, def_id, also| {
+                    let note_msg = format!(
+                        "`{}` could{} refer to the {} defined here",
+                        assoc_ident,
+                        also,
+                        tcx.def_kind_descr(kind, def_id)
                     );
-                },
-            );
+                    lint.span_note(tcx.def_span(def_id), note_msg);
+                };
+
+                could_refer_to(DefKind::Variant, variant_def_id, "");
+                could_refer_to(DefKind::AssocTy, assoc_ty_did, " also");
+
+                lint.span_suggestion(
+                    span,
+                    "use fully-qualified syntax",
+                    format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
+                    Applicability::MachineApplicable,
+                );
+            });
         }
         Ok((ty, DefKind::AssocTy, assoc_ty_did))
     }

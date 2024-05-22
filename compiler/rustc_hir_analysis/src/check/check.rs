@@ -46,13 +46,9 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
             .emit();
         }
         None => {
-            tcx.node_span_lint(
-                UNSUPPORTED_CALLING_CONVENTIONS,
-                hir_id,
-                span,
-                "use of calling convention not supported on this target",
-                |_| {},
-            );
+            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
+                lint.primary_message("use of calling convention not supported on this target");
+            });
         }
     }
 
@@ -243,8 +239,8 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
             span,
-            "static of uninhabited type",
             |lint| {
+                lint.primary_message("static of uninhabited type");
                 lint
                 .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
             },
@@ -1315,9 +1311,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     span,
-                    "zero-sized fields in `repr(transparent)` cannot \
-                    contain external non-exhaustive types",
                     |lint| {
+                        lint.primary_message(
+                            "zero-sized fields in `repr(transparent)` cannot \
+                             contain external non-exhaustive types",
+                        );
                         let note = if non_exhaustive {
                             "is marked with `#[non_exhaustive]`"
                         } else {

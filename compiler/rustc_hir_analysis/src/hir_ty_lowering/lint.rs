@@ -72,8 +72,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
             diag.stash(self_ty.span, StashKey::TraitMissingMethod);
         } else {
-            let msg = "trait objects without an explicit `dyn` are deprecated";
-            tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
+            tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
+                lint.primary_message("trait objects without an explicit `dyn` are deprecated");
                 if self_ty.span.can_be_used_for_suggestions() {
                     lint.multipart_suggestion_verbose(
                         "if this is an object-safe trait, use `dyn`",

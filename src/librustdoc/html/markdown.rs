@@ -834,8 +834,9 @@ impl<'tcx> ExtraInfo<'tcx> {
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
-                msg,
-                |_| {},
+                |lint| {
+                    lint.primary_message(msg);
+                },
             );
         }
     }
@@ -850,8 +851,10 @@ impl<'tcx> ExtraInfo<'tcx> {
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
-                msg,
-                f,
+                |lint| {
+                    lint.primary_message(msg);
+                    f(lint);
+                },
             );
         }
     }

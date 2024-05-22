@@ -16,7 +16,7 @@ use crate::{
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Diag, DiagMessage, LintDiagnostic, MultiSpan};
+use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -1063,26 +1063,19 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             // FIXME: make this translatable
             #[allow(rustc::diagnostic_outside_of_impl)]
             #[allow(rustc::untranslatable_diagnostic)]
-            lint_level(
-                self.sess,
-                lint,
-                level,
-                src,
-                Some(span.into()),
-                fluent::lint_unknown_gated_lint,
-                |lint| {
-                    lint.arg("name", lint_id.lint.name_lower());
-                    lint.note(fluent::lint_note);
-                    rustc_session::parse::add_feature_diagnostics_for_issue(
-                        lint,
-                        &self.sess,
-                        feature,
-                        GateIssue::Language,
-                        lint_from_cli,
-                        None,
-                    );
-                },
-            );
+            lint_level(self.sess, lint, level, src, Some(span.into()), |lint| {
+                lint.primary_message(fluent::lint_unknown_gated_lint);
+                lint.arg("name", lint_id.lint.name_lower());
+                lint.note(fluent::lint_note);
+                rustc_session::parse::add_feature_diagnostics_for_issue(
+                    lint,
+                    &self.sess,
+                    feature,
+                    GateIssue::Language,
+                    lint_from_cli,
+                    None,
+                );
+            });
         }
 
         false
@@ -1103,11 +1096,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level(lint);
-        lint_level(self.sess, lint, level, src, span, msg, decorate)
+        lint_level(self.sess, lint, level, src, span, decorate)
     }
 
     #[track_caller]
@@ -1118,7 +1110,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         decorate: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
         let (level, src) = self.lint_level(lint);
-        lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
+        lint_level(self.sess, lint, level, src, Some(span), |lint| {
             decorate.decorate_lint(lint);
         });
     }
@@ -1126,7 +1118,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> LintDiagnostic<'a, ()>) {
         let (level, src) = self.lint_level(lint);
-        lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
+        lint_level(self.sess, lint, level, src, None, |lint| {
             decorate.decorate_lint(lint);
         });
     }

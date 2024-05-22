@@ -91,11 +91,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 prelude_or_array_lint,
                 self_expr.hir_id,
                 self_expr.span,
-                format!(
-                    "trait method `{}` will become ambiguous in Rust {edition}",
-                    segment.ident.name
-                ),
                 |lint| {
+                    lint.primary_message(format!(
+                        "trait method `{}` will become ambiguous in Rust {edition}",
+                        segment.ident.name
+                    ));
+
                     let sp = self_expr.span;
 
                     let derefs = "*".repeat(pick.autoderefs);
@@ -144,11 +145,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 prelude_or_array_lint,
                 call_expr.hir_id,
                 call_expr.span,
-                format!(
-                    "trait method `{}` will become ambiguous in Rust {edition}",
-                    segment.ident.name
-                ),
                 |lint| {
+                    lint.primary_message(format!(
+                        "trait method `{}` will become ambiguous in Rust {edition}",
+                        segment.ident.name
+                    ));
+
                     let sp = call_expr.span;
                     let trait_name = self.trait_path_or_bare_name(
                         span,
@@ -251,73 +253,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        self.tcx.node_span_lint(
-            RUST_2021_PRELUDE_COLLISIONS,
-            expr_id,
-            span,
-            format!(
+        self.tcx.node_span_lint(RUST_2021_PRELUDE_COLLISIONS, expr_id, span, |lint| {
+            lint.primary_message(format!(
                 "trait-associated function `{}` will become ambiguous in Rust 2021",
                 method_name.name
-            ),
-            |lint| {
-                // "type" refers to either a type or, more likely, a trait from which
-                // the associated function or method is from.
-                let container_id = pick.item.container_id(self.tcx);
-                let trait_path = self.trait_path_or_bare_name(span, expr_id, container_id);
-                let trait_generics = self.tcx.generics_of(container_id);
+            ));
 
-                let trait_name =
-                    if trait_generics.own_params.len() <= trait_generics.has_self as usize {
-                        trait_path
-                    } else {
-                        let counts = trait_generics.own_counts();
-                        format!(
-                            "{}<{}>",
-                            trait_path,
+            // "type" refers to either a type or, more likely, a trait from which
+            // the associated function or method is from.
+            let container_id = pick.item.container_id(self.tcx);
+            let trait_path = self.trait_path_or_bare_name(span, expr_id, container_id);
+            let trait_generics = self.tcx.generics_of(container_id);
+
+            let trait_name =
+                if trait_generics.own_params.len() <= trait_generics.has_self as usize {
+                    trait_path
+                } else {
+                    let counts = trait_generics.own_counts();
+                    format!(
+                        "{}<{}>",
+                        trait_path,
+                        std::iter::repeat("'_")
+                            .take(counts.lifetimes)
+                            .chain(std::iter::repeat("_").take(
+                                counts.types + counts.consts - trait_generics.has_self as usize
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                };
+
+            let mut self_ty_name = self_ty_span
+                .find_ancestor_inside(span)
+                .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+                .unwrap_or_else(|| self_ty.to_string());
+
+            // Get the number of generics the self type has (if an Adt) unless we can determine that
+            // the user has written the self type with generics already which we (naively) do by looking
+            // for a "<" in `self_ty_name`.
+            if !self_ty_name.contains('<') {
+                if let ty::Adt(def, _) = self_ty.kind() {
+                    let generics = self.tcx.generics_of(def.did());
+                    if !generics.is_own_empty() {
+                        let counts = generics.own_counts();
+                        self_ty_name += &format!(
+                            "<{}>",
                             std::iter::repeat("'_")
                                 .take(counts.lifetimes)
-                                .chain(std::iter::repeat("_").take(
-                                    counts.types + counts.consts - trait_generics.has_self as usize
-                                ))
+                                .chain(std::iter::repeat("_").take(counts.types + counts.consts))
                                 .collect::<Vec<_>>()
                                 .join(", ")
-                        )
-                    };
-
-                let mut self_ty_name = self_ty_span
-                    .find_ancestor_inside(span)
-                    .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
-                    .unwrap_or_else(|| self_ty.to_string());
-
-                // Get the number of generics the self type has (if an Adt) unless we can determine that
-                // the user has written the self type with generics already which we (naively) do by looking
-                // for a "<" in `self_ty_name`.
-                if !self_ty_name.contains('<') {
-                    if let ty::Adt(def, _) = self_ty.kind() {
-                        let generics = self.tcx.generics_of(def.did());
-                        if !generics.is_own_empty() {
-                            let counts = generics.own_counts();
-                            self_ty_name += &format!(
-                                "<{}>",
-                                std::iter::repeat("'_")
-                                    .take(counts.lifetimes)
-                                    .chain(
-                                        std::iter::repeat("_").take(counts.types + counts.consts)
-                                    )
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            );
-                        }
+                        );
                     }
                 }
-                lint.span_suggestion(
-                    span,
-                    "disambiguate the associated function",
-                    format!("<{} as {}>::{}", self_ty_name, trait_name, method_name.name,),
-                    Applicability::MachineApplicable,
-                );
-            },
-        );
+            }
+            lint.span_suggestion(
+                span,
+                "disambiguate the associated function",
+                format!("<{} as {}>::{}", self_ty_name, trait_name, method_name.name,),
+                Applicability::MachineApplicable,
+            );
+        });
     }
 
     fn trait_path_or_bare_name(
