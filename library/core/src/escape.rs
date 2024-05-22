@@ -29,6 +29,11 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>)
     // NOTE: This `match` is roughly ordered by the frequency of ASCII
     //       characters for performance.
     match byte.as_ascii() {
+         Some(
+            c @ ascii::Char::QuotationMark
+            | c @ ascii::Char::Apostrophe
+            | c @ ascii::Char::ReverseSolidus,
+        ) => backslash(c),
         Some(c) if !byte.is_ascii_control() => {
             output[0] = c;
             (output, 0..1)
@@ -36,11 +41,6 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>)
         Some(ascii::Char::LineFeed) => backslash(ascii::Char::SmallN),
         Some(ascii::Char::CarriageReturn) => backslash(ascii::Char::SmallR),
         Some(ascii::Char::CharacterTabulation) => backslash(ascii::Char::SmallT),
-        Some(
-            c @ ascii::Char::QuotationMark
-            | c @ ascii::Char::Apostrophe
-            | c @ ascii::Char::ReverseSolidus,
-        ) => backslash(c),
         _ => {
             let hi = HEX_DIGITS[(byte >> 4) as usize];
             let lo = HEX_DIGITS[(byte & 0xf) as usize];
