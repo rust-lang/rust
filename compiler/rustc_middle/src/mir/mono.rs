@@ -18,6 +18,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use std::fmt;
 use std::hash::Hash;
+use tracing::debug;
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]

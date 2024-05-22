@@ -14,6 +14,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::TypeVisitable;
 use rustc_target::spec::abi;
 use std::iter;
+use tracing::{debug, instrument};
 
 use super::Pattern;
 

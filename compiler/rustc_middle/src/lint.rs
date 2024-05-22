@@ -12,6 +12,7 @@ use rustc_session::lint::{
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{symbol, DesugaringKind, Span, Symbol, DUMMY_SP};
+use tracing::instrument;
 
 use crate::ty::TyCtxt;
 

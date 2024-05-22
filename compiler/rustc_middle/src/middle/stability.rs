@@ -23,6 +23,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::num::NonZero;
+use tracing::debug;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
