@@ -418,20 +418,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // Ambiguity if upvars haven't been constrained yet
                     && !args.tupled_upvars_ty().is_ty_var()
                 {
-                    let no_borrows = match args.tupled_upvars_ty().kind() {
-                        ty::Tuple(tys) => tys.is_empty(),
-                        ty::Error(_) => false,
-                        _ => bug!("tuple_fields called on non-tuple"),
-                    };
                     // A coroutine-closure implements `FnOnce` *always*, since it may
                     // always be called once. It additionally implements `Fn`/`FnMut`
-                    // only if it has no upvars (therefore no borrows from the closure
-                    // that would need to be represented with a lifetime) and if the
-                    // closure kind permits it.
-                    // FIXME(async_closures): Actually, it could also implement `Fn`/`FnMut`
-                    // if it takes all of its upvars by copy, and none by ref. This would
-                    // require us to record a bit more information during upvar analysis.
-                    if no_borrows && closure_kind.extends(kind) {
+                    // only if it has no upvars referencing the closure-env lifetime,
+                    // and if the closure kind permits it.
+                    if closure_kind.extends(kind) && !args.has_self_borrows() {
                         candidates.vec.push(ClosureCandidate { is_const });
                     } else if kind == ty::ClosureKind::FnOnce {
                         candidates.vec.push(ClosureCandidate { is_const });
