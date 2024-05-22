@@ -1,4 +1,4 @@
-// This test checks that alloc can still compile correctly
+// This test checks that alloc can still compile successfully
 // when the unstable no_rc feature is turned on.
 // See https://github.com/rust-lang/rust/pull/84266
 

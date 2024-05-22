@@ -4,7 +4,7 @@
 // build to see if this bug makes a resurgence.
 // See https://github.com/rust-lang/rust/pull/24448
 
-//@ ignore-cross compile
+//@ ignore-cross-compile
 //@ only-linux
 
 use run_make_support::{cc, run, rustc, tmp_dir};
@@ -14,23 +14,21 @@ fn main() {
     cc().input("foo.c")
         .arg("-lfoo")
         .library_search_path(tmp_dir())
-        .arg("-Wl")
-        .arg("--gc-sections")
+        .arg("-Wl,--gc-sections")
         .arg("-lpthread")
         .arg("-ldl")
-        .out_exe(tmp_dir().join("foo"))
+        .out_exe("foo")
         .run();
     run("foo");
     cc().input("foo.c")
         .arg("-lfoo")
         .library_search_path(tmp_dir())
-        .arg("-Wl")
-        .arg("--gc-sections")
+        .arg("-Wl,--gc-sections")
         .arg("-lpthread")
         .arg("-ldl")
         .arg("-pie")
         .arg("-fPIC")
-        .out_exe(tmp_dir().join("foo"))
+        .out_exe("foo")
         .run();
     run("foo");
 }

@@ -107,7 +107,6 @@ run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-37839/Makefile
 run-make/issue-37893/Makefile
-run-make/issue-38237/Makefile
 run-make/issue-40535/Makefile
 run-make/issue-46239/Makefile
 run-make/issue-47384/Makefile

@@ -1,4 +1,4 @@
-// This test checks that the core library can still compile correctly
+// This test checks that the core library can still compile successfully
 // when the no_global_oom_handling feature is turned on.
 // See https://github.com/rust-lang/rust/pull/110649
 
@@ -10,7 +10,7 @@ fn main() {
         .arg("-Dwarnings")
         .crate_type("rlib")
         .input("../../../library/core/src/lib.rs")
-        .sysroot(tmp_dir().join("fakeroot"));
+        .sysroot(tmp_dir().join("fakeroot"))
         .cfg("no_global_oom_handling")
         .run();
 }
