@@ -596,7 +596,10 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::{expect, Expect};
     use hir_expand::db::ExpandDatabase;
+    use itertools::Itertools;
+    use stdx::format_to;
     use syntax::ast::AstNode;
     use test_fixture::WithFixture;
 
@@ -608,13 +611,7 @@ mod tests {
     /// item the `path` refers to returns that same path when called from the
     /// module the cursor is in.
     #[track_caller]
-    fn check_found_path_(
-        ra_fixture: &str,
-        path: &str,
-        prefix_kind: PrefixKind,
-        prefer_prelude: bool,
-        ignore_local_imports: bool,
-    ) {
+    fn check_found_path_(ra_fixture: &str, path: &str, prefer_prelude: bool, expect: Expect) {
         let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_at_position(pos);
         let parsed_path_file =
@@ -642,44 +639,41 @@ mod tests {
             .or_else(|| resolved.take_values().map(ItemInNs::Values))
             .expect("path does not resolve to a type or value");
 
-        let found_path = find_path_inner(
-            FindPathCtx {
-                prefer_no_std: false,
-                db: &db,
-                prefix: prefix_kind,
-                prefer_prelude,
-                ignore_local_imports,
-            },
-            resolved,
-            module,
-        );
-        assert_eq!(found_path, Some(mod_path), "on kind: {prefix_kind:?} ({ignore_local_imports})");
+        let mut res = String::new();
+        for (prefix, ignore_local_imports) in
+            [PrefixKind::Plain, PrefixKind::ByCrate, PrefixKind::BySelf]
+                .into_iter()
+                .cartesian_product([false, true])
+        {
+            let found_path = find_path_inner(
+                FindPathCtx {
+                    prefer_no_std: false,
+                    db: &db,
+                    prefix,
+                    prefer_prelude,
+                    ignore_local_imports,
+                },
+                resolved,
+                module,
+            );
+            format_to!(
+                res,
+                "{:7}(imports {}): {}\n",
+                format!("{:?}", prefix),
+                if ignore_local_imports { '✖' } else { '✔' },
+                found_path
+                    .map_or_else(|| "<unresolvable>".to_owned(), |it| it.display(&db).to_string()),
+            );
+        }
+        expect.assert_eq(&res);
     }
 
-    fn check_found_path(
-        ra_fixture: &str,
-        plain_non_local: &str,
-        plain: &str,
-        by_crate: &str,
-        by_self: &str,
-    ) {
-        check_found_path_(ra_fixture, plain_non_local, PrefixKind::Plain, false, true);
-        check_found_path_(ra_fixture, plain, PrefixKind::Plain, false, false);
-        check_found_path_(ra_fixture, by_crate, PrefixKind::ByCrate, false, false);
-        check_found_path_(ra_fixture, by_self, PrefixKind::BySelf, false, false);
+    fn check_found_path(ra_fixture: &str, path: &str, expect: Expect) {
+        check_found_path_(ra_fixture, path, false, expect);
     }
 
-    fn check_found_path_prelude(
-        ra_fixture: &str,
-        plain_non_local: &str,
-        plain: &str,
-        by_crate: &str,
-        by_self: &str,
-    ) {
-        check_found_path_(ra_fixture, plain_non_local, PrefixKind::Plain, true, true);
-        check_found_path_(ra_fixture, plain, PrefixKind::Plain, true, false);
-        check_found_path_(ra_fixture, by_crate, PrefixKind::ByCrate, true, false);
-        check_found_path_(ra_fixture, by_self, PrefixKind::BySelf, true, false);
+    fn check_found_path_prelude(ra_fixture: &str, path: &str, expect: Expect) {
+        check_found_path_(ra_fixture, path, true, expect);
     }
 
     #[test]
@@ -690,9 +684,14 @@ struct S;
 $0
         "#,
             "S",
-            "S",
-            "crate::S",
-            "self::S",
+            expect![[r#"
+                Plain  (imports ✔): S
+                Plain  (imports ✖): S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): crate::S
+                BySelf (imports ✔): self::S
+                BySelf (imports ✖): self::S
+            "#]],
         );
     }
 
@@ -704,9 +703,14 @@ enum E { A }
 $0
         "#,
             "E::A",
-            "E::A",
-            "crate::E::A",
-            "self::E::A",
+            expect![[r#"
+                Plain  (imports ✔): E::A
+                Plain  (imports ✖): E::A
+                ByCrate(imports ✔): crate::E::A
+                ByCrate(imports ✖): crate::E::A
+                BySelf (imports ✔): self::E::A
+                BySelf (imports ✖): self::E::A
+            "#]],
         );
     }
 
@@ -720,9 +724,14 @@ mod foo {
 $0
         "#,
             "foo::S",
-            "foo::S",
-            "crate::foo::S",
-            "self::foo::S",
+            expect![[r#"
+                Plain  (imports ✔): foo::S
+                Plain  (imports ✖): foo::S
+                ByCrate(imports ✔): crate::foo::S
+                ByCrate(imports ✖): crate::foo::S
+                BySelf (imports ✔): self::foo::S
+                BySelf (imports ✖): self::foo::S
+            "#]],
         );
     }
 
@@ -739,9 +748,14 @@ struct S;
 $0
         "#,
             "super::S",
-            "super::S",
-            "crate::foo::S",
-            "super::S",
+            expect![[r#"
+                Plain  (imports ✔): super::S
+                Plain  (imports ✖): super::S
+                ByCrate(imports ✔): crate::foo::S
+                ByCrate(imports ✖): crate::foo::S
+                BySelf (imports ✔): super::S
+                BySelf (imports ✖): super::S
+            "#]],
         );
     }
 
@@ -755,9 +769,14 @@ mod foo;
 $0
         "#,
             "self",
-            "self",
-            "crate::foo",
-            "self",
+            expect![[r#"
+                Plain  (imports ✔): self
+                Plain  (imports ✖): self
+                ByCrate(imports ✔): crate::foo
+                ByCrate(imports ✖): crate::foo
+                BySelf (imports ✔): self
+                BySelf (imports ✖): self
+            "#]],
         );
     }
 
@@ -771,9 +790,14 @@ mod foo;
 $0
         "#,
             "crate",
-            "crate",
-            "crate",
-            "crate",
+            expect![[r#"
+                Plain  (imports ✔): crate
+                Plain  (imports ✖): crate
+                ByCrate(imports ✔): crate
+                ByCrate(imports ✖): crate
+                BySelf (imports ✔): crate
+                BySelf (imports ✖): crate
+            "#]],
         );
     }
 
@@ -788,9 +812,14 @@ struct S;
 $0
         "#,
             "crate::S",
-            "crate::S",
-            "crate::S",
-            "crate::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::S
+                Plain  (imports ✖): crate::S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): crate::S
+                BySelf (imports ✔): crate::S
+                BySelf (imports ✖): crate::S
+            "#]],
         );
     }
 
@@ -804,9 +833,14 @@ $0
 pub struct S;
         "#,
             "std::S",
-            "std::S",
-            "std::S",
-            "std::S",
+            expect![[r#"
+                Plain  (imports ✔): std::S
+                Plain  (imports ✖): std::S
+                ByCrate(imports ✔): std::S
+                ByCrate(imports ✖): std::S
+                BySelf (imports ✔): std::S
+                BySelf (imports ✖): std::S
+            "#]],
         );
     }
 
@@ -821,9 +855,14 @@ $0
 pub struct S;
         "#,
             "std_renamed::S",
-            "std_renamed::S",
-            "std_renamed::S",
-            "std_renamed::S",
+            expect![[r#"
+                Plain  (imports ✔): std_renamed::S
+                Plain  (imports ✖): std_renamed::S
+                ByCrate(imports ✔): std_renamed::S
+                ByCrate(imports ✖): std_renamed::S
+                BySelf (imports ✔): std_renamed::S
+                BySelf (imports ✖): std_renamed::S
+            "#]],
         );
     }
 
@@ -847,9 +886,14 @@ pub mod ast {
 }
         "#,
             "syntax::ast::ModuleItem",
-            "ast::ModuleItem",
-            "crate::ast::ModuleItem",
-            "self::ast::ModuleItem",
+            expect![[r#"
+                Plain  (imports ✔): ast::ModuleItem
+                Plain  (imports ✖): syntax::ast::ModuleItem
+                ByCrate(imports ✔): crate::ast::ModuleItem
+                ByCrate(imports ✖): syntax::ast::ModuleItem
+                BySelf (imports ✔): self::ast::ModuleItem
+                BySelf (imports ✖): syntax::ast::ModuleItem
+            "#]],
         );
 
         check_found_path(
@@ -865,9 +909,14 @@ pub mod ast {
 }
         "#,
             "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
-            "syntax::ast::ModuleItem",
+            expect![[r#"
+                Plain  (imports ✔): syntax::ast::ModuleItem
+                Plain  (imports ✖): syntax::ast::ModuleItem
+                ByCrate(imports ✔): syntax::ast::ModuleItem
+                ByCrate(imports ✖): syntax::ast::ModuleItem
+                BySelf (imports ✔): syntax::ast::ModuleItem
+                BySelf (imports ✖): syntax::ast::ModuleItem
+            "#]],
         );
     }
 
@@ -882,9 +931,14 @@ mod bar {
 $0
         "#,
             "bar::S",
-            "bar::S",
-            "crate::bar::S",
-            "self::bar::S",
+            expect![[r#"
+                Plain  (imports ✔): bar::S
+                Plain  (imports ✖): bar::S
+                ByCrate(imports ✔): crate::bar::S
+                ByCrate(imports ✖): crate::bar::S
+                BySelf (imports ✔): self::bar::S
+                BySelf (imports ✖): self::bar::S
+            "#]],
         );
     }
 
@@ -899,9 +953,14 @@ mod bar {
 $0
         "#,
             "bar::U",
-            "bar::U",
-            "crate::bar::U",
-            "self::bar::U",
+            expect![[r#"
+                Plain  (imports ✔): bar::U
+                Plain  (imports ✖): bar::U
+                ByCrate(imports ✔): crate::bar::U
+                ByCrate(imports ✖): crate::bar::U
+                BySelf (imports ✔): self::bar::U
+                BySelf (imports ✖): self::bar::U
+            "#]],
         );
     }
 
@@ -917,9 +976,14 @@ pub use core::S;
 pub struct S;
         "#,
             "std::S",
-            "std::S",
-            "std::S",
-            "std::S",
+            expect![[r#"
+                Plain  (imports ✔): std::S
+                Plain  (imports ✖): std::S
+                ByCrate(imports ✔): std::S
+                ByCrate(imports ✖): std::S
+                BySelf (imports ✔): std::S
+                BySelf (imports ✖): std::S
+            "#]],
         );
     }
 
@@ -937,9 +1001,14 @@ pub mod prelude {
 }
         "#,
             "S",
-            "S",
-            "S",
-            "S",
+            expect![[r#"
+                Plain  (imports ✔): S
+                Plain  (imports ✖): S
+                ByCrate(imports ✔): S
+                ByCrate(imports ✖): S
+                BySelf (imports ✔): S
+                BySelf (imports ✖): S
+            "#]],
         );
     }
 
@@ -958,9 +1027,14 @@ pub mod prelude {
 }
 "#,
             "std::prelude::rust_2018::S",
-            "std::prelude::rust_2018::S",
-            "std::prelude::rust_2018::S",
-            "std::prelude::rust_2018::S",
+            expect![[r#"
+                Plain  (imports ✔): std::prelude::rust_2018::S
+                Plain  (imports ✖): std::prelude::rust_2018::S
+                ByCrate(imports ✔): std::prelude::rust_2018::S
+                ByCrate(imports ✖): std::prelude::rust_2018::S
+                BySelf (imports ✔): std::prelude::rust_2018::S
+                BySelf (imports ✖): std::prelude::rust_2018::S
+            "#]],
         );
     }
 
@@ -979,9 +1053,14 @@ pub mod prelude {
 }
 "#,
             "S",
-            "S",
-            "crate::S",
-            "self::S",
+            expect![[r#"
+                Plain  (imports ✔): S
+                Plain  (imports ✖): S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): S
+                BySelf (imports ✔): self::S
+                BySelf (imports ✖): S
+            "#]],
         );
     }
 
@@ -998,8 +1077,30 @@ pub mod prelude {
     }
 }
         "#;
-        check_found_path(code, "None", "None", "None", "None");
-        check_found_path(code, "Some", "Some", "Some", "Some");
+        check_found_path(
+            code,
+            "None",
+            expect![[r#"
+                Plain  (imports ✔): None
+                Plain  (imports ✖): None
+                ByCrate(imports ✔): None
+                ByCrate(imports ✖): None
+                BySelf (imports ✔): None
+                BySelf (imports ✖): None
+            "#]],
+        );
+        check_found_path(
+            code,
+            "Some",
+            expect![[r#"
+                Plain  (imports ✔): Some
+                Plain  (imports ✖): Some
+                ByCrate(imports ✔): Some
+                ByCrate(imports ✖): Some
+                BySelf (imports ✔): Some
+                BySelf (imports ✖): Some
+            "#]],
+        );
     }
 
     #[test]
@@ -1017,9 +1118,14 @@ pub mod bar { pub struct S; }
 pub use crate::foo::bar::S;
         "#,
             "baz::S",
-            "baz::S",
-            "crate::baz::S",
-            "self::baz::S",
+            expect![[r#"
+                Plain  (imports ✔): baz::S
+                Plain  (imports ✖): baz::S
+                ByCrate(imports ✔): crate::baz::S
+                ByCrate(imports ✖): crate::baz::S
+                BySelf (imports ✔): self::baz::S
+                BySelf (imports ✖): self::baz::S
+            "#]],
         );
     }
 
@@ -1037,9 +1143,14 @@ $0
         "#,
             // crate::S would be shorter, but using private imports seems wrong
             "crate::bar::S",
-            "crate::bar::S",
-            "crate::bar::S",
-            "crate::bar::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::bar::S
+                Plain  (imports ✖): crate::bar::S
+                ByCrate(imports ✔): crate::bar::S
+                ByCrate(imports ✖): crate::bar::S
+                BySelf (imports ✔): crate::bar::S
+                BySelf (imports ✖): crate::bar::S
+            "#]],
         );
     }
 
@@ -1056,9 +1167,14 @@ pub(crate) use bar::S;
 $0
         "#,
             "crate::S",
-            "crate::S",
-            "crate::S",
-            "crate::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::S
+                Plain  (imports ✖): crate::S
+                ByCrate(imports ✔): crate::S
+                ByCrate(imports ✖): crate::S
+                BySelf (imports ✔): crate::S
+                BySelf (imports ✖): crate::S
+            "#]],
         );
     }
 
@@ -1078,9 +1194,14 @@ pub mod bar {
 $0
         "#,
             "super::S",
-            "super::S",
-            "crate::bar::S",
-            "super::S",
+            expect![[r#"
+                Plain  (imports ✔): super::S
+                Plain  (imports ✖): super::S
+                ByCrate(imports ✔): crate::bar::S
+                ByCrate(imports ✖): crate::bar::S
+                BySelf (imports ✔): super::S
+                BySelf (imports ✖): super::S
+            "#]],
         );
     }
 
@@ -1101,9 +1222,14 @@ pub struct S;
 pub use super::foo;
         "#,
             "crate::foo::S",
-            "crate::foo::S",
-            "crate::foo::S",
-            "crate::foo::S",
+            expect![[r#"
+                Plain  (imports ✔): crate::foo::S
+                Plain  (imports ✖): crate::foo::S
+                ByCrate(imports ✔): crate::foo::S
+                ByCrate(imports ✖): crate::foo::S
+                BySelf (imports ✔): crate::foo::S
+                BySelf (imports ✖): crate::foo::S
+            "#]],
         );
     }
 
@@ -1125,9 +1251,14 @@ pub mod sync {
 }
         "#,
             "std::sync::Arc",
-            "std::sync::Arc",
-            "std::sync::Arc",
-            "std::sync::Arc",
+            expect![[r#"
+                Plain  (imports ✔): std::sync::Arc
+                Plain  (imports ✖): std::sync::Arc
+                ByCrate(imports ✔): std::sync::Arc
+                ByCrate(imports ✖): std::sync::Arc
+                BySelf (imports ✔): std::sync::Arc
+                BySelf (imports ✖): std::sync::Arc
+            "#]],
         );
     }
 
@@ -1153,9 +1284,14 @@ pub mod fmt {
 }
         "#,
             "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
         );
 
         // Should also work (on a best-effort basis) if `no_std` is conditional.
@@ -1179,9 +1315,14 @@ pub mod fmt {
 }
         "#,
             "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
-            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
         );
     }
 
@@ -1209,9 +1350,14 @@ pub mod sync {
 }
             "#,
             "alloc::sync::Arc",
-            "alloc::sync::Arc",
-            "alloc::sync::Arc",
-            "alloc::sync::Arc",
+            expect![[r#"
+                Plain  (imports ✔): alloc::sync::Arc
+                Plain  (imports ✖): alloc::sync::Arc
+                ByCrate(imports ✔): alloc::sync::Arc
+                ByCrate(imports ✖): alloc::sync::Arc
+                BySelf (imports ✔): alloc::sync::Arc
+                BySelf (imports ✖): alloc::sync::Arc
+            "#]],
         );
     }
 
@@ -1231,9 +1377,14 @@ pub mod sync {
 pub struct Arc;
             "#,
             "megaalloc::Arc",
-            "megaalloc::Arc",
-            "megaalloc::Arc",
-            "megaalloc::Arc",
+            expect![[r#"
+                Plain  (imports ✔): megaalloc::Arc
+                Plain  (imports ✖): megaalloc::Arc
+                ByCrate(imports ✔): megaalloc::Arc
+                ByCrate(imports ✖): megaalloc::Arc
+                BySelf (imports ✔): megaalloc::Arc
+                BySelf (imports ✖): megaalloc::Arc
+            "#]],
         );
     }
 
@@ -1246,8 +1397,30 @@ pub mod primitive {
     pub use u8;
 }
         "#;
-        check_found_path(code, "u8", "u8", "u8", "u8");
-        check_found_path(code, "u16", "u16", "u16", "u16");
+        check_found_path(
+            code,
+            "u8",
+            expect![[r#"
+                Plain  (imports ✔): u8
+                Plain  (imports ✖): u8
+                ByCrate(imports ✔): u8
+                ByCrate(imports ✖): u8
+                BySelf (imports ✔): u8
+                BySelf (imports ✖): u8
+            "#]],
+        );
+        check_found_path(
+            code,
+            "u16",
+            expect![[r#"
+                Plain  (imports ✔): u16
+                Plain  (imports ✖): u16
+                ByCrate(imports ✔): u16
+                ByCrate(imports ✖): u16
+                BySelf (imports ✔): u16
+                BySelf (imports ✖): u16
+            "#]],
+        );
     }
 
     #[test]
@@ -1260,9 +1433,14 @@ fn main() {
 }
         "#,
             "Inner",
-            "Inner",
-            "Inner",
-            "Inner",
+            expect![[r#"
+                Plain  (imports ✔): Inner
+                Plain  (imports ✖): Inner
+                ByCrate(imports ✔): Inner
+                ByCrate(imports ✖): Inner
+                BySelf (imports ✔): Inner
+                BySelf (imports ✖): Inner
+            "#]],
         );
     }
 
@@ -1278,9 +1456,14 @@ fn main() {
 }
         "#,
             "Struct",
-            "Struct",
-            "Struct",
-            "Struct",
+            expect![[r#"
+                Plain  (imports ✔): Struct
+                Plain  (imports ✖): Struct
+                ByCrate(imports ✔): Struct
+                ByCrate(imports ✖): Struct
+                BySelf (imports ✔): Struct
+                BySelf (imports ✖): Struct
+            "#]],
         );
     }
 
@@ -1298,9 +1481,14 @@ fn main() {
 }
         "#,
             "module::Struct",
-            "module::Struct",
-            "module::Struct",
-            "module::Struct",
+            expect![[r#"
+                Plain  (imports ✔): module::Struct
+                Plain  (imports ✖): module::Struct
+                ByCrate(imports ✔): module::Struct
+                ByCrate(imports ✖): module::Struct
+                BySelf (imports ✔): module::Struct
+                BySelf (imports ✖): module::Struct
+            "#]],
         );
     }
 
@@ -1318,9 +1506,14 @@ fn main() {
 }
             "#,
             "module::CompleteMe",
-            "module::CompleteMe",
-            "crate::module::CompleteMe",
-            "self::module::CompleteMe",
+            expect![[r#"
+                Plain  (imports ✔): module::CompleteMe
+                Plain  (imports ✖): module::CompleteMe
+                ByCrate(imports ✔): crate::module::CompleteMe
+                ByCrate(imports ✖): crate::module::CompleteMe
+                BySelf (imports ✔): self::module::CompleteMe
+                BySelf (imports ✖): self::module::CompleteMe
+            "#]],
         )
     }
 
@@ -1341,9 +1534,14 @@ mod bar {
 }
             "#,
             "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
+            expect![[r#"
+                Plain  (imports ✔): crate::baz::Foo
+                Plain  (imports ✖): crate::baz::Foo
+                ByCrate(imports ✔): crate::baz::Foo
+                ByCrate(imports ✖): crate::baz::Foo
+                BySelf (imports ✔): crate::baz::Foo
+                BySelf (imports ✖): crate::baz::Foo
+            "#]],
         )
     }
 
@@ -1363,9 +1561,14 @@ mod bar {
 }
             "#,
             "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
-            "crate::baz::Foo",
+            expect![[r#"
+                Plain  (imports ✔): crate::baz::Foo
+                Plain  (imports ✖): crate::baz::Foo
+                ByCrate(imports ✔): crate::baz::Foo
+                ByCrate(imports ✖): crate::baz::Foo
+                BySelf (imports ✔): crate::baz::Foo
+                BySelf (imports ✖): crate::baz::Foo
+            "#]],
         )
     }
 
@@ -1390,9 +1593,14 @@ pub mod name {
 }
 "#,
             "name::AsName",
-            "name::AsName",
-            "crate::name::AsName",
-            "self::name::AsName",
+            expect![[r#"
+                Plain  (imports ✔): name::AsName
+                Plain  (imports ✖): name::AsName
+                ByCrate(imports ✔): crate::name::AsName
+                ByCrate(imports ✖): crate::name::AsName
+                BySelf (imports ✔): self::name::AsName
+                BySelf (imports ✖): self::name::AsName
+            "#]],
         );
     }
 
@@ -1405,9 +1613,14 @@ $0
 //- /dep.rs crate:dep
 "#,
             "dep",
-            "dep",
-            "dep",
-            "dep",
+            expect![[r#"
+                Plain  (imports ✔): dep
+                Plain  (imports ✖): dep
+                ByCrate(imports ✔): dep
+                ByCrate(imports ✖): dep
+                BySelf (imports ✔): dep
+                BySelf (imports ✖): dep
+            "#]],
         );
 
         check_found_path(
@@ -1420,9 +1633,14 @@ fn f() {
 //- /dep.rs crate:dep
 "#,
             "dep",
-            "dep",
-            "dep",
-            "dep",
+            expect![[r#"
+                Plain  (imports ✔): dep
+                Plain  (imports ✖): dep
+                ByCrate(imports ✔): dep
+                ByCrate(imports ✖): dep
+                BySelf (imports ✔): dep
+                BySelf (imports ✖): dep
+            "#]],
         );
     }
 
@@ -1444,9 +1662,14 @@ pub mod prelude {
 }
         "#,
             "None",
-            "None",
-            "None",
-            "None",
+            expect![[r#"
+                Plain  (imports ✔): None
+                Plain  (imports ✖): None
+                ByCrate(imports ✔): None
+                ByCrate(imports ✖): None
+                BySelf (imports ✔): None
+                BySelf (imports ✖): None
+            "#]],
         );
     }
 
@@ -1462,9 +1685,14 @@ pub extern crate std as std_renamed;
 pub struct S;
     "#,
             "intermediate::std_renamed::S",
-            "intermediate::std_renamed::S",
-            "intermediate::std_renamed::S",
-            "intermediate::std_renamed::S",
+            expect![[r#"
+                Plain  (imports ✔): intermediate::std_renamed::S
+                Plain  (imports ✖): intermediate::std_renamed::S
+                ByCrate(imports ✔): intermediate::std_renamed::S
+                ByCrate(imports ✖): intermediate::std_renamed::S
+                BySelf (imports ✔): intermediate::std_renamed::S
+                BySelf (imports ✖): intermediate::std_renamed::S
+            "#]],
         );
     }
 
@@ -1482,9 +1710,14 @@ pub extern crate std as longer;
 pub struct S;
     "#,
             "intermediate::longer::S",
-            "intermediate::longer::S",
-            "intermediate::longer::S",
-            "intermediate::longer::S",
+            expect![[r#"
+                Plain  (imports ✔): intermediate::longer::S
+                Plain  (imports ✖): intermediate::longer::S
+                ByCrate(imports ✔): intermediate::longer::S
+                ByCrate(imports ✖): intermediate::longer::S
+                BySelf (imports ✔): intermediate::longer::S
+                BySelf (imports ✖): intermediate::longer::S
+            "#]],
         );
     }
 
@@ -1505,9 +1738,14 @@ pub mod ops {
 }
     "#,
             "std::ops::Deref",
-            "std::ops::Deref",
-            "std::ops::Deref",
-            "std::ops::Deref",
+            expect![[r#"
+                Plain  (imports ✔): std::ops::Deref
+                Plain  (imports ✖): std::ops::Deref
+                ByCrate(imports ✔): std::ops::Deref
+                ByCrate(imports ✖): std::ops::Deref
+                BySelf (imports ✔): std::ops::Deref
+                BySelf (imports ✖): std::ops::Deref
+            "#]],
         );
     }
 
@@ -1530,9 +1768,14 @@ pub mod error {
 }
 "#,
             "std::error::Error",
-            "std::error::Error",
-            "std::error::Error",
-            "std::error::Error",
+            expect![[r#"
+                Plain  (imports ✔): std::error::Error
+                Plain  (imports ✖): std::error::Error
+                ByCrate(imports ✔): std::error::Error
+                ByCrate(imports ✖): std::error::Error
+                BySelf (imports ✔): std::error::Error
+                BySelf (imports ✖): std::error::Error
+            "#]],
         );
     }
 
@@ -1553,16 +1796,26 @@ pub mod foo {
         check_found_path(
             ra_fixture,
             "krate::foo::Foo",
-            "krate::foo::Foo",
-            "krate::foo::Foo",
-            "krate::foo::Foo",
+            expect![[r#"
+                Plain  (imports ✔): krate::foo::Foo
+                Plain  (imports ✖): krate::foo::Foo
+                ByCrate(imports ✔): krate::foo::Foo
+                ByCrate(imports ✖): krate::foo::Foo
+                BySelf (imports ✔): krate::foo::Foo
+                BySelf (imports ✖): krate::foo::Foo
+            "#]],
         );
         check_found_path_prelude(
             ra_fixture,
             "krate::prelude::Foo",
-            "krate::prelude::Foo",
-            "krate::prelude::Foo",
-            "krate::prelude::Foo",
+            expect![[r#"
+                Plain  (imports ✔): krate::prelude::Foo
+                Plain  (imports ✖): krate::prelude::Foo
+                ByCrate(imports ✔): krate::prelude::Foo
+                ByCrate(imports ✖): krate::prelude::Foo
+                BySelf (imports ✔): krate::prelude::Foo
+                BySelf (imports ✖): krate::prelude::Foo
+            "#]],
         );
     }
 
@@ -1594,9 +1847,14 @@ pub mod prelude {
 }
 "#,
             "petgraph::graph::NodeIndex",
-            "petgraph::graph::NodeIndex",
-            "petgraph::graph::NodeIndex",
-            "petgraph::graph::NodeIndex",
+            expect![[r#"
+                Plain  (imports ✔): petgraph::graph::NodeIndex
+                Plain  (imports ✖): petgraph::graph::NodeIndex
+                ByCrate(imports ✔): petgraph::graph::NodeIndex
+                ByCrate(imports ✖): petgraph::graph::NodeIndex
+                BySelf (imports ✔): petgraph::graph::NodeIndex
+                BySelf (imports ✖): petgraph::graph::NodeIndex
+            "#]],
         );
     }
 
@@ -1615,9 +1873,14 @@ pub fn b() {$0}
 pub fn c() {}
 "#,
             "bar::c",
-            "bar::c",
-            "crate::foo::bar::c",
-            "self::bar::c",
+            expect![[r#"
+                Plain  (imports ✔): bar::c
+                Plain  (imports ✖): bar::c
+                ByCrate(imports ✔): crate::foo::bar::c
+                ByCrate(imports ✖): crate::foo::bar::c
+                BySelf (imports ✔): self::bar::c
+                BySelf (imports ✖): self::bar::c
+            "#]],
         );
     }
 }
