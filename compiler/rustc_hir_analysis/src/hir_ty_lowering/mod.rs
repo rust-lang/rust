@@ -1758,7 +1758,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assert_eq!(opt_self_ty, None);
                 let _ = self.prohibit_generic_args(
                     path.segments.iter(),
-                    GenericsArgsErrExtend::TyParam(def_id),
+                    GenericsArgsErrExtend::Param(def_id),
                 );
                 self.lower_ty_param(hir_id)
             }
@@ -2191,10 +2191,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                                 hir::ExprKind::Path(hir::QPath::Resolved(
                                     _,
-                                    &hir::Path {
-                                        res: Res::Def(DefKind::ConstParam, def_id), ..
+                                    path @ &hir::Path {
+                                        res: Res::Def(DefKind::ConstParam, def_id),
+                                        ..
                                     },
                                 )) => {
+                                    let _ = self.prohibit_generic_args(
+                                        path.segments.iter(),
+                                        GenericsArgsErrExtend::Param(def_id),
+                                    );
                                     let ty = tcx
                                         .type_of(def_id)
                                         .no_bound_vars()
