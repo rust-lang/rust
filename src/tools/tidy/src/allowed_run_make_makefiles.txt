@@ -111,7 +111,6 @@ run-make/issue-40535/Makefile
 run-make/issue-47384/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-51671/Makefile
-run-make/issue-53964/Makefile
 run-make/issue-64153/Makefile
 run-make/issue-68794-textrel-on-minimal-lib/Makefile
 run-make/issue-69368/Makefile
