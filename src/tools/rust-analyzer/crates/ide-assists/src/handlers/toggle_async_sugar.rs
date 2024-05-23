@@ -9,42 +9,38 @@ use syntax::{
 
 use crate::{AssistContext, Assists};
 
-// Assist: toggle_async_sugar
+// Assist: sugar_impl_future_into_async
 //
-// Rewrites asynchronous function into `impl Future` and back.
+// Rewrites asynchronous function from `impl Future` to `async fn`.
 // This action does not touch the function body and therefore `async { 0 }`
 // block does not transform to just `0`.
 //
 // ```
-// pub async f$0n foo() -> usize {
-//     0
+// # //- minicore: future
+// pub f$0n foo() -> impl core::future::Future<Output = usize> {
+//     async { 0 }
 // }
 // ```
 // ->
 // ```
-// pub fn foo() -> impl Future<Output = usize> {
-//     0
+// pub async fn foo() -> usize {
+//     async { 0 }
 // }
 // ```
-pub(crate) fn toggle_async_sugar(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let function: ast::Fn = ctx.find_node_at_offset()?;
-    match (function.async_token(), function.ret_type()) {
-        // async function returning futures cannot be flattened
-        // const async is not yet supported
-        (None, Some(ret_type)) if function.const_token().is_none() => {
-            add_async(acc, ctx, function, ret_type)
-        }
-        (Some(async_token), ret_type) => remove_async(function, ret_type, acc, async_token),
-        _ => None,
-    }
-}
-
-fn add_async(
+pub(crate) fn sugar_impl_future_into_async(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
-    function: ast::Fn,
-    ret_type: ast::RetType,
 ) -> Option<()> {
+    let function: ast::Fn = ctx.find_node_at_offset()?;
+    if function.async_token().is_some() {
+        return None;
+    }
+
+    let ret_type = function.ret_type()?;
+    if function.const_token().is_some() {
+        return None;
+    }
+
     let ast::Type::ImplTraitType(return_impl_trait) = ret_type.ty()? else {
         return None;
     };
@@ -66,12 +62,12 @@ fn add_async(
     let future_output = unwrap_future_output(main_trait_path)?;
 
     acc.add(
-        AssistId("toggle_async_sugar", AssistKind::RefactorRewrite),
+        AssistId("sugar_impl_future_into_async", AssistKind::RefactorRewrite),
         "Convert `impl Future` into async",
         function.syntax().text_range(),
         |builder| {
             match future_output {
-                ast::Type::TupleType(_) => {
+                ast::Type::TupleType(t) if t.fields().next().is_none() => {
                     let mut ret_type_range = ret_type.syntax().text_range();
 
                     // find leftover whitespace
@@ -105,14 +101,32 @@ fn add_async(
     )
 }
 
-fn remove_async(
-    function: ast::Fn,
-    ret_type: Option<ast::RetType>,
+// Assist: desugar_async_into_impl_future
+//
+// Rewrites asynchronous function from `async fn` to `impl Future`.
+// This action does not touch the function body and therefore `0`
+// block does not transform to `async { 0 }`.
+//
+// ```
+// pub async f$0n foo() -> usize {
+//     0
+// }
+// ```
+// ->
+// ```
+// pub fn foo() -> impl Future<Output = usize> {
+//     0
+// }
+// ```
+pub(crate) fn desugar_async_into_impl_future(
     acc: &mut Assists,
-    async_token: SyntaxToken,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
+    let function: ast::Fn = ctx.find_node_at_offset()?;
+    let async_token = function.async_token()?;
+
     let rparen = function.param_list()?.r_paren_token()?;
-    let return_type = match ret_type {
+    let return_type = match function.ret_type() {
         // unable to get a `ty` makes the action unapplicable
         Some(ret_type) => Some(ret_type.ty()?),
         // No type means `-> ()`
@@ -120,7 +134,7 @@ fn remove_async(
     };
 
     acc.add(
-        AssistId("toggle_async_sugar", AssistKind::RefactorRewrite),
+        AssistId("desugar_async_into_impl_future", AssistKind::RefactorRewrite),
         "Convert async into `impl Future`",
         function.syntax().text_range(),
         |builder| {
@@ -168,7 +182,7 @@ mod tests {
     #[test]
     fn sugar_with_use() {
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     use core::future::Future;
@@ -185,7 +199,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     use core::future::Future;
@@ -205,7 +219,7 @@ mod tests {
     #[test]
     fn desugar_with_use() {
         check_assist(
-            toggle_async_sugar,
+            desugar_async_into_impl_future,
             r#"
     //- minicore: future
     use core::future::Future;
@@ -222,7 +236,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            desugar_async_into_impl_future,
             r#"
     //- minicore: future
     use core::future::Future;
@@ -242,7 +256,7 @@ mod tests {
     #[test]
     fn sugar_without_use() {
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     f$0n foo() -> impl core::future::Future<Output = ()> {
@@ -257,7 +271,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     f$0n foo() -> impl core::future::Future<Output = usize> {
@@ -275,7 +289,7 @@ mod tests {
     #[test]
     fn desugar_without_use() {
         check_assist(
-            toggle_async_sugar,
+            desugar_async_into_impl_future,
             r#"
     //- minicore: future
     async f$0n foo() {
@@ -290,7 +304,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            desugar_async_into_impl_future,
             r#"
     //- minicore: future
     async f$0n foo() -> usize {
@@ -308,7 +322,7 @@ mod tests {
     #[test]
     fn sugar_not_applicable() {
         check_assist_not_applicable(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     trait Future {
@@ -321,7 +335,7 @@ mod tests {
         );
 
         check_assist_not_applicable(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     trait Future {
@@ -337,7 +351,7 @@ mod tests {
     #[test]
     fn sugar_definition_with_use() {
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     use core::future::Future;
@@ -350,7 +364,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     use core::future::Future;
@@ -366,7 +380,7 @@ mod tests {
     #[test]
     fn sugar_definition_without_use() {
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     f$0n foo() -> impl core::future::Future<Output = ()>;
@@ -377,7 +391,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     f$0n foo() -> impl core::future::Future<Output = usize>;
@@ -389,9 +403,56 @@ mod tests {
     }
 
     #[test]
+    fn sugar_more_types() {
+        check_assist(
+            sugar_impl_future_into_async,
+            r#"
+    //- minicore: future
+    f$0n foo() -> impl core::future::Future<Output = ()> + Send + Sync;
+    "#,
+            r#"
+    async fn foo();
+    "#,
+        );
+
+        check_assist(
+            sugar_impl_future_into_async,
+            r#"
+    //- minicore: future
+    f$0n foo() -> impl core::future::Future<Output = usize> + Debug;
+    "#,
+            r#"
+    async fn foo() -> usize;
+    "#,
+        );
+
+        check_assist(
+            sugar_impl_future_into_async,
+            r#"
+    //- minicore: future
+    f$0n foo() -> impl core::future::Future<Output = (usize)> + Debug;
+    "#,
+            r#"
+    async fn foo() -> (usize);
+    "#,
+        );
+
+        check_assist(
+            sugar_impl_future_into_async,
+            r#"
+    //- minicore: future
+    f$0n foo() -> impl core::future::Future<Output = (usize, usize)> + Debug;
+    "#,
+            r#"
+    async fn foo() -> (usize, usize);
+    "#,
+        );
+    }
+
+    #[test]
     fn sugar_with_modifiers() {
         check_assist_not_applicable(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     const f$0n foo() -> impl core::future::Future<Output = ()>;
@@ -399,7 +460,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
             //- minicore: future
             pub(crate) unsafe f$0n foo() -> impl core::future::Future<Output = usize>;
@@ -410,7 +471,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     unsafe f$0n foo() -> impl core::future::Future<Output = ()>;
@@ -421,7 +482,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     unsafe extern "C" f$0n foo() -> impl core::future::Future<Output = ()>;
@@ -432,7 +493,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     f$0n foo<T>() -> impl core::future::Future<Output = T>;
@@ -443,7 +504,7 @@ mod tests {
         );
 
         check_assist(
-            toggle_async_sugar,
+            sugar_impl_future_into_async,
             r#"
     //- minicore: future
     f$0n foo<T>() -> impl core::future::Future<Output = T>
