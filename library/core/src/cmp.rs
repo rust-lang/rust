@@ -898,6 +898,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(2.clamp(-2, 1), 1);
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "clamp", since = "1.50.0")]
     fn clamp(self, min: Self, max: Self) -> Self
     where
