@@ -425,10 +425,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             && let ItemKind::Impl(impl_ref) =
                                 self.tcx.hir().expect_item(local_impl_id).kind
                         {
-                            if self.tcx.visibility(trait_id).is_public()
-                                && matches!(trait_item.kind, hir::TraitItemKind::Fn(..))
+                            if matches!(trait_item.kind, hir::TraitItemKind::Fn(..))
                                 && !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
                             {
+                                // skip methods of private ty,
+                                // they would be solved in `solve_rest_impl_items`
                                 continue;
                             }
 
@@ -485,32 +486,46 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn solve_rest_impl_items(&mut self, mut unsolved_impl_items: Vec<(hir::ItemId, LocalDefId)>) {
         let mut ready;
-        (ready, unsolved_impl_items) = unsolved_impl_items
-            .into_iter()
-            .partition(|&(impl_id, _)| self.impl_item_with_used_self(impl_id));
+        (ready, unsolved_impl_items) =
+            unsolved_impl_items.into_iter().partition(|&(impl_id, impl_item_id)| {
+                self.impl_item_with_used_self(impl_id, impl_item_id)
+            });
 
         while !ready.is_empty() {
             self.worklist =
                 ready.into_iter().map(|(_, id)| (id, ComesFromAllowExpect::No)).collect();
             self.mark_live_symbols();
 
-            (ready, unsolved_impl_items) = unsolved_impl_items
-                .into_iter()
-                .partition(|&(impl_id, _)| self.impl_item_with_used_self(impl_id));
+            (ready, unsolved_impl_items) =
+                unsolved_impl_items.into_iter().partition(|&(impl_id, impl_item_id)| {
+                    self.impl_item_with_used_self(impl_id, impl_item_id)
+                });
         }
     }
 
-    fn impl_item_with_used_self(&mut self, impl_id: hir::ItemId) -> bool {
+    fn impl_item_with_used_self(&mut self, impl_id: hir::ItemId, impl_item_id: LocalDefId) -> bool {
         if let TyKind::Path(hir::QPath::Resolved(_, path)) =
             self.tcx.hir().item(impl_id).expect_impl().self_ty.kind
             && let Res::Def(def_kind, def_id) = path.res
             && let Some(local_def_id) = def_id.as_local()
             && matches!(def_kind, DefKind::Struct | DefKind::Enum | DefKind::Union)
         {
-            self.live_symbols.contains(&local_def_id)
-        } else {
-            false
+            if self.tcx.visibility(impl_item_id).is_public() {
+                // for the public method, we don't know the trait item is used or not,
+                // so we mark the method live if the self is used
+                return self.live_symbols.contains(&local_def_id);
+            }
+
+            if let Some(trait_item_id) = self.tcx.associated_item(impl_item_id).trait_item_def_id
+                && let Some(local_id) = trait_item_id.as_local()
+            {
+                // for the private method, we can know the trait item is used or not,
+                // so we mark the method live if the self is used and the trait item is used
+                return self.live_symbols.contains(&local_id)
+                    && self.live_symbols.contains(&local_def_id);
+            }
         }
+        false
     }
 }
 
@@ -745,20 +760,22 @@ fn check_item<'tcx>(
                         matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);
                 }
 
-                // for impl trait blocks, mark associate functions live if the trait is public
+                // for trait impl blocks,
+                // mark the method live if the self_ty is public,
+                // or the method is public and may construct self
                 if of_trait
                     && (!matches!(tcx.def_kind(local_def_id), DefKind::AssocFn)
                         || tcx.visibility(local_def_id).is_public()
                             && (ty_is_pub || may_construct_self))
                 {
                     worklist.push((local_def_id, ComesFromAllowExpect::No));
-                } else if of_trait && tcx.visibility(local_def_id).is_public() {
-                    // pub method && private ty & methods not construct self
-                    unsolved_impl_items.push((id, local_def_id));
                 } else if let Some(comes_from_allow) =
                     has_allow_dead_code_or_lang_attr(tcx, local_def_id)
                 {
                     worklist.push((local_def_id, comes_from_allow));
+                } else if of_trait {
+                    // private method || public method not constructs self
+                    unsolved_impl_items.push((id, local_def_id));
                 }
             }
         }
