@@ -24,11 +24,11 @@ use rustc_smir::rustc_internal;
 use stable_mir::mir::mono::{Instance, InstanceKind};
 use stable_mir::mir::visit::{Location, MirVisitor};
 use stable_mir::mir::{LocalDecl, Terminator, TerminatorKind};
-use stable_mir::ty::{FnDef, GenericArgs, IntrinsicDef, RigidTy, TyKind};
+use stable_mir::ty::{FnDef, GenericArgs, RigidTy, TyKind};
+use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;
-use std::assert_matches::assert_matches;
 
 /// This function tests that we can correctly get type information from binary operations.
 fn test_intrinsics() -> ControlFlow<()> {
@@ -41,9 +41,9 @@ fn test_intrinsics() -> ControlFlow<()> {
 
     let calls = visitor.calls;
     assert_eq!(calls.len(), 3, "Expected 3 calls, but found: {calls:?}");
-    for (fn_def, args) in &calls {
-        check_instance(&Instance::resolve(*fn_def, &args).unwrap());
-        check_def(fn_def.as_intrinsic().unwrap());
+    for (fn_def, args) in calls.into_iter() {
+        check_instance(&Instance::resolve(fn_def, &args).unwrap());
+        check_def(fn_def);
     }
 
     ControlFlow::Continue(())
@@ -68,7 +68,11 @@ fn check_instance(instance: &Instance) {
     }
 }
 
-fn check_def(intrinsic: IntrinsicDef) {
+fn check_def(fn_def: FnDef) {
+    assert!(fn_def.is_intrinsic());
+    let intrinsic = fn_def.as_intrinsic().unwrap();
+    assert_eq!(fn_def, intrinsic.into());
+
     let name = intrinsic.fn_name();
     match name.as_str() {
         "likely" | "size_of_val" => {

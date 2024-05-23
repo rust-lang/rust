@@ -653,6 +653,12 @@ impl IntrinsicDef {
     }
 }
 
+impl From<IntrinsicDef> for FnDef {
+    fn from(def: IntrinsicDef) -> Self {
+        FnDef(def.0)
+    }
+}
+
 crate_def! {
     pub ClosureDef;
 }
