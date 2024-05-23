@@ -2764,15 +2764,15 @@ impl Default for &mut str {
     }
 }
 
-type LinesMap = impl (Fn(&str) -> &str) + Clone;
-type CharEscapeDebugContinue = impl (FnMut(char) -> char::EscapeDebug) + Clone;
-type CharEscapeUnicode = impl (Fn(char) -> char::EscapeUnicode) + Clone;
-type CharEscapeDefault = impl (Fn(char) -> char::EscapeDefault) + Clone;
-type IsWhitespace = impl (Fn(char) -> bool) + Clone;
-type IsAsciiWhitespace = impl (Fn(&u8) -> bool) + Clone;
-type IsNotEmpty = impl (Fn(&&str) -> bool) + Clone;
-type BytesIsNotEmpty<'a> = impl (FnMut(&&'a [u8]) -> bool) + Clone;
-type UnsafeBytesToStr<'a> = impl (FnMut(&'a [u8]) -> &'a str) + Clone;
+type LinesMap = impl (Fn(&str) -> &str) + Copy;
+type CharEscapeDebugContinue = impl (FnMut(char) -> char::EscapeDebug) + Copy;
+type CharEscapeUnicode = impl (Fn(char) -> char::EscapeUnicode) + Copy;
+type CharEscapeDefault = impl (Fn(char) -> char::EscapeDefault) + Copy;
+type IsWhitespace = impl (Fn(char) -> bool) + Copy;
+type IsAsciiWhitespace = impl (Fn(&u8) -> bool) + Copy;
+type IsNotEmpty = impl (Fn(&&str) -> bool) + Copy;
+type BytesIsNotEmpty<'a> = impl (FnMut(&&'a [u8]) -> bool) + Copy;
+type UnsafeBytesToStr<'a> = impl (FnMut(&'a [u8]) -> &'a str) + Copy;
 
 // This is required to make `impl From<&str> for Box<dyn Error>` and `impl<E> From<E> for Box<dyn Error>` not overlap.
 #[stable(feature = "rust1", since = "1.0.0")]
