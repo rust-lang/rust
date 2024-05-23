@@ -142,8 +142,8 @@ pub struct LinkFrameworkApple {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_framework_only_windows, code = E0455)]
-pub struct FrameworkOnlyWindows {
+#[diag(metadata_raw_dylib_only_windows, code = E0455)]
+pub struct RawDylibOnlyWindows {
     #[primary_span]
     pub span: Span,
 }
