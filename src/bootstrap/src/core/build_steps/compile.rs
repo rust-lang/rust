@@ -274,6 +274,14 @@ impl Step for Std {
             cargo.rustflag(rustflag);
         }
 
+        // We want the eventual MIR produced in mir-opt tests to be immune to config settings, so
+        // that contributors do not get CI failures even though they have blessed the tests.
+        // debug-assertions is the only offending setting currently known, so we just stomp any
+        // previous setting here, setting it to the value used in the distributed standard library.
+        if self.is_for_mir_opt_tests {
+            cargo.rustflags("-Cdebug-assertions=no");
+        }
+
         let _guard = builder.msg(
             Kind::Build,
             compiler.stage,
