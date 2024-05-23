@@ -82,6 +82,9 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 let val = ImmTy::from_int(0, this.machine.layouts.u8);
                 Self::alloc_extern_static(this, "_tls_used", val)?;
             }
+            "illumos" | "solaris" => {
+                Self::weak_symbol_extern_statics(this, &["pthread_setname_np"])?;
+            }
             _ => {} // No "extern statics" supported on this target
         }
         Ok(())

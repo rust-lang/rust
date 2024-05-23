@@ -1,10 +1,11 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::unix::*;
 use crate::*;
 
-pub fn is_dyn_sym(_name: &str) -> bool {
-    false
+pub fn is_dyn_sym(name: &str) -> bool {
+    matches!(name, "pthread_setname_np")
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -18,6 +19,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
+            // Threading
+            "pthread_setname_np" => {
+                let [thread, name] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // THREAD_NAME_MAX allows a thread name of 31+1 length
+                // https://github.com/illumos/illumos-gate/blob/7671517e13b8123748eda4ef1ee165c6d9dba7fe/usr/src/uts/common/sys/thread.h#L613
+                let max_len = 32;
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    max_len,
+                )?;
+                this.write_scalar(res, dest)?;
+            }
+            "pthread_getname_np" => {
+                let [thread, name, len] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.pthread_getname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    this.read_scalar(len)?,
+                )?;
+                this.write_scalar(res, dest)?;
+            }
+
             // Miscellaneous
             "___errno" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
