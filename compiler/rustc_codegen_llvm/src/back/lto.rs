@@ -229,7 +229,10 @@ pub(crate) fn run_thin(
     thin_lto(cgcx, &dcx, modules, upstream_modules, cached_modules, &symbols_below_threshold)
 }
 
-pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>, emit_summary: bool) -> (String, ThinBuffer) {
+pub(crate) fn prepare_thin(
+    module: ModuleCodegen<ModuleLlvm>,
+    emit_summary: bool,
+) -> (String, ThinBuffer) {
     let name = module.name;
     let buffer = ThinBuffer::new(module.module_llvm.llmod(), true, emit_summary);
     (name, buffer)
