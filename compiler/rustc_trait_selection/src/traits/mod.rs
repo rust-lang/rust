@@ -551,7 +551,6 @@ pub fn provide(providers: &mut Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         instantiate_and_check_impossible_predicates,
-        check_tys_might_be_eq: misc::check_tys_might_be_eq,
         is_impossible_associated_item,
         ..*providers
     };

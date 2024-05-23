@@ -22,11 +22,11 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::type_relating::TypeRelating;
 use super::StructurallyRelateAliases;
-use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::bug;
-use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::EffectVarValue;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt, Upcast};
@@ -159,34 +159,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let a = self.shallow_resolve_const(a);
         let b = self.shallow_resolve_const(b);
 
-        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
-        // correct type for the generic param they are an argument for. However there have been a number of cases
-        // historically where asserting that the types are equal has found bugs in the compiler so this is valuable
-        // to check even if it is a bit nasty impl wise :(
-        //
-        // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
-        // ourselves with a check to find bugs being required for code to compile because it made inference progress.
-        self.probe(|_| {
-            if a.ty() == b.ty() {
-                return Ok(());
-            }
+        // It is always an error if the types of two constants that are related are not equal.
+        let InferOk { value: (), obligations } = self
+            .at(&ObligationCause::dummy_with_span(relation.span()), relation.param_env())
+            .eq(DefineOpaqueTypes::No, a.ty(), b.ty())?;
+        relation.register_obligations(obligations);
 
-            // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
-            // two const param's types are able to be equal has to go through a canonical query with the actual logic
-            // in `rustc_trait_selection`.
-            let canonical = self.canonicalize_query(
-                relation.param_env().and((a.ty(), b.ty())),
-                &mut OriginalQueryValues::default(),
-            );
-            self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
-                // The error will only be reported later. If we emit an ErrorGuaranteed
-                // here, then we will never get to the code that actually emits the error.
-                self.tcx.dcx().delayed_bug(format!(
-                    "cannot relate consts of different types (a={a:?}, b={b:?})",
-                ));
-                TypeError::Mismatch
-            })
-        })?;
         match (a.kind(), b.kind()) {
             (
                 ty::ConstKind::Infer(InferConst::Var(a_vid)),
