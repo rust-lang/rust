@@ -7,9 +7,12 @@ fn main() {
     let target_vendor =
         env::var("CARGO_CFG_TARGET_VENDOR").expect("CARGO_CFG_TARGET_VENDOR was not set");
     let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("CARGO_CFG_TARGET_ENV was not set");
+
+    println!("cargo:rustc-check-cfg=cfg(netbsd10)");
     if target_os == "netbsd" && env::var("RUSTC_STD_NETBSD10").is_ok() {
         println!("cargo:rustc-cfg=netbsd10");
     }
+
     println!("cargo:rustc-check-cfg=cfg(restricted_std)");
     if target_os == "linux"
         || target_os == "android"
@@ -62,6 +65,9 @@ fn main() {
         // - Any new targets that have not been explicitly added above.
         println!("cargo:rustc-cfg=restricted_std");
     }
-    println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+
+    println!("cargo:rustc-check-cfg=cfg(backtrace_in_libstd)");
     println!("cargo:rustc-cfg=backtrace_in_libstd");
+
+    println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
 }
