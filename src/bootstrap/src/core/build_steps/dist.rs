@@ -1041,6 +1041,21 @@ impl Step for PlainSourceTarball {
                 .env("RUSTC_BOOTSTRAP", "1")
                 .current_dir(plain_dst_src);
 
+            // Vendor packages that are required by opt-dist to collect PGO profiles.
+            let pkgs_for_pgo_training = build_helper::LLVM_PGO_CRATES
+                .iter()
+                .chain(build_helper::RUSTC_PGO_CRATES)
+                .map(|pkg| {
+                    let mut manifest_path =
+                        builder.src.join("./src/tools/rustc-perf/collector/compile-benchmarks");
+                    manifest_path.push(pkg);
+                    manifest_path.push("Cargo.toml");
+                    manifest_path
+                });
+            for manifest_path in pkgs_for_pgo_training {
+                cmd.arg("--sync").arg(manifest_path);
+            }
+
             let config = if !builder.config.dry_run() {
                 t!(String::from_utf8(t!(cmd.output()).stdout))
             } else {
