@@ -25,7 +25,6 @@ run-make/compiler-rt-works-on-mingw/Makefile
 run-make/compressed-debuginfo/Makefile
 run-make/const-prop-lint/Makefile
 run-make/const_fn_mir/Makefile
-run-make/core-no-oom-handling/Makefile
 run-make/crate-data-smoke/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/crate-name-priority/Makefile
@@ -98,7 +97,6 @@ run-make/issue-15460/Makefile
 run-make/issue-18943/Makefile
 run-make/issue-20626/Makefile
 run-make/issue-22131/Makefile
-run-make/issue-24445/Makefile
 run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
 run-make/issue-26092/Makefile
@@ -109,7 +107,6 @@ run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-37839/Makefile
 run-make/issue-37893/Makefile
-run-make/issue-38237/Makefile
 run-make/issue-40535/Makefile
 run-make/issue-47384/Makefile
 run-make/issue-47551/Makefile
