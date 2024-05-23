@@ -229,9 +229,9 @@ pub(crate) fn run_thin(
     thin_lto(cgcx, &dcx, modules, upstream_modules, cached_modules, &symbols_below_threshold)
 }
 
-pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
+pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>, emit_summary: bool) -> (String, ThinBuffer) {
     let name = module.name;
-    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
+    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true, emit_summary);
     (name, buffer)
 }
 
@@ -671,9 +671,9 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
+    pub fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, emit_summary);
             ThinBuffer(buffer)
         }
     }

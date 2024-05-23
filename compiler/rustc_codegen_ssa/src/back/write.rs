@@ -891,7 +891,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     match lto_type {
         ComputedLtoType::No => finish_intra_module_work(cgcx, module, module_config),
         ComputedLtoType::Thin => {
-            let (name, thin_buffer) = B::prepare_thin(module);
+            let (name, thin_buffer) = B::prepare_thin(module, false);
             if let Some(path) = bitcode {
                 fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);

@@ -716,9 +716,8 @@ pub(crate) unsafe fn codegen(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
-            let thin = ThinBuffer::new(llmod, config.emit_thin_lto);
+            let thin = ThinBuffer::new(llmod, config.emit_thin_lto, config.emit_thin_lto_index);
             let data = thin.data();
-            let index_data = thin.thin_link_data();
 
             if let Some(bitcode_filename) = bc_out.file_name() {
                 cgcx.prof.artifact_size(
@@ -728,7 +727,8 @@ pub(crate) unsafe fn codegen(
                 );
             }
 
-            if let Some(thin_link_bitcode_filename) = bc_index_out.file_name() {
+            if config.emit_thin_lto_index && let Some(thin_link_bitcode_filename) = bc_index_out.file_name() {
+                let index_data = thin.thin_link_data();
                 cgcx.prof.artifact_size(
                     "llvm_bitcode_summary",
                     thin_link_bitcode_filename.to_string_lossy(),

@@ -1492,7 +1492,7 @@ struct LLVMRustThinLTOBuffer {
 };
 
 extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin, bool emit_summary) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     auto OS = raw_string_ostream(Ret->data);
@@ -1510,7 +1510,10 @@ LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
         PB.registerLoopAnalyses(LAM);
         PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
         ModulePassManager MPM;
-        MPM.addPass(ThinLTOBitcodeWriterPass(OS, &ThinLinkOS));
+        // We only pass ThinLinkOS to be filled in if we want the summary,
+        // because otherwise LLVM does extra work and may double-emit some
+        // errors or warnings.
+        MPM.addPass(ThinLTOBitcodeWriterPass(OS, emit_summary ? &ThinLinkOS : nullptr));
         MPM.run(*unwrap(M), MAM);
       } else {
         WriteBitcodeToFile(*unwrap(M), OS);
