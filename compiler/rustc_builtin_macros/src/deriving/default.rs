@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::errors;
 use core::ops::ControlFlow;
 use rustc_ast as ast;
-use rustc_ast::visit::walk_list;
+use rustc_ast::visit::visit_opt;
 use rustc_ast::{attr, EnumDef, VariantData};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
@@ -224,7 +224,7 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
         self.visit_ident(v.ident);
         self.visit_vis(&v.vis);
         self.visit_variant_data(&v.data);
-        walk_list!(self, visit_anon_const, &v.disr_expr);
+        visit_opt!(self, visit_anon_const, &v.disr_expr);
         for attr in &v.attrs {
             rustc_ast::visit::walk_attribute(self, attr);
         }

@@ -5,6 +5,7 @@ use crate::mem::transmute;
 use crate::any::Any;
 use crate::fmt;
 use crate::marker::PhantomData;
+use crate::panic::AssertUnwindSafe;
 use crate::ptr;
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
@@ -236,7 +237,7 @@ enum ExtData<'a> {
 pub struct Context<'a> {
     waker: &'a Waker,
     local_waker: &'a LocalWaker,
-    ext: ExtData<'a>,
+    ext: AssertUnwindSafe<ExtData<'a>>,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
     // are contravariant while return-position lifetimes are
@@ -279,7 +280,9 @@ impl<'a> Context<'a> {
     #[unstable(feature = "context_ext", issue = "123392")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn ext(&mut self) -> &mut dyn Any {
-        match &mut self.ext {
+        // FIXME: this field makes Context extra-weird about unwind safety
+        // can we justify AssertUnwindSafe if we stabilize this? do we care?
+        match &mut *self.ext {
             ExtData::Some(data) => *data,
             ExtData::None(unit) => unit,
         }
@@ -353,7 +356,7 @@ impl<'a> ContextBuilder<'a> {
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[unstable(feature = "context_ext", issue = "123392")]
     pub const fn from(cx: &'a mut Context<'_>) -> Self {
-        let ext = match &mut cx.ext {
+        let ext = match &mut *cx.ext {
             ExtData::Some(ext) => ExtData::Some(*ext),
             ExtData::None(()) => ExtData::None(()),
         };
@@ -396,7 +399,7 @@ impl<'a> ContextBuilder<'a> {
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker, ext, _marker, _marker2 } = self;
-        Context { waker, local_waker, ext, _marker, _marker2 }
+        Context { waker, local_waker, ext: AssertUnwindSafe(ext), _marker, _marker2 }
     }
 }
 

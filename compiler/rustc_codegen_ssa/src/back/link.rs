@@ -799,6 +799,27 @@ fn link_natively(
             continue;
         }
 
+        // Check if linking failed with an error message that indicates the driver didn't recognize
+        // the `-fuse-ld=lld` option. If so, re-perform the link step without it. This avoids having
+        // to spawn multiple instances on the happy path to do version checking, and ensures things
+        // keep working on the tier 1 baseline of GLIBC 2.17+. That is generally understood as GCCs
+        // circa RHEL/CentOS 7, 4.5 or so, whereas lld support was added in GCC 9.
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, Lld::Yes))
+            && unknown_arg_regex.is_match(&out)
+            && out.contains("-fuse-ld=lld")
+            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-fuse-ld=lld")
+        {
+            info!("linker output: {:?}", out);
+            warn!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() != "-fuse-ld=lld" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+
         // Detect '-static-pie' used with an older version of gcc or clang not supporting it.
         // Fallback from '-static-pie' to '-static' in that case.
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
