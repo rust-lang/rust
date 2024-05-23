@@ -13,9 +13,9 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `panic!` or assertions in a function of type result.
+    /// Checks for usage of `panic!` or assertions in a function whose return type is `Result`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence panicking macros should be avoided.
     ///
     /// ### Known problems

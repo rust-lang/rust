@@ -261,7 +261,7 @@ declare_clippy_lint! {
     /// Checks for the doc comments of publicly visible
     /// safe functions and traits and warns if there is a `# Safety` section.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Safe functions and traits are safe to implement and therefore do not
     /// need to describe safety preconditions that users are required to uphold.
     ///

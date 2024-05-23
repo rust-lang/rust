@@ -45,9 +45,10 @@ declare_clippy_lint! {
     /// does report on arrays if we can tell that slicing operations are in bounds and does not
     /// lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint.
     ///
-    /// ### Why is this bad?
-    /// Indexing and slicing can panic at runtime and there are
-    /// safe alternatives.
+    /// ### Why restrict this?
+    /// To avoid implicit panics from indexing and slicing.
+    /// There are “checked” alternatives which do not panic, and can be used with `unwrap()` to make
+    /// an explicit panic when it is desired.
     ///
     /// ### Example
     /// ```rust,no_run
