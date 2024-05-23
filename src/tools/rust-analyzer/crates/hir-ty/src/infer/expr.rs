@@ -933,8 +933,24 @@ impl InferenceContext<'_> {
         let prev_ret_coercion =
             mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty.clone())));
 
+        // FIXME: We should handle async blocks like we handle closures
+        let expected = &Expectation::has_type(ret_ty);
         let (_, inner_ty) = self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-            this.infer_block(tgt_expr, *id, statements, *tail, None, &Expectation::has_type(ret_ty))
+            let ty = this.infer_block(tgt_expr, *id, statements, *tail, None, expected);
+            if let Some(target) = expected.only_has_type(&mut this.table) {
+                match this.coerce(Some(tgt_expr), &ty, &target) {
+                    Ok(res) => res,
+                    Err(_) => {
+                        this.result.type_mismatches.insert(
+                            tgt_expr.into(),
+                            TypeMismatch { expected: target.clone(), actual: ty.clone() },
+                        );
+                        target
+                    }
+                }
+            } else {
+                ty
+            }
         });
 
         self.diverges = prev_diverges;
