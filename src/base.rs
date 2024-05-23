@@ -609,14 +609,11 @@ fn codegen_stmt<'tcx>(
                     let lhs = codegen_operand(fx, &lhs_rhs.0);
                     let rhs = codegen_operand(fx, &lhs_rhs.1);
 
-                    let res = crate::num::codegen_binop(fx, bin_op, lhs, rhs);
-                    lval.write_cvalue(fx, res);
-                }
-                Rvalue::CheckedBinaryOp(bin_op, ref lhs_rhs) => {
-                    let lhs = codegen_operand(fx, &lhs_rhs.0);
-                    let rhs = codegen_operand(fx, &lhs_rhs.1);
-
-                    let res = crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs);
+                    let res = if let Some(bin_op) = bin_op.overflowing_to_wrapping() {
+                        crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs)
+                    } else {
+                        crate::num::codegen_binop(fx, bin_op, lhs, rhs)
+                    };
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, ref operand) => {
