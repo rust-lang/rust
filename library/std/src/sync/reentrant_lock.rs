@@ -222,7 +222,7 @@ impl<T: ?Sized> ReentrantLock<T> {
     /// Otherwise, an RAII guard is returned.
     ///
     /// This function does not block.
-    pub(crate) fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
+    pub fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
         let this_thread = current_thread_unique_ptr();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
