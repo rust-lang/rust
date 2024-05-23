@@ -236,7 +236,6 @@ run-make/rustdoc-io-error/Makefile
 run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-output-option/Makefile
-run-make/rustdoc-with-short-out-dir-option/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
