@@ -101,7 +101,6 @@ run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
 run-make/issue-26092/Makefile
 run-make/issue-28595/Makefile
-run-make/issue-30063/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
@@ -111,7 +110,6 @@ run-make/issue-40535/Makefile
 run-make/issue-47384/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-51671/Makefile
-run-make/issue-53964/Makefile
 run-make/issue-64153/Makefile
 run-make/issue-68794-textrel-on-minimal-lib/Makefile
 run-make/issue-69368/Makefile
@@ -229,7 +227,6 @@ run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/rmeta-preferred/Makefile
 run-make/rustc-macro-dep-files/Makefile
 run-make/rustdoc-io-error/Makefile
-run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-output-option/Makefile
 run-make/rustdoc-with-short-out-dir-option/Makefile

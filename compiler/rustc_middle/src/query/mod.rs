@@ -780,7 +780,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Maps from a trait item to the trait item "descriptor".
+    /// Maps from a trait/impl item to the trait/impl item "descriptor".
     query associated_item(key: DefId) -> ty::AssocItem {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }

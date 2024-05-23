@@ -11,6 +11,7 @@
 //@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 
 #![feature(rustc_private)]
+#![feature(assert_matches)]
 
 extern crate rustc_hir;
 #[macro_use]
@@ -23,8 +24,8 @@ use rustc_smir::rustc_internal;
 use stable_mir::mir::mono::{Instance, InstanceKind};
 use stable_mir::mir::visit::{Location, MirVisitor};
 use stable_mir::mir::{LocalDecl, Terminator, TerminatorKind};
-use stable_mir::ty::{RigidTy, TyKind};
-use std::collections::HashSet;
+use stable_mir::ty::{FnDef, GenericArgs, RigidTy, TyKind};
+use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -39,9 +40,10 @@ fn test_intrinsics() -> ControlFlow<()> {
     visitor.visit_body(&main_body);
 
     let calls = visitor.calls;
-    assert_eq!(calls.len(), 2, "Expected 2 calls, but found: {calls:?}");
-    for intrinsic in &calls {
-        check_intrinsic(intrinsic)
+    assert_eq!(calls.len(), 3, "Expected 3 calls, but found: {calls:?}");
+    for (fn_def, args) in calls.into_iter() {
+        check_instance(&Instance::resolve(fn_def, &args).unwrap());
+        check_def(fn_def);
     }
 
     ControlFlow::Continue(())
@@ -53,22 +55,39 @@ fn test_intrinsics() -> ControlFlow<()> {
 ///
 /// If by any chance this test breaks because you changed how an intrinsic is implemented, please
 /// update the test to invoke a different intrinsic.
-fn check_intrinsic(intrinsic: &Instance) {
-    assert_eq!(intrinsic.kind, InstanceKind::Intrinsic);
-    let name = intrinsic.intrinsic_name().unwrap();
-    if intrinsic.has_body() {
-        let Some(body) = intrinsic.body() else { unreachable!("Expected a body") };
+fn check_instance(instance: &Instance) {
+    assert_eq!(instance.kind, InstanceKind::Intrinsic);
+    let name = instance.intrinsic_name().unwrap();
+    if instance.has_body() {
+        let Some(body) = instance.body() else { unreachable!("Expected a body") };
         assert!(!body.blocks.is_empty());
-        assert_eq!(&name, "likely");
+        assert_matches!(name.as_str(), "likely" | "vtable_size");
     } else {
-        assert!(intrinsic.body().is_none());
+        assert!(instance.body().is_none());
         assert_eq!(&name, "size_of_val");
+    }
+}
+
+fn check_def(fn_def: FnDef) {
+    assert!(fn_def.is_intrinsic());
+    let intrinsic = fn_def.as_intrinsic().unwrap();
+    assert_eq!(fn_def, intrinsic.into());
+
+    let name = intrinsic.fn_name();
+    match name.as_str() {
+        "likely" | "size_of_val" => {
+            assert!(!intrinsic.must_be_overridden());
+        }
+        "vtable_size" => {
+            assert!(intrinsic.must_be_overridden());
+        }
+        _ => unreachable!("Unexpected intrinsic: {}", name),
     }
 }
 
 struct CallsVisitor<'a> {
     locals: &'a [LocalDecl],
-    calls: HashSet<Instance>,
+    calls: Vec<(FnDef, GenericArgs)>,
 }
 
 impl<'a> MirVisitor for CallsVisitor<'a> {
@@ -77,10 +96,10 @@ impl<'a> MirVisitor for CallsVisitor<'a> {
             TerminatorKind::Call { func, .. } => {
                 let TyKind::RigidTy(RigidTy::FnDef(def, args)) =
                     func.ty(self.locals).unwrap().kind()
-                    else {
-                        return;
-                    };
-                self.calls.insert(Instance::resolve(def, &args).unwrap());
+                else {
+                    return;
+                };
+                self.calls.push((def, args.clone()));
             }
             _ => {}
         }
@@ -106,6 +125,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         #![feature(core_intrinsics)]
         use std::intrinsics::*;
         pub fn use_intrinsics(init: bool) -> bool {{
+            let vtable_sz = unsafe {{ vtable_size(0 as *const ()) }};
             let sz = unsafe {{ size_of_val("hi") }};
             likely(init && sz == 2)
         }}
