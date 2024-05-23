@@ -786,12 +786,12 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && out.contains("-no-pie")
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie")
+            && cmd.get_args().iter().any(|e| e == "-no-pie")
         {
             info!("linker output: {:?}", out);
             warn!("Linker does not support -no-pie command line option. Retrying without.");
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-no-pie" {
+                if arg != "-no-pie" {
                     cmd.arg(arg);
                 }
             }
@@ -804,7 +804,7 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
+            && cmd.get_args().iter().any(|e| e == "-static-pie")
         {
             info!("linker output: {:?}", out);
             warn!(
@@ -843,7 +843,7 @@ fn link_natively(
             assert!(pre_objects_static.is_empty() || !pre_objects_static_pie.is_empty());
             assert!(post_objects_static.is_empty() || !post_objects_static_pie.is_empty());
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() == "-static-pie" {
+                if arg == "-static-pie" {
                     // Replace the output kind.
                     cmd.arg("-static");
                 } else if pre_objects_static_pie.contains(&arg) {
