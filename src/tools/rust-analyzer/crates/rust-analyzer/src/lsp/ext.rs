@@ -500,7 +500,6 @@ pub struct ServerStatusParams {
     pub health: Health,
     pub quiescent: bool,
     pub message: Option<String>,
-    pub workspace_info: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]

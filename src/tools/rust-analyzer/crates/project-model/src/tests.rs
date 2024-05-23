@@ -34,7 +34,7 @@ fn load_cargo_with_overrides(
             cargo_config_extra_env: Default::default(),
         },
         cfg_overrides,
-        sysroot: Err(None),
+        sysroot: Sysroot::empty(),
         rustc_cfg: Vec::new(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
@@ -57,7 +57,7 @@ fn load_cargo_with_fake_sysroot(
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
         },
-        sysroot: Ok(get_fake_sysroot()),
+        sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
@@ -77,7 +77,7 @@ fn load_cargo_with_fake_sysroot(
 fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
-    let sysroot = Ok(get_fake_sysroot());
+    let sysroot = get_fake_sysroot();
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Json(project),
         sysroot,
@@ -144,7 +144,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(sysroot_dir, Some(Ok(sysroot_src_dir)), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
@@ -281,12 +281,11 @@ fn smoke_test_real_sysroot_cargo() {
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
     let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
-    let sysroot = Ok(Sysroot::discover(
+    let sysroot = Sysroot::discover(
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
         true,
-    )
-    .unwrap());
+    );
 
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
