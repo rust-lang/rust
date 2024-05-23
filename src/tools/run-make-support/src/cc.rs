@@ -45,6 +45,14 @@ impl Cc {
         self
     }
 
+    /// Adds directories to the list that the linker searches for libraries.
+    /// Equivalent to `-L`.
+    pub fn library_search_path<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-L");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// Specify `-o` or `-Fe`/`-Fo` depending on platform/compiler. This assumes that the executable
     /// is under `$TMPDIR`.
     pub fn out_exe(&mut self, name: &str) -> &mut Self {
