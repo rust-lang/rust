@@ -367,17 +367,6 @@ impl From<Cow<'static, str>> for DiagMessage {
     }
 }
 
-/// A workaround for must_produce_diag ICEs when formatting types in disabled lints.
-///
-/// Delays formatting until `.into(): DiagMessage` is used.
-pub struct DelayDm<F>(pub F);
-
-impl<F: FnOnce() -> String> From<DelayDm<F>> for DiagMessage {
-    fn from(DelayDm(f): DelayDm<F>) -> Self {
-        DiagMessage::from(f())
-    }
-}
-
 /// Translating *into* a subdiagnostic message from a diagnostic message is a little strange - but
 /// the subdiagnostic functions (e.g. `span_label`) take a `SubdiagMessage` and the
 /// subdiagnostic derive refers to typed identifiers that are `DiagMessage`s, so need to be
