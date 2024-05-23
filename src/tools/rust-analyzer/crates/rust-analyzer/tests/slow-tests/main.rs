@@ -1059,11 +1059,11 @@ fn resolve_proc_macro() {
         return;
     }
 
-    let sysroot = project_model::Sysroot::discover_no_source(
+    let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
-    )
-    .unwrap();
+        false,
+    );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
 

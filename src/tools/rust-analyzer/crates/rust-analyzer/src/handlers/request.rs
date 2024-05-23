@@ -1783,18 +1783,18 @@ pub(crate) fn handle_open_docs(
     let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match &ws.kind {
         ProjectWorkspaceKind::Cargo { cargo, .. }
         | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
-            Some((cargo, ws.sysroot.as_ref().ok()))
+            Some((cargo, &ws.sysroot))
         }
         ProjectWorkspaceKind::Json { .. } => None,
         ProjectWorkspaceKind::DetachedFile { .. } => None,
     });
 
     let (cargo, sysroot) = match ws_and_sysroot {
-        Some((ws, sysroot)) => (Some(ws), sysroot),
+        Some((ws, sysroot)) => (Some(ws), Some(sysroot)),
         _ => (None, None),
     };
 
-    let sysroot = sysroot.map(|p| p.root().as_str());
+    let sysroot = sysroot.and_then(|p| p.root()).map(|it| it.as_str());
     let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_str());
 
     let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir, sysroot) else {
