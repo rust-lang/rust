@@ -1181,9 +1181,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
             let const_val = val.eval(*ecx.tcx, ecx.param_env, span).map_err(|err| {
-                if M::ALL_CONSTS_ARE_PRECHECKED && !matches!(err, ErrorHandled::TooGeneric(..)) {
-                    // Looks like the const is not captued by `required_consts`, that's bad.
-                    bug!("interpret const eval failure of {val:?} which is not in required_consts");
+                if M::ALL_CONSTS_ARE_PRECHECKED {
+                    match err {
+                        ErrorHandled::TooGeneric(..) => {},
+                        ErrorHandled::Reported(reported, span) => {
+                            if reported.is_tainted_by_errors() {
+                                // const-eval will return "tainted" errors if e.g. the layout cannot
+                                // be computed as the type references non-existing names.
+                                // See <https://github.com/rust-lang/rust/issues/124348>.
+                            } else {
+                                // Looks like the const is not captued by `required_consts`, that's bad.
+                                span_bug!(span, "interpret const eval failure of {val:?} which is not in required_consts");
+                            }
+                        }
+                    }
                 }
                 err.emit_note(*ecx.tcx);
                 err
