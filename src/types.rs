@@ -43,11 +43,13 @@ pub(crate) fn rewrite_path(
 ) -> Option<String> {
     let skip_count = qself.as_ref().map_or(0, |x| x.position);
 
-    let mut result = if path.is_global() && qself.is_none() && path_context != PathContext::Import {
-        "::".to_owned()
-    } else {
-        String::new()
-    };
+    // 32 covers almost all path lengths measured when compiling core, and there isn't a big
+    // downside from allocating slightly more than necessary.
+    let mut result = String::with_capacity(32);
+
+    if path.is_global() && qself.is_none() && path_context != PathContext::Import {
+        result.push_str("::");
+    }
 
     let mut span_lo = path.span.lo();
 
