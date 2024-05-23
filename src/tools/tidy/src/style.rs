@@ -243,7 +243,7 @@ pub fn is_in(full_path: &Path, parent_folder_to_find: &str, folder_to_find: &str
         if parent.file_name().map_or_else(
             || false,
             |f| {
-                f.to_string_lossy() == folder_to_find
+                f == folder_to_find
                     && parent
                         .parent()
                         .and_then(|f| f.file_name())
