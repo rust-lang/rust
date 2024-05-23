@@ -105,5 +105,8 @@ check-cfg = [
     'cfg(backtrace_in_libstd)',
     'cfg(netbsd10)',
     'cfg(target_arch, values("xtensa"))',
-    'cfg(feature, values("std", "as_crate"))',
+    # std use #[path] imports to portable-simd `std_float` crate
+    # and to the `backtrace` crate which messes-up with Cargo list
+    # of declared features, we therefor expect any feature cfg
+    'cfg(feature, values(any()))',
 ]

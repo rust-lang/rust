@@ -46,6 +46,8 @@ check-cfg = [
     'cfg(bootstrap)',
     'cfg(no_fp_fmt_parse)',
     'cfg(stdarch_intel_sde)',
-    # This matches `EXTRA_CHECK_CFGS` in `src/bootstrap/src/lib.rs`.
+    # core use #[path] imports to portable-simd `core_simd` crate
+    # and to stdarch `core_arch` crate which messes-up with Cargo list
+    # of declared features, we therefor expect any feature cfg
     'cfg(feature, values(any()))',
 ]
