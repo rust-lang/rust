@@ -589,7 +589,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _bin_op: mir::BinOp,
         _left: &ImmTy<'tcx>,
         _right: &ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (ImmTy<'tcx>, bool)> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 

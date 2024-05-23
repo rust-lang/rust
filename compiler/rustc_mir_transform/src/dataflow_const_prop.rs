@@ -165,9 +165,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     }
                 }
             }
-            Rvalue::BinaryOp(overflowing_op, box (left, right))
-                if let Some(op) = overflowing_op.overflowing_to_wrapping() =>
-            {
+            Rvalue::BinaryOp(op, box (left, right)) if op.is_overflowing() => {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
@@ -177,7 +175,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let overflow_target = self.map().apply(target, TrackElem::Field(1_u32.into()));
 
                 if value_target.is_some() || overflow_target.is_some() {
-                    let (val, overflow) = self.binary_op(state, op, left, right);
+                    let (val, overflow) = self.binary_op(state, *op, left, right);
 
                     if let Some(value_target) = value_target {
                         // We have flooded `target` earlier.
@@ -186,7 +184,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
-                            FlatSet::Elem(overflow) => FlatSet::Elem(Scalar::from_bool(overflow)),
+                            FlatSet::Elem(overflow) => FlatSet::Elem(overflow),
                             FlatSet::Bottom => FlatSet::Bottom,
                         };
                         // We have flooded `target` earlier.
@@ -266,15 +264,16 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::BinaryOp(op, box (left, right)) => {
+            Rvalue::BinaryOp(op, box (left, right)) if !op.is_overflowing() => {
                 // Overflows must be ignored here.
+                // The overflowing operators are handled in `handle_assign`.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
                 val
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
                 FlatSet::Elem(value) => self
                     .ecx
-                    .wrapping_unary_op(*op, &value)
+                    .unary_op(*op, &value)
                     .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
                 FlatSet::Bottom => FlatSet::Bottom,
                 FlatSet::Top => FlatSet::Top,
@@ -439,7 +438,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<Scalar>, FlatSet<bool>) {
+    ) -> (FlatSet<Scalar>, FlatSet<Scalar>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
 
@@ -447,9 +446,17 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             (FlatSet::Bottom, _) | (_, FlatSet::Bottom) => (FlatSet::Bottom, FlatSet::Bottom),
             // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
-                match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((val, overflow)) => {
-                        (FlatSet::Elem(val.to_scalar()), FlatSet::Elem(overflow))
+                match self.ecx.binary_op(op, &left, &right) {
+                    // Ideally this would return an Immediate, since it's sometimes
+                    // a pair and sometimes not. But as a hack we always return a pair
+                    // and just make the 2nd component `Bottom` when it does not exist.
+                    Ok(val) => {
+                        if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+                            let (val, overflow) = val.to_scalar_pair();
+                            (FlatSet::Elem(val), FlatSet::Elem(overflow))
+                        } else {
+                            (FlatSet::Elem(val.to_scalar()), FlatSet::Bottom)
+                        }
                     }
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
@@ -475,7 +482,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                         (FlatSet::Elem(arg_scalar), FlatSet::Bottom)
                     }
                     BinOp::Mul if layout.ty.is_integral() && arg_value == 0 => {
-                        (FlatSet::Elem(arg_scalar), FlatSet::Elem(false))
+                        (FlatSet::Elem(arg_scalar), FlatSet::Elem(Scalar::from_bool(false)))
                     }
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
