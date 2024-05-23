@@ -10,6 +10,7 @@ fn main() {
     if target_os == "netbsd" && env::var("RUSTC_STD_NETBSD10").is_ok() {
         println!("cargo:rustc-cfg=netbsd10");
     }
+    println!("cargo:rustc-check-cfg=cfg(restricted_std)");
     if target_os == "linux"
         || target_os == "android"
         || target_os == "netbsd"
@@ -59,7 +60,7 @@ fn main() {
         // - arch=avr
         // - JSON targets
         // - Any new targets that have not been explicitly added above.
-        println!("cargo:rustc-cfg=feature=\"restricted-std\"");
+        println!("cargo:rustc-cfg=restricted_std");
     }
     println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
     println!("cargo:rustc-cfg=backtrace_in_libstd");
