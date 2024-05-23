@@ -1898,7 +1898,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let deps = self
             .tcx
-            .crates(())
+            .crates_including_speculative(())
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {

@@ -399,7 +399,7 @@ fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
-    let cnums = tcx.crates(());
+    let cnums = tcx.used_crates(());
 
     let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
 
