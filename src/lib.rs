@@ -335,6 +335,10 @@ impl ThinBufferMethods for ThinBuffer {
     fn data(&self) -> &[u8] {
         unimplemented!();
     }
+
+    fn thin_link_data(&self) -> &[u8] {
+        unimplemented!();
+    }
 }
 
 pub struct GccContext {
@@ -414,7 +418,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         back::write::codegen(cgcx, dcx, module, config)
     }
 
-    fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+    fn prepare_thin(_module: ModuleCodegen<Self::Module>, _emit_summary: bool) -> (String, Self::ThinBuffer) {
         unimplemented!();
     }
 
