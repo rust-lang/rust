@@ -103,6 +103,7 @@ symbols! {
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
+        Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
     }

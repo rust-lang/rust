@@ -2501,6 +2501,8 @@ pub enum IsAuto {
 pub enum Safety {
     /// `unsafe` an item is explicitly marked as `unsafe`.
     Unsafe(Span),
+    /// `safe` an item is explicitly marked as `safe`.
+    Safe(Span),
     /// Default means no value was provided, it will take a default value given the context in
     /// which is used.
     Default,
@@ -3171,6 +3173,7 @@ pub struct StaticItem {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticForeignItem {
     pub ty: P<Ty>,
+    pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
 }
@@ -3179,6 +3182,7 @@ impl From<StaticItem> for StaticForeignItem {
     fn from(static_item: StaticItem) -> StaticForeignItem {
         StaticForeignItem {
             ty: static_item.ty,
+            safety: Safety::Default,
             mutability: static_item.mutability,
             expr: static_item.expr,
         }

@@ -1184,7 +1184,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::Static(box StaticForeignItem { ty: _, mutability: _, expr }) => {
+            ForeignItemKind::Static(box StaticForeignItem { expr, .. }) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", expr.as_ref().map(|b| b.span));
                 self.check_foreign_item_ascii_only(fi.ident);
             }

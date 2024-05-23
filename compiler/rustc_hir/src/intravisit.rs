@@ -608,12 +608,14 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_ident(foreign_item.ident));
 
     match foreign_item.kind {
-        ForeignItemKind::Fn(ref function_declaration, param_names, ref generics) => {
+        ForeignItemKind::Fn(ref function_declaration, param_names, ref generics, _) => {
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(function_declaration));
             walk_list!(visitor, visit_ident, param_names.iter().copied());
         }
-        ForeignItemKind::Static(ref typ, _) => try_visit!(visitor.visit_ty(typ)),
+        ForeignItemKind::Static(ref typ, _, _) => {
+            try_visit!(visitor.visit_ty(typ));
+        }
         ForeignItemKind::Type => (),
     }
     V::Result::output()

@@ -201,7 +201,7 @@ pub fn provide(providers: &mut Providers) {
             ..
         })
         | Node::ForeignItem(&ForeignItem {
-            kind: ForeignItemKind::Fn(_, idents, _),
+            kind: ForeignItemKind::Fn(_, idents, _, _),
             ..
         }) = tcx.hir_node(tcx.local_def_id_to_hir_id(def_id))
         {

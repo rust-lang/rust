@@ -31,7 +31,13 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(box ast::StaticForeignItem { ty, mutability, expr }) => {
+            ast::ForeignItemKind::Static(box ast::StaticForeignItem {
+                ty,
+                mutability,
+                expr,
+                safety,
+            }) => {
+                self.print_safety(*safety);
                 self.print_item_const(
                     ident,
                     Some(*mutability),

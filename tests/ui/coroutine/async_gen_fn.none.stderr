@@ -7,11 +7,11 @@ LL | async gen fn foo() {}
    = help: pass `--edition 2021` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error: expected one of `extern`, `fn`, or `unsafe`, found `gen`
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found `gen`
   --> $DIR/async_gen_fn.rs:4:7
    |
 LL | async gen fn foo() {}
-   |       ^^^ expected one of `extern`, `fn`, or `unsafe`
+   |       ^^^ expected one of `extern`, `fn`, `safe`, or `unsafe`
 
 error: aborting due to 2 previous errors
 

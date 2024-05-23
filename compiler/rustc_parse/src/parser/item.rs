@@ -1221,6 +1221,7 @@ impl<'a> Parser<'a> {
                                 ty,
                                 mutability: Mutability::Not,
                                 expr,
+                                safety: Safety::Default,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -2400,9 +2401,9 @@ impl<'a> Parser<'a> {
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern]
         } else {
-            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern]
         };
         self.check_keyword_case(kw::Fn, case) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
@@ -2537,8 +2538,24 @@ impl<'a> Parser<'a> {
                     } else if self.check_keyword(kw::Unsafe) {
                         match safety {
                             Safety::Unsafe(sp) => Some(WrongKw::Duplicated(sp)),
+                            Safety::Safe(sp) => {
+                                recover_safety = Safety::Unsafe(self.token.span);
+                                Some(WrongKw::Misplaced(sp))
+                            }
                             Safety::Default => {
                                 recover_safety = Safety::Unsafe(self.token.span);
+                                Some(WrongKw::Misplaced(ext_start_sp))
+                            }
+                        }
+                    } else if self.check_keyword(kw::Safe) {
+                        match safety {
+                            Safety::Safe(sp) => Some(WrongKw::Duplicated(sp)),
+                            Safety::Unsafe(sp) => {
+                                recover_safety = Safety::Safe(self.token.span);
+                                Some(WrongKw::Misplaced(sp))
+                            }
+                            Safety::Default => {
+                                recover_safety = Safety::Safe(self.token.span);
                                 Some(WrongKw::Misplaced(ext_start_sp))
                             }
                         }

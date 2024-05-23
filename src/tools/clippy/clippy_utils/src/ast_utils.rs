@@ -451,13 +451,15 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 ty: lt,
                 mutability: lm,
                 expr: le,
+                safety: ls,
             }),
             Static(box StaticForeignItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
+                safety: rs,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re) && ls == rs,
         (
             Fn(box ast::Fn {
                 defaultness: ld,
