@@ -13,7 +13,10 @@ pub struct MiriAllocBytes {
     /// Stored layout information about the allocation.
     layout: alloc::Layout,
     /// Pointer to the allocation contents.
-    /// Invariant: `self.ptr` points to memory allocated with `self.layout`.
+    /// Invariant:
+    /// * If `self.layout.size() == 0`, then `self.ptr` is some suitably aligned pointer
+    ///   that was allocated with the same layout but `size == 1`.
+    /// * Otherwise, `self.ptr` points to memory allocated with `self.layout`.
     ptr: *mut u8,
 }
 
@@ -27,8 +30,13 @@ impl Clone for MiriAllocBytes {
 
 impl Drop for MiriAllocBytes {
     fn drop(&mut self) {
+        let alloc_layout = if self.layout.size() == 0 {
+            Layout::from_size_align(1, self.layout.align()).unwrap()
+        } else {
+            self.layout
+        };
         // SAFETY: Invariant, `self.ptr` points to memory allocated with `self.layout`.
-        unsafe { alloc::dealloc(self.ptr, self.layout) }
+        unsafe { alloc::dealloc(self.ptr, alloc_layout) }
     }
 }
 
@@ -51,21 +59,21 @@ impl std::ops::DerefMut for MiriAllocBytes {
 }
 
 impl MiriAllocBytes {
-    /// This method factors out how a `MiriAllocBytes` object is allocated,
-    /// specifically given an allocation function `alloc_fn`.
-    /// `alloc_fn` is only used with `size != 0`.
-    /// Returns `Err(layout)` if the allocation function returns a `ptr` where `ptr.is_null()`.
+    /// This method factors out how a `MiriAllocBytes` object is allocated, given a specific allocation function.
+    /// If `size == 0` we allocate using a different `alloc_layout` with `size = 1`, to ensure each allocation has a unique address.
+    /// Returns `Err(alloc_layout)` if the allocation function returns a `ptr` where `ptr.is_null()`.
     fn alloc_with(
         size: usize,
         align: usize,
         alloc_fn: impl FnOnce(Layout) -> *mut u8,
     ) -> Result<MiriAllocBytes, Layout> {
-        // When size is 0 we allocate 1 byte anyway, so addresses don't possibly overlap.
-        let size = if size == 0 { 1 } else { size };
         let layout = Layout::from_size_align(size, align).unwrap();
-        let ptr = alloc_fn(layout);
+        // When size is 0 we allocate 1 byte anyway, to ensure each allocation has a unique address.
+        let alloc_layout =
+            if size == 0 { Layout::from_size_align(1, align).unwrap() } else { layout };
+        let ptr = alloc_fn(alloc_layout);
         if ptr.is_null() {
-            Err(layout)
+            Err(alloc_layout)
         } else {
             // SAFETY: All `MiriAllocBytes` invariants are fulfilled.
             Ok(Self { ptr, layout })
