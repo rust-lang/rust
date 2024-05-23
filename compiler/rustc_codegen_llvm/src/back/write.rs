@@ -708,7 +708,7 @@ pub(crate) unsafe fn codegen(
         //   asm from LLVM and use `gcc` to create the object file.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
-        let bc_index_out =
+        let bc_summary_out =
             cgcx.output_filenames.temp_path(OutputType::ThinLinkBitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
@@ -716,7 +716,7 @@ pub(crate) unsafe fn codegen(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
-            let thin = ThinBuffer::new(llmod, config.emit_thin_lto, config.emit_thin_lto_index);
+            let thin = ThinBuffer::new(llmod, config.emit_thin_lto, config.emit_thin_lto_summary);
             let data = thin.data();
 
             if let Some(bitcode_filename) = bc_out.file_name() {
@@ -727,20 +727,20 @@ pub(crate) unsafe fn codegen(
                 );
             }
 
-            if config.emit_thin_lto_index && let Some(thin_link_bitcode_filename) = bc_index_out.file_name() {
-                let index_data = thin.thin_link_data();
+            if config.emit_thin_lto_summary && let Some(thin_link_bitcode_filename) = bc_summary_out.file_name() {
+                let summary_data = thin.thin_link_data();
                 cgcx.prof.artifact_size(
                     "llvm_bitcode_summary",
                     thin_link_bitcode_filename.to_string_lossy(),
-                    index_data.len() as u64,
+                    summary_data.len() as u64,
                 );
 
                 let _timer = cgcx.prof.generic_activity_with_arg(
-                    "LLVM_module_codegen_emit_bitcode_index",
+                    "LLVM_module_codegen_emit_bitcode_summary",
                     &*module.name,
                 );
-                if let Err(err) = fs::write(&bc_index_out, index_data) {
-                    dcx.emit_err(WriteBytecode { path: &bc_index_out, err });
+                if let Err(err) = fs::write(&bc_summary_out, summary_data) {
+                    dcx.emit_err(WriteBytecode { path: &bc_summary_out, err });
                 }
             }
 

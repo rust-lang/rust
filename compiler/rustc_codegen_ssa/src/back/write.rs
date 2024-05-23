@@ -107,7 +107,7 @@ pub struct ModuleConfig {
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
-    pub emit_thin_lto_index: bool,
+    pub emit_thin_lto_summary: bool,
     pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
@@ -232,7 +232,7 @@ impl ModuleConfig {
             ),
             emit_obj,
             emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto,
-            emit_thin_lto_index: if_regular!(
+            emit_thin_lto_summary: if_regular!(
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false
             ),
@@ -287,7 +287,7 @@ impl ModuleConfig {
 
     pub fn bitcode_needed(&self) -> bool {
         self.emit_bc
-            || self.emit_thin_lto_index
+            || self.emit_thin_lto_summary
             || self.emit_obj == EmitObj::Bitcode
             || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
