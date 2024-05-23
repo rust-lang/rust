@@ -925,7 +925,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in prefix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
-                for subpattern in slice {
+                if let Some(subpattern) = slice {
                     self.visit_primary_bindings(
                         subpattern,
                         pattern_user_ty.clone().subslice(from, to),

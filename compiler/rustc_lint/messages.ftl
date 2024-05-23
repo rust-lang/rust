@@ -263,7 +263,7 @@ lint_extern_without_abi = extern declarations without an explicit ABI are deprec
     .help = the default ABI is {$default_abi}
 
 lint_for_loops_over_fallibles =
-    for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
+    for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
     .remove_next = to iterate over `{$recv_snip}` remove the call to `next`
     .use_while_let = to check pattern in a loop use `while let`
