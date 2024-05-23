@@ -2101,16 +2101,14 @@ fn lint_redundant_lifetimes<'tcx>(
         }
 
         for &victim in &lifetimes[(idx + 1)..] {
-            // We should only have late-bound lifetimes of the `BrNamed` variety,
-            // since we get these signatures straight from `hir_lowering`. And any
-            // other regions (ReError/ReStatic/etc.) shouldn't matter, since we
+            // All region parameters should have a `DefId` available as:
+            // - Late-bound parameters should be of the`BrNamed` variety,
+            // since we get these signatures straight from `hir_lowering`.
+            // - Early-bound parameters unconditionally have a `DefId` available.
+            //
+            // Any other regions (ReError/ReStatic/etc.) shouldn't matter, since we
             // can't really suggest to remove them.
-            let (ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
-            | ty::ReLateParam(ty::LateParamRegion {
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
-                ..
-            })) = victim.kind()
-            else {
+            let Some(def_id) = victim.opt_param_def_id(tcx, owner_id.to_def_id()) else {
                 continue;
             };
 

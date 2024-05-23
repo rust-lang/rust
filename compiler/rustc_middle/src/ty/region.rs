@@ -321,6 +321,21 @@ impl<'tcx> Region<'tcx> {
             _ => bug!("expected region {:?} to be of kind ReVar", self),
         }
     }
+
+    /// Given some item `binding_item`, check if this region is a generic parameter introduced by it
+    /// or one of the parent generics. Returns the `DefId` of the parameter definition if so.
+    pub fn opt_param_def_id(self, tcx: TyCtxt<'tcx>, binding_item: DefId) -> Option<DefId> {
+        match self.kind() {
+            ty::ReEarlyParam(ebr) => {
+                Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)
+            }
+            ty::ReLateParam(ty::LateParamRegion {
+                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                ..
+            }) => Some(def_id),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> Deref for Region<'tcx> {
@@ -335,16 +350,13 @@ impl<'tcx> Deref for Region<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct EarlyParamRegion {
-    pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
 
 impl std::fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // FIXME(BoxyUwU): self.def_id goes first because of `erased-regions-in-hidden-ty.rs` being impossible to write
-        // error annotations for otherwise. :). Ideally this would be `self.name, self.index, self.def_id`.
-        write!(f, "{:?}_{}/#{}", self.def_id, self.name, self.index)
+        write!(f, "{}/#{}", self.name, self.index)
     }
 }
 
