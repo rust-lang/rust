@@ -26,9 +26,9 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
 use rustc_session::Session;
 use rustc_span::Span;
-
 use std::any::Any;
 use std::cell::Cell;
+use tracing::debug;
 
 /// Extract the [`LintStore`] from [`Session`].
 ///

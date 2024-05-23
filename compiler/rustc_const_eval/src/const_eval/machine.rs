@@ -21,6 +21,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
+use tracing::debug;
 
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;

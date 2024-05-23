@@ -18,6 +18,7 @@ use rustc_macros::{
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
+use tracing::debug;
 
 use core::intrinsics;
 use std::marker::PhantomData;

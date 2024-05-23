@@ -6,6 +6,7 @@ use rustc_middle::mir::interpret::InterpErrorInfo;
 use rustc_middle::query::{Key, TyCtxtAt};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
+use tracing::instrument;
 
 use crate::interpret::{format_interp_error, InterpCx};
 

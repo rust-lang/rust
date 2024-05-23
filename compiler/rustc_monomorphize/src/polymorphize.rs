@@ -18,6 +18,7 @@ use rustc_middle::ty::{
     GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
 use crate::errors::UnusedGenericParamsHint;
 

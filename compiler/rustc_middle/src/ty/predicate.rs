@@ -4,6 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{extension, HashStable};
 use rustc_type_ir as ir;
 use std::cmp::Ordering;
+use tracing::instrument;
 
 use crate::ty::{
     self, DebruijnIndex, EarlyBinder, PredicatePolarity, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom,

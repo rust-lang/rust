@@ -7,6 +7,7 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use tracing::{debug, instrument, trace};
 
 // `pretty` is a separate module only for organization.
 mod pretty;

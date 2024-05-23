@@ -3,6 +3,7 @@ use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::{debug, instrument};
 
 use crate::drop_flag_effects_for_function_entry;
 use crate::drop_flag_effects_for_location;

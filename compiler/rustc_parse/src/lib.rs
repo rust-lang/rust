@@ -10,9 +10,6 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 
-#[macro_use]
-extern crate tracing;
-
 use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;

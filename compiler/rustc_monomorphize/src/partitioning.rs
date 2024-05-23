@@ -116,6 +116,7 @@ use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
+use tracing::debug;
 
 use crate::collector::UsageMap;
 use crate::collector::{self, MonoItemCollectionStrategy};

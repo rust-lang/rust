@@ -37,6 +37,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
 use either::Either;
+use tracing::trace;
 
 use std::borrow::Cow;
 use std::cell::RefCell;

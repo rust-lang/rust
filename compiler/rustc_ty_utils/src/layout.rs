@@ -16,6 +16,7 @@ use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::*;
+use tracing::{debug, instrument, trace};
 
 use std::fmt::Debug;
 use std::iter;

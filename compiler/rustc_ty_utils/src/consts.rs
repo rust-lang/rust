@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use tracing::{debug, instrument};
 
 use std::iter;
 

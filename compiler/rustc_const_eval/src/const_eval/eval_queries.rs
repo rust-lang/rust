@@ -1,6 +1,7 @@
 use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
+use tracing::{debug, instrument, trace};
 
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;

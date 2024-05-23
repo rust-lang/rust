@@ -8,6 +8,7 @@ use std::fmt::Write;
 use std::num::NonZero;
 
 use either::{Left, Right};
+use tracing::trace;
 
 use hir::def::DefKind;
 use rustc_ast::Mutability;

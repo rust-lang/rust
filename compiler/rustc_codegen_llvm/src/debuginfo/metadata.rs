@@ -41,6 +41,7 @@ use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
+use tracing::{debug, instrument};
 
 use libc::{c_char, c_longlong, c_uint};
 use std::borrow::Cow;

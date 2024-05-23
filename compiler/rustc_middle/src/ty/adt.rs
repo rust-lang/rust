@@ -17,6 +17,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
 use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
+use tracing::{debug, info, trace};
 
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};

@@ -19,6 +19,7 @@ use rustc_target::abi::*;
 use rustc_target::spec::{
     abi::Abi as SpecAbi, HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi,
 };
+use tracing::debug;
 
 use std::borrow::Cow;
 use std::cmp;

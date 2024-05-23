@@ -16,6 +16,7 @@ use rustc_middle::{bug, span_bug, ty::Instance};
 use rustc_span::{Pos, Span};
 use rustc_target::abi::*;
 use rustc_target::asm::*;
+use tracing::debug;
 
 use libc::{c_char, c_uint};
 use smallvec::SmallVec;

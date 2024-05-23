@@ -12,6 +12,7 @@ use rustc_session::Session;
 use rustc_span::ErrorGuaranteed;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tracing::{debug, warn};
 
 use super::data::*;
 use super::file_format;

@@ -74,6 +74,7 @@ use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
+use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
 use std::borrow::Borrow;

@@ -18,6 +18,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Size;
 use rustc_target::abi::{self, VariantIdx};
 
+use tracing::{debug, instrument};
+
 use super::{
     throw_ub, throw_unsup_format, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     Provenance, Scalar,

@@ -11,6 +11,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{bug, span_bug};
+use tracing::debug;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,

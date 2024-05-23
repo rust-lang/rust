@@ -45,6 +45,7 @@ use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
+use tracing::{debug, info};
 
 pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match op {

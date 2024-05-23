@@ -18,6 +18,7 @@ use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::{SanitizerSet, TlsModel};
+use tracing::debug;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())

@@ -15,9 +15,6 @@
 #![feature(let_chains)]
 #![feature(impl_trait_in_assoc_type)]
 
-#[macro_use]
-extern crate tracing;
-
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 

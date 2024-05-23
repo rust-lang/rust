@@ -70,6 +70,7 @@ use rustc_target::abi::Abi;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
+use tracing::debug;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 

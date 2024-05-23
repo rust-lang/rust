@@ -4,6 +4,7 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
+use tracing::trace;
 
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;

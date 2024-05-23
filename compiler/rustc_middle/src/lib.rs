@@ -63,9 +63,6 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 #[cfg(test)]
 mod tests;
 

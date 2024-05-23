@@ -15,6 +15,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_target::abi::Size;
+use tracing::trace;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements

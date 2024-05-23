@@ -17,6 +17,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FieldIdx, FIRST_VARIANT};
 
 use arrayvec::ArrayVec;
+use tracing::{debug, instrument};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]

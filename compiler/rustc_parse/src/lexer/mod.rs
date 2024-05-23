@@ -18,6 +18,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
+use tracing::debug;
 
 mod diagnostics;
 mod tokentrees;

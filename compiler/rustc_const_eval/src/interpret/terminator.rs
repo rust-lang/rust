@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use either::Either;
+use tracing::trace;
 
 use rustc_middle::span_bug;
 use rustc_middle::{

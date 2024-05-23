@@ -10,6 +10,7 @@ use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, Upcast};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
+use tracing::{debug, instrument};
 
 #[instrument(level = "debug", skip(tcx), ret)]
 fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {

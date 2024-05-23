@@ -7,6 +7,7 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use std::ops::ControlFlow;
+use tracing::debug;
 
 use super::{throw_inval, InterpCx, MPlaceTy, MemPlaceMeta, MemoryKind};
 
