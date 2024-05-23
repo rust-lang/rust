@@ -1349,6 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(rcvr),
                         rcvr_t,
                         segment.ident,
+                        expr.hir_id,
                         SelfSource::MethodCall(rcvr),
                         error,
                         Some(args),
