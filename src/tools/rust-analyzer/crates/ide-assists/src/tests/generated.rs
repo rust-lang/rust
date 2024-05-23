@@ -805,12 +805,13 @@ fn doctest_desugar_async_into_impl_future() {
     check_doc_test(
         "desugar_async_into_impl_future",
         r#####"
-pub async f$0n foo() -> usize {
+//- minicore: future
+pub as$0ync fn foo() -> usize {
     0
 }
 "#####,
         r#####"
-pub fn foo() -> impl Future<Output = usize> {
+pub fn foo() -> impl core::future::Future<Output = usize> {
     0
 }
 "#####,
@@ -3043,7 +3044,7 @@ fn doctest_sugar_impl_future_into_async() {
         "sugar_impl_future_into_async",
         r#####"
 //- minicore: future
-pub f$0n foo() -> impl core::future::Future<Output = usize> {
+pub fn foo() -> impl core::future::F$0uture<Output = usize> {
     async { 0 }
 }
 "#####,
