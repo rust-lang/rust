@@ -227,7 +227,6 @@ run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/rmeta-preferred/Makefile
 run-make/rustc-macro-dep-files/Makefile
 run-make/rustdoc-io-error/Makefile
-run-make/rustdoc-scrape-examples-macros/Makefile
 run-make/rustdoc-verify-output-files/Makefile
 run-make/rustdoc-with-output-option/Makefile
 run-make/rustdoc-with-short-out-dir-option/Makefile
