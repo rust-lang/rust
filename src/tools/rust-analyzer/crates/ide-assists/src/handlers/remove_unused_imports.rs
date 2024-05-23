@@ -777,6 +777,40 @@ mod z {
     }
 
     #[test]
+    fn remove_unused_fixes_nested_self() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod inner {
+    pub struct X();
+    pub struct Y();
+}
+
+mod z {
+    use super::inner::{self, X}$0;
+
+    fn f() {
+        let y = inner::Y();
+    }
+}
+"#,
+            r#"mod inner {
+    pub struct X();
+    pub struct Y();
+}
+
+mod z {
+    use super::inner::{self};
+
+    fn f() {
+        let y = inner::Y();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn dont_remove_used_glob() {
         check_assist_not_applicable(
             remove_unused_imports,
