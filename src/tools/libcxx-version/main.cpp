@@ -4,8 +4,6 @@
 //
 // It's nothing more than specifying the name of the standard library implementation (either libstdc++ or libc++)
 // and its major version.
-//
-// ignore-tidy-linelength
 
 #include <iostream>
 
