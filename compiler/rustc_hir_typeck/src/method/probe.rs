@@ -395,8 +395,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
             if is_suggestion.0 {
-                // Ambiguity was encountered during a suggestion. Just keep going.
-                debug!("ProbeContext: encountered ambiguity in suggestion");
+                // Ambiguity was encountered during a suggestion. There's really
+                // not much use in suggesting methods in this case.
+                return Err(MethodError::NoMatch(NoMatchData {
+                    static_candidates: Vec::new(),
+                    unsatisfied_predicates: Vec::new(),
+                    out_of_scope_traits: Vec::new(),
+                    similar_candidate: None,
+                    mode,
+                }));
             } else if bad_ty.reached_raw_pointer
                 && !self.tcx.features().arbitrary_self_types
                 && !self.tcx.sess.at_least_rust_2018()
