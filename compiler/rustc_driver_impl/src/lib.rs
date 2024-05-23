@@ -96,7 +96,7 @@ mod signal_handler {
 
 use crate::session_diagnostics::{
     RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
-    RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
+    RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead,
 };
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -645,14 +645,16 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 match err {
                     CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
                     CodegenErrors::EmptyVersionNumber => dcx.emit_fatal(RLinkEmptyVersionNumber),
-                    CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => sess
-                        .dcx()
+                    CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => dcx
                         .emit_fatal(RLinkEncodingVersionMismatch { version_array, rlink_version }),
                     CodegenErrors::RustcVersionMismatch { rustc_version } => {
                         dcx.emit_fatal(RLinkRustcVersionMismatch {
                             rustc_version,
                             current_version: sess.cfg_version,
                         })
+                    }
+                    CodegenErrors::CorruptFile => {
+                        dcx.emit_fatal(RlinkCorruptFile { file });
                     }
                 };
             }

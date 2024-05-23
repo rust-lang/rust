@@ -8,7 +8,7 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 use std::fmt;
 
 use crate::inherent::*;
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, TraitRef, WithInfcx};
+use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::TyKind::*;
 
@@ -514,7 +514,7 @@ impl<I: Interner> AliasTy<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::OwnItemArgs) {
+    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::OwnItemArgs) {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
         interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
     }
@@ -526,7 +526,7 @@ impl<I: Interner> AliasTy<I> {
     /// WARNING: This will drop the args for generic associated types
     /// consider calling [Self::trait_ref_and_own_args] to get those
     /// as well.
-    pub fn trait_ref(self, interner: I) -> TraitRef<I> {
+    pub fn trait_ref(self, interner: I) -> ty::TraitRef<I> {
         self.trait_ref_and_own_args(interner).0
     }
 }
@@ -981,6 +981,49 @@ impl<I: Interner> FnSig<I> {
 
     pub fn output(self) -> I::Ty {
         self.split_inputs_and_output().1
+    }
+
+    pub fn is_fn_trait_compatible(self) -> bool {
+        let FnSig { safety, abi, c_variadic, .. } = self;
+        !c_variadic && safety.is_safe() && abi.is_rust()
+    }
+}
+
+impl<I: Interner> ty::Binder<I, FnSig<I>> {
+    #[inline]
+    pub fn inputs(self) -> ty::Binder<I, I::FnInputTys> {
+        self.map_bound(|fn_sig| fn_sig.inputs())
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|fn_sig| fn_sig.inputs()[index])
+    }
+
+    pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {
+        self.map_bound(|fn_sig| fn_sig.inputs_and_output)
+    }
+
+    #[inline]
+    pub fn output(self) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|fn_sig| fn_sig.output())
+    }
+
+    pub fn c_variadic(self) -> bool {
+        self.skip_binder().c_variadic
+    }
+
+    pub fn safety(self) -> I::Safety {
+        self.skip_binder().safety
+    }
+
+    pub fn abi(self) -> I::Abi {
+        self.skip_binder().abi
+    }
+
+    pub fn is_fn_trait_compatible(&self) -> bool {
+        self.skip_binder().is_fn_trait_compatible()
     }
 }
 

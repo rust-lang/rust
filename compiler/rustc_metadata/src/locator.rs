@@ -853,7 +853,12 @@ fn get_metadata_section<'p>(
             slice_owned(mmap, Deref::deref)
         }
     };
-    let blob = MetadataBlob(raw_bytes);
+    let Ok(blob) = MetadataBlob::new(raw_bytes) else {
+        return Err(MetadataError::LoadFailure(format!(
+            "corrupt metadata encountered in {}",
+            filename.display()
+        )));
+    };
     match blob.check_compatibility(cfg_version) {
         Ok(()) => Ok(blob),
         Err(None) => Err(MetadataError::LoadFailure(format!(

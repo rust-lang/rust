@@ -48,7 +48,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static>
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefPathHashMapRef<'static> {
         let len = d.read_usize();
         let pos = d.position();
-        let o = d.blob().clone().0.slice(|blob| &blob[pos..pos + len]);
+        let o = d.blob().bytes().clone().slice(|blob| &blob[pos..pos + len]);
 
         // Although we already have the data we need via the `OwnedSlice`, we still need
         // to advance the `DecodeContext`'s position so it's in a valid state after

@@ -162,8 +162,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
     let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
     let mut wf_args = vec![ty.into()];
 
-    let mut outlives_bounds: Vec<ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>> =
-        vec![];
+    let mut outlives_bounds: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> = vec![];
 
     while let Some(arg) = wf_args.pop() {
         if !checked_wf_args.insert(arg) {

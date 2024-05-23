@@ -18,7 +18,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::bug;
 use rustc_middle::query::Key;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, suggest_constraining_type_param};
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};
@@ -1382,7 +1382,7 @@ pub enum GenericsArgsErrExtend<'tcx> {
         span: Span,
     },
     SelfTyParam(Span),
-    TyParam(DefId),
+    Param(DefId),
     DefVariant,
     None,
 }
@@ -1498,11 +1498,11 @@ fn generics_args_err_extend<'a>(
         GenericsArgsErrExtend::DefVariant => {
             err.note("enum variants can't have type parameters");
         }
-        GenericsArgsErrExtend::TyParam(def_id) => {
-            if let Some(span) = tcx.def_ident_span(def_id) {
-                let name = tcx.item_name(def_id);
-                err.span_note(span, format!("type parameter `{name}` defined here"));
-            }
+        GenericsArgsErrExtend::Param(def_id) => {
+            let span = tcx.def_ident_span(def_id).unwrap();
+            let kind = tcx.def_descr(def_id);
+            let name = tcx.item_name(def_id);
+            err.span_note(span, format!("{kind} `{name}` defined here"));
         }
         GenericsArgsErrExtend::SelfTyParam(span) => {
             err.span_suggestion_verbose(

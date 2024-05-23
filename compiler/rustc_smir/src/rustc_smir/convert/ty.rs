@@ -707,12 +707,11 @@ impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx, A, B, U, V> Stable<'tcx> for ty::OutlivesPredicate<A, B>
+impl<'tcx, T> Stable<'tcx> for ty::OutlivesPredicate<'tcx, T>
 where
-    A: Stable<'tcx, T = U>,
-    B: Stable<'tcx, T = V>,
+    T: Stable<'tcx>,
 {
-    type T = stable_mir::ty::OutlivesPredicate<U, V>;
+    type T = stable_mir::ty::OutlivesPredicate<T::T, Region>;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         let ty::OutlivesPredicate(a, b) = self;

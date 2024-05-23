@@ -25,9 +25,9 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom,
+    self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom, throw_unsup,
     throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
-    ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
 };
 
 use super::error::*;
@@ -759,11 +759,21 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &InterpCx<'mir, 'tcx, Self>,
         alloc_id: AllocId,
     ) -> InterpResult<'tcx> {
+        // Check if this is the currently evaluated static.
         if Some(alloc_id) == ecx.machine.static_root_ids.map(|(id, _)| id) {
-            Err(ConstEvalErrKind::RecursiveStatic.into())
-        } else {
-            Ok(())
+            return Err(ConstEvalErrKind::RecursiveStatic.into());
         }
+        // If this is another static, make sure we fire off the query to detect cycles.
+        // But only do that when checks for static recursion are enabled.
+        if ecx.machine.static_root_ids.is_some() {
+            if let Some(GlobalAlloc::Static(def_id)) = ecx.tcx.try_get_global_alloc(alloc_id) {
+                if ecx.tcx.is_foreign_item(def_id) {
+                    throw_unsup!(ExternStatic(def_id));
+                }
+                ecx.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
+            }
+        }
+        Ok(())
     }
 }
 

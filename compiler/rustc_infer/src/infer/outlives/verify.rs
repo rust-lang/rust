@@ -94,7 +94,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub fn approx_declared_bounds_from_env(
         &self,
         alias_ty: ty::AliasTy<'tcx>,
-    ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
+    ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
         let erased_alias_ty = self.tcx.erase_regions(alias_ty.to_ty(self.tcx));
         self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
     }
@@ -193,7 +193,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn declared_generic_bounds_from_env(
         &self,
         generic_ty: Ty<'tcx>,
-    ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
+    ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
         assert!(matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_)));
         self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
@@ -213,7 +213,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn declared_generic_bounds_from_env_for_erased_ty(
         &self,
         erased_ty: Ty<'tcx>,
-    ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
+    ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
         let tcx = self.tcx;
 
         // To start, collect bounds from user environment. Note that

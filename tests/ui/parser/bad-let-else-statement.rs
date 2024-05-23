@@ -3,8 +3,7 @@
 #![feature(explicit_tail_calls)]
 
 fn a() {
-    let foo = {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = {
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -22,8 +21,7 @@ fn b() {
 }
 
 fn c() {
-    let foo = if true {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = if true {
         1
     } else {
         0
@@ -43,8 +41,7 @@ fn d() {
 }
 
 fn e() {
-    let foo = match true {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = match true {
         true => 1,
         false => 0
     } else {
@@ -53,10 +50,12 @@ fn e() {
     };
 }
 
-struct X {a: i32}
 fn f() {
-    let foo = X {
-        //~^ WARN irrefutable `let...else` pattern
+    struct X {
+        a: i32,
+    }
+
+    let X { a: 0 } = X {
         a: 1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -74,8 +73,7 @@ fn g() {
 }
 
 fn h() {
-    let foo = const {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = const {
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -84,8 +82,7 @@ fn h() {
 }
 
 fn i() {
-    let foo = &{
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = &{
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -94,8 +91,8 @@ fn i() {
 }
 
 fn j() {
-    let bar = 0;
-    let foo = bar = { //~ ERROR: cannot assign twice
+    let mut bar = 0;
+    let foo = bar = {
         //~^ WARN irrefutable `let...else` pattern
         1
     } else {
@@ -105,8 +102,7 @@ fn j() {
 }
 
 fn k() {
-    let foo = 1 + {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = 1 + {
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -115,8 +111,8 @@ fn k() {
 }
 
 fn l() {
-    let foo = 1..{
-        //~^ WARN irrefutable `let...else` pattern
+    const RANGE: std::ops::Range<u8> = 0..0;
+    let RANGE = 1..{
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -125,8 +121,7 @@ fn l() {
 }
 
 fn m() {
-    let foo = return {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = return {
         ()
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -135,8 +130,7 @@ fn m() {
 }
 
 fn n() {
-    let foo = -{
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = -{
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -145,8 +139,7 @@ fn n() {
 }
 
 fn o() -> Result<(), ()> {
-    let foo = do yeet {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = do yeet {
         ()
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -155,8 +148,7 @@ fn o() -> Result<(), ()> {
 }
 
 fn p() {
-    let foo = become {
-        //~^ WARN irrefutable `let...else` pattern
+    let 0 = become {
         ()
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -185,22 +177,37 @@ fn r() {
 
 fn s() {
     macro_rules! a {
-        () => { {} }
-        //~^ WARN irrefutable `let...else` pattern
-        //~| WARN irrefutable `let...else` pattern
+        () => {
+            { 1 }
+        };
     }
 
     macro_rules! b {
         (1) => {
-            let x = a!() else { return; };
+            let 0 = a!() else { return; };
         };
         (2) => {
-            let x = a! {} else { return; };
+            let 0 = a! {} else { return; };
             //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
         };
     }
 
-    b!(1); b!(2);
+    b!(1);
+    b!(2);
+}
+
+fn t() {
+    macro_rules! primitive {
+        (8) => { u8 };
+    }
+
+    let foo = &std::ptr::null as &'static dyn std::ops::Fn() -> *const primitive! {
+        //~^ WARN irrefutable `let...else` pattern
+        8
+    } else {
+        //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+        return;
+    };
 }
 
 fn main() {}

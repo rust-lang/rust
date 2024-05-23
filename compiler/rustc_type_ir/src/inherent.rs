@@ -8,11 +8,8 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
-use crate::visit::{Flags, TypeSuperVisitable};
-use crate::{
-    AliasTy, AliasTyKind, BoundVar, ConstKind, ConstVid, DebruijnIndex, DebugWithInfcx, InferConst,
-    InferTy, Interner, RegionKind, TyKind, TyVid, UnevaluatedConst, UniverseIndex,
-};
+use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
+use crate::{self as ty, DebugWithInfcx, Interner, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
@@ -21,24 +18,30 @@ pub trait Ty<I: Interner<Ty = Self>>:
     + Eq
     + Into<I::GenericArg>
     + Into<I::Term>
-    + IntoKind<Kind = TyKind<I>>
+    + IntoKind<Kind = ty::TyKind<I>>
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
     + Flags
 {
     fn new_bool(interner: I) -> Self;
 
-    fn new_infer(interner: I, var: InferTy) -> Self;
+    fn new_infer(interner: I, var: ty::InferTy) -> Self;
 
-    fn new_var(interner: I, var: TyVid) -> Self;
+    fn new_var(interner: I, var: ty::TyVid) -> Self;
 
-    fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
+    fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
-    fn new_alias(interner: I, kind: AliasTyKind, alias_ty: AliasTy<I>) -> Self;
+    fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
-    Copy + Debug + Hash + Eq + IntoIterator<Item = I::Ty> + Deref<Target: Deref<Target = [I::Ty]>>
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    + IntoIterator<Item = I::Ty>
+    + Deref<Target: Deref<Target = [I::Ty]>>
+    + TypeVisitable<I>
 {
     fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
 }
@@ -49,13 +52,21 @@ pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
 }
 
 pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
+    fn is_safe(self) -> bool;
+
     fn prefix_str(self) -> &'static str;
 }
 
 pub trait Region<I: Interner<Region = Self>>:
-    Copy + DebugWithInfcx<I> + Hash + Eq + Into<I::GenericArg> + IntoKind<Kind = RegionKind<I>> + Flags
+    Copy
+    + DebugWithInfcx<I>
+    + Hash
+    + Eq
+    + Into<I::GenericArg>
+    + IntoKind<Kind = ty::RegionKind<I>>
+    + Flags
 {
-    fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
+    fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_static(interner: I) -> Self;
 }
@@ -67,18 +78,23 @@ pub trait Const<I: Interner<Const = Self>>:
     + Eq
     + Into<I::GenericArg>
     + Into<I::Term>
-    + IntoKind<Kind = ConstKind<I>>
+    + IntoKind<Kind = ty::ConstKind<I>>
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
     + Flags
 {
-    fn new_infer(interner: I, var: InferConst, ty: I::Ty) -> Self;
+    fn new_infer(interner: I, var: ty::InferConst, ty: I::Ty) -> Self;
 
-    fn new_var(interner: I, var: ConstVid, ty: I::Ty) -> Self;
+    fn new_var(interner: I, var: ty::ConstVid, ty: I::Ty) -> Self;
 
-    fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar, ty: I::Ty) -> Self;
+    fn new_anon_bound(
+        interner: I,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: I::Ty,
+    ) -> Self;
 
-    fn new_unevaluated(interner: I, uv: UnevaluatedConst<I>, ty: I::Ty) -> Self;
+    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>, ty: I::Ty) -> Self;
 
     fn ty(self) -> I::Ty;
 }
@@ -100,6 +116,12 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     fn type_at(self, i: usize) -> I::Ty;
 
     fn identity_for_item(interner: I, def_id: I::DefId) -> I::GenericArgs;
+
+    fn extend_with_error(
+        tcx: I,
+        def_id: I::DefId,
+        original_args: &[I::GenericArg],
+    ) -> I::GenericArgs;
 }
 
 pub trait Predicate<I: Interner<Predicate = Self>>:
@@ -108,14 +130,25 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     fn is_coinductive(self, interner: I) -> bool;
 }
 
+pub trait Clause<I: Interner<Clause = Self>>:
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    // FIXME: Remove these, uplift the `Upcast` impls.
+    + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
+{
+}
+
 /// Common capabilities of placeholder kinds
 pub trait PlaceholderLike: Copy + Debug + Hash + Eq {
-    fn universe(self) -> UniverseIndex;
-    fn var(self) -> BoundVar;
+    fn universe(self) -> ty::UniverseIndex;
+    fn var(self) -> ty::BoundVar;
 
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self;
+    fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self;
+    fn new(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
 }
 
 pub trait IntoKind {
@@ -124,12 +157,8 @@ pub trait IntoKind {
     fn kind(self) -> Self::Kind;
 }
 
-pub trait BoundVars<I: Interner> {
-    fn bound_vars(&self) -> I::BoundVars;
-
-    fn has_no_bound_vars(&self) -> bool;
-}
-
 pub trait BoundVarLike<I: Interner> {
-    fn var(self) -> BoundVar;
+    fn var(self) -> ty::BoundVar;
+
+    fn assert_eq(self, var: I::BoundVarKind);
 }
