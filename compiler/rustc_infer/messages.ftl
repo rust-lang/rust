@@ -104,10 +104,10 @@ infer_compare_impl_item_obligation = ...so that the definition in impl matches t
 infer_consider_specifying_length = consider specifying the actual array length
 infer_data_flows = ...but data{$label_var1_exists ->
     [true] {" "}from `{$label_var1}`
-    *[false] -> {""}
+    *[false] {""}
 } flows{$label_var2_exists ->
     [true] {" "}into `{$label_var2}`
-    *[false] -> {""}
+    *[false] {""}
 } here
 
 infer_data_lifetime_flow = ...but data with one lifetime flows into the other here
