@@ -100,10 +100,14 @@ test = true
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
+# x.py uses beta cargo, so `check-cfg` entries do not yet take effect
+# for rust-lang/rust. But for users of `-Zbuild-std` it does.
+# The unused warning is waiting for rust-lang/cargo#13925 to reach beta.
 check-cfg = [
     'cfg(bootstrap)',
-    'cfg(backtrace_in_libstd)',
-    'cfg(netbsd10)',
     'cfg(target_arch, values("xtensa"))',
-    'cfg(feature, values("std", "as_crate"))',
+    # std use #[path] imports to portable-simd `std_float` crate
+    # and to the `backtrace` crate which messes-up with Cargo list
+    # of declared features, we therefor expect any feature cfg
+    'cfg(feature, values(any()))',
 ]
