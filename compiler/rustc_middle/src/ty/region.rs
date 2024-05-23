@@ -352,6 +352,12 @@ impl std::fmt::Debug for EarlyParamRegion {
 #[derive(HashStable)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
+///
+/// Similar to a placeholder region as we create `LateParam` regions when entering a binder
+/// except they are always in the root universe and instead of using a boundvar to distinguish
+/// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
+/// should basically always be `BoundRegionKind::BrNamed` as otherwise there is no way of telling
+/// different parameters apart.
 pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
