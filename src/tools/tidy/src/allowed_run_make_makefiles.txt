@@ -193,7 +193,6 @@ run-make/pass-linker-flags/Makefile
 run-make/pass-non-c-like-enum-to-c/Makefile
 run-make/pdb-alt-path/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
-run-make/pgo-branch-weights/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-gen-no-imp-symbols/Makefile
 run-make/pgo-gen/Makefile
