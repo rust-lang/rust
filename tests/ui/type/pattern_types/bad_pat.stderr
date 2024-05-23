@@ -14,7 +14,7 @@ LL | type Positive2 = pattern_type!(i32 is 0..=);
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: "wildcard patterns are not permitted for pattern types"
+error: wildcard patterns are not permitted for pattern types
   --> $DIR/bad_pat.rs:11:33
    |
 LL | type Wild = pattern_type!(() is _);

@@ -1,0 +1,38 @@
+error[E0109]: type and const arguments are not allowed on const parameter `START`
+  --> $DIR/bad_const_generics_args_on_const_param.rs:5:44
+   |
+LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
+   |                                    -----   ^^  ^^^  ^ type and const arguments not allowed
+   |                                    |
+   |                                    not allowed on const parameter `START`
+   |
+note: const parameter `START` defined here
+  --> $DIR/bad_const_generics_args_on_const_param.rs:4:16
+   |
+LL | type Pat<const START: u32, const END: u32> =
+   |                ^^^^^
+
+error[E0109]: type arguments are not allowed on const parameter `END`
+  --> $DIR/bad_const_generics_args_on_const_param.rs:5:64
+   |
+LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
+   |                                                          ---   ^ type argument not allowed
+   |                                                          |
+   |                                                          not allowed on const parameter `END`
+   |
+note: const parameter `END` defined here
+  --> $DIR/bad_const_generics_args_on_const_param.rs:4:34
+   |
+LL | type Pat<const START: u32, const END: u32> =
+   |                                  ^^^
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/bad_const_generics_args_on_const_param.rs:5:67
+   |
+LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
+   |                                                                   ^^^^^^^^^^ associated type not allowed here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0109, E0229.
+For more information about an error, try `rustc --explain E0109`.

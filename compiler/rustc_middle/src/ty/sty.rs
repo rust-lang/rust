@@ -3,17 +3,16 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use crate::infer::canonical::Canonical;
-use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypeVisitable, TypeVisitor,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use crate::ty::{List, ParamEnv};
 use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
-use rustc_errors::{DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan};
+use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -21,11 +20,11 @@ use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-use rustc_target::spec::abi::{self, Abi};
+use rustc_target::spec::abi;
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
-use std::ops::{ControlFlow, Deref, Range};
+use std::ops::{ControlFlow, Range};
 use ty::util::IntTypeExt;
 
 use rustc_type_ir::TyKind::*;
@@ -40,6 +39,7 @@ pub type TyKind<'tcx> = ir::TyKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
+pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -373,7 +373,7 @@ impl<'tcx> CoroutineClosureArgs<'tcx> {
         self.split().signature_parts_ty
     }
 
-    pub fn coroutine_closure_sig(self) -> ty::Binder<'tcx, CoroutineClosureSignature<'tcx>> {
+    pub fn coroutine_closure_sig(self) -> Binder<'tcx, CoroutineClosureSignature<'tcx>> {
         let interior = self.coroutine_witness_ty();
         let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { bug!() };
         sig.map_bound(|sig| {
@@ -400,6 +400,45 @@ impl<'tcx> CoroutineClosureArgs<'tcx> {
 
     pub fn coroutine_witness_ty(self) -> Ty<'tcx> {
         self.split().coroutine_witness_ty
+    }
+
+    pub fn has_self_borrows(&self) -> bool {
+        match self.coroutine_captures_by_ref_ty().kind() {
+            ty::FnPtr(sig) => sig
+                .skip_binder()
+                .visit_with(&mut HasRegionsBoundAt { binder: ty::INNERMOST })
+                .is_break(),
+            ty::Error(_) => true,
+            _ => bug!(),
+        }
+    }
+}
+/// Unlike `has_escaping_bound_vars` or `outermost_exclusive_binder`, this will
+/// detect only regions bound *at* the debruijn index.
+struct HasRegionsBoundAt {
+    binder: ty::DebruijnIndex,
+}
+// FIXME: Could be optimized to not walk into components with no escaping bound vars.
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRegionsBoundAt {
+    type Result = ControlFlow<()>;
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> Self::Result {
+        self.binder.shift_in(1);
+        t.super_visit_with(self)?;
+        self.binder.shift_out(1);
+        ControlFlow::Continue(())
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
+        if let ty::ReBound(binder, _) = *r
+            && self.binder == binder
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 }
 
@@ -898,203 +937,6 @@ impl BoundVariableKind {
     }
 }
 
-/// Binder is a binder for higher-ranked lifetimes or types. It is part of the
-/// compiler's representation for things like `for<'a> Fn(&'a isize)`
-/// (which would be represented by the type `PolyTraitRef ==
-/// Binder<'tcx, TraitRef>`). Note that when we instantiate,
-/// erase, or otherwise "discharge" these bound vars, we change the
-/// type from `Binder<'tcx, T>` to just `T` (see
-/// e.g., `liberate_late_bound_regions`).
-///
-/// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(HashStable, Lift)]
-pub struct Binder<'tcx, T> {
-    value: T,
-    bound_vars: &'tcx List<BoundVariableKind>,
-}
-
-impl<'tcx, T> Binder<'tcx, T>
-where
-    T: TypeVisitable<TyCtxt<'tcx>>,
-{
-    /// Wraps `value` in a binder, asserting that `value` does not
-    /// contain any bound vars that would be bound by the
-    /// binder. This is commonly used to 'inject' a value T into a
-    /// different binding level.
-    #[track_caller]
-    pub fn dummy(value: T) -> Binder<'tcx, T> {
-        assert!(
-            !value.has_escaping_bound_vars(),
-            "`{value:?}` has escaping bound vars, so it cannot be wrapped in a dummy binder."
-        );
-        Binder { value, bound_vars: ty::List::empty() }
-    }
-
-    pub fn bind_with_vars(value: T, bound_vars: &'tcx List<BoundVariableKind>) -> Binder<'tcx, T> {
-        if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
-        }
-        Binder { value, bound_vars }
-    }
-}
-
-impl<'tcx, T> rustc_type_ir::inherent::BoundVars<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
-    fn bound_vars(&self) -> &'tcx List<ty::BoundVariableKind> {
-        self.bound_vars
-    }
-
-    fn has_no_bound_vars(&self) -> bool {
-        self.bound_vars.is_empty()
-    }
-}
-
-impl<'tcx, T> Binder<'tcx, T> {
-    /// Skips the binder and returns the "bound" value. This is a
-    /// risky thing to do because it's easy to get confused about
-    /// De Bruijn indices and the like. It is usually better to
-    /// discharge the binder using `no_bound_vars` or
-    /// `instantiate_bound_regions` or something like
-    /// that. `skip_binder` is only valid when you are either
-    /// extracting data that has nothing to do with bound vars, you
-    /// are doing some sort of test that does not involve bound
-    /// regions, or you are being very careful about your depth
-    /// accounting.
-    ///
-    /// Some examples where `skip_binder` is reasonable:
-    ///
-    /// - extracting the `DefId` from a PolyTraitRef;
-    /// - comparing the self type of a PolyTraitRef to see if it is equal to
-    ///   a type parameter `X`, since the type `X` does not reference any regions
-    pub fn skip_binder(self) -> T {
-        self.value
-    }
-
-    pub fn bound_vars(&self) -> &'tcx List<BoundVariableKind> {
-        self.bound_vars
-    }
-
-    pub fn as_ref(&self) -> Binder<'tcx, &T> {
-        Binder { value: &self.value, bound_vars: self.bound_vars }
-    }
-
-    pub fn as_deref(&self) -> Binder<'tcx, &T::Target>
-    where
-        T: Deref,
-    {
-        Binder { value: &self.value, bound_vars: self.bound_vars }
-    }
-
-    pub fn map_bound_ref<F, U: TypeVisitable<TyCtxt<'tcx>>>(&self, f: F) -> Binder<'tcx, U>
-    where
-        F: FnOnce(&T) -> U,
-    {
-        self.as_ref().map_bound(f)
-    }
-
-    pub fn map_bound<F, U: TypeVisitable<TyCtxt<'tcx>>>(self, f: F) -> Binder<'tcx, U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        let Binder { value, bound_vars } = self;
-        let value = f(value);
-        if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
-        }
-        Binder { value, bound_vars }
-    }
-
-    pub fn try_map_bound<F, U: TypeVisitable<TyCtxt<'tcx>>, E>(
-        self,
-        f: F,
-    ) -> Result<Binder<'tcx, U>, E>
-    where
-        F: FnOnce(T) -> Result<U, E>,
-    {
-        let Binder { value, bound_vars } = self;
-        let value = f(value)?;
-        if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
-        }
-        Ok(Binder { value, bound_vars })
-    }
-
-    /// Wraps a `value` in a binder, using the same bound variables as the
-    /// current `Binder`. This should not be used if the new value *changes*
-    /// the bound variables. Note: the (old or new) value itself does not
-    /// necessarily need to *name* all the bound variables.
-    ///
-    /// This currently doesn't do anything different than `bind`, because we
-    /// don't actually track bound vars. However, semantically, it is different
-    /// because bound vars aren't allowed to change here, whereas they are
-    /// in `bind`. This may be (debug) asserted in the future.
-    pub fn rebind<U>(&self, value: U) -> Binder<'tcx, U>
-    where
-        U: TypeVisitable<TyCtxt<'tcx>>,
-    {
-        Binder::bind_with_vars(value, self.bound_vars)
-    }
-
-    /// Unwraps and returns the value within, but only if it contains
-    /// no bound vars at all. (In other words, if this binder --
-    /// and indeed any enclosing binder -- doesn't bind anything at
-    /// all.) Otherwise, returns `None`.
-    ///
-    /// (One could imagine having a method that just unwraps a single
-    /// binder, but permits late-bound vars bound by enclosing
-    /// binders, but that would require adjusting the debruijn
-    /// indices, and given the shallow binding structure we often use,
-    /// would not be that useful.)
-    pub fn no_bound_vars(self) -> Option<T>
-    where
-        T: TypeVisitable<TyCtxt<'tcx>>,
-    {
-        // `self.value` is equivalent to `self.skip_binder()`
-        if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
-    }
-
-    /// Splits the contents into two things that share the same binder
-    /// level as the original, returning two distinct binders.
-    ///
-    /// `f` should consider bound regions at depth 1 to be free, and
-    /// anything it produces with bound regions at depth 1 will be
-    /// bound in the resulting return values.
-    pub fn split<U, V, F>(self, f: F) -> (Binder<'tcx, U>, Binder<'tcx, V>)
-    where
-        F: FnOnce(T) -> (U, V),
-    {
-        let Binder { value, bound_vars } = self;
-        let (u, v) = f(value);
-        (Binder { value: u, bound_vars }, Binder { value: v, bound_vars })
-    }
-}
-
-impl<'tcx, T> Binder<'tcx, Option<T>> {
-    pub fn transpose(self) -> Option<Binder<'tcx, T>> {
-        let Binder { value, bound_vars } = self;
-        value.map(|value| Binder { value, bound_vars })
-    }
-}
-
-impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
-    pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
-        let Binder { value, bound_vars } = self;
-        value.into_iter().map(|value| Binder { value, bound_vars })
-    }
-}
-
-impl<'tcx, T> IntoDiagArg for Binder<'tcx, T>
-where
-    T: IntoDiagArg,
-{
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.value.into_diag_arg()
-    }
-}
-
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
@@ -1103,48 +945,6 @@ pub struct GenSig<'tcx> {
 }
 
 pub type PolyFnSig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
-
-impl<'tcx> PolyFnSig<'tcx> {
-    #[inline]
-    pub fn inputs(&self) -> Binder<'tcx, &'tcx [Ty<'tcx>]> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs())
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
-    }
-
-    pub fn inputs_and_output(&self) -> ty::Binder<'tcx, &'tcx List<Ty<'tcx>>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
-    }
-
-    #[inline]
-    pub fn output(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.output())
-    }
-
-    pub fn c_variadic(&self) -> bool {
-        self.skip_binder().c_variadic
-    }
-
-    pub fn safety(&self) -> hir::Safety {
-        self.skip_binder().safety
-    }
-
-    pub fn abi(&self) -> abi::Abi {
-        self.skip_binder().abi
-    }
-
-    pub fn is_fn_trait_compatible(&self) -> bool {
-        matches!(
-            self.skip_binder(),
-            ty::FnSig { safety: rustc_hir::Safety::Safe, abi: Abi::Rust, c_variadic: false, .. }
-        )
-    }
-}
-
 pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<'tcx, FnSig<'tcx>>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
@@ -1202,6 +1002,10 @@ pub struct BoundTy {
 impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
     fn var(self) -> BoundVar {
         self.var
+    }
+
+    fn assert_eq(self, var: ty::BoundVariableKind) {
+        assert_eq!(self.kind, var.expect_ty())
     }
 }
 
@@ -2001,7 +1805,7 @@ impl<'tcx> Ty<'tcx> {
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
-                ty::Binder::dummy(ty::FnSig {
+                Binder::dummy(ty::FnSig {
                     inputs_and_output: ty::List::empty(),
                     c_variadic: false,
                     safety: hir::Safety::Safe,

@@ -51,6 +51,14 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
     fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
         GenericArgs::identity_for_item(tcx, def_id)
     }
+
+    fn extend_with_error(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        original_args: &[ty::GenericArg<'tcx>],
+    ) -> ty::GenericArgsRef<'tcx> {
+        ty::GenericArgs::extend_with_error(tcx, def_id, original_args)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {

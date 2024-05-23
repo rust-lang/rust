@@ -28,19 +28,28 @@ pub trait Interner:
     + IrPrint<CoercePredicate<Self>>
     + IrPrint<FnSig<Self>>
 {
-    type DefId: Copy + Debug + Hash + Eq;
+    type DefId: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: GenericArgs<Self>;
     /// The slice of args for a specific item. For a GAT like `type Foo<'a>`, it will be `['a]`,
     /// not including the args from the parent item (trait or impl).
     type OwnItemArgs: Copy + Debug + Hash + Eq;
-    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq + IntoKind<Kind = GenericArgKind<Self>>;
-    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = TermKind<Self>>;
+    type GenericArg: Copy
+        + DebugWithInfcx<Self>
+        + Hash
+        + Eq
+        + IntoKind<Kind = GenericArgKind<Self>>
+        + TypeVisitable<Self>;
+    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = TermKind<Self>> + TypeVisitable<Self>;
 
-    type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
-    type BoundVars: IntoIterator<Item = Self::BoundVar>;
-    type BoundVar;
+    type BoundVarKinds: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Deref<Target: Deref<Target = [Self::BoundVarKind]>>
+        + Default;
+    type BoundVarKind: Copy + Debug + Hash + Eq;
 
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
     type PredefinedOpaques: Copy + Debug + Hash + Eq;
@@ -51,7 +60,7 @@ pub trait Interner:
     // Kinds of tys
     type Ty: Ty<Self>;
     type Tys: Tys<Self>;
-    type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]>;
+    type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]> + TypeVisitable<Self>;
     type ParamTy: Copy + Debug + Hash + Eq;
     type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderTy: PlaceholderLike;
@@ -67,7 +76,6 @@ pub trait Interner:
 
     // Kinds of consts
     type Const: Const<Self>;
-    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
@@ -84,14 +92,7 @@ pub trait Interner:
     // Predicates
     type ParamEnv: Copy + Debug + Hash + Eq;
     type Predicate: Predicate<Self>;
-    type TraitPredicate: Copy + Debug + Hash + Eq;
-    type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type ProjectionPredicate: Copy + Debug + Hash + Eq;
-    type NormalizesTo: Copy + Debug + Hash + Eq;
-    type SubtypePredicate: Copy + Debug + Hash + Eq;
-    type CoercePredicate: Copy + Debug + Hash + Eq;
-    type ClosureKind: Copy + Debug + Hash + Eq;
+    type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;

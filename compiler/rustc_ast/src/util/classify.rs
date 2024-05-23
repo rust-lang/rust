@@ -81,8 +81,17 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     }
 }
 
+pub enum TrailingBrace<'a> {
+    /// Trailing brace in a macro call, like the one in `x as *const brace! {}`.
+    /// We will suggest changing the macro call to a different delimiter.
+    MacCall(&'a ast::MacCall),
+    /// Trailing brace in any other expression, such as `a + B {}`. We will
+    /// suggest wrapping the innermost expression in parentheses: `a + (B {})`.
+    Expr(&'a ast::Expr),
+}
+
 /// If an expression ends with `}`, returns the innermost expression ending in the `}`
-pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
+pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
     loop {
         match &expr.kind {
             AddrOf(_, _, e)
@@ -111,10 +120,14 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
             | Struct(..)
             | TryBlock(..)
             | While(..)
-            | ConstBlock(_) => break Some(expr),
+            | ConstBlock(_) => break Some(TrailingBrace::Expr(expr)),
+
+            Cast(_, ty) => {
+                break type_trailing_braced_mac_call(ty).map(TrailingBrace::MacCall);
+            }
 
             MacCall(mac) => {
-                break (mac.args.delim == Delimiter::Brace).then_some(expr);
+                break (mac.args.delim == Delimiter::Brace).then_some(TrailingBrace::MacCall(mac));
             }
 
             InlineAsm(_) | OffsetOf(_, _) | IncludedBytes(_) | FormatArgs(_) => {
@@ -131,7 +144,6 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
             | MethodCall(_)
             | Tup(_)
             | Lit(_)
-            | Cast(_, _)
             | Type(_, _)
             | Await(_, _)
             | Field(_, _)
@@ -146,5 +158,80 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
             | Err(_)
             | Dummy => break None,
         }
+    }
+}
+
+/// If the type's last token is `}`, it must be due to a braced macro call, such
+/// as in `*const brace! { ... }`. Returns that trailing macro call.
+fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
+    loop {
+        match &ty.kind {
+            ast::TyKind::MacCall(mac) => {
+                break (mac.args.delim == Delimiter::Brace).then_some(mac);
+            }
+
+            ast::TyKind::Ptr(mut_ty) | ast::TyKind::Ref(_, mut_ty) => {
+                ty = &mut_ty.ty;
+            }
+
+            ast::TyKind::BareFn(fn_ty) => match &fn_ty.decl.output {
+                ast::FnRetTy::Default(_) => break None,
+                ast::FnRetTy::Ty(ret) => ty = ret,
+            },
+
+            ast::TyKind::Path(_, path) => match path_return_type(path) {
+                Some(trailing_ty) => ty = trailing_ty,
+                None => break None,
+            },
+
+            ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds, _) => {
+                match bounds.last() {
+                    Some(ast::GenericBound::Trait(bound, _)) => {
+                        match path_return_type(&bound.trait_ref.path) {
+                            Some(trailing_ty) => ty = trailing_ty,
+                            None => break None,
+                        }
+                    }
+                    Some(ast::GenericBound::Outlives(_)) | None => break None,
+                }
+            }
+
+            ast::TyKind::Slice(..)
+            | ast::TyKind::Array(..)
+            | ast::TyKind::Never
+            | ast::TyKind::Tup(..)
+            | ast::TyKind::Paren(..)
+            | ast::TyKind::Typeof(..)
+            | ast::TyKind::Infer
+            | ast::TyKind::ImplicitSelf
+            | ast::TyKind::CVarArgs
+            | ast::TyKind::Pat(..)
+            | ast::TyKind::Dummy
+            | ast::TyKind::Err(..) => break None,
+
+            // These end in brace, but cannot occur in a let-else statement.
+            // They are only parsed as fields of a data structure. For the
+            // purpose of denying trailing braces in the expression of a
+            // let-else, we can disregard these.
+            ast::TyKind::AnonStruct(..) | ast::TyKind::AnonUnion(..) => break None,
+        }
+    }
+}
+
+/// Returns the trailing return type in the given path, if it has one.
+///
+/// ```ignore (illustrative)
+/// ::std::ops::FnOnce(&str) -> fn() -> *const c_void
+///                             ^^^^^^^^^^^^^^^^^^^^^
+/// ```
+fn path_return_type(path: &ast::Path) -> Option<&ast::Ty> {
+    let last_segment = path.segments.last()?;
+    let args = last_segment.args.as_ref()?;
+    match &**args {
+        ast::GenericArgs::Parenthesized(args) => match &args.output {
+            ast::FnRetTy::Default(_) => None,
+            ast::FnRetTy::Ty(ret) => Some(ret),
+        },
+        ast::GenericArgs::AngleBracketed(_) => None,
     }
 }

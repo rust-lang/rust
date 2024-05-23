@@ -43,18 +43,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                     throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
                 }
-                let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
+                let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
                 if this
                     .tcx
-                    .get_attrs_by_path(
-                        instance.def_id(),
-                        &[sym::miri, intrinsic_fallback_checks_ub],
-                    )
+                    .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
                     .next()
                     .is_none()
                 {
                     throw_unsup_format!(
-                        "miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that"
+                        "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
                     );
                 }
                 Ok(Some(ty::Instance {
