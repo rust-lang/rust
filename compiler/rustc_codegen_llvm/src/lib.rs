@@ -240,8 +240,11 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, dcx, module, config)
     }
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module)
+    fn prepare_thin(
+        module: ModuleCodegen<Self::Module>,
+        emit_summary: bool,
+    ) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module, emit_summary)
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))

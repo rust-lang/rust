@@ -465,6 +465,7 @@ impl FromStr for SplitDwarfKind {
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
     Bitcode,
+    ThinLinkBitcode,
     Assembly,
     LlvmAssembly,
     Mir,
@@ -492,6 +493,7 @@ impl OutputType {
         match *self {
             OutputType::Exe | OutputType::DepInfo | OutputType::Metadata => true,
             OutputType::Bitcode
+            | OutputType::ThinLinkBitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
@@ -502,6 +504,7 @@ impl OutputType {
     pub fn shorthand(&self) -> &'static str {
         match *self {
             OutputType::Bitcode => "llvm-bc",
+            OutputType::ThinLinkBitcode => "thin-link-bitcode",
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
             OutputType::Mir => "mir",
@@ -518,6 +521,7 @@ impl OutputType {
             "llvm-ir" => OutputType::LlvmAssembly,
             "mir" => OutputType::Mir,
             "llvm-bc" => OutputType::Bitcode,
+            "thin-link-bitcode" => OutputType::ThinLinkBitcode,
             "obj" => OutputType::Object,
             "metadata" => OutputType::Metadata,
             "link" => OutputType::Exe,
@@ -528,8 +532,9 @@ impl OutputType {
 
     fn shorthands_display() -> String {
         format!(
-            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
+            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
             OutputType::Bitcode.shorthand(),
+            OutputType::ThinLinkBitcode.shorthand(),
             OutputType::Assembly.shorthand(),
             OutputType::LlvmAssembly.shorthand(),
             OutputType::Mir.shorthand(),
@@ -543,6 +548,7 @@ impl OutputType {
     pub fn extension(&self) -> &'static str {
         match *self {
             OutputType::Bitcode => "bc",
+            OutputType::ThinLinkBitcode => "indexing.o",
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
             OutputType::Mir => "mir",
@@ -559,9 +565,11 @@ impl OutputType {
             | OutputType::LlvmAssembly
             | OutputType::Mir
             | OutputType::DepInfo => true,
-            OutputType::Bitcode | OutputType::Object | OutputType::Metadata | OutputType::Exe => {
-                false
-            }
+            OutputType::Bitcode
+            | OutputType::ThinLinkBitcode
+            | OutputType::Object
+            | OutputType::Metadata
+            | OutputType::Exe => false,
         }
     }
 }
@@ -644,6 +652,7 @@ impl OutputTypes {
     pub fn should_codegen(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
+            | OutputType::ThinLinkBitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
@@ -657,6 +666,7 @@ impl OutputTypes {
     pub fn should_link(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
+            | OutputType::ThinLinkBitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
@@ -1769,6 +1779,12 @@ fn parse_output_types(
                         display = OutputType::shorthands_display(),
                     ))
                 });
+                if output_type == OutputType::ThinLinkBitcode && !unstable_opts.unstable_options {
+                    early_dcx.early_fatal(format!(
+                        "{} requested but -Zunstable-options not specified",
+                        OutputType::ThinLinkBitcode.shorthand()
+                    ));
+                }
                 output_types.insert(output_type, path);
             }
         }
