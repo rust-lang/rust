@@ -168,7 +168,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // ourselves with a check to find bugs being required for code to compile because it made inference progress.
         self.probe(|_| {
             if a.ty() == b.ty() {
-                return;
+                return Ok(());
             }
 
             // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
@@ -178,18 +178,15 @@ impl<'tcx> InferCtxt<'tcx> {
                 relation.param_env().and((a.ty(), b.ty())),
                 &mut OriginalQueryValues::default(),
             );
-            self.tcx.check_tys_might_be_eq(canonical).unwrap_or_else(|_| {
+            self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
                 // The error will only be reported later. If we emit an ErrorGuaranteed
                 // here, then we will never get to the code that actually emits the error.
                 self.tcx.dcx().delayed_bug(format!(
                     "cannot relate consts of different types (a={a:?}, b={b:?})",
                 ));
-                // We treat these constants as if they were of the same type, so that any
-                // such constants being used in impls make these impls match barring other mismatches.
-                // This helps with diagnostics down the road.
-            });
-        });
-
+                TypeError::Mismatch
+            })
+        })?;
         match (a.kind(), b.kind()) {
             (
                 ty::ConstKind::Infer(InferConst::Var(a_vid)),

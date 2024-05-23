@@ -7,7 +7,8 @@ struct S<const L: usize>;
 
 impl<const N: i32> Copy for S<N> {}
 //~^ ERROR: mismatched types
+//~| ERROR: the trait bound `S<N>: Clone` is not satisfied
+//~| ERROR: the constant `N` is not of type `usize`
 impl<const M: usize> Copy for S<M> {}
-//~^ ERROR: conflicting implementations of trait `Copy` for type `S<_>`
 
 fn main() {}
