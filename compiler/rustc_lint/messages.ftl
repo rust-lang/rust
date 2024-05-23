@@ -627,7 +627,7 @@ lint_pattern_in_foreign = patterns aren't allowed in foreign function declaratio
     .label = pattern not allowed in foreign function
 
 lint_private_extern_crate_reexport =
-    extern crate `{$ident}` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+    extern crate `{$ident}` is private, and cannot be re-exported, consider declaring with `pub`
 
 lint_proc_macro_back_compat = using an old version of `{$crate_name}`
     .note = older versions of the `{$crate_name}` crate will stop compiling in future versions of Rust; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives

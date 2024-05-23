@@ -2228,7 +2228,7 @@ pub struct MacroUseDeprecated;
 pub struct UnusedMacroUse;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_private_extern_crate_reexport)]
+#[diag(lint_private_extern_crate_reexport, code = E0365)]
 pub struct PrivateExternCrateReexport {
     pub ident: Ident,
 }
