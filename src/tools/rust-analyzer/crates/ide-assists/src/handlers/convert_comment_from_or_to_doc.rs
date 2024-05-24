@@ -195,8 +195,8 @@ fn can_be_doc_comment(comment: &ast::Comment) -> Option<CommentPlacement> {
     // check if comment is followed by: `struct`, `trait`, `mod`, `fn`, `type`, `extern crate`,
     // `use` or `const`.
     let parent = comment.syntax().parent();
-    let parent_kind = parent.as_ref().map(|parent| parent.kind());
-    matches!(parent_kind, Some(STRUCT | TRAIT | MODULE | FN | TYPE_KW | EXTERN_CRATE | USE | CONST))
+    let par_kind = parent.as_ref().map(|parent| parent.kind());
+    matches!(par_kind, Some(STRUCT | TRAIT | MODULE | FN | TYPE_ALIAS | EXTERN_CRATE | USE | CONST))
         .then_some(CommentPlacement::Outer)
 }
 
@@ -470,20 +470,6 @@ mod tests {
     }
 
     #[test]
-    fn multi_inner_line_comment_to_doc() {
-        check_assist_not_applicable(
-            convert_comment_from_or_to_doc,
-            r#"
-            mod mymod {
-                // unseen$0 docs
-                // make me seen!
-                type Int = i32;
-            }
-            "#,
-        );
-    }
-
-    #[test]
     fn single_inner_line_doc_to_comment() {
         check_assist(
             convert_comment_from_or_to_doc,
@@ -593,6 +579,98 @@ mod tests {
             }
             // $1 nicely done
             "#,
+        );
+    }
+
+    #[test]
+    fn all_possible_items() {
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice struct$0 */
+                struct S {}
+            }"#,
+            r#"mod m {
+                /** Nice struct */
+                struct S {}
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice trait$0 */
+                trait T {}
+            }"#,
+            r#"mod m {
+                /** Nice trait */
+                trait T {}
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice module$0 */
+                mod module {}
+            }"#,
+            r#"mod m {
+                /** Nice module */
+                mod module {}
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice function$0 */
+                fn function() {}
+            }"#,
+            r#"mod m {
+                /** Nice function */
+                fn function() {}
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice type$0 */
+                type Type Int = i32;
+            }"#,
+            r#"mod m {
+                /** Nice type */
+                type Type Int = i32;
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice crate$0 */
+                extern crate rust_analyzer;
+            }"#,
+            r#"mod m {
+                /** Nice crate */
+                extern crate rust_analyzer;
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice import$0 */
+                use ide_assists::convert_comment_from_or_to_doc::tests
+            }"#,
+            r#"mod m {
+                /** Nice import */
+                use ide_assists::convert_comment_from_or_to_doc::tests
+            }"#,
+        );
+        check_assist(
+            convert_comment_from_or_to_doc,
+            r#"mod m {
+                /* Nice constant$0 */
+                const CONST: &str = "very const";
+            }"#,
+            r#"mod m {
+                /** Nice constant */
+                const CONST: &str = "very const";
+            }"#,
         );
     }
 
