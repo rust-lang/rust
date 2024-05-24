@@ -1,0 +1,500 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+add_f32 compiler-builtins
+                        time:   [35.804 µs 35.863 µs 35.920 µs]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+
+add_f32 system          time:   [39.084 µs 39.127 µs 39.169 µs]
+Found 11 outliers among 100 measurements (11.00%)
+  7 (7.00%) high mild
+  4 (4.00%) high severe
+
+add_f32 assembly (aarch64 unix)
+                        time:   [8.1034 µs 8.1441 µs 8.1866 µs]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+add_f64 compiler-builtins
+                        time:   [35.647 µs 35.725 µs 35.799 µs]
+Found 10 outliers among 100 measurements (10.00%)
+  8 (8.00%) high mild
+  2 (2.00%) high severe
+
+add_f64 system          time:   [39.308 µs 39.322 µs 39.336 µs]
+Found 7 outliers among 100 measurements (7.00%)
+  4 (4.00%) high mild
+  3 (3.00%) high severe
+
+add_f64 assembly (aarch64 unix)
+                        time:   [8.0401 µs 8.0442 µs 8.0499 µs]
+Found 11 outliers among 100 measurements (11.00%)
+  2 (2.00%) high mild
+  9 (9.00%) high severe
+
+add_f128 compiler-builtins
+                        time:   [41.801 µs 41.986 µs 42.201 µs]
+Found 7 outliers among 100 measurements (7.00%)
+  4 (4.00%) high mild
+  3 (3.00%) high severe
+
+cmp_f32_gt compiler-builtins
+                        time:   [13.579 µs 13.675 µs 13.778 µs]
+Found 16 outliers among 100 measurements (16.00%)
+  6 (6.00%) high mild
+  10 (10.00%) high severe
+
+cmp_f32_gt system       time:   [12.343 µs 12.348 µs 12.355 µs]
+Found 13 outliers among 100 measurements (13.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+  9 (9.00%) high severe
+
+cmp_f32_gt assembly (aarch64 unix)
+                        time:   [8.2593 µs 8.3185 µs 8.3813 µs]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+cmp_f32_unord compiler-builtins
+                        time:   [11.977 µs 12.042 µs 12.109 µs]
+Found 13 outliers among 100 measurements (13.00%)
+  5 (5.00%) low severe
+  6 (6.00%) low mild
+  2 (2.00%) high mild
+
+cmp_f32_unord system    time:   [8.1236 µs 8.1736 µs 8.2350 µs]
+Found 18 outliers among 100 measurements (18.00%)
+  5 (5.00%) high mild
+  13 (13.00%) high severe
+
+cmp_f32_unord assembly (aarch64 unix)
+                        time:   [8.1446 µs 8.2080 µs 8.2762 µs]
+Found 14 outliers among 100 measurements (14.00%)
+  6 (6.00%) high mild
+  8 (8.00%) high severe
+
+cmp_f64_gt compiler-builtins
+                        time:   [16.073 µs 16.077 µs 16.082 µs]
+Found 17 outliers among 100 measurements (17.00%)
+  2 (2.00%) low mild
+  4 (4.00%) high mild
+  11 (11.00%) high severe
+
+cmp_f64_gt system       time:   [12.456 µs 12.487 µs 12.522 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+cmp_f64_gt assembly (aarch64 unix)
+                        time:   [8.0557 µs 8.0616 µs 8.0685 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+cmp_f64_unord compiler-builtins
+                        time:   [10.715 µs 10.724 µs 10.737 µs]
+Found 13 outliers among 100 measurements (13.00%)
+  3 (3.00%) high mild
+  10 (10.00%) high severe
+
+cmp_f64_unord system    time:   [8.0692 µs 8.0734 µs 8.0784 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+cmp_f64_unord assembly (aarch64 unix)
+                        time:   [8.0569 µs 8.0677 µs 8.0818 µs]
+Found 18 outliers among 100 measurements (18.00%)
+  4 (4.00%) high mild
+  14 (14.00%) high severe
+
+cmp_f128_gt compiler-builtins
+                        time:   [18.234 µs 18.401 µs 18.602 µs]
+
+cmp_f128_unord compiler-builtins
+                        time:   [13.410 µs 13.471 µs 13.542 µs]
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+
+conv_u32_f32 compiler-builtins
+                        time:   [774.58 ns 776.01 ns 777.59 ns]
+Found 9 outliers among 100 measurements (9.00%)
+  2 (2.00%) high mild
+  7 (7.00%) high severe
+
+conv_u32_f32 system     time:   [622.68 ns 625.64 ns 629.26 ns]
+Found 16 outliers among 100 measurements (16.00%)
+  7 (7.00%) high mild
+  9 (9.00%) high severe
+
+conv_u32_f32 assembly (aarch64 unix)
+                        time:   [468.05 ns 469.76 ns 471.46 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+conv_u32_f64 compiler-builtins
+                        time:   [617.61 ns 618.00 ns 618.52 ns]
+Found 13 outliers among 100 measurements (13.00%)
+  4 (4.00%) high mild
+  9 (9.00%) high severe
+
+conv_u32_f64 system     time:   [469.56 ns 471.03 ns 472.81 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  7 (7.00%) high mild
+  4 (4.00%) high severe
+
+conv_u32_f64 assembly (aarch64 unix)
+                        time:   [464.43 ns 465.01 ns 465.72 ns]
+Found 13 outliers among 100 measurements (13.00%)
+  5 (5.00%) high mild
+  8 (8.00%) high severe
+
+conv_u64_f32 compiler-builtins
+                        time:   [847.95 ns 848.19 ns 848.46 ns]
+Found 19 outliers among 100 measurements (19.00%)
+  3 (3.00%) low mild
+  9 (9.00%) high mild
+  7 (7.00%) high severe
+
+conv_u64_f32 system     time:   [701.68 ns 701.95 ns 702.30 ns]
+Found 10 outliers among 100 measurements (10.00%)
+  4 (4.00%) high mild
+  6 (6.00%) high severe
+
+conv_u64_f32 assembly (aarch64 unix)
+                        time:   [511.73 ns 512.43 ns 513.32 ns]
+Found 6 outliers among 100 measurements (6.00%)
+  6 (6.00%) high mild
+
+conv_u64_f64 compiler-builtins
+                        time:   [681.23 ns 682.55 ns 684.30 ns]
+Found 18 outliers among 100 measurements (18.00%)
+  1 (1.00%) high mild
+  17 (17.00%) high severe
+
+conv_u64_f64 system     time:   [679.34 ns 679.57 ns 679.88 ns]
+Found 18 outliers among 100 measurements (18.00%)
+  1 (1.00%) low mild
+  6 (6.00%) high mild
+  11 (11.00%) high severe
+
+conv_u64_f64 assembly (aarch64 unix)
+                        time:   [509.90 ns 510.09 ns 510.30 ns]
+Found 15 outliers among 100 measurements (15.00%)
+  6 (6.00%) high mild
+  9 (9.00%) high severe
+
+conv_u128_f32 compiler-builtins
+                        time:   [1.1368 µs 1.1372 µs 1.1377 µs]
+Found 14 outliers among 100 measurements (14.00%)
+  8 (8.00%) high mild
+  6 (6.00%) high severe
+
+conv_u128_f32 system    time:   [1.4338 µs 1.4370 µs 1.4410 µs]
+Found 7 outliers among 100 measurements (7.00%)
+  2 (2.00%) high mild
+  5 (5.00%) high severe
+
+conv_u128_f64 compiler-builtins
+                        time:   [1.0133 µs 1.0143 µs 1.0156 µs]
+Found 16 outliers among 100 measurements (16.00%)
+  2 (2.00%) high mild
+  14 (14.00%) high severe
+
+conv_u128_f64 system    time:   [1.3473 µs 1.3530 µs 1.3600 µs]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+conv_i32_f32 compiler-builtins
+                        time:   [906.53 ns 907.86 ns 909.23 ns]
+Found 7 outliers among 100 measurements (7.00%)
+  4 (4.00%) high mild
+  3 (3.00%) high severe
+
+conv_i32_f32 system     time:   [914.53 ns 915.69 ns 917.01 ns]
+Found 10 outliers among 100 measurements (10.00%)
+  6 (6.00%) high mild
+  4 (4.00%) high severe
+
+conv_i32_f32 assembly (aarch64 unix)
+                        time:   [464.55 ns 465.10 ns 465.83 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+conv_i32_f64 compiler-builtins
+                        time:   [617.63 ns 617.92 ns 618.27 ns]
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) high mild
+  9 (9.00%) high severe
+
+conv_i32_f64 system     time:   [622.83 ns 624.19 ns 625.61 ns]
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+conv_i32_f64 assembly (aarch64 unix)
+                        time:   [465.24 ns 466.04 ns 466.95 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  4 (4.00%) high mild
+  7 (7.00%) high severe
+
+conv_i64_f32 compiler-builtins
+                        time:   [852.67 ns 853.92 ns 855.34 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  3 (3.00%) high mild
+  8 (8.00%) high severe
+
+conv_i64_f32 system     time:   [906.94 ns 908.04 ns 909.33 ns]
+Found 15 outliers among 100 measurements (15.00%)
+  2 (2.00%) high mild
+  13 (13.00%) high severe
+
+conv_i64_f32 assembly (aarch64 unix)
+                        time:   [510.84 ns 511.27 ns 511.80 ns]
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) high mild
+  5 (5.00%) high severe
+
+conv_i64_f64 compiler-builtins
+                        time:   [932.35 ns 932.97 ns 933.76 ns]
+Found 10 outliers among 100 measurements (10.00%)
+  4 (4.00%) high mild
+  6 (6.00%) high severe
+
+conv_i64_f64 system     time:   [955.91 ns 958.95 ns 962.05 ns]
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+
+conv_i64_f64 assembly (aarch64 unix)
+                        time:   [510.19 ns 510.72 ns 511.44 ns]
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) high mild
+  4 (4.00%) high severe
+
+conv_i128_f32 compiler-builtins
+                        time:   [1.4248 µs 1.4285 µs 1.4323 µs]
+Found 12 outliers among 100 measurements (12.00%)
+  7 (7.00%) high mild
+  5 (5.00%) high severe
+
+conv_i128_f32 system    time:   [1.6970 µs 1.7017 µs 1.7069 µs]
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+
+conv_i128_f64 compiler-builtins
+                        time:   [1.3132 µs 1.3161 µs 1.3191 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+conv_i128_f64 system    time:   [1.6071 µs 1.6100 µs 1.6133 µs]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+conv_f64_u32 compiler-builtins
+                        time:   [640.35 ns 641.00 ns 641.68 ns]
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+
+conv_f64_u32 system     time:   [640.87 ns 641.63 ns 642.42 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+conv_f64_u32 assembly (aarch64 unix)
+                        time:   [482.02 ns 482.67 ns 483.38 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+
+conv_f64_u64 compiler-builtins
+                        time:   [638.58 ns 638.98 ns 639.45 ns]
+Found 15 outliers among 100 measurements (15.00%)
+  1 (1.00%) high mild
+  14 (14.00%) high severe
+
+conv_f64_u64 system     time:   [642.54 ns 644.07 ns 645.59 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+conv_f64_u64 assembly (aarch64 unix)
+                        time:   [482.65 ns 483.70 ns 484.87 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+conv_f64_u128 compiler-builtins
+                        time:   [1.0631 µs 1.0652 µs 1.0674 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  7 (7.00%) high mild
+  1 (1.00%) high severe
+
+conv_f64_u128 system    time:   [821.41 ns 823.45 ns 825.74 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  8 (8.00%) high mild
+  3 (3.00%) high severe
+
+conv_f64_i32 compiler-builtins
+                        time:   [826.76 ns 845.08 ns 870.23 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+conv_f64_i32 system     time:   [764.12 ns 764.63 ns 765.26 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high severe
+
+conv_f64_i32 assembly (aarch64 unix)
+                        time:   [484.50 ns 485.98 ns 487.54 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+conv_f64_i64 compiler-builtins
+                        time:   [797.27 ns 798.19 ns 799.84 ns]
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) high mild
+  4 (4.00%) high severe
+
+conv_f64_i64 system     time:   [768.74 ns 769.52 ns 770.23 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+
+conv_f64_i64 assembly (aarch64 unix)
+                        time:   [480.59 ns 481.03 ns 481.46 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+conv_f64_i128 compiler-builtins
+                        time:   [1.0577 µs 1.0591 µs 1.0606 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+conv_f64_i128 system    time:   [1.0181 µs 1.0195 µs 1.0211 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+conv_f32_u32 compiler-builtins
+                        time:   [800.40 ns 801.39 ns 802.35 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+conv_f32_u32 system     time:   [638.12 ns 638.34 ns 638.63 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  4 (4.00%) high mild
+  7 (7.00%) high severe
+
+conv_f32_u32 assembly (aarch64 unix)
+                        time:   [479.37 ns 480.97 ns 483.32 ns]
+Found 13 outliers among 100 measurements (13.00%)
+  6 (6.00%) high mild
+  7 (7.00%) high severe
+
+conv_f32_u64 compiler-builtins
+                        time:   [801.95 ns 803.64 ns 805.75 ns]
+
+conv_f32_u64 system     time:   [638.20 ns 638.56 ns 639.07 ns]
+Found 10 outliers among 100 measurements (10.00%)
+  1 (1.00%) high mild
+  9 (9.00%) high severe
+
+conv_f32_u64 assembly (aarch64 unix)
+                        time:   [480.07 ns 480.47 ns 480.86 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+conv_f32_u128 compiler-builtins
+                        time:   [1.1579 µs 1.1623 µs 1.1657 µs]
+Found 14 outliers among 100 measurements (14.00%)
+  2 (2.00%) low severe
+  7 (7.00%) high mild
+  5 (5.00%) high severe
+
+conv_f32_u128 system    time:   [1.0344 µs 1.0394 µs 1.0450 µs]
+
+conv_f32_i32 compiler-builtins
+                        time:   [800.14 ns 801.52 ns 803.26 ns]
+Found 10 outliers among 100 measurements (10.00%)
+  8 (8.00%) high mild
+  2 (2.00%) high severe
+
+conv_f32_i32 system     time:   [741.36 ns 741.74 ns 742.13 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+
+conv_f32_i32 assembly (aarch64 unix)
+                        time:   [484.35 ns 486.08 ns 488.11 ns]
+Found 17 outliers among 100 measurements (17.00%)
+  9 (9.00%) high mild
+  8 (8.00%) high severe
+
+conv_f32_i64 compiler-builtins
+                        time:   [800.94 ns 802.68 ns 804.74 ns]
+
+conv_f32_i64 system     time:   [748.60 ns 750.68 ns 753.16 ns]
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) high mild
+  5 (5.00%) high severe
+
+conv_f32_i64 assembly (aarch64 unix)
+                        time:   [480.70 ns 481.23 ns 481.82 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+
+conv_f32_i128 compiler-builtins
+                        time:   [1.1774 µs 1.1829 µs 1.1887 µs]
+Found 11 outliers among 100 measurements (11.00%)
+  1 (1.00%) low severe
+  7 (7.00%) low mild
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+conv_f32_i128 system    time:   [1.1785 µs 1.1853 µs 1.1941 µs]
+Found 7 outliers among 100 measurements (7.00%)
+  2 (2.00%) high mild
+  5 (5.00%) high severe
+
+div_f32 compiler-builtins
+                        time:   [38.852 µs 39.011 µs 39.178 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+div_f32 system          time:   [41.846 µs 41.920 µs 42.005 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+div_f32 assembly (aarch64 unix)
+                        time:   [8.1309 µs 8.1627 µs 8.2005 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+div_f64 compiler-builtins
+                        time:   [50.369 µs 50.605 µs 50.857 µs]
+Found 15 outliers among 100 measurements (15.00%)
+  11 (11.00%) high mild
+  4 (4.00%) high severe
+
+div_f64 system          time:   [53.506 µs 53.582 µs 53.676 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  4 (4.00%) high mild
+  4 (4.00%) high severe
+
+div_f64 assembly (aarch64 unix)
+                        time:   [8.0695 µs 8.0807 µs 8.0948 µs]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+

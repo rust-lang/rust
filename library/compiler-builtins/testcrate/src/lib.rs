@@ -13,6 +13,12 @@
 //! Some floating point tests are disabled for specific architectures, because they do not have
 //! correct rounding.
 #![no_std]
+#![cfg_attr(not(feature = "no-f16-f128"), feature(f128))]
+#![cfg_attr(not(feature = "no-f16-f128"), feature(f16))]
+#![feature(isqrt)]
+
+pub mod bench;
+extern crate alloc;
 
 use compiler_builtins::float::Float;
 use compiler_builtins::int::{Int, MinInt};
