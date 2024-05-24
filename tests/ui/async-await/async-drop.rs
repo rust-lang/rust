@@ -48,7 +48,7 @@ fn main() {
 
     let i = 13;
     let fut = pin!(async {
-        test_async_drop(Int(0), 16).await;
+        test_async_drop(Int(0), 0).await;
         test_async_drop(AsyncInt(0), 104).await;
         test_async_drop([AsyncInt(1), AsyncInt(2)], 152).await;
         test_async_drop((AsyncInt(3), AsyncInt(4)), 488).await;
@@ -73,13 +73,13 @@ fn main() {
         )
         .await;
 
-        test_async_drop(AsyncEnum::A(AsyncInt(12)), 792).await;
-        test_async_drop(AsyncEnum::B(SyncInt(13)), 792).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12)), 680).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13)), 680).await;
 
-        test_async_drop(SyncInt(14), 72).await;
+        test_async_drop(SyncInt(14), 16).await;
         test_async_drop(
             SyncThenAsync { i: 15, a: AsyncInt(16), b: SyncInt(17), c: AsyncInt(18) },
-            3512,
+            3064,
         )
         .await;
 
