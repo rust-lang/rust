@@ -1,7 +1,6 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
-use rustc_const_eval::transform::validate::validate_types;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -21,6 +20,7 @@ use rustc_target::spec::abi::Abi;
 use crate::cost_checker::CostChecker;
 use crate::simplify::simplify_cfg;
 use crate::util;
+use crate::validate::validate_types;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
