@@ -1741,7 +1741,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             PatKind::Slice(before, ref slice, after) => {
-                let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
+                let Some(element_ty) = self
+                    .cx
+                    .try_structurally_resolve_type(pat.span, place_with_id.place.ty())
+                    .builtin_index()
+                else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
                     return Err(self
                         .cx
