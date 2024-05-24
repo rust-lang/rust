@@ -14,8 +14,7 @@ pub struct MiriAllocBytes {
     layout: alloc::Layout,
     /// Pointer to the allocation contents.
     /// Invariant:
-    /// * If `self.layout.size() == 0`, then `self.ptr` is some suitably aligned pointer
-    ///   that was allocated with the same layout but `size == 1`.
+    /// * If `self.layout.size() == 0`, then `self.ptr` was allocated with the equivalent layout with size 1.
     /// * Otherwise, `self.ptr` points to memory allocated with `self.layout`.
     ptr: *mut u8,
 }
@@ -30,6 +29,8 @@ impl Clone for MiriAllocBytes {
 
 impl Drop for MiriAllocBytes {
     fn drop(&mut self) {
+        // We have to reconstruct the actual layout used for allocation.
+        // (`Deref` relies on `size` so we can't just always set it to at least 1.)
         let alloc_layout = if self.layout.size() == 0 {
             Layout::from_size_align(1, self.layout.align()).unwrap()
         } else {
