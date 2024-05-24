@@ -1,6 +1,3 @@
-monomorphize_consider_type_length_limit =
-    consider adding a `#![type_length_limit="{$type_length}"]` attribute to your crate
-
 monomorphize_couldnt_dump_mono_stats =
     unexpected error occurred while dumping monomorphization stats: {$error}
 
@@ -24,8 +21,6 @@ monomorphize_start_not_found = using `fn main` requires the standard library
     .help = use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[no_mangle]`
 
 monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
-
-monomorphize_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
 
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode

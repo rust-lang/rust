@@ -1,23 +1,25 @@
+use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
-use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
+use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
+use crate::ty::{
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
-use rustc_macros::{
-    Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable, TypeVisitable,
-};
+use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
 use std::fmt;
+use std::path::PathBuf;
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
 ///
@@ -385,7 +387,28 @@ impl<'tcx> InstanceKind<'tcx> {
     }
 }
 
-fn fmt_instance(
+fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
+    struct Visitor {
+        type_length: usize,
+    }
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
+            self.type_length += 1;
+            t.super_visit_with(self);
+        }
+
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+            self.type_length += 1;
+            ct.super_visit_with(self);
+        }
+    }
+    let mut visitor = Visitor { type_length: 0 };
+    item.visit_with(&mut visitor);
+
+    visitor.type_length
+}
+
+pub fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: Instance<'_>,
     type_length: Option<rustc_session::Limit>,
@@ -485,7 +508,8 @@ impl<'tcx> Instance<'tcx> {
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
-    /// `Ok(Some(instance))`.
+    /// `Ok(Some(instance))`, **except** for when the instance's inputs hit the type size limit,
+    /// in which case it may bail out and return `Ok(None)`.
     ///
     /// Returns `Err(ErrorGuaranteed)` when the `Instance` resolution process
     /// couldn't complete due to errors elsewhere - this is distinct
@@ -498,6 +522,16 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        // Rust code can easily create exponentially-long types using only a
+        // polynomial recursion depth. Even with the default recursion
+        // depth, you can easily get cases that take >2^60 steps to run,
+        // which means that rustc basically hangs.
+        //
+        // Bail out in these cases to avoid that bad user experience.
+        if !tcx.type_length_limit().value_within_limit(type_length(args)) {
+            return Ok(None);
+        }
+
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 
@@ -517,6 +551,36 @@ impl<'tcx> Instance<'tcx> {
     ) -> Instance<'tcx> {
         match ty::Instance::resolve(tcx, param_env, def_id, args) {
             Ok(Some(instance)) => instance,
+            Ok(None) => {
+                let type_length = type_length(args);
+                if !tcx.type_length_limit().value_within_limit(type_length) {
+                    let (shrunk, written_to_path) =
+                        shrunk_instance_name(tcx, Instance::new(def_id, args));
+                    let mut path = PathBuf::new();
+                    let was_written = if let Some(path2) = written_to_path {
+                        path = path2;
+                        Some(())
+                    } else {
+                        None
+                    };
+                    tcx.dcx().emit_fatal(error::TypeLengthLimit {
+                        // We don't use `def_span(def_id)` so that diagnostics point
+                        // to the crate root during mono instead of to foreign items.
+                        // This is arguably better.
+                        span: span.unwrap_or(DUMMY_SP),
+                        shrunk,
+                        was_written,
+                        path,
+                        type_length,
+                    });
+                } else {
+                    span_bug!(
+                        span.unwrap_or(tcx.def_span(def_id)),
+                        "failed to resolve instance for {}",
+                        tcx.def_path_str_with_args(def_id, args)
+                    )
+                }
+            }
             instance => span_bug!(
                 span.unwrap_or(tcx.def_span(def_id)),
                 "failed to resolve instance for {}: {instance:#?}",

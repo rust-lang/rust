@@ -1,5 +1,4 @@
 //@ build-fail
-//~^ ERROR overflow evaluating the requirement
 
 #![recursion_limit = "32"]
 

@@ -1,7 +1,4 @@
 //@ build-fail
-//@ normalize-stderr-test: "<\{closure@.+`" -> "$$CLOSURE`"
-//@ normalize-stderr-test: ".nll/" -> "/"
-//@ ignore-compare-mode-next-solver (hangs)
 
 #![allow(unused)]
 
@@ -43,6 +40,7 @@ impl C {
     pub fn matches<F: Fn()>(&self, f: &F) {
         let &C(ref base) = self;
         base.matches(&|| {
+            //~^ ERROR reached the type-length limit
             C(base.clone()).matches(f)
         })
     }
@@ -55,7 +53,6 @@ impl D {
     pub fn matches<F: Fn()>(&self, f: &F) {
         let &D(ref a) = self;
         a.matches(f)
-        //~^ ERROR reached the recursion limit while instantiating `A::matches::<{closure
     }
 }
 

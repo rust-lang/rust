@@ -41,6 +41,9 @@ middle_cannot_be_normalized =
 middle_conflict_types =
     this expression supplies two conflicting concrete types for the same opaque type
 
+middle_consider_type_length_limit =
+    consider adding a `#![type_length_limit="{$type_length}"]` attribute to your crate
+
 middle_const_eval_non_int =
     constant evaluation of enum discriminant resulted in non-integer
 
@@ -94,8 +97,11 @@ middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
 
+middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
+
 middle_unknown_layout =
     the type `{$ty}` has an unknown layout
 
 middle_values_too_big =
     values of the type `{$ty}` are too big for the current architecture
+middle_written_to_path = the full type name has been written to '{$path}'
