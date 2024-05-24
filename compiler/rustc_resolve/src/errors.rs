@@ -891,6 +891,14 @@ pub(crate) struct LendingIteratorReportError {
     pub(crate) ty: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(resolve_anonymous_livetime_non_gat_report_error)]
+pub(crate) struct AnonymousLivetimeNonGatReportError {
+    #[primary_span]
+    #[label]
+    pub(crate) lifetime: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     resolve_elided_anonymous_lifetime_report_error_suggestion,

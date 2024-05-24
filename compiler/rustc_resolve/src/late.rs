@@ -629,6 +629,9 @@ struct DiagMetadata<'ast> {
     in_assignment: Option<&'ast Expr>,
     is_assign_rhs: bool,
 
+    /// If we are setting an associated type in trait impl, is it a non-GAT type?
+    in_non_gat_assoc_type: Option<bool>,
+
     /// Used to detect possible `.` -> `..` typo when calling methods.
     in_range: Option<(&'ast Expr, &'ast Expr)>,
 
@@ -1704,21 +1707,28 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             }
                         }
 
-                        // Is it caused by user trying to implement a lending iterator?
+                        // are we trying to use an anonymous lifetime
+                        // on a non GAT associated trait type?
                         if !self.in_func_body
                             && let Some((module, _)) = &self.current_trait_ref
                             && let Some(ty) = &self.diag_metadata.current_self_type
+                            && Some(true) == self.diag_metadata.in_non_gat_assoc_type
                             && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _) = module.kind
-                            && def_id_matches_path(
+                        {
+                            if def_id_matches_path(
                                 self.r.tcx,
                                 trait_id,
                                 &["core", "iter", "traits", "iterator", "Iterator"],
-                            )
-                        {
-                            self.r.dcx().emit_err(errors::LendingIteratorReportError {
-                                lifetime: lifetime.ident.span,
-                                ty: ty.span(),
-                            });
+                            ) {
+                                self.r.dcx().emit_err(errors::LendingIteratorReportError {
+                                    lifetime: lifetime.ident.span,
+                                    ty: ty.span(),
+                                });
+                            } else {
+                                self.r.dcx().emit_err(errors::AnonymousLivetimeNonGatReportError {
+                                    lifetime: lifetime.ident.span,
+                                });
+                            }
                         } else {
                             self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
                                 span: lifetime.ident.span,
@@ -3076,6 +3086,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 );
             }
             AssocItemKind::Type(box TyAlias { generics, .. }) => {
+                self.diag_metadata.in_non_gat_assoc_type = Some(generics.params.is_empty());
                 debug!("resolve_implementation AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
@@ -3104,6 +3115,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         });
                     },
                 );
+                self.diag_metadata.in_non_gat_assoc_type = None;
             }
             AssocItemKind::Delegation(box delegation) => {
                 debug!("resolve_implementation AssocItemKind::Delegation");
