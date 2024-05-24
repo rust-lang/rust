@@ -320,11 +320,14 @@ impl Error for VarError {
 ///
 /// This function is safe to call in a single-threaded program.
 ///
-/// In multi-threaded programs, you must ensure that are no other threads
-/// concurrently writing or *reading*(!) from the environment through functions
-/// other than the ones in this module. You are responsible for figuring out
-/// how to achieve this, but we strongly suggest not using `set_var` or
-/// `remove_var` in multi-threaded programs at all.
+/// This function is also always safe to call on Windows, in single-threaded
+/// and multi-threaded programs.
+///
+/// In multi-threaded programs on other operating systems, you must ensure that
+/// are no other threads concurrently writing or *reading*(!) from the
+/// environment through functions other than the ones in this module. You are
+/// responsible for figuring out how to achieve this, but we strongly suggest
+/// not using `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Most C libraries, including libc itself, do not advertise which functions
 /// read from the environment. Even functions from the Rust standard library do
@@ -378,6 +381,9 @@ unsafe fn _set_var(key: &OsStr, value: &OsStr) {
 /// # Safety
 ///
 /// This function is safe to call in a single-threaded program.
+///
+/// This function is also always safe to call on Windows, in single-threaded
+/// and multi-threaded programs.
 ///
 /// In multi-threaded programs, you must ensure that are no other threads
 /// concurrently writing or *reading*(!) from the environment through functions
