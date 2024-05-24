@@ -103,7 +103,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
     type ExternalConstraints = ExternalConstraints<'tcx>;
-    type GoalEvaluationSteps = &'tcx [solve::inspect::GoalEvaluationStep<TyCtxt<'tcx>>];
+    type CanonicalGoalEvaluationStepRef =
+        &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>;
 
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;

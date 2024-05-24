@@ -46,7 +46,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::DumpSolverProofTree;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
@@ -56,8 +55,8 @@ use std::fmt;
 use std::iter;
 
 use super::{
-    dump_proof_tree, ArgKind, CandidateSimilarity, FindExprBySpan, FindTypeParam,
-    GetSafeTransmuteErrorAndReason, HasNumericInferVisitor, ImplCandidate, UnsatisfiedConst,
+    ArgKind, CandidateSimilarity, FindExprBySpan, FindTypeParam, GetSafeTransmuteErrorAndReason,
+    HasNumericInferVisitor, ImplCandidate, UnsatisfiedConst,
 };
 
 pub use rustc_infer::traits::error_reporting::*;
@@ -369,13 +368,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         error: &SelectionError<'tcx>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx;
-
-        if tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default()
-            == DumpSolverProofTree::OnError
-        {
-            dump_proof_tree(root_obligation, self.infcx);
-        }
-
         let mut span = obligation.cause.span;
 
         let mut err = match *error {
@@ -1529,12 +1521,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
-        if self.tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default()
-            == DumpSolverProofTree::OnError
-        {
-            dump_proof_tree(&error.root_obligation, self.infcx);
-        }
-
         match error.code {
             FulfillmentErrorCode::Select(ref selection_error) => self.report_selection_error(
                 error.obligation.clone(),
