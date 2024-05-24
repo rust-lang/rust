@@ -27,10 +27,7 @@ pub(crate) fn convert_comment_from_or_to_doc(
 
     match comment.kind().doc {
         Some(_) => doc_to_comment(acc, comment),
-        None => match can_be_doc_comment(&comment) {
-            Some(doc_comment_style) => comment_to_doc(acc, comment, doc_comment_style),
-            None => None,
-        },
+        None => can_be_doc_comment(&comment).and_then(|style| comment_to_doc(acc, comment, style)),
     }
 }
 
