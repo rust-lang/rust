@@ -235,7 +235,9 @@ impl CStore {
     pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = Vec::new();
         if cnum == LOCAL_CRATE {
-            for (cnum, _) in self.iter_crate_data() {
+            for cnum in
+                self.iter_crate_data().filter_map(|(cnum, data)| data.used().then_some(cnum))
+            {
                 self.push_dependencies_in_postorder(&mut deps, cnum);
             }
         } else {
