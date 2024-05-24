@@ -137,9 +137,9 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     #[cfg(feature = "master")]
     fn type_f32(&self) -> Type<'gcc> {
-        if self.context.get_target_info().supports_target_dependent_type(CType::Float32) {
-            return self.context.new_c_type(CType::Float32);
-        }
+        // if self.context.get_target_info().supports_target_dependent_type(CType::Float32) {
+        // return self.context.new_c_type(CType::Float32);
+        // }
         self.float_type
     }
 
