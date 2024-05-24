@@ -35,10 +35,10 @@ all:
     # Check hashed symbol name
 
 	[ "$$($(NM) $(TMPDIR)/$(DYLIB_NAME) | grep -c hello)" -eq "0" ]
-	[ "$$($(NM) $(TMPDIR)/$(DYLIB_NAME) | grep _RNxC7a_dylib | grep -c ' T ')" -eq "1" ]
+	[ "$$($(NM) $(TMPDIR)/$(DYLIB_NAME) | grep _RNxC7a_dylib | grep -c ' T ')" -eq "2" ]
 
 	[ "$$($(NM) $(TMPDIR)/$(SO_NAME) | grep b_dylib | grep -c hello)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(SO_NAME) | grep _RNxC6a_rlib | grep -c ' T ')" -eq "1" ]
+	[ "$$($(NM) $(TMPDIR)/$(SO_NAME) | grep _RNxC6a_rlib | grep -c ' T ')" -eq "2" ]
 	[ "$$($(NM) $(TMPDIR)/$(SO_NAME) | grep _RNxC7a_dylib | grep -c ' U ')" -eq "1" ]
 
 	[ "$$($(NM) $(TMPDIR)/$(BIN_NAME) | grep _RNxC6a_rlib | grep -c ' U ')" -eq "1" ]
