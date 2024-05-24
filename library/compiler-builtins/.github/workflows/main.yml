@@ -105,6 +105,9 @@ jobs:
       shell: bash
     - run: rustup target add ${{ matrix.target }}
     - run: rustup component add llvm-tools-preview
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
     - name: Download compiler-rt reference sources
       run: |
         curl -L -o code.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/18.0-2024-02-13.tar.gz
@@ -147,6 +150,7 @@ jobs:
     - name: Install nightly `clippy`
       run: |
         rustup set profile minimal && rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/clippy)" && rustup component add clippy
+    - uses: Swatinem/rust-cache@v2
     - run: cargo clippy -- -D clippy::all
 
   success:
