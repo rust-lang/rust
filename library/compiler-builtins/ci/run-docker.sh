@@ -41,7 +41,19 @@ run() {
       export RUST_COMPILER_RT_ROOT=./compiler-rt
     fi
 
-    docker build \
+    if [ "$GITHUB_ACTIONS" = "true" ]; then
+      # Enable Docker image caching on GHA
+      
+      buildx="buildx"
+      build_args=(
+        "--cache-from" "type=local,src=/tmp/.buildx-cache"
+        "--cache-to" "type=local,dest=/tmp/.buildx-cache-new"
+        "${build_args[@]:-}"
+        "--load"
+      )
+    fi
+
+    docker "${buildx:-}" build \
            -t "builtins-$target" \
            ${build_args[@]:-} \
            "ci/docker/$target"
