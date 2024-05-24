@@ -21,7 +21,7 @@
 //! # Note
 //!
 //! This API is completely unstable and subject to change.
-
+#![recursion_limit = "256"]
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]

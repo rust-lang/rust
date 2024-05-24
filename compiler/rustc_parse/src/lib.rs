@@ -1,5 +1,5 @@
 //! The main parser interface.
-
+#![recursion_limit = "256"]
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]

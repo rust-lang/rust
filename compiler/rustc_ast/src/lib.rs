@@ -3,7 +3,7 @@
 //! # Note
 //!
 //! This API is completely unstable and subject to change.
-
+#![recursion_limit = "256"]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))
