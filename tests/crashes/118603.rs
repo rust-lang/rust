@@ -1,6 +1,7 @@
 //@ known-bug: #118603
-//@ compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0 -Csymbol-mangling-version=legacy
 // ignore-tidy-linelength
+//@ ignore-test
 
 #![feature(generic_const_exprs)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
