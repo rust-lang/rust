@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 use crate::ty::GenericArg;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, ShortInstance, Ty, TyCtxt};
 
 use hir::def::Namespace;
 use rustc_data_structures::fx::FxHashSet;
@@ -354,5 +356,33 @@ where
 
     fn print_debug(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         with_no_trimmed_paths!(Self::print(t, fmt))
+    }
+}
+
+/// Format instance name that is already known to be too long for rustc.
+/// Show only the first 2 types if it is longer than 32 characters to avoid blasting
+/// the user's terminal with thousands of lines of type-name.
+///
+/// If the type name is longer than before+after, it will be written to a file.
+pub fn shrunk_instance_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: ty::Instance<'tcx>,
+) -> (String, Option<PathBuf>) {
+    let s = instance.to_string();
+
+    // Only use the shrunk version if it's really shorter.
+    // This also avoids the case where before and after slices overlap.
+    if s.chars().nth(33).is_some() {
+        let shrunk = format!("{}", ShortInstance(instance, 4));
+        if shrunk == s {
+            return (s, None);
+        }
+
+        let path = tcx.output_filenames(()).temp_path_ext("long-type.txt", None);
+        let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
+
+        (shrunk, written_to_path)
+    } else {
+        (s, None)
     }
 }
