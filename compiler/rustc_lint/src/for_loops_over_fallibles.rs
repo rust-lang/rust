@@ -62,7 +62,9 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
         };
 
         let (article, ty, var) = match adt.did() {
-            did if cx.tcx.is_diagnostic_item(sym::Option, did) && ref_mutability.is_some() => ("a", "Option", "Some"),
+            did if cx.tcx.is_diagnostic_item(sym::Option, did) && ref_mutability.is_some() => {
+                ("a", "Option", "Some")
+            }
             did if cx.tcx.is_diagnostic_item(sym::Option, did) => ("an", "Option", "Some"),
             did if cx.tcx.is_diagnostic_item(sym::Result, did) => ("a", "Result", "Ok"),
             _ => return,
