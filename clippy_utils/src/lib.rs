@@ -100,10 +100,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, Destination, Expr,
-    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
-    ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment,
-    PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
+    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstContext,
+    Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
+    ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path,
+    PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -208,7 +208,10 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
     false
 }
 
-/// Returns `true` if the given `NodeId` is inside a constant context
+/// Returns `true` if the given `HirId` is inside a constant context.
+///
+/// This is the same as `is_inside_always_const_context`, but also includes
+/// `const fn`.
 ///
 /// # Example
 ///
@@ -219,6 +222,24 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
 /// ```
 pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
     cx.tcx.hir().is_inside_const_context(id)
+}
+
+/// Returns `true` if the given `HirId` is inside an always constant context.
+///
+/// This context includes:
+///  * const/static items
+///  * const blocks (or inline consts)
+///  * associated constants
+pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
+    use ConstContext::{Const, ConstFn, Static};
+    let hir = tcx.hir();
+    let Some(ctx) = hir.body_const_context(hir.enclosing_body_owner(hir_id)) else {
+        return false;
+    };
+    match ctx {
+        ConstFn => false,
+        Static(_) | Const { inline: _ } => true,
+    }
 }
 
 /// Checks if a `Res` refers to a constructor of a `LangItem`
