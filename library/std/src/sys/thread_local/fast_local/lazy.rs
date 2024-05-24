@@ -39,49 +39,31 @@ where
         Storage { state: UnsafeCell::new(State::Initial) }
     }
 
-    /// Get a reference to the TLS value, potentially initializing it with the
-    /// provided parameters. If the TLS variable has been destroyed, `None` is
-    /// returned.
+    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// provided parameters. If the TLS variable has been destroyed, a null
+    /// pointer is returned.
+    ///
+    /// The resulting pointer may not be used after reentrant inialialization
+    /// or thread destruction has occurred.
     ///
     /// # Safety
-    /// * The `self` reference must remain valid until the TLS destructor is run,
-    ///   at which point the returned reference is invalidated.
-    /// * The returned reference may only be used until thread destruction occurs
-    ///   and may not be used after reentrant initialization has occurred.
-    ///
-    // FIXME(#110897): return NonNull instead of lying about the lifetime.
+    /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
-    pub unsafe fn get_or_init(
-        &self,
-        i: Option<&mut Option<T>>,
-        f: impl FnOnce() -> T,
-    ) -> Option<&'static T> {
-        // SAFETY:
-        // No mutable reference to the inner value exists outside the calls to
-        // `replace`. The lifetime of the returned reference fulfills the terms
-        // outlined above.
+    pub unsafe fn get_or_init(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let state = unsafe { &*self.state.get() };
         match state {
-            State::Alive(v) => Some(v),
-            State::Destroyed(_) => None,
+            State::Alive(v) => v,
+            State::Destroyed(_) => ptr::null(),
             State::Initial => unsafe { self.initialize(i, f) },
         }
     }
 
     #[cold]
-    unsafe fn initialize(
-        &self,
-        i: Option<&mut Option<T>>,
-        f: impl FnOnce() -> T,
-    ) -> Option<&'static T> {
+    unsafe fn initialize(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         // Perform initialization
 
         let v = i.and_then(Option::take).unwrap_or_else(f);
 
-        // SAFETY:
-        // If references to the inner value exist, they were created in `f`
-        // and are invalidated here. The caller promises to never use them
-        // after this.
         let old = unsafe { self.state.get().replace(State::Alive(v)) };
         match old {
             // If the variable is not being recursively initialized, register
@@ -92,12 +74,10 @@ where
             val => drop(val),
         }
 
-        // SAFETY:
-        // Initialization was completed and the state was set to `Alive`, so the
-        // reference fulfills the terms outlined above.
+        // SAFETY: the state was just set to `Alive`
         unsafe {
             let State::Alive(v) = &*self.state.get() else { unreachable_unchecked() };
-            Some(v)
+            v
         }
     }
 }

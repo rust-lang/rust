@@ -16,30 +16,22 @@ pub macro thread_local_inner {
     },
 
     // used to generate the `LocalKey` value for `thread_local!`
-    (@key $t:ty, $init:expr) => {
-        {
-            #[inline]
-            fn __init() -> $t { $init }
+    (@key $t:ty, $init:expr) => {{
+        #[inline]
+        fn __init() -> $t { $init }
 
-            // `#[inline] does not work on windows-gnu due to linking errors around dllimports.
-            // See https://github.com/rust-lang/rust/issues/109797.
-            #[cfg_attr(not(windows), inline)]
-            unsafe fn __getit(
-                init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-            ) -> $crate::option::Option<&'static $t> {
-                use $crate::thread::local_impl::Key;
+        unsafe {
+            use $crate::thread::LocalKey;
+            use $crate::thread::local_impl::Key;
 
-                static __KEY: Key<$t> = Key::new();
-                unsafe {
-                    __KEY.get(init, __init)
-                }
-            }
-
-            unsafe {
-                $crate::thread::LocalKey::new(__getit)
-            }
+            // Inlining does not work on windows-gnu due to linking errors around
+            // dllimports. See https://github.com/rust-lang/rust/issues/109797.
+            LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
+                static VAL: Key<$t> = Key::new();
+                VAL.get(init, __init)
+            })
         }
-    },
+    }},
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
             $crate::thread::local_impl::thread_local_inner!(@key $t, $($init)*);
@@ -67,38 +59,33 @@ impl<T: 'static> Key<T> {
         Key { os: OsKey::new(Some(destroy_value::<T>)), marker: PhantomData }
     }
 
-    /// Get the value associated with this key, initializating it if necessary.
+    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// provided parameters. If the TLS variable has been destroyed, a null
+    /// pointer is returned.
     ///
-    /// # Safety
-    /// * the returned reference must not be used after recursive initialization
-    /// or thread destruction occurs.
-    pub unsafe fn get(
-        &'static self,
-        i: Option<&mut Option<T>>,
-        f: impl FnOnce() -> T,
-    ) -> Option<&'static T> {
+    /// The resulting pointer may not be used after reentrant inialialization
+    /// or thread destruction has occurred.
+    pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         // SAFETY: (FIXME: get should actually be safe)
         let ptr = unsafe { self.os.get() as *mut Value<T> };
         if ptr.addr() > 1 {
             // SAFETY: the check ensured the pointer is safe (its destructor
             // is not running) + it is coming from a trusted source (self).
-            unsafe { Some(&(*ptr).value) }
+            unsafe { &(*ptr).value }
         } else {
-            // SAFETY: At this point we are sure we have no value and so
-            // initializing (or trying to) is safe.
-            unsafe { self.try_initialize(ptr, i, f) }
+            self.try_initialize(ptr, i, f)
         }
     }
 
-    unsafe fn try_initialize(
+    fn try_initialize(
         &'static self,
         ptr: *mut Value<T>,
         i: Option<&mut Option<T>>,
         f: impl FnOnce() -> T,
-    ) -> Option<&'static T> {
+    ) -> *const T {
         if ptr.addr() == 1 {
             // destructor is running
-            return None;
+            return ptr::null();
         }
 
         let value = i.and_then(Option::take).unwrap_or_else(f);
@@ -119,7 +106,7 @@ impl<T: 'static> Key<T> {
         }
 
         // SAFETY: We just created this value above.
-        unsafe { Some(&(*ptr).value) }
+        unsafe { &(*ptr).value }
     }
 }
 
