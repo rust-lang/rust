@@ -53,3 +53,9 @@ fn main() {
     const N: usize = 1024;
     const _: () = assert!(N.is_power_of_two());
 }
+
+#[allow(clippy::eq_op)]
+const _: () = {
+    assert!(true);
+    assert!(8 == (7 + 1));
+};
