@@ -47,7 +47,6 @@ fn main() {
     assert!(!CFG_FLAG);
 
     const _: () = assert!(true);
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
 
     // Don't lint if the value is dependent on a defined constant:
     const N: usize = 1024;
