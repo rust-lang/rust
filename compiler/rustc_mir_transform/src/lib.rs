@@ -211,7 +211,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.mir_keys(()).contains(&def_id)
+    tcx.hir().maybe_body_owned_by(def_id).is_some()
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
