@@ -27,12 +27,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
         let (named, anon, anon_param_info, region_info) = if sub.has_name()
-            && let Some(region_info) = self.tcx().is_suitable_region(sup)
+            && let Some(region_info) = self.tcx().is_suitable_region(self.generic_param_scope, sup)
             && let Some(anon_param_info) = self.find_param_with_region(sup, sub)
         {
             (sub, sup, anon_param_info, region_info)
         } else if sup.has_name()
-            && let Some(region_info) = self.tcx().is_suitable_region(sub)
+            && let Some(region_info) = self.tcx().is_suitable_region(self.generic_param_scope, sub)
             && let Some(anon_param_info) = self.find_param_with_region(sub, sup)
         {
             (sup, sub, anon_param_info, region_info)
@@ -72,7 +72,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return None;
         }
 
-        if find_anon_type(self.tcx(), anon, &br).is_some()
+        if find_anon_type(self.tcx(), self.generic_param_scope, anon, &br).is_some()
             && self.is_self_anon(is_first, scope_def_id)
         {
             return None;

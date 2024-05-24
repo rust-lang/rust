@@ -925,7 +925,6 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         Ok(ty::Region::new_early_param(
             self.tcx,
             ty::EarlyParamRegion {
-                def_id: e.def_id,
                 name: e.name,
                 index: (e.index as usize - self.num_trait_args + self.num_impl_args) as u32,
             },

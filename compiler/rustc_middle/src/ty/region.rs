@@ -265,33 +265,6 @@ impl<'tcx> Region<'tcx> {
         flags
     }
 
-    /// Given an early-bound or free region, returns the `DefId` where it was bound.
-    /// For example, consider the regions in this snippet of code:
-    ///
-    /// ```ignore (illustrative)
-    /// impl<'a> Foo {
-    /// //   ^^ -- early bound, declared on an impl
-    ///
-    ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
-    /// //         ^^  ^^     ^ anonymous, late-bound
-    /// //         |   early-bound, appears in where-clauses
-    /// //         late-bound, appears only in fn args
-    ///     {..}
-    /// }
-    /// ```
-    ///
-    /// Here, `free_region_binding_scope('a)` would return the `DefId`
-    /// of the impl, and for all the other highlighted regions, it
-    /// would return the `DefId` of the function. In other cases (not shown), this
-    /// function might return the `DefId` of a closure.
-    pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
-        match *self {
-            ty::ReEarlyParam(br) => tcx.parent(br.def_id),
-            ty::ReLateParam(fr) => fr.scope,
-            _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
-        }
-    }
-
     /// True for free regions other than `'static`.
     pub fn is_param(self) -> bool {
         matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))

@@ -79,11 +79,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                                 orig_lt,
                                 ty::Region::new_early_param(
                                     tcx,
-                                    ty::EarlyParamRegion {
-                                        def_id: param.def_id,
-                                        index: param.index,
-                                        name: param.name,
-                                    },
+                                    ty::EarlyParamRegion { index: param.index, name: param.name },
                                 ),
                             );
                         }

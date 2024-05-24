@@ -161,6 +161,7 @@ impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
 pub(super) fn note_and_explain_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_>,
+    generic_param_scope: LocalDefId,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
@@ -168,7 +169,7 @@ pub(super) fn note_and_explain_region<'tcx>(
 ) {
     let (description, span) = match *region {
         ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReStatic => {
-            msg_span_from_named_region(tcx, region, alt_span)
+            msg_span_from_named_region(tcx, generic_param_scope, region, alt_span)
         }
 
         ty::ReError(_) => return,
@@ -187,23 +188,27 @@ pub(super) fn note_and_explain_region<'tcx>(
 fn explain_free_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_>,
+    generic_param_scope: LocalDefId,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
-    let (description, span) = msg_span_from_named_region(tcx, region, None);
+    let (description, span) = msg_span_from_named_region(tcx, generic_param_scope, region, None);
 
     label_msg_span(err, prefix, description, span, suffix);
 }
 
 fn msg_span_from_named_region<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
     match *region {
-        ty::ReEarlyParam(ref br) => {
-            let scope = region.free_region_binding_scope(tcx).expect_local();
+        ty::ReEarlyParam(br) => {
+            let scope = tcx
+                .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
+                .expect_local();
             let span = if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
@@ -220,21 +225,21 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReLateParam(ref fr) => {
             if !fr.bound_region.is_named()
-                && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
+                && let Some((ty, _)) =
+                    find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
             {
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
-                let scope = region.free_region_binding_scope(tcx).expect_local();
                 match fr.bound_region {
                     ty::BoundRegionKind::BrNamed(_, name) => {
                         let span = if let Some(param) = tcx
                             .hir()
-                            .get_generics(scope)
+                            .get_generics(generic_param_scope)
                             .and_then(|generics| generics.get_named(name))
                         {
                             param.span
                         } else {
-                            tcx.def_span(scope)
+                            tcx.def_span(generic_param_scope)
                         };
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
@@ -245,11 +250,11 @@ fn msg_span_from_named_region<'tcx>(
                     }
                     ty::BrAnon => (
                         "the anonymous lifetime as defined here".to_string(),
-                        Some(tcx.def_span(scope)),
+                        Some(tcx.def_span(generic_param_scope)),
                     ),
                     _ => (
                         format!("the lifetime `{region}` as defined here"),
-                        Some(tcx.def_span(scope)),
+                        Some(tcx.def_span(generic_param_scope)),
                     ),
                 }
             }
@@ -302,6 +307,7 @@ fn label_msg_span(
 #[instrument(level = "trace", skip(tcx))]
 pub fn unexpected_hidden_region_diagnostic<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
@@ -327,11 +333,12 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             explain_free_region(
                 tcx,
                 &mut err,
+                generic_param_scope,
                 &format!("hidden type `{hidden_ty}` captures "),
                 hidden_region,
                 "",
             );
-            if let Some(reg_info) = tcx.is_suitable_region(hidden_region) {
+            if let Some(reg_info) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
                 let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
                 nice_region_error::suggest_new_region_bound(
                     tcx,
@@ -349,6 +356,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             explain_free_region(
                 tcx,
                 &mut err,
+                generic_param_scope,
                 &format!("hidden type `{}` captures ", hidden_ty),
                 hidden_region,
                 "",
@@ -376,6 +384,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             note_and_explain_region(
                 tcx,
                 &mut err,
+                generic_param_scope,
                 &format!("hidden type `{hidden_ty}` captures "),
                 hidden_region,
                 "",
@@ -450,7 +459,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         for error in errors {
             debug!("report_region_errors: error = {:?}", error);
 
-            guar = Some(if let Some(guar) = self.try_report_nice_region_error(&error) {
+            let e = if let Some(guar) =
+                self.try_report_nice_region_error(generic_param_scope, &error)
+            {
                 guar
             } else {
                 match error.clone() {
@@ -463,9 +474,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
-                            self.report_placeholder_failure(origin, sub, sup).emit()
+                            self.report_placeholder_failure(generic_param_scope, origin, sub, sup)
+                                .emit()
                         } else {
-                            self.report_concrete_failure(origin, sub, sup).emit()
+                            self.report_concrete_failure(generic_param_scope, origin, sub, sup)
+                                .emit()
                         }
                     }
 
@@ -488,12 +501,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         _,
                     ) => {
                         if sub_r.is_placeholder() {
-                            self.report_placeholder_failure(sub_origin, sub_r, sup_r).emit()
+                            self.report_placeholder_failure(
+                                generic_param_scope,
+                                sub_origin,
+                                sub_r,
+                                sup_r,
+                            )
+                            .emit()
                         } else if sup_r.is_placeholder() {
-                            self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit()
+                            self.report_placeholder_failure(
+                                generic_param_scope,
+                                sup_origin,
+                                sub_r,
+                                sup_r,
+                            )
+                            .emit()
                         } else {
                             self.report_sub_sup_conflict(
-                                var_origin, sub_origin, sub_r, sup_origin, sup_r,
+                                generic_param_scope,
+                                var_origin,
+                                sub_origin,
+                                sub_r,
+                                sup_origin,
+                                sup_r,
                             )
                         }
                     }
@@ -514,7 +544,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // value.
                         let sub_r = self.tcx.lifetimes.re_erased;
 
-                        self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit()
+                        self.report_placeholder_failure(
+                            generic_param_scope,
+                            sup_origin,
+                            sub_r,
+                            sup_r,
+                        )
+                        .emit()
                     }
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
@@ -526,7 +562,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             .emit()
                     }
                 }
-            })
+            };
+
+            guar = Some(e)
         }
 
         guar.unwrap()
@@ -2347,7 +2385,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         '_explain: {
             let (description, span) = match sub.kind() {
                 ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
-                    msg_span_from_named_region(self.tcx, sub, Some(span))
+                    msg_span_from_named_region(self.tcx, generic_param_scope, sub, Some(span))
                 }
                 _ => (format!("lifetime `{sub}`"), Some(span)),
             };
@@ -2398,7 +2436,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let suggestion_scope = {
                 let lifetime_scope = match sub.kind() {
                     ty::ReStatic => hir::def_id::CRATE_DEF_ID,
-                    _ => match self.tcx.is_suitable_region(sub) {
+                    _ => match self.tcx.is_suitable_region(generic_param_scope, sub) {
                         Some(info) => info.def_id,
                         None => generic_param_scope,
                     },
@@ -2410,7 +2448,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             };
 
             let mut suggs = vec![];
-            let lt_name = self.suggest_name_region(sub, &mut suggs);
+            let lt_name = self.suggest_name_region(generic_param_scope, sub, &mut suggs);
 
             if let Some((sp, has_lifetimes, open_paren_sp)) = type_param_sugg_span
                 && suggestion_scope == type_scope
@@ -2455,6 +2493,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub fn suggest_name_region(
         &self,
+        generic_param_scope: LocalDefId,
         lifetime: Region<'tcx>,
         add_lt_suggs: &mut Vec<(Span, String)>,
     ) -> String {
@@ -2501,12 +2540,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        let (lifetime_def_id, lifetime_scope) = match self.tcx.is_suitable_region(lifetime) {
-            Some(info) if !lifetime.has_name() => {
-                (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
-            }
-            _ => return lifetime.get_name_or_anon().to_string(),
-        };
+        let (lifetime_def_id, lifetime_scope) =
+            match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
+                Some(info) if !lifetime.has_name() => {
+                    (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
+                }
+                _ => return lifetime.get_name_or_anon().to_string(),
+            };
 
         let new_lt = {
             let generics = self.tcx.generics_of(lifetime_scope);
@@ -2557,6 +2597,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn report_sub_sup_conflict(
         &self,
+        generic_param_scope: LocalDefId,
         var_origin: RegionVariableOrigin,
         sub_origin: SubregionOrigin<'tcx>,
         sub_region: Region<'tcx>,
@@ -2568,6 +2609,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         note_and_explain_region(
             self.tcx,
             &mut err,
+            generic_param_scope,
             "first, the lifetime cannot outlive ",
             sup_region,
             "...",
@@ -2590,6 +2632,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             note_and_explain_region(
                 self.tcx,
                 &mut err,
+                generic_param_scope,
                 "...but the lifetime must also be valid for ",
                 sub_region,
                 "...",
@@ -2613,6 +2656,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         note_and_explain_region(
             self.tcx,
             &mut err,
+            generic_param_scope,
             "but, the lifetime must be valid for ",
             sub_region,
             "...",

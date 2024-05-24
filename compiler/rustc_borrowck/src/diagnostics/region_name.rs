@@ -289,7 +289,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match *error_region {
             ty::ReEarlyParam(ebr) => ebr.has_name().then(|| {
-                let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
+                let def_id = tcx.generics_of(self.mir_def_id()).region_param(ebr, tcx).def_id;
+                let span = tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
                 RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyParamRegion(span) }
             }),
 
@@ -912,7 +913,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         };
 
         let tcx = self.infcx.tcx;
-        let region_parent = tcx.parent(region.def_id);
+        let region_def = tcx.generics_of(self.mir_def_id()).region_param(region, tcx).def_id;
+        let region_parent = tcx.parent(region_def);
         let DefKind::Impl { .. } = tcx.def_kind(region_parent) else {
             return None;
         };
@@ -925,7 +927,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         Some(RegionName {
             name: self.synthesize_region_name(),
             source: RegionNameSource::AnonRegionFromImplSignature(
-                tcx.def_span(region.def_id),
+                tcx.def_span(region_def),
                 // FIXME(compiler-errors): Does this ever actually show up
                 // anywhere other than the self type? I couldn't create an
                 // example of a `'_` in the impl's trait being referenceable.

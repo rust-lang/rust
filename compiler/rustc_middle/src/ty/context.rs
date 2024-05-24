@@ -1488,13 +1488,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the `DefId` and the `BoundRegionKind` corresponding to the given region.
-    pub fn is_suitable_region(self, mut region: Region<'tcx>) -> Option<FreeRegionInfo> {
+    pub fn is_suitable_region(
+        self,
+        generic_param_scope: LocalDefId,
+        mut region: Region<'tcx>,
+    ) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = loop {
-            let def_id = match region.kind() {
-                ty::ReLateParam(fr) => fr.bound_region.get_id()?.as_local()?,
-                ty::ReEarlyParam(ebr) => ebr.def_id.as_local()?,
-                _ => return None, // not a free region
-            };
+            let def_id =
+                region.opt_param_def_id(self, generic_param_scope.to_def_id())?.as_local()?;
             let scope = self.local_parent(def_id);
             if self.def_kind(scope) == DefKind::OpaqueTy {
                 // Lifetime params of opaque types are synthetic and thus irrelevant to
@@ -2633,7 +2634,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_early_param(
                         self,
                         ty::EarlyParamRegion {
-                            def_id: ebv,
                             index: generics
                                 .param_def_id_to_index(self, ebv)
                                 .expect("early-bound var should be present in fn generics"),
