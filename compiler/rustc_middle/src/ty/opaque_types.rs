@@ -5,6 +5,7 @@ use crate::ty::{GenericArg, GenericArgKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use tracing::{debug, instrument, trace};
 
 /// Converts generic params of a TypeFoldable from one
 /// item's generics to another. Usually from a function's generics

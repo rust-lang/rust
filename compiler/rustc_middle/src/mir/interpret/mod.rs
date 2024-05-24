@@ -15,6 +15,7 @@ use std::num::NonZero;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, trace};
 
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;

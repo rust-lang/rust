@@ -2,6 +2,7 @@ use rustc_middle::mir::interpret::{InterpResult, Pointer};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::{Align, Size};
+use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;
 use super::{InterpCx, Machine};

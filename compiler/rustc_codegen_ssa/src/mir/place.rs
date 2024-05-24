@@ -12,6 +12,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Align, FieldsShape, Int, Pointer, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
+use tracing::{debug, instrument};
 
 /// The location and extra runtime properties of the place.
 ///
@@ -159,9 +160,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 bx.inbounds_ptradd(self.val.llval, bx.const_usize(offset.bytes()))
             };
             let val = PlaceValue {
-                    llval,
+                llval,
                 llextra: if bx.cx().type_has_metadata(field.ty) { self.val.llextra } else { None },
-                    align: effective_field_align,
+                align: effective_field_align,
             };
             val.with_type(field)
         };
@@ -408,9 +409,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         };
 
         let llval = bx.inbounds_gep(
-                    bx.cx().backend_type(self.layout),
-                    self.val.llval,
-                    &[bx.cx().const_usize(0), llindex],
+            bx.cx().backend_type(self.layout),
+            self.val.llval,
+            &[bx.cx().const_usize(0), llindex],
         );
         let align = self.val.align.restrict_for_offset(offset);
         PlaceValue::new_sized(llval, align).with_type(layout)

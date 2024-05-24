@@ -18,6 +18,7 @@ use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use tracing::{debug, info};
 
 pub struct SanityCheck;
 

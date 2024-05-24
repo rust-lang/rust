@@ -1025,7 +1025,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, (ImmTy<'tcx, Provenance>, bool)> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 

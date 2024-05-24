@@ -1,6 +1,7 @@
 use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
+use tracing::{debug, instrument};
 
 pub use rustc_type_ir::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 

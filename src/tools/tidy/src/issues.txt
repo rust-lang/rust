@@ -3988,8 +3988,6 @@ ui/test-attrs/issue-52557.rs
 ui/test-attrs/issue-53675-a-test-called-panic.rs
 ui/threads-sendsync/issue-24313.rs
 ui/threads-sendsync/issue-29488.rs
-ui/threads-sendsync/issue-43733-2.rs
-ui/threads-sendsync/issue-43733.rs
 ui/threads-sendsync/issue-4446.rs
 ui/threads-sendsync/issue-4448.rs
 ui/threads-sendsync/issue-8827.rs

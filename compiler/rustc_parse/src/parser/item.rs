@@ -23,6 +23,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::fmt::Write;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
+use tracing::debug;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.

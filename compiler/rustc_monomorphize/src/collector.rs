@@ -236,6 +236,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Size;
 use std::path::PathBuf;
+use tracing::{debug, instrument, trace};
 
 use crate::errors::{
     self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit, TypeLengthLimit,

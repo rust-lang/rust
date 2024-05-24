@@ -1,5 +1,4 @@
 use crate::errors;
-use info;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 #[cfg(parallel_compiler)]
@@ -23,6 +22,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::thread;
 use std::{env, iter};
+use tracing::info;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;

@@ -21,6 +21,8 @@ use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
+use tracing::{debug, instrument, trace};
+
 use crate::fluent_generated as fluent;
 
 use super::{

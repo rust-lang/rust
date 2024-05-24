@@ -2,6 +2,7 @@ use crate::middle::region::{Scope, ScopeData, ScopeTree};
 use rustc_hir as hir;
 use rustc_hir::ItemLocalMap;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use tracing::debug;
 
 /// `RvalueScopes` is a mapping from sub-expressions to _extended_ lifetime as determined by
 /// rules laid out in `rustc_hir_analysis::check::rvalue_scopes`.

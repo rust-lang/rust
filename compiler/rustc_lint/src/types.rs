@@ -31,9 +31,9 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
-
 use std::iter;
 use std::ops::ControlFlow;
+use tracing::debug;
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by

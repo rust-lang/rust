@@ -15,6 +15,7 @@ use rustc_middle::ty::AdtDef;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use tracing::{debug, instrument, trace};
 
 use std::assert_matches::assert_matches;
 use std::iter;

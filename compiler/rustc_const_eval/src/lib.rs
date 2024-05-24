@@ -14,9 +14,6 @@
 #![feature(yeet_expr)]
 #![feature(if_let_guard)]
 
-#[macro_use]
-extern crate tracing;
-
 pub mod const_eval;
 mod errors;
 pub mod interpret;

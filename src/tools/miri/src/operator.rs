@@ -14,7 +14,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, (ImmTy<'tcx, Provenance>, bool)> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         use rustc_middle::mir::BinOp::*;
 
         let this = self.eval_context_ref();
@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Ge => left >= right,
                     _ => bug!(),
                 };
-                (ImmTy::from_bool(res, *this.tcx), false)
+                ImmTy::from_bool(res, *this.tcx)
             }
 
             // Some more operations are possible with atomics.
@@ -60,16 +60,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     right.to_scalar().to_target_usize(this)?,
                     this.machine.layouts.usize,
                 );
-                let (result, overflowing) = this.overflowing_binary_op(bin_op, &left, &right)?;
+                let result = this.binary_op(bin_op, &left, &right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
                 let result_ptr = Pointer::new(
                     ptr.provenance,
                     Size::from_bytes(result.to_scalar().to_target_usize(this)?),
                 );
-                (
-                    ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, this), left.layout),
-                    overflowing,
-                )
+
+                ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, this), left.layout)
             }
 
             _ => span_bug!(this.cur_span(), "Invalid operator on pointers: {:?}", bin_op),

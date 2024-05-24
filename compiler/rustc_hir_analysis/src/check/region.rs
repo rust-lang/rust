@@ -6,7 +6,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc_ast::visit::walk_list;
+use rustc_ast::visit::visit_opt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -168,7 +168,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                 hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
             }
         }
-        walk_list!(visitor, visit_expr, &blk.expr);
+        visit_opt!(visitor, visit_expr, &blk.expr);
     }
 
     visitor.cx = prev_cx;

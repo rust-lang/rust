@@ -18,6 +18,7 @@ use rustc_codegen_ssa::back::archive::{
     get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
     ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
 };
+use tracing::trace;
 
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;

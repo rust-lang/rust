@@ -50,13 +50,16 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
 
-                let (sum, overflow1) = this.overflowing_binary_op(mir::BinOp::Add, &a, &b)?;
-                let (sum, overflow2) = this.overflowing_binary_op(
-                    mir::BinOp::Add,
-                    &sum,
-                    &ImmTy::from_uint(c_in, a.layout),
-                )?;
-                let c_out = overflow1 | overflow2;
+                let (sum, overflow1) =
+                    this.binary_op(mir::BinOp::AddWithOverflow, &a, &b)?.to_pair(this);
+                let (sum, overflow2) = this
+                    .binary_op(
+                        mir::BinOp::AddWithOverflow,
+                        &sum,
+                        &ImmTy::from_uint(c_in, a.layout),
+                    )?
+                    .to_pair(this);
+                let c_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
 
                 this.write_scalar(Scalar::from_u8(c_out.into()), &this.project_field(dest, 0)?)?;
                 this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
@@ -76,13 +79,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
 
-                let (sub, overflow1) = this.overflowing_binary_op(mir::BinOp::Sub, &a, &b)?;
-                let (sub, overflow2) = this.overflowing_binary_op(
-                    mir::BinOp::Sub,
-                    &sub,
-                    &ImmTy::from_uint(b_in, a.layout),
-                )?;
-                let b_out = overflow1 | overflow2;
+                let (sub, overflow1) = this.binary_op(mir::BinOp::SubWithOverflow, &a, &b)?.to_pair(this);
+                let (sub, overflow2) = this
+                    .binary_op(mir::BinOp::SubWithOverflow, &sub, &ImmTy::from_uint(b_in, a.layout))?
+                    .to_pair(this);
+                let b_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
 
                 this.write_scalar(Scalar::from_u8(b_out.into()), &this.project_field(dest, 0)?)?;
                 this.write_immediate(*sub, &this.project_field(dest, 1)?)?;
@@ -245,7 +246,7 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     match which {
         FloatBinOp::Arith(which) => {
-            let res = this.wrapping_binary_op(which, left, right)?;
+            let res = this.binary_op(which, left, right)?;
             Ok(res.to_scalar())
         }
         FloatBinOp::Cmp { gt, lt, eq, unord } => {
@@ -744,12 +745,9 @@ fn int_abs<'tcx>(
         let op = this.read_immediate(&this.project_index(&op, i)?)?;
         let dest = this.project_index(&dest, i)?;
 
-        let lt_zero = this.wrapping_binary_op(mir::BinOp::Lt, &op, &zero)?;
-        let res = if lt_zero.to_scalar().to_bool()? {
-            this.wrapping_unary_op(mir::UnOp::Neg, &op)?
-        } else {
-            op
-        };
+        let lt_zero = this.binary_op(mir::BinOp::Lt, &op, &zero)?;
+        let res =
+            if lt_zero.to_scalar().to_bool()? { this.unary_op(mir::UnOp::Neg, &op)? } else { op };
 
         this.write_immediate(*res, &dest)?;
     }
@@ -832,7 +830,7 @@ fn horizontal_bin_op<'tcx>(
             let res = if saturating {
                 Immediate::from(this.saturating_arith(which, &lhs, &rhs)?)
             } else {
-                *this.wrapping_binary_op(which, &lhs, &rhs)?
+                *this.binary_op(which, &lhs, &rhs)?
             };
 
             this.write_immediate(res, &this.project_index(&dest, j)?)?;
@@ -884,8 +882,8 @@ fn conditional_dot_product<'tcx>(
                 let left = this.read_immediate(&this.project_index(&left, j)?)?;
                 let right = this.read_immediate(&this.project_index(&right, j)?)?;
 
-                let mul = this.wrapping_binary_op(mir::BinOp::Mul, &left, &right)?;
-                sum = this.wrapping_binary_op(mir::BinOp::Add, &sum, &mul)?;
+                let mul = this.binary_op(mir::BinOp::Mul, &left, &right)?;
+                sum = this.binary_op(mir::BinOp::Add, &sum, &mul)?;
             }
         }
 
@@ -1276,11 +1274,8 @@ fn psign<'tcx>(
         let left = this.read_immediate(&this.project_index(&left, i)?)?;
         let right = this.read_scalar(&this.project_index(&right, i)?)?.to_int(dest.layout.size)?;
 
-        let res = this.wrapping_binary_op(
-            mir::BinOp::Mul,
-            &left,
-            &ImmTy::from_int(right.signum(), dest.layout),
-        )?;
+        let res =
+            this.binary_op(mir::BinOp::Mul, &left, &ImmTy::from_int(right.signum(), dest.layout))?;
 
         this.write_immediate(*res, &dest)?;
     }

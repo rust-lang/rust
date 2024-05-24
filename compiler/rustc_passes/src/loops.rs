@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+use std::fmt;
 use Context::*;
 
 use rustc_hir as hir;
@@ -25,22 +27,55 @@ enum Context {
     Closure(Span),
     Coroutine { coroutine_span: Span, kind: hir::CoroutineDesugaring, source: hir::CoroutineSource },
     UnlabeledBlock(Span),
+    UnlabeledIfBlock(Span),
     LabeledBlock,
     Constant,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
+struct BlockInfo {
+    name: String,
+    spans: Vec<Span>,
+    suggs: Vec<Span>,
+}
+
+#[derive(PartialEq)]
+enum BreakContextKind {
+    Break,
+    Continue,
+}
+
+impl fmt::Display for BreakContextKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BreakContextKind::Break => "break",
+            BreakContextKind::Continue => "continue",
+        }
+        .fmt(f)
+    }
+}
+
+#[derive(Clone)]
 struct CheckLoopVisitor<'a, 'tcx> {
     sess: &'a Session,
     tcx: TyCtxt<'tcx>,
-    cx: Context,
+    // Keep track of a stack of contexts, so that suggestions
+    // are not made for contexts where it would be incorrect,
+    // such as adding a label for an `if`.
+    // e.g. `if 'foo: {}` would be incorrect.
+    cx_stack: Vec<Context>,
+    block_breaks: BTreeMap<Span, BlockInfo>,
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    tcx.hir().visit_item_likes_in_module(
-        module_def_id,
-        &mut CheckLoopVisitor { sess: tcx.sess, tcx, cx: Normal },
-    );
+    let mut check = CheckLoopVisitor {
+        sess: tcx.sess,
+        tcx,
+        cx_stack: vec![Normal],
+        block_breaks: Default::default(),
+    };
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut check);
+    check.report_outside_loop_error();
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -83,6 +118,45 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
     fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
         match e.kind {
+            hir::ExprKind::If(cond, then, else_opt) => {
+                self.visit_expr(cond);
+
+                let get_block = |ck_loop: &CheckLoopVisitor<'a, 'hir>,
+                                 expr: &hir::Expr<'hir>|
+                 -> Option<&hir::Block<'hir>> {
+                    if let hir::ExprKind::Block(b, None) = expr.kind
+                        && matches!(
+                            ck_loop.cx_stack.last(),
+                            Some(&Normal)
+                                | Some(&Constant)
+                                | Some(&UnlabeledBlock(_))
+                                | Some(&UnlabeledIfBlock(_))
+                        )
+                    {
+                        Some(b)
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(b) = get_block(self, then) {
+                    self.with_context(UnlabeledIfBlock(b.span.shrink_to_lo()), |v| {
+                        v.visit_block(b)
+                    });
+                } else {
+                    self.visit_expr(then);
+                }
+
+                if let Some(else_expr) = else_opt {
+                    if let Some(b) = get_block(self, else_expr) {
+                        self.with_context(UnlabeledIfBlock(b.span.shrink_to_lo()), |v| {
+                            v.visit_block(b)
+                        });
+                    } else {
+                        self.visit_expr(else_expr);
+                    }
+                }
+            }
             hir::ExprKind::Loop(ref b, _, source, _) => {
                 self.with_context(Loop(source), |v| v.visit_block(b));
             }
@@ -101,11 +175,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(b));
             }
-            hir::ExprKind::Block(ref b, None) if matches!(self.cx, Fn) => {
+            hir::ExprKind::Block(ref b, None) if matches!(self.cx_stack.last(), Some(&Fn)) => {
                 self.with_context(Normal, |v| v.visit_block(b));
             }
             hir::ExprKind::Block(ref b, None)
-                if matches!(self.cx, Normal | Constant | UnlabeledBlock(_)) =>
+                if matches!(
+                    self.cx_stack.last(),
+                    Some(&Normal) | Some(&Constant) | Some(&UnlabeledBlock(_))
+                ) =>
             {
                 self.with_context(UnlabeledBlock(b.span.shrink_to_lo()), |v| v.visit_block(b));
             }
@@ -178,7 +255,12 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Some(label) => sp_lo.with_hi(label.ident.span.hi()),
                     None => sp_lo.shrink_to_lo(),
                 };
-                self.require_break_cx("break", e.span, label_sp);
+                self.require_break_cx(
+                    BreakContextKind::Break,
+                    e.span,
+                    label_sp,
+                    self.cx_stack.len() - 1,
+                );
             }
             hir::ExprKind::Continue(destination) => {
                 self.require_label_in_labeled_block(e.span, &destination, "continue");
@@ -200,7 +282,12 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     }
                     Err(_) => {}
                 }
-                self.require_break_cx("continue", e.span, e.span)
+                self.require_break_cx(
+                    BreakContextKind::Continue,
+                    e.span,
+                    e.span,
+                    self.cx_stack.len() - 1,
+                )
             }
             _ => intravisit::walk_expr(self, e),
         }
@@ -212,18 +299,26 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     where
         F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>),
     {
-        let old_cx = self.cx;
-        self.cx = cx;
+        self.cx_stack.push(cx);
         f(self);
-        self.cx = old_cx;
+        self.cx_stack.pop();
     }
 
-    fn require_break_cx(&self, name: &str, span: Span, break_span: Span) {
-        let is_break = name == "break";
-        match self.cx {
+    fn require_break_cx(
+        &mut self,
+        br_cx_kind: BreakContextKind,
+        span: Span,
+        break_span: Span,
+        cx_pos: usize,
+    ) {
+        match self.cx_stack[cx_pos] {
             LabeledBlock | Loop(_) => {}
             Closure(closure_span) => {
-                self.sess.dcx().emit_err(BreakInsideClosure { span, closure_span, name });
+                self.sess.dcx().emit_err(BreakInsideClosure {
+                    span,
+                    closure_span,
+                    name: &br_cx_kind.to_string(),
+                });
             }
             Coroutine { coroutine_span, kind, source } => {
                 let kind = match kind {
@@ -239,17 +334,32 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 self.sess.dcx().emit_err(BreakInsideCoroutine {
                     span,
                     coroutine_span,
-                    name,
+                    name: &br_cx_kind.to_string(),
                     kind,
                     source,
                 });
             }
-            UnlabeledBlock(block_span) if is_break && block_span.eq_ctxt(break_span) => {
-                let suggestion = Some(OutsideLoopSuggestion { block_span, break_span });
-                self.sess.dcx().emit_err(OutsideLoop { span, name, is_break, suggestion });
+            UnlabeledBlock(block_span)
+                if br_cx_kind == BreakContextKind::Break && block_span.eq_ctxt(break_span) =>
+            {
+                let block = self.block_breaks.entry(block_span).or_insert_with(|| BlockInfo {
+                    name: br_cx_kind.to_string(),
+                    spans: vec![],
+                    suggs: vec![],
+                });
+                block.spans.push(span);
+                block.suggs.push(break_span);
             }
-            Normal | Constant | Fn | UnlabeledBlock(_) => {
-                self.sess.dcx().emit_err(OutsideLoop { span, name, is_break, suggestion: None });
+            UnlabeledIfBlock(_) if br_cx_kind == BreakContextKind::Break => {
+                self.require_break_cx(br_cx_kind, span, break_span, cx_pos - 1);
+            }
+            Normal | Constant | Fn | UnlabeledBlock(_) | UnlabeledIfBlock(_) => {
+                self.sess.dcx().emit_err(OutsideLoop {
+                    spans: vec![span],
+                    name: &br_cx_kind.to_string(),
+                    is_break: br_cx_kind == BreakContextKind::Break,
+                    suggestion: None,
+                });
             }
         }
     }
@@ -261,12 +371,26 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         cf_type: &str,
     ) -> bool {
         if !span.is_desugaring(DesugaringKind::QuestionMark)
-            && self.cx == LabeledBlock
+            && self.cx_stack.last() == Some(&LabeledBlock)
             && label.label.is_none()
         {
             self.sess.dcx().emit_err(UnlabeledInLabeledBlock { span, cf_type });
             return true;
         }
         false
+    }
+
+    fn report_outside_loop_error(&mut self) {
+        for (s, block) in &self.block_breaks {
+            self.sess.dcx().emit_err(OutsideLoop {
+                spans: block.spans.clone(),
+                name: &block.name,
+                is_break: true,
+                suggestion: Some(OutsideLoopSuggestion {
+                    block_span: *s,
+                    break_spans: block.suggs.clone(),
+                }),
+            });
+        }
     }
 }

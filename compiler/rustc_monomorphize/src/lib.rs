@@ -2,9 +2,6 @@
 #![feature(is_sorted)]
 #![allow(rustc::potential_query_instability)]
 
-#[macro_use]
-extern crate tracing;
-
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::query::{Providers, TyCtxtAt};

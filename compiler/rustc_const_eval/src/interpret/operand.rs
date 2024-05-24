@@ -4,10 +4,11 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
+use tracing::trace;
 
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -249,6 +250,15 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         Self::from_scalar(Scalar::from_i8(c as i8), layout)
     }
 
+    pub fn from_pair(a: Self, b: Self, tcx: TyCtxt<'tcx>) -> Self {
+        let layout = tcx
+            .layout_of(
+                ty::ParamEnv::reveal_all().and(Ty::new_tup(tcx, &[a.layout.ty, b.layout.ty])),
+            )
+            .unwrap();
+        Self::from_scalar_pair(a.to_scalar(), b.to_scalar(), layout)
+    }
+
     /// Return the immediate as a `ScalarInt`. Ensures that it has the size that the layout of the
     /// immediate indicates.
     #[inline]
@@ -268,6 +278,17 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         assert!(self.layout.ty.is_integral());
         let int = self.to_scalar().assert_int();
         ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
+    }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
+    pub fn to_pair(self, cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>)) -> (Self, Self) {
+        let layout = self.layout;
+        let (val0, val1) = self.to_scalar_pair();
+        (
+            ImmTy::from_scalar(val0, layout.field(cx, 0)),
+            ImmTy::from_scalar(val1, layout.field(cx, 1)),
+        )
     }
 
     /// Compute the "sub-immediate" that is located within the `base` at the given offset with the

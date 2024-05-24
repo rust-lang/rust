@@ -5,9 +5,6 @@
 #![feature(type_alias_impl_trait)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate tracing;
-
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
@@ -20,6 +17,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use tracing::{instrument, trace};
 
 #[cfg(not(parallel_compiler))]
 use std::cell::LazyCell as Lazy;

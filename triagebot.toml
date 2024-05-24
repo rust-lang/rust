@@ -842,6 +842,9 @@ cc = ["@Zalathar"]
 message = "Some changes occurred in coverage tests."
 cc = ["@Zalathar"]
 
+[mentions."src/tools/opt-dist"]
+cc = ["@kobzol"]
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
@@ -1059,6 +1062,7 @@ project-exploit-mitigations = [
 "/src/tools/cargo" =                                     ["@ehuss"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
+"/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]
 "/src/tools/rust-installer" =                            ["bootstrap"]
 "/src/tools/rustbook" =                                  ["@ehuss"]

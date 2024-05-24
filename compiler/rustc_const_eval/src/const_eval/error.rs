@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_middle::mir::interpret::Provenance;
+use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::TyCtxt;
@@ -139,9 +139,10 @@ where
             ErrorHandled::TooGeneric(span)
         }
         err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span),
-        err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
-            ErrorHandled::Reported(guar.into(), span)
-        }
+        err_inval!(Layout(LayoutError::ReferencesError(guar))) => ErrorHandled::Reported(
+            ReportedErrorInfo::tainted_by_errors(guar),
+            span,
+        ),
         // Report remaining errors.
         _ => {
             let (our_span, frames) = get_span_and_frames();

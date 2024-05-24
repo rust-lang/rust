@@ -648,7 +648,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         place: &MPlaceTy<'tcx, Provenance>,
         rhs: &ImmTy<'tcx, Provenance>,
         op: mir::BinOp,
-        neg: bool,
+        not: bool,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
@@ -656,9 +656,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
 
-        // Atomics wrap around on overflow.
-        let val = this.wrapping_binary_op(op, &old, rhs)?;
-        let val = if neg { this.wrapping_unary_op(mir::UnOp::Not, &val)? } else { val };
+        let val = this.binary_op(op, &old, rhs)?;
+        let val = if not { this.unary_op(mir::UnOp::Not, &val)? } else { val };
         this.allow_data_races_mut(|this| this.write_immediate(*val, place))?;
 
         this.validate_atomic_rmw(place, atomic)?;
@@ -700,7 +699,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
-        let lt = this.wrapping_binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
+        let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
 
         #[rustfmt::skip] // rustfmt makes this unreadable
         let new_val = if min {
@@ -744,7 +743,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // Read as immediate for the sake of `binary_op()`
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
         // `binary_op` will bail if either of them is not a scalar.
-        let eq = this.wrapping_binary_op(mir::BinOp::Eq, &old, expect_old)?;
+        let eq = this.binary_op(mir::BinOp::Eq, &old, expect_old)?;
         // If the operation would succeed, but is "weak", fail some portion
         // of the time, based on `success_rate`.
         let success_rate = 1.0 - this.machine.cmpxchg_weak_failure_rate;

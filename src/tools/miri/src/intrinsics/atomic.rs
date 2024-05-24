@@ -4,8 +4,8 @@ use crate::*;
 use helpers::check_arg_count;
 
 pub enum AtomicOp {
-    /// The `bool` indicates whether the result of the operation should be negated
-    /// (must be a boolean-typed operation).
+    /// The `bool` indicates whether the result of the operation should be negated (`UnOp::Not`,
+    /// must be a boolean-typed operation).
     MirOp(mir::BinOp, bool),
     Max,
     Min,
@@ -213,8 +213,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                 this.write_immediate(*old, dest)?; // old value is returned
                 Ok(())
             }
-            AtomicOp::MirOp(op, neg) => {
-                let old = this.atomic_rmw_op_immediate(&place, &rhs, op, neg, atomic)?;
+            AtomicOp::MirOp(op, not) => {
+                let old = this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?;
                 this.write_immediate(*old, dest)?; // old value is returned
                 Ok(())
             }

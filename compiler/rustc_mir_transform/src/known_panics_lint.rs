@@ -304,20 +304,25 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>, location: Location) -> Option<()> {
         let arg = self.eval_operand(arg)?;
-        if let (val, true) = self.use_ecx(|this| {
-            let val = this.ecx.read_immediate(&arg)?;
-            let (_res, overflow) = this.ecx.overflowing_unary_op(op, &val)?;
-            Ok((val, overflow))
-        })? {
-            // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
-            // appropriate to use.
-            assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            self.report_assert_as_lint(
-                location,
-                AssertLintKind::ArithmeticOverflow,
-                AssertKind::OverflowNeg(val.to_const_int()),
-            );
-            return None;
+        // The only operator that can overflow is `Neg`.
+        if op == UnOp::Neg && arg.layout.ty.is_integral() {
+            // Compute this as `0 - arg` so we can use `SubWithOverflow` to check for overflow.
+            let (arg, overflow) = self.use_ecx(|this| {
+                let arg = this.ecx.read_immediate(&arg)?;
+                let (_res, overflow) = this
+                    .ecx
+                    .binary_op(BinOp::SubWithOverflow, &ImmTy::from_int(0, arg.layout), &arg)?
+                    .to_scalar_pair();
+                Ok((arg, overflow.to_bool()?))
+            })?;
+            if overflow {
+                self.report_assert_as_lint(
+                    location,
+                    AssertLintKind::ArithmeticOverflow,
+                    AssertKind::OverflowNeg(arg.to_const_int()),
+                );
+                return None;
+            }
         }
 
         Some(())
@@ -363,11 +368,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        if let (Some(l), Some(r)) = (l, r) {
-            // The remaining operators are handled through `overflowing_binary_op`.
+        // Div/Rem are handled via the assertions they trigger.
+        // But for Add/Sub/Mul, those assertions only exist in debug builds, and we want to
+        // lint in release builds as well, so we check on the operation instead.
+        // So normalize to the "overflowing" operator, and then ensure that it
+        // actually is an overflowing operator.
+        let op = op.wrapping_to_overflowing().unwrap_or(op);
+        // The remaining operators are handled through `wrapping_to_overflowing`.
+        if let (Some(l), Some(r)) = (l, r)
+            && l.layout.ty.is_integral()
+            && op.is_overflowing()
+        {
             if self.use_ecx(|this| {
-                let (_res, overflow) = this.ecx.overflowing_binary_op(op, &l, &r)?;
-                Ok(overflow)
+                let (_res, overflow) = this.ecx.binary_op(op, &l, &r)?.to_scalar_pair();
+                overflow.to_bool()
             })? {
                 self.report_assert_as_lint(
                     location,
@@ -399,8 +413,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
             Rvalue::BinaryOp(op, box (left, right)) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                let op = op.overflowing_to_wrapping().unwrap_or(*op);
-                self.check_binary_op(op, left, right, location)?;
+                self.check_binary_op(*op, left, right, location)?;
             }
 
             // Do not try creating references (#67862)
@@ -547,17 +560,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let right = self.eval_operand(right)?;
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
-                if let Some(bin_op) = bin_op.overflowing_to_wrapping() {
-                    let (val, overflowed) =
-                        self.use_ecx(|this| this.ecx.overflowing_binary_op(bin_op, &left, &right))?;
-                    let overflowed = ImmTy::from_bool(overflowed, self.tcx);
+                let val = self.use_ecx(|this| this.ecx.binary_op(bin_op, &left, &right))?;
+                if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+                    // FIXME `Value` should properly support pairs in `Immediate`... but currently it does not.
+                    let (val, overflow) = val.to_pair(&self.ecx);
                     Value::Aggregate {
                         variant: VariantIdx::ZERO,
-                        fields: [Value::from(val), overflowed.into()].into_iter().collect(),
+                        fields: [val.into(), overflow.into()].into_iter().collect(),
                     }
                 } else {
-                    let val =
-                        self.use_ecx(|this| this.ecx.wrapping_binary_op(bin_op, &left, &right))?;
                     val.into()
                 }
             }
@@ -566,7 +577,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let operand = self.eval_operand(operand)?;
                 let val = self.use_ecx(|this| this.ecx.read_immediate(&operand))?;
 
-                let val = self.use_ecx(|this| this.ecx.wrapping_unary_op(un_op, &val))?;
+                let val = self.use_ecx(|this| this.ecx.unary_op(un_op, &val))?;
                 val.into()
             }
 

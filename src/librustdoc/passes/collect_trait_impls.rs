@@ -47,7 +47,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     // External trait impls.
     {
         let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
-        for &cnum in tcx.crates(()) {
+        for &cnum in tcx.crates_including_speculative(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
                 cx.with_param_env(impl_def_id, |cx| {
                     inline::build_impl(cx, impl_def_id, None, &mut new_items_external);

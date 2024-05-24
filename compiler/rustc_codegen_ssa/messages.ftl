@@ -212,6 +212,8 @@ codegen_ssa_rlib_only_rmeta_found = could not find rlib for: `{$crate_name}`, fo
 
 codegen_ssa_select_cpp_build_tool_workload = in the Visual Studio installer, ensure the "C++ build tools" workload is selected
 
+codegen_ssa_self_contained_linker_missing = the self-contained linker was requested, but it wasn't found in the target's sysroot, or in rustc's sysroot
+
 codegen_ssa_shuffle_indices_evaluation = could not evaluate shuffle_indices at compile time
 
 codegen_ssa_specify_libraries_to_link = use the `-l` flag to specify native libraries to link

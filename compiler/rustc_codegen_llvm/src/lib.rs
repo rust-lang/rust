@@ -15,9 +15,6 @@
 #![feature(let_chains)]
 #![feature(impl_trait_in_assoc_type)]
 
-#[macro_use]
-extern crate tracing;
-
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 
@@ -240,8 +237,11 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, dcx, module, config)
     }
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module)
+    fn prepare_thin(
+        module: ModuleCodegen<Self::Module>,
+        emit_summary: bool,
+    ) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module, emit_summary)
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))

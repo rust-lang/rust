@@ -14,6 +14,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
+use tracing::debug;
 
 /// Generates and exports the Coverage Map.
 ///

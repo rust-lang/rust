@@ -25,9 +25,9 @@ use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPR
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-
 use std::mem::replace;
 use std::num::NonZero;
+use tracing::{debug, info};
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -1020,7 +1020,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         // stabilization diagnostic, but it can be avoided when there are no
         // `remaining_lib_features`.
         let mut all_implications = remaining_implications.clone();
-        for &cnum in tcx.crates(()) {
+        for &cnum in tcx.used_crates(()) {
             all_implications
                 .extend_unord(tcx.stability_implications(cnum).items().map(|(k, v)| (*k, *v)));
         }
@@ -1033,7 +1033,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             &all_implications,
         );
 
-        for &cnum in tcx.crates(()) {
+        for &cnum in tcx.used_crates(()) {
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
             }

@@ -19,6 +19,7 @@ use rustc_middle::mir::{create_dump_file, dump_enabled};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
+use tracing::{debug, error};
 
 use super::fmt::DebugWithContext;
 use super::graphviz;

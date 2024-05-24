@@ -1,6 +1,7 @@
 use crate::elaborate_drops::DropFlagState;
 use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
 use rustc_target::abi::VariantIdx;
+use tracing::debug;
 
 use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
 use super::MoveDataParamEnv;

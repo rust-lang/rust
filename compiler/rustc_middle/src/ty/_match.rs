@@ -1,6 +1,7 @@
 use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::{self, InferConst, Ty, TyCtxt};
+use tracing::{debug, instrument};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// instantiated with values so as to make it equal to A. Matching is

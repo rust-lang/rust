@@ -252,7 +252,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Self::Provenance>,
         right: &ImmTy<'tcx, Self::Provenance>,
-    ) -> InterpResult<'tcx, (ImmTy<'tcx, Self::Provenance>, bool)>;
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>>;
 
     /// Generate the NaN returned by a float operation, given the list of inputs.
     /// (This is all inputs, not just NaN inputs!)

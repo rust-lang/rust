@@ -94,6 +94,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 #[derive(Debug)]
 pub struct Scopes<'tcx> {
