@@ -7,26 +7,18 @@
 
 //@ ignore-msvc
 
+use run_make_support::rustc;
+
 fn main() {
     rustc().input("depa.rs").run();
     rustc().input("depb.rs").run();
     rustc().input("depc.rs").run();
-    let output =
-        String::from_utf8(rustc().input("empty.rs").cfg("bar").command_output().stderr).unwrap();
-    let pos_a1 =
-        output.find("-ltesta").expect("empty.rs, compiled with --cfg, should contain -ltesta");
-    let pos_b = output[pos_a1..]
-        .find("-ltestb")
-        .map(|pos| pos + pos_a1)
-        .expect("empty.rs, compiled with --cfg, should contain -ltestb");
-    let _ = output[pos_b..]
-        .find("-ltesta")
-        .map(|pos| pos + pos_b)
-        .expect("empty.rs, compiled with --cfg, should contain a second -ltesta");
-    let output = String::from_utf8(rustc().input("empty.rs").command_output().stderr).unwrap();
-    assert!(output.contains("-ltesta"));
-    let output = String::from_utf8(rustc().input("empty.rs").command_output().stderr).unwrap();
-    assert!(!output.contains("-ltestb"));
-    let output = String::from_utf8(rustc().input("empty.rs").command_output().stderr).unwrap();
-    assert_eq!(output.matches("-ltesta").count, 1);
+    let output = rustc().input("empty.rs").cfg("bar").run_fail();
+    output.assert_stderr_contains(r#""-ltesta" "-ltestb" "-ltesta""#);
+    let output = rustc().input("empty.rs").run_fail();
+    output.assert_stderr_contains(r#""-ltesta""#);
+    let output = rustc().input("empty.rs").run_fail();
+    output.assert_stderr_not_contains(r#""-ltestb""#);
+    let output = rustc().input("empty.rs").run_fail();
+    output.assert_stderr_not_contains(r#""-ltesta" "-ltesta" "-ltesta""#);
 }

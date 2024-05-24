@@ -7,18 +7,14 @@
 use run_make_support::rustc;
 
 fn main() {
-    let output = String::from_utf8(
-        rustc()
-            .input("empty.rs")
-            .link_arg("-lfoo")
-            .link_arg("-lbar")
-            .print("link-args")
-            .command_output()
-            .stdout,
-    )
-    .unwrap();
-    assert!(
-        output.contains("lfoo") || output.contains("lbar"),
-        "The output did not contain the expected \"lfoo\" or \"lbar\" strings."
-    );
+    // We are only checking for the output of --print=link-args,
+    // rustc failing or succeeding does not matter.
+    let out = rustc()
+        .input("empty.rs")
+        .link_arg("-lfoo")
+        .link_arg("-lbar")
+        .print("link-args")
+        .run_unchecked();
+    out.assert_stdout_contains("lfoo");
+    out.assert_stdout_contains("lbar");
 }

@@ -332,6 +332,18 @@ pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
     }
 }
 
+/// Check that `actual` is equal to `expected`. Panic otherwise.
+#[track_caller]
+pub fn assert_equals(actual: &str, expected: &str) {
+    if actual != expected {
+        eprintln!("=== ACTUAL TEXT ===");
+        eprintln!("{}", actual);
+        eprintln!("=== EXPECTED ===");
+        eprintln!("{}", expected);
+        panic!("expected text was not found in actual text");
+    }
+}
+
 /// Check that `haystack` contains `needle`. Panic otherwise.
 #[track_caller]
 pub fn assert_contains(haystack: &str, needle: &str) {
@@ -466,6 +478,15 @@ macro_rules! impl_common_helpers {
             #[track_caller]
             pub fn run_fail(&mut self) -> crate::command::CompletedProcess {
                 self.cmd.run_fail()
+            }
+
+            /// Run the command but do not check its exit status.
+            /// Only use if you explicitly don't care about the exit status.
+            /// Prefer to use [`Self::run`] and [`Self::run_fail`]
+            /// whenever possible.
+            #[track_caller]
+            pub fn run_unchecked(&mut self) -> crate::command::CompletedProcess {
+                self.cmd.run_unchecked()
             }
 
             /// Set the path where the command will be run.

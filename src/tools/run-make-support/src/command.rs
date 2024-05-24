@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::{Command as StdCommand, ExitStatus, Output, Stdio};
 
 use crate::drop_bomb::DropBomb;
-use crate::{assert_contains, assert_not_contains, handle_failed_output};
+use crate::{assert_contains, assert_equals, assert_not_contains, handle_failed_output};
 
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to
 /// ensure that we check the exit status of executed processes.
@@ -21,6 +21,7 @@ use crate::{assert_contains, assert_not_contains, handle_failed_output};
 ///
 /// [`run`]: Self::run
 /// [`run_fail`]: Self::run_fail
+/// [`run_unchecked`]: Self::run_unchecked
 #[derive(Debug)]
 pub struct Command {
     cmd: StdCommand,
@@ -116,6 +117,15 @@ impl Command {
         output
     }
 
+    /// Run the command but do not check its exit status.
+    /// Only use if you explicitly don't care about the exit status.
+    /// Prefer to use [`Self::run`] and [`Self::run_fail`]
+    /// whenever possible.
+    #[track_caller]
+    pub fn run_unchecked(&mut self) -> CompletedProcess {
+        self.command_output()
+    }
+
     #[track_caller]
     fn command_output(&mut self) -> CompletedProcess {
         self.drop_bomb.defuse();
@@ -163,41 +173,45 @@ impl CompletedProcess {
         self.output.status
     }
 
-    /// Checks that trimmed `stdout` matches trimmed `content`.
+    /// Checks that trimmed `stdout` matches trimmed `expected`.
     #[track_caller]
-    pub fn assert_stdout_equals<S: AsRef<str>>(&self, content: S) -> &Self {
-        assert_eq!(self.stdout_utf8().trim(), content.as_ref().trim());
+    pub fn assert_stdout_equals<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_equals(self.stdout_utf8().trim(), expected.as_ref().trim());
         self
     }
 
+    /// Checks that `stdout` does not contain `unexpected`.
     #[track_caller]
-    pub fn assert_stdout_contains<S: AsRef<str>>(self, needle: S) -> Self {
-        assert_contains(&self.stdout_utf8(), needle.as_ref());
+    pub fn assert_stdout_not_contains<S: AsRef<str>>(&self, unexpected: S) -> &Self {
+        assert_not_contains(&self.stdout_utf8(), unexpected.as_ref());
         self
     }
 
+    /// Checks that `stdout` contains `expected`.
     #[track_caller]
-    pub fn assert_stdout_not_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
-        assert_not_contains(&self.stdout_utf8(), needle.as_ref());
+    pub fn assert_stdout_contains<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_contains(&self.stdout_utf8(), expected.as_ref());
         self
     }
 
-    /// Checks that trimmed `stderr` matches trimmed `content`.
+    /// Checks that trimmed `stderr` matches trimmed `expected`.
     #[track_caller]
-    pub fn assert_stderr_equals<S: AsRef<str>>(&self, content: S) -> &Self {
-        assert_eq!(self.stderr_utf8().trim(), content.as_ref().trim());
+    pub fn assert_stderr_equals<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_equals(self.stderr_utf8().trim(), expected.as_ref().trim());
         self
     }
 
+    /// Checks that `stderr` contains `expected`.
     #[track_caller]
-    pub fn assert_stderr_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
-        assert_contains(&self.stderr_utf8(), needle.as_ref());
+    pub fn assert_stderr_contains<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_contains(&self.stderr_utf8(), expected.as_ref());
         self
     }
 
+    /// Checks that `stderr` does not contain `unexpected`.
     #[track_caller]
-    pub fn assert_stderr_not_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
-        assert_not_contains(&self.stdout_utf8(), needle.as_ref());
+    pub fn assert_stderr_not_contains<S: AsRef<str>>(&self, unexpected: S) -> &Self {
+        assert_not_contains(&self.stdout_utf8(), unexpected.as_ref());
         self
     }
 
