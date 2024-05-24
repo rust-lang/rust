@@ -279,7 +279,7 @@ impl Step for Std {
         // debug-assertions is the only offending setting currently known, so we just stomp any
         // previous setting here, setting it to the value used in the distributed standard library.
         if self.is_for_mir_opt_tests {
-            cargo.rustflags("-Cdebug-assertions=no");
+            cargo.rustflag("-Cdebug-assertions=no");
         }
 
         let _guard = builder.msg(
