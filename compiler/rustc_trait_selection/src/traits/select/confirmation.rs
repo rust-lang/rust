@@ -1228,7 +1228,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, b, a)
+                    .eq(DefineOpaqueTypes::Yes, b, a)
                     .map_err(|_| Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
@@ -1276,7 +1276,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, target, new_struct)
+                    .eq(DefineOpaqueTypes::Yes, target, new_struct)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
@@ -1309,7 +1309,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, target, new_tuple)
+                    .eq(DefineOpaqueTypes::Yes, target, new_tuple)
                     .map_err(|_| Unimplemented)?;
 
                 // Add a nested `T: Unsize<U>` predicate.
