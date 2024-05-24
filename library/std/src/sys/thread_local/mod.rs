@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         mod static_local;
         #[doc(hidden)]
-        pub use static_local::{Key, thread_local_inner};
+        pub use static_local::{EagerStorage, LazyStorage, thread_local_inner};
     } else if #[cfg(target_thread_local)] {
         #[doc(hidden)]
         mod fast_local;
