@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `unsafe` blocks that contain more than one unsafe operation.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Combined with `undocumented_unsafe_blocks`,
     /// this lint ensures that each unsafe operation must be independently justified.
     /// Combined with `unused_unsafe`, this lint also ensures

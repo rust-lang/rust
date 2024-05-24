@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// Checks for repeated slice indexing without asserting beforehand that the length
     /// is greater than the largest index used to index into the slice.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// In the general case where the compiler does not have a lot of information
     /// about the length of a slice, indexing it repeatedly will generate a bounds check
     /// for every single index.

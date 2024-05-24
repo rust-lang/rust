@@ -20,9 +20,9 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns if there is missing doc for any private documentable item
+    /// Warns if there is missing documentation for any private documentable item.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Doc is good. *rustc* has a `MISSING_DOCS`
     /// allowed-by-default lint for
     /// public members, but has no way to enforce documentation of private items.

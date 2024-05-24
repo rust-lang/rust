@@ -309,9 +309,9 @@ declare_clippy_lint! {
     ///
     /// (This requires the `lint_reasons` feature)
     ///
-    /// ### Why is this bad?
-    /// Allowing a lint should always have a reason. This reason should be documented to
-    /// ensure that others understand the reasoning
+    /// ### Why restrict this?
+    /// Justifying each `allow` helps readers understand the reasoning,
+    /// and may allow removing `allow` attributes if their purpose is obsolete.
     ///
     /// ### Example
     /// ```no_run
