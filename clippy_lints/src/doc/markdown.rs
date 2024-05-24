@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, SuggestionStyle};
@@ -92,13 +92,15 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
     if let Ok(url) = Url::parse(word) {
         // try to get around the fact that `foo::bar` parses as a valid URL
         if !url.cannot_be_a_base() {
-            span_lint(
+            span_lint_and_sugg(
                 cx,
                 DOC_MARKDOWN,
                 span,
                 "you should put bare URLs between `<`/`>` or make a proper Markdown link",
+                "try",
+                format!("<{word}>"),
+                Applicability::MachineApplicable,
             );
-
             return;
         }
     }
