@@ -111,7 +111,6 @@ run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/link-args-order/Makefile
 run-make/link-cfg/Makefile
-run-make/link-dedup/Makefile
 run-make/link-framework/Makefile
 run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
