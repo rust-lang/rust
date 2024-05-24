@@ -323,15 +323,20 @@ impl Error for VarError {
 /// This function is also always safe to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, you must ensure that
-/// are no other threads concurrently writing or *reading*(!) from the
-/// environment through functions other than the ones in this module. You are
-/// responsible for figuring out how to achieve this, but we strongly suggest
-/// not using `set_var` or `remove_var` in multi-threaded programs at all.
-///
-/// Most C libraries, including libc itself, do not advertise which functions
-/// read from the environment. Even functions from the Rust standard library do
-/// that, e.g. for DNS lookups from [`std::net::ToSocketAddrs`].
+/// In multi-threaded programs on other operating systems, we strongly suggest
+/// not using `set_var` or `remove_var` at all. The exact requirement is: you
+/// must ensure that there are no other threads concurrently writing or
+/// *reading*(!) the environment through functions or global variables other
+/// than the ones in this module. The problem is that these operating systems
+/// do not provide a thread-safe way to read the environment, and most C
+/// libraries, including libc itself, do not advertise which functions read
+/// from the environment. Even functions from the Rust standard library may
+/// read the environment without going through this module, e.g. for DNS
+/// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
+/// which functions may read from the environment in future versions of a
+/// library. All this makes it not practically possible for you to guarantee
+/// that no other thread will read the environment, so the only safe option is
+/// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
@@ -385,15 +390,20 @@ unsafe fn _set_var(key: &OsStr, value: &OsStr) {
 /// This function is also always safe to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs, you must ensure that are no other threads
-/// concurrently writing or *reading*(!) from the environment through functions
-/// other than the ones in this module. You are responsible for figuring out
-/// how to achieve this, but we strongly suggest not using `set_var` or
-/// `remove_var` in multi-threaded programs at all.
-///
-/// Most C libraries, including libc itself, do not advertise which functions
-/// read from the environment. Even functions from the Rust standard library do
-/// that, e.g. for DNS lookups from [`std::net::ToSocketAddrs`].
+/// In multi-threaded programs on other operating systems, we strongly suggest
+/// not using `set_var` or `remove_var` at all. The exact requirement is: you
+/// must ensure that there are no other threads concurrently writing or
+/// *reading*(!) the environment through functions or global variables other
+/// than the ones in this module. The problem is that these operating systems
+/// do not provide a thread-safe way to read the environment, and most C
+/// libraries, including libc itself, do not advertise which functions read
+/// from the environment. Even functions from the Rust standard library may
+/// read the environment without going through this module, e.g. for DNS
+/// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
+/// which functions may read from the environment in future versions of a
+/// library. All this makes it not practically possible for you to guarantee
+/// that no other thread will read the environment, so the only safe option is
+/// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
