@@ -111,7 +111,7 @@ mod unreachable_enum_branching;
 mod unreachable_prop;
 mod validate;
 
-use rustc_const_eval::transform::check_consts::{self, ConstCx};
+use rustc_const_eval::check_consts::{self, ConstCx};
 use rustc_mir_dataflow::rustc_peek;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
