@@ -79,9 +79,14 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
 
-                let (sub, overflow1) = this.binary_op(mir::BinOp::SubWithOverflow, &a, &b)?.to_pair(this);
+                let (sub, overflow1) =
+                    this.binary_op(mir::BinOp::SubWithOverflow, &a, &b)?.to_pair(this);
                 let (sub, overflow2) = this
-                    .binary_op(mir::BinOp::SubWithOverflow, &sub, &ImmTy::from_uint(b_in, a.layout))?
+                    .binary_op(
+                        mir::BinOp::SubWithOverflow,
+                        &sub,
+                        &ImmTy::from_uint(b_in, a.layout),
+                    )?
                     .to_pair(this);
                 let b_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
 
