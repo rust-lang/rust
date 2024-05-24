@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
-use clippy_utils::{any_parent_is_automatically_derived, is_lint_allowed, path_to_local, peel_blocks};
+use clippy_utils::{
+    any_parent_is_automatically_derived, is_inside_always_const_context, is_lint_allowed, path_to_local, peel_blocks,
+};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
@@ -265,6 +267,9 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && reduced.iter().all(|e| e.span.ctxt() == ctxt)
     {
         if let ExprKind::Index(..) = &expr.kind {
+            if is_inside_always_const_context(cx.tcx, expr.hir_id) {
+                return;
+            }
             let snippet =
                 if let (Some(arr), Some(func)) = (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span)) {
                     format!("assert!({}.len() > {});", &arr, &func)

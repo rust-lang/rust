@@ -114,12 +114,12 @@ fn main() {
         break 'label
     };
     let () = const {
-        assert!([42, 55].len() > get_usize());
+        [42, 55][get_usize()];
     };
 }
 
 const _: () = {
-    assert!([42, 55].len() > get_usize());
+    [42, 55][get_usize()];
 };
 
 const fn foo() {

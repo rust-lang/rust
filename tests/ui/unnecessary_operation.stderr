@@ -120,22 +120,10 @@ LL | |     };
    | |______^ help: statement can be reduced to: `String::from("blah");`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:121:9
-   |
-LL |         [42, 55][get_usize()];
-   |         ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42, 55].len() > get_usize());`
-
-error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:126:5
-   |
-LL |     [42, 55][get_usize()];
-   |     ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42, 55].len() > get_usize());`
-
-error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:130:5
    |
 LL |     [42, 55][get_usize()];
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42, 55].len() > get_usize());`
 
-error: aborting due to 22 previous errors
+error: aborting due to 20 previous errors
 
