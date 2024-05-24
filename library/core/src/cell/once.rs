@@ -2,12 +2,12 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::mem;
 
-/// A cell which can be written to only once.
+/// A cell which can nominally be written to only once.
 ///
 /// This allows obtaining a shared `&T` reference to its inner value without copying or replacing
 /// it (unlike [`Cell`]), and without runtime borrow checks (unlike [`RefCell`]). However,
 /// only immutable references can be obtained unless one has a mutable reference to the cell
-/// itself.
+/// itself. In the same vein, the cell can only be re-initialized with such a mutable reference.
 ///
 /// For a thread-safe version of this struct, see [`std::sync::OnceLock`].
 ///
