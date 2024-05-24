@@ -9,6 +9,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 pub(super) fn derefs_to_slice<'tcx>(
     cx: &LateContext<'tcx>,
@@ -96,15 +97,15 @@ pub(super) fn clone_or_copy_needed<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &Pat<'tcx>,
     body: &'tcx Expr<'tcx>,
-) -> (bool, Vec<&'tcx Expr<'tcx>>) {
+) -> (bool, Vec<(Span, String)>) {
     let mut visitor = CloneOrCopyVisitor {
         cx,
         binding_hir_ids: pat_bindings(pat),
         clone_or_copy_needed: false,
-        addr_of_exprs: Vec::new(),
+        references_to_binding: Vec::new(),
     };
     visitor.visit_expr(body);
-    (visitor.clone_or_copy_needed, visitor.addr_of_exprs)
+    (visitor.clone_or_copy_needed, visitor.references_to_binding)
 }
 
 /// Returns a vector of all `HirId`s bound by the pattern.
@@ -127,7 +128,7 @@ struct CloneOrCopyVisitor<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
     binding_hir_ids: Vec<HirId>,
     clone_or_copy_needed: bool,
-    addr_of_exprs: Vec<&'tcx Expr<'tcx>>,
+    references_to_binding: Vec<(Span, String)>,
 }
 
 impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
@@ -142,8 +143,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
         if self.is_binding(expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.kind {
-                    ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) => {
-                        self.addr_of_exprs.push(parent);
+                    ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, referent) => {
+                        if !parent.span.from_expansion() {
+                            self.references_to_binding
+                                .push((parent.span.until(referent.span), String::new()));
+                        }
                         return;
                     },
                     ExprKind::MethodCall(.., args, _) => {
