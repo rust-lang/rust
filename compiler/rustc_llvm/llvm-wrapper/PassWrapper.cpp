@@ -1488,13 +1488,15 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
 // a ThinLTO summary attached.
 struct LLVMRustThinLTOBuffer {
   std::string data;
+  std::string thin_link_data;
 };
 
 extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin, bool emit_summary) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     auto OS = raw_string_ostream(Ret->data);
+    auto ThinLinkOS = raw_string_ostream(Ret->thin_link_data);
     {
       if (is_thin) {
         PassBuilder PB;
@@ -1508,7 +1510,10 @@ LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
         PB.registerLoopAnalyses(LAM);
         PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
         ModulePassManager MPM;
-        MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
+        // We only pass ThinLinkOS to be filled in if we want the summary,
+        // because otherwise LLVM does extra work and may double-emit some
+        // errors or warnings.
+        MPM.addPass(ThinLTOBitcodeWriterPass(OS, emit_summary ? &ThinLinkOS : nullptr));
         MPM.run(*unwrap(M), MAM);
       } else {
         WriteBitcodeToFile(*unwrap(M), OS);
@@ -1531,6 +1536,16 @@ LLVMRustThinLTOBufferPtr(const LLVMRustThinLTOBuffer *Buffer) {
 extern "C" size_t
 LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
   return Buffer->data.length();
+}
+
+extern "C" const void*
+LLVMRustThinLTOBufferThinLinkDataPtr(const LLVMRustThinLTOBuffer *Buffer) {
+  return Buffer->thin_link_data.data();
+}
+
+extern "C" size_t
+LLVMRustThinLTOBufferThinLinkDataLen(const LLVMRustThinLTOBuffer *Buffer) {
+  return Buffer->thin_link_data.length();
 }
 
 // This is what we used to parse upstream bitcode for actual ThinLTO
