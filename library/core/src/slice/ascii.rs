@@ -190,7 +190,7 @@ impl [u8] {
     }
 }
 
-type EscapeByte = impl (Fn(&u8) -> ascii::EscapeDefault) + Copy;
+type EscapeByte = impl (Fn(&u8) -> ascii::EscapeDefault) + Clone;
 
 /// An iterator over the escaped version of a byte slice.
 ///
