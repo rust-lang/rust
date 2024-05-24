@@ -240,3 +240,6 @@ extern {
     /// foo()
     fn in_extern();
 }
+
+/// https://github.com/rust-lang/rust-clippy/pull/12836
+fn check_autofix_for_base_urls() {}
