@@ -1,4 +1,5 @@
 #![unstable(feature = "thread_local_internals", reason = "should not be necessary", issue = "none")]
+#![cfg_attr(test, allow(unused))]
 
 // There are three thread-local implementations: "static", "fast", "OS".
 // The "OS" thread local key type is accessed via platform-specific API calls and is slow, while the
@@ -28,7 +29,8 @@ cfg_if::cfg_if! {
 /// fn` declared in a user crate). If the callback unwinds anyway, then
 /// `rtabort` with a message about thread local panicking on drop.
 #[inline]
-pub fn abort_on_dtor_unwind(f: impl FnOnce()) {
+#[allow(dead_code)]
+fn abort_on_dtor_unwind(f: impl FnOnce()) {
     // Using a guard like this is lower cost.
     let guard = DtorUnwindGuard;
     f();
