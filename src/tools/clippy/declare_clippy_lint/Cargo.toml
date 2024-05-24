@@ -8,7 +8,7 @@ publish = false
 proc-macro = true
 
 [dependencies]
-itertools = "0.12"
+itertools = { git = "https://github.com/rust-itertools/itertools" }
 quote = "1.0.21"
 syn = "2.0"
 

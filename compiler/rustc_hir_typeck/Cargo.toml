@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools = { git = "https://github.com/rust-itertools/itertools" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_attr = { path = "../rustc_attr" }

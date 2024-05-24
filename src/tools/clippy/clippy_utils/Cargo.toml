@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 clippy_config = { path = "../clippy_config" }
 arrayvec = { version = "0.7", default-features = false }
-itertools = "0.12"
+itertools = { git = "https://github.com/rust-itertools/itertools" }
 rustc-semver = "1.1"
 
 [features]

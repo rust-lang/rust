@@ -7,7 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 derivative = "2.2.0"
-itertools = "0.12"
+itertools = { git = "https://github.com/rust-itertools/itertools" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_attr = { path = "../rustc_attr" }

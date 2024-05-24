@@ -10,7 +10,7 @@ arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
 cc = "1.0.90"
 either = "1.5.0"
-itertools = "0.12"
+itertools = { git = "https://github.com/rust-itertools/itertools" }
 jobserver = "0.1.28"
 pathdiff = "0.2.0"
 regex = "1.4"

@@ -10,7 +10,7 @@ path = "lib.rs"
 arrayvec = { version = "0.7", default-features = false }
 askama = { version = "0.12", default-features = false, features = ["config"] }
 base64 = "0.21.7"
-itertools = "0.12"
+itertools = { git = "https://github.com/rust-itertools/itertools" }
 indexmap = "2"
 minifier = "0.3.0"
 regex = "1"
