@@ -14,10 +14,10 @@
 #![feature(yeet_expr)]
 #![feature(if_let_guard)]
 
+pub mod check_consts;
 pub mod const_eval;
 mod errors;
 pub mod interpret;
-pub mod transform;
 pub mod util;
 
 use std::sync::atomic::AtomicBool;

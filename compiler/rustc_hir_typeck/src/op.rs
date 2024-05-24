@@ -381,10 +381,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let maybe_missing_semi = self.check_for_missing_semi(expr, &mut err);
 
                 // We defer to the later error produced by `check_lhs_assignable`.
-                // We only downgrade this if it's the LHS, though.
+                // We only downgrade this if it's the LHS, though, and if this is a
+                // valid assignment statement.
                 if maybe_missing_semi
                     && let hir::Node::Expr(parent) = self.tcx.parent_hir_node(expr.hir_id)
                     && let hir::ExprKind::Assign(lhs, _, _) = parent.kind
+                    && let hir::Node::Stmt(stmt) = self.tcx.parent_hir_node(parent.hir_id)
+                    && let hir::StmtKind::Expr(_) | hir::StmtKind::Semi(_) = stmt.kind
                     && lhs.hir_id == expr.hir_id
                 {
                     err.downgrade_to_delayed_bug();
