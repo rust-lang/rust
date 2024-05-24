@@ -8,7 +8,7 @@ be an implementation detail, at least --check-cfg and the unexpected_cfgs are ow
 rustc, not Cargo.
 -->
 
-This document is intented to summarize the principal ways Cargo interacts with
+This document is intended to summarize the principal ways Cargo interacts with
 the `unexpected_cfgs` lint and `--check-cfg` flag. It is not intended to provide
 individual details, for that refer to the [`--check-cfg` documentation](../check-cfg.md) and
 to the [Cargo book](../../cargo/index.html).
@@ -37,11 +37,11 @@ implementation detail and is therefor not documented in Cargo, we therefor do th
 
 *See the [`[lints]` section in the Cargo book][cargo-lints-table] for more details.*
 
-When using a staticlly known custom config (ie. not dependant on a build-script), Cargo provides
+When using a statically known custom config (ie. not dependant on a build-script), Cargo provides
 the custom lint config `check-cfg` under `[lints.rust.unexpected_cfgs]`.
 
 It can be used to set custom static [`--check-cfg`](../check-cfg.md) args, it is mainly useful when
-the list of expected cfgs is known is advance.
+the list of expected cfgs is known in advance.
 
 `Cargo.toml`:
 ```toml
