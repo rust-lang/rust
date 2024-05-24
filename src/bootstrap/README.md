@@ -6,7 +6,7 @@ and some of the technical details of the build system.
 Note that this README only covers internal information, not how to use the tool.
 Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further information.
 
-[bootstrapping-dev-guide]: https://rustc-dev-guide.rust-lang.org/building/bootstrapping.html
+[bootstrapping-dev-guide]: https://rustc-dev-guide.rust-lang.org/building/bootstrapping/intro.html
 
 ## Introduction
 
