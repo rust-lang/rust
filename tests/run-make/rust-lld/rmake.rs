@@ -61,5 +61,5 @@ fn main() {
 fn find_lld_version_in_logs(output: &Output) -> bool {
     let lld_version_re = Regex::new(r"^LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
     let stderr = std::str::from_utf8(&output.stderr).unwrap();
-    stderr.lines().any(|line| lld_version_re.is_match(line))
+    stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }
