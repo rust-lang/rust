@@ -56,12 +56,16 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError>;
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
+    fn prepare_thin(
+        module: ModuleCodegen<Self::Module>,
+        want_summary: bool,
+    ) -> (String, Self::ThinBuffer);
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
 }
 
 pub trait ThinBufferMethods: Send + Sync {
     fn data(&self) -> &[u8];
+    fn thin_link_data(&self) -> &[u8];
 }
 
 pub trait ModuleBufferMethods: Send + Sync {

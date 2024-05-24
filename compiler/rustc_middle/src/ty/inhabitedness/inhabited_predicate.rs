@@ -1,5 +1,6 @@
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
+use tracing::instrument;
 
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, OpaqueTypeKey, ParamEnv, Ty};

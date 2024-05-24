@@ -25,6 +25,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, Integer};
+use tracing::{debug, instrument};
 
 use std::cmp::Ordering;
 

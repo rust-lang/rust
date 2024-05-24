@@ -5,6 +5,7 @@
 
 use crate::mir::*;
 use rustc_hir as hir;
+use tracing::{debug, instrument};
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -297,9 +298,11 @@ impl BorrowKind {
 impl BinOp {
     pub(crate) fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
-            BinOp::Add => hir::BinOpKind::Add,
-            BinOp::Sub => hir::BinOpKind::Sub,
-            BinOp::Mul => hir::BinOpKind::Mul,
+            // HIR `+`/`-`/`*` can map to either of these MIR BinOp, depending
+            // on whether overflow checks are enabled or not.
+            BinOp::Add | BinOp::AddWithOverflow => hir::BinOpKind::Add,
+            BinOp::Sub | BinOp::SubWithOverflow => hir::BinOpKind::Sub,
+            BinOp::Mul | BinOp::MulWithOverflow => hir::BinOpKind::Mul,
             BinOp::Div => hir::BinOpKind::Div,
             BinOp::Rem => hir::BinOpKind::Rem,
             BinOp::BitXor => hir::BinOpKind::BitXor,
@@ -313,10 +316,8 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
+            // We don't have HIR syntax for these.
             BinOp::Cmp
-            | BinOp::AddWithOverflow
-            | BinOp::SubWithOverflow
-            | BinOp::MulWithOverflow
             | BinOp::AddUnchecked
             | BinOp::SubUnchecked
             | BinOp::MulUnchecked
@@ -336,6 +337,11 @@ impl BinOp {
             BinOp::MulWithOverflow => BinOp::Mul,
             _ => return None,
         })
+    }
+
+    /// Returns whether this is a `FooWithOverflow`
+    pub fn is_overflowing(self) -> bool {
+        self.overflowing_to_wrapping().is_some()
     }
 
     /// If this is a `Foo`, return `Some(FooWithOverflow)`.

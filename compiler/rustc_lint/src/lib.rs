@@ -39,9 +39,6 @@
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
 
-#[macro_use]
-extern crate tracing;
-
 mod async_fn_in_trait;
 pub mod builtin;
 mod context;

@@ -1,19 +1,22 @@
-use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
+use std::borrow::Cow;
+use std::{any::Any, backtrace::Backtrace, fmt};
 
-use crate::error;
-use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
+use either::Either;
 
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
+use rustc_span::Symbol;
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
-use std::borrow::Cow;
-use std::{any::Any, backtrace::Backtrace, fmt};
+use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
+
+use crate::error;
+use crate::mir::{ConstAlloc, ConstValue};
+use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
@@ -62,6 +65,9 @@ impl ReportedErrorInfo {
     #[inline]
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { is_tainted_by_errors: true, error }
+    }
+    pub fn is_tainted_by_errors(&self) -> bool {
+        self.is_tainted_by_errors
     }
 }
 
@@ -310,6 +316,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     RemainderOverflow,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
+    /// Overflow in arithmetic that may not overflow.
+    ArithOverflow { intrinsic: Symbol },
+    /// Shift by too much.
+    ShiftOverflow { intrinsic: Symbol, shift_amount: Either<u128, i128> },
     /// Invalid metadata in a wide pointer
     InvalidMeta(InvalidMetaKind),
     /// Reading a C string that does not end within its allocation.

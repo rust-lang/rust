@@ -12,6 +12,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
+use tracing::{debug, instrument, trace};
 
 use std::cell::Cell;
 

@@ -4,9 +4,6 @@
 #![feature(let_chains)]
 #![feature(try_blocks)]
 
-#[macro_use]
-extern crate tracing;
-
 use rustc_middle::ty;
 
 // Please change the public `use` directives cautiously, as they might be used by external tools.

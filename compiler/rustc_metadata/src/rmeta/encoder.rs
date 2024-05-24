@@ -33,6 +33,7 @@ use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use tracing::{debug, instrument, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,
@@ -1898,7 +1899,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let deps = self
             .tcx
-            .crates(())
+            .crates_including_speculative(())
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {

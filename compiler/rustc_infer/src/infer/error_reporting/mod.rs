@@ -173,7 +173,10 @@ pub(super) fn note_and_explain_region<'tcx>(
 
         ty::ReError(_) => return,
 
-        ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
+        // FIXME(#125431): `ReVar` shouldn't reach here.
+        ty::ReVar(_) => (format!("lifetime `{region}`"), alt_span),
+
+        ty::ReBound(..) | ty::ReErased => {
             bug!("unexpected region for note_and_explain_region: {:?}", region);
         }
     };

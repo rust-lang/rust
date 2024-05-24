@@ -10,6 +10,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use std::fs as std_fs;
 use std::path::Path;
+use tracing::debug;
 
 /// Copies a CGU work product to the incremental compilation directory, so next compilation can
 /// find and reuse it.

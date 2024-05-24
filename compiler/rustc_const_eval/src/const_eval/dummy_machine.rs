@@ -125,7 +125,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
         bin_op: BinOp,
         left: &interpret::ImmTy<'tcx, Self::Provenance>,
         right: &interpret::ImmTy<'tcx, Self::Provenance>,
-    ) -> interpret::InterpResult<'tcx, (ImmTy<'tcx, Self::Provenance>, bool)> {
+    ) -> interpret::InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
         use rustc_middle::mir::BinOp::*;
         Ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
@@ -154,7 +154,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
                     Ge => left >= right,
                     _ => bug!(),
                 };
-                (ImmTy::from_bool(res, *ecx.tcx), false)
+                ImmTy::from_bool(res, *ecx.tcx)
             }
 
             // Some more operations are possible with atomics.

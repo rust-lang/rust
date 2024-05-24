@@ -20,6 +20,7 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::config::{self, CrateType, Lto};
+use tracing::{debug, info};
 
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
@@ -229,9 +230,12 @@ pub(crate) fn run_thin(
     thin_lto(cgcx, &dcx, modules, upstream_modules, cached_modules, &symbols_below_threshold)
 }
 
-pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
+pub(crate) fn prepare_thin(
+    module: ModuleCodegen<ModuleLlvm>,
+    emit_summary: bool,
+) -> (String, ThinBuffer) {
     let name = module.name;
-    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
+    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true, emit_summary);
     (name, buffer)
 }
 
@@ -671,9 +675,9 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
+    pub fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, emit_summary);
             ThinBuffer(buffer)
         }
     }
@@ -684,6 +688,14 @@ impl ThinBufferMethods for ThinBuffer {
         unsafe {
             let ptr = llvm::LLVMRustThinLTOBufferPtr(self.0) as *const _;
             let len = llvm::LLVMRustThinLTOBufferLen(self.0);
+            slice::from_raw_parts(ptr, len)
+        }
+    }
+
+    fn thin_link_data(&self) -> &[u8] {
+        unsafe {
+            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
+            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
             slice::from_raw_parts(ptr, len)
         }
     }

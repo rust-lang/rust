@@ -22,6 +22,7 @@ use rustc_session::Session;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 
 use cc::windows_registry;
+use tracing::{debug, warn};
 
 /// Disables non-English messages from localized linkers.
 /// Such messages may cause issues with text encoding on Windows (#35785)

@@ -51,6 +51,14 @@ pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     PathBuf::from_iter([sysroot, Path::new(&rustlib_path), Path::new("lib")])
 }
 
+/// Returns a path to the target's `bin` folder within its `rustlib` path in the sysroot. This is
+/// where binaries are usually installed, e.g. the self-contained linkers, lld-wrappers, LLVM tools,
+/// etc.
+pub fn make_target_bin_path(sysroot: &Path, target_triple: &str) -> PathBuf {
+    let rustlib_path = rustc_target::target_rustlib_path(sysroot, target_triple);
+    PathBuf::from_iter([sysroot, Path::new(&rustlib_path), Path::new("bin")])
+}
+
 #[cfg(unix)]
 fn current_dll_path() -> Result<PathBuf, String> {
     use std::ffi::{CStr, OsStr};

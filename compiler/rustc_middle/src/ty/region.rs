@@ -8,6 +8,7 @@ use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use rustc_type_ir::RegionKind as IrRegionKind;
 pub use rustc_type_ir::RegionVid;
 use std::ops::Deref;
+use tracing::debug;
 
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 

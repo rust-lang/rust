@@ -38,7 +38,7 @@ macro_rules! parse_by_kind {
     ) => {{
         let expr_id = $self.preparse($expr_id);
         let expr = &$self.thir[expr_id];
-        debug!("Trying to parse {:?} as {}", expr.kind, $expected);
+        tracing::debug!("Trying to parse {:?} as {}", expr.kind, $expected);
         let $expr_name = expr;
         match &expr.kind {
             $(

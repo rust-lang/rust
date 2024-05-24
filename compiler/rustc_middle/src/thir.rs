@@ -32,6 +32,7 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
+use tracing::instrument;
 
 pub mod visit;
 

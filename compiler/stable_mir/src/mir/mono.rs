@@ -106,7 +106,9 @@ impl Instance {
     /// which is more convenient to match with intrinsic symbols.
     pub fn intrinsic_name(&self) -> Option<Symbol> {
         match self.kind {
-            InstanceKind::Intrinsic => Some(with(|context| context.intrinsic_name(self.def))),
+            InstanceKind::Intrinsic => {
+                Some(with(|context| context.intrinsic(self.def.def_id()).unwrap().fn_name()))
+            }
             InstanceKind::Item | InstanceKind::Virtual { .. } | InstanceKind::Shim => None,
         }
     }

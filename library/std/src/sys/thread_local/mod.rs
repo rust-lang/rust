@@ -10,12 +10,12 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         mod static_local;
         #[doc(hidden)]
-        pub use static_local::{Key, thread_local_inner};
+        pub use static_local::{EagerStorage, LazyStorage, thread_local_inner};
     } else if #[cfg(target_thread_local)] {
         #[doc(hidden)]
         mod fast_local;
         #[doc(hidden)]
-        pub use fast_local::{Key, thread_local_inner};
+        pub use fast_local::{EagerStorage, LazyStorage, thread_local_inner};
     } else {
         #[doc(hidden)]
         mod os_local;
@@ -24,6 +24,9 @@ cfg_if::cfg_if! {
     }
 }
 
+// Not used by the fast-local TLS anymore.
+// FIXME(#110897): remove this.
+#[allow(unused)]
 mod lazy {
     use crate::cell::UnsafeCell;
     use crate::hint;

@@ -23,8 +23,8 @@ use stable_mir::mir::{BinOp, Body, Place};
 use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
-    ForeignItemKind, GenericArgs, LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, UintTy,
-    VariantDef,
+    ForeignItemKind, GenericArgs, IntrinsicDef, LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind,
+    UintTy, VariantDef,
 };
 use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
@@ -126,7 +126,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         iter::once(LOCAL_CRATE)
-            .chain(tables.tcx.crates(()).iter().copied())
+            .chain(tables.tcx.used_crates(()).iter().copied())
             .flat_map(|cnum| tcx.trait_impls_in_crate(cnum).iter())
             .map(|impl_def_id| tables.impl_def(*impl_def_id))
             .collect()
@@ -201,14 +201,19 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn external_crates(&self) -> Vec<stable_mir::Crate> {
         let tables = self.0.borrow();
-        tables.tcx.crates(()).iter().map(|crate_num| smir_crate(tables.tcx, *crate_num)).collect()
+        tables
+            .tcx
+            .used_crates(())
+            .iter()
+            .map(|crate_num| smir_crate(tables.tcx, *crate_num))
+            .collect()
     }
 
     fn find_crates(&self, name: &str) -> Vec<stable_mir::Crate> {
         let tables = self.0.borrow();
         let crates: Vec<stable_mir::Crate> = [LOCAL_CRATE]
             .iter()
-            .chain(tables.tcx.crates(()).iter())
+            .chain(tables.tcx.used_crates(()).iter())
             .filter_map(|crate_num| {
                 let crate_name = tables.tcx.crate_name(*crate_num).to_string();
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
@@ -305,6 +310,28 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let sig =
             tables.tcx.fn_sig(def_id).instantiate(tables.tcx, args.internal(&mut *tables, tcx));
         sig.stable(&mut *tables)
+    }
+
+    fn intrinsic(&self, def: DefId) -> Option<IntrinsicDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let def_id = def.internal(&mut *tables, tcx);
+        let intrinsic = tcx.intrinsic_raw(def_id);
+        intrinsic.map(|_| IntrinsicDef(def))
+    }
+
+    fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
+        tcx.intrinsic(def_id).unwrap().name.to_string()
+    }
+
+    fn intrinsic_must_be_overridden(&self, def: IntrinsicDef) -> bool {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
+        tcx.intrinsic_raw(def_id).unwrap().must_be_overridden
     }
 
     fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
@@ -643,16 +670,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
                 tables.tcx.def_path_str_with_args(instance.def_id(), instance.args)
             )
         }
-    }
-
-    /// Retrieve the plain intrinsic name of an instance.
-    ///
-    /// This assumes that the instance is an intrinsic.
-    fn intrinsic_name(&self, def: InstanceDef) -> Symbol {
-        let tables = self.0.borrow_mut();
-        let instance = tables.instances[def];
-        let intrinsic = tables.tcx.intrinsic(instance.def_id()).unwrap();
-        intrinsic.name.to_string()
     }
 
     fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {

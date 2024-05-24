@@ -39,6 +39,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::{env, fs, iter};
+use tracing::{info, instrument};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match &sess.io.input {
@@ -458,7 +459,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                 }
             }
 
-            for &cnum in tcx.crates(()) {
+            for &cnum in tcx.crates_including_speculative(()) {
                 let source = tcx.used_crate_source(cnum);
                 if let Some((path, _)) = &source.dylib {
                     files.push(escape_dep_filename(&path.display().to_string()));

@@ -39,6 +39,7 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
+use tracing::debug;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]

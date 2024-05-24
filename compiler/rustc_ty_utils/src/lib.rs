@@ -16,9 +16,6 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 
-#[macro_use]
-extern crate tracing;
-
 use rustc_middle::query::Providers;
 
 mod abi;

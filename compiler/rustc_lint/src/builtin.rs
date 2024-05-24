@@ -70,6 +70,7 @@ use rustc_target::abi::Abi;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
+use tracing::debug;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -674,11 +675,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                 return;
             }
         }
-        let param_env = ty::ParamEnv::empty();
-        if ty.is_copy_modulo_regions(cx.tcx, param_env) {
+        if ty.is_copy_modulo_regions(cx.tcx, cx.param_env) {
             return;
         }
-        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, param_env) {
+        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, cx.param_env) {
             return;
         }
         if def.is_variant_list_non_exhaustive()
@@ -694,7 +694,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                 .tcx
                 .infer_ctxt()
                 .build()
-                .type_implements_trait(iter_trait, [ty], param_env)
+                .type_implements_trait(iter_trait, [ty], cx.param_env)
                 .must_apply_modulo_regions()
         {
             return;
@@ -711,7 +711,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
 
         if type_allowed_to_implement_copy(
             cx.tcx,
-            param_env,
+            cx.param_env,
             ty,
             traits::ObligationCause::misc(item.span, item.owner_id.def_id),
         )

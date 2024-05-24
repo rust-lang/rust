@@ -17,6 +17,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
+use tracing::instrument;
 
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,

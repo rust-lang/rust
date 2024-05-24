@@ -52,6 +52,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
+use tracing::{debug, info, warn};
 
 pub fn ensure_removed(dcx: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -786,12 +787,33 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && out.contains("-no-pie")
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie")
+            && cmd.get_args().iter().any(|e| e == "-no-pie")
         {
             info!("linker output: {:?}", out);
             warn!("Linker does not support -no-pie command line option. Retrying without.");
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-no-pie" {
+                if arg != "-no-pie" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+
+        // Check if linking failed with an error message that indicates the driver didn't recognize
+        // the `-fuse-ld=lld` option. If so, re-perform the link step without it. This avoids having
+        // to spawn multiple instances on the happy path to do version checking, and ensures things
+        // keep working on the tier 1 baseline of GLIBC 2.17+. That is generally understood as GCCs
+        // circa RHEL/CentOS 7, 4.5 or so, whereas lld support was added in GCC 9.
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, Lld::Yes))
+            && unknown_arg_regex.is_match(&out)
+            && out.contains("-fuse-ld=lld")
+            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-fuse-ld=lld")
+        {
+            info!("linker output: {:?}", out);
+            warn!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() != "-fuse-ld=lld" {
                     cmd.arg(arg);
                 }
             }
@@ -804,7 +826,7 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
+            && cmd.get_args().iter().any(|e| e == "-static-pie")
         {
             info!("linker output: {:?}", out);
             warn!(
@@ -843,7 +865,7 @@ fn link_natively(
             assert!(pre_objects_static.is_empty() || !pre_objects_static_pie.is_empty());
             assert!(post_objects_static.is_empty() || !post_objects_static_pie.is_empty());
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() == "-static-pie" {
+                if arg == "-static-pie" {
                     // Replace the output kind.
                     cmd.arg("-static");
                 } else if pre_objects_static_pie.contains(&arg) {
@@ -3119,12 +3141,20 @@ fn add_lld_args(
 
     let self_contained_linker = self_contained_cli || self_contained_target;
     if self_contained_linker && !sess.opts.cg.link_self_contained.is_linker_disabled() {
+        let mut linker_path_exists = false;
         for path in sess.get_tools_search_paths(false) {
+            let linker_path = path.join("gcc-ld");
+            linker_path_exists |= linker_path.exists();
             cmd.arg({
                 let mut arg = OsString::from("-B");
-                arg.push(path.join("gcc-ld"));
+                arg.push(linker_path);
                 arg
             });
+        }
+        if !linker_path_exists {
+            // As a sanity check, we emit an error if none of these paths exist: we want
+            // self-contained linking and have no linker.
+            sess.dcx().emit_fatal(errors::SelfContainedLinkerMissing);
         }
     }
 

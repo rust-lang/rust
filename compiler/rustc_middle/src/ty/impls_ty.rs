@@ -12,6 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
 use std::ptr;
+use tracing::trace;
 
 impl<'a, 'tcx, H, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
 where

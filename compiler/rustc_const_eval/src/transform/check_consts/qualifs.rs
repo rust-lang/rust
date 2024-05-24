@@ -13,6 +13,7 @@ use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
 };
+use tracing::{instrument, trace};
 
 use super::ConstCx;
 

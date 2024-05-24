@@ -99,10 +99,10 @@ use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
-
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
+use tracing::{debug, instrument};
 
 mod rwu_table;
 

@@ -362,8 +362,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "frem_algebraic" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let res = this.wrapping_binary_op(op, &a, &b)?;
-                // `wrapping_binary_op` already called `generate_nan` if necessary.
+                let res = this.binary_op(op, &a, &b)?;
+                // `binary_op` already called `generate_nan` if necessary.
                 this.write_immediate(*res, dest)?;
             }
 
@@ -408,12 +408,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ),
                     _ => {}
                 }
-                let res = this.wrapping_binary_op(op, &a, &b)?;
+                let res = this.binary_op(op, &a, &b)?;
                 if !float_finite(&res)? {
                     throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
                 }
                 // This cannot be a NaN so we also don't have to apply any non-determinism.
-                // (Also, `wrapping_binary_op` already called `generate_nan` if needed.)
+                // (Also, `binary_op` already called `generate_nan` if needed.)
                 this.write_immediate(*res, dest)?;
             }
 

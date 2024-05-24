@@ -20,6 +20,8 @@ use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 use std::mem;
 use std::ops::Deref;
 
+use tracing::{debug, instrument, trace};
+
 use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;

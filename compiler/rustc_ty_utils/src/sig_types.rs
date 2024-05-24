@@ -8,6 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
+use tracing::{instrument, trace};
 
 pub trait SpannedTypeVisitor<'tcx> {
     type Result: VisitorResult = ();

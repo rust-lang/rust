@@ -6,18 +6,19 @@ LL |        is_unwindsafe(async {
    |  |_____|
    | ||
 LL | ||
-LL | ||
 LL | ||         use std::ptr::null;
+LL | ||         use std::task::{Context, RawWaker, RawWakerVTable, Waker};
 ...  ||
 LL | ||         drop(cx_ref);
 LL | ||     });
    | ||_____-^ `&mut Context<'_>` may not be safely transferred across an unwind boundary
    |  |_____|
-   |        within this `{async block@$DIR/async-is-unwindsafe.rs:12:19: 30:6}`
+   |        within this `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}`
    |
-   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 30:6}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`, which is required by `{async block@$DIR/async-is-unwindsafe.rs:12:19: 30:6}: UnwindSafe`
+   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`, which is required by `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}: UnwindSafe`
+   = note: `UnwindSafe` is implemented for `&Context<'_>`, but not for `&mut Context<'_>`
 note: future does not implement `UnwindSafe` as this value is used across an await
-  --> $DIR/async-is-unwindsafe.rs:26:18
+  --> $DIR/async-is-unwindsafe.rs:25:18
    |
 LL |         let cx_ref = &mut cx;
    |             ------ has type `&mut Context<'_>` which does not implement `UnwindSafe`
@@ -30,38 +31,6 @@ note: required by a bound in `is_unwindsafe`
 LL | fn is_unwindsafe(_: impl std::panic::UnwindSafe) {}
    |                          ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_unwindsafe`
 
-error[E0277]: the type `&mut (dyn Any + 'static)` may not be safely transferred across an unwind boundary
-  --> $DIR/async-is-unwindsafe.rs:12:5
-   |
-LL |        is_unwindsafe(async {
-   |   _____^_____________-
-   |  |_____|
-   | ||
-LL | ||
-LL | ||
-LL | ||         use std::ptr::null;
-...  ||
-LL | ||         drop(cx_ref);
-LL | ||     });
-   | ||_____-^ `&mut (dyn Any + 'static)` may not be safely transferred across an unwind boundary
-   |  |_____|
-   |        within this `{async block@$DIR/async-is-unwindsafe.rs:12:19: 30:6}`
-   |
-   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 30:6}`, the trait `UnwindSafe` is not implemented for `&mut (dyn Any + 'static)`, which is required by `{async block@$DIR/async-is-unwindsafe.rs:12:19: 30:6}: UnwindSafe`
-note: future does not implement `UnwindSafe` as this value is used across an await
-  --> $DIR/async-is-unwindsafe.rs:26:18
-   |
-LL |         let mut cx = Context::from_waker(&waker);
-   |             ------ has type `Context<'_>` which does not implement `UnwindSafe`
-...
-LL |         async {}.await; // this needs an inner await point
-   |                  ^^^^^ await occurs here, with `mut cx` maybe used later
-note: required by a bound in `is_unwindsafe`
-  --> $DIR/async-is-unwindsafe.rs:3:26
-   |
-LL | fn is_unwindsafe(_: impl std::panic::UnwindSafe) {}
-   |                          ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_unwindsafe`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

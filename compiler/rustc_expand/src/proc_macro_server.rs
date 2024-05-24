@@ -309,10 +309,10 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
         use rustc_ast::token::*;
 
         // The code below is conservative, using `token_alone`/`Spacing::Alone`
-        // in most places. When the resulting code is pretty-printed by
-        // `print_tts` it ends up with spaces between most tokens, which is
-        // safe but ugly. It's hard in general to do better when working at the
-        // token level.
+        // in most places. It's hard in general to do better when working at
+        // the token level. When the resulting code is pretty-printed by
+        // `print_tts` the `space_between` function helps avoid a lot of
+        // unnecessary whitespace, so the results aren't too bad.
         let (tree, rustc) = self;
         match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => {

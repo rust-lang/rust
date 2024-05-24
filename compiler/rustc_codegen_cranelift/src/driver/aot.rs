@@ -200,7 +200,7 @@ fn produce_final_output_artifacts(
     // to get rid of it.
     for output_type in crate_output.outputs.keys() {
         match *output_type {
-            OutputType::Bitcode => {
+            OutputType::Bitcode | OutputType::ThinLinkBitcode => {
                 // Cranelift doesn't have bitcode
                 // user_wants_bitcode = true;
                 // // Copy to .bc, but always keep the .0.bc. There is a later

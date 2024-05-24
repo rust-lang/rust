@@ -14,6 +14,7 @@ use rustc_macros::{
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Symbol;
+use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
 use std::fmt;

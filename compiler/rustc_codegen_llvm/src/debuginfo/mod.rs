@@ -42,6 +42,7 @@ use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::iter;
 use std::ops::Range;
+use tracing::debug;
 
 mod create_scope_map;
 pub mod gdb;

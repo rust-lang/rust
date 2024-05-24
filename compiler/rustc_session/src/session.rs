@@ -449,15 +449,24 @@ impl Session {
         )
     }
 
-    /// Returns a list of directories where target-specific tool binaries are located.
+    /// Returns a list of directories where target-specific tool binaries are located. Some fallback
+    /// directories are also returned, for example if `--sysroot` is used but tools are missing
+    /// (#125246): we also add the bin directories to the sysroot where rustc is located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, config::host_triple());
-        let p = PathBuf::from_iter([
-            Path::new(&self.sysroot),
-            Path::new(&rustlib_path),
-            Path::new("bin"),
-        ]);
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
+        let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_triple());
+        let fallback_sysroot_paths = filesearch::sysroot_candidates()
+            .into_iter()
+            .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_triple()));
+        let search_paths = std::iter::once(bin_path).chain(fallback_sysroot_paths);
+
+        if self_contained {
+            // The self-contained tools are expected to be e.g. in `bin/self-contained` in the
+            // sysroot's `rustlib` path, so we add such a subfolder to the bin path, and the
+            // fallback paths.
+            search_paths.flat_map(|path| [path.clone(), path.join("self-contained")]).collect()
+        } else {
+            search_paths.collect()
+        }
     }
 
     pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {

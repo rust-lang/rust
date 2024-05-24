@@ -39,10 +39,10 @@ use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi;
-
 use std::cell::Cell;
 use std::iter;
 use std::slice;
+use tracing::debug;
 
 mod diagnostics;
 

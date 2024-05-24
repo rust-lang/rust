@@ -24,6 +24,7 @@ use rustc_target::abi::{Float, Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
 use std::{fmt, iter};
+use tracing::{debug, instrument, trace};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {

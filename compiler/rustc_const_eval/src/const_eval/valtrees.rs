@@ -6,6 +6,7 @@ use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, VariantIdx};
+use tracing::{debug, instrument, trace};
 
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeEvalContext;

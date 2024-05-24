@@ -9,6 +9,7 @@ use rustc_errors::{elided_lifetime_in_path_suggestion, DiagArgValue, MultiSpan};
 use rustc_middle::middle::stability;
 use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_span::BytePos;
+use tracing::debug;
 
 use crate::{lints, EarlyContext, LintContext as _};
 

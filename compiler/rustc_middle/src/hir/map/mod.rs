@@ -1016,7 +1016,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
     let krate = tcx.hir_crate(());
     let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
 
-    let upstream_crates = upstream_crates(tcx);
+    let upstream_crates = upstream_crates_for_hashing(tcx);
 
     let resolutions = tcx.resolutions(());
 
@@ -1085,9 +1085,9 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
     Svh::new(crate_hash)
 }
 
-fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
+fn upstream_crates_for_hashing(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
     let mut upstream_crates: Vec<_> = tcx
-        .crates(())
+        .crates_including_speculative(())
         .iter()
         .map(|&cnum| {
             let stable_crate_id = tcx.stable_crate_id(cnum);

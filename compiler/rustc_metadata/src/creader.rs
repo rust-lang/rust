@@ -27,6 +27,7 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, Target, TargetTriple};
+use tracing::{debug, info, trace};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::error::Error;

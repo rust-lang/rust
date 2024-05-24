@@ -24,6 +24,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
+use tracing::instrument;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);

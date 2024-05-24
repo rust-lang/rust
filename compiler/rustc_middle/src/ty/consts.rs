@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
+use tracing::{debug, instrument};
 
 mod int;
 mod kind;

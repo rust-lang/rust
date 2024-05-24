@@ -3,12 +3,12 @@
 
 use std::cmp;
 
+use super::{alloc_range, AllocError, AllocRange, AllocResult, CtfeProvenance, Provenance};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_macros::HashStable;
-use rustc_target::abi::{HasDataLayout, Size};
-
-use super::{alloc_range, AllocError, AllocRange, AllocResult, CtfeProvenance, Provenance};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_target::abi::{HasDataLayout, Size};
+use tracing::trace;
 
 /// Stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

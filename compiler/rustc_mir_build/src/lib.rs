@@ -10,9 +10,6 @@
 #![feature(let_chains)]
 #![feature(try_blocks)]
 
-#[macro_use]
-extern crate tracing;
-
 mod build;
 mod check_unsafety;
 mod errors;

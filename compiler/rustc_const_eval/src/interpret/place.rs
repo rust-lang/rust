@@ -5,6 +5,7 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
+use tracing::{instrument, trace};
 
 use rustc_ast::Mutability;
 use rustc_middle::mir;

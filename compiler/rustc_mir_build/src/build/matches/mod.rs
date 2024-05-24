@@ -20,6 +20,8 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
+use tracing::{debug, instrument};
+
 // helper functions, broken out by category:
 mod simplify;
 mod test;
@@ -925,7 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in prefix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
-                for subpattern in slice {
+                if let Some(subpattern) = slice {
                     self.visit_primary_bindings(
                         subpattern,
                         pattern_user_ty.clone().subslice(from, to),

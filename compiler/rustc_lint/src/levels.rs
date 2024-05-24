@@ -41,6 +41,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use crate::errors::{
     MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,

@@ -1,6 +1,7 @@
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, CanonicalUserType, TyCtxt, UserType};
+use tracing::debug;
 
 pub(crate) trait UserAnnotatedTyHelpers<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;

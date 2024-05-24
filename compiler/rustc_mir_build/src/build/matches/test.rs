@@ -18,6 +18,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use std::cmp::Ordering;
 

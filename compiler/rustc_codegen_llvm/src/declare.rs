@@ -24,6 +24,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
+use tracing::debug;
 
 /// Declare a function.
 ///
