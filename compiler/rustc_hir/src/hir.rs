@@ -876,6 +876,9 @@ pub struct OwnerNodes<'tcx> {
     pub nodes: IndexVec<ItemLocalId, ParentedNode<'tcx>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
+    /// Whether the body contains inline constants that are created for the query system during typeck
+    /// of the body.
+    pub has_inline_consts: bool,
 }
 
 impl<'tcx> OwnerNodes<'tcx> {

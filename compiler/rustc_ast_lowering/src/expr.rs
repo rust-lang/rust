@@ -74,7 +74,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_expr(c)),
+                ExprKind::ConstBlock(c) => {
+                    self.has_inline_consts = true;
+                    hir::ExprKind::ConstBlock(self.lower_expr(c))
+                }
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
                     let count = self.lower_array_length(count);
