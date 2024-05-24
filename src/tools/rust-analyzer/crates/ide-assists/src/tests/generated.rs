@@ -350,11 +350,11 @@ fn doctest_comment_to_doc() {
     check_doc_test(
         "comment_to_doc",
         r#####"
-// Wow what $0a nice function
+// Wow what $0a nice module
 // I sure hope this shows up when I hover over it
 "#####,
         r#####"
-//! Wow what a nice function
+//! Wow what a nice module
 //! I sure hope this shows up when I hover over it
 "#####,
     )

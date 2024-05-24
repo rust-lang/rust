@@ -11,12 +11,12 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Converts comments to documentation.
 //
 // ```
-// // Wow what $0a nice function
+// // Wow what $0a nice module
 // // I sure hope this shows up when I hover over it
 // ```
 // ->
 // ```
-// //! Wow what a nice function
+// //! Wow what a nice module
 // //! I sure hope this shows up when I hover over it
 // ```
 pub(crate) fn convert_comment_from_or_to_doc(
@@ -43,7 +43,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
 
     acc.add(
         AssistId("doc_to_comment", AssistKind::RefactorRewrite),
-        "Replace a comment with doc comment",
+        "Replace comment with doc comment",
         target,
         |edit| {
             // We need to either replace the first occurrence of /* with /***, or we need to replace
@@ -52,11 +52,12 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
                 ast::CommentShape::Line => {
                     let indentation = IndentLevel::from_token(comment.syntax());
                     let line_start = comment.prefix();
+                    let prefix = format!("{indentation}//");
                     relevant_line_comments(&comment)
                         .iter()
                         .map(|comment| comment.text())
                         .flat_map(|text| text.lines())
-                        .map(|line| indentation.to_string() + &line.replacen(line_start, "//", 1))
+                        .map(|line| line.replacen(line_start, &prefix, 1))
                         .join("\n")
                 }
                 ast::CommentShape::Block => {
@@ -89,23 +90,23 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 
     acc.add(
         AssistId("comment_to_doc", AssistKind::RefactorRewrite),
-        "Replace a doc comment with comment",
+        "Replace doc comment with comment",
         target,
         |edit| {
             // We need to either replace the first occurrence of /* with /***, or we need to replace
             // the occurrences // at the start of each line with ///
             let output = match comment.kind().shape {
                 ast::CommentShape::Line => {
-                    let line_start = match style {
-                        CommentPlacement::Inner => "//!",
-                        CommentPlacement::Outer => "///",
-                    };
                     let indentation = IndentLevel::from_token(comment.syntax());
+                    let line_start = match style {
+                        CommentPlacement::Inner => format!("{indentation}//!"),
+                        CommentPlacement::Outer => format!("{indentation}///"),
+                    };
                     relevant_line_comments(&comment)
                         .iter()
                         .map(|comment| comment.text())
                         .flat_map(|text| text.lines())
-                        .map(|line| indentation.to_string() + &line.replacen("//", line_start, 1))
+                        .map(|line| line.replacen("//", &line_start, 1))
                         .join("\n")
                 }
                 ast::CommentShape::Block => {
@@ -139,21 +140,21 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 /// Not all comments are valid candidates for conversion into doc comments. For example, the
 /// comments in the code:
 /// ```rust
-/// // foos the bar
-/// fn foo_bar(foo: Foo) -> Bar {
-///   // Bar the foo
-///   foo.into_bar()
+/// // Brilliant module right here
+///
+/// // Really good right
+/// fn good_function(foo: Foo) -> Bar {
+///     foo.into_bar()
 /// }
 ///
-/// trait A {
-///     // The A trait
-/// }
+/// // So nice
+/// mod nice_module {}
 /// ```
 /// can be converted to doc comments. However, the comments in this example:
 /// ```rust
 /// fn foo_bar(foo: Foo /* not bar yet */) -> Bar {
-///   foo.into_bar()
-///   // Nicely done
+///     foo.into_bar()
+///     // Nicely done
 /// }
 /// // end of function
 ///
@@ -161,7 +162,23 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 ///     // The S struct
 /// }
 /// ```
-/// are not allowed to become doc comments.
+/// are not allowed to become doc comments. Moreover, some comments _are_ allowed, but aren't common
+/// style in Rust. For example, the following comments are allowed to be doc comments, but it is not
+/// common style for them to be:
+/// ```rust
+/// fn foo_bar(foo: Foo) -> Bar {
+///     // this could be an inner comment with //!
+///     foo.into_bar()
+/// }
+///
+/// trait T {
+///     // The T struct could also be documented from within
+/// }
+///
+/// mod mymod {
+///     // Modules only normally get inner documentation when they are defined as a separate file.
+/// }
+/// ```
 fn can_be_doc_comment(comment: &ast::Comment) -> Option<CommentPlacement> {
     use syntax::SyntaxKind::*;
 
@@ -175,38 +192,12 @@ fn can_be_doc_comment(comment: &ast::Comment) -> Option<CommentPlacement> {
         None => return Some(CommentPlacement::Inner),
     }
 
-    // check if comment is followed by: `struct`, `trait`, `mod`, `fn`, `type`, `extern crate`, `use`, `const`
+    // check if comment is followed by: `struct`, `trait`, `mod`, `fn`, `type`, `extern crate`,
+    // `use` or `const`.
     let parent = comment.syntax().parent();
     let parent_kind = parent.as_ref().map(|parent| parent.kind());
-    if matches!(
-        parent_kind,
-        Some(STRUCT | TRAIT | MODULE | FN | TYPE_KW | EXTERN_CRATE | USE | CONST)
-    ) {
-        return Some(CommentPlacement::Outer);
-    }
-
-    // check if comment is preceded by: `fn f() {`, `trait T {`, `mod M {`:
-    let third_parent_kind = comment
-        .syntax()
-        .parent()
-        .and_then(|p| p.parent())
-        .and_then(|p| p.parent())
-        .map(|parent| parent.kind());
-    let is_first_item_in_parent = comment
-        .syntax()
-        .siblings_with_tokens(Direction::Prev)
-        .filter_map(|not| not.into_node())
-        .next()
-        .is_none();
-
-    if matches!(parent_kind, Some(STMT_LIST))
-        && is_first_item_in_parent
-        && matches!(third_parent_kind, Some(FN | TRAIT | MODULE))
-    {
-        return Some(CommentPlacement::Inner);
-    }
-
-    None
+    matches!(parent_kind, Some(STRUCT | TRAIT | MODULE | FN | TYPE_KW | EXTERN_CRATE | USE | CONST))
+        .then_some(CommentPlacement::Outer)
 }
 
 /// The line -> block assist can  be invoked from anywhere within a sequence of line comments.
@@ -467,17 +458,11 @@ mod tests {
 
     #[test]
     fn single_inner_line_comment_to_doc() {
-        check_assist(
+        check_assist_not_applicable(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
+            mod mymod {
                 // unseen$0 docs
-                foo();
-            }
-            "#,
-            r#"
-            fn main() {
-                //! unseen docs
                 foo();
             }
             "#,
@@ -486,20 +471,13 @@ mod tests {
 
     #[test]
     fn multi_inner_line_comment_to_doc() {
-        check_assist(
+        check_assist_not_applicable(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
+            mod mymod {
                 // unseen$0 docs
                 // make me seen!
-                foo();
-            }
-            "#,
-            r#"
-            fn main() {
-                //! unseen docs
-                //! make me seen!
-                foo();
+                type Int = i32;
             }
             "#,
         );
@@ -510,13 +488,13 @@ mod tests {
         check_assist(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
+            mod mymod {
                 //! visible$0 docs
                 foo();
             }
             "#,
             r#"
-            fn main() {
+            mod mymod {
                 // visible docs
                 foo();
             }
@@ -529,58 +507,33 @@ mod tests {
         check_assist(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
+            mod mymod {
                 //! visible$0 docs
                 //! Hide me!
                 foo();
             }
             "#,
             r#"
-            fn main() {
+            mod mymod {
                 // visible docs
                 // Hide me!
                 foo();
             }
             "#,
         );
-    }
-
-    #[test]
-    fn single_inner_line_block_comment_to_doc() {
         check_assist(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
-                /* unseen$0 docs */
+            mod mymod {
+                /// visible$0 docs
+                /// Hide me!
                 foo();
             }
             "#,
             r#"
-            fn main() {
-                /*! unseen docs */
-                foo();
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn multi_inner_line_block_comment_to_doc() {
-        check_assist(
-            convert_comment_from_or_to_doc,
-            r#"
-            fn main() {
-                /* unseen$0 docs
-                *  make me seen!
-                */
-                foo();
-            }
-            "#,
-            r#"
-            fn main() {
-                /*! unseen docs
-                *   make me seen!
-                */
+            mod mymod {
+                // visible docs
+                // Hide me!
                 foo();
             }
             "#,
@@ -592,15 +545,15 @@ mod tests {
         check_assist(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
+            mod mymod {
                 /*! visible$0 docs */
-                foo();
+                type Int = i32;
             }
             "#,
             r#"
-            fn main() {
+            mod mymod {
                 /* visible docs */
-                foo();
+                type Int = i32;
             }
             "#,
         );
@@ -611,21 +564,21 @@ mod tests {
         check_assist(
             convert_comment_from_or_to_doc,
             r#"
-            fn main() {
+            mod mymod {
                 /*! visible$0 docs
                 *   Hide me!
                 */
-                foo();
+                type Int = i32;
             }
             "#,
             r#"
-            fn main() {
+            mod mymod {
                 /* visible docs
                 *  Hide me!
                 */
-                foo();
+                type Int = i32;
             }
-        "#,
+            "#,
         );
     }
 
@@ -639,6 +592,18 @@ mod tests {
                 // $0well that settles main
             }
             // $1 nicely done
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_inner_comments() {
+        check_assist_not_applicable(
+            convert_comment_from_or_to_doc,
+            r#"
+            mod mymod {
+                // aaa$0aa
+            }
             "#,
         );
     }
