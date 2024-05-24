@@ -43,7 +43,7 @@ fn get_number() -> i32 {
     0
 }
 
-fn get_usize() -> usize {
+const fn get_usize() -> usize {
     0
 }
 fn get_struct() -> Struct {
@@ -117,4 +117,15 @@ fn main() {
     'label: {
         break 'label
     };
+    let () = const {
+        [42, 55][get_usize()];
+    };
+}
+
+const _: () = {
+    [42, 55][get_usize()];
+};
+
+const fn foo() {
+    [42, 55][get_usize()];
 }

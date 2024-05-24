@@ -43,7 +43,7 @@ fn get_number() -> i32 {
     0
 }
 
-fn get_usize() -> usize {
+const fn get_usize() -> usize {
     0
 }
 fn get_struct() -> Struct {
@@ -113,4 +113,15 @@ fn main() {
     'label: {
         break 'label
     };
+    let () = const {
+        assert!([42, 55].len() > get_usize());
+    };
+}
+
+const _: () = {
+    assert!([42, 55].len() > get_usize());
+};
+
+const fn foo() {
+    assert!([42, 55].len() > get_usize());
 }
