@@ -571,8 +571,7 @@ fn infer_placeholder_type<'a>(
     // then the user may have written e.g. `const A = 42;`.
     // In this case, the parser has stashed a diagnostic for
     // us to improve in typeck so we do that now.
-    let guar = tcx
-        .dcx()
+    tcx.dcx()
         .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
@@ -619,7 +618,16 @@ fn infer_placeholder_type<'a>(
             }
             diag.emit()
         });
-    Ty::new_error(tcx, guar)
+
+    // Typeck returns regions as erased. We can't deal with erased regions here though, so we
+    // turn them into `&'static`, which is *generally* correct for statics and consts.
+    // Assoc consts can reference generic lifetimes from the parent generics, but treating them
+    // as static is unlikely to cause issues.
+    let ty = tcx.fold_regions(ty, |region, _| match region.kind() {
+        ty::ReErased => tcx.lifetimes.re_static,
+        _ => region,
+    });
+    ty
 }
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
