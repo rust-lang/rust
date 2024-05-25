@@ -20,7 +20,7 @@ use rustc_middle::mir::interpret::{
     ValidationErrorInfo, ValidationErrorKind, ValidationErrorKind::*,
 };
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
@@ -724,20 +724,21 @@ fn mutability<'mir, 'tcx: 'mir>(
                 // so just use the declared mutability.
                 mutability
             } else {
+                let ty = ecx
+                    .tcx
+                    .type_of(did)
+                    .no_bound_vars()
+                    .expect("statics should not have generic parameters");
                 let mutability = match mutability {
-                    Mutability::Not
-                        if !ecx
-                            .tcx
-                            .type_of(did)
-                            .no_bound_vars()
-                            .expect("statics should not have generic parameters")
-                            .is_freeze(*ecx.tcx, ty::ParamEnv::reveal_all()) =>
-                    {
+                    Mutability::Not if !ty.is_freeze(*ecx.tcx, ty::ParamEnv::reveal_all()) => {
                         Mutability::Mut
                     }
                     _ => mutability,
                 };
-                if let Some((_, alloc)) = ecx.memory.alloc_map.get(alloc_id) {
+                if let Some((_, alloc)) = ecx.memory.alloc_map.get(alloc_id)
+                    // For type errors, we do not know whether they are supposed to be mutable or not.
+                    && !ty.references_error()
+                {
                     assert_eq!(alloc.mutability, mutability);
                 }
                 mutability
