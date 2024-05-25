@@ -6,8 +6,12 @@ LL |     drop(origin);
    |          |
    |          argument has type `<T as UncheckedCopy>::Output`
    |
-   = note: use `let _ = ...` to ignore the expression or result
    = note: `#[warn(dropping_copy_types)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(origin);
+LL +     let _ = origin;
+   |
 
 warning: 1 warning emitted
 
