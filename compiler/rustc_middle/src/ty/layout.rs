@@ -853,23 +853,10 @@ where
                         // fall back to structurally deducing metadata.
                         && !pointee.references_error()
                     {
-                        let metadata = tcx.normalize_erasing_regions(
+                        tcx.normalize_erasing_regions(
                             cx.param_env(),
                             Ty::new_projection(tcx, metadata_def_id, [pointee]),
-                        );
-
-                        // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
-                        // offers better information than `std::ptr::metadata::VTable`,
-                        // and we rely on this layout information to trigger a panic in
-                        // `std::mem::uninitialized::<&dyn Trait>()`, for example.
-                        if let ty::Adt(def, args) = metadata.kind()
-                            && Some(def.did()) == tcx.lang_items().dyn_metadata()
-                            && args.type_at(0).is_trait()
-                        {
-                            mk_dyn_vtable()
-                        } else {
-                            metadata
-                        }
+                        )
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,

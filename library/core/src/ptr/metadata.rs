@@ -177,17 +177,18 @@ impl<T: ?Sized> Clone for PtrComponents<T> {
 /// duplicated in multiple codegen units), and pointers to vtables of *different* types/traits can
 /// compare equal (since identical vtables can be deduplicated within a codegen unit).
 #[lang = "dyn_metadata"]
+// codegen assumes it can treat this as a single pointer
+#[repr(transparent)]
 pub struct DynMetadata<Dyn: ?Sized> {
     vtable_ptr: &'static VTable,
     phantom: crate::marker::PhantomData<Dyn>,
 }
 
-extern "C" {
-    /// Opaque type for accessing vtables.
-    ///
-    /// Private implementation detail of `DynMetadata::size_of` etc.
-    /// There is conceptually not actually any Abstract Machine memory behind this pointer.
-    type VTable;
+/// This is not really what's behind a vtable, but the codegen tests want the
+/// pointers to get `dereferencable` metadata, for example, and there's currently
+/// no way to get that with `extern type`, which would otherwise be nicer.
+struct VTable {
+    _stub: usize,
 }
 
 impl<Dyn: ?Sized> DynMetadata<Dyn> {
