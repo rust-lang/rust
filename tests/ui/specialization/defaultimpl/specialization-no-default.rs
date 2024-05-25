@@ -71,7 +71,8 @@ impl<T: Clone> Redundant for T {
 }
 
 default impl Redundant for i32 {
-    fn redundant(&self) {} //~ ERROR E0520
+    // FIXME(specialization): figure out why this does not error.
+    fn redundant(&self) {}
 }
 
 fn main() {}

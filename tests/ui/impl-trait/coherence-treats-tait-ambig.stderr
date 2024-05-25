@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `Into<T>` for type `Foo`
+error[E0119]: conflicting implementations of trait `Into<_>` for type `Foo`
   --> $DIR/coherence-treats-tait-ambig.rs:7:1
    |
 LL | impl Into<T> for Foo {

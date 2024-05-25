@@ -22,6 +22,7 @@ mod v20 {
     impl v17<512, v0> {
         pub const fn v21() -> v18 {}
         //~^ ERROR cannot find type `v18` in this scope
+        //~| ERROR duplicate definitions with name `v21`
     }
 
     impl<const v10: usize> v17<v10, v2> {

@@ -1,56 +1,76 @@
 error[E0119]: conflicting implementations of trait `Foo<_>` for type `[isize; 0]`
-  --> $DIR/impl-unused-tps.rs:27:1
+  --> $DIR/impl-unused-tps.rs:28:1
    |
-LL | impl<T> Foo<T> for [isize;0] {
-   | ---------------------------- first implementation here
+LL | impl<T> Foo<T> for [isize; 0] {
+   | ----------------------------- first implementation here
 ...
-LL | impl<T,U> Foo<T> for U {
-   | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[isize; 0]`
+LL | impl<T, U> Foo<T> for U {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[isize; 0]`
 
-error[E0275]: overflow evaluating the requirement `([isize; 0], _): Sized`
+error[E0119]: conflicting implementations of trait `Bar`
+  --> $DIR/impl-unused-tps.rs:40:1
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`impl_unused_tps`)
-note: required for `([isize; 0], _)` to implement `Bar`
-  --> $DIR/impl-unused-tps.rs:31:11
+LL |   impl<T, U> Bar for T {
+   |   -------------------- first implementation here
+...
+LL | / impl<T, U> Bar for T
+LL | | where
+LL | |     T: Bar<Out = U>,
+   | |____________________^ conflicting implementation
+
+error[E0119]: conflicting implementations of trait `Foo<[isize; 0]>` for type `[isize; 0]`
+  --> $DIR/impl-unused-tps.rs:49:1
    |
-LL | impl<T,U> Bar for T {
-   |      -    ^^^     ^
-   |      |
-   |      unsatisfied trait bound introduced here
-   = note: 126 redundant requirements hidden
-   = note: required for `([isize; 0], _)` to implement `Bar`
+LL |   impl<T> Foo<T> for [isize; 0] {
+   |   ----------------------------- first implementation here
+...
+LL | / impl<T, U, V> Foo<T> for T
+LL | | where
+LL | |     (T, U): Bar<Out = V>,
+   | |_________________________^ conflicting implementation for `[isize; 0]`
+
+error[E0119]: conflicting implementations of trait `Foo<([isize; 0], _)>` for type `[isize; 0]`
+  --> $DIR/impl-unused-tps.rs:61:1
+   |
+LL |   impl<T> Foo<T> for [isize; 0] {
+   |   ----------------------------- first implementation here
+...
+LL | / impl<T, U, V> Foo<(T, U)> for T
+LL | | where
+LL | |     (T, U): Bar<Out = V>,
+   | |_________________________^ conflicting implementation for `[isize; 0]`
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:15:8
+  --> $DIR/impl-unused-tps.rs:13:9
    |
-LL | impl<T,U> Foo<T> for [isize;1] {
-   |        ^ unconstrained type parameter
+LL | impl<T, U> Foo<T> for [isize; 1] {
+   |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:31:8
+  --> $DIR/impl-unused-tps.rs:32:9
    |
-LL | impl<T,U> Bar for T {
-   |        ^ unconstrained type parameter
+LL | impl<T, U> Bar for T {
+   |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:39:8
+  --> $DIR/impl-unused-tps.rs:40:9
    |
-LL | impl<T,U> Bar for T
-   |        ^ unconstrained type parameter
+LL | impl<T, U> Bar for T
+   |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:47:8
+  --> $DIR/impl-unused-tps.rs:49:9
    |
-LL | impl<T,U,V> Foo<T> for T
-   |        ^ unconstrained type parameter
+LL | impl<T, U, V> Foo<T> for T
+   |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:47:10
+  --> $DIR/impl-unused-tps.rs:49:12
    |
-LL | impl<T,U,V> Foo<T> for T
-   |          ^ unconstrained type parameter
+LL | impl<T, U, V> Foo<T> for T
+   |            ^ unconstrained type parameter
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0119, E0207, E0275.
+Some errors have detailed explanations: E0119, E0207.
 For more information about an error, try `rustc --explain E0119`.

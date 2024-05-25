@@ -1,12 +1,10 @@
-//@ revisions: current next
-//@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] compile-flags: -Znext-solver
-//@[current] check-pass
+// FIXME(specialization): default associated types in the new solver
+// cause an ambiguous candidate even if there is a leaf impl which
+// always applies.
 
 // Test that impls on projected self types can resolve overlap, even when the
 // projections involve specialization, so long as the associated type is
 // provided by the most specialized impl.
-
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Assoc {
@@ -15,19 +13,16 @@ trait Assoc {
 
 impl<T> Assoc for T {
     default type Output = bool;
-    //[next]~^ ERROR type annotations needed
 }
 
 impl Assoc for u8 { type Output = u8; }
-//[next]~^ ERROR type annotations needed
 impl Assoc for u16 { type Output = u16; }
-//[next]~^ ERROR type annotations needed
 
 trait Foo {}
 impl Foo for u32 {}
 impl Foo for <u8 as Assoc>::Output {}
-//[next]~^ ERROR conflicting implementations of trait `Foo` for type `u32`
+//~^ ERROR conflicting implementations of trait `Foo` for type `u32`
 impl Foo for <u16 as Assoc>::Output {}
-//[next]~^ ERROR conflicting implementations of trait `Foo` for type `u32`
+//~^ ERROR conflicting implementations of trait `Foo` for type `u32`
 
 fn main() {}

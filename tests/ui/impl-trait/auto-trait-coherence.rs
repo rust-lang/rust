@@ -1,6 +1,3 @@
-//@ revisions: old next
-//@[next] compile-flags: -Znext-solver
-
 // Tests that type alias impls traits do not leak auto-traits for
 // the purposes of coherence checking
 #![feature(type_alias_impl_trait)]
@@ -22,8 +19,7 @@ impl<T: Send> AnotherTrait for T {}
 // (We treat opaque types as "foreign types" that could grow more impls
 // in the future.)
 impl AnotherTrait for D<OpaqueType> {
-    //[old]~^ ERROR conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
-    //[next]~^^ ERROR conflicting implementations of trait `AnotherTrait` for type `D<_>`
+    //~^ ERROR conflicting implementations of trait `AnotherTrait` for type `D<_>`
 }
 
 fn main() {}
