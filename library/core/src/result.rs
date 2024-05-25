@@ -13,7 +13,7 @@
 //! }
 //! ```
 //!
-//! Functions return [`Result`] whenever errors are expected and recoverable. In
+//! Functions return [`Result`] whenever errors are expected and
 //! recoverable. In the `std` crate, [`Result`] is most prominently used
 //! for [I/O](../../std/io/index.html).
 //!
@@ -40,7 +40,7 @@
 //! }
 //! ```
 //!
-//! Pattern matching on [`Result`]s is clear and straightforward for simple
+//! Pattern matching on [`Result`]s is clear and straightforward for
 //! simple cases, but [`Result`] comes with some convenience methods
 //! that make working with it more succinct.
 //!
@@ -247,13 +247,13 @@
 //!
 //! # Method overview
 //!
-//! In addition to working with pattern matching, [`Result`] provides a wide
-//! variety of different methods.
+//! In addition to working with pattern matching, [`Result`] provides a
+//! wide variety of different methods.
 //!
 //! ## Querying the variant
 //!
-//! In addition to working with pattern matching, [`Result`] provides a
-//! wide variety of different methods.
+//! The [`is_ok`] and [`is_err`] methods return [`true`] if the [`Result`]
+//! is [`Ok`] or [`Err`], respectively.
 //!
 //! [`is_err`]: Result::is_err
 //! [`is_ok`]: Result::is_ok
