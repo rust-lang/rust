@@ -133,7 +133,7 @@ Very rarely, you may wish to prevent Clippy from evaluating certain sections of 
 `clippy` cfg is not set. You may need to provide a stub so that the code compiles:
 
 ```rust
-#[cfg(not(clippy)]
+#[cfg(not(clippy))]
 include!(concat!(env!("OUT_DIR"), "/my_big_function-generated.rs"));
 
 #[cfg(clippy)]
