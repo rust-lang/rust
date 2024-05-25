@@ -90,6 +90,7 @@ declare_lint_pass! {
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
         RUST_2024_INCOMPATIBLE_PAT,
+        SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
@@ -3147,6 +3148,47 @@ declare_lint! {
     pub INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
     "detects `#[unstable]` on stable trait implementations for stable types"
+}
+
+declare_lint! {
+    /// The `self_constructor_from_outer_item` lint detects cases where the `Self` constructor
+    /// was silently allowed due to a bug in the resolver, and which may produce surprising
+    /// and unintended behavior.
+    ///
+    /// Using a `Self` type alias from an outer item was never intended, but was silently allowed.
+    /// This is deprecated -- and is a hard error when the `Self` type alias references generics
+    /// that are not in scope.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(self_constructor_from_outer_item)]
+    ///
+    /// struct S0(usize);
+    ///
+    /// impl S0 {
+    ///     fn foo() {
+    ///         const C: S0 = Self(0);
+    ///         fn bar() -> S0 {
+    ///             Self(0)
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `Self` type alias should not be reachable because nested items are not associated with
+    /// the scope of the parameters from the parent item.
+    pub SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
+    Warn,
+    "detect unsupported use of `Self` from outer item",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #124186 <https://github.com/rust-lang/rust/issues/124186>",
+    };
 }
 
 declare_lint! {

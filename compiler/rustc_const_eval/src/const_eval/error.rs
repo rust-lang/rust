@@ -139,10 +139,9 @@ where
             ErrorHandled::TooGeneric(span)
         }
         err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span),
-        err_inval!(Layout(LayoutError::ReferencesError(guar))) => ErrorHandled::Reported(
-            ReportedErrorInfo::tainted_by_errors(guar),
-            span,
-        ),
+        err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
+            ErrorHandled::Reported(ReportedErrorInfo::tainted_by_errors(guar), span)
+        }
         // Report remaining errors.
         _ => {
             let (our_span, frames) = get_span_and_frames();

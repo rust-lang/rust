@@ -30,7 +30,7 @@ use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
-use rustc_const_eval::transform::check_consts::{qualifs, ConstCx};
+use rustc_const_eval::check_consts::{qualifs, ConstCx};
 
 /// A `MirPass` for promotion.
 ///

@@ -389,8 +389,11 @@ exclude_labels = [
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
+    "compiler/rustc_middle/src/traits/solve",
+    "compiler/rustc_next_trait_solver",
     "compiler/rustc_trait_selection/src/solve",
-    "compiler/rustc_middle/src/traits/solve"
+    "compiler/rustc_type_ir/src/solve",
+    "tests/ui/traits/next-solver",
 ]
 
 [autolabel."PG-exploit-mitigations"]

@@ -1,6 +1,5 @@
 use crate::cell::UnsafeCell;
 use crate::hint::unreachable_unchecked;
-use crate::mem::forget;
 use crate::ptr;
 use crate::sys::thread_local::abort_on_dtor_unwind;
 use crate::sys::thread_local_dtor::register_dtor;

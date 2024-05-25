@@ -685,6 +685,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         check_equal(self, location, *f_ty);
                     }
                     ty::Adt(adt_def, args) => {
+                        // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
+                        if Some(adt_def.did()) == self.tcx.lang_items().dyn_metadata() {
+                            self.fail(
+                                location,
+                                format!("You can't project to field {f:?} of `DynMetadata` because \
+                                         layout is weird and thinks it doesn't have fields."),
+                            );
+                        }
+
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                         let Some(field) = adt_def.variant(var).fields.get(f) else {
                             fail_out_of_bounds(self, location);

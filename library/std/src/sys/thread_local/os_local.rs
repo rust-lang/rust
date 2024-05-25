@@ -1,7 +1,8 @@
-use super::lazy::LazyKeyInner;
+use super::abort_on_dtor_unwind;
 use crate::cell::Cell;
-use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
-use crate::{fmt, marker, panic, ptr};
+use crate::marker::PhantomData;
+use crate::ptr;
+use crate::sys_common::thread_local_key::StaticKey as OsKey;
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -10,38 +11,9 @@ use crate::{fmt, marker, panic, ptr};
 #[rustc_macro_transparency = "semitransparent"]
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
-    (@key $t:ty, const $init:expr) => {{
-        #[inline]
-        #[deny(unsafe_op_in_unsafe_fn)]
-        unsafe fn __getit(
-            _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-        ) -> $crate::option::Option<&'static $t> {
-            const INIT_EXPR: $t = $init;
-
-            // On platforms without `#[thread_local]` we fall back to the
-            // same implementation as below for os thread locals.
-            #[inline]
-            const fn __init() -> $t { INIT_EXPR }
-            static __KEY: $crate::thread::local_impl::Key<$t> =
-                $crate::thread::local_impl::Key::new();
-            unsafe {
-                __KEY.get(move || {
-                    if let $crate::option::Option::Some(init) = _init {
-                        if let $crate::option::Option::Some(value) = init.take() {
-                            return value;
-                        } else if $crate::cfg!(debug_assertions) {
-                            $crate::unreachable!("missing initial value");
-                        }
-                    }
-                    __init()
-                })
-            }
-        }
-
-        unsafe {
-            $crate::thread::LocalKey::new(__getit)
-        }
-    }},
+    (@key $t:ty, const $init:expr) => {
+        $crate::thread::local_impl::thread_local_inner!(@key $t, { const INIT_EXPR: $t = $init; INIT_EXPR })
+    },
 
     // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $init:expr) => {
@@ -55,20 +27,11 @@ pub macro thread_local_inner {
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {
-                static __KEY: $crate::thread::local_impl::Key<$t> =
-                    $crate::thread::local_impl::Key::new();
+                use $crate::thread::local_impl::Key;
 
+                static __KEY: Key<$t> = Key::new();
                 unsafe {
-                    __KEY.get(move || {
-                        if let $crate::option::Option::Some(init) = init {
-                            if let $crate::option::Option::Some(value) = init.take() {
-                                return value;
-                            } else if $crate::cfg!(debug_assertions) {
-                                $crate::unreachable!("missing default value");
-                            }
-                        }
-                        __init()
-                    })
+                    __KEY.get(init, __init)
                 }
             }
 
@@ -85,78 +48,78 @@ pub macro thread_local_inner {
 
 /// Use a regular global static to store this key; the state provided will then be
 /// thread-local.
+#[allow(missing_debug_implementations)]
 pub struct Key<T> {
-    // OS-TLS key that we'll use to key off.
-    os: OsStaticKey,
-    marker: marker::PhantomData<Cell<T>>,
-}
-
-impl<T> fmt::Debug for Key<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Key").finish_non_exhaustive()
-    }
+    os: OsKey,
+    marker: PhantomData<Cell<T>>,
 }
 
 unsafe impl<T> Sync for Key<T> {}
 
 struct Value<T: 'static> {
-    inner: LazyKeyInner<T>,
+    value: T,
     key: &'static Key<T>,
 }
 
 impl<T: 'static> Key<T> {
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const fn new() -> Key<T> {
-        Key { os: OsStaticKey::new(Some(destroy_value::<T>)), marker: marker::PhantomData }
+        Key { os: OsKey::new(Some(destroy_value::<T>)), marker: PhantomData }
     }
 
-    /// It is a requirement for the caller to ensure that no mutable
-    /// reference is active when this method is called.
-    pub unsafe fn get(&'static self, init: impl FnOnce() -> T) -> Option<&'static T> {
-        // SAFETY: See the documentation for this method.
+    /// Get the value associated with this key, initializating it if necessary.
+    ///
+    /// # Safety
+    /// * the returned reference must not be used after recursive initialization
+    /// or thread destruction occurs.
+    pub unsafe fn get(
+        &'static self,
+        i: Option<&mut Option<T>>,
+        f: impl FnOnce() -> T,
+    ) -> Option<&'static T> {
+        // SAFETY: (FIXME: get should actually be safe)
         let ptr = unsafe { self.os.get() as *mut Value<T> };
         if ptr.addr() > 1 {
             // SAFETY: the check ensured the pointer is safe (its destructor
             // is not running) + it is coming from a trusted source (self).
-            if let Some(ref value) = unsafe { (*ptr).inner.get() } {
-                return Some(value);
-            }
+            unsafe { Some(&(*ptr).value) }
+        } else {
+            // SAFETY: At this point we are sure we have no value and so
+            // initializing (or trying to) is safe.
+            unsafe { self.try_initialize(ptr, i, f) }
         }
-        // SAFETY: At this point we are sure we have no value and so
-        // initializing (or trying to) is safe.
-        unsafe { self.try_initialize(init) }
     }
 
-    // `try_initialize` is only called once per os thread local variable,
-    // except in corner cases where thread_local dtors reference other
-    // thread_local's, or it is being recursively initialized.
-    unsafe fn try_initialize(&'static self, init: impl FnOnce() -> T) -> Option<&'static T> {
-        // SAFETY: No mutable references are ever handed out meaning getting
-        // the value is ok.
-        let ptr = unsafe { self.os.get() as *mut Value<T> };
+    unsafe fn try_initialize(
+        &'static self,
+        ptr: *mut Value<T>,
+        i: Option<&mut Option<T>>,
+        f: impl FnOnce() -> T,
+    ) -> Option<&'static T> {
         if ptr.addr() == 1 {
             // destructor is running
             return None;
         }
 
-        let ptr = if ptr.is_null() {
-            // If the lookup returned null, we haven't initialized our own
-            // local copy, so do that now.
-            let ptr = Box::into_raw(Box::new(Value { inner: LazyKeyInner::new(), key: self }));
-            // SAFETY: At this point we are sure there is no value inside
-            // ptr so setting it will not affect anyone else.
-            unsafe {
-                self.os.set(ptr as *mut u8);
-            }
-            ptr
-        } else {
-            // recursive initialization
-            ptr
-        };
+        let value = i.and_then(Option::take).unwrap_or_else(f);
+        let ptr = Box::into_raw(Box::new(Value { value, key: self }));
+        // SAFETY: (FIXME: get should actually be safe)
+        let old = unsafe { self.os.get() as *mut Value<T> };
+        // SAFETY: `ptr` is a correct pointer that can be destroyed by the key destructor.
+        unsafe {
+            self.os.set(ptr as *mut u8);
+        }
+        if !old.is_null() {
+            // If the variable was recursively initialized, drop the old value.
+            // SAFETY: We cannot be inside a `LocalKey::with` scope, as the
+            // initializer has already returned and the next scope only starts
+            // after we return the pointer. Therefore, there can be no references
+            // to the old value.
+            drop(unsafe { Box::from_raw(old) });
+        }
 
-        // SAFETY: ptr has been ensured as non-NUL just above an so can be
-        // dereferenced safely.
-        unsafe { Some((*ptr).inner.initialize(init)) }
+        // SAFETY: We just created this value above.
+        unsafe { Some(&(*ptr).value) }
     }
 }
 
@@ -170,16 +133,11 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
     //
     // Note that to prevent an infinite loop we reset it back to null right
     // before we return from the destructor ourselves.
-    //
-    // Wrap the call in a catch to ensure unwinding is caught in the event
-    // a panic takes place in a destructor.
-    if let Err(_) = panic::catch_unwind(|| unsafe {
-        let ptr = Box::from_raw(ptr as *mut Value<T>);
+    abort_on_dtor_unwind(|| {
+        let ptr = unsafe { Box::from_raw(ptr as *mut Value<T>) };
         let key = ptr.key;
-        key.os.set(ptr::without_provenance_mut(1));
+        unsafe { key.os.set(ptr::without_provenance_mut(1)) };
         drop(ptr);
-        key.os.set(ptr::null_mut());
-    }) {
-        rtabort!("thread local panicked on drop");
-    }
+        unsafe { key.os.set(ptr::null_mut()) };
+    });
 }

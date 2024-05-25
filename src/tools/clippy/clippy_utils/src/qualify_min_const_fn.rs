@@ -6,7 +6,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use hir::LangItem;
 use rustc_attr::StableSince;
-use rustc_const_eval::transform::check_consts::ConstCx;
+use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;

@@ -116,8 +116,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
-            let Ok(mut work_product_decoder) =
-                MemDecoder::new(&work_products_data[..], start_pos)
+            let Ok(mut work_product_decoder) = MemDecoder::new(&work_products_data[..], start_pos)
             else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &work_products_path });
                 return LoadResult::DataOutOfDate;

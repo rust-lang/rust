@@ -199,11 +199,15 @@ than building it.
         if !["A-A", "B-B", "C-C"].contains(&target_str.as_str()) {
             let mut has_target = false;
 
-            let missing_targets_hashset: HashSet<_> = STAGE0_MISSING_TARGETS.iter().map(|t| t.to_string()).collect();
-            let duplicated_targets: Vec<_> = stage0_supported_target_list.intersection(&missing_targets_hashset).collect();
+            let missing_targets_hashset: HashSet<_> =
+                STAGE0_MISSING_TARGETS.iter().map(|t| t.to_string()).collect();
+            let duplicated_targets: Vec<_> =
+                stage0_supported_target_list.intersection(&missing_targets_hashset).collect();
 
             if !duplicated_targets.is_empty() {
-                println!("Following targets supported from the stage0 compiler, please remove them from STAGE0_MISSING_TARGETS list.");
+                println!(
+                    "Following targets supported from the stage0 compiler, please remove them from STAGE0_MISSING_TARGETS list."
+                );
                 for duplicated_target in duplicated_targets {
                     println!("  {duplicated_target}");
                 }
