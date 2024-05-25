@@ -12,7 +12,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 MINGW_ARCHIVE_32="i686-12.2.0-release-posix-dwarf-rt_v10-rev0.7z"
 MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
 
-if isWindows; then
+if isWindows && isKnownToBeMingwBuild; then
     case "${CI_JOB_NAME}" in
         *i686*)
             bits=32
@@ -39,10 +39,7 @@ if isWindows; then
     esac
 
     if [[ "${CUSTOM_MINGW:-0}" == 0 ]]; then
-        pacboy -S --noconfirm toolchain:p
-        # According to the comment in the Windows part of install-clang.sh, in the future we might
-        # want to do this instead:
-        # pacboy -S --noconfirm clang:p ...
+        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain
     else
         mingw_dir="mingw${bits}"
 
