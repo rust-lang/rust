@@ -1043,7 +1043,6 @@ pub trait ResolverExpand {
     fn expand_legacy_bang(
         &self,
         invoc_id: LocalExpnId,
-        span: Span,
         current_expansion: LocalExpnId,
     ) -> Result<(TokenStream, usize), CanRetry>;
 }

@@ -26,7 +26,8 @@ mod placeholders;
 mod proc_macro_server;
 
 pub use mbe::macro_rules::compile_declarative_macro;
-use rustc_middle::query::Providers;pub mod base;
+use rustc_middle::query::Providers;
+pub mod base;
 pub mod config;
 pub mod expand;
 pub mod module;

@@ -76,9 +76,10 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
-use std::assert_matches::assert_matches;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_middle::expand::TcxMacroExpander;use std::borrow::Borrow;
+use rustc_middle::expand::TcxMacroExpander;
+use std::assert_matches::assert_matches;
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -860,9 +861,10 @@ pub struct GlobalCtxt<'tcx> {
     pub macro_map: RwLock<
         FxHashMap<
             LocalExpnId,
-            (TokenStream, Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>),
+            (TokenStream, Span, Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>),
         >,
-    >,}
+    >,
+}
 
 impl<'tcx> GlobalCtxt<'tcx> {
     /// Installs `self` in a `TyCtxt` and `ImplicitCtxt` for the duration of
