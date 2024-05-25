@@ -238,6 +238,7 @@ lint_dropping_copy_types = calls to `std::mem::drop` with a value that implement
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
     .note = use `let _ = ...` to ignore the expression or result
+    .suggestion = use `let _ = ...` to ignore the expression or result
 
 lint_duplicate_macro_attribute =
     duplicated attribute
