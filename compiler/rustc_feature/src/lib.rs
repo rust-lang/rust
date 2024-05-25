@@ -14,7 +14,6 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
-#![feature(lazy_cell)]
 
 mod accepted;
 mod builtin_attrs;
