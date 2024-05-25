@@ -143,7 +143,7 @@
 //! [`num::NonZero*`]: crate::num
 //! [`ptr::NonNull<U>`]: crate::ptr::NonNull
 //! [function call ABI]: ../primitive.fn.html#abi-compatibility
-//! [result_repr]: crate::result::Result#Representation
+//! [result_repr]: crate::result#Representation
 //!
 //! This is called the "null pointer optimization" or NPO.
 //!
