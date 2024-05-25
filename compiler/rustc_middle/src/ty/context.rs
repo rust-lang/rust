@@ -1310,7 +1310,7 @@ pub struct GlobalCtxt<'tcx> {
     pub macro_map: RwLock<
         FxHashMap<
             LocalExpnId,
-            (TokenStream, Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>),
+            (TokenStream, Span, Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>),
         >,
     >,
 }

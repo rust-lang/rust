@@ -592,11 +592,11 @@ impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
     }
 }
 
-impl Key for (LocalExpnId, Span, LocalExpnId) {
+impl Key for (LocalExpnId, LocalExpnId) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
-        self.1
+        DUMMY_SP
     }
 
     fn ty_def_id(&self) -> Option<DefId> {

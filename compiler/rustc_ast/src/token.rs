@@ -67,7 +67,7 @@ pub enum Delimiter {
 // type. This means that float literals like `1f32` are classified by this type
 // as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
 // given the `Float` kind.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -84,7 +84,7 @@ pub enum LitKind {
 }
 
 /// A literal token.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,
@@ -229,7 +229,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
             .contains(&name)
 }
 
-#[derive(PartialEq, Encodable, Decodable, Debug, Copy, Clone, HashStable_Generic, Hash)]
+#[derive(PartialEq, Encodable, Decodable, Debug, Copy, Clone, HashStable_Generic)]
 pub enum IdentIsRaw {
     No,
     Yes,
@@ -911,7 +911,7 @@ pub enum Nonterminal {
     NtVis(P<ast::Visibility>),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]
 pub enum NonterminalKind {
     Item,
     Block,

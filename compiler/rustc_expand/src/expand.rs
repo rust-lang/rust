@@ -400,13 +400,13 @@ pub struct MacroExpander<'a, 'b> {
 
 pub fn expand_legacy_bang<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (LocalExpnId, Span, LocalExpnId),
+    key: (LocalExpnId, LocalExpnId),
 ) -> Result<(&'tcx TokenStream, usize), CanRetry> {
-    let (invoc_id, span, current_expansion) = key;
+    let (invoc_id, current_expansion) = key;
     let map = tcx.macro_map.borrow();
-    let (arg, expander) = map.get(&invoc_id).as_ref().unwrap();
+    let (arg, span, expander) = map.get(&invoc_id).as_ref().unwrap();
     expander
-        .expand(&tcx.sess, span, arg.clone(), current_expansion)
+        .expand(&tcx.sess, *span, arg.clone(), current_expansion)
         .map(|(tts, i)| (tcx.arena.alloc(tts) as &TokenStream, i))
 }
 
@@ -709,11 +709,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                     // Macros defined in the current crate have a real node id,
                     // whereas macros from an external crate have a dummy id.\
-                    let tok_result: Box<dyn MacResult> = match self.cx.resolver.expand_legacy_bang(
-                        invoc.expansion_data.id,
-                        span,
-                        self.cx.current_expansion.id,
-                    ) {
+                    let tok_result: Box<dyn MacResult> = match self
+                        .cx
+                        .resolver
+                        .expand_legacy_bang(invoc.expansion_data.id, self.cx.current_expansion.id)
+                    {
                         Ok((tts, i)) => {
                             if self.cx.trace_macros() {
                                 let msg = format!("to `{}`", pprust::tts_to_string(&tts));

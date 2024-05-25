@@ -111,10 +111,10 @@ rustc_queries! {
         desc { "triggering a delayed bug for testing incremental" }
     }
 
-    query expand_legacy_bang(key: (LocalExpnId, Span, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), CanRetry> {
+    query expand_legacy_bang(key: (LocalExpnId, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), CanRetry> {
         eval_always
         no_hash
-        desc { "expand lagacy bang" }
+        desc { "expand legacy bang" }
     }
 
     /// Collects the list of all tools registered using `#![register_tool]`.

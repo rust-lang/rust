@@ -2,16 +2,16 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
 
-use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{

@@ -336,11 +336,11 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             self.create_stable_hashing_context(),
         );
         if let SyntaxExtensionKind::TcxLegacyBang(tcx_expander) = &ext.kind {
-            if let InvocationKind::Bang { ref mac, .. } = invoc.kind {
+            if let InvocationKind::Bang { ref mac, span } = invoc.kind {
                 self.tcx
                     .macro_map
                     .borrow_mut()
-                    .insert(invoc_id, (mac.args.tokens.clone(), tcx_expander.clone()));
+                    .insert(invoc_id, (mac.args.tokens.clone(), span, tcx_expander.clone()));
             }
         }
 
@@ -538,11 +538,10 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     fn expand_legacy_bang(
         &self,
         invoc_id: LocalExpnId,
-        span: Span,
         current_expansion: LocalExpnId,
     ) -> Result<(TokenStream, usize), CanRetry> {
         self.tcx()
-            .expand_legacy_bang((invoc_id, span, current_expansion))
+            .expand_legacy_bang((invoc_id, current_expansion))
             .map(|(tts, i)| (tts.clone(), i))
     }
 }

@@ -404,7 +404,8 @@ fn maybe_use_metavar_location(
         })
     );
     if undelimited_seq {
-        // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.        return orig_tt.clone();
+        // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.
+        return orig_tt.clone();
     }
 
     let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {

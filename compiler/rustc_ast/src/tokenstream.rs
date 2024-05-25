@@ -14,7 +14,6 @@
 //! ownership of the original.
 
 use std::borrow::Cow;
-use std::hash::Hash;
 use std::{cmp, fmt, iter};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -106,15 +105,6 @@ where
         }
     }
 }
-
-/*impl Hash for TokenStream {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        for sub_tt in self.trees() {
-            sub_tt.hash(state);
-        }
-    }
-}*/
-
 pub trait ToAttrTokenStream: sync::DynSend + sync::DynSync {
     fn to_attr_token_stream(&self) -> AttrTokenStream;
 }
@@ -309,7 +299,7 @@ pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
 /// guide pretty-printing, which is where the `JointHidden` value (which isn't
 /// part of `proc_macro::Spacing`) comes in useful.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
     /// The token cannot join with the following token to form a compound
     /// token.
@@ -737,7 +727,7 @@ impl TokenTreeCursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
@@ -761,7 +751,7 @@ impl DelimSpan {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub struct DelimSpacing {
     pub open: Spacing,
     pub close: Spacing,
