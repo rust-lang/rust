@@ -3401,3 +3401,14 @@ pub fn binary_expr_needs_parentheses(expr: &Expr<'_>) -> bool {
 
     contains_block(expr, false)
 }
+
+/// Returns true if the specified expression is in a receiver position.
+pub fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::MethodCall(_, receiver, ..) = parent_expr.kind
+        && receiver.hir_id == expr.hir_id
+    {
+        return true;
+    }
+    false
+}
