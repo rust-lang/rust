@@ -609,7 +609,5 @@ impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-
-        walk_expr(self, expr);
     }
 }
