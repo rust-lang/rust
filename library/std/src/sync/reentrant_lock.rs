@@ -8,6 +8,7 @@ use crate::fmt;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sys::sync as sys;
+use crate::thread::ThreadId;
 
 /// A re-entrant mutual exclusion lock
 ///
@@ -92,18 +93,19 @@ cfg_if!(
         struct Tid(AtomicU64);
 
         impl Tid {
-            const fn new(tid: u64) -> Self {
-                Self(AtomicU64::new(tid))
+            const fn new() -> Self {
+                Self(AtomicU64::new(0))
             }
 
             #[inline]
-            fn get(&self) -> u64 {
-                self.0.load(Relaxed)
+            fn contains(&self, owner: ThreadId) -> bool {
+                owner.as_u64().get() == self.0.load(Relaxed)
             }
 
             #[inline]
-            fn set(&self, tid: u64) {
-                self.0.store(tid, Relaxed)
+            fn set(&self, tid: Option<ThreadId>) {
+                let value = tid.map_or(0, |tid| tid.as_u64().get());
+                self.0.store(value, Relaxed);
             }
         }
     } else if #[cfg(target_has_atomic = "32")] {
@@ -116,16 +118,18 @@ cfg_if!(
         }
 
         impl Tid {
-            const fn new(tid: u64) -> Self {
+            const fn new() -> Self {
                 Self {
                     seq: AtomicU32::new(0),
-                    low: AtomicU32::new(tid as u32),
-                    high: AtomicU32::new((tid >> 32) as u32),
+                    low: AtomicU32::new(0),
+                    high: AtomicU32::new(0),
                 }
             }
 
             #[inline]
-            fn get(&self) -> u64 {
+            // NOTE: This assumes that `owner` is the ID of the current
+            // thread, and may spuriously return `false` if that's not the case.
+            fn contains(&self, owner: ThreadId) -> bool {
                 // Synchronizes with the release-increment in `set()` to ensure
                 // we only read the data after it's been fully written.
                 let mut seq = self.seq.load(Acquire);
@@ -137,12 +141,16 @@ cfg_if!(
                         // store to ensure that `get()` doesn't see data from a subsequent
                         // `set()` call.
                         match self.seq.compare_exchange_weak(seq, seq, Release, Acquire) {
-                            Ok(_) => return u64::from(low) | (u64::from(high) << 32),
+                            Ok(_) => {
+                                let tid = u64::from(low) | (u64::from(high) << 32);
+                                return owner.as_u64().get() == tid;
+                            },
                             Err(new) => seq = new,
                         }
                     } else {
-                        crate::hint::spin_loop();
-                        seq = self.seq.load(Acquire);
+                        // Another thread is currently writing to the seqlock. That thread
+                        // must also be holding the mutex, so we can't currently be the lock owner.
+                        return false;
                     }
                 }
             }
@@ -150,10 +158,11 @@ cfg_if!(
             #[inline]
             // This may only be called from one thread at a time, otherwise
             // concurrent `get()` calls may return teared data.
-            fn set(&self, tid: u64) {
+            fn set(&self, tid: Option<ThreadId>) {
+                let value = tid.map_or(0, |tid| tid.as_u64().get());
                 self.seq.fetch_add(1, Acquire);
-                self.low.store(tid as u32, Relaxed);
-                self.high.store((tid >> 32) as u32, Relaxed);
+                self.low.store(value as u32, Relaxed);
+                self.high.store((value >> 32) as u32, Relaxed);
                 self.seq.fetch_add(1, Release);
             }
         }
@@ -213,7 +222,7 @@ impl<T> ReentrantLock<T> {
     pub const fn new(t: T) -> ReentrantLock<T> {
         ReentrantLock {
             mutex: sys::Mutex::new(),
-            owner: Tid::new(0),
+            owner: Tid::new(),
             lock_count: UnsafeCell::new(0),
             data: t,
         }
@@ -266,11 +275,11 @@ impl<T: ?Sized> ReentrantLock<T> {
         let this_thread = current_thread_id();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
-            if self.owner.get() == this_thread {
+            if self.owner.contains(this_thread) {
                 self.increment_lock_count().expect("lock count overflow in reentrant mutex");
             } else {
                 self.mutex.lock();
-                self.owner.set(this_thread);
+                self.owner.set(Some(this_thread));
                 debug_assert_eq!(*self.lock_count.get(), 0);
                 *self.lock_count.get() = 1;
             }
@@ -308,11 +317,11 @@ impl<T: ?Sized> ReentrantLock<T> {
         let this_thread = current_thread_id();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
-            if self.owner.get() == this_thread {
+            if self.owner.contains(this_thread) {
                 self.increment_lock_count()?;
                 Some(ReentrantLockGuard { lock: self })
             } else if self.mutex.try_lock() {
-                self.owner.set(this_thread);
+                self.owner.set(Some(this_thread));
                 debug_assert_eq!(*self.lock_count.get(), 0);
                 *self.lock_count.get() = 1;
                 Some(ReentrantLockGuard { lock: self })
@@ -385,7 +394,7 @@ impl<T: ?Sized> Drop for ReentrantLockGuard<'_, T> {
         unsafe {
             *self.lock.lock_count.get() -= 1;
             if *self.lock.lock_count.get() == 0 {
-                self.lock.owner.set(0);
+                self.lock.owner.set(None);
                 self.lock.mutex.unlock();
             }
         }
@@ -397,11 +406,11 @@ impl<T: ?Sized> Drop for ReentrantLockGuard<'_, T> {
 ///
 /// Panics if called during a TLS destructor on a thread that hasn't
 /// been assigned an ID.
-pub(crate) fn current_thread_id() -> u64 {
+pub(crate) fn current_thread_id() -> ThreadId {
     #[cold]
     fn no_tid() -> ! {
-        panic!("Thread hasn't been assigned an ID!")
+        rtabort!("Thread hasn't been assigned an ID!")
     }
 
-    crate::thread::try_current_id().map_or_else(|| no_tid(), |tid| tid.as_u64().get())
+    crate::thread::try_current_id().unwrap_or_else(|| no_tid())
 }
