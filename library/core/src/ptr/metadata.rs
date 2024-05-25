@@ -178,8 +178,8 @@ impl<T: ?Sized> Clone for PtrComponents<T> {
 /// compare equal (since identical vtables can be deduplicated within a codegen unit).
 #[lang = "dyn_metadata"]
 pub struct DynMetadata<Dyn: ?Sized> {
-    _vtable_ptr: &'static VTable,
-    _phantom: crate::marker::PhantomData<Dyn>,
+    vtable_ptr: &'static VTable,
+    phantom: crate::marker::PhantomData<Dyn>,
 }
 
 extern "C" {
@@ -191,17 +191,6 @@ extern "C" {
 }
 
 impl<Dyn: ?Sized> DynMetadata<Dyn> {
-    /// One of the things that rustc_middle does with this being a lang item is
-    /// give it `FieldsShape::Primitive`, which means that as far as codegen can
-    /// tell, it *is* a reference, and thus doesn't have any fields.
-    /// That means we can't use field access, and have to transmute it instead.
-    #[inline]
-    fn vtable_ptr(self) -> *const VTable {
-        // SAFETY: this layout assumption is hard-coded into the compiler.
-        // If it's somehow not a size match, the transmute will error.
-        unsafe { crate::mem::transmute::<Self, &'static VTable>(self) }
-    }
-
     /// Returns the size of the type associated with this vtable.
     #[inline]
     pub fn size_of(self) -> usize {
@@ -210,7 +199,7 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
         // `Send` part!
         // SAFETY: DynMetadata always contains a valid vtable pointer
         return unsafe {
-            crate::intrinsics::vtable_size(self.vtable_ptr() as *const ())
+            crate::intrinsics::vtable_size(self.vtable_ptr as *const VTable as *const ())
         };
     }
 
@@ -219,7 +208,7 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
     pub fn align_of(self) -> usize {
         // SAFETY: DynMetadata always contains a valid vtable pointer
         return unsafe {
-            crate::intrinsics::vtable_align(self.vtable_ptr() as *const ())
+            crate::intrinsics::vtable_align(self.vtable_ptr as *const VTable as *const ())
         };
     }
 
@@ -237,7 +226,7 @@ unsafe impl<Dyn: ?Sized> Sync for DynMetadata<Dyn> {}
 
 impl<Dyn: ?Sized> fmt::Debug for DynMetadata<Dyn> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DynMetadata").field(&self.vtable_ptr()).finish()
+        f.debug_tuple("DynMetadata").field(&(self.vtable_ptr as *const VTable)).finish()
     }
 }
 
@@ -259,7 +248,7 @@ impl<Dyn: ?Sized> Eq for DynMetadata<Dyn> {}
 impl<Dyn: ?Sized> PartialEq for DynMetadata<Dyn> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        crate::ptr::eq::<VTable>(self.vtable_ptr(), other.vtable_ptr())
+        crate::ptr::eq::<VTable>(self.vtable_ptr, other.vtable_ptr)
     }
 }
 
@@ -267,7 +256,7 @@ impl<Dyn: ?Sized> Ord for DynMetadata<Dyn> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
-        <*const VTable>::cmp(&self.vtable_ptr(), &other.vtable_ptr())
+        (self.vtable_ptr as *const VTable).cmp(&(other.vtable_ptr as *const VTable))
     }
 }
 
@@ -281,6 +270,6 @@ impl<Dyn: ?Sized> PartialOrd for DynMetadata<Dyn> {
 impl<Dyn: ?Sized> Hash for DynMetadata<Dyn> {
     #[inline]
     fn hash<H: Hasher>(&self, hasher: &mut H) {
-        crate::ptr::hash::<VTable, _>(self.vtable_ptr(), hasher)
+        crate::ptr::hash::<VTable, _>(self.vtable_ptr, hasher)
     }
 }
