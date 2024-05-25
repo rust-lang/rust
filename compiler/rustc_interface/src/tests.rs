@@ -799,10 +799,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, false);
-    tracked!(
-        next_solver,
-        Some(NextSolverConfig { coherence: true, globally: false, dump_tree: Default::default() })
-    );
+    tracked!(next_solver, Some(NextSolverConfig { coherence: true, globally: false }));
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);
