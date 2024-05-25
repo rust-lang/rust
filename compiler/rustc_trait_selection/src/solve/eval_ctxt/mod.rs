@@ -1,6 +1,3 @@
-use std::io::Write;
-use std::ops::ControlFlow;
-
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
@@ -20,10 +17,10 @@ use rustc_middle::ty::{
     self, InferCtxtLike, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
 use rustc_type_ir::{self as ir, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use std::ops::ControlFlow;
 
 use crate::traits::coherence;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
@@ -135,8 +132,7 @@ impl<I: Interner> NestedGoals<I> {
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
     Yes,
-    IfEnabled,
-    Never,
+    No,
 }
 
 #[extension(pub trait InferCtxtEvalExt<'tcx>)]
@@ -182,7 +178,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
             infcx,
             search_graph: &mut search_graph,
             nested_goals: NestedGoals::new(),
-            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
+            inspect: ProofTreeBuilder::new_maybe_root(generate_proof_tree),
 
             // Only relevant when canonicalizing the response,
             // which we don't do within this evaluation context.
@@ -197,23 +193,14 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         };
         let result = f(&mut ecx);
 
-        let tree = ecx.inspect.finalize();
-        if let (Some(tree), DumpSolverProofTree::Always) = (
-            &tree,
-            infcx.tcx.sess.opts.unstable_opts.next_solver.map(|c| c.dump_tree).unwrap_or_default(),
-        ) {
-            let mut lock = std::io::stdout().lock();
-            let _ = lock.write_fmt(format_args!("{tree:?}\n"));
-            let _ = lock.flush();
-        }
-
+        let proof_tree = ecx.inspect.finalize();
         assert!(
             ecx.nested_goals.is_empty(),
             "root `EvalCtxt` should not have any goals added to it"
         );
 
         assert!(search_graph.is_empty());
-        (result, tree)
+        (result, proof_tree)
     }
 
     /// Creates a nested evaluation context that shares the same search graph as the
@@ -483,7 +470,6 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     // the certainty of all the goals.
     #[instrument(level = "trace", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
-        self.inspect.start_evaluate_added_goals();
         let mut response = Ok(Certainty::overflow(false));
         for _ in 0..FIXPOINT_STEP_LIMIT {
             // FIXME: This match is a bit ugly, it might be nice to change the inspect
@@ -501,8 +487,6 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
             }
         }
 
-        self.inspect.evaluate_added_goals_result(response);
-
         if response.is_err() {
             self.tainted = Err(NoSolution);
         }
@@ -515,7 +499,6 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
         let tcx = self.tcx();
-        self.inspect.start_evaluate_added_goals_step();
         let mut goals = core::mem::take(&mut self.nested_goals);
 
         // If this loop did not result in any progress, what's our final certainty.
