@@ -724,9 +724,9 @@ impl<T: ?Sized> !Sync for *mut T {}
 ///
 /// The exact interaction of `PhantomData` with drop check **may change in the future**.
 ///
-/// Currently, adding a field of type `PhantomData<T>` indicates that your type *owns* data of type
-/// `T` in very rare circumstances. This in turn has effects on the Rust compiler's [drop check]
-/// analysis. For the exact rules, see the [drop check] documentation.
+/// Currently, adding a field of type `PhantomData<T>` indicates the type *owns* data of type `T`.
+/// In very rare circumstances, this has effects on the Rust compiler's [drop check] analysis.
+/// For the exact rules, see the [drop check] documentation.
 ///
 /// ## Layout
 ///
