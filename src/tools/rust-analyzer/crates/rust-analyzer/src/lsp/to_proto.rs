@@ -1364,10 +1364,10 @@ pub(crate) fn runnable(
         ide::RunnableKind::Bin { .. } => workspace_root.clone().map(|it| it.into()),
         _ => spec.as_ref().map(|it| it.cargo_toml.parent().into()),
     };
-    let target = spec.as_ref().map(|s| s.target.clone());
+    let target = spec.as_ref().map(|s| s.target.as_str());
+    let label = runnable.label(target);
     let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg);
-    let label = runnable.label(target);
     let location = location_link(snap, None, runnable.nav)?;
 
     Ok(lsp_ext::Runnable {
