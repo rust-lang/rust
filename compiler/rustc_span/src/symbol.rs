@@ -1179,6 +1179,7 @@ symbols! {
         mir_make_place,
         mir_move,
         mir_offset,
+        mir_ptr_metadata,
         mir_retag,
         mir_return,
         mir_return_to,
