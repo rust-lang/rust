@@ -698,6 +698,9 @@ where
 }
 
 thread_local! {
+    // Invariant: `CURRENT` and `CURRENT_ID` will always be initialized
+    // together. However, while `CURRENT_ID` will be available during
+    // TLS constructors, `CURRENT` will not.
     static CURRENT: OnceCell<Thread> = const { OnceCell::new() };
     static CURRENT_ID: Cell<Option<ThreadId>> = const { Cell::new(None) };
 }
@@ -722,9 +725,13 @@ pub(crate) fn set_current(thread: Thread) {
 pub(crate) fn try_current() -> Option<Thread> {
     CURRENT
         .try_with(|current| {
-            let thread = current.get_or_init(Thread::new_unnamed).clone();
-            CURRENT_ID.set(Some(thread.id()));
-            thread
+            current
+                .get_or_init(|| {
+                    let thread = Thread::new_unnamed();
+                    CURRENT_ID.set(Some(thread.id()));
+                    thread
+                })
+                .clone()
         })
         .ok()
 }
@@ -736,6 +743,9 @@ pub(crate) fn try_current() -> Option<Thread> {
 #[inline]
 pub(crate) fn try_current_id() -> Option<ThreadId> {
     if CURRENT_ID.get().is_none() {
+        // If `CURRENT_ID` isn't initialized yet, then `CURRENT` must also not be initialized.
+        // `try_current()` will try to initialize both `CURRENT` and `CURRENT_ID`.
+        // Subsequent calls to `try_current_id` will then no longer enter this if-branch.
         let _ = try_current();
     }
     CURRENT_ID.get()
