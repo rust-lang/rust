@@ -51,7 +51,10 @@ impl Diff {
     /// Specify the actual output for the diff from a file.
     pub fn actual_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path).expect("failed to read file");
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(e) => panic!("failed to read `{}`: {:?}", path.display(), e),
+        };
         let name = path.to_string_lossy().to_string();
 
         self.actual = Some(content);
