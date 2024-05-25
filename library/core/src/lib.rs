@@ -174,7 +174,6 @@
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
-#![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
 #![feature(link_cfg)]
