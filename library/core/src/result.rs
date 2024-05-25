@@ -2,8 +2,8 @@
 //!
 //! [`Result<T, E>`][`Result`] is the type used for returning and propagating
 //! errors. It is an enum with the variants, [`Ok(T)`], representing success and
-//! containing a value, and [`Err(E)`], representing error and containing an
-//! error value.
+//! success and containing a value, and [`Err(E)`], representing error
+//! and containing an error value.
 //!
 //! ```
 //! # #[allow(dead_code)]
@@ -14,10 +14,11 @@
 //! ```
 //!
 //! Functions return [`Result`] whenever errors are expected and recoverable. In
-//! the `std` crate, [`Result`] is most prominently used for
-//! [I/O](../../std/io/index.html).
+//! recoverable. In the `std` crate, [`Result`] is most prominently used
+//! for [I/O](../../std/io/index.html).
 //!
-//! A simple function returning [`Result`] might be defined and used like so:
+//! A simple function returning [`Result`] might be
+//! defined and used like so:
 //!
 //! ```
 //! #[derive(Debug)]
@@ -40,8 +41,8 @@
 //! ```
 //!
 //! Pattern matching on [`Result`]s is clear and straightforward for simple
-//! cases, but [`Result`] comes with some convenience methods that make working
-//! with it more succinct.
+//! simple cases, but [`Result`] comes with some convenience methods
+//! that make working with it more succinct.
 //!
 //! ```
 //! let good_result: Result<i32, i32> = Ok(10);
@@ -67,15 +68,16 @@
 //!
 //! # Results must be used
 //!
-//! A common problem with using return values to indicate errors is that it is
-//! easy to ignore the return value, thus failing to handle the error.
-//! [`Result`] is annotated with the `#[must_use]` attribute, which will cause
-//! the compiler to issue a warning when a Result value is ignored. This makes
-//! [`Result`] especially useful with functions that may encounter errors but
-//! don't otherwise return a useful value.
+//! A common problem with using return values to indicate errors is
+//! that it is easy to ignore the return value, thus failing to handle
+//! the error. [`Result`] is annotated with the `#[must_use]` attribute,
+//! which will cause the compiler to issue a warning when a Result
+//! value is ignored. This makes [`Result`] especially useful with
+//! functions that may encounter errors but don't otherwise return a
+//! useful value.
 //!
-//! Consider the [`write_all`] method defined for I/O types by the [`Write`]
-//! trait:
+//! Consider the [`write_all`] method defined for I/O types
+//! by the [`Write`] trait:
 //!
 //! ```
 //! use std::io;
@@ -85,11 +87,12 @@
 //! }
 //! ```
 //!
-//! *Note: The actual definition of [`Write`] uses [`io::Result`], which is just
-//! a synonym for <code>[Result]<T, [io::Error]></code>.*
+//! *Note: The actual definition of [`Write`] uses [`io::Result`], which
+//! is just a synonym for <code>[Result]<T, [io::Error]></code>.*
 //!
-//! This method doesn't produce a value, but the write may fail. It's crucial to
-//! handle the error case, and *not* write something like this:
+//! This method doesn't produce a value, but the write may
+//! fail. It's crucial to handle the error case, and *not* write
+//! something like this:
 //!
 //! ```no_run
 //! # #![allow(unused_must_use)] // \o/
@@ -102,12 +105,12 @@
 //! file.write_all(b"important message");
 //! ```
 //!
-//! If you *do* write that in Rust, the compiler will give you a warning (by
-//! default, controlled by the `unused_must_use` lint).
+//! If you *do* write that in Rust, the compiler will give you a
+//! warning (by default, controlled by the `unused_must_use` lint).
 //!
-//! You might instead, if you don't want to handle the error, simply assert
-//! success with [`expect`]. This will panic if the write fails, providing a
-//! marginally useful message indicating why:
+//! You might instead, if you don't want to handle the error, simply
+//! assert success with [`expect`]. This will panic if the
+//! write fails, providing a marginally useful message indicating why:
 //!
 //! ```no_run
 //! use std::fs::File;
@@ -142,9 +145,10 @@
 //!
 //! # The question mark operator, `?`
 //!
-//! When writing code that calls many functions that return the [`Result`] type,
-//! the error handling can be tedious. The question mark operator, [`?`], hides
-//! some of the boilerplate of propagating errors up the call stack.
+//! When writing code that calls many functions that return the
+//! [`Result`] type, the error handling can be tedious. The question mark
+//! operator, [`?`], hides some of the boilerplate of propagating errors
+//! up the call stack.
 //!
 //! It replaces this:
 //!
@@ -205,17 +209,15 @@
 //!
 //! *It's much nicer!*
 //!
-//! Ending the expression with [`?`] will result in the [`Ok`]'s unwrapped
-//! value, unless the result is [`Err`], in which case [`Err`] is returned early
-//! from the enclosing function.
+//! Ending the expression with [`?`] will result in the [`Ok`]'s unwrapped value, unless the result
+//! is [`Err`], in which case [`Err`] is returned early from the enclosing function.
 //!
-//! [`?`] can be used in functions that return [`Result`] because of the early
-//! return of [`Err`] that it provides.
+//! [`?`] can be used in functions that return [`Result`] because of the
+//! early return of [`Err`] that it provides.
 //!
 //! [`expect`]: Result::expect
 //! [`Write`]: ../../std/io/trait.Write.html "io::Write"
-//! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
-//!     "io::Write::write_all"
+//! [`write_all`]: ../../std/io/trait.Write.html#method.write_all "io::Write::write_all"
 //! [`io::Result`]: ../../std/io/type.Result.html "io::Result"
 //! [`?`]: crate::ops::Try
 //! [`Ok(T)`]: Ok
@@ -250,8 +252,8 @@
 //!
 //! ## Querying the variant
 //!
-//! The [`is_ok`] and [`is_err`] methods return [`true`] if the [`Result`] is
-//! [`Ok`] or [`Err`], respectively.
+//! In addition to working with pattern matching, [`Result`] provides a
+//! wide variety of different methods.
 //!
 //! [`is_err`]: Result::is_err
 //! [`is_ok`]: Result::is_ok
@@ -261,8 +263,8 @@
 //! * [`as_ref`] converts from `&Result<T, E>` to `Result<&T, &E>`
 //! * [`as_mut`] converts from `&mut Result<T, E>` to `Result<&mut T, &mut E>`
 //! * [`as_deref`] converts from `&Result<T, E>` to `Result<&T::Target, &E>`
-//! * [`as_deref_mut`] converts from `&mut Result<T, E>` to `Result<&mut
-//!   T::Target, &mut E>`
+//! * [`as_deref_mut`] converts from `&mut Result<T, E>` to
+//!   `Result<&mut T::Target, &mut E>`
 //!
 //! [`as_deref`]: Result::as_deref
 //! [`as_deref_mut`]: Result::as_deref_mut
@@ -271,18 +273,19 @@
 //!
 //! ## Extracting contained values
 //!
-//! These methods extract the contained value in a [`Result<T, E>`] when it is
-//! the [`Ok`] variant. If the [`Result`] is [`Err`]:
+//! These methods extract the contained value in a [`Result<T, E>`] when it
+//! is the [`Ok`] variant. If the [`Result`] is [`Err`]:
 //!
 //! * [`expect`] panics with a provided custom message
 //! * [`unwrap`] panics with a generic message
 //! * [`unwrap_or`] returns the provided default value
-//! * [`unwrap_or_default`] returns the default value of the type `T` (which
-//!   must implement the [`Default`] trait)
-//! * [`unwrap_or_else`] returns the result of evaluating the provided function
+//! * [`unwrap_or_default`] returns the default value of the type `T`
+//!   (which must implement the [`Default`] trait)
+//! * [`unwrap_or_else`] returns the result of evaluating the provided
+//!   function
 //!
-//! The panicking methods [`expect`] and [`unwrap`] require `E` to implement the
-//! [`Debug`] trait.
+//! The panicking methods [`expect`] and [`unwrap`] require `E` to
+//! implement the [`Debug`] trait.
 //!
 //! [`Debug`]: crate::fmt::Debug
 //! [`expect`]: Result::expect
@@ -291,9 +294,9 @@
 //! [`unwrap_or_default`]: Result::unwrap_or_default
 //! [`unwrap_or_else`]: Result::unwrap_or_else
 //!
-//! These methods extract the contained value in a [`Result<T, E>`] when it is
-//! the [`Err`] variant. They require `T` to implement the [`Debug`] trait. If
-//! the [`Result`] is [`Ok`]:
+//! These methods extract the contained value in a [`Result<T, E>`] when it
+//! is the [`Err`] variant. They require `T` to implement the [`Debug`]
+//! trait. If the [`Result`] is [`Ok`]:
 //!
 //! * [`expect_err`] panics with a provided custom message
 //! * [`unwrap_err`] panics with a generic message
@@ -308,10 +311,10 @@
 //!
 //! * [`err`][Result::err] transforms [`Result<T, E>`] into [`Option<E>`],
 //!   mapping [`Err(e)`] to [`Some(e)`] and [`Ok(v)`] to [`None`]
-//! * [`ok`][Result::ok] transforms [`Result<T, E>`] into [`Option<T>`], mapping
-//!   [`Ok(v)`] to [`Some(v)`] and [`Err(e)`] to [`None`]
-//! * [`transpose`] transposes a [`Result`] of an [`Option`] into an [`Option`]
-//!   of a [`Result`]
+//! * [`ok`][Result::ok] transforms [`Result<T, E>`] into [`Option<T>`],
+//!   mapping [`Ok(v)`] to [`Some(v)`] and [`Err(e)`] to [`None`]
+//! * [`transpose`] transposes a [`Result`] of an [`Option`] into an
+//!   [`Option`] of a [`Result`]
 //!
 // Do NOT add link reference definitions for `err` or `ok`, because they
 // will generate numerous incorrect URLs for `Err` and `Ok` elsewhere, due
