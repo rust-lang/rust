@@ -2509,6 +2509,24 @@ impl<'hir> Ty<'hir> {
             _ => false,
         }
     }
+
+    pub fn references_error(&self) -> Option<rustc_span::ErrorGuaranteed> {
+        use crate::intravisit::Visitor;
+        struct ErrVisitor(Option<rustc_span::ErrorGuaranteed>);
+        impl<'v> Visitor<'v> for ErrVisitor {
+            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+                if let TyKind::Err(guar) = t.kind {
+                    self.0 = Some(guar);
+                    return;
+                }
+                crate::intravisit::walk_ty(self, t);
+            }
+        }
+
+        let mut err_visitor = ErrVisitor(None);
+        err_visitor.visit_ty(self);
+        err_visitor.0
+    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.

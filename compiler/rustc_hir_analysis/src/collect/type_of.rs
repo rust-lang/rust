@@ -403,7 +403,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 
         Node::Item(item) => match item.kind {
             ItemKind::Static(ty, .., body_id) => {
-                if ty.is_suggestable_infer_ty() {
+                if ty.is_suggestable_infer_ty() || ty.references_error().is_some() {
                     infer_placeholder_type(
                         tcx,
                         def_id,
