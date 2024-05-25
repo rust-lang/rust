@@ -5,7 +5,7 @@ use std::ops::Deref;
 
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
-use crate::solve::inspect::GoalEvaluationStep;
+use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
     AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
@@ -55,7 +55,11 @@ pub trait Interner:
     type PredefinedOpaques: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type ExternalConstraints: Copy + Debug + Hash + Eq;
-    type GoalEvaluationSteps: Copy + Debug + Hash + Eq + Deref<Target = [GoalEvaluationStep<Self>]>;
+    type CanonicalGoalEvaluationStepRef: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Deref<Target = CanonicalGoalEvaluationStep<Self>>;
 
     // Kinds of tys
     type Ty: Ty<Self>;
