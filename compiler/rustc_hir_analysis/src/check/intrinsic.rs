@@ -164,9 +164,8 @@ pub fn check_intrinsic_type(
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
-        if let Some(&ty::GenericParamDef {
-            name, kind: ty::GenericParamDefKind::Type { .. }, ..
-        }) = generics.opt_param_at(n as usize, tcx)
+        if let &ty::GenericParamDef { name, kind: ty::GenericParamDefKind::Type { .. }, .. } =
+            generics.param_at(n as usize, tcx)
         {
             Ty::new_param(tcx, n, name)
         } else {
