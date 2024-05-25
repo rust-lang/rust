@@ -657,10 +657,14 @@ pub struct ForLoopsOverFalliblesSuggestion<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub enum IgnoreDropSuggestion {
-    #[note(lint_note)]
+pub enum UseLetUnderscoreIgnoreSuggestion {
+    #[note(lint_use_let_underscore_ignore_suggestion)]
     Note,
-    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        lint_use_let_underscore_ignore_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
     Suggestion {
         #[suggestion_part(code = "let _ = ")]
         start_span: Span,
@@ -677,7 +681,7 @@ pub struct DropRefDiag<'a> {
     #[label]
     pub label: Span,
     #[subdiagnostic]
-    pub sugg: IgnoreDropSuggestion,
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
 }
 
 #[derive(LintDiagnostic)]
@@ -705,11 +709,12 @@ pub enum DropCopySuggestion {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_forgetting_references)]
-#[note]
 pub struct ForgetRefDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
 }
 
 #[derive(LintDiagnostic)]
@@ -719,7 +724,7 @@ pub struct ForgetCopyDiag<'a> {
     #[label]
     pub label: Span,
     #[subdiagnostic]
-    pub sugg: IgnoreDropSuggestion,
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
 }
 
 #[derive(LintDiagnostic)]

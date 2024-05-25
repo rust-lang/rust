@@ -39,8 +39,12 @@ LL |     drop(s3);
    |          |
    |          argument has type `&SomeStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
    = note: `#[warn(dropping_references)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(s3);
+LL +     let _ = s3;
+   |
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/dropping_copy_types.rs:37:5
@@ -64,7 +68,11 @@ LL |     drop(s5);
    |          |
    |          argument has type `&SomeStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(s5);
+LL +     let _ = s5;
+   |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
   --> $DIR/dropping_copy_types.rs:50:5
@@ -74,7 +82,11 @@ LL |     drop(a2);
    |          |
    |          argument has type `&AnotherStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(a2);
+LL +     let _ = a2;
+   |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
   --> $DIR/dropping_copy_types.rs:52:5
@@ -84,7 +96,11 @@ LL |     drop(a4);
    |          |
    |          argument has type `&AnotherStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(a4);
+LL +     let _ = a4;
+   |
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/dropping_copy_types.rs:71:13

@@ -5,8 +5,9 @@ use rustc_span::sym;
 
 use crate::{
     lints::{
-        DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, IgnoreDropSuggestion,
+        DropCopyDiag, DropCopySuggestion, DropRefDiag, ForgetCopyDiag, ForgetRefDiag,
         UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
+        UseLetUnderscoreIgnoreSuggestion,
     },
     LateContext, LateLintPass, LintContext,
 };
@@ -148,31 +149,37 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let arg_ty = cx.typeck_results().expr_ty(arg);
             let is_copy = arg_ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
-            let sugg = if let Some((_, node)) = cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
-                && let Node::Stmt(stmt) = node
-                && let StmtKind::Semi(e) = stmt.kind
-                && e.hir_id == expr.hir_id
-            {
-                IgnoreDropSuggestion::Suggestion {
-                    start_span: expr.span.shrink_to_lo().until(arg.span),
-                    end_span: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+            let let_underscore_ignore_sugg = || {
+                if let Some((_, node)) = cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
+                    && let Node::Stmt(stmt) = node
+                    && let StmtKind::Semi(e) = stmt.kind
+                    && e.hir_id == expr.hir_id
+                {
+                    UseLetUnderscoreIgnoreSuggestion::Suggestion {
+                        start_span: expr.span.shrink_to_lo().until(arg.span),
+                        end_span: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                    }
+                } else {
+                    UseLetUnderscoreIgnoreSuggestion::Note
                 }
-            } else {
-                IgnoreDropSuggestion::Note
             };
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
                     cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
-                        DropRefDiag { arg_ty, label: arg.span, sugg },
+                        DropRefDiag { arg_ty, label: arg.span, sugg: let_underscore_ignore_sugg() },
                     );
                 }
                 sym::mem_forget if arg_ty.is_ref() => {
                     cx.emit_span_lint(
                         FORGETTING_REFERENCES,
                         expr.span,
-                        ForgetRefDiag { arg_ty, label: arg.span },
+                        ForgetRefDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
                     );
                 }
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
@@ -199,7 +206,11 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_span_lint(
                         FORGETTING_COPY_TYPES,
                         expr.span,
-                        ForgetCopyDiag { arg_ty, label: arg.span, sugg },
+                        ForgetCopyDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
                     );
                 }
                 sym::mem_drop

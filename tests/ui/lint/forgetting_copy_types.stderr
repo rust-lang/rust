@@ -39,8 +39,12 @@ LL |     forget(s3);
    |            |
    |            argument has type `&SomeStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
    = note: `#[warn(forgetting_references)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s3);
+LL +     let _ = s3;
+   |
 
 warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
   --> $DIR/forgetting_copy_types.rs:37:5
@@ -64,7 +68,11 @@ LL |     forget(s5);
    |            |
    |            argument has type `&SomeStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s5);
+LL +     let _ = s5;
+   |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forgetting_copy_types.rs:50:5
@@ -74,7 +82,11 @@ LL |     forget(a2);
    |            |
    |            argument has type `&AnotherStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(a2);
+LL +     let _ = a2;
+   |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forgetting_copy_types.rs:52:5
@@ -84,7 +96,11 @@ LL |     forget(a3);
    |            |
    |            argument has type `&AnotherStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(a3);
+LL +     let _ = a3;
+   |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forgetting_copy_types.rs:53:5
@@ -94,7 +110,11 @@ LL |     forget(a4);
    |            |
    |            argument has type `&AnotherStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(a4);
+LL +     let _ = a4;
+   |
 
 warning: 8 warnings emitted
 
