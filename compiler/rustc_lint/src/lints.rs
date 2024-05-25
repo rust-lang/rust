@@ -714,11 +714,12 @@ pub struct ForgetRefDiag<'a> {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_forgetting_copy_types)]
-#[note]
 pub struct ForgetCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
+    #[subdiagnostic]
+    pub sugg: IgnoreDropSuggestion,
 }
 
 #[derive(LintDiagnostic)]

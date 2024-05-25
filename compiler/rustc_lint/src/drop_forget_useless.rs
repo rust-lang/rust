@@ -199,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_span_lint(
                         FORGETTING_COPY_TYPES,
                         expr.span,
-                        ForgetCopyDiag { arg_ty, label: arg.span },
+                        ForgetCopyDiag { arg_ty, label: arg.span, sugg },
                     );
                 }
                 sym::mem_drop
