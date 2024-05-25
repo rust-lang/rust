@@ -194,8 +194,8 @@ function getCCppDebugConfig(
         args: runnable.args.executableArgs,
         cwd: runnable.args.cwd || runnable.args.workspaceRoot || ".",
         sourceFileMap,
-        environment: Object.entries(env).map(entry => {
-            return { "name": entry[0], "value": entry[1] };
+        environment: Object.entries(env).map((entry) => {
+            return { name: entry[0], value: entry[1] };
         }),
         // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
         osx: {
