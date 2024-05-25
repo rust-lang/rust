@@ -455,10 +455,26 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                // No special checking is needed for these:
-                // - Typeck has checked that Const operands are integers.
-                // - AST lowering guarantees that SymStatic points to a static.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymStatic { .. } => {}
+                hir::InlineAsmOperand::Const { anon_const } => {
+                    let ty = self.tcx.type_of(anon_const.def_id).instantiate_identity();
+                    match ty.kind() {
+                        ty::Error(_) => {}
+                        ty::Int(_) | ty::Uint(_) => {}
+                        _ => {
+                            self.tcx
+                                .dcx()
+                                .struct_span_err(*op_sp, "invalid type for `const` operand")
+                                .with_span_label(
+                                    self.tcx.def_span(anon_const.def_id),
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .with_help("`const` operands must be of an integer type")
+                                .emit();
+                        }
+                    };
+                }
+                // AST lowering guarantees that SymStatic points to a static.
+                hir::InlineAsmOperand::SymStatic { .. } => {}
                 // Check that sym actually points to a function. Later passes
                 // depend on this.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
