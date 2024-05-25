@@ -3803,7 +3803,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_or_patterns)]
     ///
     /// macro_rules! match_any {
@@ -3843,7 +3843,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_prelude_collisions)]
     ///
     /// trait Foo {
