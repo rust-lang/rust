@@ -1,5 +1,9 @@
 #![feature(panic_color_errors)]
 
+//@ run-fail
+//@ check-run-results
+//@ exec-env:RUST_BACKTRACE=0
+
 static mut I: [u64; 2] = [0; 2];
 
 fn foo(x: u64) {
@@ -14,6 +18,6 @@ fn foo(x: u64) {
 }
 
 fn main() {
-    std::panic::highlight_errors(false);
+    std::panic::highlight_errors(Some(true));
     foo(100);
 }

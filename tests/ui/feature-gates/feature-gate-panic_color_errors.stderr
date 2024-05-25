@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'panic_color_errors'
   --> $DIR/feature-gate-panic_color_errors.rs:4:5
    |
-LL |     panic::highlight_errors(true);
+LL |     panic::highlight_errors(Some(true));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(panic_color_errors)]` to the crate attributes to enable

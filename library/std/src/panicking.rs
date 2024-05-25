@@ -235,16 +235,26 @@ where
     *hook = Hook::Custom(Box::new(move |info| hook_fn(&prev, info)));
 }
 
-#[allow(missing_docs)]
+/// Adjusts the visual representation of panic messages by enabling or
+/// disabling color highlighting, or leaving it with a default behaviour. This
+/// function sets, unsets or remove an environment variable (RUST_COLOR_ERRORS)
+/// accordingly, influencing downstream formatting functions to produce colorful
+/// error messages.
 #[unstable(feature = "panic_color_errors", issue = "none")]
-pub fn highlight_errors(set_color: bool){
-    if set_color {
-        crate::env::set_var("RUST_COLOR_ERRORS", "1");
-    } else {
-        crate::env::set_var("RUST_COLOR_ERRORS", "0");
+pub fn highlight_errors(set_color: Option<bool>){
+    match set_color {
+        Some(true) => {crate::env::set_var("RUST_COLOR_ERRORS", "1")}
+        Some(false) => {crate::env::set_var("RUST_COLOR_ERRORS", "0")}
+        _ => {crate::env::remove_var("RUST_COLOR_ERRORS")}
     }
 }
 
+/// Alters the format of error messages by adding color codes to them.
+/// It reads the RUST_COLOR_ERRORS environment variable to determine whether to
+/// apply color formatting. If enabled, it formats the error message with ANSI
+/// escape codes to display it in red, indicating an error state. The default
+/// behavior is to apply highlighting when printing to a terminal, and no
+/// highlighting otherwise.
 #[unstable(feature = "panic_color_errors", issue = "none")]
 fn format_error_message (msg: &str) -> String {
     match crate::env::var_os("RUST_COLOR_ERRORS") {
@@ -287,11 +297,8 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let msg_fmt = if cfg!(feature="panic_color_errors") {
-            format_error_message(msg)
-        } else {
-            msg.to_string()
-        };
+        // We should check if the feature is active and only then procede to format the message, but we dont know how to do it for now.
+        let msg_fmt = format_error_message(msg);
 
         let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg_fmt}");
 
