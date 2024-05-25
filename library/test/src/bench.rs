@@ -98,7 +98,7 @@ fn fmt_thousands_sep(mut n: f64, sep: char) -> String {
                 (0, true) => write!(output, "{:06.2}", n / base as f64).unwrap(),
                 (0, false) => write!(output, "{:.2}", n / base as f64).unwrap(),
                 (_, true) => write!(output, "{:03}", n as usize / base).unwrap(),
-                _ => write!(output,  "{}", n as usize / base).unwrap()
+                _ => write!(output, "{}", n as usize / base).unwrap(),
             }
             if pow != 0 {
                 output.push(sep);

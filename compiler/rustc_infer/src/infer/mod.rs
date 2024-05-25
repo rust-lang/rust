@@ -957,27 +957,14 @@ impl<'tcx> InferCtxt<'tcx> {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                 return Err((a_vid, b_vid));
             }
-            // We don't silently want to constrain hidden types here, so we assert that either one side is
-            // an infer var, so it'll get constrained to whatever the other side is, or there are no opaque
-            // types involved.
-            // We don't expect this to actually get hit, but if it does, we now at least know how to write
-            // a test for it.
-            (_, ty::Infer(ty::TyVar(_))) => {}
-            (ty::Infer(ty::TyVar(_)), _) => {}
-            _ if r_a != r_b && (r_a, r_b).has_opaque_types() => {
-                span_bug!(
-                    cause.span(),
-                    "opaque types got hidden types registered from within subtype predicate: {r_a:?} vs {r_b:?}"
-                )
-            }
             _ => {}
         }
 
         self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
             if a_is_expected {
-                Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
+                Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::No, a, b))
             } else {
-                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
+                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::No, b, a))
             }
         })
     }
