@@ -245,7 +245,7 @@ use crate::ptr::{self, NonNull};
 mod lazy;
 mod once;
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 pub use lazy::LazyCell;
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub use once::OnceCell;

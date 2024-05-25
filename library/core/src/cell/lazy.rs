@@ -18,8 +18,6 @@ enum State<T, F> {
 /// # Examples
 ///
 /// ```
-/// #![feature(lazy_cell)]
-///
 /// use std::cell::LazyCell;
 ///
 /// let lazy: LazyCell<i32> = LazyCell::new(|| {
@@ -36,7 +34,7 @@ enum State<T, F> {
 /// //   92
 /// //   92
 /// ```
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 pub struct LazyCell<T, F = fn() -> T> {
     state: UnsafeCell<State<T, F>>,
 }
@@ -47,8 +45,6 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell)]
-    ///
     /// use std::cell::LazyCell;
     ///
     /// let hello = "Hello, World!".to_string();
@@ -58,7 +54,8 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_cell", issue = "109736")]
+    #[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
     pub const fn new(f: F) -> LazyCell<T, F> {
         LazyCell { state: UnsafeCell::new(State::Uninit(f)) }
     }
@@ -70,7 +67,6 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell)]
     /// #![feature(lazy_cell_consume)]
     ///
     /// use std::cell::LazyCell;
@@ -99,8 +95,6 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell)]
-    ///
     /// use std::cell::LazyCell;
     ///
     /// let lazy = LazyCell::new(|| 92);
@@ -109,7 +103,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, &92);
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_cell", issue = "109736")]
+    #[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
     pub fn force(this: &LazyCell<T, F>) -> &T {
         // SAFETY:
         // This invalidates any mutable references to the data. The resulting
@@ -173,7 +167,7 @@ impl<T, F> LazyCell<T, F> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     type Target = T;
     #[inline]
@@ -182,7 +176,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: Default> Default for LazyCell<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
@@ -191,7 +185,7 @@ impl<T: Default> Default for LazyCell<T> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = f.debug_tuple("LazyCell");

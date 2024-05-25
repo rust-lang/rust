@@ -1,6 +1,10 @@
 // Another example from issue #84660, this time weaponized as a safe transmute: an opaque type in an
 // impl header being accepted was used to create unsoundness.
 
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 #![feature(type_alias_impl_trait)]
 
 trait Foo {}
@@ -16,11 +20,13 @@ trait Trait<T, In> {
 impl<In, Out> Trait<Bar, In> for Out {
     type Out = Out;
     fn convert(_i: In) -> Self::Out {
+        //[next]~^ ERROR: type annotations needed
         unreachable!();
     }
 }
 
-impl<In, Out> Trait<(), In> for Out { //~ ERROR conflicting implementations of trait `Trait<Bar, _>`
+impl<In, Out> Trait<(), In> for Out {
+    //~^ ERROR conflicting implementations of trait `Trait<Bar, _>`
     type Out = In;
     fn convert(i: In) -> Self::Out {
         i

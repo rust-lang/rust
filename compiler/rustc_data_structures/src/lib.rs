@@ -24,7 +24,6 @@
 #![feature(extend_one)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
-#![feature(lazy_cell)]
 #![feature(lint_reasons)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]

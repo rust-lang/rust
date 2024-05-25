@@ -309,7 +309,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
-            err.note("consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell");
+            err.note("consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`");
         }
 
         err
