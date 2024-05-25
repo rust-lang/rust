@@ -1,0 +1,19 @@
+//@ run-rustfix
+//@ check-pass
+//@ compile-flags: --edition=2021
+#![allow(incomplete_features)]
+#![feature(expr_fragment_specifier_2024)]
+#![warn(edition_2024_expr_fragment_specifier)]
+
+macro_rules! m {
+    ($e:expr_2021) => { //~ WARN: the `expr` fragment specifier will accept more expressions in the 2024 edition.
+       //~^ WARN: this changes meaning in Rust 2024
+        $e
+    };
+    ($($i:expr_2021)*) => { }; //~ WARN: the `expr` fragment specifier will accept more expressions in the 2024 edition.
+       //~^ WARN: this changes meaning in Rust 2024
+}
+
+fn main() {
+    m!(());
+}
