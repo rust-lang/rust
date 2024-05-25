@@ -30,6 +30,7 @@ pub fn check(
             word = tmp_word;
         }
 
+        let original_len = word.len();
         word = word.trim_start_matches(trim_pattern);
 
         // Remove leading or trailing single `:` which may be part of a sentence.
@@ -42,6 +43,25 @@ pub fn check(
 
         if valid_idents.contains(word) || word.chars().all(|c| c == ':') {
             continue;
+        }
+
+        // Ensure that all reachable matching closing parens are included as well.
+        let size_diff = original_len - word.len();
+        let mut open_parens = 0;
+        let mut close_parens = 0;
+        for c in word.chars() {
+            if c == '(' {
+                open_parens += 1;
+            } else if c == ')' {
+                close_parens += 1;
+            }
+        }
+        while close_parens < open_parens
+            && let Some(tmp_word) = orig_word.get(size_diff..=(word.len() + size_diff))
+            && tmp_word.ends_with(')')
+        {
+            word = tmp_word;
+            close_parens += 1;
         }
 
         // Adjust for the current word
