@@ -1,4 +1,10 @@
-//@ check-pass
+//@ failure-status: 101
+//@ known-bug: unknown
+//@ normalize-stderr-test "note: .*\n\n" -> ""
+//@ normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
+//@ normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
+//@ normalize-stderr-test "delayed at .*" -> ""
+//@ rustc-env:RUST_BACKTRACE=0
 
 #![allow(incomplete_features)]
 #![feature(adt_const_params, generic_const_exprs)]
