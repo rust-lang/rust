@@ -42,6 +42,9 @@ pub use crate::panicking::{set_hook, take_hook};
 #[unstable(feature = "panic_update_hook", issue = "92649")]
 pub use crate::panicking::update_hook;
 
+#[unstable(feature = "panic_color_errors", issue = "none")]
+pub use crate::panicking::highlight_errors;
+
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use core::panic::{Location, PanicInfo};
 

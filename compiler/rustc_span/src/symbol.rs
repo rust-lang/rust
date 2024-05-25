@@ -1325,6 +1325,7 @@ symbols! {
         panic_abort,
         panic_bounds_check,
         panic_cannot_unwind,
+        panic_color_errors,
         panic_const_add_overflow,
         panic_const_async_fn_resumed,
         panic_const_async_fn_resumed_panic,

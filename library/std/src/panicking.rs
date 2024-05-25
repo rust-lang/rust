@@ -23,6 +23,8 @@ use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace;
 use crate::thread;
 
+use crate::io::{self, IsTerminal};
+
 #[cfg(not(test))]
 use crate::io::try_set_output_capture;
 // make sure to use the stderr output configured
@@ -233,6 +235,32 @@ where
     *hook = Hook::Custom(Box::new(move |info| hook_fn(&prev, info)));
 }
 
+#[allow(missing_docs)]
+#[unstable(feature = "panic_color_errors", issue = "none")]
+pub fn highlight_errors(set_color: bool){
+    if set_color {
+        crate::env::set_var("RUST_COLOR_ERRORS", "1");
+    } else {
+        crate::env::set_var("RUST_COLOR_ERRORS", "0");
+    }
+}
+
+#[unstable(feature = "panic_color_errors", issue = "none")]
+fn format_error_message (msg: &str) -> String {
+    match crate::env::var_os("RUST_COLOR_ERRORS") {
+        Some(x) if x == "1" => format!("\x1b[31m{msg}\x1b[0m"),
+        None => {
+            if io::stderr().is_terminal() {
+                format!("\x1b[31m{msg}\x1b[0m")
+            }
+            else {
+                msg.to_string()
+            }
+        },
+        _ => msg.to_string()
+    }
+}
+
 /// The default panic handler.
 fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
@@ -259,7 +287,13 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
+        let msg_fmt = if cfg!(feature="panic_color_errors") {
+            format_error_message(msg)
+        } else {
+            msg.to_string()
+        };
+
+        let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg_fmt}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
