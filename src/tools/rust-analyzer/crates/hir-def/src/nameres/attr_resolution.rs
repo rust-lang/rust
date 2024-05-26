@@ -10,7 +10,7 @@ use syntax::{ast, SmolStr};
 use triomphe::Arc;
 
 use crate::{
-    attr::builtin::{find_builtin_attr_idx, TOOL_MODULES},
+    attr::builtin::find_builtin_attr_idx,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
     nameres::path_resolution::ResolveMode,
@@ -82,8 +82,7 @@ impl DefMap {
             let name = name.to_smol_str();
             let pred = |n: &_| *n == name;
 
-            let registered = self.data.registered_tools.iter().map(SmolStr::as_str);
-            let is_tool = TOOL_MODULES.iter().copied().chain(registered).any(pred);
+            let is_tool = self.data.registered_tools.iter().map(SmolStr::as_str).any(pred);
             // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
                 return true;

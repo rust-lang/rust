@@ -139,6 +139,7 @@ fn integrated_completion_benchmark() {
             enable_self_on_the_fly: true,
             enable_private_editable: true,
             enable_term_search: true,
+            term_search_fuel: 200,
             full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
@@ -149,11 +150,10 @@ fn integrated_completion_benchmark() {
                 group: true,
                 skip_glob_imports: true,
             },
-            snippets: Vec::new(),
             prefer_no_std: false,
             prefer_prelude: true,
+            snippets: Vec::new(),
             limit: None,
-            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -184,6 +184,7 @@ fn integrated_completion_benchmark() {
             enable_self_on_the_fly: true,
             enable_private_editable: true,
             enable_term_search: true,
+            term_search_fuel: 200,
             full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
@@ -194,11 +195,10 @@ fn integrated_completion_benchmark() {
                 group: true,
                 skip_glob_imports: true,
             },
-            snippets: Vec::new(),
             prefer_no_std: false,
             prefer_prelude: true,
+            snippets: Vec::new(),
             limit: None,
-            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -227,6 +227,7 @@ fn integrated_completion_benchmark() {
             enable_self_on_the_fly: true,
             enable_private_editable: true,
             enable_term_search: true,
+            term_search_fuel: 200,
             full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
@@ -237,11 +238,10 @@ fn integrated_completion_benchmark() {
                 group: true,
                 skip_glob_imports: true,
             },
-            snippets: Vec::new(),
             prefer_no_std: false,
             prefer_prelude: true,
+            snippets: Vec::new(),
             limit: None,
-            term_search_fuel: 200,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };

@@ -17,7 +17,7 @@ use syntax::{
         self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,
         RangeItem, SlicePatComponents,
     },
-    AstNode, AstPtr, SyntaxNodePtr,
+    AstNode, AstPtr, AstToken as _, SyntaxNodePtr,
 };
 use triomphe::Arc;
 
@@ -1577,7 +1577,13 @@ impl ExprCollector<'_> {
             });
         });
         let template = f.template();
-        let fmt_snippet = template.as_ref().map(ToString::to_string);
+        let fmt_snippet = template.as_ref().and_then(|it| match it {
+            ast::Expr::Literal(literal) => match literal.kind() {
+                ast::LiteralKind::String(s) => Some(s.text().to_owned()),
+                _ => None,
+            },
+            _ => None,
+        });
         let mut mappings = vec![];
         let fmt = match template.and_then(|it| self.expand_macros_to_string(it)) {
             Some((s, is_direct_literal)) => format_args::parse(

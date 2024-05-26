@@ -81,8 +81,16 @@ use crate::{
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
     AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
-    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
+
+const PREDEFINED_TOOLS: &[SmolStr] = &[
+    SmolStr::new_static("clippy"),
+    SmolStr::new_static("rustfmt"),
+    SmolStr::new_static("diagnostic"),
+    SmolStr::new_static("miri"),
+    SmolStr::new_static("rust_analyzer"),
+];
 
 /// Contains the results of (early) name resolution.
 ///
@@ -129,7 +137,7 @@ pub struct DefMap {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
     /// The extern prelude which contains all root modules of external crates that are in scope.
-    extern_prelude: FxHashMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
+    extern_prelude: FxIndexMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
@@ -155,12 +163,12 @@ struct DefMapCrateData {
 impl DefMapCrateData {
     fn new(edition: Edition) -> Self {
         Self {
-            extern_prelude: FxHashMap::default(),
+            extern_prelude: FxIndexMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
             proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
-            registered_tools: Vec::new(),
+            registered_tools: PREDEFINED_TOOLS.into(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
             no_core: false,
@@ -578,7 +586,8 @@ impl DefMap {
 
     pub(crate) fn extern_prelude(
         &self,
-    ) -> impl Iterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_
+    {
         self.data.extern_prelude.iter().map(|(name, &def)| (name, def))
     }
 

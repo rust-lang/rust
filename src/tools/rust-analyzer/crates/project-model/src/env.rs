@@ -62,9 +62,9 @@ pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: Targe
 pub(crate) fn cargo_config_env(
     manifest: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
-    sysroot: Option<&Sysroot>,
+    sysroot: &Sysroot,
 ) -> FxHashMap<String, String> {
-    let mut cargo_config = Sysroot::tool(sysroot, Tool::Cargo);
+    let mut cargo_config = sysroot.tool(Tool::Cargo);
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(manifest.parent())

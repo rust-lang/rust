@@ -9,15 +9,9 @@ import { unwrapUndefinable } from "./undefinable";
 
 interface CompilationArtifact {
     fileName: string;
-    workspace: string;
     name: string;
     kind: string;
     isTest: boolean;
-}
-
-export interface ExecutableInfo {
-    executable: string;
-    workspace: string;
 }
 
 export interface ArtifactSpec {
@@ -74,7 +68,6 @@ export class Cargo {
                             artifacts.push({
                                 fileName: message.executable,
                                 name: message.target.name,
-                                workspace: path.dirname(message.manifest_path),
                                 kind: message.target.kind[0],
                                 isTest: message.profile.test,
                             });
@@ -93,7 +86,7 @@ export class Cargo {
         return spec.filter?.(artifacts) ?? artifacts;
     }
 
-    async executableInfoFromArgs(args: readonly string[]): Promise<ExecutableInfo> {
+    async executableFromArgs(args: readonly string[]): Promise<string> {
         const artifacts = await this.getArtifacts(Cargo.artifactSpec(args));
 
         if (artifacts.length === 0) {
@@ -103,10 +96,7 @@ export class Cargo {
         }
 
         const artifact = unwrapUndefinable(artifacts[0]);
-        return {
-            executable: artifact.fileName,
-            workspace: artifact.workspace,
-        };
+        return artifact.fileName;
     }
 
     private async runCargo(

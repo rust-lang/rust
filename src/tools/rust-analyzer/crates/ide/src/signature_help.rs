@@ -201,7 +201,21 @@ fn signature_help_for_call(
                 variant.name(db).display(db)
             );
         }
-        hir::CallableKind::Closure | hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
+        hir::CallableKind::Closure(closure) => {
+            let fn_trait = closure.fn_trait(db);
+            format_to!(res.signature, "impl {fn_trait}")
+        }
+        hir::CallableKind::FnPtr => format_to!(res.signature, "fn"),
+        hir::CallableKind::FnImpl(fn_trait) => match callable.ty().as_adt() {
+            // FIXME: Render docs of the concrete trait impl function
+            Some(adt) => format_to!(
+                res.signature,
+                "<{} as {fn_trait}>::{}",
+                adt.name(db).display(db),
+                fn_trait.function_name()
+            ),
+            None => format_to!(res.signature, "impl {fn_trait}"),
+        },
     }
 
     res.signature.push('(');
@@ -210,12 +224,15 @@ fn signature_help_for_call(
             format_to!(res.signature, "{}", self_param.display(db))
         }
         let mut buf = String::new();
-        for (idx, (pat, ty)) in callable.params(db).into_iter().enumerate() {
+        for (idx, p) in callable.params().into_iter().enumerate() {
             buf.clear();
-            if let Some(pat) = pat {
-                match pat {
-                    Either::Left(_self) => format_to!(buf, "self: "),
-                    Either::Right(pat) => format_to!(buf, "{}: ", pat),
+            if let Some(param) = p.source(sema.db) {
+                match param.value {
+                    Either::Right(param) => match param.pat() {
+                        Some(pat) => format_to!(buf, "{}: ", pat),
+                        None => format_to!(buf, "?: "),
+                    },
+                    Either::Left(_) => format_to!(buf, "self: "),
                 }
             }
             // APITs (argument position `impl Trait`s) are inferred as {unknown} as the user is
@@ -223,9 +240,9 @@ fn signature_help_for_call(
             // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
-            match (ty.contains_unknown(), fn_params.as_deref()) {
+            match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => format_to!(buf, "{}", fn_params[idx].ty().display(db)),
-                _ => format_to!(buf, "{}", ty.display(db)),
+                _ => format_to!(buf, "{}", p.ty().display(db)),
             }
             res.push_call_param(&buf);
         }
@@ -242,9 +259,9 @@ fn signature_help_for_call(
             render(func.ret_type(db))
         }
         hir::CallableKind::Function(_)
-        | hir::CallableKind::Closure
+        | hir::CallableKind::Closure(_)
         | hir::CallableKind::FnPtr
-        | hir::CallableKind::Other => render(callable.return_type()),
+        | hir::CallableKind::FnImpl(_) => render(callable.return_type()),
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
     Some(res)
@@ -1346,14 +1363,42 @@ fn test() { S.foo($0); }
 struct S;
 fn foo(s: S) -> i32 { 92 }
 fn main() {
+    let _move = S;
+    (|s| {{_move}; foo(s)})($0)
+}
+        "#,
+            expect![[r#"
+                impl FnOnce(s: S) -> i32
+                            ^^^^
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
     (|s| foo(s))($0)
 }
         "#,
             expect![[r#"
-                (s: S) -> i32
-                 ^^^^
+                impl Fn(s: S) -> i32
+                        ^^^^
             "#]],
-        )
+        );
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
+    let mut mutate = 0;
+    (|s| { mutate = 1; foo(s) })($0)
+}
+        "#,
+            expect![[r#"
+                impl FnMut(s: S) -> i32
+                           ^^^^
+            "#]],
+        );
     }
 
     #[test]
@@ -1383,10 +1428,79 @@ fn main(f: fn(i32, f64) -> char) {
 }
         "#,
             expect![[r#"
-                (i32, f64) -> char
-                 ---  ^^^
+                fn(i32, f64) -> char
+                   ---  ^^^
             "#]],
         )
+    }
+
+    #[test]
+    fn call_info_for_fn_impl() {
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnMut<(i32, f64)> for S {}
+impl core::ops::Fn<(i32, f64)> for S {}
+fn main() {
+    S($0);
+}
+        "#,
+            expect![[r#"
+                <S as Fn>::call(i32, f64) -> char
+                                ^^^  ---
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnMut<(i32, f64)> for S {}
+impl core::ops::Fn<(i32, f64)> for S {}
+fn main() {
+    S(1, $0);
+}
+        "#,
+            expect![[r#"
+                <S as Fn>::call(i32, f64) -> char
+                                ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnOnce<(char, char)> for S {
+    type Output = f64;
+}
+fn main() {
+    S($0);
+}
+        "#,
+            expect![""],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnOnce<(char, char)> for S {
+    type Output = f64;
+}
+fn main() {
+    // FIXME: The ide layer loses the calling info here so we get an ambiguous trait solve result
+    S(0i32, $0);
+}
+        "#,
+            expect![""],
+        );
     }
 
     #[test]
@@ -1794,19 +1908,19 @@ fn f<F: FnOnce(u8, u16) -> i32>(f: F) {
 }
 "#,
             expect![[r#"
-                (u8, u16) -> i32
-                 ^^  ---
+                impl FnOnce(u8, u16) -> i32
+                            ^^  ---
             "#]],
         );
         check(
             r#"
-fn f<T, F: FnOnce(&T, u16) -> &T>(f: F) {
+fn f<T, F: FnMut(&T, u16) -> &T>(f: F) {
     f($0)
 }
 "#,
             expect![[r#"
-                (&T, u16) -> &T
-                 ^^  ---
+                impl FnMut(&T, u16) -> &T
+                           ^^  ---
             "#]],
         );
     }
@@ -1826,7 +1940,7 @@ fn take<C, Error>(
 }
 "#,
             expect![[r#"
-                () -> i32
+                impl Fn() -> i32
             "#]],
         );
     }

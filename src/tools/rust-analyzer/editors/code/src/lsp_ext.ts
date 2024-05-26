@@ -226,6 +226,7 @@ export type Runnable = {
     kind: "cargo";
     args: {
         workspaceRoot?: string;
+        cwd?: string;
         cargoArgs: string[];
         cargoExtraArgs: string[];
         executableArgs: string[];
@@ -241,7 +242,6 @@ export type ServerStatusParams = {
     health: "ok" | "warning" | "error";
     quiescent: boolean;
     message?: string;
-    workspaceInfo?: string;
 };
 export type SsrParams = {
     query: string;

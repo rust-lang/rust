@@ -441,6 +441,8 @@ pub struct CargoRunnable {
     pub override_cargo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_root: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<PathBuf>,
     // command, --package and --lib stuff
     pub cargo_args: Vec<String>,
     // user-specified additional cargo args, like `--release`.
@@ -500,7 +502,6 @@ pub struct ServerStatusParams {
     pub health: Health,
     pub quiescent: bool,
     pub message: Option<String>,
-    pub workspace_info: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]

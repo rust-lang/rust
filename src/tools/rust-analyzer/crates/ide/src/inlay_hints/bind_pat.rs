@@ -1120,4 +1120,30 @@ fn test() {
 "#,
         );
     }
+
+    #[test]
+    fn type_hints_async_block() {
+        check_types(
+            r#"
+//- minicore: future
+async fn main() {
+    let _x = async { 8_i32 };
+      //^^ impl Future<Output = i32>
+}"#,
+        );
+    }
+
+    #[test]
+    fn type_hints_async_block_with_tail_return_exp() {
+        check_types(
+            r#"
+//- minicore: future
+async fn main() {
+    let _x = async {
+      //^^ impl Future<Output = i32>
+        return 8_i32;
+    };
+}"#,
+        );
+    }
 }

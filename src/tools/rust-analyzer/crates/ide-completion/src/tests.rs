@@ -66,11 +66,10 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_self_on_the_fly: true,
     enable_private_editable: false,
     enable_term_search: true,
+    term_search_fuel: 200,
     full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
-    prefer_no_std: false,
-    prefer_prelude: true,
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,
         prefix_kind: PrefixKind::Plain,
@@ -78,9 +77,10 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
         group: true,
         skip_glob_imports: true,
     },
+    prefer_no_std: false,
+    prefer_prelude: true,
     snippets: Vec::new(),
     limit: None,
-    term_search_fuel: 200,
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {

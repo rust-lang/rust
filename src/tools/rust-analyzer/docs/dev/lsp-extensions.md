@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: a39009c351009d16
+lsp/ext.rs hash: 1babf76a3c2cef3b
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -377,6 +377,7 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 ```typescript
 {
     workspaceRoot?: string;
+    cwd?: string;
     cargoArgs: string[];
     cargoExtraArgs: string[];
     executableArgs: string[];

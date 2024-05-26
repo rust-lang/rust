@@ -1,13 +1,12 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{fmt, hash::BuildHasherDefault};
+use std::fmt;
 
 use base_db::CrateId;
 use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir_expand::name::Name;
-use indexmap::IndexMap;
 use itertools::Itertools;
-use rustc_hash::{FxHashSet, FxHasher};
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::{format_to, TupleExt};
 use triomphe::Arc;
@@ -17,7 +16,7 @@ use crate::{
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::DefMap,
     visibility::Visibility,
-    AssocItemId, ModuleDefId, ModuleId, TraitId,
+    AssocItemId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Item import details stored in the `ImportMap`.
@@ -58,7 +57,6 @@ enum IsTraitAssocItem {
     No,
 }
 
-type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 type ImportMapIndex = FxIndexMap<ItemInNs, (SmallVec<[ImportInfo; 1]>, IsTraitAssocItem)>;
 
 impl ImportMap {

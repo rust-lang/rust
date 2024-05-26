@@ -175,7 +175,13 @@ pub(crate) fn parse(
     mut synth: impl FnMut(Name) -> ExprId,
     mut record_usage: impl FnMut(Name, Option<TextRange>),
 ) -> FormatArgs {
-    let text = s.text_without_quotes();
+    let Ok(text) = s.value() else {
+        return FormatArgs {
+            template: Default::default(),
+            arguments: args.finish(),
+            orphans: vec![],
+        };
+    };
     let str_style = match s.quote_offsets() {
         Some(offsets) => {
             let raw = usize::from(offsets.quotes.0.len()) - 1;
@@ -186,7 +192,7 @@ pub(crate) fn parse(
     };
 
     let mut parser =
-        parse::Parser::new(text, str_style, fmt_snippet, false, parse::ParseMode::Format);
+        parse::Parser::new(&text, str_style, fmt_snippet, false, parse::ParseMode::Format);
 
     let mut pieces = Vec::new();
     while let Some(piece) = parser.next() {

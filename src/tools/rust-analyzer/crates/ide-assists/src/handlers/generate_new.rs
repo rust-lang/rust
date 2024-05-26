@@ -1,3 +1,4 @@
+use hir::ImportPathConfig;
 use ide_db::{
     imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
@@ -58,11 +59,13 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
                 let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
-                let type_path = current_module.find_use_path(
+                let type_path = current_module.find_path(
                     ctx.sema.db,
                     item_for_path_search(ctx.sema.db, item_in_ns)?,
-                    ctx.config.prefer_no_std,
-                    ctx.config.prefer_prelude,
+                    ImportPathConfig {
+                        prefer_no_std: ctx.config.prefer_no_std,
+                        prefer_prelude: ctx.config.prefer_prelude,
+                    },
                 )?;
 
                 let expr = use_trivial_constructor(
