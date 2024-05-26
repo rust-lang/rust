@@ -77,11 +77,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // cpus.
                 // https://docs.oracle.com/cd/E88353_01/html/E37841/pset-info-2.html
 
-                let ps_myid = this.eval_libc_i32("PS_MYID");
                 let pset = this.read_scalar(pset)?.to_i32()?;
                 let tpe = this.read_pointer(tpe)?;
                 let list = this.read_pointer(list)?;
 
+                let ps_myid = this.eval_libc_i32("PS_MYID");
                 if ps_myid != pset {
                     throw_unsup_format!("pset_info is only supported with pset==PS_MYID");
                 }
