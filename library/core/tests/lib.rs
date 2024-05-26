@@ -112,7 +112,6 @@
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
 #![feature(waker_getters)]
-#![feature(slice_flatten)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
 #![feature(trait_upcasting)]
