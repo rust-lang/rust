@@ -194,7 +194,10 @@ function getCCppDebugConfig(
         args: runnable.args.executableArgs,
         cwd: runnable.args.cwd || runnable.args.workspaceRoot || ".",
         sourceFileMap,
-        env,
+        environment: Object.entries(env).map((entry) => ({
+            name: entry[0],
+            value: entry[1],
+        })),
         // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
         osx: {
             MIMode: "lldb",
