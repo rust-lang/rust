@@ -70,6 +70,11 @@ fn escaping_locals<'tcx>(
                 // Exclude #[repr(simd)] types so that they are not de-optimized into an array
                 return true;
             }
+            if Some(def.did()) == tcx.lang_items().dyn_metadata() {
+                // codegen wants to see the `DynMetadata<T>`,
+                // not the inner reference-to-opaque-type.
+                return true;
+            }
             // We already excluded unions and enums, so this ADT must have one variant
             let variant = def.variant(FIRST_VARIANT);
             if variant.fields.len() > 1 {
