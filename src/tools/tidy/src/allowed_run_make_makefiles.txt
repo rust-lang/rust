@@ -1,6 +1,5 @@
 run-make/allocator-shim-circular-deps/Makefile
 run-make/allow-non-lint-warnings-cmdline/Makefile
-run-make/allow-warnings-cmdline-stability/Makefile
 run-make/archive-duplicate-names/Makefile
 run-make/atomic-lock-free/Makefile
 run-make/bare-outfile/Makefile
