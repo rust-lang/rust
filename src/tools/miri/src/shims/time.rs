@@ -6,7 +6,6 @@ use std::time::{Duration, SystemTime};
 use chrono::{DateTime, Datelike, Offset, Timelike, Utc};
 use chrono_tz::Tz;
 
-use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
@@ -336,16 +335,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let timeout_time = now
             .checked_add(duration)
             .unwrap_or_else(|| now.checked_add(Duration::from_secs(3600)).unwrap());
+        let timeout_time = Timeout::Monotonic(timeout_time);
 
-        let active_thread = this.get_active_thread();
-        this.block_thread(active_thread, BlockReason::Sleep);
-
-        this.register_timeout_callback(
-            active_thread,
-            CallbackTime::Monotonic(timeout_time),
-            Box::new(UnblockCallback { thread_to_unblock: active_thread }),
+        this.block_thread(
+            BlockReason::Sleep,
+            Some(timeout_time),
+            callback!(
+                @capture<'tcx> {}
+                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
+                @timeout = |_this| { Ok(()) }
+            ),
         );
-
         Ok(0)
     }
 
@@ -359,31 +359,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let duration = Duration::from_millis(timeout_ms.into());
         let timeout_time = this.machine.clock.now().checked_add(duration).unwrap();
+        let timeout_time = Timeout::Monotonic(timeout_time);
 
-        let active_thread = this.get_active_thread();
-        this.block_thread(active_thread, BlockReason::Sleep);
-
-        this.register_timeout_callback(
-            active_thread,
-            CallbackTime::Monotonic(timeout_time),
-            Box::new(UnblockCallback { thread_to_unblock: active_thread }),
+        this.block_thread(
+            BlockReason::Sleep,
+            Some(timeout_time),
+            callback!(
+                @capture<'tcx> {}
+                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
+                @timeout = |_this| { Ok(()) }
+            ),
         );
-
-        Ok(())
-    }
-}
-
-struct UnblockCallback {
-    thread_to_unblock: ThreadId,
-}
-
-impl VisitProvenance for UnblockCallback {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
-}
-
-impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for UnblockCallback {
-    fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        ecx.unblock_thread(self.thread_to_unblock, BlockReason::Sleep);
         Ok(())
     }
 }

@@ -169,12 +169,10 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     size,
                     align,
                     memory_kind,
-                    ecx.get_active_thread(),
+                    ecx.active_thread(),
                 ) {
-                    if let Some(clock) = clock
-                        && let Some(data_race) = &ecx.machine.data_race
-                    {
-                        data_race.acquire_clock(&clock, ecx.get_active_thread());
+                    if let Some(clock) = clock {
+                        ecx.acquire_clock(&clock);
                     }
                     reuse_addr
                 } else {
@@ -369,12 +367,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // `alloc_id_from_addr` any more.
         global_state.exposed.remove(&dead_id);
         // Also remember this address for future reuse.
-        let thread = self.threads.get_active_thread_id();
+        let thread = self.threads.active_thread();
         global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
             if let Some(data_race) = &self.data_race {
-                data_race
-                    .release_clock(thread, self.threads.active_thread_ref().current_span())
-                    .clone()
+                data_race.release_clock(&self.threads).clone()
             } else {
                 VClock::default()
             }
