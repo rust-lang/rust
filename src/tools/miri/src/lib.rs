@@ -53,7 +53,6 @@
 
 // Some "regular" crates we want to share with rustc
 extern crate either;
-#[macro_use]
 extern crate tracing;
 
 // The rustc crates we need
@@ -64,7 +63,6 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
-#[macro_use]
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -91,6 +89,8 @@ mod range_map;
 mod shims;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
+use rustc_middle::{bug, span_bug};
+use tracing::{info, trace};
 
 // Make all those symbols available in the same place as our own.
 #[doc(no_inline)]

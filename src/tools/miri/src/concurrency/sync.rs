@@ -61,6 +61,7 @@ macro_rules! declare_id {
         }
     };
 }
+pub(super) use declare_id;
 
 declare_id!(MutexId);
 

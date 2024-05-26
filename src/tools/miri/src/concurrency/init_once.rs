@@ -7,7 +7,7 @@ use super::sync::EvalContextExtPriv as _;
 use super::vector_clock::VClock;
 use crate::*;
 
-declare_id!(InitOnceId);
+super::sync::declare_id!(InitOnceId);
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 /// The current status of a one time initialization.
