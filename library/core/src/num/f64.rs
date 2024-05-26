@@ -912,8 +912,8 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_radians(self) -> f64 {
-        let value: f64 = consts::PI;
-        self * (value / 180.0)
+        const RADS_PER_DEG: f64 = consts::PI / 180.0;
+        self * RADS_PER_DEG
     }
 
     /// Returns the maximum of the two numbers, ignoring NaN.
