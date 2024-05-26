@@ -128,6 +128,11 @@ impl LateLintPass<'_> for NonCanonicalImpls {
         let ExprKind::Block(block, ..) = body.value.kind else {
             return;
         };
+        if let Some(expr) = block.expr
+            && expr.span.from_expansion()
+        {
+            return;
+        }
 
         if cx.tcx.is_diagnostic_item(sym::Clone, trait_impl.def_id)
             && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
