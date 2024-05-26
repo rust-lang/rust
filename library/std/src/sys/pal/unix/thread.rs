@@ -717,5 +717,14 @@ unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
 
 #[cfg(target_os = "netbsd")]
 unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    2048 // just a guess
+    static STACK: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
+
+    *STACK.get_or_init(|| {
+        let mut stack = unsafe { libc::sysconf(libc::_SC_THREAD_STACK_MIN) };
+        if stack < 0 {
+            stack = 2048; // just a guess
+        }
+
+        stack as usize
+    })
 }
