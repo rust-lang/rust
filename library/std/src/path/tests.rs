@@ -1803,6 +1803,29 @@ fn test_windows_absolute() {
     assert_eq!(absolute(r"COM1").unwrap().as_os_str(), Path::new(r"\\.\COM1").as_os_str());
 }
 
+#[test]
+#[should_panic = "path separator"]
+fn test_extension_path_sep() {
+    let mut path = PathBuf::from("path/to/file");
+    path.set_extension("d/../../../../../etc/passwd");
+}
+
+#[test]
+#[should_panic = "path separator"]
+#[cfg(windows)]
+fn test_extension_path_sep_alternate() {
+    let mut path = PathBuf::from("path/to/file");
+    path.set_extension("d\\test");
+}
+
+#[test]
+#[cfg(not(windows))]
+fn test_extension_path_sep_alternate() {
+    let mut path = PathBuf::from("path/to/file");
+    path.set_extension("d\\test");
+    assert_eq!(path, Path::new("path/to/file.d\\test"));
+}
+
 #[bench]
 #[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
