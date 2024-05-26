@@ -810,6 +810,9 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/rustc/src/check-cfg.md"]
 cc = ["@Urgau"]
 
+[mentions."src/doc/rustc/src/check-cfg"]
+cc = ["@Urgau"]
+
 [mentions."src/doc/rustc/src/platform-support"]
 cc = ["@Nilstrieb"]
 
