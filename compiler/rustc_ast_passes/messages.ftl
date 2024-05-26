@@ -92,9 +92,6 @@ ast_passes_fn_body_extern = incorrect function inside `extern` block
 ast_passes_fn_param_c_var_args_not_last =
     `...` must be the last argument of a C-variadic function
 
-ast_passes_fn_param_c_var_args_only =
-    C-variadic function must be declared with at least one named argument
-
 ast_passes_fn_param_doc_comment =
     documentation comments cannot be applied to function parameters
     .label = doc comments are not allowed here

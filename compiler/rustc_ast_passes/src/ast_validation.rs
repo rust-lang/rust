@@ -364,7 +364,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
         self.check_decl_num_args(fn_decl);
-        self.check_decl_cvaradic_pos(fn_decl);
+        self.check_decl_cvariadic_pos(fn_decl);
         self.check_decl_attrs(fn_decl);
         self.check_decl_self_param(fn_decl, self_semantic);
     }
@@ -379,13 +379,11 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_decl_cvaradic_pos(&self, fn_decl: &FnDecl) {
+    /// Emits an error if a function declaration has a variadic parameter in the
+    /// beginning or middle of parameter list.
+    /// Example: `fn foo(..., x: i32)` will emit an error.
+    fn check_decl_cvariadic_pos(&self, fn_decl: &FnDecl) {
         match &*fn_decl.inputs {
-            [Param { ty, span, .. }] => {
-                if let TyKind::CVarArgs = ty.kind {
-                    self.dcx().emit_err(errors::FnParamCVarArgsOnly { span: *span });
-                }
-            }
             [ps @ .., _] => {
                 for Param { ty, span, .. } in ps {
                     if let TyKind::CVarArgs = ty.kind {
