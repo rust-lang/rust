@@ -794,9 +794,12 @@ pub struct NaNPattern {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(mir_build_pointer_pattern)]
-pub struct PointerPattern;
+pub struct PointerPattern {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_empty_never_pattern)]
@@ -806,22 +809,6 @@ pub struct NonEmptyNeverPattern<'tcx> {
     #[label]
     pub span: Span,
     pub ty: Ty<'tcx>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_indirect_structural_match)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
-pub struct IndirectStructuralMatch<'tcx> {
-    pub non_sm_ty: Ty<'tcx>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_nontrivial_structural_match)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
-pub struct NontrivialStructuralMatch<'tcx> {
-    pub non_sm_ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
