@@ -990,7 +990,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // The name is written with write_os_str_to_c_str, while the rest of the
                 // dirent struct is written using write_int_fields.
 
-                // For reference:
+                // For reference, on macOS this looks like:
                 // pub struct dirent {
                 //     pub d_ino: u64,
                 //     pub d_seekoff: u64,
@@ -1025,40 +1025,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                // macOS offset field is d_seekoff
-                if this.projectable_has_field(&entry_place, "d_seekoff") {
-                    this.write_int_fields_named(
-                        &[
-                            ("d_ino", ino.into()),
-                            ("d_seekoff", 0),
-                            ("d_reclen", 0),
-                            ("d_namlen", file_name_len.into()),
-                            ("d_type", file_type.into()),
-                        ],
-                        &entry_place,
-                    )?;
-                } else if this.projectable_has_field(&entry_place, "d_off") {
-                    // freebsd 12 and onwards had added the d_off field
-                    this.write_int_fields_named(
-                        &[
-                            ("d_fileno", ino.into()),
-                            ("d_off", 0),
-                            ("d_reclen", 0),
-                            ("d_type", file_type.into()),
-                            ("d_namlen", file_name_len.into()),
-                        ],
-                        &entry_place,
-                    )?;
-                } else {
-                    this.write_int_fields_named(
-                        &[
-                            ("d_fileno", ino.into()),
-                            ("d_reclen", 0),
-                            ("d_type", file_type.into()),
-                            ("d_namlen", file_name_len.into()),
-                        ],
-                        &entry_place,
-                    )?;
+                // Common fields.
+                this.write_int_fields_named(
+                    &[
+                        ("d_reclen", 0),
+                        ("d_namlen", file_name_len.into()),
+                        ("d_type", file_type.into()),
+                    ],
+                    &entry_place,
+                )?;
+                // Special fields.
+                match &*this.tcx.sess.target.os {
+                    "macos" => {
+                        #[rustfmt::skip]
+                        this.write_int_fields_named(
+                            &[
+                                ("d_ino", ino.into()),
+                                ("d_seekoff", 0),
+                            ],
+                            &entry_place,
+                        )?;
+                    }
+                    "freebsd" => {
+                        this.write_int(ino, &this.project_field_named(&entry_place, "d_fileno")?)?;
+                        // `d_off` only exists on FreeBSD 12+, but we support v11 as well.
+                        // `libc` uses a build script to determine which version of the API to use,
+                        // and cross-builds always end up using v11.
+                        // To support both v11 and v12+, we dynamically check whether the field exists.
+                        if this.projectable_has_field(&entry_place, "d_off") {
+                            this.write_int(0, &this.project_field_named(&entry_place, "d_off")?)?;
+                        }
+                    }
+                    _ => unreachable!(),
                 }
 
                 let result_place = this.deref_pointer(result_op)?;
