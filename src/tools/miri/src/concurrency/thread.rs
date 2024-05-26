@@ -9,6 +9,7 @@ use std::time::{Duration, SystemTime};
 use either::Either;
 
 use rustc_const_eval::CTRL_C_RECEIVED;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
@@ -235,7 +236,7 @@ pub struct Thread<'mir, 'tcx> {
     thread_name: Option<Vec<u8>>,
 
     /// The virtual call stack.
-    stack: Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>>,
+    stack: Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>>,
 
     /// The function to call when the stack ran empty, to figure out what to do next.
     /// Conceptually, this is the interpreter implementation of the things that happen 'after' the
@@ -376,7 +377,7 @@ impl VisitProvenance for Thread<'_, '_> {
     }
 }
 
-impl VisitProvenance for Frame<'_, '_, Provenance, FrameExtra<'_>> {
+impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Frame {
             return_place,
@@ -505,19 +506,18 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Borrow the stack of the active thread.
-    pub fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>] {
+    pub fn active_thread_stack(&self) -> &[Frame<'tcx, Provenance, FrameExtra<'tcx>>] {
         &self.threads[self.active_thread].stack
     }
 
     /// Mutably borrow the stack of the active thread.
-    fn active_thread_stack_mut(
-        &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
+    fn active_thread_stack_mut(&mut self) -> &mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
     pub fn all_stacks(
         &self,
-    ) -> impl Iterator<Item = (ThreadId, &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>])> {
+    ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> + Captures<'mir>
+    {
         self.threads.iter_enumerated().map(|(id, t)| (id, &t.stack[..]))
     }
 
@@ -1099,15 +1099,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>] {
+    fn active_thread_stack<'a>(&'a self) -> &'a [Frame<'tcx, Provenance, FrameExtra<'tcx>>]
+    where
+        'mir: 'a,
+    {
         let this = self.eval_context_ref();
         this.machine.threads.active_thread_stack()
     }
 
     #[inline]
-    fn active_thread_stack_mut(
-        &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
+    fn active_thread_stack_mut<'a>(
+        &'a mut self,
+    ) -> &'a mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>>
+    where
+        'mir: 'a,
+    {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
     }

@@ -354,7 +354,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn on_stack_pop(
         &self,
-        frame: &Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
+        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap();

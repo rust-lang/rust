@@ -58,13 +58,10 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     }
 }
 
-pub fn get_span_and_frames<'tcx, 'mir>(
+pub fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
-    stack: &[Frame<'mir, 'tcx, impl Provenance, impl Sized>],
-) -> (Span, Vec<errors::FrameNote>)
-where
-    'tcx: 'mir,
-{
+    stack: &[Frame<'tcx, impl Provenance, impl Sized>],
+) -> (Span, Vec<errors::FrameNote>) {
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
@@ -161,9 +158,9 @@ where
 
 /// Emit a lint from a const-eval situation.
 // Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
-pub(super) fn lint<'tcx, 'mir, L>(
+pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
-    machine: &CompileTimeInterpreter<'mir, 'tcx>,
+    machine: &CompileTimeInterpreter<'tcx>,
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where

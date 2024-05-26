@@ -949,7 +949,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         dest: &MPlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         // For foreign items, try to see if we can emulate them.
         if ecx.tcx.is_foreign_item(instance.def_id()) {
             // An external function call that does not have a MIR body. We either find MIR elsewhere
@@ -1359,8 +1359,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     #[inline(always)]
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
+        frame: Frame<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         // Start recording our event before doing anything else
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
             let fn_name = frame.instance.to_string();
@@ -1391,13 +1391,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
+    ) -> &'a [Frame<'tcx, Self::Provenance, Self::FrameExtra>] {
         ecx.active_thread_stack()
     }
 
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'tcx, Self::Provenance, Self::FrameExtra>> {
         ecx.active_thread_stack_mut()
     }
 
@@ -1444,7 +1444,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     fn before_stack_pop(
         ecx: &InterpCx<'mir, 'tcx, Self>,
-        frame: &Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
     ) -> InterpResult<'tcx> {
         // We want this *before* the return value copy, because the return place itself is protected
         // until we do `end_call` here.
@@ -1461,7 +1461,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
+        frame: Frame<'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         if frame.extra.is_user_relevant {

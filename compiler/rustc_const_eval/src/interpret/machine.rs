@@ -200,7 +200,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
+    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>>;
 
     /// Execute `fn_val`. It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
@@ -478,18 +478,18 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Called immediately before a new stack frame gets pushed.
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx, Self::Provenance>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+        frame: Frame<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx, Frame<'tcx, Self::Provenance, Self::FrameExtra>>;
 
     /// Borrow the current thread's stack.
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>];
+    ) -> &'a [Frame<'tcx, Self::Provenance, Self::FrameExtra>];
 
     /// Mutably borrow the current thread's stack.
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+    ) -> &'a mut Vec<Frame<'tcx, Self::Provenance, Self::FrameExtra>>;
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
@@ -499,7 +499,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Called just before the return value is copied to the caller-provided return place.
     fn before_stack_pop(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _frame: &Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        _frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
@@ -509,7 +509,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     #[inline(always)]
     fn after_stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        _frame: Frame<'tcx, Self::Provenance, Self::FrameExtra>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         // By default, we do not support unwinding from panics

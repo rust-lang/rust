@@ -45,7 +45,7 @@ const TINY_LINT_TERMINATOR_LIMIT: usize = 20;
 const PROGRESS_INDICATOR_START: usize = 4_000_000;
 
 /// Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'mir, 'tcx> {
+pub struct CompileTimeInterpreter<'tcx> {
     /// The number of terminators that have been evaluated.
     ///
     /// This is used to produce lints informing the user that the compiler is not stuck.
@@ -53,7 +53,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) num_evaluated_steps: usize,
 
     /// The virtual call stack.
-    pub(super) stack: Vec<Frame<'mir, 'tcx>>,
+    pub(super) stack: Vec<Frame<'tcx>>,
 
     /// Pattern matching on consts with references would be unsound if those references
     /// could point to anything mutable. Therefore, when evaluating consts and when constructing valtrees,
@@ -90,7 +90,7 @@ impl From<bool> for CanAccessMutGlobal {
     }
 }
 
-impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
+impl<'tcx> CompileTimeInterpreter<'tcx> {
     pub(crate) fn new(
         can_access_mut_global: CanAccessMutGlobal,
         check_alignment: CheckAlignment,
@@ -165,7 +165,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
 }
 
 pub(crate) type CompileTimeEvalContext<'mir, 'tcx> =
-    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
+    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
@@ -371,7 +371,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
 
     type MemoryKind = MemoryKind;
@@ -417,7 +417,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction, // unwinding is not supported in consts
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         debug!("find_mir_or_eval_fn: {:?}", orig_instance);
 
         // Replace some functions.
@@ -658,8 +658,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     #[inline(always)]
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
+        frame: Frame<'tcx>,
+    ) -> InterpResult<'tcx, Frame<'tcx>> {
         // Enforce stack size limit. Add 1 because this is run before the new frame is pushed.
         if !ecx.recursion_limit.value_within_limit(ecx.stack().len() + 1) {
             throw_exhaust!(StackFrameLimitReached)
@@ -671,14 +671,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     #[inline(always)]
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
+    ) -> &'a [Frame<'tcx, Self::Provenance, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'tcx, Self::Provenance, Self::FrameExtra>> {
         &mut ecx.machine.stack
     }
 

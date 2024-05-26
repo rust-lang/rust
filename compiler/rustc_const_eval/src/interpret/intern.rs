@@ -46,7 +46,7 @@ pub trait HasStaticRootDefId {
     fn static_def_id(&self) -> Option<LocalDefId>;
 }
 
-impl HasStaticRootDefId for const_eval::CompileTimeInterpreter<'_, '_> {
+impl HasStaticRootDefId for const_eval::CompileTimeInterpreter<'_> {
     fn static_def_id(&self) -> Option<LocalDefId> {
         Some(self.static_root_ids?.1)
     }

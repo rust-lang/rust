@@ -34,7 +34,7 @@ use crate::CTRL_C_RECEIVED;
 fn eval_body_using_ecx<'mir, 'tcx, R: InterpretationResult<'tcx>>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
-    body: &'mir mir::Body<'tcx>,
+    body: &'tcx mir::Body<'tcx>,
 ) -> InterpResult<'tcx, R> {
     trace!(?ecx.param_env);
     let tcx = *ecx.tcx;
@@ -328,14 +328,14 @@ pub trait InterpretationResult<'tcx> {
     /// evaluation query.
     fn make_result<'mir>(
         mplace: MPlaceTy<'tcx>,
-        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'tcx>>,
     ) -> Self;
 }
 
 impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
     fn make_result<'mir>(
         mplace: MPlaceTy<'tcx>,
-        _ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        _ecx: &mut InterpCx<'mir, 'tcx, CompileTimeInterpreter<'tcx>>,
     ) -> Self {
         ConstAlloc { alloc_id: mplace.ptr().provenance.unwrap().alloc_id(), ty: mplace.layout.ty }
     }
@@ -417,7 +417,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
 
 #[inline(always)]
 fn const_validate_mplace<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'tcx>>,
     mplace: &MPlaceTy<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> Result<(), ErrorHandled> {
@@ -447,7 +447,7 @@ fn const_validate_mplace<'mir, 'tcx>(
 
 #[inline(always)]
 fn report_validation_error<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'tcx>>,
     error: InterpErrorInfo<'tcx>,
     alloc_id: AllocId,
 ) -> ErrorHandled {

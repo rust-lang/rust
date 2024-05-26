@@ -90,7 +90,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
-    ) -> interpret::InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> interpret::InterpResult<'tcx, Option<(&'tcx Body<'tcx>, ty::Instance<'tcx>)>> {
         unimplemented!()
     }
 
@@ -176,24 +176,24 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
 
     fn init_frame_extra(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _frame: interpret::Frame<'mir, 'tcx, Self::Provenance>,
+        _frame: interpret::Frame<'tcx, Self::Provenance>,
     ) -> interpret::InterpResult<
         'tcx,
-        interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>,
     > {
         unimplemented!()
     }
 
     fn stack<'a>(
         _ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
+    ) -> &'a [interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>] {
         // Return an empty stack instead of panicking, as `cur_span` uses it to evaluate constants.
         &[]
     }
 
     fn stack_mut<'a>(
         _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+    ) -> &'a mut Vec<interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>> {
         unimplemented!()
     }
 }

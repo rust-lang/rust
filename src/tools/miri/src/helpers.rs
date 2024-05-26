@@ -1321,7 +1321,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         self.stack()[frame_idx].current_span()
     }
 
-    fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameExtra<'tcx>>] {
+    fn stack(&self) -> &[Frame<'tcx, Provenance, machine::FrameExtra<'tcx>>] {
         self.threads.active_thread_stack()
     }
 
@@ -1330,7 +1330,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     }
 
     /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
-    pub fn is_user_relevant(&self, frame: &Frame<'mir, 'tcx, Provenance>) -> bool {
+    pub fn is_user_relevant(&self, frame: &Frame<'tcx, Provenance>) -> bool {
         let def_id = frame.instance.def_id();
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
             && !frame.instance.def.requires_caller_location(self.tcx)
