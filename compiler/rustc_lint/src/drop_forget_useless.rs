@@ -1,12 +1,12 @@
-use rustc_hir::{Arm, Expr, ExprKind, Node};
+use rustc_hir::{Arm, Expr, ExprKind, Node, StmtKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::{
     lints::{
-        DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
-        UndroppedManuallyDropsSuggestion,
+        DropCopyDiag, DropCopySuggestion, DropRefDiag, ForgetCopyDiag, ForgetRefDiag,
+        UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
     },
     LateContext, LateLintPass, LintContext,
 };
@@ -164,10 +164,23 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     );
                 }
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
+                    let sugg = if let Some((_, node)) = cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
+                        && let Node::Stmt(stmt) = node
+                        && let StmtKind::Semi(e) = stmt.kind
+                        && e.hir_id == expr.hir_id
+                    {
+                        DropCopySuggestion::Suggestion {
+                            start_span: expr.span.shrink_to_lo().until(arg.span),
+                            end_span: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                        }
+                    } else {
+                        DropCopySuggestion::Note
+                    };
+
                     cx.emit_span_lint(
                         DROPPING_COPY_TYPES,
                         expr.span,
-                        DropCopyDiag { arg_ty, label: arg.span },
+                        DropCopyDiag { arg_ty, label: arg.span, sugg },
                     );
                 }
                 sym::mem_forget if is_copy => {
