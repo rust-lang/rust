@@ -2643,15 +2643,13 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_flatten)]
-    ///
     /// let mut vec = vec![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
     /// assert_eq!(vec.pop(), Some([7, 8, 9]));
     ///
     /// let mut flattened = vec.into_flattened();
     /// assert_eq!(flattened.pop(), Some(6));
     /// ```
-    #[unstable(feature = "slice_flatten", issue = "95629")]
+    #[stable(feature = "slice_flatten", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_flattened(self) -> Vec<T, A> {
         let (ptr, len, cap, alloc) = self.into_raw_parts_with_alloc();
         let (new_len, new_cap) = if T::IS_ZST {
