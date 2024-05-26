@@ -122,6 +122,19 @@ issues).
 """
 label = "O-apple"
 
+# This ping group is meant for situations where a rustc/stdlib change breaks RfL.
+# In that case, we want to notify the RfL group.
+[ping.rust-for-linux]
+alias = ["rfl"]
+message = """\
+Hey Rust for Linux group! It looks like something broke the Rust for Linux integration.
+Could you try to take a look?
+In case it's useful, here are some [instructions] for tackling these sorts of issues.
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/rust-for-linux.html
+"""
+label = "O-rfl"
+
 [prioritize]
 label = "I-prioritize"
 
