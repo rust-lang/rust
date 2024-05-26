@@ -597,19 +597,15 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                     this: &mut MiriInterpCx<'mir, 'tcx>,
                 ) -> InterpResult<'tcx> {
                     if let Some(data_race) = &mut this.machine.data_race {
-                        data_race.thread_joined(
-                            &this.machine.threads,
-                            this.machine.threads.active_thread(),
-                            self.joined_thread_id,
-                        );
+                        data_race.thread_joined(&this.machine.threads, self.joined_thread_id);
                     }
                     Ok(())
                 }
             }
         } else {
-            // The thread has already terminated - mark join happens-before
+            // The thread has already terminated - establish happens-before
             if let Some(data_race) = data_race {
-                data_race.thread_joined(self, self.active_thread, joined_thread_id);
+                data_race.thread_joined(self, joined_thread_id);
             }
         }
         Ok(())
