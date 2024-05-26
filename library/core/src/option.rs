@@ -2096,6 +2096,22 @@ impl<T> From<T> for Option<T> {
     }
 }
 
+impl<'a, T, const N: usize> From<&'a [T; N]> for Option<&'a [T]> {
+    /// Converts a reference to an array into a reference to an array slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let array = [1, 2, 3];
+    /// let option: Option<&[i32]> = Option::from(&array);
+    ///
+    /// assert_eq!(option, Some(&[1, 2, 3][..]));
+    /// ```
+    fn from(slice: &'a [T; N]) -> Option<&'a [T]> {
+        Some(slice.as_slice())
+    }
+}
+
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     /// Converts from `&Option<T>` to `Option<&T>`.
