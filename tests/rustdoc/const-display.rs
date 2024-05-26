@@ -24,7 +24,7 @@ pub const unsafe fn foo_unsafe() -> u32 { 42 }
 #[unstable(feature = "humans", issue = "none")]
 pub const fn foo2() -> u32 { 42 }
 
-// @has 'foo/fn.foo3.html' '//pre' 'pub fn foo3() -> u32'
+// @has 'foo/fn.foo3.html' '//pre' 'pub const fn foo3() -> u32'
 // @!hasraw - '//span[@class="since"]'
 #[unstable(feature = "humans", issue = "none")]
 #[rustc_const_unstable(feature = "humans", issue = "none")]

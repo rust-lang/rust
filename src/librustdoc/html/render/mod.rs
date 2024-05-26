@@ -928,9 +928,11 @@ fn assoc_method(
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
-        RenderMode::Normal => {
-            print_constness_with_space(&header.constness, meth.const_stability(tcx))
-        }
+        RenderMode::Normal => print_constness_with_space(
+            &header.constness,
+            meth.stable_since(tcx),
+            meth.const_stability(tcx),
+        ),
         RenderMode::ForDeref { .. } => "",
     };
     let asyncness = header.asyncness.print_with_space();

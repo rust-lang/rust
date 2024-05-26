@@ -627,7 +627,7 @@ impl Item {
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness =
-                if tcx.is_const_fn(def_id) && is_unstable_const_fn(tcx, def_id).is_none() {
+                if tcx.is_const_fn(def_id) || is_unstable_const_fn(tcx, def_id).is_some() {
                     hir::Constness::Const
                 } else {
                     hir::Constness::NotConst
@@ -649,9 +649,8 @@ impl Item {
                         hir::Safety::Unsafe
                     },
                     abi,
-                    constness: if abi == Abi::RustIntrinsic
-                        && tcx.is_const_fn(def_id)
-                        && is_unstable_const_fn(tcx, def_id).is_none()
+                    constness: if tcx.is_const_fn(def_id)
+                        || is_unstable_const_fn(tcx, def_id).is_some()
                     {
                         hir::Constness::Const
                     } else {
