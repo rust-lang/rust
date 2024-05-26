@@ -1338,47 +1338,38 @@ pub fn parse_macro_name_and_helper_attrs(
 /// FIXME(#73933): Remove this eventually.
 fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
     let name = item.ident.name;
-    if name == sym::ProceduralMasqueradeDummyType {
-        if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
-            if let [variant] = &*enum_def.variants {
-                if variant.ident.name == sym::Input {
-                    let filename = sess.source_map().span_to_filename(item.ident.span);
-                    if let FileName::Real(real) = filename {
-                        if let Some(c) = real
-                            .local_path()
-                            .unwrap_or(Path::new(""))
-                            .components()
-                            .flat_map(|c| c.as_os_str().to_str())
-                            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
-                        {
-                            let crate_matches = if c.starts_with("allsorts-rental") {
-                                true
-                            } else {
-                                let mut version = c.trim_start_matches("rental-").split('.');
-                                version.next() == Some("0")
-                                    && version.next() == Some("5")
-                                    && version
-                                        .next()
-                                        .and_then(|c| c.parse::<u32>().ok())
-                                        .is_some_and(|v| v < 6)
-                            };
+    if name == sym::ProceduralMasqueradeDummyType
+        && let ast::ItemKind::Enum(enum_def, _) = &item.kind
+        && let [variant] = &*enum_def.variants
+        && variant.ident.name == sym::Input
+        && let FileName::Real(real) = sess.source_map().span_to_filename(item.ident.span)
+        && let Some(c) = real
+            .local_path()
+            .unwrap_or(Path::new(""))
+            .components()
+            .flat_map(|c| c.as_os_str().to_str())
+            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
+    {
+        let crate_matches = if c.starts_with("allsorts-rental") {
+            true
+        } else {
+            let mut version = c.trim_start_matches("rental-").split('.');
+            version.next() == Some("0")
+                && version.next() == Some("5")
+                && version.next().and_then(|c| c.parse::<u32>().ok()).is_some_and(|v| v < 6)
+        };
 
-                            if crate_matches {
-                                sess.psess.buffer_lint(
-                                    PROC_MACRO_BACK_COMPAT,
-                                    item.ident.span,
-                                    ast::CRATE_NODE_ID,
-                                    BuiltinLintDiag::ProcMacroBackCompat {
-                                        crate_name: "rental".to_string(),
-                                        fixed_version: "0.5.6".to_string(),
-                                    },
-                                );
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
+        if crate_matches {
+            sess.psess.buffer_lint(
+                PROC_MACRO_BACK_COMPAT,
+                item.ident.span,
+                ast::CRATE_NODE_ID,
+                BuiltinLintDiag::ProcMacroBackCompat {
+                    crate_name: "rental".to_string(),
+                    fixed_version: "0.5.6".to_string(),
+                },
+            );
+            return true;
         }
     }
     false
