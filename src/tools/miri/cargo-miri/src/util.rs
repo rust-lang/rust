@@ -11,14 +11,15 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::arg::*;
 
-pub fn show_error(msg: &impl std::fmt::Display) -> ! {
+pub fn show_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
     std::process::exit(1)
 }
 
 macro_rules! show_error {
-    ($($tt:tt)*) => { crate::util::show_error(&format_args!($($tt)*)) };
+    ($($tt:tt)*) => { crate::util::show_error_(&format_args!($($tt)*)) };
 }
+pub(crate) use show_error;
 
 /// The information to run a crate with the given environment.
 #[derive(Clone, Serialize, Deserialize)]
