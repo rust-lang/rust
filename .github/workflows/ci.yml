@@ -155,9 +155,6 @@ jobs:
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
 
-      - name: install MSYS2
-        run: src/ci/scripts/install-msys2.sh
-
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
 
