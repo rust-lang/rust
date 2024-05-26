@@ -472,6 +472,8 @@ pub struct MiriMachine<'mir, 'tcx> {
 
     /// The set of threads.
     pub(crate) threads: ThreadManager<'mir, 'tcx>,
+    /// The state of the primitive synchronization objects.
+    pub(crate) sync: SynchronizationObjects<'mir, 'tcx>,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
@@ -644,6 +646,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             dirs: Default::default(),
             layouts,
             threads: ThreadManager::default(),
+            sync: SynchronizationObjects::default(),
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
@@ -767,6 +770,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         #[rustfmt::skip]
         let MiriMachine {
             threads,
+            sync,
             tls,
             env_vars,
             main_fn_ret_place,
@@ -815,6 +819,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         } = self;
 
         threads.visit_provenance(visit);
+        sync.visit_provenance(visit);
         tls.visit_provenance(visit);
         env_vars.visit_provenance(visit);
         dirs.visit_provenance(visit);

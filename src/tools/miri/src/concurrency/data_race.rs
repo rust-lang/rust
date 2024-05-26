@@ -822,6 +822,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
             assert!(!old, "cannot nest allow_data_races");
         }
     }
+
+    /// Returns the `release` clock of the current thread.
+    /// Other threads can acquire this clock in the future to establish synchronization
+    /// with this program point.
+    fn release_clock<'a>(&'a self) -> Option<Ref<'a, VClock>>
+    where
+        'mir: 'a,
+    {
+        let this = self.eval_context_ref();
+        Some(this.machine.data_race.as_ref()?.release_clock(&this.machine.threads))
+    }
+
+    /// Acquire the given clock into the current thread, establishing synchronization with
+    /// the moment when that clock snapshot was taken via `release_clock`.
+    fn acquire_clock(&self, clock: &VClock) {
+        let this = self.eval_context_ref();
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.acquire_clock(clock, this.get_active_thread());
+        }
+    }
 }
 
 /// Vector clock metadata for a logical memory allocation.
@@ -1706,19 +1726,24 @@ impl GlobalState {
     /// the moment when that clock snapshot was taken via `release_clock`.
     /// As this is an acquire operation, the thread timestamp is not
     /// incremented.
-    pub fn acquire_clock(&self, lock: &VClock, thread: ThreadId) {
+    pub fn acquire_clock(&self, clock: &VClock, thread: ThreadId) {
         let (_, mut clocks) = self.thread_state_mut(thread);
-        clocks.clock.join(lock);
+        clocks.clock.join(clock);
     }
 
-    /// Returns the `release` clock of the given thread.
+    /// Returns the `release` clock of the current thread.
     /// Other threads can acquire this clock in the future to establish synchronization
     /// with this program point.
-    pub fn release_clock(&self, thread: ThreadId, current_span: Span) -> Ref<'_, VClock> {
+    pub fn release_clock<'mir, 'tcx>(
+        &self,
+        threads: &ThreadManager<'mir, 'tcx>,
+    ) -> Ref<'_, VClock> {
+        let thread = threads.get_active_thread_id();
+        let span = threads.active_thread_ref().current_span();
         // We increment the clock each time this happens, to ensure no two releases
         // can be confused with each other.
         let (index, mut clocks) = self.thread_state_mut(thread);
-        clocks.increment_clock(index, current_span);
+        clocks.increment_clock(index, span);
         drop(clocks);
         // To return a read-only view, we need to release the RefCell
         // and borrow it again.

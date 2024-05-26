@@ -35,6 +35,7 @@
     clippy::bool_to_int_with_if,
     clippy::box_default,
     clippy::needless_question_mark,
+    clippy::needless_lifetimes,
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
@@ -120,7 +121,7 @@ pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
-    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
+    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects},
     thread::{
         BlockReason, CallbackTime, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
     },

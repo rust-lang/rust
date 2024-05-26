@@ -19,7 +19,6 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
-use crate::concurrency::sync::SynchronizationState;
 use crate::shims::tls;
 use crate::*;
 
@@ -368,9 +367,6 @@ pub struct ThreadManager<'mir, 'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
-    /// This field is pub(crate) because the synchronization primitives
-    /// (`crate::sync`) need a way to access it.
-    pub(crate) sync: SynchronizationState<'mir, 'tcx>,
     /// A mapping from a thread-local static to an allocation id of a thread
     /// specific allocation.
     thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), Pointer<Provenance>>>,
@@ -388,7 +384,6 @@ impl VisitProvenance for ThreadManager<'_, '_> {
             timeout_callbacks,
             active_thread: _,
             yield_active_thread: _,
-            sync,
         } = self;
 
         for thread in threads {
@@ -400,7 +395,6 @@ impl VisitProvenance for ThreadManager<'_, '_> {
         for callback in timeout_callbacks.values() {
             callback.callback.visit_provenance(visit);
         }
-        sync.visit_provenance(visit);
     }
 }
 
@@ -412,7 +406,6 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         Self {
             active_thread: ThreadId::MAIN_THREAD,
             threads,
-            sync: SynchronizationState::default(),
             thread_local_alloc_ids: Default::default(),
             yield_active_thread: false,
             timeout_callbacks: FxHashMap::default(),

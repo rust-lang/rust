@@ -61,8 +61,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let current_thread = this.get_active_thread();
 
         if let Some(data_race) = &this.machine.data_race {
-            data_race
-                .acquire_clock(&this.machine.threads.sync.init_onces[id].clock, current_thread);
+            data_race.acquire_clock(&this.machine.sync.init_onces[id].clock, current_thread);
         }
     }
 
@@ -112,11 +111,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         ) -> InterpResult<'tcx, Option<InitOnceId>>,
     {
         let this = self.eval_context_mut();
-        let next_index = this.machine.threads.sync.init_onces.next_index();
+        let next_index = this.machine.sync.init_onces.next_index();
         if let Some(old) = existing(this, next_index)? {
             Ok(old)
         } else {
-            let new_index = this.machine.threads.sync.init_onces.push(Default::default());
+            let new_index = this.machine.sync.init_onces.push(Default::default());
             assert_eq!(next_index, new_index);
             Ok(new_index)
         }
@@ -125,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn init_once_status(&mut self, id: InitOnceId) -> InitOnceStatus {
         let this = self.eval_context_ref();
-        this.machine.threads.sync.init_onces[id].status
+        this.machine.sync.init_onces[id].status
     }
 
     /// Put the thread into the queue waiting for the initialization.
@@ -137,7 +136,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         callback: Box<dyn MachineCallback<'mir, 'tcx> + 'tcx>,
     ) {
         let this = self.eval_context_mut();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
+        let init_once = &mut this.machine.sync.init_onces[id];
         assert_ne!(init_once.status, InitOnceStatus::Complete, "queueing on complete init once");
         init_once.waiters.push_back(InitOnceWaiter { thread, callback });
         this.block_thread(thread, BlockReason::InitOnce(id));
@@ -148,7 +147,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn init_once_begin(&mut self, id: InitOnceId) {
         let this = self.eval_context_mut();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
+        let init_once = &mut this.machine.sync.init_onces[id];
         assert_eq!(
             init_once.status,
             InitOnceStatus::Uninitialized,
@@ -160,9 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn init_once_complete(&mut self, id: InitOnceId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let current_thread = this.get_active_thread();
-        let current_span = this.machine.current_span();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
+        let init_once = &mut this.machine.sync.init_onces[id];
 
         assert_eq!(
             init_once.status,
@@ -174,7 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            init_once.clock.clone_from(&data_race.release_clock(current_thread, current_span));
+            init_once.clock.clone_from(&data_race.release_clock(&this.machine.threads));
         }
 
         // Wake up everyone.
@@ -189,9 +186,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn init_once_fail(&mut self, id: InitOnceId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let current_thread = this.get_active_thread();
-        let current_span = this.machine.current_span();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
+        let init_once = &mut this.machine.sync.init_onces[id];
         assert_eq!(
             init_once.status,
             InitOnceStatus::Begun,
@@ -200,7 +195,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            init_once.clock.clone_from(&data_race.release_clock(current_thread, current_span));
+            init_once.clock.clone_from(&data_race.release_clock(&this.machine.threads));
         }
 
         // Wake up one waiting thread, so they can go ahead and try to init this.

@@ -410,18 +410,19 @@ fn post_cond_signal<'mir, 'tcx: 'mir>(
 /// entering the waiting state.
 fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
-    active_thread: ThreadId,
+    thread: ThreadId,
     condvar: CondvarId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
-    if let Some(old_locked_count) = ecx.mutex_unlock(mutex, active_thread) {
+    assert_eq!(ecx.get_active_thread(), thread);
+    if let Some(old_locked_count) = ecx.mutex_unlock(mutex) {
         if old_locked_count != 1 {
             throw_unsup_format!("awaiting on a lock acquired multiple times is not supported");
         }
     } else {
         throw_ub_format!("awaiting on unlocked or owned by a different thread mutex");
     }
-    ecx.block_thread(active_thread, BlockReason::Condvar(condvar));
+    ecx.block_thread(thread, BlockReason::Condvar(condvar));
     Ok(())
 }
 
@@ -611,9 +612,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let kind = mutex_get_kind(this, mutex_op)?;
         let id = mutex_get_id(this, mutex_op)?;
-        let active_thread = this.get_active_thread();
 
-        if let Some(_old_locked_count) = this.mutex_unlock(id, active_thread) {
+        if let Some(_old_locked_count) = this.mutex_unlock(id) {
             // The mutex was locked by the current thread.
             Ok(0)
         } else {
@@ -752,12 +752,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let id = rwlock_get_id(this, rwlock_op)?;
-        let active_thread = this.get_active_thread();
 
         #[allow(clippy::if_same_then_else)]
-        if this.rwlock_reader_unlock(id, active_thread) {
+        if this.rwlock_reader_unlock(id) {
             Ok(0)
-        } else if this.rwlock_writer_unlock(id, active_thread) {
+        } else if this.rwlock_writer_unlock(id) {
             Ok(0)
         } else {
             throw_ub_format!("unlocked an rwlock that was not locked by the active thread");
@@ -981,6 +980,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
             fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                assert_eq!(self.active_thread, ecx.get_active_thread());
                 // We are not waiting for the condvar any more, wait for the
                 // mutex instead.
                 reacquire_cond_mutex(ecx, self.active_thread, self.id, self.mutex_id)?;
