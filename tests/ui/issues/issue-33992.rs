@@ -5,9 +5,6 @@
 
 #![feature(linkage)]
 
-#[linkage = "common"]
-pub static mut TEST1: u32 = 0u32;
-
 #[linkage = "external"]
 pub static TEST2: bool = true;
 
