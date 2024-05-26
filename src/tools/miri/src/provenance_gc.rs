@@ -10,6 +10,18 @@ pub trait VisitProvenance {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>);
 }
 
+// Trivial impls for types that do not contain any provenance
+macro_rules! no_provenance {
+    ($($ty:ident)+) => {
+        $(
+            impl VisitProvenance for $ty {
+                fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
+            }
+        )+
+    }
+}
+no_provenance!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize ThreadId);
+
 impl<T: VisitProvenance> VisitProvenance for Option<T> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         if let Some(x) = self {

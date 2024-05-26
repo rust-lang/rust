@@ -75,7 +75,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn init_once_enqueue_and_block(
         &mut self,
         id: InitOnceId,
-        callback: impl UnblockCallback<'mir, 'tcx> + 'tcx,
+        callback: impl UnblockCallback<'tcx> + 'tcx,
     ) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();

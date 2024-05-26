@@ -76,28 +76,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // We have to block, and then try again when we are woken up.
-        this.init_once_enqueue_and_block(id, Callback { id, pending_place, dest: dest.clone() });
+        let dest = dest.clone();
+        this.init_once_enqueue_and_block(
+            id,
+            callback!(
+                @capture<'tcx> {
+                    id: InitOnceId,
+                    pending_place: MPlaceTy<'tcx, Provenance>,
+                    dest: MPlaceTy<'tcx, Provenance>,
+                }
+                @unblock = |this| {
+                    let ret = this.init_once_try_begin(id, &pending_place, &dest)?;
+                    assert!(ret, "we were woken up but init_once_try_begin still failed");
+                    Ok(())
+                }
+            ),
+        );
         return Ok(());
-
-        struct Callback<'tcx> {
-            id: InitOnceId,
-            pending_place: MPlaceTy<'tcx, Provenance>,
-            dest: MPlaceTy<'tcx, Provenance>,
-        }
-        impl<'tcx> VisitProvenance for Callback<'tcx> {
-            fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-                let Callback { id: _, dest, pending_place } = self;
-                pending_place.visit_provenance(visit);
-                dest.visit_provenance(visit);
-            }
-        }
-        impl<'mir, 'tcx> UnblockCallback<'mir, 'tcx> for Callback<'tcx> {
-            fn unblock(self: Box<Self>, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                let ret = this.init_once_try_begin(self.id, &self.pending_place, &self.dest)?;
-                assert!(ret, "we were woken up but init_once_try_begin still failed");
-                Ok(())
-            }
-        }
     }
 
     fn InitOnceComplete(

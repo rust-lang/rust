@@ -337,7 +337,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .unwrap_or_else(|| now.checked_add(Duration::from_secs(3600)).unwrap());
         let timeout_time = Timeout::Monotonic(timeout_time);
 
-        this.block_thread(BlockReason::Sleep, Some(timeout_time), SleepCallback);
+        this.block_thread(
+            BlockReason::Sleep,
+            Some(timeout_time),
+            callback!(
+                @capture<'tcx> {}
+                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
+                @timeout = |_this| { Ok(()) }
+            ),
+        );
         Ok(0)
     }
 
@@ -353,23 +361,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let timeout_time = this.machine.clock.now().checked_add(duration).unwrap();
         let timeout_time = Timeout::Monotonic(timeout_time);
 
-        this.block_thread(BlockReason::Sleep, Some(timeout_time), SleepCallback);
+        this.block_thread(
+            BlockReason::Sleep,
+            Some(timeout_time),
+            callback!(
+                @capture<'tcx> {}
+                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
+                @timeout = |_this| { Ok(()) }
+            ),
+        );
         Ok(())
-    }
-}
-
-struct SleepCallback;
-impl VisitProvenance for SleepCallback {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
-}
-impl<'mir, 'tcx: 'mir> UnblockCallback<'mir, 'tcx> for SleepCallback {
-    fn timeout(self: Box<Self>, _this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        Ok(())
-    }
-    fn unblock(
-        self: Box<Self>,
-        _this: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx> {
-        panic!("a sleeping thread should only ever be woken up via the timeout")
     }
 }

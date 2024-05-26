@@ -41,22 +41,75 @@ pub enum TlsAllocAction {
 }
 
 /// Trait for callbacks that are executed when a thread gets unblocked.
-pub trait UnblockCallback<'mir, 'tcx>: VisitProvenance {
-    fn unblock(
+pub trait UnblockCallback<'tcx>: VisitProvenance {
+    /// Will be invoked when the thread was unblocked the "regular" way,
+    /// i.e. whatever event it was blocking on has happened.
+    fn unblock<'mir>(
         self: Box<Self>,
         ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
     ) -> InterpResult<'tcx>;
 
-    fn timeout(
+    /// Will be invoked when the timeout ellapsed without the event the
+    /// thread was blocking on having occurred.
+    fn timeout<'mir>(
         self: Box<Self>,
         _ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx> {
-        unreachable!(
-            "timeout on a thread that was blocked without a timeout (or someone forgot to overwrite this method)"
-        )
-    }
+    ) -> InterpResult<'tcx>;
 }
-type DynUnblockCallback<'mir, 'tcx> = Box<dyn UnblockCallback<'mir, 'tcx> + 'tcx>;
+type DynUnblockCallback<'tcx> = Box<dyn UnblockCallback<'tcx> + 'tcx>;
+
+#[macro_export]
+macro_rules! callback {
+    (
+        @capture<$tcx:lifetime $(,)? $($lft:lifetime),*> { $($name:ident: $type:ty),* $(,)? }
+        @unblock = |$this:ident| $unblock:block
+    ) => {
+        callback!(
+            @capture<$tcx, $($lft),*> { $($name: $type),+ }
+            @unblock = |$this| $unblock
+            @timeout = |_this| {
+                unreachable!(
+                    "timeout on a thread that was blocked without a timeout (or someone forgot to overwrite this method)"
+                )
+            }
+        )
+    };
+    (
+        @capture<$tcx:lifetime $(,)? $($lft:lifetime),*> { $($name:ident: $type:ty),* $(,)? }
+        @unblock = |$this:ident| $unblock:block
+        @timeout = |$this_timeout:ident| $timeout:block
+    ) => {{
+        struct Callback<$tcx, $($lft),*> {
+            $($name: $type,)*
+            _phantom: std::marker::PhantomData<&$tcx ()>,
+        }
+
+        impl<$tcx, $($lft),*> VisitProvenance for Callback<$tcx, $($lft),*> {
+            #[allow(unused_variables)]
+            fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+                $(
+                    self.$name.visit_provenance(visit);
+                )*
+            }
+        }
+
+        impl<$tcx, $($lft),*> UnblockCallback<$tcx> for Callback<$tcx, $($lft),*> {
+            fn unblock<'mir>(self: Box<Self>, $this: &mut MiriInterpCx<'mir, $tcx>) -> InterpResult<$tcx> {
+                #[allow(unused_variables)]
+                let Callback { $($name,)* _phantom } = *self;
+                $unblock
+            }
+
+            fn timeout<'mir>(self: Box<Self>, $this_timeout: &mut MiriInterpCx<'mir, $tcx>) -> InterpResult<$tcx> {
+                #[allow(unused_variables)]
+                let Callback { $($name,)* _phantom } = *self;
+                $timeout
+            }
+        }
+
+        Callback { $($name,)* _phantom: std::marker::PhantomData }
+    }}
+}
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -127,21 +180,17 @@ pub enum BlockReason {
 }
 
 /// The state of a thread.
-enum ThreadState<'mir, 'tcx> {
+enum ThreadState<'tcx> {
     /// The thread is enabled and can be executed.
     Enabled,
     /// The thread is blocked on something.
-    Blocked {
-        reason: BlockReason,
-        timeout: Option<Timeout>,
-        callback: DynUnblockCallback<'mir, 'tcx>,
-    },
+    Blocked { reason: BlockReason, timeout: Option<Timeout>, callback: DynUnblockCallback<'tcx> },
     /// The thread has terminated its execution. We do not delete terminated
     /// threads (FIXME: why?).
     Terminated,
 }
 
-impl<'mir, 'tcx> std::fmt::Debug for ThreadState<'mir, 'tcx> {
+impl<'tcx> std::fmt::Debug for ThreadState<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Enabled => write!(f, "Enabled"),
@@ -152,7 +201,7 @@ impl<'mir, 'tcx> std::fmt::Debug for ThreadState<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> ThreadState<'mir, 'tcx> {
+impl<'tcx> ThreadState<'tcx> {
     fn is_enabled(&self) -> bool {
         matches!(self, ThreadState::Enabled)
     }
@@ -180,7 +229,7 @@ enum ThreadJoinStatus {
 
 /// A thread.
 pub struct Thread<'mir, 'tcx> {
-    state: ThreadState<'mir, 'tcx>,
+    state: ThreadState<'tcx>,
 
     /// Name of the thread.
     thread_name: Option<Vec<u8>>,
@@ -582,26 +631,18 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             self.block_thread(
                 BlockReason::Join(joined_thread_id),
                 None,
-                Callback { joined_thread_id },
-            );
-
-            struct Callback {
-                joined_thread_id: ThreadId,
-            }
-            impl VisitProvenance for Callback {
-                fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
-            }
-            impl<'mir, 'tcx: 'mir> UnblockCallback<'mir, 'tcx> for Callback {
-                fn unblock(
-                    self: Box<Self>,
-                    this: &mut MiriInterpCx<'mir, 'tcx>,
-                ) -> InterpResult<'tcx> {
-                    if let Some(data_race) = &mut this.machine.data_race {
-                        data_race.thread_joined(&this.machine.threads, self.joined_thread_id);
+                callback!(
+                    @capture<'tcx> {
+                        joined_thread_id: ThreadId,
                     }
-                    Ok(())
-                }
-            }
+                    @unblock = |this| {
+                        if let Some(data_race) = &mut this.machine.data_race {
+                            data_race.thread_joined(&this.machine.threads, joined_thread_id);
+                        }
+                        Ok(())
+                    }
+                ),
+            );
         } else {
             // The thread has already terminated - establish happens-before
             if let Some(data_race) = data_race {
@@ -656,7 +697,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self,
         reason: BlockReason,
         timeout: Option<Timeout>,
-        callback: impl UnblockCallback<'mir, 'tcx> + 'tcx,
+        callback: impl UnblockCallback<'tcx> + 'tcx,
     ) {
         let state = &mut self.threads[self.active_thread].state;
         assert!(state.is_enabled());
@@ -963,7 +1004,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         reason: BlockReason,
         timeout: Option<Timeout>,
-        callback: impl UnblockCallback<'mir, 'tcx> + 'tcx,
+        callback: impl UnblockCallback<'tcx> + 'tcx,
     ) {
         let this = self.eval_context_mut();
         if !this.machine.communicate() && matches!(timeout, Some(Timeout::RealTime(..))) {
