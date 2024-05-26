@@ -78,12 +78,23 @@ pr:
   - image: mingw-check-tidy
     continue_on_error: true
     <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-17
+  - image: x86_64-msvc
     env:
-      ENABLE_GCC_CODEGEN: "1"
-    <<: *job-linux-16c
-  - image: x86_64-gnu-tools
-    <<: *job-linux-16c
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc
+    <<: *job-windows-8c
+  - image: x86_64-mingw
+    env:
+      SCRIPT: make ci-mingw
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-gnu
+        --enable-profiler
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+      CUSTOM_MINGW: 1
+    <<: *job-windows-8c
+  
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
