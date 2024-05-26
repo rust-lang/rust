@@ -354,7 +354,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "TlsGetValue" => {
                 let [key] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
-                let active_thread = this.get_active_thread();
+                let active_thread = this.active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
@@ -362,7 +362,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [key, new_ptr] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
-                let active_thread = this.get_active_thread();
+                let active_thread = this.active_thread();
                 let new_data = this.read_scalar(new_ptr)?;
                 this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
 
@@ -423,8 +423,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "InitOnceBeginInitialize" => {
                 let [ptr, flags, pending, context] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let result = this.InitOnceBeginInitialize(ptr, flags, pending, context)?;
-                this.write_scalar(result, dest)?;
+                this.InitOnceBeginInitialize(ptr, flags, pending, context, dest)?;
             }
             "InitOnceComplete" => {
                 let [ptr, flags, context] =
@@ -502,7 +501,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let thread = match Handle::from_scalar(handle, this)? {
                     Some(Handle::Thread(thread)) => thread,
-                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.get_active_thread(),
+                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
                     _ => this.invalid_handle("SetThreadDescription")?,
                 };
 
@@ -520,7 +519,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let thread = match Handle::from_scalar(handle, this)? {
                     Some(Handle::Thread(thread)) => thread,
-                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.get_active_thread(),
+                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
                     _ => this.invalid_handle("SetThreadDescription")?,
                 };
                 // Looks like the default thread name is empty.

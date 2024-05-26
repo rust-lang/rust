@@ -839,7 +839,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     fn acquire_clock(&self, clock: &VClock) {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
-            data_race.acquire_clock(clock, this.get_active_thread());
+            data_race.acquire_clock(clock, &this.machine.threads);
         }
     }
 }
@@ -1662,13 +1662,14 @@ impl GlobalState {
     /// This should be called strictly before any calls to
     /// `thread_joined`.
     #[inline]
-    pub fn thread_terminated(&mut self, thread_mgr: &ThreadManager<'_, '_>, current_span: Span) {
+    pub fn thread_terminated(&mut self, thread_mgr: &ThreadManager<'_, '_>) {
         let current_index = self.active_thread_index(thread_mgr);
 
         // Increment the clock to a unique termination timestamp.
         let vector_clocks = self.vector_clocks.get_mut();
         let current_clocks = &mut vector_clocks[current_index];
-        current_clocks.increment_clock(current_index, current_span);
+        current_clocks
+            .increment_clock(current_index, thread_mgr.active_thread_ref().current_span());
 
         // Load the current thread id for the executing vector.
         let vector_info = self.vector_info.get_mut();
@@ -1722,11 +1723,12 @@ impl GlobalState {
         format!("thread `{thread_name}`")
     }
 
-    /// Acquire the given clock into the given thread, establishing synchronization with
+    /// Acquire the given clock into the current thread, establishing synchronization with
     /// the moment when that clock snapshot was taken via `release_clock`.
     /// As this is an acquire operation, the thread timestamp is not
     /// incremented.
-    pub fn acquire_clock(&self, clock: &VClock, thread: ThreadId) {
+    pub fn acquire_clock<'mir, 'tcx>(&self, clock: &VClock, threads: &ThreadManager<'mir, 'tcx>) {
+        let thread = threads.active_thread();
         let (_, mut clocks) = self.thread_state_mut(thread);
         clocks.clock.join(clock);
     }
@@ -1738,7 +1740,7 @@ impl GlobalState {
         &self,
         threads: &ThreadManager<'mir, 'tcx>,
     ) -> Ref<'_, VClock> {
-        let thread = threads.get_active_thread_id();
+        let thread = threads.active_thread();
         let span = threads.active_thread_ref().current_span();
         // We increment the clock each time this happens, to ensure no two releases
         // can be confused with each other.
@@ -1782,7 +1784,7 @@ impl GlobalState {
         &self,
         thread_mgr: &ThreadManager<'_, '_>,
     ) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
-        self.thread_state(thread_mgr.get_active_thread_id())
+        self.thread_state(thread_mgr.active_thread())
     }
 
     /// Load the current vector clock in use and the current set of thread clocks
@@ -1792,14 +1794,14 @@ impl GlobalState {
         &self,
         thread_mgr: &ThreadManager<'_, '_>,
     ) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
-        self.thread_state_mut(thread_mgr.get_active_thread_id())
+        self.thread_state_mut(thread_mgr.active_thread())
     }
 
     /// Return the current thread, should be the same
     /// as the data-race active thread.
     #[inline]
     fn active_thread_index(&self, thread_mgr: &ThreadManager<'_, '_>) -> VectorIdx {
-        let active_thread_id = thread_mgr.get_active_thread_id();
+        let active_thread_id = thread_mgr.active_thread();
         self.thread_index(active_thread_id)
     }
 

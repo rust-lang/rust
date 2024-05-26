@@ -123,7 +123,8 @@ pub use crate::concurrency::{
     init_once::{EvalContextExt as _, InitOnceId},
     sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects},
     thread::{
-        BlockReason, CallbackTime, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
+        BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, Timeout,
+        UnblockCallback,
     },
 };
 pub use crate::diagnostics::{

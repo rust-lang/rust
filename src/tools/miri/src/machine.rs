@@ -473,7 +473,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// The set of threads.
     pub(crate) threads: ThreadManager<'mir, 'tcx>,
     /// The state of the primitive synchronization objects.
-    pub(crate) sync: SynchronizationObjects<'mir, 'tcx>,
+    pub(crate) sync: SynchronizationObjects,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
@@ -770,7 +770,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         #[rustfmt::skip]
         let MiriMachine {
             threads,
-            sync,
+            sync: _,
             tls,
             env_vars,
             main_fn_ret_place,
@@ -819,7 +819,6 @@ impl VisitProvenance for MiriMachine<'_, '_> {
         } = self;
 
         threads.visit_provenance(visit);
-        sync.visit_provenance(visit);
         tls.visit_provenance(visit);
         env_vars.visit_provenance(visit);
         dirs.visit_provenance(visit);
@@ -1371,7 +1370,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             Some(profiler.start_recording_interval_event_detached(
                 *name,
                 measureme::EventId::from_label(*name),
-                ecx.get_active_thread().to_u32(),
+                ecx.active_thread().to_u32(),
             ))
         } else {
             None

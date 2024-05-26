@@ -63,7 +63,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let thread_id = this.get_active_thread();
+        let thread_id = this.active_thread();
         Ok(Scalar::from_uint(thread_id.to_u32(), this.libc_ty_layout("pthread_t").size))
     }
 
