@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::Stdio;
 use std::{path::Path, process::Command};
 
@@ -158,4 +159,25 @@ pub fn get_git_untracked_files(
         .map(|s| s.trim().to_owned())
         .collect();
     Ok(Some(files))
+}
+
+/// Returns the closest upstream commit available for the given `author` and `target_paths`.
+pub fn get_closest_upstream_commit(
+    config: &GitConfig<'_>,
+    git_dir: Option<&Path>,
+    author: &str,
+    target_paths: &[PathBuf],
+) -> Result<String, String> {
+    let merge_base = get_git_merge_base(&config, git_dir).unwrap_or_else(|_| "HEAD".into());
+
+    let mut git = Command::new("git");
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    git.arg(Path::new("rev-list"));
+    git.args(&[&format!("--author={author}"), "-n1", "--first-parent", &merge_base, "--"]);
+    git.args(target_paths);
+
+    Ok(output_result(&mut git)?.trim().to_owned())
 }

@@ -238,15 +238,13 @@ fn ci_rustc_if_unchanged_logic() {
     let compiler_path = build.src.join("compiler");
     let library_path = build.src.join("library");
     let merge_base = output(
-        config
-            .git()
+        helpers::git(None)
             .arg("rev-list")
             .arg(format!("--author={}", config.stage0_metadata.config.git_merge_commit_email))
             .args(["-n1", "--first-parent", "HEAD"]),
     );
     let commit = merge_base.trim_end();
-    let has_changes = !t!(config
-        .git()
+    let has_changes = !t!(helpers::git(None)
         .args(["diff-index", "--quiet", commit])
         .arg("--")
         .args([compiler_path, library_path])

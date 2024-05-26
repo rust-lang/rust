@@ -23,7 +23,7 @@ use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 use build_helper::exit;
-use build_helper::git::get_git_merge_base;
+use build_helper::git::get_closest_upstream_commit;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -2460,18 +2460,13 @@ impl Config {
         let compiler = format!("{top_level}/compiler/");
         let library = format!("{top_level}/library/");
 
-        let closest_upstream = get_git_merge_base(&self.git_config(), Some(&self.src))
-            .unwrap_or_else(|_| "HEAD".into());
-
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            helpers::git(Some(&self.src))
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", &closest_upstream]),
-        );
-        let commit = merge_base.trim_end();
+        let commit = get_closest_upstream_commit(
+            &self.git_config(),
+            Some(&self.src),
+            &self.stage0_metadata.config.git_merge_commit_email,
+            &[],
+        )
+        .unwrap();
 
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
@@ -2483,7 +2478,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", commit, "--", &compiler, &library])
+            .args(["diff-index", "--quiet", &commit, "--", &compiler, &library])
             .status())
         .success();
         if has_changes {
