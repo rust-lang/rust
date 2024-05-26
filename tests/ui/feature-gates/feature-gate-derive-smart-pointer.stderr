@@ -1,0 +1,33 @@
+error[E0658]: use of unstable library feature 'derive_smart_pointer'
+  --> $DIR/feature-gate-derive-smart-pointer.rs:3:10
+   |
+LL | #[derive(SmartPointer)]
+   |          ^^^^^^^^^^^^
+   |
+   = note: see issue #123430 <https://github.com/rust-lang/rust/issues/123430> for more information
+   = help: add `#![feature(derive_smart_pointer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[pointee]` attribute is an experimental feature
+  --> $DIR/feature-gate-derive-smart-pointer.rs:4:22
+   |
+LL | struct MyPointer<'a, #[pointee] T: ?Sized> {
+   |                      ^^^^^^^^^^
+   |
+   = note: see issue #123430 <https://github.com/rust-lang/rust/issues/123430> for more information
+   = help: add `#![feature(derive_smart_pointer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'derive_smart_pointer'
+  --> $DIR/feature-gate-derive-smart-pointer.rs:1:5
+   |
+LL | use std::marker::SmartPointer;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123430 <https://github.com/rust-lang/rust/issues/123430> for more information
+   = help: add `#![feature(derive_smart_pointer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
