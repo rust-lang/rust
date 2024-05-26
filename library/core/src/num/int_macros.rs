@@ -1282,8 +1282,7 @@ macro_rules! int_impl {
                 concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
                 (
                     rhs: u32 = rhs,
-                    bits: u32 = Self::BITS,
-                ) => rhs < bits,
+                ) => rhs < <$ActualT>::BITS,
             );
 
             // SAFETY: this is guaranteed to be safe by the caller.
@@ -1381,8 +1380,7 @@ macro_rules! int_impl {
                 concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
                 (
                     rhs: u32 = rhs,
-                    bits: u32 = Self::BITS,
-                ) => rhs < bits,
+                ) => rhs < <$ActualT>::BITS,
             );
 
             // SAFETY: this is guaranteed to be safe by the caller.
