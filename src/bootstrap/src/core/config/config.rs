@@ -314,7 +314,6 @@ pub struct Config {
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub print_step_rusage: bool,
-    pub missing_tools: bool, // FIXME: Deprecated field. Remove it at 2024.
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -905,7 +904,6 @@ define_config! {
         sign_folder: Option<String> = "sign-folder",
         upload_addr: Option<String> = "upload-addr",
         src_tarball: Option<bool> = "src-tarball",
-        missing_tools: Option<bool> = "missing-tools",
         compression_formats: Option<Vec<String>> = "compression-formats",
         compression_profile: Option<String> = "compression-profile",
         include_mingw_linker: Option<bool> = "include-mingw-linker",
@@ -1936,7 +1934,6 @@ impl Config {
                 sign_folder,
                 upload_addr,
                 src_tarball,
-                missing_tools,
                 compression_formats,
                 compression_profile,
                 include_mingw_linker,
@@ -1946,7 +1943,6 @@ impl Config {
             config.dist_compression_formats = compression_formats;
             set(&mut config.dist_compression_profile, compression_profile);
             set(&mut config.rust_dist_src, src_tarball);
-            set(&mut config.missing_tools, missing_tools);
             set(&mut config.dist_include_mingw_linker, include_mingw_linker)
         }
 
