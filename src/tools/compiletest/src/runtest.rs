@@ -98,7 +98,7 @@ fn get_lib_name(lib: &str, aux_type: AuxType) -> Option<String> {
         AuxType::Lib => Some(format!("lib{}.rlib", lib)),
         AuxType::Dylib => Some(if cfg!(windows) {
             format!("{}.dll", lib)
-        } else if cfg!(target_os = "macos") {
+        } else if cfg!(target_vendor = "apple") {
             format!("lib{}.dylib", lib)
         } else {
             format!("lib{}.so", lib)

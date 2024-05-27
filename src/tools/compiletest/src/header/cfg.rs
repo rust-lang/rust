@@ -159,6 +159,12 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the architecture is part of the Thumb family"
     }
 
+    condition! {
+        name: "apple",
+        condition: config.target.contains("apple"),
+        message: "when the target vendor is Apple"
+    }
+
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
     // channel, even though most people don't know or won't care about it. To avoid confusion, we
     // treat the "dev" channel as the "nightly" channel when processing the directive.

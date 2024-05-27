@@ -1,4 +1,4 @@
-//@ ignore-macos this is supposed to succeed on osx
+//@ ignore-apple this is supposed to succeed on Apple platforms (though it won't necessarily link)
 
 #[link(name = "foo", kind = "framework")]
 extern "C" {}
