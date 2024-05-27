@@ -8,8 +8,14 @@ use crate::sync::Once;
 /// A synchronization primitive which can be written to only once.
 ///
 /// This type is a thread-safe [`OnceCell`], and can be used in statics.
+/// In many simple cases, you can use [`LazyLock<T, F>`] instead to get the benefits of this type
+/// with less effort: `LazyLock<T, F>` "looks like" `&T` because it initializes with `F` on deref!
+/// Where OnceLock shines is when LazyLock is too simple to support a given case, as LazyLock
+/// doesn't allow additional inputs to its function after you call [`LazyLock::new(|| ...)`].
 ///
 /// [`OnceCell`]: crate::cell::OnceCell
+/// [`LazyLock<T, F>`]: crate::sync::LazyLock
+/// [`LazyLock::new(|| ...)`]: crate::sync::LazyLock::new
 ///
 /// # Examples
 ///
@@ -36,6 +42,55 @@ use crate::sync::Once;
 ///     CELL.get(),
 ///     Some(&12345),
 /// );
+/// ```
+///
+/// You can use `OnceLock` to implement a type that requires "append-only" logic:
+///
+/// ```
+/// use std::sync::{OnceLock, atomic::{AtomicU32, Ordering}};
+/// use std::thread;
+///
+/// struct OnceList<T> {
+///     data: OnceLock<T>,
+///     next: OnceLock<Box<OnceList<T>>>,
+/// }
+/// impl<T> OnceList<T> {
+///     const fn new() -> OnceList<T> {
+///         OnceList { data: OnceLock::new(), next: OnceLock::new() }
+///     }
+///     fn push(&self, value: T) {
+///         // FIXME: this impl is concise, but is also slow for long lists or many threads.
+///         // as an exercise, consider how you might improve on it while preserving the behavior
+///         if let Err(value) = self.data.set(value) {
+///             let next = self.next.get_or_init(|| Box::new(OnceList::new()));
+///             next.push(value)
+///         };
+///     }
+///     fn contains(&self, example: &T) -> bool
+///     where
+///         T: PartialEq,
+///     {
+///         self.data.get().map(|item| item == example).filter(|v| *v).unwrap_or_else(|| {
+///             self.next.get().map(|next| next.contains(example)).unwrap_or(false)
+///         })
+///     }
+/// }
+///
+/// // Let's exercise this new Sync append-only list by doing a little counting
+/// static LIST: OnceList<u32> = OnceList::new();
+/// static COUNTER: AtomicU32 = AtomicU32::new(0);
+///
+/// let vec = (0..thread::available_parallelism().unwrap().get()).map(|_| thread::spawn(|| {
+///     while let i @ 0..=1000 = COUNTER.fetch_add(1, Ordering::Relaxed) {
+///         LIST.push(i);
+///     }
+/// })).collect::<Vec<thread::JoinHandle<_>>>();
+/// vec.into_iter().for_each(|handle| handle.join().unwrap());
+///
+/// for i in 0..=1000 {
+///     assert!(LIST.contains(&i));
+/// }
+///
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {
