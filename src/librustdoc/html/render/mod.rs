@@ -928,9 +928,11 @@ fn assoc_method(
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
-        RenderMode::Normal => {
-            print_constness_with_space(&header.constness, meth.const_stability(tcx))
-        }
+        RenderMode::Normal => print_constness_with_space(
+            &header.constness,
+            meth.stable_since(tcx),
+            meth.const_stability(tcx),
+        ),
         RenderMode::ForDeref { .. } => "",
     };
     let asyncness = header.asyncness.print_with_space();
@@ -1016,18 +1018,23 @@ fn render_stability_since_raw_with_extra(
                 .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
         Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }) => {
-            let unstable = if let Some(n) = issue {
-                format!(
-                    "<a \
+            if stable_version.is_none() {
+                // don't display const unstable if entirely unstable
+                None
+            } else {
+                let unstable = if let Some(n) = issue {
+                    format!(
+                        "<a \
                         href=\"https://github.com/rust-lang/rust/issues/{n}\" \
                         title=\"Tracking issue for {feature}\"\
                        >unstable</a>"
-                )
-            } else {
-                String::from("unstable")
-            };
+                    )
+                } else {
+                    String::from("unstable")
+                };
 
-            Some((String::from("const unstable"), format!("const: {unstable}")))
+                Some((String::from("const unstable"), format!("const: {unstable}")))
+            }
         }
         _ => None,
     };
