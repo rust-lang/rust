@@ -59,7 +59,7 @@ on the output of a individual passes.
 
 Use `// skip-filecheck` to prevent FileCheck from running.
 
-To check MIR for function `foo`, start with a `// CHECK-LABEL fn foo(` directive.
+To check MIR for function `foo`, start with a `// CHECK-LABEL: fn foo(` directive.
 
 `{{regex}}` syntax allows to match `regex`.
 
