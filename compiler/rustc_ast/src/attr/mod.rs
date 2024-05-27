@@ -378,7 +378,9 @@ impl MetaItem {
             _ => path.span.hi(),
         };
         let span = path.span.with_hi(hi);
-        // FIX THIS LATER
+        // FIXME: This parses `unsafe()` not as unsafe attribute syntax in `MetaItem`,
+        // but as a parenthesized list. This (and likely `MetaItem`) should be changed in
+        // such a way that builtin macros don't accept extraneous `unsafe()`.
         Some(MetaItem { unsafety: Safety::Default, path, kind, span })
     }
 }
