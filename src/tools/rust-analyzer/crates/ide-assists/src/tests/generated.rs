@@ -816,6 +816,24 @@ fn main() {
 }
 
 #[test]
+fn doctest_desugar_async_into_impl_future() {
+    check_doc_test(
+        "desugar_async_into_impl_future",
+        r#####"
+//- minicore: future
+pub as$0ync fn foo() -> usize {
+    0
+}
+"#####,
+        r#####"
+pub fn foo() -> impl core::future::Future<Output = usize> {
+    0
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_desugar_doc_comment() {
     check_doc_test(
         "desugar_doc_comment",
@@ -3031,6 +3049,24 @@ use std::$0collections::HashMap;
 "#####,
         r#####"
 use std::{collections::HashMap};
+"#####,
+    )
+}
+
+#[test]
+fn doctest_sugar_impl_future_into_async() {
+    check_doc_test(
+        "sugar_impl_future_into_async",
+        r#####"
+//- minicore: future
+pub fn foo() -> impl core::future::F$0uture<Output = usize> {
+    async { 0 }
+}
+"#####,
+        r#####"
+pub async fn foo() -> usize {
+    async { 0 }
+}
 "#####,
     )
 }
