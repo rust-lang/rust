@@ -20,11 +20,11 @@ help: add missing generic argument
 LL |     let _: Vec<T, A:B> = A::B;
    |                ++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/type-ascription-instead-of-path-in-type.rs:6:16
    |
 LL |     let _: Vec<A:B> = A::B;
-   |                ^^^ associated type not allowed here
+   |                ^^^ associated item constraint not allowed here
 
 error: aborting due to 3 previous errors
 

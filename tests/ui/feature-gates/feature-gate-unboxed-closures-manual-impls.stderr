@@ -105,11 +105,11 @@ LL | impl FnOnce() for Foo1 {
    |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
    |
 LL | impl FnOnce() for Foo1 {
-   |      ^^^^^^^^ associated type not allowed here
+   |      ^^^^^^^^ associated item constraint not allowed here
    |
 help: parenthesized trait syntax expands to `FnOnce<(), Output=()>`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6

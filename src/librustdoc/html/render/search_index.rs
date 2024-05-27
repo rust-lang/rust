@@ -727,7 +727,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
                         name: *name,
                         args: clean::GenericArgs::AngleBracketed {
                             args: Vec::new().into_boxed_slice(),
-                            bindings: ThinVec::new(),
+                            constraints: ThinVec::new(),
                         },
                     })
                     .collect(),
@@ -1049,7 +1049,7 @@ fn simplify_fn_type<'tcx, 'a>(
         // So in here, we can add it directly and look for its own type parameters (so for `Option`,
         // we will look for them but not for `T`).
         let mut ty_generics = Vec::new();
-        let mut ty_bindings = Vec::new();
+        let mut ty_constraints = Vec::new();
         if let Some(arg_generics) = arg.generic_args() {
             for ty in arg_generics.into_iter().filter_map(|gen| match gen {
                 clean::GenericArg::Type(ty) => Some(ty),
@@ -1067,14 +1067,14 @@ fn simplify_fn_type<'tcx, 'a>(
                     cache,
                 );
             }
-            for binding in arg_generics.bindings() {
-                simplify_fn_binding(
+            for constraint in arg_generics.constraints() {
+                simplify_fn_constraint(
                     self_,
                     generics,
-                    &binding,
+                    &constraint,
                     tcx,
                     recurse + 1,
-                    &mut ty_bindings,
+                    &mut ty_constraints,
                     rgen,
                     is_return,
                     cache,
@@ -1137,7 +1137,7 @@ fn simplify_fn_type<'tcx, 'a>(
                             *stored_bounds = type_bounds;
                         }
                     }
-                    ty_bindings.push((
+                    ty_constraints.push((
                         RenderTypeId::AssociatedType(name),
                         vec![RenderType {
                             id: Some(RenderTypeId::Index(idx)),
@@ -1152,17 +1152,17 @@ fn simplify_fn_type<'tcx, 'a>(
         if id.is_some() || !ty_generics.is_empty() {
             res.push(RenderType {
                 id,
-                bindings: if ty_bindings.is_empty() { None } else { Some(ty_bindings) },
+                bindings: if ty_constraints.is_empty() { None } else { Some(ty_constraints) },
                 generics: if ty_generics.is_empty() { None } else { Some(ty_generics) },
             });
         }
     }
 }
 
-fn simplify_fn_binding<'tcx, 'a>(
+fn simplify_fn_constraint<'tcx, 'a>(
     self_: Option<&'a Type>,
     generics: &Generics,
-    binding: &'a clean::TypeBinding,
+    constraint: &'a clean::AssocItemConstraint,
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<(RenderTypeId, Vec<RenderType>)>,
@@ -1170,9 +1170,9 @@ fn simplify_fn_binding<'tcx, 'a>(
     is_return: bool,
     cache: &Cache,
 ) {
-    let mut ty_binding_constraints = Vec::new();
-    let ty_binding_assoc = RenderTypeId::AssociatedType(binding.assoc.name);
-    for gen in &binding.assoc.args {
+    let mut ty_constraints = Vec::new();
+    let ty_constrained_assoc = RenderTypeId::AssociatedType(constraint.assoc.name);
+    for gen in &constraint.assoc.args {
         match gen {
             clean::GenericArg::Type(arg) => simplify_fn_type(
                 self_,
@@ -1180,7 +1180,7 @@ fn simplify_fn_binding<'tcx, 'a>(
                 &arg,
                 tcx,
                 recurse + 1,
-                &mut ty_binding_constraints,
+                &mut ty_constraints,
                 rgen,
                 is_return,
                 cache,
@@ -1190,11 +1190,11 @@ fn simplify_fn_binding<'tcx, 'a>(
             | clean::GenericArg::Infer => {}
         }
     }
-    for binding in binding.assoc.args.bindings() {
-        simplify_fn_binding(
+    for constraint in constraint.assoc.args.constraints() {
+        simplify_fn_constraint(
             self_,
             generics,
-            &binding,
+            &constraint,
             tcx,
             recurse + 1,
             res,
@@ -1203,8 +1203,8 @@ fn simplify_fn_binding<'tcx, 'a>(
             cache,
         );
     }
-    match &binding.kind {
-        clean::TypeBindingKind::Equality { term } => {
+    match &constraint.kind {
+        clean::AssocItemConstraintKind::Equality { term } => {
             if let clean::Term::Type(arg) = &term {
                 simplify_fn_type(
                     self_,
@@ -1212,14 +1212,14 @@ fn simplify_fn_binding<'tcx, 'a>(
                     arg,
                     tcx,
                     recurse + 1,
-                    &mut ty_binding_constraints,
+                    &mut ty_constraints,
                     rgen,
                     is_return,
                     cache,
                 );
             }
         }
-        clean::TypeBindingKind::Constraint { bounds } => {
+        clean::AssocItemConstraintKind::Bound { bounds } => {
             for bound in &bounds[..] {
                 if let Some(path) = bound.get_trait_path() {
                     let ty = Type::Path { path };
@@ -1229,7 +1229,7 @@ fn simplify_fn_binding<'tcx, 'a>(
                         &ty,
                         tcx,
                         recurse + 1,
-                        &mut ty_binding_constraints,
+                        &mut ty_constraints,
                         rgen,
                         is_return,
                         cache,
@@ -1238,7 +1238,7 @@ fn simplify_fn_binding<'tcx, 'a>(
             }
         }
     }
-    res.push((ty_binding_assoc, ty_binding_constraints));
+    res.push((ty_constrained_assoc, ty_constraints));
 }
 
 /// Return the full list of types when bounds have been resolved.

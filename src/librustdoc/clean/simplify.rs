@@ -90,10 +90,10 @@ pub(crate) fn merge_bounds(
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
 
         match last.args {
-            PP::AngleBracketed { ref mut bindings, .. } => {
-                bindings.push(clean::TypeBinding {
+            PP::AngleBracketed { ref mut constraints, .. } => {
+                constraints.push(clean::AssocItemConstraint {
                     assoc: assoc.clone(),
-                    kind: clean::TypeBindingKind::Equality { term: rhs.clone() },
+                    kind: clean::AssocItemConstraintKind::Equality { term: rhs.clone() },
                 });
             }
             PP::Parenthesized { ref mut output, .. } => match output {

@@ -1148,7 +1148,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         self.diag_metadata.currently_processing_generic_args = prev;
     }
 
-    fn visit_assoc_constraint(&mut self, constraint: &'ast AssocConstraint) {
+    fn visit_assoc_item_constraint(&mut self, constraint: &'ast AssocItemConstraint) {
         self.visit_ident(constraint.ident);
         if let Some(ref gen_args) = constraint.gen_args {
             // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
@@ -1157,13 +1157,13 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
             });
         }
         match constraint.kind {
-            AssocConstraintKind::Equality { ref term } => match term {
+            AssocItemConstraintKind::Equality { ref term } => match term {
                 Term::Ty(ty) => self.visit_ty(ty),
                 Term::Const(c) => {
                     self.resolve_anon_const(c, AnonConstKind::ConstArg(IsRepeatExpr::No))
                 }
             },
-            AssocConstraintKind::Bound { ref bounds } => {
+            AssocItemConstraintKind::Bound { ref bounds } => {
                 self.record_lifetime_params_for_impl_trait(constraint.id);
                 walk_list!(self, visit_param_bound, bounds, BoundKind::Bound);
             }

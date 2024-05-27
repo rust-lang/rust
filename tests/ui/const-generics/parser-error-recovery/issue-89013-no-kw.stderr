@@ -24,11 +24,11 @@ help: add missing generic argument
 LL | impl Foo<N, N = 3> for Bar {
    |          ++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-89013-no-kw.rs:9:10
    |
 LL | impl Foo<N = 3> for Bar {
-   |          ^^^^^ associated type not allowed here
+   |          ^^^^^ associated item constraint not allowed here
    |
 help: to use `3` as a generic argument specify it directly
    |
