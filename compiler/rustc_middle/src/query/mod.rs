@@ -422,7 +422,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_can_emit(_: ()) -> &'tcx Lrc<(Vec<String>, Vec<String>)> {
+    query lints_that_can_emit(_: ()) -> &'tcx Lrc<(FxIndexSet<String>, FxIndexSet<String>)> {
         arena_cache
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
     }
