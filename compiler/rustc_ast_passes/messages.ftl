@@ -67,6 +67,9 @@ ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have quali
     .label = in this `extern` block
     .suggestion = remove this qualifier
 
+ast_passes_extern_invalid_safety = items in unadorned `extern` blocks cannot have safety qualifiers
+    .suggestion = add unsafe to this `extern` block
+
 ast_passes_extern_item_ascii = items in `extern` blocks cannot use non-ascii identifiers
     .label = in this `extern` block
     .note = this limitation may be lifted in the future; see issue #83942 <https://github.com/rust-lang/rust/issues/83942> for more information

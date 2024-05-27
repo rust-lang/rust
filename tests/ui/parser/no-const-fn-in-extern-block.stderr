@@ -6,6 +6,15 @@ LL | extern "C" {
 LL |     const fn foo();
    |     ^^^^^ help: remove this qualifier
 
+error: items in unadorned `extern` blocks cannot have safety qualifiers
+  --> $DIR/no-const-fn-in-extern-block.rs:4:5
+   |
+LL | extern "C" {
+   | ---------- help: add unsafe to this `extern` block
+...
+LL |     const unsafe fn bar();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/no-const-fn-in-extern-block.rs:4:5
    |
@@ -15,5 +24,5 @@ LL | extern "C" {
 LL |     const unsafe fn bar();
    |     ^^^^^ help: remove this qualifier
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

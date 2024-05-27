@@ -87,6 +87,9 @@ struct AstValidator<'a> {
     /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
 
+    /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
+    extern_mod_safety: Option<Safety>,
+
     lint_buffer: &'a mut LintBuffer,
 }
 
@@ -115,6 +118,12 @@ impl<'a> AstValidator<'a> {
         );
         f(self);
         self.outer_trait_or_trait_impl = old;
+    }
+
+    fn with_in_extern_mod(&mut self, extern_mod_safety: Safety, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.extern_mod_safety, Some(extern_mod_safety));
+        f(self);
+        self.extern_mod_safety = old;
     }
 
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
@@ -427,6 +436,20 @@ impl<'a> AstValidator<'a> {
             if param.is_self() {
                 self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
             }
+        }
+    }
+
+    fn check_foreign_item_safety(&self, item_span: Span, safety: Safety) {
+        match safety {
+            Safety::Unsafe(_) | Safety::Safe(_)
+                if self.extern_mod_safety == Some(Safety::Default) =>
+            {
+                self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                    item_span,
+                    block: self.current_extern_span(),
+                });
+            }
+            _ => {}
         }
     }
 
@@ -1014,26 +1037,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 return; // Avoid visiting again.
             }
             ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
-                let old_item = mem::replace(&mut self.extern_mod, Some(item));
-                self.visibility_not_permitted(
-                    &item.vis,
-                    errors::VisibilityNotPermittedNote::IndividualForeignItems,
-                );
-
-                if &Safety::Default == safety {
-                    self.lint_buffer.buffer_lint(
-                        MISSING_UNSAFE_ON_EXTERN,
-                        item.id,
-                        item.span,
-                        BuiltinLintDiag::MissingUnsafeOnExtern,
+                self.with_in_extern_mod(*safety, |this| {
+                    let old_item = mem::replace(&mut this.extern_mod, Some(item));
+                    this.visibility_not_permitted(
+                        &item.vis,
+                        errors::VisibilityNotPermittedNote::IndividualForeignItems,
                     );
-                }
 
-                if abi.is_none() {
-                    self.maybe_lint_missing_abi(item.span, item.id);
-                }
-                visit::walk_item(self, item);
-                self.extern_mod = old_item;
+                    if &Safety::Default == safety {
+                        this.lint_buffer.buffer_lint(
+                            MISSING_UNSAFE_ON_EXTERN,
+                            item.id,
+                            item.span,
+                            BuiltinLintDiag::MissingUnsafeOnExtern,
+                        );
+                    }
+
+                    if abi.is_none() {
+                        this.maybe_lint_missing_abi(item.span, item.id);
+                    }
+                    visit::walk_item(this, item);
+                    this.extern_mod = old_item;
+                });
                 return; // Avoid visiting again.
             }
             ItemKind::Enum(def, _) => {
@@ -1165,6 +1190,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
             ForeignItemKind::Fn(box Fn { defaultness, sig, body, .. }) => {
+                self.check_foreign_item_safety(fi.span, sig.header.safety);
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(sig.header);
@@ -1184,7 +1210,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::Static(box StaticForeignItem { expr, .. }) => {
+            ForeignItemKind::Static(box StaticForeignItem { expr, safety, .. }) => {
+                self.check_foreign_item_safety(fi.span, *safety);
                 self.check_foreign_kind_bodyless(fi.ident, "static", expr.as_ref().map(|b| b.span));
                 self.check_foreign_item_ascii_only(fi.ident);
             }
@@ -1740,6 +1767,7 @@ pub fn check_crate(
         outer_impl_trait: None,
         disallow_tilde_const: Some(DisallowTildeConstContext::Item),
         is_impl_trait_banned: false,
+        extern_mod_safety: None,
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
