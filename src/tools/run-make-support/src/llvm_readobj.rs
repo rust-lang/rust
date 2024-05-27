@@ -42,6 +42,12 @@ impl LlvmReadobj {
         self
     }
 
+    /// Pass `--coff-imports` to display the Windows DLL imports
+    pub fn coff_imports(&mut self) -> &mut Self {
+        self.cmd.arg("--coff-imports");
+        self
+    }
+
     /// Get the [`Output`][::std::process::Output] of the finished process.
     #[track_caller]
     pub fn command_output(&mut self) -> ::std::process::Output {
