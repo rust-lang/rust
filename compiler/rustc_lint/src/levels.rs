@@ -168,9 +168,9 @@ pub fn lints_that_can_emit(tcx: TyCtxt<'_>, (): ()) -> Lrc<(Vec<String>, Vec<Str
     for group in lint_groups {
         let binding = group.0.to_lowercase();
         let group_name = name_without_tool(&binding).to_string();
-        if visitor.lints_to_emit.contains(&group_name) {
+        if visitor.lints_that_actually_run.contains(&group_name) {
             for lint in group.1 {
-                visitor.lints_to_emit.push(name_without_tool(&lint.to_string()).to_string());
+                visitor.lints_that_actually_run.push(name_without_tool(&lint.to_string()).to_string());
             }
         } else if visitor.lints_allowed.contains(&group_name) {
             for lint in &group.1 {
@@ -179,7 +179,7 @@ pub fn lints_that_can_emit(tcx: TyCtxt<'_>, (): ()) -> Lrc<(Vec<String>, Vec<Str
         }
     }
 
-    Lrc::new((visitor.lints_to_emit, visitor.lints_allowed))
+    Lrc::new((visitor.lints_that_actually_run, visitor.lints_allowed))
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -489,8 +489,8 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
 struct LintLevelMinimum<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// The actual list of detected lints.
-    lints_to_emit: Vec<String>,
-    lints_allowed: Vec<String>,
+    lints_that_actually_run: FxIndexSet<String>,
+    lints_allowed: FxIndexSet<String>,
 }
 
 impl<'tcx> LintLevelMinimum<'tcx> {
@@ -498,7 +498,7 @@ impl<'tcx> LintLevelMinimum<'tcx> {
         Self {
             tcx,
             // That magic number is the current number of lints + some more for possible future lints
-            lints_to_emit: Vec::with_capacity(230),
+            lints_that_actually_run: Vec::with_capacity(230),
             lints_allowed: Vec::with_capacity(100),
         }
     }
@@ -508,7 +508,7 @@ impl<'tcx> LintLevelMinimum<'tcx> {
             if *level == Level::Allow {
                 self.lints_allowed.push(lint.clone());
             } else {
-                self.lints_to_emit.push(lint.to_string());
+                self.lints_that_actually_run.push(lint.to_string());
             }
         }
     }
@@ -533,12 +533,12 @@ impl<'tcx> Visitor<'tcx> for LintLevelMinimum<'tcx> {
                     // If it's a tool lint (e.g. clippy::my_clippy_lint)
                     if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
                         if meta_item.path.segments.len() == 1 {
-                            self.lints_to_emit.push(
+                            self.lints_that_actually_run.push(
                                 // SAFETY: Lint attributes can only have literals
                                 meta_list.ident().unwrap().name.as_str().to_string(),
                             );
                         } else {
-                            self.lints_to_emit
+                            self.lints_that_actually_run
                                 .push(meta_item.path.segments[1].ident.name.as_str().to_string());
                         }
                     }
