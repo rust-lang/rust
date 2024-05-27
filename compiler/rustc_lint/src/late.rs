@@ -373,8 +373,8 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
             store.late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
 
         // Filter unused lints
-        let (lints_to_emit, lints_allowed) = &**tcx.lints_that_can_emit(());
-        // let lints_to_emit = &lints_that_can_emit.0;
+        let (lints_that_actually_run, lints_allowed) = &**tcx.lints_that_can_emit(());
+        // let lints_that_actually_run = &lints_that_can_emit.0;
         // let lints_allowed = &lints_that_can_emit.1;
 
         // Now, we'll filtered passes in a way that discards any lint that won't trigger.
@@ -386,7 +386,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
                 let pass = LintPass::get_lints(pass);
                 pass.iter().any(|&lint| {
                     let lint_name = name_without_tool(&lint.name.to_lowercase()).to_string();
-                    lints_to_emit.contains(&lint_name)
+                    lints_that_actually_run.contains(&lint_name)
                         || (!lints_allowed.contains(&lint_name)
                             && lint.default_level != crate::Level::Allow)
                 })
