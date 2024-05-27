@@ -16,6 +16,10 @@ A secondary goal is to check if using the gcc backend will provide any run-time 
 
 **rustup:** Follow the instructions on the official [website](https://www.rust-lang.org/tools/install)
 
+**DejaGnu:** Consider to install DejaGnu which is necessary for running the libgccjit test suite. [website](https://www.gnu.org/software/dejagnu/#downloading)
+
+
+
 ## Building
 
 **This requires a patched libgccjit in order to work.
@@ -143,16 +147,32 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
 ## Env vars
 
 <dl>
-    <dt>CG_GCCJIT_INCR_CACHE_DISABLED</dt>
-    <dd>Don't cache object files in the incremental cache. Useful during development of cg_gccjit
-    to make it possible to use incremental mode for all analyses performed by rustc without caching
-    object files when their content should have been changed by a change to cg_gccjit.</dd>
-    <dt>CG_GCCJIT_DISPLAY_CG_TIME</dt>
-    <dd>Display the time it took to perform codegen for a crate</dd>
+    <dt>CG_GCCJIT_DUMP_ALL_MODULES</dt>
+    <dd>Enables dumping of all compilation modules. When set to "1", a dump is created for each module during compilation and stored in `/tmp/reproducers/`.</dd>
+    <dt>CG_GCCJIT_DUMP_MODULE</dt>
+    <dd>Enables dumping of a specific module. When set with the module name, e.g., `CG_GCCJIT_DUMP_MODULE=module_name`, a dump of that specific module is created in `/tmp/reproducers/`.</dd>
     <dt>CG_RUSTFLAGS</dt>
     <dd>Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.</dd>
     <dt>CG_GCCJIT_DUMP_TO_FILE</dt>
     <dd>Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.</dd>
+    <dt>CG_GCCJIT_DUMP_RTL</dt>
+    <dd>Dumps RTL (Register Transfer Language) for virtual registers.</dd>
+    <dt>CG_GCCJIT_DUMP_RTL_ALL</dt>
+    <dd>Dumps all RTL passes.</dd>
+    <dt>CG_GCCJIT_DUMP_TREE_ALL</dt>
+    <dd>Dumps all tree (GIMPLE) passes.</dd>
+    <dt>CG_GCCJIT_DUMP_IPA_ALL</dt>
+    <dd>Dumps all Interprocedural Analysis (IPA) passes.</dd>
+    <dt>CG_GCCJIT_DUMP_CODE</dt>
+    <dd>Dumps the final generated code.</dd>
+    <dt>CG_GCCJIT_DUMP_GIMPLE</dt>
+    <dd>Dumps the initial GIMPLE representation.</dd>
+    <dt>CG_GCCJIT_DUMP_EVERYTHING</dt>
+    <dd>Enables dumping of all intermediate representations and passes.</dd>
+    <dt>CG_GCCJIT_KEEP_INTERMEDIATES</dt>
+    <dd>Keeps intermediate files generated during the compilation process.</dd>
+    <dt>CG_GCCJIT_VERBOSE</dt>
+    <dd>Enables verbose output from the GCC driver.</dd>
 </dl>
 
 ## Extra documentation
