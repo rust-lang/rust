@@ -1,3 +1,4 @@
+//@ check-pass
 // cc #119820
 
 trait Trait {}
@@ -21,8 +22,6 @@ where
     // the leak check both candidates may apply and we prefer the
     // `param_env` candidate in winnowing.
     hr_bound::<&T>();
-    //~^ ERROR the parameter type `T` may not live long enough
-    //~| ERROR implementation of `Trait` is not general enough
 }
 
 fn main() {}
