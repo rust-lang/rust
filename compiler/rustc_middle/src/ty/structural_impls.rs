@@ -259,18 +259,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for Region<'tcx> {
     }
 }
 
-impl<'tcx, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        f.debug_tuple("Binder")
-            .field(&this.map(|data| data.as_ref().skip_binder()))
-            .field(&this.data.bound_vars())
-            .finish()
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //

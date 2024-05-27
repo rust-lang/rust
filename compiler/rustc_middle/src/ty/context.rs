@@ -113,7 +113,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
-    type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
 
     type Pat = Pattern<'tcx>;
