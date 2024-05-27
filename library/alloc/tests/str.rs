@@ -1515,6 +1515,7 @@ fn test_lines() {
     fn t(data: &str, expected: &[&str]) {
         let lines: Vec<&str> = data.lines().collect();
         assert_eq!(lines, expected);
+        assert_eq!(data.lines().count(), expected.len(), "{:?} vs {:?}", data, expected);
     }
     t("", &[]);
     t("\n", &[""]);
