@@ -1414,8 +1414,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.dcx().span_delayed_bug(
                         span,
                         format!(
-                        "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
-                    ),
+                            "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
+                        ),
                     );
                 }
             }
