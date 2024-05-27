@@ -752,7 +752,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> 
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx UnordMap<DefId, ty::EarlyBinder<Ty<'tcx>>>
+    for &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>
 {
     #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {

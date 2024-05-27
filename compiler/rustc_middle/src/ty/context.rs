@@ -681,7 +681,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// In order to break cycles involving `AnonConst`, we need to set the expected type by side
     /// effect. However, we do not want this as a general capability, so this interface restricts
     /// to the only allowed case.
-    pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<Ty<'tcx>>) {
+    pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<'tcx, Ty<'tcx>>) {
         debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
         TyCtxtFeed { tcx: self, key }.type_of(value)
     }
@@ -2746,7 +2746,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_trait_ref(
         self,
         def_id: impl IntoQueryParam<DefId>,
-    ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
         Some(self.impl_trait_header(def_id)?.trait_ref)
     }
 

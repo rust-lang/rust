@@ -2055,7 +2055,7 @@ impl<'tcx> Ty<'tcx> {
     fn async_destructor_combinator(
         tcx: TyCtxt<'tcx>,
         lang_item: LangItem,
-    ) -> ty::EarlyBinder<Ty<'tcx>> {
+    ) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         tcx.fn_sig(tcx.require_lang_item(lang_item, None))
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
     }

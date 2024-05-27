@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let lazy = self.root.tables.explicit_item_bounds.get(self, index);
         let output = if lazy.is_default() {
             &mut []
@@ -1088,7 +1088,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let lazy = self.root.tables.explicit_item_super_predicates.get(self, index);
         let output = if lazy.is_default() {
             &mut []

@@ -88,7 +88,7 @@ impl GenericParamDef {
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Option<EarlyBinder<ty::GenericArg<'tcx>>> {
+    ) -> Option<EarlyBinder<'tcx, ty::GenericArg<'tcx>>> {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
                 Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))

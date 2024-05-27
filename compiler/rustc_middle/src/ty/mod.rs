@@ -266,7 +266,7 @@ pub struct ImplHeader<'tcx> {
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplTraitHeader<'tcx> {
-    pub trait_ref: ty::EarlyBinder<ty::TraitRef<'tcx>>,
+    pub trait_ref: ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
 }

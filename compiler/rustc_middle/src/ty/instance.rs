@@ -764,7 +764,7 @@ impl<'tcx> Instance<'tcx> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
 
-    pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<&T>) -> T
+    pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<'tcx, &T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
@@ -782,7 +782,7 @@ impl<'tcx> Instance<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        v: EarlyBinder<T>,
+        v: EarlyBinder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -800,7 +800,7 @@ impl<'tcx> Instance<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        v: EarlyBinder<T>,
+        v: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

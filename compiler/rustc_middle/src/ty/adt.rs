@@ -579,7 +579,7 @@ impl<'tcx> AdtDef<'tcx> {
 
     /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,
     /// or `None` if the type is always sized.
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<Ty<'tcx>>> {
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
     }
 }

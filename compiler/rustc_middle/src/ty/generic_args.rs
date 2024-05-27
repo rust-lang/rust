@@ -584,48 +584,49 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 /// [`instantiate_identity`](EarlyBinder::instantiate_identity) or [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
-pub struct EarlyBinder<T> {
+pub struct EarlyBinder<'tcx, T> {
     value: T,
+    _tcx: PhantomData<&'tcx ()>,
 }
 
 /// For early binders, you should first call `instantiate` before using any visitors.
-impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
-impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<'tcx, T> {}
+impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<'tcx, T> {}
 
-impl<T> EarlyBinder<T> {
-    pub fn bind(value: T) -> EarlyBinder<T> {
-        EarlyBinder { value }
+impl<'tcx, T> EarlyBinder<'tcx, T> {
+    pub fn bind(value: T) -> EarlyBinder<'tcx, T> {
+        EarlyBinder { value, _tcx: PhantomData }
     }
 
-    pub fn as_ref(&self) -> EarlyBinder<&T> {
-        EarlyBinder { value: &self.value }
+    pub fn as_ref(&self) -> EarlyBinder<'tcx, &T> {
+        EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
 
-    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
+    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<'tcx, U>
     where
         F: FnOnce(&T) -> U,
     {
         self.as_ref().map_bound(f)
     }
 
-    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<U>
+    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<'tcx, U>
     where
         F: FnOnce(T) -> U,
     {
         let value = f(self.value);
-        EarlyBinder { value }
+        EarlyBinder { value, _tcx: PhantomData }
     }
 
-    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
+    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<'tcx, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
     {
         let value = f(self.value)?;
-        Ok(EarlyBinder { value })
+        Ok(EarlyBinder { value, _tcx: PhantomData })
     }
 
-    pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
-        EarlyBinder { value }
+    pub fn rebind<U>(&self, value: U) -> EarlyBinder<'tcx, U> {
+        EarlyBinder { value, _tcx: PhantomData }
     }
 
     /// Skips the binder and returns the "bound" value.
@@ -634,7 +635,7 @@ impl<T> EarlyBinder<T> {
     /// arguments of an `FnSig`). Otherwise, consider using
     /// [`instantiate_identity`](EarlyBinder::instantiate_identity).
     ///
-    /// To skip the binder on `x: &EarlyBinder<T>` to obtain `&T`, leverage
+    /// To skip the binder on `x: &EarlyBinder<'tcx, T>` to obtain `&T`, leverage
     /// [`EarlyBinder::as_ref`](EarlyBinder::as_ref): `x.as_ref().skip_binder()`.
     ///
     /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
@@ -644,13 +645,13 @@ impl<T> EarlyBinder<T> {
     }
 }
 
-impl<T> EarlyBinder<Option<T>> {
-    pub fn transpose(self) -> Option<EarlyBinder<T>> {
-        self.value.map(|value| EarlyBinder { value })
+impl<'tcx, T> EarlyBinder<'tcx, Option<T>> {
+    pub fn transpose(self) -> Option<EarlyBinder<'tcx, T>> {
+        self.value.map(|value| EarlyBinder { value, _tcx: PhantomData })
     }
 }
 
-impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<'tcx, I>
 where
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
@@ -682,7 +683,10 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Some(EarlyBinder { value: self.it.next()? }.instantiate(self.tcx, self.args))
+        Some(
+            EarlyBinder { value: self.it.next()?, _tcx: PhantomData }
+                .instantiate(self.tcx, self.args),
+        )
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -696,7 +700,10 @@ where
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        Some(EarlyBinder { value: self.it.next_back()? }.instantiate(self.tcx, self.args))
+        Some(
+            EarlyBinder { value: self.it.next_back()?, _tcx: PhantomData }
+                .instantiate(self.tcx, self.args),
+        )
     }
 }
 
@@ -707,7 +714,7 @@ where
 {
 }
 
-impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<'tcx, I>
 where
     I::Item: Deref,
     <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
@@ -743,7 +750,9 @@ where
     type Item = <I::Item as Deref>::Target;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.it.next().map(|value| EarlyBinder { value: *value }.instantiate(self.tcx, self.args))
+        self.it.next().map(|value| {
+            EarlyBinder { value: *value, _tcx: PhantomData }.instantiate(self.tcx, self.args)
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -758,9 +767,9 @@ where
     <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.it
-            .next_back()
-            .map(|value| EarlyBinder { value: *value }.instantiate(self.tcx, self.args))
+        self.it.next_back().map(|value| {
+            EarlyBinder { value: *value, _tcx: PhantomData }.instantiate(self.tcx, self.args)
+        })
     }
 }
 
@@ -772,21 +781,22 @@ where
 {
 }
 
-pub struct EarlyBinderIter<T> {
+pub struct EarlyBinderIter<'tcx, T> {
     t: T,
+    _tcx: PhantomData<&'tcx ()>,
 }
 
-impl<T: IntoIterator> EarlyBinder<T> {
-    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
-        EarlyBinderIter { t: self.value.into_iter() }
+impl<'tcx, T: IntoIterator> EarlyBinder<'tcx, T> {
+    pub fn transpose_iter(self) -> EarlyBinderIter<'tcx, T::IntoIter> {
+        EarlyBinderIter { t: self.value.into_iter(), _tcx: PhantomData }
     }
 }
 
-impl<T: Iterator> Iterator for EarlyBinderIter<T> {
-    type Item = EarlyBinder<T::Item>;
+impl<'tcx, T: Iterator> Iterator for EarlyBinderIter<'tcx, T> {
+    type Item = EarlyBinder<'tcx, T::Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.t.next().map(|value| EarlyBinder { value })
+        self.t.next().map(|value| EarlyBinder { value, _tcx: PhantomData })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -794,7 +804,7 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<'tcx, T> {
     pub fn instantiate(self, tcx: TyCtxt<'tcx>, args: &[GenericArg<'tcx>]) -> T {
         let mut folder = ArgFolder { tcx, args, binders_passed: 0 };
         self.value.fold_with(&mut folder)
