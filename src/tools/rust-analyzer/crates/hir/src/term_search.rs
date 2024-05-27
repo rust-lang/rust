@@ -329,7 +329,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     while should_continue() {
         lookup.new_round();
 
-        solutions.extend(tactics::type_constructor(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::data_constructor(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::free_function(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup, should_continue));
