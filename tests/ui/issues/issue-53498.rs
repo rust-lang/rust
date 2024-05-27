@@ -20,5 +20,5 @@ pub mod test {
 fn main() {
     test::Foo::<test::B>::foo();
     //[same_name]~^ ERROR associated function `foo` is private
-    //[different_name]~^^ ERROR associated function `foo` is private
+    //[different_name]~^^ ERROR no function or associated item named `foo` found for struct `Foo<B>`
 }
