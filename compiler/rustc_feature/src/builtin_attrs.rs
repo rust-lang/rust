@@ -535,11 +535,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(
-        ffi_pure, Normal, template!(Word), WarnFollowing,
+        unsafe ffi_pure, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, experimental!(ffi_pure)
     ),
     gated!(
-        ffi_const, Normal, template!(Word), WarnFollowing,
+        unsafe ffi_const, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, experimental!(ffi_const)
     ),
     gated!(
