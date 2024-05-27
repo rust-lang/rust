@@ -653,5 +653,17 @@ LL -         return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 
 LL +         (if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 })
    |
 
-error: aborting due to 52 previous errors
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:337:5
+   |
+LL |     return { "a".to_string() } + "b" + { "c" };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `return` and wrap the sequence with parentheses
+   |
+LL -     return { "a".to_string() } + "b" + { "c" };
+LL +     ({ "a".to_string() } + "b" + { "c" })
+   |
+
+error: aborting due to 53 previous errors
 
