@@ -4,6 +4,10 @@ hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
+hir_analysis_assoc_item_constraints_not_allowed_here =
+    associated item constraints are not allowed here
+    .label = associated item constraint not allowed here
+
 hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$ty_param_name}`
 
 hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identically_named ->
@@ -23,10 +27,6 @@ hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
     .bound_on_assoc_const_label = bounds are not allowed on associated constants
 
 hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg = consider adding braces here
-
-hir_analysis_assoc_type_binding_not_allowed =
-    associated type bindings are not allowed here
-    .label = associated type not allowed here
 
 hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated type of a trait with uninferred generic parameters
     .suggestion = use a fully qualified path with inferred lifetimes

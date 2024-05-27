@@ -268,8 +268,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
         let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
 
-        if let Some((_, hir::Node::TypeBinding(binding))) = parents.next()
-            && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(obj_ty) } = binding.kind
+        if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
+            && let Some(obj_ty) = constraint.ty()
         {
             if let Some((_, hir::Node::TraitRef(..))) = parents.next()
                 && let Some((_, hir::Node::Ty(ty))) = parents.next()
@@ -279,10 +279,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 return;
             }
 
-            let lo = if binding.gen_args.span_ext.is_dummy() {
-                binding.ident.span
+            let lo = if constraint.gen_args.span_ext.is_dummy() {
+                constraint.ident.span
             } else {
-                binding.gen_args.span_ext
+                constraint.gen_args.span_ext
             };
             let hi = obj_ty.span;
 

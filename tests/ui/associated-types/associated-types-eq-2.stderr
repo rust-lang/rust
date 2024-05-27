@@ -43,13 +43,13 @@ LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
    = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:20:10
    |
 LL | impl Tr1<A = usize> for usize {
-   |          ^^^^^^^^^ associated type not allowed here
+   |          ^^^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr1<A = usize> for usize {
    |         ~~~~~~~~~~~
@@ -63,13 +63,13 @@ LL |     type A;
 LL | impl Tr1<A = usize> for usize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `A` in implementation
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:27:31
    |
 LL | fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
-   |                               ^^^^^ associated type not allowed here
+   |                               ^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
    |                              ~~~~~~~
@@ -92,11 +92,11 @@ help: add missing generic arguments
 LL | impl Tr2<i32, T2, T3, T2 = Qux, T3 = usize> for Bar {
    |             ++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:40:15
    |
 LL | impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
-   |               ^^^^^^^^ associated type not allowed here
+   |               ^^^^^^^^ associated item constraint not allowed here
    |
 help: to use `Qux` as a generic argument specify it directly
    |
@@ -121,13 +121,13 @@ help: add missing generic arguments
 LL | impl Tr2<i32, T2, T3, t2 = Qux, T3 = usize> for Qux {
    |             ++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:47:15
    |
 LL | impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
-   |               ^^^^^^^^ associated type not allowed here
+   |               ^^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
    |             ~~~~~~~~~~
@@ -150,13 +150,13 @@ help: add missing generic arguments
 LL | impl Tr2<i32, T2, T3, X = Qux, Y = usize> for Bar {
    |             ++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:54:15
    |
 LL | impl Tr2<i32, X = Qux, Y = usize> for Bar {
-   |               ^^^^^^^ associated type not allowed here
+   |               ^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr2<i32, X = Qux, Y = usize> for Bar {
    |             ~~~~~~~~~
@@ -179,11 +179,11 @@ help: add missing generic argument
 LL | impl Tr2<i32, Qux, T3, T3 = GenericTerm<i32>> for Bar {
    |                  ++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:61:20
    |
 LL | impl Tr2<i32, Qux, T3 = GenericTerm<i32>> for Bar {
-   |                    ^^^^^^^^^^^^^^^^^^^^^ associated type not allowed here
+   |                    ^^^^^^^^^^^^^^^^^^^^^ associated item constraint not allowed here
    |
 help: to use `GenericTerm<i32>` as a generic argument specify it directly
    |
@@ -206,7 +206,7 @@ help: add missing generic arguments
 LL | impl Tr3<N, T2, T3, N
    |          ++++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:76:10
    |
 LL |   impl Tr3<N
@@ -215,7 +215,7 @@ LL | |
 LL | |
 LL | |
 LL | | = 42, T2 = Qux, T3 = usize> for Bar {
-   | |____^ associated type not allowed here
+   | |____^ associated item constraint not allowed here
    |
 help: to use `42` as a generic argument specify it directly
    |
@@ -238,13 +238,13 @@ help: add missing generic arguments
 LL | impl Tr3<N, T2, T3, n = 42, T2 = Qux, T3 = usize> for Qux {
    |          ++++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:85:10
    |
 LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
-   |          ^^^^^^ associated type not allowed here
+   |          ^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
    |          ~~~~~~~
@@ -265,13 +265,13 @@ help: add missing generic arguments
 LL | impl Tr3<N, T2, T3, N = u32, T2 = Qux, T3 = usize> for Bar {
    |          ++++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:93:10
    |
 LL | impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
-   |          ^^^^^^^ associated type not allowed here
+   |          ^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
    |          ~~~~~~~~
@@ -294,13 +294,13 @@ help: add missing generic arguments
 LL | impl Tr3<42, T2, T3, T2 = 42, T3 = usize> for Bar {
    |            ++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:100:14
    |
 LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
-   |              ^^^^^^^ associated type not allowed here
+   |              ^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
    |            ~~~~~~~~~
@@ -321,13 +321,13 @@ help: add missing generic arguments
 LL | impl Tr3<N, T2, T3, X = 42, Y = Qux, Z = usize> for Bar {
    |          ++++++++++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:108:10
    |
 LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
-   |          ^^^^^^ associated type not allowed here
+   |          ^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
    |          ~~~~~~~
@@ -348,11 +348,11 @@ help: add missing generic argument
 LL | impl<'a, T> St<'a, T , T = Qux> {
    |                  +++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:119:21
    |
 LL | impl<'a, T> St<'a , T = Qux> {
-   |                     ^^^^^^^ associated type not allowed here
+   |                     ^^^^^^^ associated item constraint not allowed here
    |
 help: to use `Qux` as a generic argument specify it directly
    |

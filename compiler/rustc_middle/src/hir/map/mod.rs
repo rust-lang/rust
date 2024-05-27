@@ -901,7 +901,7 @@ impl<'hir> Map<'hir> {
                     .with_hi(seg.args.map_or_else(|| ident_span.hi(), |args| args.span_ext.hi()))
             }
             Node::Ty(ty) => ty.span,
-            Node::TypeBinding(tb) => tb.span,
+            Node::AssocItemConstraint(constraint) => constraint.span,
             Node::TraitRef(tr) => tr.path.span,
             Node::Pat(pat) => pat.span,
             Node::PatField(field) => field.span,
@@ -1167,7 +1167,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::Stmt(_) => node_str("stmt"),
         Node::PathSegment(_) => node_str("path segment"),
         Node::Ty(_) => node_str("type"),
-        Node::TypeBinding(_) => node_str("type binding"),
+        Node::AssocItemConstraint(_) => node_str("assoc item constraint"),
         Node::TraitRef(_) => node_str("trait ref"),
         Node::Pat(_) => node_str("pat"),
         Node::PatField(_) => node_str("pattern field"),

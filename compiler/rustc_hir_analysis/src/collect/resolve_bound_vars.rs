@@ -1468,12 +1468,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         depth: usize,
         generic_args: &'tcx hir::GenericArgs<'tcx>,
     ) {
-        if generic_args.parenthesized == hir::GenericArgsParentheses::ParenSugar {
-            self.visit_fn_like_elision(
-                generic_args.inputs(),
-                Some(generic_args.bindings[0].ty()),
-                false,
-            );
+        if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
+            self.visit_fn_like_elision(inputs, Some(output), false);
             return;
         }
 
@@ -1608,8 +1604,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        // Hack: when resolving the type `XX` in binding like `dyn
-        // Foo<'b, Item = XX>`, the current object-lifetime default
+        // Hack: When resolving the type `XX` in an assoc ty binding like
+        // `dyn Foo<'b, Item = XX>`, the current object-lifetime default
         // would be to examine the trait `Foo` to check whether it has
         // a lifetime bound declared on `Item`. e.g., if `Foo` is
         // declared like so, then the default object lifetime bound in
@@ -1637,7 +1633,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         // Resolve lifetimes found in the bindings, so either in the type `XX` in `Item = XX` or
         // in the trait ref `YY<...>` in `Item: YY<...>`.
-        for binding in generic_args.bindings {
+        for constraint in generic_args.constraints {
             let scope = Scope::ObjectLifetimeDefault {
                 lifetime: if has_lifetime_parameter {
                     None
@@ -1646,7 +1642,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 },
                 s: self.scope,
             };
-            // If the binding is parenthesized, then this must be `feature(return_type_notation)`.
+            // If the args are parenthesized, then this must be `feature(return_type_notation)`.
             // In that case, introduce a binder over all of the function's early and late bound vars.
             //
             // For example, given
@@ -1659,13 +1655,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             //    `for<'a> T::Trait<'a, x(): for<'b> Other<'b>>`
             // this is going to expand to something like:
             //    `for<'a> for<'r, T> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: for<'b> Other<'b>`.
-            if binding.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation {
+            if constraint.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation
+            {
                 let bound_vars = if let Some(type_def_id) = type_def_id
                     && self.tcx.def_kind(type_def_id) == DefKind::Trait
                     && let Some((mut bound_vars, assoc_fn)) = BoundVarContext::supertrait_hrtb_vars(
                         self.tcx,
                         type_def_id,
-                        binding.ident,
+                        constraint.ident,
                         ty::AssocKind::Fn,
                     ) {
                     bound_vars.extend(self.tcx.generics_of(assoc_fn.def_id).own_params.iter().map(
@@ -1686,22 +1683,22 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 } else {
                     self.tcx
                         .dcx()
-                        .span_delayed_bug(binding.ident.span, "bad return type notation here");
+                        .span_delayed_bug(constraint.ident.span, "bad return type notation here");
                     vec![]
                 };
                 self.with(scope, |this| {
                     let scope = Scope::Supertrait { bound_vars, s: this.scope };
                     this.with(scope, |this| {
                         let (bound_vars, _) = this.poly_trait_ref_binder_info();
-                        this.record_late_bound_vars(binding.hir_id, bound_vars);
-                        this.visit_assoc_type_binding(binding)
+                        this.record_late_bound_vars(constraint.hir_id, bound_vars);
+                        this.visit_assoc_item_constraint(constraint)
                     });
                 });
             } else if let Some(type_def_id) = type_def_id {
                 let bound_vars = BoundVarContext::supertrait_hrtb_vars(
                     self.tcx,
                     type_def_id,
-                    binding.ident,
+                    constraint.ident,
                     ty::AssocKind::Type,
                 )
                 .map(|(bound_vars, _)| bound_vars);
@@ -1710,10 +1707,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         bound_vars: bound_vars.unwrap_or_default(),
                         s: this.scope,
                     };
-                    this.with(scope, |this| this.visit_assoc_type_binding(binding));
+                    this.with(scope, |this| this.visit_assoc_item_constraint(constraint));
                 });
             } else {
-                self.with(scope, |this| this.visit_assoc_type_binding(binding));
+                self.with(scope, |this| this.visit_assoc_item_constraint(constraint));
             }
         }
     }

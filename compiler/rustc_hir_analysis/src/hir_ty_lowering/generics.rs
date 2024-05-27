@@ -1,6 +1,6 @@
 use super::IsMethodCall;
 use crate::hir_ty_lowering::{
-    errors::prohibit_assoc_item_binding, ExplicitLateBound, GenericArgCountMismatch,
+    errors::prohibit_assoc_item_constraint, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition, GenericArgsLowerer,
 };
 use crate::structured_errors::{GenericArgsInfo, StructuredDiag, WrongNumberOfGenericArgs};
@@ -452,9 +452,9 @@ pub(crate) fn check_generic_arg_count(
         (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_params();
 
     if gen_pos != GenericArgPosition::Type
-        && let Some(b) = gen_args.bindings.first()
+        && let Some(c) = gen_args.constraints.first()
     {
-        prohibit_assoc_item_binding(tcx, b, None);
+        prohibit_assoc_item_constraint(tcx, c, None);
     }
 
     let explicit_late_bound =
@@ -566,17 +566,19 @@ pub(crate) fn check_generic_arg_count(
 
         debug!(?gen_args_info);
 
-        let reported = WrongNumberOfGenericArgs::new(
-            tcx,
-            gen_args_info,
-            seg,
-            gen_params,
-            params_offset,
-            gen_args,
-            def_id,
-        )
-        .diagnostic()
-        .emit_unless(gen_args.has_err());
+        let reported = gen_args.has_err().unwrap_or_else(|| {
+            WrongNumberOfGenericArgs::new(
+                tcx,
+                gen_args_info,
+                seg,
+                gen_params,
+                params_offset,
+                gen_args,
+                def_id,
+            )
+            .diagnostic()
+            .emit()
+        });
 
         Err(reported)
     };
