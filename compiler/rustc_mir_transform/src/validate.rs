@@ -689,8 +689,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         if Some(adt_def.did()) == self.tcx.lang_items().dyn_metadata() {
                             self.fail(
                                 location,
-                                format!("You can't project to field {f:?} of `DynMetadata` because \
-                                         layout is weird and thinks it doesn't have fields."),
+                                format!(
+                                    "You can't project to field {f:?} of `DynMetadata` because \
+                                         layout is weird and thinks it doesn't have fields."
+                                ),
                             );
                         }
 
@@ -839,7 +841,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             && place.projection[1..].contains(&ProjectionElem::Deref)
         {
-            self.fail(location, format!("{place:?}, has deref at the wrong place"));
+            self.fail(
+                location,
+                format!("place {place:?} has deref as a later projection (it is only permitted as the first projection)"),
+            );
+        }
+
+        // Ensure all downcast projections are followed by field projections.
+        let mut projections_iter = place.projection.iter();
+        while let Some(proj) = projections_iter.next() {
+            if matches!(proj, ProjectionElem::Downcast(..)) {
+                if !matches!(projections_iter.next(), Some(ProjectionElem::Field(..))) {
+                    self.fail(
+                        location,
+                        format!(
+                            "place {place:?} has `Downcast` projection not followed by `Field`"
+                        ),
+                    );
+                }
+            }
         }
 
         self.super_place(place, cntxt, location);

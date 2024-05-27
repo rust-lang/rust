@@ -1,6 +1,6 @@
 thread 'rustc' panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
 broken MIR in Item(DefId) (after phase change to runtime-optimized) at bb0[1]:
-(*(_2.0: *mut i32)), has deref at the wrong place
+place (*(_2.0: *mut i32)) has deref as a later projection (it is only permitted as the first projection)
 stack backtrace:
 
 error: the compiler unexpectedly panicked. this is a bug.
