@@ -66,7 +66,7 @@ use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{LocalExpnId, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
@@ -74,6 +74,8 @@ use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 use tracing::{debug, instrument};
 
+use rustc_ast::tokenstream::TokenStream;
+use rustc_middle::expand::TcxMacroExpander;
 use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -846,8 +848,14 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
-
     current_gcx: CurrentGcx,
+
+    pub macro_map: RwLock<
+        FxHashMap<
+            LocalExpnId,
+            (TokenStream, Span, Lrc<dyn TcxMacroExpander + sync::DynSync + sync::DynSend>),
+        >,
+    >,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1076,6 +1084,7 @@ impl<'tcx> TyCtxt<'tcx> {
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
+            macro_map: RwLock::new(Default::default()),
             current_gcx,
         }
     }

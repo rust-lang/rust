@@ -26,6 +26,7 @@ mod placeholders;
 mod proc_macro_server;
 
 pub use mbe::macro_rules::compile_declarative_macro;
+use rustc_middle::query::Providers;
 pub mod base;
 pub mod config;
 pub mod expand;
@@ -33,5 +34,9 @@ pub mod module;
 // FIXME(Nilstrieb) Translate proc_macro diagnostics
 #[allow(rustc::untranslatable_diagnostic)]
 pub mod proc_macro;
+
+pub fn provide(providers: &mut Providers) {
+    providers.expand_legacy_bang = expand::expand_legacy_bang;
+}
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

@@ -17,8 +17,9 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
+use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub enum CommentKind {
     Line,
     Block,

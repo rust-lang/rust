@@ -72,6 +72,7 @@ mod macros;
 #[macro_use]
 pub mod arena;
 pub mod error;
+pub mod expand;
 pub mod hir;
 pub mod hooks;
 pub mod infer;
@@ -89,6 +90,8 @@ mod values;
 pub mod query;
 #[macro_use]
 pub mod dep_graph;
+
+use rustc_span::HashStableContext;
 
 // Allows macros to refer to this crate as `::rustc_middle`
 extern crate self as rustc_middle;

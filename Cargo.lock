@@ -3809,6 +3809,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
+ "rustc_middle",
  "rustc_parse",
  "rustc_serialize",
  "rustc_session",
