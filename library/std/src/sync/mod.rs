@@ -136,7 +136,10 @@
 //! - [`Once`]: Used for a thread-safe, one-time global initialization routine
 //!
 //! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
-//!   global variable.
+//!   variable, with potentially different initializers based on the caller.
+//!
+//! - [`LazyLock`]: Used for thread-safe, one-time initialization of a
+//!   variable, using one nullary initializer function provided at creation.
 //!
 //! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
 //!   multiple readers at the same time, while allowing only one
