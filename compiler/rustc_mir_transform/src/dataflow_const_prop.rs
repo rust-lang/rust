@@ -142,10 +142,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     _ => return,
                 };
                 if let Some(variant_target_idx) = variant_target {
-                    for (field_index, operand) in operands.iter().enumerate() {
+                    for (field_index, operand) in operands.iter_enumerated() {
                         if let Some(field) = self.map().apply(
                             variant_target_idx,
-                            TrackElem::Field(FieldIdx::from_usize(field_index)),
+                            TrackElem::Field(field_index),
                         ) {
                             self.assign_operand(state, field, operand);
                         }

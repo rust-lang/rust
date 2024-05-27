@@ -29,7 +29,7 @@
       }
   
       bb1: {
-+         _6 = core::num::<impl i64>::unchecked_shr::precondition_check(_4, const core::num::<impl i64>::BITS) -> [return: bb2, unwind unreachable];
++         _6 = core::num::<impl i64>::unchecked_shr::precondition_check(_4) -> [return: bb2, unwind unreachable];
 +     }
 + 
 +     bb2: {
