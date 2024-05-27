@@ -2096,6 +2096,7 @@ impl<T> From<T> for Option<T> {
     }
 }
 
+#[stable(feature = "option_slice_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T, const N: usize> From<&'a [T; N]> for Option<&'a [T]> {
     /// Converts a reference to an array into a reference to an array slice.
     ///
