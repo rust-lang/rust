@@ -862,14 +862,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if tcx.is_foreign_item(def_id) {
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
-            let allocation = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
-            let mut allocation = allocation.inner().clone();
+            let alloc = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
+            // We make a full copy of this allocation.
+            let mut alloc = alloc.inner().adjust_from_tcx(&this.tcx, |ptr| this.global_root_pointer(ptr))?;
             // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
-            allocation.mutability = Mutability::Mut;
+            alloc.mutability = Mutability::Mut;
             // Create a fresh allocation with this content.
-            let new_alloc = this.allocate_raw_ptr(allocation, MiriMemoryKind::Tls.into())?;
-            this.machine.threads.set_thread_local_alloc(def_id, new_alloc);
-            Ok(new_alloc)
+            let ptr = this.allocate_raw_ptr(alloc, MiriMemoryKind::Tls.into())?;
+            this.machine.threads.set_thread_local_alloc(def_id, ptr);
+            Ok(ptr)
         }
     }
 
