@@ -118,7 +118,6 @@ run-make/issue-83112-incr-test-moved-file/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/issue-85019-moved-src-dir/Makefile
 run-make/issue-85401-static-mir/Makefile
-run-make/issue-85441/Makefile
 run-make/issue-88756-default-output/Makefile
 run-make/issue-97463-abi-param-passing/Makefile
 run-make/jobserver-error/Makefile
@@ -278,8 +277,4 @@ run-make/volatile-intrinsics/Makefile
 run-make/wasm-exceptions-nostd/Makefile
 run-make/wasm-override-linker/Makefile
 run-make/weird-output-filenames/Makefile
-run-make/windows-binary-no-external-deps/Makefile
-run-make/windows-safeseh/Makefile
-run-make/windows-spawn/Makefile
-run-make/windows-subsystem/Makefile
 run-make/x86_64-fortanix-unknown-sgx-lvi/Makefile
