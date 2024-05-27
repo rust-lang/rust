@@ -13,42 +13,6 @@ use crate::sync::Once;
 ///
 /// # Examples
 ///
-/// Using `OnceLock` to store a function’s previously computed value (a.k.a.
-/// ‘lazy static’ or ‘memoizing’):
-///
-/// ```
-/// use std::sync::OnceLock;
-///
-/// struct DeepThought {
-///     answer: String,
-/// }
-///
-/// impl DeepThought {
-/// #   fn great_question() -> String {
-/// #       "42".to_string()
-/// #   }
-/// #
-///     fn new() -> Self {
-///         Self {
-///             // M3 Ultra takes about 16 million years in --release config
-///             answer: Self::great_question(),
-///         }
-///     }
-/// }
-///
-/// fn computation() -> &'static DeepThought {
-///     // n.b. static items do not call [`Drop`] on program termination, so if
-///     // [`DeepThought`] impls Drop, that will not be used for this instance.
-///     static COMPUTATION: OnceLock<DeepThought> = OnceLock::new();
-///     COMPUTATION.get_or_init(|| DeepThought::new())
-/// }
-///
-/// // The `DeepThought` is built, stored in the `OnceLock`, and returned.
-/// let _ = computation().answer;
-/// // The `DeepThought` is retrieved from the `OnceLock` and returned.
-/// let _ = computation().answer;
-/// ```
-///
 /// Writing to a `OnceLock` from a separate thread:
 ///
 /// ```
