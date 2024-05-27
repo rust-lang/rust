@@ -12,6 +12,8 @@ pub mod rustc;
 pub mod rustdoc;
 
 use std::env;
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -199,6 +201,71 @@ pub fn set_host_rpath(cmd: &mut Command) {
         }
         env::join_paths(paths.iter()).unwrap()
     });
+}
+
+/// Copy a directory into another.
+pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
+    fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+        let dst = dst.as_ref();
+        if !dst.is_dir() {
+            fs::create_dir_all(&dst)?;
+        }
+        for entry in fs::read_dir(src)? {
+            let entry = entry?;
+            let ty = entry.file_type()?;
+            if ty.is_dir() {
+                copy_dir_all_inner(entry.path(), dst.join(entry.file_name()))?;
+            } else {
+                fs::copy(entry.path(), dst.join(entry.file_name()))?;
+            }
+        }
+        Ok(())
+    }
+
+    if let Err(e) = copy_dir_all_inner(&src, &dst) {
+        // Trying to give more context about what exactly caused the failure
+        panic!(
+            "failed to copy `{}` to `{}`: {:?}",
+            src.as_ref().display(),
+            dst.as_ref().display(),
+            e
+        );
+    }
+}
+
+/// Check that all files in `dir1` exist and have the same content in `dir2`. Panic otherwise.
+pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
+    fn read_file(path: &Path) -> Vec<u8> {
+        match fs::read(path) {
+            Ok(c) => c,
+            Err(e) => panic!("Failed to read `{}`: {:?}", path.display(), e),
+        }
+    }
+
+    let dir2 = dir2.as_ref();
+    for entry in fs::read_dir(dir1).unwrap() {
+        let entry = entry.unwrap();
+        let entry_name = entry.file_name();
+        let path = entry.path();
+
+        if path.is_dir() {
+            recursive_diff(&path, &dir2.join(entry_name));
+        } else {
+            let path2 = dir2.join(entry_name);
+            let file1 = read_file(&path);
+            let file2 = read_file(&path2);
+
+            // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
+            // Why not using String? Because there might be minified files or even potentially
+            // binary ones, so that would display useless output.
+            assert!(
+                file1 == file2,
+                "`{}` and `{}` have different content",
+                path.display(),
+                path2.display(),
+            );
+        }
+    }
 }
 
 /// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct
