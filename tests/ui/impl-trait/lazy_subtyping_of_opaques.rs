@@ -2,58 +2,23 @@
 //! No hidden types are being constrained in the subtyping predicate, but type and
 //! lifetime variables get subtyped in the generic parameter list of the opaque.
 
-use std::iter;
+//@ check-pass
 
-mod either {
-    pub enum Either<L, R> {
-        Left(L),
-        Right(R),
+fn foo() -> impl Default + Copy {
+    if false {
+        let x = Default::default();
+        // add `Subtype(?x, ?y)` obligation
+        let y = x;
+
+        // Make a tuple `(?x, ?y)` and equate it with `(impl Default, u32)`.
+        // For us to try and prove a `Subtype(impl Default, u32)` obligation,
+        // we have to instantiate both `?x` and `?y` without any
+        // `select_where_possible` calls inbetween.
+        let mut tup = &mut (x, y);
+        let assign_tup = &mut (foo(), 1u32);
+        tup = assign_tup;
     }
-
-    impl<L: Iterator, R: Iterator<Item = L::Item>> Iterator for Either<L, R> {
-        type Item = L::Item;
-        fn next(&mut self) -> Option<Self::Item> {
-            todo!()
-        }
-    }
-    pub use self::Either::{Left, Right};
-}
-
-pub enum BabeConsensusLogRef<'a> {
-    NextEpochData(BabeNextEpochRef<'a>),
-    NextConfigData,
-}
-
-impl<'a> BabeConsensusLogRef<'a> {
-    pub fn scale_encoding(
-        &self,
-    ) -> impl Iterator<Item = impl AsRef<[u8]> + Clone + 'a> + Clone + 'a {
-        //~^ ERROR is not satisfied
-        //~| ERROR is not satisfied
-        //~| ERROR is not satisfied
-        match self {
-            BabeConsensusLogRef::NextEpochData(digest) => either::Left(either::Left(
-                digest.scale_encoding().map(either::Left).map(either::Left),
-            )),
-            BabeConsensusLogRef::NextConfigData => either::Right(
-                // The Opaque type from ``scale_encoding` gets used opaquely here, while the `R`
-                // generic parameter of `Either` contains type variables that get subtyped and the
-                // opaque type contains lifetime variables that get subtyped.
-                iter::once(either::Right(either::Left([1])))
-                    .chain(std::iter::once([1]).map(either::Right).map(either::Right)),
-            ),
-        }
-    }
-}
-
-pub struct BabeNextEpochRef<'a>(&'a ());
-
-impl<'a> BabeNextEpochRef<'a> {
-    pub fn scale_encoding(
-        &self,
-    ) -> impl Iterator<Item = impl AsRef<[u8]> + Clone + 'a> + Clone + 'a {
-        std::iter::once([1])
-    }
+    1u32
 }
 
 fn main() {}
