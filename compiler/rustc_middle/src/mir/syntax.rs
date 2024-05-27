@@ -1008,8 +1008,8 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 /// element:
 ///
 ///  - [`Downcast`](ProjectionElem::Downcast): This projection sets the place's variant index to the
-///    given one, and makes no other changes. A `Downcast` projection on a place with its variant
-///    index already set is not well-formed.
+///    given one, and makes no other changes. A `Downcast` projection must always be followed
+///    immediately by a `Field` projection.
 ///  - [`Field`](ProjectionElem::Field): `Field` projections take their parent place and create a
 ///    place referring to one of the fields of the type. The resulting address is the parent
 ///    address, plus the offset of the field. The type becomes the type of the field. If the parent
