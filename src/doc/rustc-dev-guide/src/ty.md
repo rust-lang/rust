@@ -10,7 +10,8 @@ The `ty` module defines how the Rust compiler represents types internally. It al
 When we talk about how rustc represents types,  we usually refer to a type called `Ty` . There are
 quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/ru
+]stc_middle/ty/index.html
 
 The specific `Ty` we are referring to is [`rustc_middle::ty::Ty`][ty_ty] (and not
 [`rustc_hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going
@@ -125,7 +126,7 @@ You can ignore `Interned` in general; you will basically never access it explici
 We always hide them within `Ty` and skip over it via `Deref` impls or methods.
 `TyKind` is a big enum
 with variants to represent many different Rust types
-(e.g. primitives, references, abstract data types, generics, lifetimes, etc).
+(e.g. primitives, references, algebraic data types, generics, lifetimes, etc).
 `WithCachedTypeInfo` has a few cached values like `flags` and `outer_exclusive_binder`. They
 are convenient hacks for efficiency and summarize information about the type that we may want to
 know, but they don’t come into the picture as much here. Finally, [`Interned`](./memory.md) allows
@@ -276,54 +277,6 @@ In particular, since they are so common, the `Ty` and `TyCtxt` types are importe
 types are often referenced with an explicit `ty::` prefix (e.g. `ty::TraitRef<'tcx>`). But some
 modules choose to import a larger or smaller set of names explicitly.
 
-## ADTs Representation
-
-Let's consider the example of a type like `MyStruct<u32>`, where `MyStruct` is defined like so:
-
-```rust,ignore
-struct MyStruct<T> { x: u8, y: T }
-```
-
-The type `MyStruct<u32>` would be an instance of `TyKind::Adt`:
-
-```rust,ignore
-Adt(&'tcx AdtDef, GenericArgs<'tcx>)
-//  ------------  ---------------
-//  (1)            (2)
-//
-// (1) represents the `MyStruct` part
-// (2) represents the `<u32>`, or "substitutions" / generic arguments
-```
-
-There are two parts:
-
-- The [`AdtDef`][adtdef] references the struct/enum/union but without the values for its type
-  parameters. In our example, this is the `MyStruct` part *without* the argument `u32`.
-  (Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
-  they are all represented using `TyKind::Adt`.)
-- The [`GenericArgs`][GenericArgs] is an interned list of values that are to be substituted
-for the generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like
-`[u32]`. We’ll dig more into generics and substitutions in a little bit.
-
-[adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
-[GenericArgs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
-
-**`AdtDef` and `DefId`**
-
-For every type defined in the source code, there is a unique `DefId` (see [this
-chapter](hir.md#identifiers-in-the-hir)). This includes ADTs and generics. In the `MyStruct<T>`
-definition we gave above, there are two `DefId`s: one for `MyStruct` and one for `T`.  Notice that
-the code above does not generate a new `DefId` for `u32` because it is not defined in that code (it
-is only referenced).
-
-`AdtDef` is more or less a wrapper around `DefId` with lots of useful helper methods. There is
-essentially a one-to-one relationship between `AdtDef` and `DefId`. You can get the `AdtDef` for a
-`DefId` with the [`tcx.adt_def(def_id)` query][adtdefq]. `AdtDef`s are all interned, as shown
-by the `'tcx` lifetime.
-
-[adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
-
-
 ## Type errors
 
 There is a `TyKind::Error` that is produced when the user makes a type error. The idea is that
@@ -362,32 +315,3 @@ a redundant delayed bug.
 
 [terr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error
 [terrmsg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error_with_message
-
-## Question: Why not substitute “inside” the `AdtDef`?
-
-Recall that we represent a generic struct with `(AdtDef, args)`. So why bother with this scheme?
-
-Well, the alternate way we could have chosen to represent types would be to always create a new,
-fully-substituted form of the `AdtDef` where all the types are already substituted. This seems like
-less of a hassle. However, the `(AdtDef, args)` scheme has some advantages over this.
-
-First, `(AdtDef, args)` scheme has an efficiency win:
-
-```rust,ignore
-struct MyStruct<T> {
-  ... 100s of fields ...
-}
-
-// Want to do: MyStruct<A> ==> MyStruct<B>
-```
-
-in an example like this, we can subst from `MyStruct<A>` to `MyStruct<B>` (and so on) very cheaply,
-by just replacing the one reference to `A` with `B`. But if we eagerly substituted all the fields,
-that could be a lot more work because we might have to go through all of the fields in the `AdtDef`
-and update all of their types.
-
-A bit more deeply, this corresponds to structs in Rust being [*nominal* types][nominal] — which
-means that they are defined by their *name* (and that their contents are then indexed from the
-definition of that name, and not carried along “within” the type itself).
-
-[nominal]: https://en.wikipedia.org/wiki/Nominal_type_system
