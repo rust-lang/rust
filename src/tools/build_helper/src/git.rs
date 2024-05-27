@@ -161,8 +161,10 @@ pub fn get_git_untracked_files(
     Ok(Some(files))
 }
 
-/// Returns the closest upstream commit available for the given `author` and `target_paths`.
-pub fn get_closest_upstream_commit(
+/// Returns the closest commit available from upstream for the given `author` and `target_paths`.
+///
+/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
+pub fn get_closest_merge_base_commit(
     config: &GitConfig<'_>,
     git_dir: Option<&Path>,
     author: &str,

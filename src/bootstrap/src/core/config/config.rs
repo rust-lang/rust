@@ -18,12 +18,13 @@ use std::sync::OnceLock;
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
 use crate::core::config::flags::{Color, Flags, Warnings};
-use crate::core::download::is_download_ci_available;
+use crate::core::download::is_ci_rustc_available_for_target;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
+use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::get_closest_upstream_commit;
+use build_helper::git::get_closest_merge_base_commit;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -2441,13 +2442,15 @@ impl Config {
         download_rustc: Option<StringOrBool>,
         llvm_assertions: bool,
     ) -> Option<String> {
+        if !is_ci_rustc_available_for_target(&self.build.triple, llvm_assertions) {
+            return None;
+        }
+
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
             None | Some(StringOrBool::Bool(false)) => return None,
             Some(StringOrBool::Bool(true)) => false,
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-                is_download_ci_available(&self.build.triple, llvm_assertions)
-            }
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
             Some(StringOrBool::String(other)) => {
                 panic!("unrecognized option for download-rustc: {other}")
             }
@@ -2460,11 +2463,11 @@ impl Config {
         let compiler = format!("{top_level}/compiler/");
         let library = format!("{top_level}/library/");
 
-        let commit = get_closest_upstream_commit(
+        let commit = get_closest_merge_base_commit(
             &self.git_config(),
             Some(&self.src),
             &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
+            &[self.src.join("compiler"), self.src.join("library")],
         )
         .unwrap();
 
@@ -2474,6 +2477,18 @@ impl Config {
             println!("HELP: consider disabling `download-rustc`");
             println!("HELP: or fetch enough history to include one upstream commit");
             crate::exit!(1);
+        }
+
+        if CiEnv::is_ci() && {
+            let head_sha = output(helpers::git(None).arg("rev-parse").arg("HEAD"));
+            let head_sha = head_sha.trim();
+            commit == head_sha
+        } {
+            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+            eprintln!(
+                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+            );
+            return None;
         }
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.

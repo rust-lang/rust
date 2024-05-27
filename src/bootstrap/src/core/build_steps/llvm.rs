@@ -26,7 +26,7 @@ use crate::utils::helpers::{
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
-use build_helper::git::get_closest_upstream_commit;
+use build_helper::git::get_closest_merge_base_commit;
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -153,7 +153,7 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        get_closest_upstream_commit(
+        get_closest_merge_base_commit(
             &config.git_config(),
             Some(&config.src),
             &config.stage0_metadata.config.git_merge_commit_email,
