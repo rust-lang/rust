@@ -85,10 +85,6 @@ impl<'a> LintDiagnostic<'a, ()> for UntranslatableInLintDiagnostic {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
     }
-
-    fn msg(&self) -> DiagMessage {
-        unreachable!();
-    }
 }
 
 pub struct TranslatableInLintDiagnostic;
@@ -96,10 +92,6 @@ pub struct TranslatableInLintDiagnostic;
 impl<'a> LintDiagnostic<'a, ()> for TranslatableInLintDiagnostic {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.note(crate::fluent_generated::no_crate_note);
-    }
-
-    fn msg(&self) -> DiagMessage {
-        unreachable!();
     }
 }
 

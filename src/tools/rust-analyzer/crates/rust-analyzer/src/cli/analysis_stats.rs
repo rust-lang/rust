@@ -8,7 +8,8 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ImportPathConfig,
+    ModuleDef, Name,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
@@ -438,8 +439,13 @@ impl flags::AnalysisStats {
                 let mut formatter = |_: &hir::Type| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
-                    let generated =
-                        term.gen_source_code(&scope, &mut formatter, false, true).unwrap();
+                    let generated = term
+                        .gen_source_code(
+                            &scope,
+                            &mut formatter,
+                            ImportPathConfig { prefer_no_std: false, prefer_prelude: true },
+                        )
+                        .unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
 
                     // Validate if type-checks

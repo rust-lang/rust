@@ -2,7 +2,7 @@
 
 use crate::helpers::mod_path_to_ast;
 use either::Either;
-use hir::{AsAssocItem, HirDisplay, ModuleDef, SemanticsScope};
+use hir::{AsAssocItem, HirDisplay, ImportPathConfig, ModuleDef, SemanticsScope};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -308,11 +308,12 @@ impl Ctx<'_> {
                             parent.segment()?.name_ref()?,
                         )
                         .and_then(|trait_ref| {
-                            let found_path = self.target_module.find_use_path(
+                            let cfg =
+                                ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                            let found_path = self.target_module.find_path(
                                 self.source_scope.db.upcast(),
                                 hir::ModuleDef::Trait(trait_ref),
-                                false,
-                                true,
+                                cfg,
                             )?;
                             match make::ty_path(mod_path_to_ast(&found_path)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
@@ -347,12 +348,9 @@ impl Ctx<'_> {
                     }
                 }
 
-                let found_path = self.target_module.find_use_path(
-                    self.source_scope.db.upcast(),
-                    def,
-                    false,
-                    true,
-                )?;
+                let cfg = ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                let found_path =
+                    self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
                 let res = mod_path_to_ast(&found_path).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {
@@ -385,11 +383,11 @@ impl Ctx<'_> {
 
                 if let Some(adt) = ty.as_adt() {
                     if let ast::Type::PathType(path_ty) = &ast_ty {
-                        let found_path = self.target_module.find_use_path(
+                        let cfg = ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                        let found_path = self.target_module.find_path(
                             self.source_scope.db.upcast(),
                             ModuleDef::from(adt),
-                            false,
-                            true,
+                            cfg,
                         )?;
 
                         if let Some(qual) = mod_path_to_ast(&found_path).qualifier() {

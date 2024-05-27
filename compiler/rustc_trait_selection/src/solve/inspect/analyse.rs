@@ -317,7 +317,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 inspect::ProbeStep::RecordImplArgs { impl_args: i } => {
                     assert_eq!(impl_args.replace(i), None);
                 }
-                inspect::ProbeStep::EvaluateGoals(_) => (),
             }
         }
 
@@ -359,13 +358,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 warn!("unexpected root evaluation: {:?}", self.evaluation_kind);
                 return vec![];
             }
-            inspect::CanonicalGoalEvaluationKind::Evaluation { revisions } => {
-                if let Some(last) = revisions.last() {
-                    last
-                } else {
-                    return vec![];
-                }
-            }
+            inspect::CanonicalGoalEvaluationKind::Evaluation { final_revision } => final_revision,
         };
 
         let mut nested_goals = vec![];
@@ -392,9 +385,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
         source: GoalSource,
     ) -> Self {
-        let inspect::GoalEvaluation { uncanonicalized_goal, kind, evaluation } = root;
-        let inspect::GoalEvaluationKind::Root { orig_values } = kind else { unreachable!() };
-
+        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, evaluation } = root;
         let result = evaluation.result.and_then(|ok| {
             if let Some(term_hack) = normalizes_to_term_hack {
                 infcx

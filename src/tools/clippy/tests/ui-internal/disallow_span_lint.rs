@@ -11,11 +11,11 @@ use rustc_lint::{Lint, LintContext};
 use rustc_middle::ty::TyCtxt;
 
 pub fn a(cx: impl LintContext, lint: &'static Lint, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
-    cx.span_lint(lint, span, msg, |_| {});
+    cx.span_lint(lint, span, |lint| { lint.primary_message(msg); });
 }
 
 pub fn b(tcx: TyCtxt<'_>, lint: &'static Lint, hir_id: HirId, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
-    tcx.node_span_lint(lint, hir_id, span, msg, |_| {});
+    tcx.node_span_lint(lint, hir_id, span, |lint| { lint.primary_message(msg); });
 }
 
 fn main() {}

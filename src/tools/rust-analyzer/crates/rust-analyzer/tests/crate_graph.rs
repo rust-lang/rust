@@ -21,7 +21,7 @@ fn load_cargo_with_fake_sysroot(file: &str) -> ProjectWorkspace {
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
         },
-        sysroot: Ok(get_fake_sysroot()),
+        sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
@@ -69,7 +69,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert_utf8(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(sysroot_dir, Some(Ok(sysroot_src_dir)), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
 }
 
 #[test]

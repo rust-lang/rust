@@ -395,8 +395,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
             if is_suggestion.0 {
-                // Ambiguity was encountered during a suggestion. Just keep going.
-                debug!("ProbeContext: encountered ambiguity in suggestion");
+                // Ambiguity was encountered during a suggestion. There's really
+                // not much use in suggesting methods in this case.
+                return Err(MethodError::NoMatch(NoMatchData {
+                    static_candidates: Vec::new(),
+                    unsatisfied_predicates: Vec::new(),
+                    out_of_scope_traits: Vec::new(),
+                    similar_candidate: None,
+                    mode,
+                }));
             } else if bad_ty.reached_raw_pointer
                 && !self.tcx.features().arbitrary_self_types
                 && !self.tcx.sess.at_least_rust_2018()
@@ -408,8 +415,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
-                    "type annotations needed",
-                    |_| {},
+                    |lint| {
+                        lint.primary_message("type annotations needed");
+                    },
                 );
             } else {
                 // Ended up encountering a type variable when doing autoderef,
@@ -1279,53 +1287,49 @@ impl<'tcx> Pick<'tcx> {
             return;
         }
         let def_kind = self.item.kind.as_def_kind();
-        tcx.node_span_lint(
-            lint::builtin::UNSTABLE_NAME_COLLISIONS,
-            scope_expr_id,
-            span,
-            format!(
+        tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
+            lint.primary_message(format!(
                 "{} {} with this name may be added to the standard library in the future",
                 tcx.def_kind_descr_article(def_kind, self.item.def_id),
                 tcx.def_kind_descr(def_kind, self.item.def_id),
-            ),
-            |lint| {
-                match (self.item.kind, self.item.container) {
-                    (ty::AssocKind::Fn, _) => {
-                        // FIXME: This should be a `span_suggestion` instead of `help`
-                        // However `self.span` only
-                        // highlights the method name, so we can't use it. Also consider reusing
-                        // the code from `report_method_error()`.
-                        lint.help(format!(
-                            "call with fully qualified syntax `{}(...)` to keep using the current \
+            ));
+
+            match (self.item.kind, self.item.container) {
+                (ty::AssocKind::Fn, _) => {
+                    // FIXME: This should be a `span_suggestion` instead of `help`
+                    // However `self.span` only
+                    // highlights the method name, so we can't use it. Also consider reusing
+                    // the code from `report_method_error()`.
+                    lint.help(format!(
+                        "call with fully qualified syntax `{}(...)` to keep using the current \
                              method",
-                            tcx.def_path_str(self.item.def_id),
-                        ));
-                    }
-                    (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer) => {
-                        let def_id = self.item.container_id(tcx);
-                        lint.span_suggestion(
-                            span,
-                            "use the fully qualified path to the associated const",
-                            format!(
-                                "<{} as {}>::{}",
-                                self.self_ty,
-                                tcx.def_path_str(def_id),
-                                self.item.name
-                            ),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                    _ => {}
+                        tcx.def_path_str(self.item.def_id),
+                    ));
                 }
-                tcx.disabled_nightly_features(
-                    lint,
-                    Some(scope_expr_id),
-                    self.unstable_candidates.iter().map(|(candidate, feature)| {
-                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
-                    }),
-                );
-            },
-        );
+                (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer) => {
+                    let def_id = self.item.container_id(tcx);
+                    lint.span_suggestion(
+                        span,
+                        "use the fully qualified path to the associated const",
+                        format!(
+                            "<{} as {}>::{}",
+                            self.self_ty,
+                            tcx.def_path_str(def_id),
+                            self.item.name
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                _ => {}
+            }
+            tcx.disabled_nightly_features(
+                lint,
+                Some(scope_expr_id),
+                self.unstable_candidates.iter().map(|(candidate, feature)| {
+                    (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
+                }),
+            );
+        });
     }
 }
 

@@ -901,8 +901,8 @@ impl f32 {
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
     #[inline]
     pub fn to_radians(self) -> f32 {
-        let value: f32 = consts::PI;
-        self * (value / 180.0f32)
+        const RADS_PER_DEG: f32 = consts::PI / 180.0;
+        self * RADS_PER_DEG
     }
 
     /// Returns the maximum of the two numbers, ignoring NaN.

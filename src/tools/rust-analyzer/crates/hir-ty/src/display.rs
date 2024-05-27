@@ -13,7 +13,7 @@ use either::Either;
 use hir_def::{
     data::adt::VariantData,
     db::DefDatabase,
-    find_path,
+    find_path::{self, PrefixKind},
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_scope::ItemInNs,
     lang_item::{LangItem, LangItemTarget},
@@ -21,7 +21,8 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
+    HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
+    TraitId,
 };
 use hir_expand::name::Name;
 use intern::{Internable, Interned};
@@ -999,8 +1000,9 @@ impl HirDisplay for Ty {
                             db.upcast(),
                             ItemInNs::Types((*def_id).into()),
                             module_id,
+                            PrefixKind::Plain,
                             false,
-                            true,
+                            ImportPathConfig { prefer_no_std: false, prefer_prelude: true },
                         ) {
                             write!(f, "{}", path.display(f.db.upcast()))?;
                         } else {

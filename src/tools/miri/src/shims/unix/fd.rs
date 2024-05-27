@@ -21,7 +21,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
         &mut self,
         _communicate_allowed: bool,
         _bytes: &mut [u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from {}", self.name());
     }
@@ -31,7 +31,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
         &mut self,
         _communicate_allowed: bool,
         _bytes: &[u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot write to {}", self.name());
     }
@@ -81,7 +81,7 @@ impl FileDescription for io::Stdin {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
@@ -104,7 +104,7 @@ impl FileDescription for io::Stdout {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         let result = Write::write(self, bytes);
@@ -132,7 +132,7 @@ impl FileDescription for io::Stderr {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
@@ -157,7 +157,7 @@ impl FileDescription for NullOutput {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We just don't write anything, but report to the user that we did.
         Ok(Ok(bytes.len()))
@@ -271,8 +271,8 @@ impl FdTable {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn fcntl(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 

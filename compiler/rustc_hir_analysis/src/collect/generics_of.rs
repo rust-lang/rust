@@ -317,8 +317,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                             param.hir_id,
                             param.span,
-                            TYPE_DEFAULT_NOT_ALLOWED,
-                            |_| {},
+                            |lint| {
+                                lint.primary_message(TYPE_DEFAULT_NOT_ALLOWED);
+                            },
                         );
                     }
                     Defaults::Deny => {

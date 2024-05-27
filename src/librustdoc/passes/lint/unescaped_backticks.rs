@@ -56,17 +56,28 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 )
                 .unwrap_or_else(|| item.attr_span(tcx));
 
-                tcx.node_span_lint(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, "unescaped backtick", |lint| {
+                tcx.node_span_lint(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, |lint| {
+                    lint.primary_message("unescaped backtick");
+
                     let mut help_emitted = false;
 
                     match element.prev_code_guess {
                         PrevCodeGuess::None => {}
                         PrevCodeGuess::Start { guess, .. } => {
                             // "foo` `bar`" -> "`foo` `bar`"
-                            if let Some(suggest_index) = clamp_start(guess, &element.suggestible_ranges)
+                            if let Some(suggest_index) =
+                                clamp_start(guess, &element.suggestible_ranges)
                                 && can_suggest_backtick(&dox, suggest_index)
                             {
-                                suggest_insertion(cx, item, &dox, lint, suggest_index, '`', "the opening backtick of a previous inline code may be missing");
+                                suggest_insertion(
+                                    cx,
+                                    item,
+                                    &dox,
+                                    lint,
+                                    suggest_index,
+                                    '`',
+                                    "the opening backtick of a previous inline code may be missing",
+                                );
                                 help_emitted = true;
                             }
                         }
@@ -76,7 +87,15 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                             // an inline code node and we intentionally "break" the inline code here.
                             let suggest_index = guess;
                             if can_suggest_backtick(&dox, suggest_index) {
-                                suggest_insertion(cx, item, &dox, lint, suggest_index, '`', "a previous inline code might be longer than expected");
+                                suggest_insertion(
+                                    cx,
+                                    item,
+                                    &dox,
+                                    lint,
+                                    suggest_index,
+                                    '`',
+                                    "a previous inline code might be longer than expected",
+                                );
                                 help_emitted = true;
                             }
                         }
@@ -84,11 +103,21 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
 
                     if !element.prev_code_guess.is_confident() {
                         // "`foo` bar`" -> "`foo` `bar`"
-                        if let Some(guess) = guess_start_of_code(&dox, element.element_range.start..backtick_index)
-                            && let Some(suggest_index) = clamp_start(guess, &element.suggestible_ranges)
+                        if let Some(guess) =
+                            guess_start_of_code(&dox, element.element_range.start..backtick_index)
+                            && let Some(suggest_index) =
+                                clamp_start(guess, &element.suggestible_ranges)
                             && can_suggest_backtick(&dox, suggest_index)
                         {
-                            suggest_insertion(cx, item, &dox, lint, suggest_index, '`', "the opening backtick of an inline code may be missing");
+                            suggest_insertion(
+                                cx,
+                                item,
+                                &dox,
+                                lint,
+                                suggest_index,
+                                '`',
+                                "the opening backtick of an inline code may be missing",
+                            );
                             help_emitted = true;
                         }
 
@@ -96,21 +125,41 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                         // Don't suggest closing backtick after single trailing char,
                         // if we already suggested opening backtick. For example:
                         // "foo`." -> "`foo`." or "foo`s" -> "`foo`s".
-                        if let Some(guess) = guess_end_of_code(&dox, backtick_index + 1..element.element_range.end)
-                            && let Some(suggest_index) = clamp_end(guess, &element.suggestible_ranges)
+                        if let Some(guess) =
+                            guess_end_of_code(&dox, backtick_index + 1..element.element_range.end)
+                            && let Some(suggest_index) =
+                                clamp_end(guess, &element.suggestible_ranges)
                             && can_suggest_backtick(&dox, suggest_index)
                             && (!help_emitted || suggest_index - backtick_index > 2)
                         {
-                            suggest_insertion(cx, item, &dox, lint, suggest_index, '`', "the closing backtick of an inline code may be missing");
+                            suggest_insertion(
+                                cx,
+                                item,
+                                &dox,
+                                lint,
+                                suggest_index,
+                                '`',
+                                "the closing backtick of an inline code may be missing",
+                            );
                             help_emitted = true;
                         }
                     }
 
                     if !help_emitted {
-                        lint.help("the opening or closing backtick of an inline code may be missing");
+                        lint.help(
+                            "the opening or closing backtick of an inline code may be missing",
+                        );
                     }
 
-                    suggest_insertion(cx, item, &dox, lint, backtick_index, '\\', "if you meant to use a literal backtick, escape it");
+                    suggest_insertion(
+                        cx,
+                        item,
+                        &dox,
+                        lint,
+                        backtick_index,
+                        '\\',
+                        "if you meant to use a literal backtick, escape it",
+                    );
                 });
             }
             Event::Code(_) => {

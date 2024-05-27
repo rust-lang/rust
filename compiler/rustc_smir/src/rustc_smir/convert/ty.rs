@@ -771,7 +771,6 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
         use stable_mir::ty::{BoundRegion, EarlyParamRegion, RegionKind};
         match self {
             ty::ReEarlyParam(early_reg) => RegionKind::ReEarlyParam(EarlyParamRegion {
-                def_id: tables.region_def(early_reg.def_id),
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),

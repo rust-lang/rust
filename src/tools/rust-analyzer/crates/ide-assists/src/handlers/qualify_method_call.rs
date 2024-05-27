@@ -1,4 +1,7 @@
-use hir::{db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, ItemInNs, ModuleDef};
+use hir::{
+    db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, ImportPathConfig, ItemInNs,
+    ModuleDef,
+};
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{ast, AstNode};
 
@@ -44,11 +47,13 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     let current_module = ctx.sema.scope(call.syntax())?.module();
     let target_module_def = ModuleDef::from(resolved_call);
     let item_in_ns = ItemInNs::from(target_module_def);
-    let receiver_path = current_module.find_use_path(
+    let receiver_path = current_module.find_path(
         ctx.sema.db,
         item_for_path_search(ctx.sema.db, item_in_ns)?,
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
+        ImportPathConfig {
+            prefer_no_std: ctx.config.prefer_no_std,
+            prefer_prelude: ctx.config.prefer_prelude,
+        },
     )?;
 
     let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call, resolved_call);

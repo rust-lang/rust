@@ -5,11 +5,11 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::LintDiagnostic;
+use rustc_middle::bug;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{sym, BytePos, Span};
 
@@ -303,20 +303,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                             ResolvedArg::EarlyBound(def_id) | ResolvedArg::LateBound(_, _, def_id),
                         ) => {
                             if self.tcx.def_kind(self.tcx.parent(def_id)) == DefKind::OpaqueTy {
-                                let (ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
-                                | ty::ReLateParam(ty::LateParamRegion {
-                                    bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
-                                    ..
-                                })) = self
+                                let def_id = self
                                     .tcx
                                     .map_opaque_lifetime_to_parent_lifetime(def_id.expect_local())
-                                    .kind()
-                                else {
-                                    span_bug!(
-                                        self.tcx.def_span(def_id),
-                                        "variable should have been duplicated from a parent"
-                                    );
-                                };
+                                    .opt_param_def_id(self.tcx, self.parent_def_id.to_def_id())
+                                    .expect("variable should have been duplicated from parent");
+
                                 explicitly_captured.insert(def_id);
                             } else {
                                 explicitly_captured.insert(def_id);
@@ -369,6 +361,7 @@ struct ImplTraitOvercapturesLint<'tcx> {
 
 impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
+        diag.primary_message(fluent::lint_impl_trait_overcaptures);
         diag.arg("self_ty", self.self_ty.to_string())
             .arg("num_captured", self.num_captured)
             .span_note(self.uncaptured_spans, fluent::lint_note)
@@ -381,10 +374,6 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
                 Applicability::MachineApplicable,
             );
         }
-    }
-
-    fn msg(&self) -> rustc_errors::DiagMessage {
-        fluent::lint_impl_trait_overcaptures
     }
 }
 

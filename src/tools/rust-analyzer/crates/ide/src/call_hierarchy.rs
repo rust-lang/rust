@@ -109,12 +109,12 @@ pub(crate) fn outgoing_calls(
                     let expr = call.expr()?;
                     let callable = sema.type_of_expr(&expr)?.original.as_callable(db)?;
                     match callable.kind() {
-                        hir::CallableKind::Function(it) => {
-                            let range = expr.syntax().text_range();
-                            it.try_to_nav(db).zip(Some(range))
-                        }
+                        hir::CallableKind::Function(it) => it.try_to_nav(db),
+                        hir::CallableKind::TupleEnumVariant(it) => it.try_to_nav(db),
+                        hir::CallableKind::TupleStruct(it) => it.try_to_nav(db),
                         _ => None,
                     }
+                    .zip(Some(expr.syntax().text_range()))
                 }
                 ast::CallableExpr::MethodCall(expr) => {
                     let range = expr.name_ref()?.syntax().text_range();

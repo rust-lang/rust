@@ -7,7 +7,7 @@ LL |     panic!("{:?}", 0);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `Arguments::<'_>::new_v1` in constant functions
+error[E0015]: cannot call non-const fn `Arguments::<'_>::new_v1::<1, 1>` in constant functions
   --> $DIR/format.rs:2:5
    |
 LL |     panic!("{:?}", 0);
@@ -25,7 +25,7 @@ LL |     println!("{:?}", 0);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `Arguments::<'_>::new_v1` in constant functions
+error[E0015]: cannot call non-const fn `Arguments::<'_>::new_v1::<2, 1>` in constant functions
   --> $DIR/format.rs:8:5
    |
 LL |     println!("{:?}", 0);

@@ -260,6 +260,7 @@ fn main() {}
               "executableArgs": ["test_eggs", "--exact", "--show-output"],
               "cargoExtraArgs": [],
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -279,6 +280,7 @@ fn main() {}
           {
             "args": {
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo"),
               "cargoArgs": [
                 "test",
@@ -325,6 +327,7 @@ fn main() {}
               "executableArgs": [],
               "cargoExtraArgs": [],
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -336,6 +339,7 @@ fn main() {}
               "executableArgs": [],
               "cargoExtraArgs": [],
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -415,6 +419,7 @@ mod tests {
                     "args": {
                         "overrideCargo": null,
                         "workspaceRoot": server.path().join(runnable),
+                        "cwd": server.path().join(runnable),
                         "cargoArgs": [
                             "test",
                             "--package",
@@ -430,6 +435,94 @@ mod tests {
             ]),
         );
     }
+}
+
+// The main fn in packages should be run from the workspace root
+#[test]
+fn test_runnables_cwd() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /foo/Cargo.toml
+[workspace]
+members = ["mainpkg", "otherpkg"]
+
+//- /foo/mainpkg/Cargo.toml
+[package]
+name = "mainpkg"
+version = "0.1.0"
+
+//- /foo/mainpkg/src/main.rs
+fn main() {}
+
+//- /foo/otherpkg/Cargo.toml
+[package]
+name = "otherpkg"
+version = "0.1.0"
+
+//- /foo/otherpkg/src/lib.rs
+#[test]
+fn otherpkg() {}
+"#,
+    )
+    .root("foo")
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.request::<Runnables>(
+        RunnablesParams { text_document: server.doc_id("foo/mainpkg/src/main.rs"), position: None },
+        json!([
+            "{...}",
+            {
+                "label": "cargo test -p mainpkg --all-targets",
+                "kind": "cargo",
+                "args": {
+                    "overrideCargo": null,
+                    "workspaceRoot": server.path().join("foo"),
+                    "cwd": server.path().join("foo"),
+                    "cargoArgs": [
+                        "test",
+                        "--package",
+                        "mainpkg",
+                        "--all-targets"
+                    ],
+                    "cargoExtraArgs": [],
+                    "executableArgs": []
+                },
+            },
+            "{...}",
+            "{...}"
+        ]),
+    );
+
+    server.request::<Runnables>(
+        RunnablesParams { text_document: server.doc_id("foo/otherpkg/src/lib.rs"), position: None },
+        json!([
+            "{...}",
+            {
+                "label": "cargo test -p otherpkg --all-targets",
+                "kind": "cargo",
+                "args": {
+                    "overrideCargo": null,
+                    "workspaceRoot": server.path().join("foo"),
+                    "cwd": server.path().join("foo").join("otherpkg"),
+                    "cargoArgs": [
+                        "test",
+                        "--package",
+                        "otherpkg",
+                        "--all-targets"
+                    ],
+                    "cargoExtraArgs": [],
+                    "executableArgs": []
+                },
+            },
+            "{...}",
+            "{...}"
+        ]),
+    );
 }
 
 #[test]
@@ -1059,11 +1152,11 @@ fn resolve_proc_macro() {
         return;
     }
 
-    let sysroot = project_model::Sysroot::discover_no_source(
+    let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
-    )
-    .unwrap();
+        false,
+    );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
 

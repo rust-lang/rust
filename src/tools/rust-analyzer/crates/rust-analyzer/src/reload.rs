@@ -103,7 +103,6 @@ impl GlobalState {
             health: lsp_ext::Health::Ok,
             quiescent: self.is_quiescent(),
             message: None,
-            workspace_info: None,
         };
         let mut message = String::new();
 
@@ -164,53 +163,37 @@ impl GlobalState {
             let proc_macro_clients =
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
-            let mut workspace_info = "Loaded workspaces:\n".to_owned();
             for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
-                format_to!(workspace_info, "- `{}`\n", ws.manifest_or_root());
-                format_to!(workspace_info, "    - sysroot:");
-
-                match ws.sysroot.as_ref() {
-                    Err(None) => format_to!(workspace_info, " None"),
-                    Err(Some(e)) => {
-                        status.health |= lsp_ext::Health::Warning;
-                        format_to!(workspace_info, " {e}");
-                    }
-                    Ok(s) => {
-                        format_to!(workspace_info, " `{}`", s.root().to_string());
-                        if let Some(err) = s
-                            .check_has_core()
-                            .err()
-                            .inspect(|_| status.health |= lsp_ext::Health::Warning)
-                        {
-                            format_to!(workspace_info, " ({err})");
-                        }
-                        if let Some(src_root) = s.src_root() {
-                            format_to!(
-                                workspace_info,
-                                "\n        - sysroot source: `{}`",
-                                src_root
-                            );
-                        }
-                        format_to!(workspace_info, "\n");
-                    }
-                }
-
-                if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(e)), .. } = &ws.kind {
+                if let Some(err) = ws.sysroot.error() {
                     status.health |= lsp_ext::Health::Warning;
-                    format_to!(workspace_info, "    - rustc workspace: {e}\n");
+                    format_to!(
+                        message,
+                        "Workspace `{}` has sysroot errors: ",
+                        ws.manifest_or_root()
+                    );
+                    message.push_str(err);
+                    message.push_str("\n\n");
+                }
+                if let ProjectWorkspaceKind::Cargo { rustc: Err(Some(err)), .. } = &ws.kind {
+                    status.health |= lsp_ext::Health::Warning;
+                    format_to!(
+                        message,
+                        "Failed loading rustc_private crates for workspace `{}`: ",
+                        ws.manifest_or_root()
+                    );
+                    message.push_str(err);
+                    message.push_str("\n\n");
                 };
-                if let Some(proc_macro_client) = proc_macro_client {
-                    format_to!(workspace_info, "    - proc-macro server: ");
-                    match proc_macro_client {
-                        Ok(it) => format_to!(workspace_info, "`{}`\n", it.path()),
-                        Err(e) => {
-                            status.health |= lsp_ext::Health::Warning;
-                            format_to!(workspace_info, "{e}\n")
-                        }
-                    }
+                if let Some(Err(err)) = proc_macro_client {
+                    status.health |= lsp_ext::Health::Warning;
+                    format_to!(
+                        message,
+                        "Failed spawning proc-macro server for workspace `{}`: {err}",
+                        ws.manifest_or_root()
+                    );
+                    message.push_str("\n\n");
                 }
             }
-            status.workspace_info = Some(workspace_info);
         }
 
         if !message.is_empty() {
@@ -534,8 +517,8 @@ impl GlobalState {
                         .map(|(a, b)| (a.clone(), b.clone()))
                         .chain(
                             ws.sysroot
-                                .as_ref()
-                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())),
+                                .root()
+                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), it.to_string())),
                         )
                         .collect(),
 
@@ -719,7 +702,7 @@ impl GlobalState {
                                 }
                                 ProjectWorkspaceKind::DetachedFile { .. } => return None,
                             },
-                            ws.sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
+                            ws.sysroot.root().map(ToOwned::to_owned),
                         ))
                     })
                     .map(|(id, (root, manifest_path), sysroot_root)| {

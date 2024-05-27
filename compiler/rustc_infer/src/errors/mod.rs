@@ -5,6 +5,7 @@ use rustc_errors::{
     MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::FnRetTy;
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -344,6 +345,7 @@ impl Subdiagnostic for LifetimeMismatchLabels {
 
 pub struct AddLifetimeParamsSuggestion<'a> {
     pub tcx: TyCtxt<'a>,
+    pub generic_param_scope: LocalDefId,
     pub sub: Region<'a>,
     pub ty_sup: &'a hir::Ty<'a>,
     pub ty_sub: &'a hir::Ty<'a>,
@@ -357,7 +359,8 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
         _f: &F,
     ) {
         let mut mk_suggestion = || {
-            let Some(anon_reg) = self.tcx.is_suitable_region(self.sub) else {
+            let Some(anon_reg) = self.tcx.is_suitable_region(self.generic_param_scope, self.sub)
+            else {
                 return false;
             };
 

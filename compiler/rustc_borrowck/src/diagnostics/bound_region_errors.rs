@@ -1,4 +1,5 @@
 use rustc_errors::Diag;
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
@@ -241,7 +242,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
         type_op_prove_predicate_with_cause(&ocx, key, cause);
-        try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
+        try_extract_error_from_fulfill_cx(&ocx, mbcx.mir_def_id(), placeholder_region, error_region)
     }
 }
 
@@ -287,7 +288,7 @@ where
         let (param_env, value) = key.into_parts();
         let _ = ocx.normalize(&cause, param_env, value.value);
 
-        try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
+        try_extract_error_from_fulfill_cx(&ocx, mbcx.mir_def_id(), placeholder_region, error_region)
     }
 }
 
@@ -318,7 +319,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
         type_op_ascribe_user_type_with_span(&ocx, key, Some(cause.span)).ok()?;
-        try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
+        try_extract_error_from_fulfill_cx(&ocx, mbcx.mir_def_id(), placeholder_region, error_region)
     }
 }
 
@@ -342,6 +343,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     ) -> Option<Diag<'tcx>> {
         try_extract_error_from_region_constraints(
             mbcx.infcx,
+            mbcx.mir_def_id(),
             placeholder_region,
             error_region,
             self.region_constraints.as_ref().unwrap(),
@@ -358,6 +360,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
 #[instrument(skip(ocx), level = "debug")]
 fn try_extract_error_from_fulfill_cx<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
+    generic_param_scope: LocalDefId,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
 ) -> Option<Diag<'tcx>> {
@@ -368,6 +371,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     let region_constraints = ocx.infcx.with_region_constraints(|r| r.clone());
     try_extract_error_from_region_constraints(
         ocx.infcx,
+        generic_param_scope,
         placeholder_region,
         error_region,
         &region_constraints,
@@ -379,6 +383,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
 #[instrument(level = "debug", skip(infcx, region_var_origin, universe_of_region))]
 fn try_extract_error_from_region_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
@@ -452,15 +457,18 @@ fn try_extract_error_from_region_constraints<'tcx>(
             RegionResolutionError::ConcreteFailure(cause.clone(), sub_region, placeholder_region)
         }
     };
-    NiceRegionError::new(&infcx.err_ctxt(), error).try_report_from_nll().or_else(|| {
-        if let SubregionOrigin::Subtype(trace) = cause {
-            Some(
-                infcx
-                    .err_ctxt()
-                    .report_and_explain_type_error(*trace, TypeError::RegionsPlaceholderMismatch),
-            )
-        } else {
-            None
-        }
-    })
+    NiceRegionError::new(&infcx.err_ctxt(), generic_param_scope, error)
+        .try_report_from_nll()
+        .or_else(|| {
+            if let SubregionOrigin::Subtype(trace) = cause {
+                Some(
+                    infcx.err_ctxt().report_and_explain_type_error(
+                        *trace,
+                        TypeError::RegionsPlaceholderMismatch,
+                    ),
+                )
+            } else {
+                None
+            }
+        })
 }

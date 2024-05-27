@@ -69,7 +69,7 @@ struct ConstAnalysis<'a, 'tcx> {
     map: Map,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
-    ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
+    ecx: InterpCx<'tcx, DummyMachine>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -142,11 +142,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     _ => return,
                 };
                 if let Some(variant_target_idx) = variant_target {
-                    for (field_index, operand) in operands.iter().enumerate() {
-                        if let Some(field) = self.map().apply(
-                            variant_target_idx,
-                            TrackElem::Field(FieldIdx::from_usize(field_index)),
-                        ) {
+                    for (field_index, operand) in operands.iter_enumerated() {
+                        if let Some(field) =
+                            self.map().apply(variant_target_idx, TrackElem::Field(field_index))
+                        {
                             self.assign_operand(state, field, operand);
                         }
                     }
@@ -565,7 +564,7 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
 
     fn try_make_constant(
         &self,
-        ecx: &mut InterpCx<'tcx, 'tcx, DummyMachine>,
+        ecx: &mut InterpCx<'tcx, DummyMachine>,
         place: Place<'tcx>,
         state: &State<FlatSet<Scalar>>,
         map: &Map,
@@ -618,7 +617,7 @@ fn propagatable_scalar(
 
 #[instrument(level = "trace", skip(ecx, state, map))]
 fn try_write_constant<'tcx>(
-    ecx: &mut InterpCx<'_, 'tcx, DummyMachine>,
+    ecx: &mut InterpCx<'tcx, DummyMachine>,
     dest: &PlaceTy<'tcx>,
     place: PlaceIndex,
     ty: Ty<'tcx>,
@@ -836,7 +835,7 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
 struct OperandCollector<'tcx, 'map, 'locals, 'a> {
     state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut Collector<'tcx, 'locals>,
-    ecx: &'map mut InterpCx<'tcx, 'tcx, DummyMachine>,
+    ecx: &'map mut InterpCx<'tcx, DummyMachine>,
     map: &'map Map,
 }
 

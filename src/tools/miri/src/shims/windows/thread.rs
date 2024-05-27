@@ -4,10 +4,10 @@ use rustc_target::spec::abi::Abi;
 use crate::*;
 use shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 
 #[allow(non_snake_case)]
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn CreateThread(
         &mut self,
         security_op: &OpTy<'tcx, Provenance>,

@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{
     db::{ExpandDatabase, HirDatabase},
-    known, AssocItem, HirDisplay, HirFileIdExt, InFile, Type,
+    known, AssocItem, HirDisplay, HirFileIdExt, ImportPathConfig, InFile, Type,
 };
 use ide_db::{
     assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
@@ -122,11 +122,13 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                     let expr = (|| -> Option<ast::Expr> {
                         let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
-                        let type_path = current_module?.find_use_path(
+                        let type_path = current_module?.find_path(
                             ctx.sema.db,
                             item_for_path_search(ctx.sema.db, item_in_ns)?,
-                            ctx.config.prefer_no_std,
-                            ctx.config.prefer_prelude,
+                            ImportPathConfig {
+                                prefer_no_std: ctx.config.prefer_no_std,
+                                prefer_prelude: ctx.config.prefer_prelude,
+                            },
                         )?;
 
                         use_trivial_constructor(

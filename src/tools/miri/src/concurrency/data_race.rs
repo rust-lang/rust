@@ -601,8 +601,8 @@ impl MemoryCellClocks {
 }
 
 /// Evaluation context extensions.
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Perform an atomic read operation at the memory location.
     fn read_scalar_atomic(
         &self,
@@ -828,7 +828,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     /// with this program point.
     fn release_clock<'a>(&'a self) -> Option<Ref<'a, VClock>>
     where
-        'mir: 'a,
+        'tcx: 'a,
     {
         let this = self.eval_context_ref();
         Some(this.machine.data_race.as_ref()?.release_clock(&this.machine.threads))
@@ -861,7 +861,7 @@ impl VClockAlloc {
     /// Create a new data-race detector for newly allocated memory.
     pub fn new_allocation(
         global: &GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        thread_mgr: &ThreadManager<'_>,
         len: Size,
         kind: MemoryKind,
         current_span: Span,
@@ -944,7 +944,7 @@ impl VClockAlloc {
     #[inline(never)]
     fn report_data_race<'tcx>(
         global: &GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        thread_mgr: &ThreadManager<'_>,
         mem_clocks: &MemoryCellClocks,
         access: AccessType,
         access_size: Size,
@@ -1042,7 +1042,7 @@ impl VClockAlloc {
         access_range: AllocRange,
         read_type: NaReadType,
         ty: Option<Ty<'_>>,
-        machine: &MiriMachine<'_, '_>,
+        machine: &MiriMachine<'_>,
     ) -> InterpResult<'tcx> {
         let current_span = machine.current_span();
         let global = machine.data_race.as_ref().unwrap();
@@ -1085,7 +1085,7 @@ impl VClockAlloc {
         access_range: AllocRange,
         write_type: NaWriteType,
         ty: Option<Ty<'_>>,
-        machine: &mut MiriMachine<'_, '_>,
+        machine: &mut MiriMachine<'_>,
     ) -> InterpResult<'tcx> {
         let current_span = machine.current_span();
         let global = machine.data_race.as_mut().unwrap();
@@ -1120,8 +1120,8 @@ impl VClockAlloc {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Temporarily allow data-races to occur. This should only be used in
     /// one of these cases:
     /// - One of the appropriate `validate_atomic` functions will be called to
@@ -1130,7 +1130,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     ///   cannot be accessed by the interpreted program.
     /// - Execution of the interpreted program execution has halted.
     #[inline]
-    fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriInterpCx<'mir, 'tcx>) -> R) -> R {
+    fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriInterpCx<'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
             let old = data_race.ongoing_action_data_race_free.replace(true);
@@ -1147,10 +1147,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     /// so should only be used for atomic operations or internal state that the program cannot
     /// access.
     #[inline]
-    fn allow_data_races_mut<R>(
-        &mut self,
-        op: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> R,
-    ) -> R {
+    fn allow_data_races_mut<R>(&mut self, op: impl FnOnce(&mut MiriInterpCx<'tcx>) -> R) -> R {
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.machine.data_race {
             let old = data_race.ongoing_action_data_race_free.replace(true);
@@ -1523,7 +1520,7 @@ impl GlobalState {
     #[inline]
     pub fn thread_created(
         &mut self,
-        thread_mgr: &ThreadManager<'_, '_>,
+        thread_mgr: &ThreadManager<'_>,
         thread: ThreadId,
         current_span: Span,
     ) {
@@ -1591,7 +1588,7 @@ impl GlobalState {
     /// thread (the joinee, the thread that someone waited on) and the current thread (the joiner,
     /// the thread who was waiting).
     #[inline]
-    pub fn thread_joined(&mut self, threads: &ThreadManager<'_, '_>, joinee: ThreadId) {
+    pub fn thread_joined(&mut self, threads: &ThreadManager<'_>, joinee: ThreadId) {
         let thread_info = self.thread_info.borrow();
         let thread_info = &thread_info[joinee];
 
@@ -1633,7 +1630,7 @@ impl GlobalState {
     /// This should be called strictly before any calls to
     /// `thread_joined`.
     #[inline]
-    pub fn thread_terminated(&mut self, thread_mgr: &ThreadManager<'_, '_>) {
+    pub fn thread_terminated(&mut self, thread_mgr: &ThreadManager<'_>) {
         let current_thread = thread_mgr.active_thread();
         let current_index = self.active_thread_index(thread_mgr);
 
@@ -1656,7 +1653,7 @@ impl GlobalState {
     /// operation may create.
     fn maybe_perform_sync_operation<'tcx>(
         &self,
-        thread_mgr: &ThreadManager<'_, '_>,
+        thread_mgr: &ThreadManager<'_>,
         current_span: Span,
         op: impl FnOnce(VectorIdx, RefMut<'_, ThreadClockSet>) -> InterpResult<'tcx, bool>,
     ) -> InterpResult<'tcx> {
@@ -1672,11 +1669,7 @@ impl GlobalState {
 
     /// Internal utility to identify a thread stored internally
     /// returns the id and the name for better diagnostics.
-    fn print_thread_metadata(
-        &self,
-        thread_mgr: &ThreadManager<'_, '_>,
-        vector: VectorIdx,
-    ) -> String {
+    fn print_thread_metadata(&self, thread_mgr: &ThreadManager<'_>, vector: VectorIdx) -> String {
         let thread = self.vector_info.borrow()[vector];
         let thread_name = thread_mgr.get_thread_display_name(thread);
         format!("thread `{thread_name}`")
@@ -1686,7 +1679,7 @@ impl GlobalState {
     /// the moment when that clock snapshot was taken via `release_clock`.
     /// As this is an acquire operation, the thread timestamp is not
     /// incremented.
-    pub fn acquire_clock<'mir, 'tcx>(&self, clock: &VClock, threads: &ThreadManager<'mir, 'tcx>) {
+    pub fn acquire_clock<'tcx>(&self, clock: &VClock, threads: &ThreadManager<'tcx>) {
         let thread = threads.active_thread();
         let (_, mut clocks) = self.thread_state_mut(thread);
         clocks.clock.join(clock);
@@ -1695,10 +1688,7 @@ impl GlobalState {
     /// Returns the `release` clock of the current thread.
     /// Other threads can acquire this clock in the future to establish synchronization
     /// with this program point.
-    pub fn release_clock<'mir, 'tcx>(
-        &self,
-        threads: &ThreadManager<'mir, 'tcx>,
-    ) -> Ref<'_, VClock> {
+    pub fn release_clock<'tcx>(&self, threads: &ThreadManager<'tcx>) -> Ref<'_, VClock> {
         let thread = threads.active_thread();
         let span = threads.active_thread_ref().current_span();
         // We increment the clock each time this happens, to ensure no two releases
@@ -1741,7 +1731,7 @@ impl GlobalState {
     #[inline]
     pub(super) fn active_thread_state(
         &self,
-        thread_mgr: &ThreadManager<'_, '_>,
+        thread_mgr: &ThreadManager<'_>,
     ) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
         self.thread_state(thread_mgr.active_thread())
     }
@@ -1751,7 +1741,7 @@ impl GlobalState {
     #[inline]
     pub(super) fn active_thread_state_mut(
         &self,
-        thread_mgr: &ThreadManager<'_, '_>,
+        thread_mgr: &ThreadManager<'_>,
     ) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
         self.thread_state_mut(thread_mgr.active_thread())
     }
@@ -1759,19 +1749,19 @@ impl GlobalState {
     /// Return the current thread, should be the same
     /// as the data-race active thread.
     #[inline]
-    fn active_thread_index(&self, thread_mgr: &ThreadManager<'_, '_>) -> VectorIdx {
+    fn active_thread_index(&self, thread_mgr: &ThreadManager<'_>) -> VectorIdx {
         let active_thread_id = thread_mgr.active_thread();
         self.thread_index(active_thread_id)
     }
 
     // SC ATOMIC STORE rule in the paper.
-    pub(super) fn sc_write(&self, thread_mgr: &ThreadManager<'_, '_>) {
+    pub(super) fn sc_write(&self, thread_mgr: &ThreadManager<'_>) {
         let (index, clocks) = self.active_thread_state(thread_mgr);
         self.last_sc_write.borrow_mut().set_at_index(&clocks.clock, index);
     }
 
     // SC ATOMIC READ rule in the paper.
-    pub(super) fn sc_read(&self, thread_mgr: &ThreadManager<'_, '_>) {
+    pub(super) fn sc_read(&self, thread_mgr: &ThreadManager<'_>) {
         let (.., mut clocks) = self.active_thread_state_mut(thread_mgr);
         clocks.read_seqcst.join(&self.last_sc_fence.borrow());
     }

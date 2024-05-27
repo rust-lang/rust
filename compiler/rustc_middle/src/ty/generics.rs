@@ -66,7 +66,7 @@ pub struct GenericParamDef {
 impl GenericParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyParamRegion {
         if let GenericParamDefKind::Lifetime = self.kind {
-            ty::EarlyParamRegion { def_id: self.def_id, index: self.index, name: self.name }
+            ty::EarlyParamRegion { index: self.index, name: self.name }
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }

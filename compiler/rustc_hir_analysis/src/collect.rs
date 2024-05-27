@@ -453,7 +453,6 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                                         poly_trait_ref,
                                         |_| {
                                             ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
-                                                def_id: item_def_id,
                                                 index: 0,
                                                 name: Symbol::intern(&lt_name),
                                             })

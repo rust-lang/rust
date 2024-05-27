@@ -24,34 +24,29 @@ pub(super) fn hints(
 
     let (callable, arg_list) = get_callable(sema, &expr)?;
     let hints = callable
-        .params(sema.db)
+        .params()
         .into_iter()
         .zip(arg_list.args())
-        .filter_map(|((param, _ty), arg)| {
+        .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let (param_name, name_syntax) = match param.as_ref()? {
+            let source = p.source(sema.db)?;
+            let (param_name, name_syntax) = match source.value.as_ref() {
                 Either::Left(pat) => (pat.name()?, pat.name()),
-                Either::Right(pat) => match pat {
+                Either::Right(param) => match param.pat()? {
                     ast::Pat::IdentPat(it) => (it.name()?, it.name()),
                     _ => return None,
                 },
             };
+            // make sure the file is cached so we can map out of macros
+            sema.parse_or_expand(source.file_id);
             Some((name_syntax, param_name, arg, range))
         })
         .filter(|(_, param_name, arg, _)| {
             !should_hide_param_name_hint(sema, &callable, &param_name.text(), arg)
         })
         .map(|(param, param_name, _, FileRange { range, .. })| {
-            let mut linked_location = None;
-            if let Some(name) = param {
-                if let hir::CallableKind::Function(f) = callable.kind() {
-                    // assert the file is cached so we can map out of macros
-                    if sema.source(f).is_some() {
-                        linked_location = sema.original_range_opt(name.syntax());
-                    }
-                }
-            }
+            let linked_location = param.and_then(|name| sema.original_range_opt(name.syntax()));
 
             let colon = if config.render_colons { ":" } else { "" };
             let label =

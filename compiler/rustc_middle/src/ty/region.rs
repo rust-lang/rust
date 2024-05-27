@@ -265,33 +265,6 @@ impl<'tcx> Region<'tcx> {
         flags
     }
 
-    /// Given an early-bound or free region, returns the `DefId` where it was bound.
-    /// For example, consider the regions in this snippet of code:
-    ///
-    /// ```ignore (illustrative)
-    /// impl<'a> Foo {
-    /// //   ^^ -- early bound, declared on an impl
-    ///
-    ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
-    /// //         ^^  ^^     ^ anonymous, late-bound
-    /// //         |   early-bound, appears in where-clauses
-    /// //         late-bound, appears only in fn args
-    ///     {..}
-    /// }
-    /// ```
-    ///
-    /// Here, `free_region_binding_scope('a)` would return the `DefId`
-    /// of the impl, and for all the other highlighted regions, it
-    /// would return the `DefId` of the function. In other cases (not shown), this
-    /// function might return the `DefId` of a closure.
-    pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
-        match *self {
-            ty::ReEarlyParam(br) => tcx.parent(br.def_id),
-            ty::ReLateParam(fr) => fr.scope,
-            _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
-        }
-    }
-
     /// True for free regions other than `'static`.
     pub fn is_param(self) -> bool {
         matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))
@@ -321,6 +294,21 @@ impl<'tcx> Region<'tcx> {
             _ => bug!("expected region {:?} to be of kind ReVar", self),
         }
     }
+
+    /// Given some item `binding_item`, check if this region is a generic parameter introduced by it
+    /// or one of the parent generics. Returns the `DefId` of the parameter definition if so.
+    pub fn opt_param_def_id(self, tcx: TyCtxt<'tcx>, binding_item: DefId) -> Option<DefId> {
+        match self.kind() {
+            ty::ReEarlyParam(ebr) => {
+                Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)
+            }
+            ty::ReLateParam(ty::LateParamRegion {
+                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                ..
+            }) => Some(def_id),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> Deref for Region<'tcx> {
@@ -335,16 +323,13 @@ impl<'tcx> Deref for Region<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct EarlyParamRegion {
-    pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
 
 impl std::fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // FIXME(BoxyUwU): self.def_id goes first because of `erased-regions-in-hidden-ty.rs` being impossible to write
-        // error annotations for otherwise. :). Ideally this would be `self.name, self.index, self.def_id`.
-        write!(f, "{:?}_{}/#{}", self.def_id, self.name, self.index)
+        write!(f, "{}/#{}", self.name, self.index)
     }
 }
 
@@ -352,6 +337,12 @@ impl std::fmt::Debug for EarlyParamRegion {
 #[derive(HashStable)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
+///
+/// Similar to a placeholder region as we create `LateParam` regions when entering a binder
+/// except they are always in the root universe and instead of using a boundvar to distinguish
+/// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
+/// should basically always be `BoundRegionKind::BrNamed` as otherwise there is no way of telling
+/// different parameters apart.
 pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,

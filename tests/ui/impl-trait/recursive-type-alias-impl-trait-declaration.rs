@@ -11,7 +11,7 @@ impl PartialEq<(Bar, i32)> for Bar {
 }
 
 fn foo() -> Foo {
-    //~^ ERROR can't compare `Bar` with `(Foo, i32)`
+    //~^ ERROR overflow evaluating the requirement `Bar: PartialEq<(Foo, i32)>`
     Bar
 }
 

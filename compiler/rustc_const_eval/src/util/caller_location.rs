@@ -11,8 +11,8 @@ use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, Compil
 use crate::interpret::*;
 
 /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
-fn alloc_caller_location<'mir, 'tcx>(
-    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
+fn alloc_caller_location<'tcx>(
+    ecx: &mut CompileTimeEvalContext<'tcx>,
     filename: Symbol,
     line: u32,
     col: u32,

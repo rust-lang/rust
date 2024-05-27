@@ -5,8 +5,8 @@ use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{hygiene, BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn handle_miri_backtrace_size(
         &mut self,
         abi: Abi,

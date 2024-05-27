@@ -9,8 +9,9 @@ pub(super) fn highlight_escape_string<T: IsString>(
     string: &T,
     start: TextSize,
 ) {
+    let text = string.text();
     string.escaped_char_ranges(&mut |piece_range, char| {
-        if string.text()[piece_range.start().into()..].starts_with('\\') {
+        if text[piece_range.start().into()..].starts_with('\\') {
             let highlight = match char {
                 Ok(_) => HlTag::EscapeSequence,
                 Err(_) => HlTag::InvalidEscapeSequence,
@@ -33,17 +34,15 @@ pub(super) fn highlight_escape_char(stack: &mut Highlights, char: &Char, start: 
     }
 
     let text = char.text();
-    if !text.starts_with('\'') || !text.ends_with('\'') {
+    let Some(text) = text
+        .strip_prefix('\'')
+        .and_then(|it| it.strip_suffix('\''))
+        .filter(|it| it.starts_with('\\'))
+    else {
         return;
-    }
+    };
 
-    let text = &text[1..text.len() - 1];
-    if !text.starts_with('\\') {
-        return;
-    }
-
-    let range =
-        TextRange::new(start + TextSize::from(1), start + TextSize::from(text.len() as u32 + 1));
+    let range = TextRange::at(start + TextSize::from(1), TextSize::from(text.len() as u32));
     stack.add(HlRange { range, highlight: HlTag::EscapeSequence.into(), binding_hash: None })
 }
 
@@ -54,16 +53,14 @@ pub(super) fn highlight_escape_byte(stack: &mut Highlights, byte: &Byte, start: 
     }
 
     let text = byte.text();
-    if !text.starts_with("b'") || !text.ends_with('\'') {
+    let Some(text) = text
+        .strip_prefix("b'")
+        .and_then(|it| it.strip_suffix('\''))
+        .filter(|it| it.starts_with('\\'))
+    else {
         return;
-    }
+    };
 
-    let text = &text[2..text.len() - 1];
-    if !text.starts_with('\\') {
-        return;
-    }
-
-    let range =
-        TextRange::new(start + TextSize::from(2), start + TextSize::from(text.len() as u32 + 2));
+    let range = TextRange::at(start + TextSize::from(2), TextSize::from(text.len() as u32));
     stack.add(HlRange { range, highlight: HlTag::EscapeSequence.into(), binding_hash: None })
 }

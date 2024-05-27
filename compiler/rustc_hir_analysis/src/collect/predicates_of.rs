@@ -323,7 +323,7 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
         if let ty::ReEarlyParam(..) = *orig_lifetime {
             let dup_lifetime = ty::Region::new_early_param(
                 tcx,
-                ty::EarlyParamRegion { def_id: param.def_id, index: param.index, name: param.name },
+                ty::EarlyParamRegion { index: param.index, name: param.name },
             );
             let span = tcx.def_span(param.def_id);
             predicates.push((

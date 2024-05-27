@@ -570,6 +570,10 @@ impl CallableSig {
         }
     }
 
+    pub fn abi(&self) -> FnAbi {
+        self.abi
+    }
+
     pub fn params(&self) -> &[Ty] {
         &self.params_and_return[0..self.params_and_return.len() - 1]
     }
@@ -892,20 +896,16 @@ where
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
 }
 
-pub fn callable_sig_from_fnonce(
-    mut self_ty: &Ty,
-    env: Arc<TraitEnvironment>,
+pub fn callable_sig_from_fn_trait(
+    self_ty: &Ty,
+    trait_env: Arc<TraitEnvironment>,
     db: &dyn HirDatabase,
-) -> Option<CallableSig> {
-    if let Some((ty, _, _)) = self_ty.as_reference() {
-        // This will happen when it implements fn or fn mut, since we add a autoborrow adjustment
-        self_ty = ty;
-    }
-    let krate = env.krate;
+) -> Option<(FnTrait, CallableSig)> {
+    let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
 
-    let mut table = InferenceTable::new(db, env);
+    let mut table = InferenceTable::new(db, trait_env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);
     if b.remaining() != 2 {
         return None;
@@ -915,23 +915,56 @@ pub fn callable_sig_from_fnonce(
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
     let args_ty = table.new_type_var();
-    let trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
+    let mut trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
     let projection = TyBuilder::assoc_type_projection(
         db,
         output_assoc_type,
         Some(trait_ref.substitution.clone()),
     )
     .build();
-    table.register_obligation(trait_ref.cast(Interner));
-    let ret_ty = table.normalize_projection_ty(projection);
 
-    let ret_ty = table.resolve_completely(ret_ty);
-    let args_ty = table.resolve_completely(args_ty);
+    let block = trait_env.block;
+    let trait_env = trait_env.env.clone();
+    let obligation =
+        InEnvironment { goal: trait_ref.clone().cast(Interner), environment: trait_env.clone() };
+    let canonical = table.canonicalize(obligation.clone());
+    if db.trait_solve(krate, block, canonical.cast(Interner)).is_some() {
+        table.register_obligation(obligation.goal);
+        let return_ty = table.normalize_projection_ty(projection);
+        for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
+            let fn_x_trait = fn_x.get_id(db, krate)?;
+            trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
+            let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
+                goal: trait_ref.clone().cast(Interner),
+                environment: trait_env.clone(),
+            };
+            let canonical = table.canonicalize(obligation.clone());
+            if db.trait_solve(krate, block, canonical.cast(Interner)).is_some() {
+                let ret_ty = table.resolve_completely(return_ty);
+                let args_ty = table.resolve_completely(args_ty);
+                let params = args_ty
+                    .as_tuple()?
+                    .iter(Interner)
+                    .map(|it| it.assert_ty_ref(Interner))
+                    .cloned()
+                    .collect();
 
-    let params =
-        args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
-
-    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe, FnAbi::RustCall))
+                return Some((
+                    fn_x,
+                    CallableSig::from_params_and_return(
+                        params,
+                        ret_ty,
+                        false,
+                        Safety::Safe,
+                        FnAbi::RustCall,
+                    ),
+                ));
+            }
+        }
+        unreachable!("It should at least implement FnOnce at this point");
+    } else {
+        None
+    }
 }
 
 struct PlaceholderCollector<'db> {

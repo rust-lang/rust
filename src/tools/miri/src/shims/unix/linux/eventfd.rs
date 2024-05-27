@@ -51,7 +51,7 @@ impl FileDescription for Event {
         &mut self,
         _communicate_allowed: bool,
         bytes: &[u8],
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         let bytes: [u8; 8] = bytes.try_into().unwrap(); // FIXME fail gracefully when this has the wrong size
         // Convert from target endianness to host endianness.
@@ -66,8 +66,8 @@ impl FileDescription for Event {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// This function creates an `Event` that is used as an event wait/notify mechanism by
     /// user-space applications, and by the kernel to notify user-space applications of events.
     /// The `Event` contains an `u64` counter maintained by the kernel. The counter is initialized

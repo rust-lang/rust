@@ -2218,15 +2218,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Used in `super_combine_consts` to ICE if the type of the two consts are definitely not going to end up being
-    /// equal to eachother. This might return `Ok` even if the types are not equal, but will never return `Err` if
-    /// the types might be equal.
-    query check_tys_might_be_eq(
-        arg: Canonical<'tcx, ty::ParamEnvAnd<'tcx, (Ty<'tcx>, Ty<'tcx>)>>
-    ) -> Result<(), NoSolution> {
-        desc { "check whether two const param are definitely not equal to eachother"}
-    }
-
     /// Get all item paths that were stripped by a `#[cfg]` in a particular crate.
     /// Should not be called for the local crate before the resolver outputs are created, as it
     /// is only fed there.

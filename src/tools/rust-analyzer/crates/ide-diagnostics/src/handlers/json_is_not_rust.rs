@@ -1,7 +1,7 @@
 //! This diagnostic provides an assist for creating a struct definition from a JSON
 //! example.
 
-use hir::{PathResolution, Semantics};
+use hir::{ImportPathConfig, PathResolution, Semantics};
 use ide_db::{
     base_db::{FileId, FileRange},
     helpers::mod_path_to_ast,
@@ -142,14 +142,19 @@ pub(crate) fn json_in_items(
                             ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),
                         };
                         let current_module = semantics_scope.module();
+
+                        let cfg = ImportPathConfig {
+                            prefer_no_std: config.prefer_no_std,
+                            prefer_prelude: config.prefer_prelude,
+                        };
+
                         if !scope_has("Serialize") {
                             if let Some(PathResolution::Def(it)) = serialize_resolved {
-                                if let Some(it) = current_module.find_use_path_prefixed(
+                                if let Some(it) = current_module.find_use_path(
                                     sema.db,
                                     it,
                                     config.insert_use.prefix_kind,
-                                    config.prefer_no_std,
-                                    config.prefer_prelude,
+                                    cfg,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }
@@ -157,12 +162,11 @@ pub(crate) fn json_in_items(
                         }
                         if !scope_has("Deserialize") {
                             if let Some(PathResolution::Def(it)) = deserialize_resolved {
-                                if let Some(it) = current_module.find_use_path_prefixed(
+                                if let Some(it) = current_module.find_use_path(
                                     sema.db,
                                     it,
                                     config.insert_use.prefix_kind,
-                                    config.prefer_no_std,
-                                    config.prefer_prelude,
+                                    cfg,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }

@@ -539,6 +539,16 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
     );
+    store.register_removed(
+        "indirect_structural_match",
+        "converted into hard error, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "pointer_structural_match",
+        "converted into hard error, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

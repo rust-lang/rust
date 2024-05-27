@@ -295,7 +295,7 @@ impl ItemScope {
     pub(crate) fn names_of<T>(
         &self,
         item: ItemInNs,
-        mut cb: impl FnMut(&Name, Visibility, bool) -> Option<T>,
+        mut cb: impl FnMut(&Name, Visibility, /*declared*/ bool) -> Option<T>,
     ) -> Option<T> {
         match item {
             ItemInNs::Macros(def) => self

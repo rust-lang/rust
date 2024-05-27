@@ -235,7 +235,7 @@ enum TlsDtorsStatePriv<'tcx> {
 impl<'tcx> TlsDtorsState<'tcx> {
     pub fn on_stack_empty(
         &mut self,
-        this: &mut MiriInterpCx<'_, 'tcx>,
+        this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use TlsDtorsStatePriv::*;
         let new_state = 'new_state: {
@@ -293,8 +293,8 @@ impl<'tcx> TlsDtorsState<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Schedule TLS destructors for Windows.
     /// On windows, TLS destructors are managed by std.
     fn lookup_windows_tls_dtors(&mut self) -> InterpResult<'tcx, Vec<ImmTy<'tcx, Provenance>>> {

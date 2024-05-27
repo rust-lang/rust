@@ -21,7 +21,7 @@ use crate::traits::{
     self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, DelayDm, Diag, EmissionGuarantee};
+use rustc_errors::{codes::*, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
@@ -449,7 +449,7 @@ fn report_conflicting_impls<'tcx>(
         }
     }
 
-    let msg = DelayDm(|| {
+    let msg = || {
         format!(
             "conflicting implementations of trait `{}`{}{}",
             overlap.trait_ref.print_trait_sugared(),
@@ -459,7 +459,7 @@ fn report_conflicting_impls<'tcx>(
                 _ => "",
             }
         )
-    });
+    };
 
     // Don't report overlap errors if the header references error
     if let Err(err) = (overlap.trait_ref, overlap.self_ty).error_reported() {
@@ -471,7 +471,7 @@ fn report_conflicting_impls<'tcx>(
             let reported = if overlap.with_impl.is_local()
                 || tcx.ensure().orphan_check_impl(impl_def_id).is_ok()
             {
-                let mut err = tcx.dcx().struct_span_err(impl_span, msg);
+                let mut err = tcx.dcx().struct_span_err(impl_span, msg());
                 err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
                 err.emit()
@@ -485,15 +485,10 @@ fn report_conflicting_impls<'tcx>(
                 FutureCompatOverlapErrorKind::OrderDepTraitObjects => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.node_span_lint(
-                lint,
-                tcx.local_def_id_to_hir_id(impl_def_id),
-                impl_span,
-                msg,
-                |err| {
-                    decorate(tcx, &overlap, impl_span, err);
-                },
-            );
+            tcx.node_span_lint(lint, tcx.local_def_id_to_hir_id(impl_def_id), impl_span, |err| {
+                err.primary_message(msg());
+                decorate(tcx, &overlap, impl_span, err);
+            });
             Ok(())
         }
     }

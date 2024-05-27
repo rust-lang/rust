@@ -2539,7 +2539,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let InferOk { obligations, .. } = self
             .infcx
             .at(&cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, placeholder_obligation_trait_ref, impl_trait_ref)
+            .eq(DefineOpaqueTypes::Yes, placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| {
                 debug!("match_impl: failed eq_trait_refs due to `{}`", e.to_string(self.tcx()))
             })?;
@@ -2594,7 +2594,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
                             .eq(
-                                DefineOpaqueTypes::No,
+                                DefineOpaqueTypes::Yes,
                                 upcast_principal.map_bound(|trait_ref| {
                                     ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
                                 }),
@@ -2631,7 +2631,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
-                            .eq(DefineOpaqueTypes::No, source_projection, target_projection)
+                            .eq(DefineOpaqueTypes::Yes, source_projection, target_projection)
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
                     );
