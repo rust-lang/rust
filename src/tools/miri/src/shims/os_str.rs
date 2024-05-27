@@ -30,8 +30,8 @@ pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
     Ok(OsStr::new(s))
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(
@@ -40,7 +40,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, &'a OsStr>
     where
         'tcx: 'a,
-        'mir: 'a,
     {
         let this = self.eval_context_ref();
         let bytes = this.read_c_str(ptr)?;
@@ -55,7 +54,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, OsString>
     where
         'tcx: 'a,
-        'mir: 'a,
     {
         #[cfg(windows)]
         pub fn u16vec_to_osstring<'tcx>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
@@ -183,7 +181,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Cow<'a, Path>>
     where
         'tcx: 'a,
-        'mir: 'a,
     {
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_c_str(ptr)?;

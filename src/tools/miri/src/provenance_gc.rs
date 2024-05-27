@@ -144,7 +144,7 @@ impl VisitProvenance for Allocation<Provenance, AllocExtra<'_>, MiriAllocBytes> 
     }
 }
 
-impl VisitProvenance for crate::MiriInterpCx<'_, '_> {
+impl VisitProvenance for crate::MiriInterpCx<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         // Visit the contents of the allocations and the IDs themselves, to account for all
         // live allocation IDs and all provenance in the allocation bytes, even if they are leaked.
@@ -162,19 +162,19 @@ impl VisitProvenance for crate::MiriInterpCx<'_, '_> {
     }
 }
 
-pub struct LiveAllocs<'a, 'mir, 'tcx> {
+pub struct LiveAllocs<'a, 'tcx> {
     collected: FxHashSet<AllocId>,
-    ecx: &'a MiriInterpCx<'mir, 'tcx>,
+    ecx: &'a MiriInterpCx<'tcx>,
 }
 
-impl LiveAllocs<'_, '_, '_> {
+impl LiveAllocs<'_, '_> {
     pub fn is_live(&self, id: AllocId) -> bool {
         self.collected.contains(&id) || self.ecx.is_alloc_live(id)
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn run_provenance_gc(&mut self) {
         // We collect all tags from various parts of the interpreter, but also
         let this = self.eval_context_mut();

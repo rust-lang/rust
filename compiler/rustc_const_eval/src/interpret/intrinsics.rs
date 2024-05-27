@@ -98,7 +98,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
     })
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
@@ -605,9 +605,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
     pub(crate) fn copy_intrinsic(
         &mut self,
-        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        src: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
         let count = self.read_target_usize(count)?;
@@ -634,8 +634,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Does a *typed* swap of `*left` and `*right`.
     fn typed_swap_intrinsic(
         &mut self,
-        left: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        right: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        left: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        right: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
         let left = self.deref_pointer(left)?;
         let right = self.deref_pointer(right)?;
@@ -651,9 +651,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn write_bytes_intrinsic(
         &mut self,
-        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        byte: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        byte: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
         let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap())?;
 
@@ -673,9 +673,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn compare_bytes_intrinsic(
         &mut self,
-        left: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        right: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        byte_count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        left: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        right: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        byte_count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         let left = self.read_pointer(left)?;
         let right = self.read_pointer(right)?;
@@ -691,14 +691,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn raw_eq_intrinsic(
         &mut self,
-        lhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
-        rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        lhs: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        rhs: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap())?;
         assert!(layout.is_sized());
 
-        let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
-                         op: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        let get_bytes = |this: &InterpCx<'tcx, M>,
+                         op: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
                          size|
          -> InterpResult<'tcx, &[u8]> {
             let ptr = this.read_pointer(op)?;

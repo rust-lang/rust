@@ -115,29 +115,29 @@ pub struct TagHistory {
     pub protected: Option<(String, SpanData)>,
 }
 
-pub struct DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCxBuilder<'ecx, 'tcx> {
     operation: Operation,
-    machine: &'ecx MiriMachine<'mir, 'tcx>,
+    machine: &'ecx MiriMachine<'tcx>,
 }
 
-pub struct DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCx<'history, 'ecx, 'tcx> {
     operation: Operation,
-    machine: &'ecx MiriMachine<'mir, 'tcx>,
+    machine: &'ecx MiriMachine<'tcx>,
     history: &'history mut AllocHistory,
     offset: Size,
 }
 
-impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+impl<'ecx, 'tcx> DiagnosticCxBuilder<'ecx, 'tcx> {
     pub fn build<'history>(
         self,
         history: &'history mut AllocHistory,
         offset: Size,
-    ) -> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+    ) -> DiagnosticCx<'history, 'ecx, 'tcx> {
         DiagnosticCx { operation: self.operation, machine: self.machine, history, offset }
     }
 
     pub fn retag(
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'tcx>,
         info: RetagInfo,
         new_tag: BorTag,
         orig_tag: ProvenanceExtra,
@@ -150,7 +150,7 @@ impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 
     pub fn read(
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
@@ -159,7 +159,7 @@ impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 
     pub fn write(
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
@@ -167,14 +167,14 @@ impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
         DiagnosticCxBuilder { machine, operation }
     }
 
-    pub fn dealloc(machine: &'ecx MiriMachine<'mir, 'tcx>, tag: ProvenanceExtra) -> Self {
+    pub fn dealloc(machine: &'ecx MiriMachine<'tcx>, tag: ProvenanceExtra) -> Self {
         let operation = Operation::Dealloc(DeallocOp { tag });
         DiagnosticCxBuilder { machine, operation }
     }
 }
 
-impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
-    pub fn unbuild(self) -> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
+    pub fn unbuild(self) -> DiagnosticCxBuilder<'ecx, 'tcx> {
         DiagnosticCxBuilder { machine: self.machine, operation: self.operation }
     }
 }
@@ -222,7 +222,7 @@ struct DeallocOp {
 }
 
 impl AllocHistory {
-    pub fn new(id: AllocId, item: Item, machine: &MiriMachine<'_, '_>) -> Self {
+    pub fn new(id: AllocId, item: Item, machine: &MiriMachine<'_>) -> Self {
         Self {
             id,
             root: (item, machine.current_span()),
@@ -239,7 +239,7 @@ impl AllocHistory {
     }
 }
 
-impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
     pub fn start_grant(&mut self, perm: Permission) {
         let Operation::Retag(op) = &mut self.operation else {
             unreachable!(

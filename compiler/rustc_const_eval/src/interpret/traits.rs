@@ -7,7 +7,7 @@ use tracing::trace;
 use super::util::ensure_monomorphic_enough;
 use super::{InterpCx, Machine};
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///

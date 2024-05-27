@@ -21,7 +21,7 @@ use crate::interpret::{
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &CompileTimeEvalContext<'tcx>,
     place: &MPlaceTy<'tcx>,
     n: usize,
     variant: Option<VariantIdx>,
@@ -59,7 +59,7 @@ fn branches<'tcx>(
 
 #[instrument(skip(ecx), level = "debug")]
 fn slice_branches<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &CompileTimeEvalContext<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
@@ -77,7 +77,7 @@ fn slice_branches<'tcx>(
 
 #[instrument(skip(ecx), level = "debug")]
 fn const_to_valtree_inner<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &CompileTimeEvalContext<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
@@ -219,7 +219,7 @@ fn reconstruct_place_meta<'tcx>(
 
 #[instrument(skip(ecx), level = "debug", ret)]
 fn create_valtree_place<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'tcx>,
     layout: TyAndLayout<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) -> MPlaceTy<'tcx> {
@@ -364,7 +364,7 @@ pub fn valtree_to_const_value<'tcx>(
 
 /// Put a valtree into memory and return a reference to that.
 fn valtree_to_ref<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'tcx>,
     valtree: ty::ValTree<'tcx>,
     pointee_ty: Ty<'tcx>,
 ) -> Immediate {
@@ -380,7 +380,7 @@ fn valtree_to_ref<'tcx>(
 
 #[instrument(skip(ecx), level = "debug")]
 fn valtree_into_mplace<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'tcx>,
     place: &MPlaceTy<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) {
@@ -457,6 +457,6 @@ fn valtree_into_mplace<'tcx>(
     }
 }
 
-fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: &MPlaceTy<'tcx>) {
+fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx>, place: &MPlaceTy<'tcx>) {
     trace!("{:?}", ecx.dump_place(&PlaceTy::from(place.clone())));
 }

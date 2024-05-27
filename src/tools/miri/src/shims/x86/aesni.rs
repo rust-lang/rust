@@ -5,9 +5,9 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
-    crate::MiriInterpCxExt<'mir, 'tcx>
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExt<'tcx>:
+    crate::MiriInterpCxExt<'tcx>
 {
     fn emulate_x86_aesni_intrinsic(
         &mut self,
@@ -134,7 +134,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 // Performs an AES round (given by `f`) on each 128-bit word of
 // `state` with the corresponding 128-bit key of `key`.
 fn aes_round<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
+    this: &mut crate::MiriInterpCx<'tcx>,
     state: &OpTy<'tcx, Provenance>,
     key: &OpTy<'tcx, Provenance>,
     dest: &MPlaceTy<'tcx, Provenance>,

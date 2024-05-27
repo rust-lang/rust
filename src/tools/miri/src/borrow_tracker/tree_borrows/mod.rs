@@ -35,7 +35,7 @@ impl<'tcx> Tree {
         size: Size,
         state: &mut GlobalStateInner,
         _kind: MemoryKind,
-        machine: &MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'tcx>,
     ) -> Self {
         let tag = state.root_ptr_tag(id, machine); // Fresh tag for the root
         let span = machine.current_span();
@@ -50,7 +50,7 @@ impl<'tcx> Tree {
         alloc_id: AllocId,
         prov: ProvenanceExtra,
         range: AllocRange,
-        machine: &MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "{} with tag {:?}: {:?}, size {}",
@@ -84,7 +84,7 @@ impl<'tcx> Tree {
         alloc_id: AllocId,
         prov: ProvenanceExtra,
         size: Size,
-        machine: &MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
         // TODO: for now we bail out on wildcard pointers. Eventually we should
         // handle them as much as we can.
@@ -109,7 +109,7 @@ impl<'tcx> Tree {
     /// protector.
     pub fn release_protector(
         &mut self,
-        machine: &MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'tcx>,
         global: &GlobalState,
         tag: BorTag,
         alloc_id: AllocId, // diagnostics
@@ -146,7 +146,7 @@ impl<'tcx> NewPermission {
         pointee: Ty<'tcx>,
         mutability: Mutability,
         kind: RetagKind,
-        cx: &crate::MiriInterpCx<'_, 'tcx>,
+        cx: &crate::MiriInterpCx<'tcx>,
     ) -> Option<Self> {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.param_env());
         let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.param_env());
@@ -170,7 +170,7 @@ impl<'tcx> NewPermission {
     fn from_unique_ty(
         ty: Ty<'tcx>,
         kind: RetagKind,
-        cx: &crate::MiriInterpCx<'_, 'tcx>,
+        cx: &crate::MiriInterpCx<'tcx>,
         zero_size: bool,
     ) -> Option<Self> {
         let pointee = ty.builtin_deref(true).unwrap();
@@ -190,11 +190,8 @@ impl<'tcx> NewPermission {
 /// Retagging/reborrowing.
 /// Policy on which permission to grant to each pointer should be left to
 /// the implementation of NewPermission.
-impl<'mir: 'ecx, 'tcx: 'mir, 'ecx> EvalContextPrivExt<'mir, 'tcx, 'ecx>
-    for crate::MiriInterpCx<'mir, 'tcx>
-{
-}
-trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the provenance that should be used henceforth.
     fn tb_reborrow(
         &mut self,
@@ -210,7 +207,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::InboundsTest)?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
-        let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
+        let log_creation = |this: &MiriInterpCx<'tcx>,
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
             let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
@@ -379,8 +376,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Retag a pointer. References are passed to `from_ref_ty` and
     /// raw pointers are never reborrowed.
     fn tb_retag_ptr_value(
@@ -416,13 +413,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         return visitor.visit_value(place);
 
         // The actual visitor.
-        struct RetagVisitor<'ecx, 'mir, 'tcx> {
-            ecx: &'ecx mut MiriInterpCx<'mir, 'tcx>,
+        struct RetagVisitor<'ecx, 'tcx> {
+            ecx: &'ecx mut MiriInterpCx<'tcx>,
             kind: RetagKind,
             retag_fields: RetagFields,
             unique_did: Option<DefId>,
         }
-        impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
+        impl<'ecx, 'tcx> RetagVisitor<'ecx, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
             fn retag_ptr_inplace(
                 &mut self,
@@ -437,13 +434,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(())
             }
         }
-        impl<'ecx, 'mir, 'tcx> ValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
-            for RetagVisitor<'ecx, 'mir, 'tcx>
-        {
+        impl<'ecx, 'tcx> ValueVisitor<'tcx, MiriMachine<'tcx>> for RetagVisitor<'ecx, 'tcx> {
             type V = PlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
-            fn ecx(&self) -> &MiriInterpCx<'mir, 'tcx> {
+            fn ecx(&self) -> &MiriInterpCx<'tcx> {
                 self.ecx
             }
 
@@ -608,7 +603,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 /// I.e. input is what you get from the visitor upon encountering an `adt` that is `Unique`,
 /// and output can be used by `retag_ptr_inplace`.
 fn inner_ptr_of_unique<'tcx>(
-    ecx: &MiriInterpCx<'_, 'tcx>,
+    ecx: &MiriInterpCx<'tcx>,
     place: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
     // Follows the same layout as `interpret/visitor.rs:walk_value` for `Box` in

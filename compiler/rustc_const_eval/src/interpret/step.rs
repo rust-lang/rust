@@ -16,7 +16,7 @@ use super::{
 };
 use crate::util;
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)

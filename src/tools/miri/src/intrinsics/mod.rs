@@ -18,8 +18,8 @@ use atomic::EvalContextExt as _;
 use helpers::{check_arg_count, ToHost, ToSoft};
 use simd::EvalContextExt as _;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,

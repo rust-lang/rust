@@ -234,7 +234,7 @@ enum Value<'tcx> {
 
 struct VnState<'body, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
+    ecx: InterpCx<'tcx, DummyMachine>,
     param_env: ty::ParamEnv<'tcx>,
     local_decls: &'body LocalDecls<'tcx>,
     /// Value stored in each local.
@@ -1139,7 +1139,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 }
 
 fn op_to_prop_const<'tcx>(
-    ecx: &mut InterpCx<'_, 'tcx, DummyMachine>,
+    ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
 ) -> Option<ConstValue<'tcx>> {
     // Do not attempt to propagate unsized locals.

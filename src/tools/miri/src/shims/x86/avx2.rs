@@ -10,9 +10,9 @@ use super::{
 };
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
-    crate::MiriInterpCxExt<'mir, 'tcx>
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExt<'tcx>:
+    crate::MiriInterpCxExt<'tcx>
 {
     fn emulate_x86_avx2_intrinsic(
         &mut self,

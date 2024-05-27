@@ -20,8 +20,8 @@ impl VisitProvenance for WindowsEnvVars {
 }
 
 impl WindowsEnvVars {
-    pub(crate) fn new<'mir, 'tcx>(
-        _ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+    pub(crate) fn new<'tcx>(
+        _ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
         env_vars: FxHashMap<OsString, OsString>,
     ) -> InterpResult<'tcx, Self> {
         Ok(Self { map: env_vars })
@@ -33,8 +33,8 @@ impl WindowsEnvVars {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[allow(non_snake_case)]
     fn GetEnvironmentVariableW(
         &mut self,
