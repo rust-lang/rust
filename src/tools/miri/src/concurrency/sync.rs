@@ -161,9 +161,7 @@ pub struct SynchronizationObjects {
 
 // Private extension trait for local helper methods
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub(super) trait EvalContextExtPriv<'tcx>:
-    crate::MiriInterpCxExt<'tcx>
-{
+pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Lazily initialize the ID of this Miri sync structure.
     /// ('0' indicates uninit.)
     #[inline]
@@ -245,10 +243,7 @@ pub(super) trait EvalContextExtPriv<'tcx>:
     #[inline]
     fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
     where
-        F: FnOnce(
-            &mut MiriInterpCx<'tcx>,
-            CondvarId,
-        ) -> InterpResult<'tcx, Option<CondvarId>>,
+        F: FnOnce(&mut MiriInterpCx<'tcx>, CondvarId) -> InterpResult<'tcx, Option<CondvarId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.sync.condvars.next_index();

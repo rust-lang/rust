@@ -33,10 +33,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn init_once_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, InitOnceId>
     where
-        F: FnOnce(
-            &mut MiriInterpCx<'tcx>,
-            InitOnceId,
-        ) -> InterpResult<'tcx, Option<InitOnceId>>,
+        F: FnOnce(&mut MiriInterpCx<'tcx>, InitOnceId) -> InterpResult<'tcx, Option<InitOnceId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.sync.init_onces.next_index();

@@ -6,9 +6,7 @@ use super::{horizontal_bin_op, int_abs, pmulhrsw, psign};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub(super) trait EvalContextExt<'tcx>:
-    crate::MiriInterpCxExt<'tcx>
-{
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_ssse3_intrinsic(
         &mut self,
         link_name: Symbol,

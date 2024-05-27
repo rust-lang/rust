@@ -10,9 +10,7 @@ use crate::*;
 // - kind: i32
 
 #[inline]
-fn mutexattr_kind_offset<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-) -> InterpResult<'tcx, u64> {
+fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" | "macos" => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
@@ -53,17 +51,11 @@ fn mutexattr_set_kind<'tcx>(
 /// in `pthread_mutexattr_settype` function.
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
 
-fn is_mutex_kind_default<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, bool> {
+fn is_mutex_kind_default<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tcx, bool> {
     Ok(kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"))
 }
 
-fn is_mutex_kind_normal<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, bool> {
+fn is_mutex_kind_normal<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tcx, bool> {
     let mutex_normal_kind = ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL");
     Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
 }
@@ -220,9 +212,7 @@ fn rwlock_get_id<'tcx>(
 // - clock: i32
 
 #[inline]
-fn condattr_clock_offset<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-) -> InterpResult<'tcx, u64> {
+fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS does not have a clock attribute.

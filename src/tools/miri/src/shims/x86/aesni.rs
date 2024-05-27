@@ -6,9 +6,7 @@ use rustc_target::spec::abi::Abi;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub(super) trait EvalContextExt<'tcx>:
-    crate::MiriInterpCxExt<'tcx>
-{
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_aesni_intrinsic(
         &mut self,
         link_name: Symbol,

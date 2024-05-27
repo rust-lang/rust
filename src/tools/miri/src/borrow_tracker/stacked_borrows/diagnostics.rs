@@ -149,11 +149,7 @@ impl<'ecx, 'tcx> DiagnosticCxBuilder<'ecx, 'tcx> {
         DiagnosticCxBuilder { machine, operation }
     }
 
-    pub fn read(
-        machine: &'ecx MiriMachine<'tcx>,
-        tag: ProvenanceExtra,
-        range: AllocRange,
-    ) -> Self {
+    pub fn read(machine: &'ecx MiriMachine<'tcx>, tag: ProvenanceExtra, range: AllocRange) -> Self {
         let operation = Operation::Access(AccessOp { kind: AccessKind::Read, tag, range });
         DiagnosticCxBuilder { machine, operation }
     }

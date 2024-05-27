@@ -5,9 +5,7 @@ use super::{conditional_dot_product, mpsadbw, packusdw, round_all, round_first, 
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub(super) trait EvalContextExt<'tcx>:
-    crate::MiriInterpCxExt<'tcx>
-{
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sse41_intrinsic(
         &mut self,
         link_name: Symbol,
