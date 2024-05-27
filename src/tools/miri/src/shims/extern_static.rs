@@ -6,7 +6,7 @@ impl<'tcx> MiriMachine<'tcx> {
     fn alloc_extern_static(
         this: &mut MiriInterpCx<'tcx>,
         name: &str,
-        val: ImmTy<'tcx, Provenance>,
+        val: ImmTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
         this.write_immediate(*val, &place)?;

@@ -113,10 +113,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn posix_memalign(
         &mut self,
-        memptr: &OpTy<'tcx, Provenance>,
-        align: &OpTy<'tcx, Provenance>,
-        size: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        memptr: &OpTy<'tcx>,
+        align: &OpTy<'tcx>,
+        size: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let memptr = this.deref_pointer(memptr)?;
         let align = this.read_target_usize(align)?;
@@ -175,8 +175,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn aligned_alloc(
         &mut self,
-        align: &OpTy<'tcx, Provenance>,
-        size: &OpTy<'tcx, Provenance>,
+        align: &OpTy<'tcx>,
+        size: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         let align = this.read_target_usize(align)?;

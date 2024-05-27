@@ -16,7 +16,7 @@ pub struct UnixEnvVars<'tcx> {
     map: FxHashMap<OsString, Pointer<Option<Provenance>>>,
 
     /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
-    environ: MPlaceTy<'tcx, Provenance>,
+    environ: MPlaceTy<'tcx>,
 }
 
 impl VisitProvenance for UnixEnvVars<'_> {
@@ -139,10 +139,7 @@ fn alloc_environ_block<'tcx>(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getenv(
-        &mut self,
-        name_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn getenv(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("getenv");
 
@@ -153,11 +150,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(var_ptr.unwrap_or_else(Pointer::null))
     }
 
-    fn setenv(
-        &mut self,
-        name_op: &OpTy<'tcx, Provenance>,
-        value_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn setenv(&mut self, name_op: &OpTy<'tcx>, value_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("setenv");
 
@@ -187,7 +180,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn unsetenv(&mut self, name_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn unsetenv(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("unsetenv");
 
@@ -215,8 +208,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn getcwd(
         &mut self,
-        buf_op: &OpTy<'tcx, Provenance>,
-        size_op: &OpTy<'tcx, Provenance>,
+        buf_op: &OpTy<'tcx>,
+        size_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("getcwd");
@@ -245,7 +238,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Pointer::null())
     }
 
-    fn chdir(&mut self, path_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn chdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("chdir");
 

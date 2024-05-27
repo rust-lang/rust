@@ -256,10 +256,10 @@ pub struct Thread<'tcx> {
     /// which then forwards it to 'Resume'. However this argument is implicit in MIR,
     /// so we have to store it out-of-band. When there are multiple active unwinds,
     /// the innermost one is always caught first, so we can store them as a stack.
-    pub(crate) panic_payloads: Vec<Scalar<Provenance>>,
+    pub(crate) panic_payloads: Vec<Scalar>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
-    pub(crate) last_error: Option<MPlaceTy<'tcx, Provenance>>,
+    pub(crate) last_error: Option<MPlaceTy<'tcx>>,
 }
 
 pub type StackEmptyCallback<'tcx> =
@@ -877,10 +877,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn start_regular_thread(
         &mut self,
-        thread: Option<MPlaceTy<'tcx, Provenance>>,
+        thread: Option<MPlaceTy<'tcx>>,
         start_routine: Pointer<Option<Provenance>>,
         start_abi: Abi,
-        func_arg: ImmTy<'tcx, Provenance>,
+        func_arg: ImmTy<'tcx>,
         ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();

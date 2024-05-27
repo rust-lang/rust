@@ -246,7 +246,7 @@ static_assert_size!(Pointer<Provenance>, 24);
 // #[cfg(target_pointer_width = "64")]
 //static_assert_size!(Pointer<Option<Provenance>>, 24);
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(Scalar<Provenance>, 32);
+static_assert_size!(Scalar, 32);
 
 impl fmt::Debug for Provenance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -442,7 +442,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) env_vars: EnvVars<'tcx>,
 
     /// Return place of the main function.
-    pub(crate) main_fn_ret_place: Option<MPlaceTy<'tcx, Provenance>>,
+    pub(crate) main_fn_ret_place: Option<MPlaceTy<'tcx>>,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
@@ -565,7 +565,7 @@ pub struct MiriMachine<'tcx> {
     /// Maps MIR consts to their evaluated result. We combine the const with a "salt" (`usize`)
     /// that is fixed per stack frame; this lets us have sometimes different results for the
     /// same const while ensuring consistent results within a single call.
-    const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx, Provenance>>>,
+    const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx>>>,
 
     /// For each allocation, an offset inside that allocation that was deemed aligned even for
     /// symbolic alignment checks. This cannot be stored in `AllocExtra` since it needs to be
@@ -946,7 +946,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         instance: ty::Instance<'tcx>,
         abi: Abi,
         args: &[FnArg<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -973,7 +973,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         fn_val: DynSym,
         abi: Abi,
         args: &[FnArg<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -985,8 +985,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn call_intrinsic(
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -1027,9 +1027,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn binary_ptr_op(
         ecx: &MiriInterpCx<'tcx>,
         bin_op: mir::BinOp,
-        left: &ImmTy<'tcx, Provenance>,
-        right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        left: &ImmTy<'tcx>,
+        right: &ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 
@@ -1314,8 +1314,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn retag_ptr_value(
         ecx: &mut InterpCx<'tcx, Self>,
         kind: mir::RetagKind,
-        val: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        val: &ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.retag_ptr_value(kind, val)
         } else {
@@ -1327,7 +1327,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn retag_place_contents(
         ecx: &mut InterpCx<'tcx, Self>,
         kind: mir::RetagKind,
-        place: &PlaceTy<'tcx, Provenance>,
+        place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.retag_place_contents(kind, place)?;
@@ -1337,7 +1337,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     fn protect_in_place_function_argument(
         ecx: &mut InterpCx<'tcx, Self>,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
@@ -1492,7 +1492,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn after_local_allocated(
         ecx: &mut InterpCx<'tcx, Self>,
         local: mir::Local,
-        mplace: &MPlaceTy<'tcx, Provenance>,
+        mplace: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
@@ -1509,14 +1509,14 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         span: Span,
         layout: Option<TyAndLayout<'tcx>>,
         eval: F,
-    ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>
+    ) -> InterpResult<'tcx, OpTy<'tcx>>
     where
         F: Fn(
             &InterpCx<'tcx, Self>,
             mir::Const<'tcx>,
             Span,
             Option<TyAndLayout<'tcx>>,
-        ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>,
+        ) -> InterpResult<'tcx, OpTy<'tcx>>,
     {
         let frame = ecx.active_thread_stack().last().unwrap();
         let mut cache = ecx.machine.const_cache.borrow_mut();

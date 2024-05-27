@@ -21,13 +21,13 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn mmap(
         &mut self,
-        addr: &OpTy<'tcx, Provenance>,
-        length: &OpTy<'tcx, Provenance>,
-        prot: &OpTy<'tcx, Provenance>,
-        flags: &OpTy<'tcx, Provenance>,
-        fd: &OpTy<'tcx, Provenance>,
+        addr: &OpTy<'tcx>,
+        length: &OpTy<'tcx>,
+        prot: &OpTy<'tcx>,
+        flags: &OpTy<'tcx>,
+        fd: &OpTy<'tcx>,
         offset: i128,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         // We do not support MAP_FIXED, so the addr argument is always ignored (except for the MacOS hack)
@@ -123,11 +123,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_pointer(ptr, this))
     }
 
-    fn munmap(
-        &mut self,
-        addr: &OpTy<'tcx, Provenance>,
-        length: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn munmap(&mut self, addr: &OpTy<'tcx>, length: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let addr = this.read_pointer(addr)?;
