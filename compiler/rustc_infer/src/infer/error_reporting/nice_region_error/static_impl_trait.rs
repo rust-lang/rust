@@ -49,7 +49,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 if let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code() {
                     // This may have a closure and it would cause ICE
                     // through `find_param_with_region` (#78262).
-                    let anon_reg_sup = tcx.is_suitable_region(*sup_r)?;
+                    let anon_reg_sup = tcx.is_suitable_region(self.generic_param_scope, *sup_r)?;
                     let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
                     if fn_returns.is_empty() {
                         return None;
@@ -92,7 +92,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             "try_report_static_impl_trait(var={:?}, sub={:?} {:?} sup={:?} {:?})",
             var_origin, sub_origin, sub_r, sup_origin, sup_r
         );
-        let anon_reg_sup = tcx.is_suitable_region(*sup_r)?;
+        let anon_reg_sup = tcx.is_suitable_region(self.generic_param_scope, *sup_r)?;
         debug!("try_report_static_impl_trait: anon_reg_sup={:?}", anon_reg_sup);
         let sp = var_origin.span();
         let return_sp = sub_origin.span();

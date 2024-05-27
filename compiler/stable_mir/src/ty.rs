@@ -190,7 +190,6 @@ pub(crate) type DebruijnIndex = u32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EarlyParamRegion {
-    pub def_id: RegionDef,
     pub index: u32,
     pub name: Symbol,
 }

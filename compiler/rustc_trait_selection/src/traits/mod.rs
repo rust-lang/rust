@@ -185,6 +185,7 @@ fn do_normalize_predicates<'tcx>(
     predicates: Vec<ty::Clause<'tcx>>,
 ) -> Result<Vec<ty::Clause<'tcx>>, ErrorGuaranteed> {
     let span = cause.span;
+
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would

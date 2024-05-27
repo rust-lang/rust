@@ -13,6 +13,7 @@ use crate::infer::TyCtxt;
 
 use rustc_errors::Subdiagnostic;
 use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::Ty;
 use rustc_middle::ty::Region;
 
@@ -66,17 +67,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let anon_reg_sup = self.tcx().is_suitable_region(sup)?;
+        let anon_reg_sup = self.tcx().is_suitable_region(self.generic_param_scope, sup)?;
 
-        let anon_reg_sub = self.tcx().is_suitable_region(sub)?;
+        let anon_reg_sub = self.tcx().is_suitable_region(self.generic_param_scope, sub)?;
         let scope_def_id_sup = anon_reg_sup.def_id;
         let bregion_sup = anon_reg_sup.bound_region;
         let scope_def_id_sub = anon_reg_sub.def_id;
         let bregion_sub = anon_reg_sub.bound_region;
 
-        let ty_sup = find_anon_type(self.tcx(), sup, &bregion_sup)?;
+        let ty_sup = find_anon_type(self.tcx(), self.generic_param_scope, sup, &bregion_sup)?;
 
-        let ty_sub = find_anon_type(self.tcx(), sub, &bregion_sub)?;
+        let ty_sub = find_anon_type(self.tcx(), self.generic_param_scope, sub, &bregion_sub)?;
 
         debug!(
             "try_report_anon_anon_conflict: found_param1={:?} sup={:?} br1={:?}",
@@ -127,8 +128,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             },
         };
 
-        let suggestion =
-            AddLifetimeParamsSuggestion { tcx: self.tcx(), sub, ty_sup, ty_sub, add_note: true };
+        let suggestion = AddLifetimeParamsSuggestion {
+            tcx: self.tcx(),
+            sub,
+            ty_sup,
+            ty_sub,
+            add_note: true,
+            generic_param_scope: self.generic_param_scope,
+        };
         let err = LifetimeMismatch { span, labels, suggestion };
         let reported = self.tcx().dcx().emit_err(err);
         Some(reported)
@@ -139,11 +146,19 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 /// removed in favour of public_errors::AddLifetimeParamsSuggestion
 pub fn suggest_adding_lifetime_params<'tcx>(
     tcx: TyCtxt<'tcx>,
+    err: &mut Diag<'_>,
+    generic_param_scope: LocalDefId,
     sub: Region<'tcx>,
     ty_sup: &'tcx Ty<'_>,
     ty_sub: &'tcx Ty<'_>,
-    err: &mut Diag<'_>,
 ) {
-    let suggestion = AddLifetimeParamsSuggestion { tcx, sub, ty_sup, ty_sub, add_note: false };
+    let suggestion = AddLifetimeParamsSuggestion {
+        tcx,
+        sub,
+        ty_sup,
+        ty_sub,
+        add_note: false,
+        generic_param_scope,
+    };
     suggestion.add_to_diag(err);
 }

@@ -876,7 +876,8 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
             ty::ReLateParam(_) => {}
             // Remap early-bound regions as long as they don't come from the `impl` itself,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyParam(ebr) if self.tcx.parent(ebr.def_id) != self.impl_def_id => {}
+            ty::ReEarlyParam(ebr)
+                if ebr.index >= self.tcx.generics_of(self.impl_def_id).count() as u32 => {}
             _ => return Ok(region),
         }
 
@@ -889,12 +890,8 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                 );
             }
         } else {
-            let guar = match region.kind() {
-                ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
-                | ty::ReLateParam(ty::LateParamRegion {
-                    bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
-                    ..
-                }) => {
+            let guar = match region.opt_param_def_id(self.tcx, self.tcx.parent(self.def_id)) {
+                Some(def_id) => {
                     let return_span = if let ty::Alias(ty::Opaque, opaque_ty) = self.ty.kind() {
                         self.tcx.def_span(opaque_ty.def_id)
                     } else {
@@ -914,7 +911,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                         .with_note(format!("hidden type inferred to be `{}`", self.ty))
                         .emit()
                 }
-                _ => {
+                None => {
                     // This code path is not reached in any tests, but may be
                     // reachable. If this is triggered, it should be converted
                     // to `delayed_bug` and the triggering case turned into a
@@ -928,7 +925,6 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         Ok(ty::Region::new_early_param(
             self.tcx,
             ty::EarlyParamRegion {
-                def_id: e.def_id,
                 name: e.name,
                 index: (e.index as usize - self.num_trait_args + self.num_impl_args) as u32,
             },
