@@ -151,6 +151,13 @@ impl Rustdoc {
         self
     }
 
+    /// Specify the output format.
+    pub fn output_format(&mut self, format: &str) -> &mut Self {
+        self.cmd.arg("--output-format");
+        self.cmd.arg(format);
+        self
+    }
+
     #[track_caller]
     pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
         let caller_location = std::panic::Location::caller();
