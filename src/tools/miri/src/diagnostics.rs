@@ -42,7 +42,7 @@ pub enum TerminationInfo {
     },
     DataRace {
         involves_non_atomic: bool,
-        ptr: Pointer<AllocId>,
+        ptr: interpret::Pointer<AllocId>,
         op1: RacingOp,
         op2: RacingOp,
         extra: Option<&'static str>,
@@ -128,7 +128,7 @@ pub enum NonHaltingDiagnostic {
         details: bool,
     },
     WeakMemoryOutdatedLoad {
-        ptr: Pointer<Option<Provenance>>,
+        ptr: Pointer,
     },
 }
 

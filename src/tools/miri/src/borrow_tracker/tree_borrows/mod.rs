@@ -56,7 +56,7 @@ impl<'tcx> Tree {
             "{} with tag {:?}: {:?}, size {}",
             access_kind,
             prov,
-            Pointer::new(alloc_id, range.start),
+            interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes(),
         );
         // TODO: for now we bail out on wildcard pointers. Eventually we should
@@ -258,7 +258,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             new_tag,
             orig_tag,
             place.layout.ty,
-            Pointer::new(alloc_id, base_offset),
+            interpret::Pointer::new(alloc_id, base_offset),
             ptr_size.bytes()
         );
 
@@ -574,7 +574,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// of `ptr` (with 0 representing `ptr` itself)
     fn tb_give_pointer_debug_name(
         &mut self,
-        ptr: Pointer<Option<Provenance>>,
+        ptr: Pointer,
         nth_parent: u8,
         name: &str,
     ) -> InterpResult<'tcx> {

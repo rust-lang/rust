@@ -125,7 +125,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         timep: &OpTy<'tcx>,
         result_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    ) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("localtime_r");

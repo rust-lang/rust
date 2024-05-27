@@ -180,7 +180,7 @@ struct OpenDir {
     read_dir: ReadDir,
     /// The most recent entry returned by readdir().
     /// Will be freed by the next call.
-    entry: Option<Pointer<Option<Provenance>>>,
+    entry: Option<Pointer>,
 }
 
 impl OpenDir {
@@ -900,7 +900,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dirent64_layout.align.abi,
                     MiriMemoryKind::Runtime.into(),
                 )?;
-                let entry: Pointer<Option<Provenance>> = entry.into();
+                let entry: Pointer = entry.into();
 
                 // If the host is a Unix system, fill in the inode number with its real value.
                 // If not, use 0 as a fallback value.

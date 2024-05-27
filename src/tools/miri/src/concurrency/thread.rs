@@ -432,9 +432,8 @@ pub struct ThreadManager<'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'tcx>>,
-    /// A mapping from a thread-local static to an allocation id of a thread
-    /// specific allocation.
-    thread_local_alloc_ids: FxHashMap<(DefId, ThreadId), Pointer<Provenance>>,
+    /// A mapping from a thread-local static to the thread specific allocation.
+    thread_local_allocs: FxHashMap<(DefId, ThreadId), StrictPointer>,
     /// A flag that indicates that we should change the active thread.
     yield_active_thread: bool,
 }
@@ -443,7 +442,7 @@ impl VisitProvenance for ThreadManager<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let ThreadManager {
             threads,
-            thread_local_alloc_ids,
+            thread_local_allocs,
             active_thread: _,
             yield_active_thread: _,
         } = self;
@@ -451,7 +450,7 @@ impl VisitProvenance for ThreadManager<'_> {
         for thread in threads {
             thread.visit_provenance(visit);
         }
-        for ptr in thread_local_alloc_ids.values() {
+        for ptr in thread_local_allocs.values() {
             ptr.visit_provenance(visit);
         }
     }
@@ -465,7 +464,7 @@ impl<'tcx> Default for ThreadManager<'tcx> {
         Self {
             active_thread: ThreadId::MAIN_THREAD,
             threads,
-            thread_local_alloc_ids: Default::default(),
+            thread_local_allocs: Default::default(),
             yield_active_thread: false,
         }
     }
@@ -487,16 +486,16 @@ impl<'tcx> ThreadManager<'tcx> {
 
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
-    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<Pointer<Provenance>> {
-        self.thread_local_alloc_ids.get(&(def_id, self.active_thread)).cloned()
+    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<StrictPointer> {
+        self.thread_local_allocs.get(&(def_id, self.active_thread)).cloned()
     }
 
     /// Set the pointer for the allocation of the given thread local
     /// static for the active thread.
     ///
     /// Panics if a thread local is initialized twice for the same thread.
-    fn set_thread_local_alloc(&mut self, def_id: DefId, ptr: Pointer<Provenance>) {
-        self.thread_local_alloc_ids.try_insert((def_id, self.active_thread), ptr).unwrap();
+    fn set_thread_local_alloc(&mut self, def_id: DefId, ptr: StrictPointer) {
+        self.thread_local_allocs.try_insert((def_id, self.active_thread), ptr).unwrap();
     }
 
     /// Borrow the stack of the active thread.
@@ -848,7 +847,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_or_create_thread_local_alloc(
         &mut self,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, StrictPointer> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
         if let Some(old_alloc) = this.machine.threads.get_thread_local_alloc_id(def_id) {
@@ -878,7 +877,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn start_regular_thread(
         &mut self,
         thread: Option<MPlaceTy<'tcx>>,
-        start_routine: Pointer<Option<Provenance>>,
+        start_routine: Pointer,
         start_abi: Abi,
         func_arg: ImmTy<'tcx>,
         ret_layout: TyAndLayout<'tcx>,
@@ -947,18 +946,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let gone_thread = this.active_thread();
         {
             let mut free_tls_statics = Vec::new();
-            this.machine.threads.thread_local_alloc_ids.retain(
-                |&(_def_id, thread), &mut alloc_id| {
-                    if thread != gone_thread {
-                        // A different thread, keep this static around.
-                        return true;
-                    }
-                    // Delete this static from the map and from memory.
-                    // We cannot free directly here as we cannot use `?` in this context.
-                    free_tls_statics.push(alloc_id);
-                    false
-                },
-            );
+            this.machine.threads.thread_local_allocs.retain(|&(_def_id, thread), &mut alloc_id| {
+                if thread != gone_thread {
+                    // A different thread, keep this static around.
+                    return true;
+                }
+                // Delete this static from the map and from memory.
+                // We cannot free directly here as we cannot use `?` in this context.
+                free_tls_statics.push(alloc_id);
+                false
+            });
             // Now free the TLS statics.
             for ptr in free_tls_statics {
                 match tls_alloc_action {

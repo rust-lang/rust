@@ -241,10 +241,10 @@ pub enum ProvenanceExtra {
 }
 
 #[cfg(target_pointer_width = "64")]
-static_assert_size!(Pointer<Provenance>, 24);
+static_assert_size!(StrictPointer, 24);
 // FIXME: this would with in 24bytes but layout optimizations are not smart enough
 // #[cfg(target_pointer_width = "64")]
-//static_assert_size!(Pointer<Option<Provenance>>, 24);
+//static_assert_size!(Pointer, 24);
 #[cfg(target_pointer_width = "64")]
 static_assert_size!(Scalar, 32);
 
@@ -270,7 +270,7 @@ impl fmt::Debug for Provenance {
 }
 
 impl interpret::Provenance for Provenance {
-    /// We use absolute addresses in the `offset` of a `Pointer<Provenance>`.
+    /// We use absolute addresses in the `offset` of a `StrictPointer`.
     const OFFSET_IS_ADDR: bool = true;
 
     fn get_alloc_id(self) -> Option<AllocId> {
@@ -280,7 +280,7 @@ impl interpret::Provenance for Provenance {
         }
     }
 
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(ptr: &interpret::Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (prov, addr) = ptr.into_parts(); // address is absolute
         write!(f, "{:#x}", addr.bytes())?;
         if f.alternate() {
@@ -447,9 +447,9 @@ pub struct MiriMachine<'tcx> {
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
     /// We also need the full command line as one string because of Windows.
-    pub(crate) argc: Option<Pointer<Option<Provenance>>>,
-    pub(crate) argv: Option<Pointer<Option<Provenance>>>,
-    pub(crate) cmd_line: Option<Pointer<Option<Provenance>>>,
+    pub(crate) argc: Option<Pointer>,
+    pub(crate) argv: Option<Pointer>,
+    pub(crate) cmd_line: Option<Pointer>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
@@ -504,7 +504,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) local_crates: Vec<CrateNum>,
 
     /// Mapping extern static names to their pointer.
-    extern_statics: FxHashMap<Symbol, Pointer<Provenance>>,
+    extern_statics: FxHashMap<Symbol, StrictPointer>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
@@ -716,11 +716,7 @@ impl<'tcx> MiriMachine<'tcx> {
         Ok(())
     }
 
-    pub(crate) fn add_extern_static(
-        this: &mut MiriInterpCx<'tcx>,
-        name: &str,
-        ptr: Pointer<Option<Provenance>>,
-    ) {
+    pub(crate) fn add_extern_static(this: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
         // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
         this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
@@ -1047,14 +1043,14 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'tcx>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, StrictPointer> {
         ecx.get_or_create_thread_local_alloc(def_id)
     }
 
     fn extern_static_pointer(
         ecx: &MiriInterpCx<'tcx>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, StrictPointer> {
         let link_name = ecx.item_link_name(def_id);
         if let Some(&ptr) = ecx.machine.extern_statics.get(&link_name) {
             // Various parts of the engine rely on `get_alloc_info` for size and alignment
@@ -1153,9 +1149,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     fn adjust_alloc_root_pointer(
         ecx: &MiriInterpCx<'tcx>,
-        ptr: Pointer<CtfeProvenance>,
+        ptr: interpret::Pointer<CtfeProvenance>,
         kind: Option<MemoryKind>,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, interpret::Pointer<Provenance>> {
         let kind = kind.expect("we set our GLOBAL_KIND so this cannot be None");
         let alloc_id = ptr.provenance.alloc_id();
         if cfg!(debug_assertions) {
@@ -1182,20 +1178,14 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     /// Called on `usize as ptr` casts.
     #[inline(always)]
-    fn ptr_from_addr_cast(
-        ecx: &MiriInterpCx<'tcx>,
-        addr: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>> {
+    fn ptr_from_addr_cast(ecx: &MiriInterpCx<'tcx>, addr: u64) -> InterpResult<'tcx, Pointer> {
         ecx.ptr_from_addr_cast(addr)
     }
 
     /// Called on `ptr as usize` casts.
     /// (Actually computing the resulting `usize` doesn't need machine help,
     /// that's just `Scalar::try_to_int`.)
-    fn expose_ptr(
-        ecx: &mut InterpCx<'tcx, Self>,
-        ptr: Pointer<Self::Provenance>,
-    ) -> InterpResult<'tcx> {
+    fn expose_ptr(ecx: &mut InterpCx<'tcx, Self>, ptr: StrictPointer) -> InterpResult<'tcx> {
         match ptr.provenance {
             Provenance::Concrete { alloc_id, tag } => ecx.expose_ptr(alloc_id, tag),
             Provenance::Wildcard => {
@@ -1216,7 +1206,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     /// stored in machine state).
     fn ptr_get_alloc(
         ecx: &MiriInterpCx<'tcx>,
-        ptr: Pointer<Self::Provenance>,
+        ptr: StrictPointer,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         let rel = ecx.ptr_get_alloc(ptr);
 

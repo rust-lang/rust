@@ -100,6 +100,8 @@ pub use rustc_const_eval::interpret::*;
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 
 // Type aliases that set the provenance parameter.
+pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
+pub type StrictPointer = interpret::Pointer<machine::Provenance>;
 pub type Scalar = interpret::Scalar<machine::Provenance>;
 pub type ImmTy<'tcx> = interpret::ImmTy<'tcx, machine::Provenance>;
 pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;

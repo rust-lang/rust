@@ -413,12 +413,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Test if this pointer equals 0.
-    fn ptr_is_null(&self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, bool> {
+    fn ptr_is_null(&self, ptr: Pointer) -> InterpResult<'tcx, bool> {
         Ok(ptr.addr().bytes() == 0)
     }
 
     /// Generate some random bytes, and write them to `dest`.
-    fn gen_random(&mut self, ptr: Pointer<Option<Provenance>>, len: u64) -> InterpResult<'tcx> {
+    fn gen_random(&mut self, ptr: Pointer, len: u64) -> InterpResult<'tcx> {
         // Some programs pass in a null pointer and a length of 0
         // to their platform's random-generation function (e.g. getrandom())
         // on Linux. For compatibility with these programs, we don't perform
@@ -520,8 +520,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut cur_addr = start_addr;
         // Called when we detected an `UnsafeCell` at the given offset and size.
         // Calls `action` and advances `cur_ptr`.
-        let mut unsafe_cell_action = |unsafe_cell_ptr: &Pointer<Option<Provenance>>,
-                                      unsafe_cell_size: Size| {
+        let mut unsafe_cell_action = |unsafe_cell_ptr: &Pointer, unsafe_cell_size: Size| {
             // We assume that we are given the fields in increasing offset order,
             // and nothing else changes.
             let unsafe_cell_addr = unsafe_cell_ptr.addr();
@@ -924,7 +923,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Read a sequence of bytes until the first null terminator.
-    fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, &'a [u8]>
+    fn read_c_str<'a>(&'a self, ptr: Pointer) -> InterpResult<'tcx, &'a [u8]>
     where
         'tcx: 'a,
     {
@@ -957,7 +956,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn write_c_str(
         &mut self,
         c_str: &[u8],
-        ptr: Pointer<Option<Provenance>>,
+        ptr: Pointer,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
@@ -976,7 +975,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// until the first null terminator.
     fn read_c_str_with_char_size<T>(
         &self,
-        mut ptr: Pointer<Option<Provenance>>,
+        mut ptr: Pointer,
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Vec<T>>
@@ -1008,7 +1007,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Read a sequence of u16 until the first null terminator.
-    fn read_wide_str(&self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, Vec<u16>> {
+    fn read_wide_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u16>> {
         self.read_c_str_with_char_size(ptr, Size::from_bytes(2), Align::from_bytes(2).unwrap())
     }
 
@@ -1021,7 +1020,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn write_wide_str(
         &mut self,
         wide_str: &[u16],
-        ptr: Pointer<Option<Provenance>>,
+        ptr: Pointer,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required
@@ -1046,7 +1045,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Read a sequence of wchar_t until the first null terminator.
     /// Always returns a `Vec<u32>` no matter the size of `wchar_t`.
-    fn read_wchar_t_str(&self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, Vec<u32>> {
+    fn read_wchar_t_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u32>> {
         let this = self.eval_context_ref();
         let wchar_t = this.libc_ty_layout("wchar_t");
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)

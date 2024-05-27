@@ -23,7 +23,7 @@ use helpers::check_arg_count;
 #[derive(Debug)]
 pub struct CatchUnwindData<'tcx> {
     /// The `catch_fn` callback to call in case of a panic.
-    catch_fn: Pointer<Option<Provenance>>,
+    catch_fn: Pointer,
     /// The `data` argument for that callback.
     data: Scalar,
     /// The return place from the original call to `try`.

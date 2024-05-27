@@ -531,7 +531,7 @@ impl Stacks {
         trace!(
             "read access with tag {:?}: {:?}, size {}",
             tag,
-            Pointer::new(alloc_id, range.start),
+            interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::read(machine, tag, range);
@@ -552,7 +552,7 @@ impl Stacks {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
             tag,
-            Pointer::new(alloc_id, range.start),
+            interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::write(machine, tag, range);
@@ -692,7 +692,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             new_tag,
             orig_tag,
             place.layout.ty,
-            Pointer::new(alloc_id, base_offset),
+            interpret::Pointer::new(alloc_id, base_offset),
             size.bytes()
         );
 

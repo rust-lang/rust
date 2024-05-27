@@ -948,7 +948,7 @@ impl VClockAlloc {
         mem_clocks: &MemoryCellClocks,
         access: AccessType,
         access_size: Size,
-        ptr_dbg: Pointer<AllocId>,
+        ptr_dbg: interpret::Pointer<AllocId>,
         ty: Option<Ty<'_>>,
     ) -> InterpResult<'tcx> {
         let (active_index, active_clocks) = global.active_thread_state(thread_mgr);
@@ -1063,7 +1063,7 @@ impl VClockAlloc {
                         mem_clocks,
                         AccessType::NaRead(read_type),
                         access_range.size,
-                        Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
+                        interpret::Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
                         ty,
                     );
                 }
@@ -1108,7 +1108,7 @@ impl VClockAlloc {
                         mem_clocks,
                         AccessType::NaWrite(write_type),
                         access_range.size,
-                        Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
+                        interpret::Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
                         ty,
                     );
                 }
@@ -1337,7 +1337,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                                     mem_clocks,
                                     access,
                                     place.layout.size,
-                                    Pointer::new(
+                                    interpret::Pointer::new(
                                         alloc_id,
                                         Size::from_bytes(mem_clocks_range.start),
                                     ),
