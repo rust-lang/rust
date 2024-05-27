@@ -108,6 +108,9 @@ auto:
   - image: arm-android
     <<: *job-linux-4c
 
+  - image: aarch64-android
+    <<: *job-linux-8c
+
   - image: armhf-gnu
     <<: *job-linux-4c
 

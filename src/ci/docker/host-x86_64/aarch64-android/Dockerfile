@@ -21,14 +21,14 @@ RUN dpkg --add-architecture i386 && \
 
 COPY scripts/android-sdk.sh /scripts/
 COPY scripts/android-sdk-manager.py /scripts/
-COPY host-x86_64/arm-android/android-sdk.lock /android/sdk/android-sdk.lock
+COPY host-x86_64/aarch64-android/android-sdk.lock /android/sdk/android-sdk.lock
 RUN /scripts/android-sdk.sh
 
 ENV PATH=$PATH:/android/sdk/emulator
 ENV PATH=$PATH:/android/sdk/tools
 ENV PATH=$PATH:/android/sdk/platform-tools
 
-ENV TARGETS=arm-linux-androideabi
+ENV TARGETS=aarch64-linux-android
 
 ENV RUST_CONFIGURE_ARGS --android-ndk=/android/ndk/
 
@@ -38,4 +38,4 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 COPY scripts/android-start-emulator.sh /scripts/
-ENTRYPOINT ["/scripts/android-start-emulator.sh", "armeabi-v7a", "classic"]
+ENTRYPOINT ["/scripts/android-start-emulator.sh", "arm64-v8a", "auto"]

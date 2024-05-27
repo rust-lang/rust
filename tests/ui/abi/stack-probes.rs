@@ -6,6 +6,7 @@
 //@[x64] only-x86_64
 //@ ignore-emscripten no processes
 //@ ignore-sgx no processes
+//@ ignore-android handler not yet registered #124823
 //@ ignore-fuchsia no exception handler registered for segfault
 //@ ignore-nto Crash analysis impossible at SIGSEGV in QNX Neutrino
 
