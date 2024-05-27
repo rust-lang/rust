@@ -441,10 +441,19 @@ impl<'a> LintExtractor<'a> {
         fs::write(&tempfile, source)
             .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
         let mut cmd = Command::new(self.rustc_path);
-        if options.contains(&"edition2015") {
-            cmd.arg("--edition=2015");
-        } else {
+        if options.contains(&"edition2024") {
+            cmd.arg("--edition=2024");
+        } else if options.contains(&"edition2021") {
+            cmd.arg("--edition=2021");
+        } else if options.contains(&"edition2018") {
             cmd.arg("--edition=2018");
+        } else if options.contains(&"edition2015") {
+            cmd.arg("--edition=2015");
+        } else if options.contains(&"edition") {
+            panic!("lint-docs: unknown edition");
+        } else {
+            // defaults to latest edition
+            cmd.arg("--edition=2021");
         }
         cmd.arg("--error-format=json");
         cmd.arg("--target").arg(self.rustc_target);
