@@ -1,4 +1,4 @@
-use rustc_errors::{codes::*, Diag, DiagMessage, LintDiagnostic};
+use rustc_errors::{codes::*, Diag, LintDiagnostic};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
@@ -50,18 +50,15 @@ pub(crate) enum AssertLintKind {
 
 impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        let message = self.assert_kind.diagnostic_message();
+        diag.primary_message(match self.lint_kind {
+            AssertLintKind::ArithmeticOverflow => fluent::mir_transform_arithmetic_overflow,
+            AssertLintKind::UnconditionalPanic => fluent::mir_transform_operation_will_panic,
+        });
+        let label = self.assert_kind.diagnostic_message();
         self.assert_kind.add_args(&mut |name, value| {
             diag.arg(name, value);
         });
-        diag.span_label(self.span, message);
-    }
-
-    fn msg(&self) -> DiagMessage {
-        match self.lint_kind {
-            AssertLintKind::ArithmeticOverflow => fluent::mir_transform_arithmetic_overflow,
-            AssertLintKind::UnconditionalPanic => fluent::mir_transform_operation_will_panic,
-        }
+        diag.span_label(self.span, label);
     }
 }
 
@@ -104,6 +101,7 @@ pub(crate) struct MustNotSupend<'tcx, 'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
+        diag.primary_message(fluent::mir_transform_must_not_suspend);
         diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
             diag.subdiagnostic(diag.dcx, reason);
@@ -112,10 +110,6 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
         diag.arg("pre", self.pre);
         diag.arg("def_path", self.tcx.def_path_str(self.def_id));
         diag.arg("post", self.post);
-    }
-
-    fn msg(&self) -> rustc_errors::DiagMessage {
-        fluent::mir_transform_must_not_suspend
     }
 }
 

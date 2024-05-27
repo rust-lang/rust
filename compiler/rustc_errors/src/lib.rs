@@ -39,7 +39,7 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagMessage, FluentBundle, LanguageIdentifier,
+    fallback_fluent_bundle, fluent_bundle, DiagMessage, FluentBundle, LanguageIdentifier,
     LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
@@ -572,8 +572,8 @@ impl Drop for DiagCtxtInner {
             if let Some(backtrace) = &self.must_produce_diag {
                 panic!(
                     "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
-                       use `DelayDm` for lints or `with_no_trimmed_paths` for debugging. \
-                       called at: {backtrace}"
+                     `with_no_trimmed_paths` for debugging. \
+                     called at: {backtrace}"
                 );
             }
         }

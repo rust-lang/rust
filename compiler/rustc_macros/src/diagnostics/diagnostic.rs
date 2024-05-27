@@ -105,25 +105,12 @@ impl<'a> LintDiagnosticDerive<'a> {
     pub(crate) fn into_tokens(self) -> TokenStream {
         let LintDiagnosticDerive { mut structure } = self;
         let kind = DiagnosticDeriveKind::LintDiagnostic;
+        let slugs = RefCell::new(Vec::new());
         let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let formatting_init = &builder.formatting_init;
-            quote! {
-                #preamble
-                #formatting_init
-                #body
-                diag
-            }
-        });
-
-        let slugs = RefCell::new(Vec::new());
-        let msg = kind.each_variant(&mut structure, |mut builder, variant| {
-            // Collect the slug by generating the preamble.
-            let _ = builder.preamble(variant);
-
-            match builder.slug.value_ref() {
+            let primary_message = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
                         .help(
@@ -146,9 +133,18 @@ impl<'a> LintDiagnosticDerive<'a> {
                 Some(slug) => {
                     slugs.borrow_mut().push(slug.clone());
                     quote! {
-                        crate::fluent_generated::#slug.into()
+                        diag.primary_message(crate::fluent_generated::#slug);
                     }
                 }
+            };
+
+            let formatting_init = &builder.formatting_init;
+            quote! {
+                #primary_message
+                #preamble
+                #formatting_init
+                #body
+                diag
             }
         });
 
@@ -160,10 +156,6 @@ impl<'a> LintDiagnosticDerive<'a> {
                     diag: &'__b mut rustc_errors::Diag<'__a, ()>
                 ) {
                     #implementation;
-                }
-
-                fn msg(&self) -> rustc_errors::DiagMessage {
-                    #msg
                 }
             }
         });
