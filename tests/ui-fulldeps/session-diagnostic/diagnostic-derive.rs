@@ -603,7 +603,6 @@ struct LintAttributeOnSessionDiag {}
 #[derive(LintDiagnostic)]
 #[lint(no_crate_example, code = E0123)]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
-//~| ERROR `#[lint(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnLintDiag {}

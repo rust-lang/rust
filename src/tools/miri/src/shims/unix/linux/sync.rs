@@ -5,7 +5,7 @@ use crate::*;
 /// Implementation of the SYS_futex syscall.
 /// `args` is the arguments *after* the syscall number.
 pub fn futex<'tcx>(
-    this: &mut MiriInterpCx<'_, 'tcx>,
+    this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx, Provenance>],
     dest: &MPlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {

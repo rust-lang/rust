@@ -701,6 +701,7 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(unchecked_neg)]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -712,7 +713,7 @@ impl<T: ?Sized> NonNull<T> {
             // SAFETY: the caller must uphold the safety contract for `offset`.
             // Because the pointee is *not* a ZST, that means that `count` is
             // at most `isize::MAX`, and thus the negation cannot overflow.
-            unsafe { self.offset(intrinsics::unchecked_sub(0, count as isize)) }
+            unsafe { self.offset((count as isize).unchecked_neg()) }
         }
     }
 

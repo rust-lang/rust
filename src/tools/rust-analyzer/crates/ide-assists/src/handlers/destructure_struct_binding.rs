@@ -1,4 +1,4 @@
-use hir::HasVisibility;
+use hir::{HasVisibility, ImportPathConfig};
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -87,15 +87,15 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
     let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     let module = ctx.sema.scope(ident_pat.syntax())?.module();
     let struct_def = hir::ModuleDef::from(struct_type);
     let kind = struct_type.kind(ctx.db());
-    let struct_def_path = module.find_use_path(
-        ctx.db(),
-        struct_def,
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
-    )?;
+    let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;
 
     let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key("non_exhaustive").exists();
     let is_foreign_crate =

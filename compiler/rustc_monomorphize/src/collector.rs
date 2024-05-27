@@ -1434,6 +1434,15 @@ impl<'v> RootCollector<'_, 'v> {
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 
+                    // This type is impossible to instantiate, so we should not try to
+                    // generate a `drop_in_place` instance for it.
+                    if self.tcx.instantiate_and_check_impossible_predicates((
+                        id.owner_id.to_def_id(),
+                        ty::List::empty(),
+                    )) {
+                        return;
+                    }
+
                     let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }

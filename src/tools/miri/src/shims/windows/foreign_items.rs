@@ -76,8 +76,8 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     Ok(path::absolute(bytes_to_os_str(&result)?))
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,

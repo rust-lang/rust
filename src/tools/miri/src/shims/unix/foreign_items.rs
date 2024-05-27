@@ -37,8 +37,8 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
@@ -326,7 +326,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let name = this.read_scalar(name)?.to_i32()?;
                 // FIXME: Which of these are POSIX, and which are GNU/Linux?
                 // At least the names seem to all also exist on macOS.
-                let sysconfs: &[(&str, fn(&MiriInterpCx<'_, '_>) -> Scalar<Provenance>)] = &[
+                let sysconfs: &[(&str, fn(&MiriInterpCx<'_>) -> Scalar<Provenance>)] = &[
                     ("_SC_PAGESIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
                     ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
                     ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),

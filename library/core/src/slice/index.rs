@@ -1,7 +1,6 @@
 //! Indexing implementations for `[T]`.
 
 use crate::intrinsics::const_eval_select;
-use crate::intrinsics::unchecked_sub;
 use crate::ops;
 use crate::ptr;
 use crate::ub_checks::assert_unsafe_precondition;
@@ -374,7 +373,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe and the length calculation cannot overflow.
         unsafe {
-            let new_len = unchecked_sub(self.end, self.start);
+            let new_len = self.end.unchecked_sub(self.start);
             ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len)
         }
     }
@@ -392,7 +391,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         );
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            let new_len = unchecked_sub(self.end, self.start);
+            let new_len = self.end.unchecked_sub(self.start);
             ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len)
         }
     }

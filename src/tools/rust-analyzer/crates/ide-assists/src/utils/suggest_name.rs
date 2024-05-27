@@ -253,11 +253,8 @@ fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<St
     };
 
     let (idx, _) = arg_list.args().find_position(|it| it == expr).unwrap();
-    let (pat, _) = func.params(sema.db).into_iter().nth(idx)?;
-    let pat = match pat? {
-        either::Either::Right(pat) => pat,
-        _ => return None,
-    };
+    let param = func.params().into_iter().nth(idx)?;
+    let pat = param.source(sema.db)?.value.right()?.pat()?;
     let name = var_name_from_pat(&pat)?;
     normalize(&name.to_string())
 }

@@ -646,8 +646,9 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,
-                msg,
-                |_| {},
+                |lint| {
+                    lint.primary_message(msg);
+                },
             );
         }
 

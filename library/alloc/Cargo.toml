@@ -20,6 +20,10 @@ rand_xorshift = "0.3.0"
 name = "alloctests"
 path = "tests/lib.rs"
 
+[[test]]
+name = "vec_deque_alloc_error"
+path = "tests/vec_deque_alloc_error.rs"
+
 [[bench]]
 name = "allocbenches"
 path = "benches/lib.rs"
@@ -45,7 +49,6 @@ optimize_for_size = ["core/optimize_for_size"]
 level = "warn"
 # x.py uses beta cargo, so `check-cfg` entries do not yet take effect
 # for rust-lang/rust. But for users of `-Zbuild-std` it does.
-# The unused warning is waiting for rust-lang/cargo#13925 to reach beta.
 check-cfg = [
     'cfg(bootstrap)',
     'cfg(no_global_oom_handling)',

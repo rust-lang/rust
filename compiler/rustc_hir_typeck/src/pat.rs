@@ -1950,15 +1950,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, "some fields are not explicitly listed", |lint| {
-        lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
-        lint.help(
-            "ensure that all fields are mentioned explicitly by adding the suggested fields",
-        );
-        lint.note(format!(
-            "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
-        ));
-    });
+        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, |lint| {
+            lint.primary_message("some fields are not explicitly listed");
+            lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
+            lint.help(
+                "ensure that all fields are mentioned explicitly by adding the suggested fields",
+            );
+            lint.note(format!(
+                "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
+            ));
+        });
     }
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.

@@ -860,6 +860,11 @@ pub(crate) fn handle_runnables(
                 if cmd == "run" && spec.target_kind != TargetKind::Bin {
                     continue;
                 }
+                let cwd = if cmd != "test" || spec.target_kind == TargetKind::Bin {
+                    spec.workspace_root.clone()
+                } else {
+                    spec.cargo_toml.parent().to_path_buf()
+                };
                 let mut cargo_args =
                     vec![cmd.to_owned(), "--package".to_owned(), spec.package.clone()];
                 let all_targets = cmd != "run" && !is_crate_no_std;
@@ -876,6 +881,7 @@ pub(crate) fn handle_runnables(
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: Some(spec.workspace_root.clone().into()),
+                        cwd: Some(cwd.into()),
                         override_cargo: config.override_cargo.clone(),
                         cargo_args,
                         cargo_extra_args: config.cargo_extra_args.clone(),
@@ -893,6 +899,7 @@ pub(crate) fn handle_runnables(
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: None,
+                        cwd: None,
                         override_cargo: config.override_cargo,
                         cargo_args: vec!["check".to_owned(), "--workspace".to_owned()],
                         cargo_extra_args: config.cargo_extra_args,
@@ -1783,18 +1790,18 @@ pub(crate) fn handle_open_docs(
     let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match &ws.kind {
         ProjectWorkspaceKind::Cargo { cargo, .. }
         | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
-            Some((cargo, ws.sysroot.as_ref().ok()))
+            Some((cargo, &ws.sysroot))
         }
         ProjectWorkspaceKind::Json { .. } => None,
         ProjectWorkspaceKind::DetachedFile { .. } => None,
     });
 
     let (cargo, sysroot) = match ws_and_sysroot {
-        Some((ws, sysroot)) => (Some(ws), sysroot),
+        Some((ws, sysroot)) => (Some(ws), Some(sysroot)),
         _ => (None, None),
     };
 
-    let sysroot = sysroot.map(|p| p.root().as_str());
+    let sysroot = sysroot.and_then(|p| p.root()).map(|it| it.as_str());
     let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_str());
 
     let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir, sysroot) else {

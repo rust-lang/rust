@@ -1,6 +1,5 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 #![allow(internal_features)]
@@ -362,17 +361,6 @@ impl From<&'static str> for DiagMessage {
 impl From<Cow<'static, str>> for DiagMessage {
     fn from(s: Cow<'static, str>) -> Self {
         DiagMessage::Str(s)
-    }
-}
-
-/// A workaround for must_produce_diag ICEs when formatting types in disabled lints.
-///
-/// Delays formatting until `.into(): DiagMessage` is used.
-pub struct DelayDm<F>(pub F);
-
-impl<F: FnOnce() -> String> From<DelayDm<F>> for DiagMessage {
-    fn from(DelayDm(f): DelayDm<F>) -> Self {
-        DiagMessage::from(f())
     }
 }
 

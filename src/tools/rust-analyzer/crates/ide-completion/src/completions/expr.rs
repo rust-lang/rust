@@ -1,6 +1,6 @@
 //! Completion of names from the current scope in expression position.
 
-use hir::ScopeDef;
+use hir::{ImportPathConfig, ScopeDef};
 use syntax::ast;
 
 use crate::{
@@ -171,11 +171,13 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Struct(strukt) => {
                         let path = ctx
                             .module
-                            .find_use_path(
+                            .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
-                                ctx.config.prefer_no_std,
-                                ctx.config.prefer_prelude,
+                                ImportPathConfig {
+                                    prefer_no_std: ctx.config.prefer_no_std,
+                                    prefer_prelude: ctx.config.prefer_prelude,
+                                },
                             )
                             .filter(|it| it.len() > 1);
 
@@ -194,11 +196,13 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Union(un) => {
                         let path = ctx
                             .module
-                            .find_use_path(
+                            .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
-                                ctx.config.prefer_no_std,
-                                ctx.config.prefer_prelude,
+                                ImportPathConfig {
+                                    prefer_no_std: ctx.config.prefer_no_std,
+                                    prefer_prelude: ctx.config.prefer_prelude,
+                                },
                             )
                             .filter(|it| it.len() > 1);
 

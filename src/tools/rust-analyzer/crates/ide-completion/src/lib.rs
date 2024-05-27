@@ -12,6 +12,7 @@ mod snippet;
 #[cfg(test)]
 mod tests;
 
+use hir::ImportPathConfig;
 use ide_db::{
     base_db::FilePosition,
     helpers::mod_path_to_ast,
@@ -251,6 +252,11 @@ pub fn resolve_completion_edits(
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
+    let cfg = ImportPathConfig {
+        prefer_no_std: config.prefer_no_std,
+        prefer_prelude: config.prefer_prelude,
+    };
+
     imports.into_iter().for_each(|(full_import_path, imported_name)| {
         let items_with_name = items_locator::items_with_name(
             &sema,
@@ -260,13 +266,7 @@ pub fn resolve_completion_edits(
         );
         let import = items_with_name
             .filter_map(|candidate| {
-                current_module.find_use_path_prefixed(
-                    db,
-                    candidate,
-                    config.insert_use.prefix_kind,
-                    config.prefer_no_std,
-                    config.prefer_prelude,
-                )
+                current_module.find_use_path(db, candidate, config.insert_use.prefix_kind, cfg)
             })
             .find(|mod_path| mod_path.display(db).to_string() == full_import_path);
         if let Some(import_path) = import {

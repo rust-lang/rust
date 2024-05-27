@@ -122,6 +122,19 @@ issues).
 """
 label = "O-apple"
 
+# This ping group is meant for situations where a rustc/stdlib change breaks RfL.
+# In that case, we want to notify the RfL group.
+[ping.rust-for-linux]
+alias = ["rfl"]
+message = """\
+Hey Rust for Linux group! It looks like something broke the Rust for Linux integration.
+Could you try to take a look?
+In case it's useful, here are some [instructions] for tackling these sorts of issues.
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/rust-for-linux.html
+"""
+label = "O-rfl"
+
 [prioritize]
 label = "I-prioritize"
 
@@ -456,6 +469,19 @@ message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
 # FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
+#        At the moment, the beta-accepted+T-rustdoc action fully occupies the beta-accepted slot
+#        preventing others from adding more beta-accepted actions.
+[notify-zulip."beta-accepted"]
+required_labels = ["T-rustdoc"]
+zulip_stream = 266220 # #t-rustdoc
+# Put it in the same thread as beta-nominated.
+topic = "beta-nominated: #{number}"
+message_on_add = "PR #{number} has been **accepted** for beta backport."
+message_on_remove = "PR #{number}'s beta-acceptance has been **removed**."
+message_on_close = "PR #{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
 #        At the moment, the stable-nominated+T-rustdoc action fully occupies the stable-nominated slot
 #        preventing others from adding more stable-nominated actions.
 [notify-zulip."stable-nominated"]
@@ -476,6 +502,19 @@ don't know
 """,
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+message_on_close = "PR #{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
+#        At the moment, the stable-accepted+T-rustdoc action fully occupies the stable-accepted slot
+#        preventing others from adding more stable-accepted actions.
+[notify-zulip."stable-accepted"]
+required_labels = ["T-rustdoc"]
+zulip_stream = 266220 # #t-rustdoc
+# Put it in the same thread as stable-nominated.
+topic = "stable-nominated: #{number}"
+message_on_add = "PR #{number} has been **accepted** for stable backport."
+message_on_remove = "PR #{number}'s stable-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
@@ -795,6 +834,9 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/rustc/src/check-cfg.md"]
+cc = ["@Urgau"]
+
+[mentions."src/doc/rustc/src/check-cfg"]
 cc = ["@Urgau"]
 
 [mentions."src/doc/rustc/src/platform-support"]

@@ -274,7 +274,8 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
                 last.encountered_overflow = true;
             }
 
-            inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::Overflow);
+            inspect
+                .canonical_goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::Overflow);
             return Self::response_no_constraints(tcx, input, Certainty::overflow(true));
         };
 
@@ -302,8 +303,9 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
             // We have a nested goal which is already in the provisional cache, use
             // its result. We do not provide any usage kind as that should have been
             // already set correctly while computing the cache entry.
-            inspect
-                .goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::ProvisionalCacheHit);
+            inspect.canonical_goal_evaluation_kind(
+                inspect::WipCanonicalGoalEvaluationKind::ProvisionalCacheHit,
+            );
             Self::tag_cycle_participants(&mut self.stack, HasBeenUsed::empty(), entry.head);
             return entry.result;
         } else if let Some(stack_depth) = cache_entry.stack_depth {
@@ -314,7 +316,9 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
             //
             // Finally we can return either the provisional response or the initial response
             // in case we're in the first fixpoint iteration for this goal.
-            inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::CycleInStack);
+            inspect.canonical_goal_evaluation_kind(
+                inspect::WipCanonicalGoalEvaluationKind::CycleInStack,
+            );
             let is_coinductive_cycle = Self::stack_coinductive_from(tcx, &self.stack, stack_depth);
             let usage_kind = if is_coinductive_cycle {
                 HasBeenUsed::COINDUCTIVE_CYCLE
@@ -371,7 +375,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
                 (current_entry, result)
             });
 
-        let proof_tree = inspect.finalize_evaluation(tcx);
+        let proof_tree = inspect.finalize_canonical_goal_evaluation(tcx);
 
         // We're now done with this goal. In case this goal is involved in a larger cycle
         // do not remove it from the provisional cache and update its provisional result.
@@ -433,9 +437,9 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         // the goal. We simply overwrite the existing entry once we're done,
         // caching the proof tree.
         if !inspect.is_noop() {
-            if let Some(revisions) = proof_tree {
-                let kind = inspect::WipCanonicalGoalEvaluationKind::Interned { revisions };
-                inspect.goal_evaluation_kind(kind);
+            if let Some(final_revision) = proof_tree {
+                let kind = inspect::WipCanonicalGoalEvaluationKind::Interned { final_revision };
+                inspect.canonical_goal_evaluation_kind(kind);
             } else {
                 return None;
             }

@@ -361,6 +361,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     let diag = unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
+                        self.mir_def_id(),
                         span,
                         named_ty,
                         named_region,
@@ -453,7 +454,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let infer_err = self.infcx.err_ctxt();
-            let nice = NiceRegionError::new_from_span(&infer_err, cause.span, o, f);
+            let nice =
+                NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), cause.span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 self.buffer_error(diag);
                 return;
@@ -843,14 +845,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if *outlived_f != ty::ReStatic {
                 return;
             }
-            let suitable_region = self.infcx.tcx.is_suitable_region(f);
+            let suitable_region = self.infcx.tcx.is_suitable_region(self.mir_def_id(), f);
             let Some(suitable_region) = suitable_region else {
                 return;
             };
 
             let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.def_id);
 
-            let param = if let Some(param) = find_param_with_region(self.infcx.tcx, f, outlived_f) {
+            let param = if let Some(param) =
+                find_param_with_region(self.infcx.tcx, self.mir_def_id(), f, outlived_f)
+            {
                 param
             } else {
                 return;
@@ -959,7 +963,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             return;
         };
 
-        let param = match find_param_with_region(tcx, f, o) {
+        let param = match find_param_with_region(tcx, self.mir_def_id(), f, o) {
             Some(param) => param,
             None => return,
         };
@@ -1022,25 +1026,30 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             return;
         };
 
-        let Some((ty_sub, _)) = self
-            .infcx
-            .tcx
-            .is_suitable_region(sub)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.bound_region))
+        let Some((ty_sub, _)) =
+            self.infcx.tcx.is_suitable_region(self.mir_def_id(), sub).and_then(|anon_reg| {
+                find_anon_type(self.infcx.tcx, self.mir_def_id(), sub, &anon_reg.bound_region)
+            })
         else {
             return;
         };
 
-        let Some((ty_sup, _)) = self
-            .infcx
-            .tcx
-            .is_suitable_region(sup)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.bound_region))
+        let Some((ty_sup, _)) =
+            self.infcx.tcx.is_suitable_region(self.mir_def_id(), sup).and_then(|anon_reg| {
+                find_anon_type(self.infcx.tcx, self.mir_def_id(), sup, &anon_reg.bound_region)
+            })
         else {
             return;
         };
 
-        suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
+        suggest_adding_lifetime_params(
+            self.infcx.tcx,
+            diag,
+            self.mir_def_id(),
+            sub,
+            ty_sup,
+            ty_sub,
+        );
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]

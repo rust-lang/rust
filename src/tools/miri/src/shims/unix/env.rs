@@ -31,8 +31,8 @@ impl VisitProvenance for UnixEnvVars<'_> {
 }
 
 impl<'tcx> UnixEnvVars<'tcx> {
-    pub(crate) fn new<'mir>(
-        ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+    pub(crate) fn new(
+        ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
         env_vars: FxHashMap<OsString, OsString>,
     ) -> InterpResult<'tcx, Self> {
         // Allocate memory for all these env vars.
@@ -51,9 +51,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
         Ok(UnixEnvVars { map: env_vars_machine, environ })
     }
 
-    pub(crate) fn cleanup<'mir>(
-        ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx> {
+    pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
         // Deallocate individual env vars.
         let env_vars = mem::take(&mut ecx.machine.env_vars.unix_mut().map);
         for (_name, ptr) in env_vars {
@@ -71,9 +69,9 @@ impl<'tcx> UnixEnvVars<'tcx> {
         self.environ.ptr()
     }
 
-    fn get_ptr<'mir>(
+    fn get_ptr(
         &self,
-        ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+        ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         name: &OsStr,
     ) -> InterpResult<'tcx, Option<Pointer<Option<Provenance>>>> {
         // We don't care about the value as we have the `map` to keep track of everything,
@@ -92,9 +90,9 @@ impl<'tcx> UnixEnvVars<'tcx> {
 
     /// Implementation detail for [`InterpCx::get_env_var`]. This basically does `getenv`, complete
     /// with the reads of the environment, but returns an [`OsString`] instead of a pointer.
-    pub(crate) fn get<'mir>(
+    pub(crate) fn get(
         &self,
-        ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+        ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         name: &OsStr,
     ) -> InterpResult<'tcx, Option<OsString>> {
         let var_ptr = self.get_ptr(ecx, name)?;
@@ -107,8 +105,8 @@ impl<'tcx> UnixEnvVars<'tcx> {
     }
 }
 
-fn alloc_env_var<'mir, 'tcx>(
-    ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+fn alloc_env_var<'tcx>(
+    ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
     name: &OsStr,
     value: &OsStr,
 ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
@@ -119,8 +117,8 @@ fn alloc_env_var<'mir, 'tcx>(
 }
 
 /// Allocates an `environ` block with the given list of pointers.
-fn alloc_environ_block<'mir, 'tcx>(
-    ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+fn alloc_environ_block<'tcx>(
+    ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
     mut vars: Vec<Pointer<Option<Provenance>>>,
 ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
     // Add trailing null.
@@ -139,8 +137,8 @@ fn alloc_environ_block<'mir, 'tcx>(
     Ok(vars_place.ptr())
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn getenv(
         &mut self,
         name_op: &OpTy<'tcx, Provenance>,

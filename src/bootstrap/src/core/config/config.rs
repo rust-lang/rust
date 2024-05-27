@@ -360,7 +360,7 @@ pub enum RustfmtState {
     LazyEvaluated,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum LlvmLibunwind {
     #[default]
     No,
@@ -381,7 +381,7 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SplitDebuginfo {
     Packed,
     Unpacked,
@@ -542,7 +542,7 @@ impl PartialEq<&str> for TargetSelection {
 }
 
 /// Per-target configuration stored in the global configuration structure.
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
@@ -644,7 +644,20 @@ impl Merge for TomlConfig {
         do_merge(&mut self.llvm, llvm, replace);
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
-        assert!(target.is_none(), "merging target-specific config is not currently supported");
+
+        match (self.target.as_mut(), target) {
+            (_, None) => {}
+            (None, Some(target)) => self.target = Some(target),
+            (Some(original_target), Some(new_target)) => {
+                for (triple, new) in new_target {
+                    if let Some(original) = original_target.get_mut(&triple) {
+                        original.merge(new, replace);
+                    } else {
+                        original_target.insert(triple, new);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -899,7 +912,7 @@ define_config! {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum StringOrBool {
     String(String),

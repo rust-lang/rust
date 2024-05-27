@@ -1031,6 +1031,8 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
             enable_private_editable: self.completion_privateEditable_enable(source_root).to_owned(),
+            enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
+            term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
             full_function_signatures: self
                 .completion_fullFunctionSignatures_enable(source_root)
                 .to_owned(),
@@ -1039,8 +1041,6 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
-            insert_use: self.insert_use_config(source_root),
-            prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
                     .text_document
@@ -1051,11 +1051,11 @@ impl Config {
                     .as_ref()?
                     .snippet_support?
             )),
+            insert_use: self.insert_use_config(source_root),
+            prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
+            prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             snippets: self.snippets.clone().to_vec(),
             limit: self.completion_limit(source_root).to_owned(),
-            enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
-            term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
-            prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
         }
     }
 

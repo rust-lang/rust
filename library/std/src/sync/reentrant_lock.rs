@@ -117,6 +117,9 @@ pub struct ReentrantLockGuard<'a, T: ?Sized + 'a> {
 impl<T: ?Sized> !Send for ReentrantLockGuard<'_, T> {}
 
 #[unstable(feature = "reentrant_lock", issue = "121440")]
+unsafe impl<T: ?Sized + Sync> Sync for ReentrantLockGuard<'_, T> {}
+
+#[unstable(feature = "reentrant_lock", issue = "121440")]
 impl<T> ReentrantLock<T> {
     /// Creates a new re-entrant lock in an unlocked state ready for use.
     ///

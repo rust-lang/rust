@@ -1950,14 +1950,22 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
+        tcx: TyCtxt<'tcx>,
         inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
-        def_id: DefId,
+        item: DefId,
+        lifetime: DefId,
     ) -> Vec<ty::Region<'tcx>> {
+        let item_generics = tcx.generics_of(item);
+
         inferred_outlives
             .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
-                    ty::ReEarlyParam(ebr) if ebr.def_id == def_id => Some(b),
+                    ty::ReEarlyParam(ebr)
+                        if item_generics.region_param(ebr, tcx).def_id == lifetime =>
+                    {
+                        Some(b)
+                    }
                     _ => None,
                 },
                 _ => None,
@@ -1986,8 +1994,11 @@ impl ExplicitOutlivesRequirements {
         bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
         predicate_span: Span,
+        item: DefId,
     ) -> Vec<(usize, Span)> {
         use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
+
+        let item_generics = tcx.generics_of(item);
 
         bounds
             .iter()
@@ -2000,7 +2011,7 @@ impl ExplicitOutlivesRequirements {
                 let is_inferred = match tcx.named_bound_var(lifetime.hir_id) {
                     Some(ResolvedArg::EarlyBound(def_id)) => inferred_outlives
                         .iter()
-                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { ebr.def_id == def_id })),
+                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { item_generics.region_param(ebr, tcx).def_id == def_id })),
                     _ => false,
                 };
 
@@ -2109,7 +2120,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                             {
                                 (
                                     Self::lifetimes_outliving_lifetime(
+                                        cx.tcx,
                                         inferred_outlives,
+                                        item.owner_id.to_def_id(),
                                         region_def_id,
                                     ),
                                     &predicate.bounds,
@@ -2152,6 +2165,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     bounds,
                     &relevant_lifetimes,
                     predicate_span,
+                    item.owner_id.to_def_id(),
                 );
                 bound_count += bound_spans.len();
 

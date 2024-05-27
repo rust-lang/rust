@@ -12,7 +12,7 @@ use super::{
     err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable,
 };
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Writes the discriminant of the given variant.
     ///
     /// If the variant is uninhabited, this is UB.

@@ -8,8 +8,8 @@ use rustc_target::abi::{Abi, HasDataLayout};
 
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Call native host function and return the output as an immediate.
     fn call_native_with_args<'a>(
         &mut self,
@@ -122,8 +122,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Call the native host function, with supplied arguments.
     /// Needs to convert all the arguments from their Miri representations to
     /// a native form (through `libffi` call).

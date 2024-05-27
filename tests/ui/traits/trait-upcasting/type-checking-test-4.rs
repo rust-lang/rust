@@ -11,6 +11,10 @@ fn test_correct(x: &dyn Foo<'static>) {
     let _ = x as &dyn Bar<'static, 'static>;
 }
 
+fn test_correct2<'a>(x: &dyn Foo<'a>) {
+    let _ = x as &dyn Bar<'_, '_>;
+}
+
 fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
     let _ = x as &dyn Bar<'static, 'a>; // Error
                                         //~^ ERROR lifetime may not live long enough

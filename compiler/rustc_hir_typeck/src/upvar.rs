@@ -955,8 +955,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
                 closure_head_span,
-                reasons.migration_message(),
                 |lint| {
+                    lint.primary_message(reasons.migration_message());
+
                     for NeededMigration { var_hir_id, diagnostics_info } in &need_migrations {
                         // Labels all the usage of the captured variable and why they are responsible
                         // for migration being needed

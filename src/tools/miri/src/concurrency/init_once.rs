@@ -26,17 +26,14 @@ pub(super) struct InitOnce {
     clock: VClock,
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Provides the closure with the next InitOnceId. Creates that InitOnce if the closure returns None,
     /// otherwise returns the value from the closure.
     #[inline]
     fn init_once_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, InitOnceId>
     where
-        F: FnOnce(
-            &mut MiriInterpCx<'mir, 'tcx>,
-            InitOnceId,
-        ) -> InterpResult<'tcx, Option<InitOnceId>>,
+        F: FnOnce(&mut MiriInterpCx<'tcx>, InitOnceId) -> InterpResult<'tcx, Option<InitOnceId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.sync.init_onces.next_index();
@@ -50,8 +47,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn init_once_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,

@@ -399,7 +399,8 @@ mod desc {
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
-    pub const parse_next_solver_config: &str = "a comma separated list of solver configurations: `globally` (default), `coherence`, `dump-tree`, `dump-tree-on-error";
+    pub const parse_next_solver_config: &str =
+        "a comma separated list of solver configurations: `globally` (default), and `coherence`";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -1058,7 +1059,6 @@ mod parse {
         if let Some(config) = v {
             let mut coherence = false;
             let mut globally = true;
-            let mut dump_tree = None;
             for c in config.split(',') {
                 match c {
                     "globally" => globally = true,
@@ -1066,31 +1066,13 @@ mod parse {
                         globally = false;
                         coherence = true;
                     }
-                    "dump-tree" => {
-                        if dump_tree.replace(DumpSolverProofTree::Always).is_some() {
-                            return false;
-                        }
-                    }
-                    "dump-tree-on-error" => {
-                        if dump_tree.replace(DumpSolverProofTree::OnError).is_some() {
-                            return false;
-                        }
-                    }
                     _ => return false,
                 }
             }
 
-            *slot = Some(NextSolverConfig {
-                coherence: coherence || globally,
-                globally,
-                dump_tree: dump_tree.unwrap_or_default(),
-            });
+            *slot = Some(NextSolverConfig { coherence: coherence || globally, globally });
         } else {
-            *slot = Some(NextSolverConfig {
-                coherence: true,
-                globally: true,
-                dump_tree: Default::default(),
-            });
+            *slot = Some(NextSolverConfig { coherence: true, globally: true });
         }
 
         true

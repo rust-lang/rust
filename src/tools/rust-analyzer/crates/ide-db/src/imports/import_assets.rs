@@ -1,9 +1,9 @@
 //! Look up accessible paths for items.
 
 use hir::{
-    db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ItemInNs,
-    ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
-    SemanticsScope, Trait, Type,
+    db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig,
+    ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
+    SemanticsScope, Trait, TyFingerprint, Type,
 };
 use itertools::{EitherOrBoth, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -205,24 +205,22 @@ impl ImportAssets {
     pub fn search_for_imports(
         &self,
         sema: &Semantics<'_, RootDatabase>,
+        cfg: ImportPathConfig,
         prefix_kind: PrefixKind,
-        prefer_no_std: bool,
-        prefer_prelude: bool,
     ) -> impl Iterator<Item = LocatedImport> {
         let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::search_for_imports").entered();
-        self.search_for(sema, Some(prefix_kind), prefer_no_std, prefer_prelude)
+        self.search_for(sema, Some(prefix_kind), cfg)
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
     pub fn search_for_relative_paths(
         &self,
         sema: &Semantics<'_, RootDatabase>,
-        prefer_no_std: bool,
-        prefer_prelude: bool,
+        cfg: ImportPathConfig,
     ) -> impl Iterator<Item = LocatedImport> {
         let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::search_for_relative_paths")
             .entered();
-        self.search_for(sema, None, prefer_no_std, prefer_prelude)
+        self.search_for(sema, None, cfg)
     }
 
     /// Requires imports to by prefix instead of fuzzily.
@@ -259,8 +257,7 @@ impl ImportAssets {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         prefixed: Option<PrefixKind>,
-        prefer_no_std: bool,
-        prefer_prelude: bool,
+        cfg: ImportPathConfig,
     ) -> impl Iterator<Item = LocatedImport> {
         let _p = tracing::span!(tracing::Level::INFO, "ImportAssets::search_for").entered();
 
@@ -277,8 +274,7 @@ impl ImportAssets {
                 item_for_path_search(sema.db, item)?,
                 &self.module_with_candidate,
                 prefixed,
-                prefer_no_std,
-                prefer_prelude,
+                cfg,
             )
             .filter(|path| path.len() > 1)
         };
@@ -549,6 +545,15 @@ fn trait_applicable_items(
         let Some(receiver) = trait_candidate.receiver_ty.fingerprint_for_trait_impl() else {
             return false;
         };
+
+        // in order to handle implied bounds through an associated type, keep any
+        // method receiver that matches `TyFingerprint::Unnameable`. this receiver
+        // won't be in `TraitImpls` anyways, as `TraitImpls` only contains actual
+        // implementations.
+        if matches!(receiver, TyFingerprint::Unnameable) {
+            return true;
+        }
+
         let definitions_exist_in_trait_crate = db
             .trait_impls_in_crate(defining_crate_for_trait.into())
             .has_impls_for_trait_and_self_ty(candidate_trait_id, receiver);
@@ -634,19 +639,12 @@ fn get_mod_path(
     item_to_search: ItemInNs,
     module_with_candidate: &Module,
     prefixed: Option<PrefixKind>,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> Option<ModPath> {
     if let Some(prefix_kind) = prefixed {
-        module_with_candidate.find_use_path_prefixed(
-            db,
-            item_to_search,
-            prefix_kind,
-            prefer_no_std,
-            prefer_prelude,
-        )
+        module_with_candidate.find_use_path(db, item_to_search, prefix_kind, cfg)
     } else {
-        module_with_candidate.find_use_path(db, item_to_search, prefer_no_std, prefer_prelude)
+        module_with_candidate.find_path(db, item_to_search, cfg)
     }
 }
 

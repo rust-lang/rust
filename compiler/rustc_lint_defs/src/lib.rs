@@ -764,19 +764,7 @@ pub struct LintBuffer {
 
 impl LintBuffer {
     pub fn add_early_lint(&mut self, early_lint: BufferedEarlyLint) {
-        let arr = self.map.entry(early_lint.node_id).or_default();
-        arr.push(early_lint);
-    }
-
-    pub fn add_lint(
-        &mut self,
-        lint: &'static Lint,
-        node_id: NodeId,
-        span: MultiSpan,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        let lint_id = LintId::of(lint);
-        self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, diagnostic });
+        self.map.entry(early_lint.node_id).or_default().push(early_lint);
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
@@ -787,11 +775,16 @@ impl LintBuffer {
     pub fn buffer_lint(
         &mut self,
         lint: &'static Lint,
-        id: NodeId,
-        sp: impl Into<MultiSpan>,
+        node_id: NodeId,
+        span: impl Into<MultiSpan>,
         diagnostic: BuiltinLintDiag,
     ) {
-        self.add_lint(lint, id, sp.into(), diagnostic)
+        self.add_early_lint(BufferedEarlyLint {
+            lint_id: LintId::of(lint),
+            node_id,
+            span: span.into(),
+            diagnostic,
+        });
     }
 }
 

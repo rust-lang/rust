@@ -24,8 +24,8 @@ impl FileDescription for SocketPair {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Currently this function this function is a stub. Eventually we need to
     /// properly implement an FD type for sockets and have this function create
     /// two sockets and associated FDs such that writing to one will produce

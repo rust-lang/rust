@@ -10,6 +10,25 @@ use crate::walk::filter_not_rust;
 const LLVM_COMPONENTS_HEADER: &str = "needs-llvm-components:";
 const COMPILE_FLAGS_HEADER: &str = "compile-flags:";
 
+const KNOWN_LLVM_COMPONENTS: &[&str] = &[
+    "aarch64",
+    "arm",
+    "avr",
+    "bpf",
+    "hexagon",
+    "loongarch",
+    "m68k",
+    "mips",
+    "msp430",
+    "nvptx",
+    "powerpc",
+    "riscv",
+    "sparc",
+    "systemz",
+    "webassembly",
+    "x86",
+];
+
 #[derive(Default, Debug)]
 struct RevisionInfo<'a> {
     target_arch: Option<&'a str>,
@@ -66,6 +85,17 @@ pub fn check(path: &Path, bad: &mut bool) {
                 (Some(_), Some(_)) => {
                     // FIXME: check specified components against the target architectures we
                     // gathered.
+                }
+            }
+            if let Some(llvm_components) = llvm_components {
+                for component in llvm_components {
+                    if !KNOWN_LLVM_COMPONENTS.contains(component) {
+                        eprintln!(
+                            "{}: revision {} specifies unknown LLVM component `{}`",
+                            file, rev, component
+                        );
+                        *bad = true;
+                    }
                 }
             }
         }

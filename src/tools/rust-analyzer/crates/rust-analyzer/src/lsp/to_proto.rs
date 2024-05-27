@@ -1360,10 +1360,14 @@ pub(crate) fn runnable(
     let config = snap.config.runnables();
     let spec = CargoTargetSpec::for_file(snap, runnable.nav.file_id)?;
     let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
-    let target = spec.as_ref().map(|s| s.target.clone());
+    let cwd = match runnable.kind {
+        ide::RunnableKind::Bin { .. } => workspace_root.clone().map(|it| it.into()),
+        _ => spec.as_ref().map(|it| it.cargo_toml.parent().into()),
+    };
+    let target = spec.as_ref().map(|s| s.target.as_str());
+    let label = runnable.label(target);
     let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg);
-    let label = runnable.label(target);
     let location = location_link(snap, None, runnable.nav)?;
 
     Ok(lsp_ext::Runnable {
@@ -1372,6 +1376,7 @@ pub(crate) fn runnable(
         kind: lsp_ext::RunnableKind::Cargo,
         args: lsp_ext::CargoRunnable {
             workspace_root: workspace_root.map(|it| it.into()),
+            cwd,
             override_cargo: config.override_cargo,
             cargo_args,
             cargo_extra_args: config.cargo_extra_args,

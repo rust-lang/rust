@@ -796,16 +796,6 @@ pub struct NextSolverConfig {
     /// Whether the new trait solver should be enabled everywhere.
     /// This is only `true` if `coherence` is also enabled.
     pub globally: bool,
-    /// Whether to dump proof trees after computing a proof tree.
-    pub dump_tree: DumpSolverProofTree,
-}
-
-#[derive(Default, Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum DumpSolverProofTree {
-    Always,
-    OnError,
-    #[default]
-    Never,
 }
 
 #[derive(Clone)]

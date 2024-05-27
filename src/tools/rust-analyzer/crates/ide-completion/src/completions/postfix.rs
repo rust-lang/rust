@@ -2,7 +2,7 @@
 
 mod format_like;
 
-use hir::ItemInNs;
+use hir::{ImportPathConfig, ItemInNs};
 use ide_db::{
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
@@ -60,15 +60,17 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
             if let Some(drop_fn) = ctx.famous_defs().core_mem_drop() {
-                if let Some(path) = ctx.module.find_use_path(
-                    ctx.db,
-                    ItemInNs::Values(drop_fn.into()),
-                    ctx.config.prefer_no_std,
-                    ctx.config.prefer_prelude,
-                ) {
+                if let Some(path) =
+                    ctx.module.find_path(ctx.db, ItemInNs::Values(drop_fn.into()), cfg)
+                {
                     cov_mark::hit!(postfix_drop_completion);
                     let mut item = postfix_snippet(
                         "drop",

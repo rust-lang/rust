@@ -378,9 +378,26 @@ impl ast::UseTreeList {
 
     /// Remove the unnecessary braces in current `UseTreeList`
     pub fn remove_unnecessary_braces(mut self) {
+        // Returns true iff there is a single subtree and it is not the self keyword. The braces in
+        // `use x::{self};` are necessary and so we should not remove them.
+        let has_single_subtree_that_is_not_self = |u: &ast::UseTreeList| {
+            if let Some((single_subtree,)) = u.use_trees().collect_tuple() {
+                // We have a single subtree, check whether it is self.
+
+                let is_self = single_subtree.path().as_ref().map_or(false, |path| {
+                    path.segment().and_then(|seg| seg.self_token()).is_some()
+                        && path.qualifier().is_none()
+                });
+
+                !is_self
+            } else {
+                // Not a single subtree
+                false
+            }
+        };
+
         let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
-            let use_tree_count = u.use_trees().count();
-            if use_tree_count == 1 {
+            if has_single_subtree_that_is_not_self(u) {
                 if let Some(a) = u.l_curly_token() {
                     ted::remove(a)
                 }

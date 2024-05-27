@@ -5,10 +5,8 @@ use rustc_target::spec::abi::Abi;
 use super::{horizontal_bin_op, int_abs, pmulhrsw, psign};
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
-    crate::MiriInterpCxExt<'mir, 'tcx>
-{
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_ssse3_intrinsic(
         &mut self,
         link_name: Symbol,

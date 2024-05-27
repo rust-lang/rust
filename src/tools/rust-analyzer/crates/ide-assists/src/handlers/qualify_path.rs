@@ -1,6 +1,6 @@
 use std::iter;
 
-use hir::AsAssocItem;
+use hir::{AsAssocItem, ImportPathConfig};
 use ide_db::RootDatabase;
 use ide_db::{
     helpers::mod_path_to_ast,
@@ -37,9 +37,13 @@ use crate::{
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let mut proposed_imports: Vec<_> = import_assets
-        .search_for_relative_paths(&ctx.sema, ctx.config.prefer_no_std, ctx.config.prefer_prelude)
-        .collect();
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+    };
+
+    let mut proposed_imports: Vec<_> =
+        import_assets.search_for_relative_paths(&ctx.sema, cfg).collect();
     if proposed_imports.is_empty() {
         return None;
     }

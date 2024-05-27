@@ -4,24 +4,19 @@
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::Applicability;
-use rustc_errors::{elided_lifetime_in_path_suggestion, DiagArgValue, MultiSpan};
+use rustc_errors::elided_lifetime_in_path_suggestion;
+use rustc_errors::{Applicability, Diag, DiagArgValue, LintDiagnostic};
 use rustc_middle::middle::stability;
-use rustc_session::lint::{BuiltinLintDiag, Lint};
+use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::Session;
 use rustc_span::BytePos;
 use tracing::debug;
 
-use crate::{lints, EarlyContext, LintContext as _};
+use crate::lints;
 
 mod check_cfg;
 
-pub(super) fn emit_buffered_lint(
-    ctx: &EarlyContext<'_>,
-    lint: &'static Lint,
-    span: MultiSpan,
-    diagnostic: BuiltinLintDiag,
-) {
-    let sess = ctx.sess();
+pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
     match diagnostic {
         BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
             let spans: Vec<_> = content
@@ -40,16 +35,14 @@ pub(super) fn emit_buffered_lint(
             let suggestions = (!spans.is_empty()).then_some(lints::UnicodeTextFlowSuggestion {
                 spans: spans.iter().map(|(_c, span)| *span).collect(),
             });
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::UnicodeTextFlow {
-                    comment_span,
-                    characters,
-                    suggestions,
-                    num_codepoints: spans.len(),
-                },
-            )
+
+            lints::UnicodeTextFlow {
+                comment_span,
+                characters,
+                suggestions,
+                num_codepoints: spans.len(),
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::AbsPathWithModule(mod_span) => {
             let (replacement, applicability) = match sess.source_map().span_to_snippet(mod_span) {
@@ -62,48 +55,35 @@ pub(super) fn emit_buffered_lint(
                 }
                 Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
             };
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::AbsPathWithModule {
-                    sugg: lints::AbsPathWithModuleSugg {
-                        span: mod_span,
-                        applicability,
-                        replacement,
-                    },
-                },
-            );
+            lints::AbsPathWithModule {
+                sugg: lints::AbsPathWithModuleSugg { span: mod_span, applicability, replacement },
+            }
+            .decorate_lint(diag);
         }
-        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident } => ctx
-            .emit_span_lint(
-                lint,
-                span,
-                lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident },
-            ),
-        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => ctx
-            .emit_span_lint(
-                lint,
-                span,
-                lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def },
-            ),
+        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident } => {
+            lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident }
+                .decorate_lint(diag)
+        }
+        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+            lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def }
+                .decorate_lint(diag)
+        }
+
         BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::ElidedLifetimesInPaths {
-                    subdiag: elided_lifetime_in_path_suggestion(
-                        sess.source_map(),
-                        n,
-                        path_span,
-                        incl_angl_brckt,
-                        insertion_span,
-                    ),
-                },
-            );
+            lints::ElidedLifetimesInPaths {
+                subdiag: elided_lifetime_in_path_suggestion(
+                    sess.source_map(),
+                    n,
+                    path_span,
+                    incl_angl_brckt,
+                    insertion_span,
+                ),
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnknownCrateTypes { span, candidate } => {
             let sugg = candidate.map(|candidate| lints::UnknownCrateTypesSub { span, candidate });
-            ctx.emit_span_lint(lint, span, lints::UnknownCrateTypes { sugg });
+            lints::UnknownCrateTypes { sugg }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedImports {
             remove_whole_use,
@@ -120,18 +100,15 @@ pub(super) fn emit_buffered_lint(
             let test_module_span =
                 test_module_span.map(|span| sess.source_map().guess_head_span(span));
 
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::UnusedImports {
-                    sugg,
-                    test_module_span,
-                    num_snippets: span_snippets.len(),
-                    span_snippets: DiagArgValue::StrListSepByAnd(
-                        span_snippets.into_iter().map(Cow::Owned).collect(),
-                    ),
-                },
-            );
+            lints::UnusedImports {
+                sugg,
+                test_module_span,
+                num_snippets: span_snippets.len(),
+                span_snippets: DiagArgValue::StrListSepByAnd(
+                    span_snippets.into_iter().map(Cow::Owned).collect(),
+                ),
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             let subs = spans
@@ -145,7 +122,7 @@ pub(super) fn emit_buffered_lint(
                     })(span)
                 })
                 .collect();
-            ctx.emit_span_lint(lint, span, lints::RedundantImport { subs, ident });
+            lints::RedundantImport { subs, ident }.decorate_lint(diag);
         }
         BuiltinLintDiag::DeprecatedMacro {
             suggestion,
@@ -159,90 +136,63 @@ pub(super) fn emit_buffered_lint(
                 kind: "macro".to_owned(),
                 suggestion,
             });
-            ctx.emit_span_lint(
-                lint,
-                span,
-                stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind },
-            );
+
+            stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedDocComment(attr_span) => {
-            ctx.emit_span_lint(lint, span, lints::UnusedDocComment { span: attr_span });
+            lints::UnusedDocComment { span: attr_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
             let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
-
-            ctx.emit_span_lint(
-                lint,
-                span,
-                if is_foreign {
-                    lints::PatternsInFnsWithoutBody::Foreign { sub }
-                } else {
-                    lints::PatternsInFnsWithoutBody::Bodiless { sub }
-                },
-            );
+            if is_foreign {
+                lints::PatternsInFnsWithoutBody::Foreign { sub }
+            } else {
+                lints::PatternsInFnsWithoutBody::Bodiless { sub }
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::MissingAbi(label_span, default_abi) => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::MissingAbi { span: label_span, default_abi: default_abi.name() },
-            );
+            lints::MissingAbi { span: label_span, default_abi: default_abi.name() }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
-            ctx.emit_span_lint(lint, span, lints::LegacyDeriveHelpers { span: label_span });
+            lints::LegacyDeriveHelpers { span: label_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::ProcMacroBackCompat { crate_name, fixed_version } => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::ProcMacroBackCompat { crate_name, fixed_version },
-            );
+            lints::ProcMacroBackCompat { crate_name, fixed_version }.decorate_lint(diag);
         }
         BuiltinLintDiag::OrPatternsBackCompat(suggestion_span, suggestion) => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::OrPatternsBackCompat { span: suggestion_span, suggestion },
-            );
+            lints::OrPatternsBackCompat { span: suggestion_span, suggestion }.decorate_lint(diag);
         }
         BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::ReservedPrefix {
-                    label: label_span,
-                    suggestion: label_span.shrink_to_hi(),
-                    prefix,
-                },
-            );
+            lints::ReservedPrefix {
+                label: label_span,
+                suggestion: label_span.shrink_to_hi(),
+                prefix,
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name },
-            );
+            lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name }.decorate_lint(diag);
         }
         BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
-            ctx.emit_span_lint(lint, span, lints::TrailingMacro { is_trailing, name });
+            lints::TrailingMacro { is_trailing, name }.decorate_lint(diag);
         }
         BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::BreakWithLabelAndLoop {
-                    sub: lints::BreakWithLabelAndLoopSub {
-                        left: sugg_span.shrink_to_lo(),
-                        right: sugg_span.shrink_to_hi(),
-                    },
+            lints::BreakWithLabelAndLoop {
+                sub: lints::BreakWithLabelAndLoopSub {
+                    left: sugg_span.shrink_to_lo(),
+                    right: sugg_span.shrink_to_hi(),
                 },
-            );
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnexpectedCfgName(name, value) => {
-            ctx.emit_span_lint(lint, span, check_cfg::unexpected_cfg_name(sess, name, value));
+            check_cfg::unexpected_cfg_name(sess, name, value).decorate_lint(diag);
         }
         BuiltinLintDiag::UnexpectedCfgValue(name, value) => {
-            ctx.emit_span_lint(lint, span, check_cfg::unexpected_cfg_value(sess, name, value));
+            check_cfg::unexpected_cfg_value(sess, name, value).decorate_lint(diag);
         }
         BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
             let suggestion = match sugg {
@@ -253,7 +203,7 @@ pub(super) fn emit_buffered_lint(
                 },
                 None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
             };
-            ctx.emit_span_lint(lint, span, lints::DeprecatedWhereClauseLocation { suggestion });
+            lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
         }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
@@ -280,15 +230,12 @@ pub(super) fn emit_buffered_lint(
                 None
             };
 
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::SingleUseLifetime { suggestion, param_span, use_span, ident },
-            );
+            lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
             debug!(?deletion_span);
-            ctx.emit_span_lint(lint, span, lints::UnusedLifetime { deletion_span, ident });
+            lints::UnusedLifetime { deletion_span, ident }.decorate_lint(diag);
         }
         BuiltinLintDiag::NamedArgumentUsedPositionally {
             position_sp_to_replace,
@@ -316,35 +263,29 @@ pub(super) fn emit_buffered_lint(
                 (None, String::new())
             };
 
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::NamedArgumentUsedPositionally {
-                    named_arg_sp,
-                    position_label_sp: position_sp_for_msg,
-                    suggestion,
-                    name,
-                    named_arg_name,
-                },
-            )
+            lints::NamedArgumentUsedPositionally {
+                named_arg_sp,
+                position_label_sp: position_sp_for_msg,
+                suggestion,
+                name,
+                named_arg_name,
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::ByteSliceInPackedStructWithDerive { ty } => {
-            ctx.emit_span_lint(lint, span, lints::ByteSliceInPackedStructWithDerive { ty })
+            lints::ByteSliceInPackedStructWithDerive { ty }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedExternCrate { removal_span } => {
-            ctx.emit_span_lint(lint, span, lints::UnusedExternCrate { removal_span })
+            lints::UnusedExternCrate { removal_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);
             let code = if vis_span.is_empty() { "use " } else { " use " };
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::ExternCrateNotIdiomatic { span: suggestion_span, code },
-            );
+
+            lints::ExternCrateNotIdiomatic { span: suggestion_span, code }.decorate_lint(diag);
         }
         BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
-            ctx.emit_span_lint(lint, span, lints::AmbiguousGlobImports { ambiguity });
+            lints::AmbiguousGlobImports { ambiguity }.decorate_lint(diag);
         }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
@@ -352,16 +293,13 @@ pub(super) fn emit_buffered_lint(
             first_reexport_span,
             duplicate_reexport_span,
         } => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::AmbiguousGlobReexports {
-                    first_reexport: first_reexport_span,
-                    duplicate_reexport: duplicate_reexport_span,
-                    name,
-                    namespace,
-                },
-            );
+            lints::AmbiguousGlobReexports {
+                first_reexport: first_reexport_span,
+                duplicate_reexport: duplicate_reexport_span,
+                name,
+                namespace,
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::HiddenGlobReexports {
             name,
@@ -369,127 +307,112 @@ pub(super) fn emit_buffered_lint(
             glob_reexport_span,
             private_item_span,
         } => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::HiddenGlobReexports {
-                    glob_reexport: glob_reexport_span,
-                    private_item: private_item_span,
+            lints::HiddenGlobReexports {
+                glob_reexport: glob_reexport_span,
+                private_item: private_item_span,
 
-                    name,
-                    namespace,
-                },
-            );
+                name,
+                namespace,
+            }
+            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
-            ctx.emit_span_lint(lint, span, lints::UnusedQualifications { removal_span });
+            lints::UnusedQualifications { removal_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::AssociatedConstElidedLifetime { elided, span: lt_span } => {
             let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
             let code = if elided { "'static " } else { "'static" };
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::AssociatedConstElidedLifetime { span: lt_span, code, elided },
-            );
+            lints::AssociatedConstElidedLifetime { span: lt_span, code, elided }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::RedundantImportVisibility { max_vis, span: vis_span, import_vis } => {
-            ctx.emit_span_lint(
-                lint,
-                span,
-                lints::RedundantImportVisibility { span: vis_span, help: (), max_vis, import_vis },
-            );
+            lints::RedundantImportVisibility { span: vis_span, help: (), max_vis, import_vis }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::UnknownDiagnosticAttribute { span: typo_span, typo_name } => {
             let typo = typo_name.map(|typo_name| lints::UnknownDiagnosticAttributeTypoSugg {
                 span: typo_span,
                 typo_name,
             });
-            ctx.emit_span_lint(lint, span, lints::UnknownDiagnosticAttribute { typo });
+            lints::UnknownDiagnosticAttribute { typo }.decorate_lint(diag);
         }
         BuiltinLintDiag::MacroUseDeprecated => {
-            ctx.emit_span_lint(lint, span, lints::MacroUseDeprecated)
+            lints::MacroUseDeprecated.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedMacroUse => ctx.emit_span_lint(lint, span, lints::UnusedMacroUse),
+        BuiltinLintDiag::UnusedMacroUse => lints::UnusedMacroUse.decorate_lint(diag),
         BuiltinLintDiag::PrivateExternCrateReexport(ident) => {
-            ctx.emit_span_lint(lint, span, lints::PrivateExternCrateReexport { ident })
+            lints::PrivateExternCrateReexport { ident }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedLabel => ctx.emit_span_lint(lint, span, lints::UnusedLabel),
+        BuiltinLintDiag::UnusedLabel => lints::UnusedLabel.decorate_lint(diag),
         BuiltinLintDiag::MacroIsPrivate(ident) => {
-            ctx.emit_span_lint(lint, span, lints::MacroIsPrivate { ident })
+            lints::MacroIsPrivate { ident }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedMacroDefinition(name) => {
-            ctx.emit_span_lint(lint, span, lints::UnusedMacroDefinition { name })
+            lints::UnusedMacroDefinition { name }.decorate_lint(diag);
         }
         BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
-            ctx.emit_span_lint(lint, span, lints::MacroRuleNeverUsed { n: n + 1, name })
+            lints::MacroRuleNeverUsed { n: n + 1, name }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnstableFeature(msg) => {
-            ctx.emit_span_lint(lint, span, lints::UnstableFeature { msg })
+            lints::UnstableFeature { msg }.decorate_lint(diag);
         }
         BuiltinLintDiag::AvoidUsingIntelSyntax => {
-            ctx.emit_span_lint(lint, span, lints::AvoidIntelSyntax)
+            lints::AvoidIntelSyntax.decorate_lint(diag);
         }
         BuiltinLintDiag::AvoidUsingAttSyntax => {
-            ctx.emit_span_lint(lint, span, lints::AvoidAttSyntax)
+            lints::AvoidAttSyntax.decorate_lint(diag);
         }
         BuiltinLintDiag::IncompleteInclude => {
-            ctx.emit_span_lint(lint, span, lints::IncompleteInclude)
+            lints::IncompleteInclude.decorate_lint(diag);
         }
         BuiltinLintDiag::UnnameableTestItems => {
-            ctx.emit_span_lint(lint, span, lints::UnnameableTestItems)
+            lints::UnnameableTestItems.decorate_lint(diag);
         }
         BuiltinLintDiag::DuplicateMacroAttribute => {
-            ctx.emit_span_lint(lint, span, lints::DuplicateMacroAttribute)
+            lints::DuplicateMacroAttribute.decorate_lint(diag);
         }
         BuiltinLintDiag::CfgAttrNoAttributes => {
-            ctx.emit_span_lint(lint, span, lints::CfgAttrNoAttributes)
+            lints::CfgAttrNoAttributes.decorate_lint(diag);
         }
         BuiltinLintDiag::CrateTypeInCfgAttr => {
-            ctx.emit_span_lint(lint, span, lints::CrateTypeInCfgAttr)
+            lints::CrateTypeInCfgAttr.decorate_lint(diag);
         }
         BuiltinLintDiag::CrateNameInCfgAttr => {
-            ctx.emit_span_lint(lint, span, lints::CrateNameInCfgAttr)
+            lints::CrateNameInCfgAttr.decorate_lint(diag);
         }
         BuiltinLintDiag::MissingFragmentSpecifier => {
-            ctx.emit_span_lint(lint, span, lints::MissingFragmentSpecifier)
+            lints::MissingFragmentSpecifier.decorate_lint(diag);
         }
         BuiltinLintDiag::MetaVariableStillRepeating(name) => {
-            ctx.emit_span_lint(lint, span, lints::MetaVariableStillRepeating { name })
+            lints::MetaVariableStillRepeating { name }.decorate_lint(diag);
         }
         BuiltinLintDiag::MetaVariableWrongOperator => {
-            ctx.emit_span_lint(lint, span, lints::MetaVariableWrongOperator)
+            lints::MetaVariableWrongOperator.decorate_lint(diag);
         }
         BuiltinLintDiag::DuplicateMatcherBinding => {
-            ctx.emit_span_lint(lint, span, lints::DuplicateMatcherBinding)
+            lints::DuplicateMatcherBinding.decorate_lint(diag);
         }
         BuiltinLintDiag::UnknownMacroVariable(name) => {
-            ctx.emit_span_lint(lint, span, lints::UnknownMacroVariable { name })
+            lints::UnknownMacroVariable { name }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => ctx.emit_span_lint(
-            lint,
-            span,
-            lints::UnusedCrateDependency { extern_crate, local_crate },
-        ),
-        BuiltinLintDiag::WasmCAbi => ctx.emit_span_lint(lint, span, lints::WasmCAbi),
-        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => ctx.emit_span_lint(
-            lint,
-            span,
+        BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
+            lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
+        }
+        BuiltinLintDiag::WasmCAbi => lints::WasmCAbi.decorate_lint(diag),
+        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => {
             lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
                     suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
                 ),
-            },
-        ),
-        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => ctx.emit_span_lint(
-            lint,
-            span,
-            if is_macro {
-                lints::InnerAttributeUnstable::InnerMacroAttribute
-            } else {
-                lints::InnerAttributeUnstable::CustomInnerAttribute
-            },
-        ),
+            }
+            .decorate_lint(diag)
+        }
+        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => if is_macro {
+            lints::InnerAttributeUnstable::InnerMacroAttribute
+        } else {
+            lints::InnerAttributeUnstable::CustomInnerAttribute
+        }
+        .decorate_lint(diag),
     }
 }

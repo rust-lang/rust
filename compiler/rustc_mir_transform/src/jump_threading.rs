@@ -155,7 +155,7 @@ struct ThreadingOpportunity {
 struct TOFinder<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
+    ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
     map: &'a Map,
     loop_headers: &'a BitSet<BasicBlock>,

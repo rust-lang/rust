@@ -200,8 +200,6 @@ pub trait SubdiagMessageOp<G: EmissionGuarantee> =
 pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
-
-    fn msg(&self) -> DiagMessage;
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]

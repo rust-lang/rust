@@ -214,7 +214,7 @@ enum MainThreadState<'tcx> {
 impl<'tcx> MainThreadState<'tcx> {
     fn on_main_stack_empty(
         &mut self,
-        this: &mut MiriInterpCx<'_, 'tcx>,
+        this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use MainThreadState::*;
         match self {
@@ -263,12 +263,12 @@ impl<'tcx> MainThreadState<'tcx> {
 
 /// Returns a freshly created `InterpCx`.
 /// Public because this is also used by `priroda`.
-pub fn create_ecx<'mir, 'tcx: 'mir>(
+pub fn create_ecx<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>> {
+) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx =

@@ -113,8 +113,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                                 self.local_def_id_to_hir_id(local_def_id),
                                 self.def_span(ct.def),
-                                "cannot use constants which depend on generic parameters in types",
-                                |_| {},
+                                |lint| { lint.primary_message("cannot use constants which depend on generic parameters in types"); },
                             )
                         }
                     }

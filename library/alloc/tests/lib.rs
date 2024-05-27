@@ -36,7 +36,6 @@
 #![feature(const_str_from_utf8)]
 #![feature(panic_update_hook)]
 #![feature(pointer_is_aligned_to)]
-#![feature(slice_flatten)]
 #![feature(thin_box)]
 #![feature(strict_provenance)]
 #![feature(drain_keep_rest)]

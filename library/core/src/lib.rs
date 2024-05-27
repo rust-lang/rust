@@ -191,6 +191,7 @@
 #![feature(str_split_remainder)]
 #![feature(strict_provenance)]
 #![feature(ub_checks)]
+#![feature(unchecked_neg)]
 #![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]

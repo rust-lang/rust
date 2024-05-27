@@ -460,13 +460,19 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             }
                             None
                         }) {
-                            if !lifetime.is_anonymous()
+                            if let LifetimeName::Param(param_def_id) = lifetime.res
+                                && !lifetime.is_anonymous()
                                 && fn_sig
                                     .output()
                                     .walk()
                                     .filter_map(|arg| {
                                         arg.as_region().and_then(|lifetime| match lifetime.kind() {
-                                            ty::ReEarlyParam(r) => Some(r.def_id),
+                                            ty::ReEarlyParam(r) => Some(
+                                                cx.tcx
+                                                    .generics_of(cx.tcx.parent(param_def_id.to_def_id()))
+                                                    .region_param(r, cx.tcx)
+                                                    .def_id,
+                                            ),
                                             ty::ReBound(_, r) => r.kind.get_id(),
                                             ty::ReLateParam(r) => r.bound_region.get_id(),
                                             ty::ReStatic
@@ -476,14 +482,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                             | ty::ReError(_) => None,
                                         })
                                     })
-                                    .any(|def_id| {
-                                        matches!(
-                                            lifetime.res,
-                                            LifetimeName::Param(param_def_id) if def_id
-                                                .as_local()
-                                                .is_some_and(|def_id| def_id == param_def_id),
-                                        )
-                                    })
+                                    .any(|def_id| def_id.as_local().is_some_and(|def_id| def_id == param_def_id))
                             {
                                 // `&Cow<'a, T>` when the return type uses 'a is okay
                                 return None;
