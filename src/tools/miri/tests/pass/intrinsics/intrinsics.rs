@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(core_intrinsics, layout_for_ptr)]
+#![feature(core_intrinsics, layout_for_ptr, ptr_metadata)]
 //! Tests for various intrinsics that do not fit anywhere else.
 
 use std::intrinsics;
@@ -57,4 +57,10 @@ fn main() {
     // Make sure that even if the discriminant is stored together with data, the intrinsic returns
     // only the discriminant, nothing about the data.
     assert_eq!(discriminant(&Some(false)), discriminant(&Some(true)));
+
+    let () = intrinsics::ptr_metadata(&[1, 2, 3]);
+    let len = intrinsics::ptr_metadata(&[1, 2, 3][..]);
+    assert_eq!(len, 3);
+    let dyn_meta = intrinsics::ptr_metadata(&[1, 2, 3] as &dyn std::fmt::Debug);
+    assert_eq!(dyn_meta.size_of(), 12);
 }
