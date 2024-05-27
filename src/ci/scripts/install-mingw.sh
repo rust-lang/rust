@@ -1,6 +1,5 @@
 #!/bin/bash
-# If we need to download a custom MinGW, do so here and set the path
-# appropriately.
+# For mingw builds use a vendored mingw.
 
 set -euo pipefail
 IFS=$'\n\t'
