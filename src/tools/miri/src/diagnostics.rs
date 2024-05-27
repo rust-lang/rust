@@ -411,7 +411,7 @@ pub fn report_error<'tcx, 'mir>(
         vec![],
         helps,
         &stacktrace,
-        Some(ecx.get_active_thread()),
+        Some(ecx.active_thread()),
         &ecx.machine,
     );
 
@@ -419,7 +419,7 @@ pub fn report_error<'tcx, 'mir>(
 
     if show_all_threads {
         for (thread, stack) in ecx.machine.threads.all_stacks() {
-            if thread != ecx.get_active_thread() {
+            if thread != ecx.active_thread() {
                 let stacktrace = Frame::generate_stacktrace_from_stack(stack);
                 let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
                 any_pruned |= was_pruned;
@@ -684,7 +684,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             notes,
             helps,
             &stacktrace,
-            Some(self.threads.get_active_thread_id()),
+            Some(self.threads.active_thread()),
             self,
         );
     }
@@ -712,7 +712,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             vec![],
             vec![],
             &stacktrace,
-            Some(this.get_active_thread()),
+            Some(this.active_thread()),
             &this.machine,
         );
     }

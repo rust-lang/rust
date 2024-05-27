@@ -71,24 +71,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("Miri does not support file-backed memory mappings");
         }
 
-        // POSIX says:
-        // [ENOTSUP]
-        // * MAP_FIXED or MAP_PRIVATE was specified in the flags argument and the implementation
-        // does not support this functionality.
-        // * The implementation does not support the combination of accesses requested in the
-        // prot argument.
-        //
-        // Miri doesn't support MAP_FIXED or any protections other than PROT_READ|PROT_WRITE.
-        if flags & map_fixed != 0 || prot != prot_read | prot_write {
-            this.set_last_error(this.eval_libc("ENOTSUP"))?;
-            return Ok(this.eval_libc("MAP_FAILED"));
+        // Miri doesn't support MAP_FIXED.
+        if flags & map_fixed != 0 {
+            throw_unsup_format!(
+                "Miri does not support calls to mmap with MAP_FIXED as part of the flags argument",
+            );
+        }
+
+        // Miri doesn't support protections other than PROT_READ|PROT_WRITE.
+        if prot != prot_read | prot_write {
+            throw_unsup_format!(
+                "Miri does not support calls to mmap with protections other than \
+                 PROT_READ|PROT_WRITE",
+            );
         }
 
         // Miri does not support shared mappings, or any of the other extensions that for example
         // Linux has added to the flags arguments.
         if flags != map_private | map_anonymous {
             throw_unsup_format!(
-                "Miri only supports calls to mmap which set the flags argument to MAP_PRIVATE|MAP_ANONYMOUS"
+                "Miri only supports calls to mmap which set the flags argument to \
+                 MAP_PRIVATE|MAP_ANONYMOUS",
             );
         }
 

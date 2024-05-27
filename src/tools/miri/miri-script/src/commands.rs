@@ -531,7 +531,13 @@ impl Command {
             };
             cmd.set_quiet(!verbose);
             // Add Miri flags
-            let cmd = cmd.args(&miri_flags).args(&seed_flag).args(&early_flags).args(&flags);
+            let mut cmd = cmd.args(&miri_flags).args(&seed_flag).args(&early_flags).args(&flags);
+            // For `--dep` we also need to set the env var.
+            if dep {
+                if let Some(target) = &target {
+                    cmd = cmd.env("MIRI_TEST_TARGET", target);
+                }
+            }
             // And run the thing.
             Ok(cmd.run()?)
         };

@@ -46,10 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
                 if this
                     .tcx
-                    .get_attrs_by_path(
-                        instance.def_id(),
-                        &[sym::miri, intrinsic_fallback_is_spec],
-                    )
+                    .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
                     .next()
                     .is_none()
                 {

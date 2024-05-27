@@ -69,7 +69,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Some(Handle::Thread(thread)) => thread,
             // Unlike on posix, the outcome of joining the current thread is not documented.
             // On current Windows, it just deadlocks.
-            Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.get_active_thread(),
+            Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
             _ => this.invalid_handle("WaitForSingleObject")?,
         };
 
