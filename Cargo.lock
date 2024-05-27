@@ -4392,7 +4392,6 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_index",
  "rustc_macros",
- "rustc_next_trait_solver",
  "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
