@@ -7,7 +7,6 @@
 
 use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, QueryResponse};
-use crate::ty::error::TypeError;
 use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
@@ -90,12 +89,6 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
-
-impl<'tcx> From<TypeError<'tcx>> for NoSolution {
-    fn from(_: TypeError<'tcx>) -> NoSolution {
-        NoSolution
-    }
-}
 
 #[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {

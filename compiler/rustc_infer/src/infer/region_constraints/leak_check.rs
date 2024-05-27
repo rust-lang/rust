@@ -276,7 +276,7 @@ impl<'a, 'b, 'tcx> LeakCheck<'a, 'b, 'tcx> {
         other_region: ty::Region<'tcx>,
     ) -> TypeError<'tcx> {
         debug!("error: placeholder={:?}, other_region={:?}", placeholder, other_region);
-        TypeError::RegionsInsufficientlyPolymorphic(placeholder.bound.kind, other_region)
+        TypeError::RegionsInsufficientlyPolymorphic(placeholder.bound, other_region)
     }
 }
 
