@@ -531,7 +531,7 @@ impl Stacks {
         trace!(
             "read access with tag {:?}: {:?}, size {}",
             tag,
-            Pointer::new(alloc_id, range.start),
+            interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::read(machine, tag, range);
@@ -552,7 +552,7 @@ impl Stacks {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
             tag,
-            Pointer::new(alloc_id, range.start),
+            interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::write(machine, tag, range);
@@ -587,7 +587,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the provenance that should be used henceforth.
     fn sb_reborrow(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         size: Size,
         new_perm: NewPermission,
         new_tag: BorTag,
@@ -692,7 +692,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             new_tag,
             orig_tag,
             place.layout.ty,
-            Pointer::new(alloc_id, base_offset),
+            interpret::Pointer::new(alloc_id, base_offset),
             size.bytes()
         );
 
@@ -809,10 +809,10 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
 
     fn sb_retag_place(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         new_perm: NewPermission,
         info: RetagInfo, // diagnostics info about this retag
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
         let size = this.size_and_align_of_mplace(place)?.map(|(size, _)| size);
         // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
@@ -839,10 +839,10 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
     /// `kind` indicates what kind of reference is being created.
     fn sb_retag_reference(
         &mut self,
-        val: &ImmTy<'tcx, Provenance>,
+        val: &ImmTy<'tcx>,
         new_perm: NewPermission,
         info: RetagInfo, // diagnostics info about this retag
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let place = this.ref_to_mplace(val)?;
         let new_place = this.sb_retag_place(&place, new_perm, info)?;
@@ -855,8 +855,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn sb_retag_ptr_value(
         &mut self,
         kind: RetagKind,
-        val: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        val: &ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let cause = match kind {
@@ -870,7 +870,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn sb_retag_place_contents(
         &mut self,
         kind: RetagKind,
-        place: &PlaceTy<'tcx, Provenance>,
+        place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
@@ -895,7 +895,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
             fn retag_ptr_inplace(
                 &mut self,
-                place: &PlaceTy<'tcx, Provenance>,
+                place: &PlaceTy<'tcx>,
                 new_perm: NewPermission,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
@@ -909,18 +909,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
         impl<'ecx, 'tcx> ValueVisitor<'tcx, MiriMachine<'tcx>> for RetagVisitor<'ecx, 'tcx> {
-            type V = PlaceTy<'tcx, Provenance>;
+            type V = PlaceTy<'tcx>;
 
             #[inline(always)]
             fn ecx(&self) -> &MiriInterpCx<'tcx> {
                 self.ecx
             }
 
-            fn visit_box(
-                &mut self,
-                box_ty: Ty<'tcx>,
-                place: &PlaceTy<'tcx, Provenance>,
-            ) -> InterpResult<'tcx> {
+            fn visit_box(&mut self, box_ty: Ty<'tcx>, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
                 // Only boxes for the global allocator get any special treatment.
                 if box_ty.is_box_global(*self.ecx.tcx) {
                     // Boxes get a weak protectors, since they may be deallocated.
@@ -930,7 +926,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(())
             }
 
-            fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+            fn visit_value(&mut self, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
                 // If this place is smaller than a pointer, we know that it can't contain any
                 // pointers we need to retag, so we can stop recursion early.
                 // This optimization is crucial for ZSTs, because they can contain way more fields
@@ -984,10 +980,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// call.
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
-    fn sb_protect_place(
-        &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+    fn sb_protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
 
         // Retag it. With protection! That is the entire point.

@@ -92,11 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn malloc(
-        &mut self,
-        size: u64,
-        zero_init: bool,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn malloc(&mut self, size: u64, zero_init: bool) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let align = this.malloc_align(size);
         let ptr = this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
@@ -113,10 +109,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn posix_memalign(
         &mut self,
-        memptr: &OpTy<'tcx, Provenance>,
-        align: &OpTy<'tcx, Provenance>,
-        size: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        memptr: &OpTy<'tcx>,
+        align: &OpTy<'tcx>,
+        size: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let memptr = this.deref_pointer(memptr)?;
         let align = this.read_target_usize(align)?;
@@ -137,7 +133,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn free(&mut self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx> {
+    fn free(&mut self, ptr: Pointer) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.ptr_is_null(ptr)? {
             this.deallocate_ptr(ptr, None, MiriMemoryKind::C.into())?;
@@ -145,11 +141,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn realloc(
-        &mut self,
-        old_ptr: Pointer<Option<Provenance>>,
-        new_size: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn realloc(&mut self, old_ptr: Pointer, new_size: u64) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let new_align = this.malloc_align(new_size);
         if this.ptr_is_null(old_ptr)? {
@@ -175,9 +167,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn aligned_alloc(
         &mut self,
-        align: &OpTy<'tcx, Provenance>,
-        size: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        align: &OpTy<'tcx>,
+        size: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let align = this.read_target_usize(align)?;
         let size = this.read_target_usize(size)?;

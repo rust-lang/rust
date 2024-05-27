@@ -14,10 +14,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_native_with_args<'a>(
         &mut self,
         link_name: Symbol,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        dest: &MPlaceTy<'tcx>,
         ptr: CodePtr,
         libffi_args: Vec<libffi::high::Arg<'a>>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
 
         // Call the function (`ptr`) with arguments `libffi_args`, and obtain the return value
@@ -132,8 +132,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_native_fn(
         &mut self,
         link_name: Symbol,
-        dest: &MPlaceTy<'tcx, Provenance>,
-        args: &[OpTy<'tcx, Provenance>],
+        dest: &MPlaceTy<'tcx>,
+        args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         // Get the pointer to the function in the shared object file if it exists.
@@ -216,10 +216,7 @@ impl<'a> CArg {
 
 /// Extract the scalar value from the result of reading a scalar from the machine,
 /// and convert it to a `CArg`.
-fn imm_to_carg<'tcx>(
-    v: ImmTy<'tcx, Provenance>,
-    cx: &impl HasDataLayout,
-) -> InterpResult<'tcx, CArg> {
+fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'tcx, CArg> {
     Ok(match v.layout.ty.kind() {
         // If the primitive provided can be converted to a type matching the type pattern
         // then create a `CArg` of this primitive value with the corresponding `CArg` constructor.

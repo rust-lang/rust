@@ -18,8 +18,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_atomic_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -124,8 +124,8 @@ impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn atomic_load(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -140,11 +140,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn atomic_store(
-        &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        atomic: AtomicWriteOrd,
-    ) -> InterpResult<'tcx> {
+    fn atomic_store(&mut self, args: &[OpTy<'tcx>], atomic: AtomicWriteOrd) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let [place, val] = check_arg_count(args)?;
@@ -159,7 +155,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn compiler_fence_intrinsic(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[OpTy<'tcx>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let [] = check_arg_count(args)?;
@@ -170,7 +166,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn atomic_fence_intrinsic(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[OpTy<'tcx>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -181,8 +177,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn atomic_rmw_op(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         atomic_op: AtomicOp,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
@@ -223,8 +219,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn atomic_exchange(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -240,8 +236,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn atomic_compare_exchange_impl(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
@@ -269,8 +265,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn atomic_compare_exchange(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
@@ -279,8 +275,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     fn atomic_compare_exchange_weak(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
     ) -> InterpResult<'tcx> {

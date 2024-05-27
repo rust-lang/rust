@@ -97,7 +97,16 @@ use tracing::{info, trace};
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
-pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
+pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
+
+// Type aliases that set the provenance parameter.
+pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
+pub type StrictPointer = interpret::Pointer<machine::Provenance>;
+pub type Scalar = interpret::Scalar<machine::Provenance>;
+pub type ImmTy<'tcx> = interpret::ImmTy<'tcx, machine::Provenance>;
+pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;
+pub type PlaceTy<'tcx> = interpret::PlaceTy<'tcx, machine::Provenance>;
+pub type MPlaceTy<'tcx> = interpret::MPlaceTy<'tcx, machine::Provenance>;
 
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};

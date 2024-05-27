@@ -23,11 +23,11 @@ use helpers::check_arg_count;
 #[derive(Debug)]
 pub struct CatchUnwindData<'tcx> {
     /// The `catch_fn` callback to call in case of a panic.
-    catch_fn: Pointer<Option<Provenance>>,
+    catch_fn: Pointer,
     /// The `data` argument for that callback.
-    data: Scalar<Provenance>,
+    data: Scalar,
     /// The return place from the original call to `try`.
-    dest: MPlaceTy<'tcx, Provenance>,
+    dest: MPlaceTy<'tcx>,
     /// The return block from the original call to `try`.
     ret: Option<mir::BasicBlock>,
 }
@@ -45,7 +45,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Handles the special `miri_start_unwind` intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
-    fn handle_miri_start_unwind(&mut self, payload: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn handle_miri_start_unwind(&mut self, payload: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         trace!("miri_start_unwind: {:?}", this.frame().instance);
@@ -60,8 +60,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
     fn handle_catch_unwind(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

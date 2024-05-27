@@ -84,11 +84,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `EFD_SEMAPHORE` - miri does not support semaphore-like semantics.
     ///
     /// <https://linux.die.net/man/2/eventfd>
-    fn eventfd(
-        &mut self,
-        val: &OpTy<'tcx, Provenance>,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn eventfd(&mut self, val: &OpTy<'tcx>, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let val = this.read_scalar(val)?.to_u32()?;
