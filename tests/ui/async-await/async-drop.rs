@@ -1,6 +1,10 @@
 //@ run-pass
 //@ check-run-results
 
+// WARNING: If you would ever want to modify this test,
+// please consider modifying miri's async drop test at
+// `src/tools/miri/tests/pass/async-drop.rs`.
+
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker, async_closure)]
 #![allow(incomplete_features, dead_code)]
 
