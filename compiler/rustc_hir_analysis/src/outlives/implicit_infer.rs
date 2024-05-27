@@ -15,7 +15,7 @@ use super::utils::*;
 ///     now be filled with inferred predicates.
 pub(super) fn infer_predicates(
     tcx: TyCtxt<'_>,
-) -> FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'_>>> {
+) -> FxIndexMap<DefId, ty::EarlyBinder<'_, RequiredPredicates<'_>>> {
     debug!("infer_predicates");
 
     let mut explicit_map = ExplicitPredicatesMap::new();
@@ -101,7 +101,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
+    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
@@ -322,7 +322,7 @@ fn check_inferred_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
+    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
 ) {
     // Load the current set of inferred and explicit predicates from `global_inferred_outlives`

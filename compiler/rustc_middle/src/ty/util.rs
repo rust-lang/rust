@@ -694,7 +694,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<Ty<'tcx>>> {
+    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
         coroutine_layout
             .as_ref()
@@ -709,7 +709,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<ty::Binder<'tcx, Ty<'tcx>>>> {
+    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
         coroutine_layout
             .as_ref()

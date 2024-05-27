@@ -184,6 +184,15 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_var(tcx, vid, ty)
     }
 
+    fn new_bound(
+        interner: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Const::new_bound(interner, debruijn, var, ty)
+    }
+
     fn new_anon_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
@@ -486,7 +495,10 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-pub fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Const<'_>> {
+pub fn const_param_default<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let default_def_id = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::GenericParam(hir::GenericParam {
             kind: hir::GenericParamKind::Const { default: Some(ac), .. },

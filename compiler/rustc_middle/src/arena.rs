@@ -108,7 +108,7 @@ macro_rules! arena_types {
             [decode] trait_impl_trait_tys:
                 rustc_data_structures::unord::UnordMap<
                     rustc_hir::def_id::DefId,
-                    rustc_middle::ty::EarlyBinder<rustc_middle::ty::Ty<'tcx>>
+                    rustc_middle::ty::EarlyBinder<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
             [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,

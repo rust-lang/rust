@@ -220,7 +220,10 @@ pub enum Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
-    pub fn identity_unevaluated(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::EarlyBinder<Const<'tcx>> {
+    pub fn identity_unevaluated(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
         ty::EarlyBinder::bind(Const::Unevaluated(
             UnevaluatedConst {
                 def: def_id,
