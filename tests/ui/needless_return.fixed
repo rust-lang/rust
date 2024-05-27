@@ -323,4 +323,8 @@ fn allow_works() -> i32 {
     }
 }
 
+fn conjunctive_blocks() -> String {
+    ({ "a".to_string() } + "b" + { "c" })
+}
+
 fn main() {}
