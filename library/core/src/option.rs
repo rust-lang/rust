@@ -137,10 +137,13 @@
 //!
 //! [^extern_fn]: this remains true for any argument/return types and any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
+//! Under some conditions the above types `T` are also null pointer optimized when wrapped in a [`Result`][result_repr].
+//!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
 //! [`num::NonZero*`]: crate::num
 //! [`ptr::NonNull<U>`]: crate::ptr::NonNull
 //! [function call ABI]: ../primitive.fn.html#abi-compatibility
+//! [result_repr]: crate::result#representation
 //!
 //! This is called the "null pointer optimization" or NPO.
 //!
