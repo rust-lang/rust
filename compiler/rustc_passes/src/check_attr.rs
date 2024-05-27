@@ -312,7 +312,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         true
     }
 
-
     /// Checks if `unsafe()` is applied to an invalid attribute.
     fn check_unsafe_attr(&self, attr: &Attribute) {
         if !attr.is_doc_comment() {

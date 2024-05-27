@@ -1,6 +1,6 @@
 use super::*;
 
-use rustc_ast::{MetaItemLit, Path, StrStyle, Safety};
+use rustc_ast::{MetaItemLit, Path, Safety, StrStyle};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::DUMMY_SP;

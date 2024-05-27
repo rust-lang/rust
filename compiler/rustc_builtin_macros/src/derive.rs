@@ -2,7 +2,7 @@ use crate::cfg_eval::cfg_eval;
 use crate::errors;
 
 use rustc_ast as ast;
-use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind, Safety};
+use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, Safety, StmtKind};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };

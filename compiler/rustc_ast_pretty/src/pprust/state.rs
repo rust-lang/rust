@@ -260,8 +260,13 @@ pub fn print_crate<'a>(
         // root, so this is not needed, and actually breaks things.
         if edition.is_rust_2015() {
             // `#![no_std]`
-            let fake_attr =
-                attr::mk_attr_word(g, ast::AttrStyle::Inner, Safety::Default, sym::no_std, DUMMY_SP);
+            let fake_attr = attr::mk_attr_word(
+                g,
+                ast::AttrStyle::Inner,
+                Safety::Default,
+                sym::no_std,
+                DUMMY_SP,
+            );
             s.print_attribute(&fake_attr);
         }
     }
