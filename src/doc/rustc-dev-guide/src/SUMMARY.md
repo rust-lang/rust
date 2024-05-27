@@ -114,8 +114,11 @@
 # Analysis
 
 - [Prologue](./part-4-intro.md)
-- [The `ty` module: representing types](./ty.md)
-    - [Generics and substitutions](./generics.md)
+- [Generic parameter definitions](./generic_parameters_summary.md)
+    - [What is `ty::Generics`](./what_is_ty_generics.md)
+    - [Early vs Late bound parameters](./early-late-bound-params/early-late-bound-summary.md)
+        - [Implementation nuances of early/late bound parameters](./early-late-bound-params/early-late-bound-implementation-nuances.md)
+        - [Interactions with turbofishing](./early-late-bound-params/turbofishing-and-early-late-bound.md)
     - [`TypeFolder` and `TypeFoldable`](./ty-fold.md)
     - [Generic arguments](./generic_arguments.md)
     - [Constants in the type system](./constants.md)
