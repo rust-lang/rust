@@ -184,6 +184,15 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_var(tcx, vid, ty)
     }
 
+    fn new_bound(
+        interner: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Const::new_bound(interner, debruijn, var, ty)
+    }
+
     fn new_anon_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,

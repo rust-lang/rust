@@ -40,6 +40,7 @@ pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
+pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -954,6 +955,12 @@ pub struct ParamTy {
     pub name: Symbol,
 }
 
+impl rustc_type_ir::inherent::ParamLike for ParamTy {
+    fn index(self) -> u32 {
+        self.index
+    }
+}
+
 impl<'tcx> ParamTy {
     pub fn new(index: u32, name: Symbol) -> ParamTy {
         ParamTy { index, name }
@@ -980,6 +987,12 @@ impl<'tcx> ParamTy {
 pub struct ParamConst {
     pub index: u32,
     pub name: Symbol,
+}
+
+impl rustc_type_ir::inherent::ParamLike for ParamConst {
+    fn index(self) -> u32 {
+        self.index
+    }
 }
 
 impl ParamConst {
@@ -1421,6 +1434,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn new_var(tcx: TyCtxt<'tcx>, vid: ty::TyVid) -> Self {
         Ty::new_var(tcx, vid)
+    }
+
+    fn new_bound(interner: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundTy) -> Self {
+        Ty::new_bound(interner, debruijn, var)
     }
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {

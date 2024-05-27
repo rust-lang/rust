@@ -65,7 +65,7 @@ pub trait Interner:
     type Ty: Ty<Self>;
     type Tys: Tys<Self>;
     type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]> + TypeVisitable<Self>;
-    type ParamTy: Copy + Debug + Hash + Eq;
+    type ParamTy: Copy + Debug + Hash + Eq + ParamLike;
     type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderTy: PlaceholderLike;
 
@@ -81,14 +81,14 @@ pub trait Interner:
     // Kinds of consts
     type Const: Const<Self>;
     type PlaceholderConst: PlaceholderLike;
-    type ParamConst: Copy + Debug + Hash + Eq;
+    type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
     type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
 
     // Kinds of regions
     type Region: Region<Self>;
-    type EarlyParamRegion: Copy + Debug + Hash + Eq;
+    type EarlyParamRegion: Copy + Debug + Hash + Eq + ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
     type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderRegion: PlaceholderLike;
