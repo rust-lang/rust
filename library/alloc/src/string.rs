@@ -420,6 +420,7 @@ pub struct FromUtf8Error {
 ///
 /// assert!(String::from_utf16(v).is_err());
 /// ```
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct FromUtf16Error(());
@@ -2069,6 +2070,7 @@ impl fmt::Display for FromUtf8Error {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2084,6 +2086,7 @@ impl Error for FromUtf8Error {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for FromUtf16Error {
     #[allow(deprecated)]
