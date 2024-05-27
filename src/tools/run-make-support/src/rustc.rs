@@ -203,6 +203,12 @@ impl Rustc {
         self
     }
 
+    /// Specify the linker
+    pub fn linker(&mut self, linker: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clinker={linker}"));
+        self
+    }
+
     /// Get the [`Output`][::std::process::Output] of the finished process.
     #[track_caller]
     pub fn command_output(&mut self) -> ::std::process::Output {
