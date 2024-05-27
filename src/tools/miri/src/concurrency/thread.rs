@@ -9,7 +9,6 @@ use std::time::{Duration, SystemTime};
 use either::Either;
 
 use rustc_const_eval::CTRL_C_RECEIVED;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
@@ -45,17 +44,12 @@ pub enum TlsAllocAction {
 pub trait UnblockCallback<'tcx>: VisitProvenance {
     /// Will be invoked when the thread was unblocked the "regular" way,
     /// i.e. whatever event it was blocking on has happened.
-    fn unblock<'mir>(
-        self: Box<Self>,
-        ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx>;
+    fn unblock(self: Box<Self>, ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx>;
 
     /// Will be invoked when the timeout ellapsed without the event the
     /// thread was blocking on having occurred.
-    fn timeout<'mir>(
-        self: Box<Self>,
-        _ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx>;
+    fn timeout(self: Box<Self>, _ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>)
+    -> InterpResult<'tcx>;
 }
 type DynUnblockCallback<'tcx> = Box<dyn UnblockCallback<'tcx> + 'tcx>;
 
@@ -95,13 +89,13 @@ macro_rules! callback {
         }
 
         impl<$tcx, $($lft),*> UnblockCallback<$tcx> for Callback<$tcx, $($lft),*> {
-            fn unblock<'mir>(self: Box<Self>, $this: &mut MiriInterpCx<'mir, $tcx>) -> InterpResult<$tcx> {
+            fn unblock(self: Box<Self>, $this: &mut MiriInterpCx<$tcx>) -> InterpResult<$tcx> {
                 #[allow(unused_variables)]
                 let Callback { $($name,)* _phantom } = *self;
                 $unblock
             }
 
-            fn timeout<'mir>(self: Box<Self>, $this_timeout: &mut MiriInterpCx<'mir, $tcx>) -> InterpResult<$tcx> {
+            fn timeout(self: Box<Self>, $this_timeout: &mut MiriInterpCx<$tcx>) -> InterpResult<$tcx> {
                 #[allow(unused_variables)]
                 let Callback { $($name,)* _phantom } = *self;
                 $timeout
@@ -229,7 +223,7 @@ enum ThreadJoinStatus {
 }
 
 /// A thread.
-pub struct Thread<'mir, 'tcx> {
+pub struct Thread<'tcx> {
     state: ThreadState<'tcx>,
 
     /// Name of the thread.
@@ -242,7 +236,7 @@ pub struct Thread<'mir, 'tcx> {
     /// Conceptually, this is the interpreter implementation of the things that happen 'after' the
     /// Rust language entry point for this thread returns (usually implemented by the C or OS runtime).
     /// (`None` is an error, it means the callback has not been set up yet or is actively running.)
-    pub(crate) on_stack_empty: Option<StackEmptyCallback<'mir, 'tcx>>,
+    pub(crate) on_stack_empty: Option<StackEmptyCallback<'tcx>>,
 
     /// The index of the topmost user-relevant frame in `stack`. This field must contain
     /// the value produced by `get_top_user_relevant_frame`.
@@ -268,10 +262,10 @@ pub struct Thread<'mir, 'tcx> {
     pub(crate) last_error: Option<MPlaceTy<'tcx, Provenance>>,
 }
 
-pub type StackEmptyCallback<'mir, 'tcx> =
-    Box<dyn FnMut(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, Poll<()>> + 'tcx>;
+pub type StackEmptyCallback<'tcx> =
+    Box<dyn FnMut(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Poll<()>> + 'tcx>;
 
-impl<'mir, 'tcx> Thread<'mir, 'tcx> {
+impl<'tcx> Thread<'tcx> {
     /// Get the name of the current thread if it was set.
     fn thread_name(&self) -> Option<&[u8]> {
         self.thread_name.as_deref()
@@ -327,7 +321,7 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
+impl<'tcx> std::fmt::Debug for Thread<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -339,8 +333,8 @@ impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> Thread<'mir, 'tcx> {
-    fn new(name: Option<&str>, on_stack_empty: Option<StackEmptyCallback<'mir, 'tcx>>) -> Self {
+impl<'tcx> Thread<'tcx> {
+    fn new(name: Option<&str>, on_stack_empty: Option<StackEmptyCallback<'tcx>>) -> Self {
         Self {
             state: ThreadState::Enabled,
             thread_name: name.map(|name| Vec::from(name.as_bytes())),
@@ -354,7 +348,7 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
-impl VisitProvenance for Thread<'_, '_> {
+impl VisitProvenance for Thread<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Thread {
             panic_payloads: panic_payload,
@@ -431,13 +425,13 @@ impl Timeout {
 
 /// A set of threads.
 #[derive(Debug)]
-pub struct ThreadManager<'mir, 'tcx> {
+pub struct ThreadManager<'tcx> {
     /// Identifier of the currently active thread.
     active_thread: ThreadId,
     /// Threads used in the program.
     ///
     /// Note that this vector also contains terminated threads.
-    threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
+    threads: IndexVec<ThreadId, Thread<'tcx>>,
     /// A mapping from a thread-local static to an allocation id of a thread
     /// specific allocation.
     thread_local_alloc_ids: FxHashMap<(DefId, ThreadId), Pointer<Provenance>>,
@@ -445,7 +439,7 @@ pub struct ThreadManager<'mir, 'tcx> {
     yield_active_thread: bool,
 }
 
-impl VisitProvenance for ThreadManager<'_, '_> {
+impl VisitProvenance for ThreadManager<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let ThreadManager {
             threads,
@@ -463,7 +457,7 @@ impl VisitProvenance for ThreadManager<'_, '_> {
     }
 }
 
-impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
+impl<'tcx> Default for ThreadManager<'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         // Create the main thread and add it to the list of threads.
@@ -477,10 +471,10 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
+impl<'tcx> ThreadManager<'tcx> {
     pub(crate) fn init(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
-        on_main_stack_empty: StackEmptyCallback<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+        on_main_stack_empty: StackEmptyCallback<'tcx>,
     ) {
         ecx.machine.threads.threads[ThreadId::MAIN_THREAD].on_stack_empty =
             Some(on_main_stack_empty);
@@ -516,13 +510,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
     pub fn all_stacks(
         &self,
-    ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> + Captures<'mir>
-    {
+    ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> {
         self.threads.iter_enumerated().map(|(id, t)| (id, &t.stack[..]))
     }
 
     /// Create a new thread and returns its id.
-    fn create_thread(&mut self, on_stack_empty: StackEmptyCallback<'mir, 'tcx>) -> ThreadId {
+    fn create_thread(&mut self, on_stack_empty: StackEmptyCallback<'tcx>) -> ThreadId {
         let new_thread_id = ThreadId::new(self.threads.len());
         self.threads.push(Thread::new(None, Some(on_stack_empty)));
         new_thread_id
@@ -572,12 +565,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get a mutable borrow of the currently active thread.
-    pub fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
+    pub fn active_thread_mut(&mut self) -> &mut Thread<'tcx> {
         &mut self.threads[self.active_thread]
     }
 
     /// Get a shared borrow of the currently active thread.
-    pub fn active_thread_ref(&self) -> &Thread<'mir, 'tcx> {
+    pub fn active_thread_ref(&self) -> &Thread<'tcx> {
         &self.threads[self.active_thread]
     }
 
@@ -791,8 +784,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Execute a timeout callback on the callback's thread.
     #[inline]
     fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
@@ -848,8 +841,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 }
 
 // Public interface to thread management.
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
     fn get_or_create_thread_local_alloc(
@@ -1069,13 +1062,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
+    fn active_thread_mut(&mut self) -> &mut Thread<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_mut()
     }
 
     #[inline]
-    fn active_thread_ref(&self) -> &Thread<'mir, 'tcx> {
+    fn active_thread_ref(&self) -> &Thread<'tcx> {
         let this = self.eval_context_ref();
         this.machine.threads.active_thread_ref()
     }
@@ -1099,10 +1092,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn active_thread_stack<'a>(&'a self) -> &'a [Frame<'tcx, Provenance, FrameExtra<'tcx>>]
-    where
-        'mir: 'a,
-    {
+    fn active_thread_stack<'a>(&'a self) -> &'a [Frame<'tcx, Provenance, FrameExtra<'tcx>>] {
         let this = self.eval_context_ref();
         this.machine.threads.active_thread_stack()
     }
@@ -1110,10 +1100,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn active_thread_stack_mut<'a>(
         &'a mut self,
-    ) -> &'a mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>>
-    where
-        'mir: 'a,
-    {
+    ) -> &'a mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
     }
@@ -1128,7 +1115,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&[u8]>
     where
-        'mir: 'c,
+        'tcx: 'c,
     {
         self.eval_context_ref().machine.threads.get_thread_name(thread)
     }

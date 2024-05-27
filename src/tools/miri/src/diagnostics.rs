@@ -144,7 +144,7 @@ pub enum DiagLevel {
 /// be pointing to a problem in the Rust runtime itself, and do not prune it at all.
 pub fn prune_stacktrace<'tcx>(
     mut stacktrace: Vec<FrameInfo<'tcx>>,
-    machine: &MiriMachine<'_, 'tcx>,
+    machine: &MiriMachine<'tcx>,
 ) -> (Vec<FrameInfo<'tcx>>, bool) {
     match machine.backtrace_style {
         BacktraceStyle::Off => {
@@ -201,8 +201,8 @@ pub fn prune_stacktrace<'tcx>(
 /// Emit a custom diagnostic without going through the miri-engine machinery.
 ///
 /// Returns `Some` if this was regular program termination with a given exit code and a `bool` indicating whether a leak check should happen; `None` otherwise.
-pub fn report_error<'tcx, 'mir>(
-    ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+pub fn report_error<'tcx>(
+    ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     e: InterpErrorInfo<'tcx>,
 ) -> Option<(i64, bool)> {
     use InterpError::*;
@@ -457,8 +457,8 @@ pub fn report_error<'tcx, 'mir>(
     None
 }
 
-pub fn report_leaks<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+pub fn report_leaks<'tcx>(
+    ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>, MiriAllocBytes>)>,
 ) {
     let mut any_pruned = false;
@@ -504,7 +504,7 @@ pub fn report_msg<'tcx>(
     helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
     thread: Option<ThreadId>,
-    machine: &MiriMachine<'_, 'tcx>,
+    machine: &MiriMachine<'tcx>,
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let sess = machine.tcx.sess;
@@ -577,7 +577,7 @@ pub fn report_msg<'tcx>(
     err.emit();
 }
 
-impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
+impl<'tcx> MiriMachine<'tcx> {
     pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         use NonHaltingDiagnostic::*;
 
@@ -690,8 +690,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         let this = self.eval_context_ref();
         this.machine.emit_diagnostic(e);

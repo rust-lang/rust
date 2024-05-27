@@ -159,9 +159,9 @@ pub struct SynchronizationObjects {
 }
 
 // Private extension trait for local helper methods
-impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
-    crate::MiriInterpCxExt<'mir, 'tcx>
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExtPriv<'tcx>:
+    crate::MiriInterpCxExt<'tcx>
 {
     /// Lazily initialize the ID of this Miri sync structure.
     /// ('0' indicates uninit.)
@@ -202,7 +202,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     #[inline]
     fn mutex_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, MutexId>
     where
-        F: FnOnce(&mut MiriInterpCx<'mir, 'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
+        F: FnOnce(&mut MiriInterpCx<'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.sync.mutexes.next_index();
@@ -223,7 +223,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     #[inline]
     fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
     where
-        F: FnOnce(&mut MiriInterpCx<'mir, 'tcx>, RwLockId) -> InterpResult<'tcx, Option<RwLockId>>,
+        F: FnOnce(&mut MiriInterpCx<'tcx>, RwLockId) -> InterpResult<'tcx, Option<RwLockId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.sync.rwlocks.next_index();
@@ -245,7 +245,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
     where
         F: FnOnce(
-            &mut MiriInterpCx<'mir, 'tcx>,
+            &mut MiriInterpCx<'tcx>,
             CondvarId,
         ) -> InterpResult<'tcx, Option<CondvarId>>,
     {
@@ -287,8 +287,8 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn mutex_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,

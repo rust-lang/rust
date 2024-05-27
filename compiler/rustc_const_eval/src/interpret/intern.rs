@@ -29,8 +29,7 @@ use super::{err_ub, AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind
 use crate::const_eval;
 use crate::errors::NestedStaticInThreadLocal;
 
-pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
-        'mir,
+pub trait CompileTimeMachine<'tcx, T> = Machine<
         'tcx,
         MemoryKind = T,
         Provenance = CtfeProvenance,
@@ -59,8 +58,8 @@ impl HasStaticRootDefId for const_eval::CompileTimeInterpreter<'_> {
 /// already mutable (as a sanity check).
 ///
 /// Returns an iterator over all relocations referred to by this allocation.
-fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
-    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
+fn intern_shallow<'rt, 'tcx, T, M: CompileTimeMachine<'tcx, T>>(
+    ecx: &'rt mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
 ) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
@@ -146,12 +145,8 @@ pub enum InternResult {
 ///
 /// For `InternKind::Static` the root allocation will not be interned, but must be handled by the caller.
 #[instrument(level = "debug", skip(ecx))]
-pub fn intern_const_alloc_recursive<
-    'mir,
-    'tcx: 'mir,
-    M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>,
->(
-    ecx: &mut InterpCx<'mir, 'tcx, M>,
+pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval::MemoryKind>>(
+    ecx: &mut InterpCx<'tcx, M>,
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
 ) -> Result<(), InternResult> {
@@ -290,13 +285,8 @@ pub fn intern_const_alloc_recursive<
 
 /// Intern `ret`. This function assumes that `ret` references no other allocation.
 #[instrument(level = "debug", skip(ecx))]
-pub fn intern_const_alloc_for_constprop<
-    'mir,
-    'tcx: 'mir,
-    T,
-    M: CompileTimeMachine<'mir, 'tcx, T>,
->(
-    ecx: &mut InterpCx<'mir, 'tcx, M>,
+pub fn intern_const_alloc_for_constprop<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
+    ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
 ) -> InterpResult<'tcx, ()> {
     if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
@@ -315,19 +305,14 @@ pub fn intern_const_alloc_for_constprop<
     Ok(())
 }
 
-impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
-    InterpCx<'mir, 'tcx, M>
-{
+impl<'tcx, M: super::intern::CompileTimeMachine<'tcx, !>> InterpCx<'tcx, M> {
     /// A helper function that allocates memory for the layout given and gives you access to mutate
     /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
     /// current `Memory` and interned as read-only into the global memory.
     pub fn intern_with_temp_alloc(
         &mut self,
         layout: TyAndLayout<'tcx>,
-        f: impl FnOnce(
-            &mut InterpCx<'mir, 'tcx, M>,
-            &PlaceTy<'tcx, M::Provenance>,
-        ) -> InterpResult<'tcx, ()>,
+        f: impl FnOnce(&mut InterpCx<'tcx, M>, &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, AllocId> {
         // `allocate` picks a fresh AllocId that we will associate with its data below.
         let dest = self.allocate(layout, MemoryKind::Stack)?;

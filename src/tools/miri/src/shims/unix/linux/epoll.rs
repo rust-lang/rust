@@ -44,8 +44,8 @@ impl FileDescription for Epoll {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// This function returns a file descriptor referring to the new `Epoll` instance. This file
     /// descriptor is used for all subsequent calls to the epoll interface. If the `flags` argument
     /// is 0, then this function is the same as `epoll_create()`.

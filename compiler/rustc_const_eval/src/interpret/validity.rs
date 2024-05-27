@@ -205,7 +205,7 @@ fn write_path(out: &mut String, path: &[PathElem]) {
     }
 }
 
-struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     /// The `path` may be pushed to, but the part that is present when a function
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
     /// this stack discipline.
@@ -213,10 +213,10 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>>,
     /// `None` indicates this is not validating for CTFE (but for runtime).
     ctfe_mode: Option<CtfeValidationMode>,
-    ecx: &'rt InterpCx<'mir, 'tcx, M>,
+    ecx: &'rt InterpCx<'tcx, M>,
 }
 
-impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
+impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
@@ -706,10 +706,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 /// Returns whether the allocation is mutable, and whether it's actually a static.
 /// For "root" statics we look at the type to account for interior
 /// mutability; for nested statics we have no type and directly use the annotated mutability.
-fn mutability<'mir, 'tcx: 'mir>(
-    ecx: &InterpCx<'mir, 'tcx, impl Machine<'mir, 'tcx>>,
-    alloc_id: AllocId,
-) -> Mutability {
+fn mutability<'tcx>(ecx: &InterpCx<'tcx, impl Machine<'tcx>>, alloc_id: AllocId) -> Mutability {
     // Let's see what kind of memory this points to.
     // We're not using `try_global_alloc` since dangling pointers have already been handled.
     match ecx.tcx.global_alloc(alloc_id) {
@@ -751,13 +748,11 @@ fn mutability<'mir, 'tcx: 'mir>(
     }
 }
 
-impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
-    for ValidityVisitor<'rt, 'mir, 'tcx, M>
-{
+impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt, 'tcx, M> {
     type V = OpTy<'tcx, M::Provenance>;
 
     #[inline(always)]
-    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
+    fn ecx(&self) -> &InterpCx<'tcx, M> {
         self.ecx
     }
 
@@ -1009,7 +1004,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn validate_operand_internal(
         &self,
         op: &OpTy<'tcx, M::Provenance>,

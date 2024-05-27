@@ -10,8 +10,8 @@ use crate::*;
 // - kind: i32
 
 #[inline]
-fn mutexattr_kind_offset<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn mutexattr_kind_offset<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" | "macos" => 0,
@@ -19,8 +19,8 @@ fn mutexattr_kind_offset<'mir, 'tcx: 'mir>(
     })
 }
 
-fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn mutexattr_get_kind<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
@@ -32,8 +32,8 @@ fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     .to_i32()
 }
 
-fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn mutexattr_set_kind<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
@@ -53,15 +53,15 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 /// in `pthread_mutexattr_settype` function.
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
 
-fn is_mutex_kind_default<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn is_mutex_kind_default<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, bool> {
     Ok(kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"))
 }
 
-fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn is_mutex_kind_normal<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, bool> {
     let mutex_normal_kind = ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL");
@@ -73,7 +73,7 @@ fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
 // - id: u32
 // - kind: i32
 
-fn mutex_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
+fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
@@ -99,7 +99,7 @@ fn mutex_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpRe
     Ok(offset)
 }
 
-fn mutex_kind_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+fn mutex_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
     // These offsets are picked for compatibility with Linux's static initializer
     // macros, e.g. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.)
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
@@ -123,8 +123,8 @@ fn mutex_kind_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
     offset
 }
 
-fn mutex_get_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn mutex_get_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, MutexId> {
     ecx.mutex_get_or_create_id(
@@ -134,8 +134,8 @@ fn mutex_get_id<'mir, 'tcx: 'mir>(
     )
 }
 
-fn mutex_reset_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn mutex_reset_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
@@ -147,8 +147,8 @@ fn mutex_reset_id<'mir, 'tcx: 'mir>(
     )
 }
 
-fn mutex_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn mutex_get_kind<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
@@ -160,8 +160,8 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     .to_i32()
 }
 
-fn mutex_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn mutex_set_kind<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
@@ -178,7 +178,7 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 // We ignore the platform layout and store our own fields:
 // - id: u32
 
-fn rwlock_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
+fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
@@ -204,8 +204,8 @@ fn rwlock_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpR
     Ok(offset)
 }
 
-fn rwlock_get_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn rwlock_get_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, RwLockId> {
     ecx.rwlock_get_or_create_id(
@@ -220,8 +220,8 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
 // - clock: i32
 
 #[inline]
-fn condattr_clock_offset<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn condattr_clock_offset<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
@@ -230,8 +230,8 @@ fn condattr_clock_offset<'mir, 'tcx: 'mir>(
     })
 }
 
-fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn condattr_get_clock_id<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
@@ -243,8 +243,8 @@ fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     .to_i32()
 }
 
-fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn condattr_set_clock_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
@@ -262,7 +262,7 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // - id: u32
 // - clock: i32
 
-fn cond_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx, u64> {
+fn cond_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
@@ -289,7 +289,7 @@ fn cond_id_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> InterpRes
 }
 
 /// Determines whether this clock represents the real-time clock, CLOCK_REALTIME.
-fn is_cond_clock_realtime<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>, clock_id: i32) -> bool {
+fn is_cond_clock_realtime<'tcx>(ecx: &MiriInterpCx<'tcx>, clock_id: i32) -> bool {
     // To ensure compatibility with PTHREAD_COND_INITIALIZER on all platforms,
     // we can't just compare with CLOCK_REALTIME: on Solarish, PTHREAD_COND_INITIALIZER
     // makes the clock 0 but CLOCK_REALTIME is 3.
@@ -298,7 +298,7 @@ fn is_cond_clock_realtime<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>, cloc
         || (clock_id == 0 && clock_id != ecx.eval_libc_i32("CLOCK_MONOTONIC"))
 }
 
-fn cond_clock_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
+fn cond_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
     // macOS doesn't have a clock attribute, but to keep the code uniform we store
     // a clock ID in the pthread_cond_t anyway. There's enough space.
     let offset = 8;
@@ -321,8 +321,8 @@ fn cond_clock_offset<'mir, 'tcx: 'mir>(ecx: &MiriInterpCx<'mir, 'tcx>) -> u64 {
     offset
 }
 
-fn cond_get_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn cond_get_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, CondvarId> {
     ecx.condvar_get_or_create_id(
@@ -332,8 +332,8 @@ fn cond_get_id<'mir, 'tcx: 'mir>(
     )
 }
 
-fn cond_reset_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn cond_reset_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
@@ -345,8 +345,8 @@ fn cond_reset_id<'mir, 'tcx: 'mir>(
     )
 }
 
-fn cond_get_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriInterpCx<'mir, 'tcx>,
+fn cond_get_clock_id<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
@@ -358,8 +358,8 @@ fn cond_get_clock_id<'mir, 'tcx: 'mir>(
     .to_i32()
 }
 
-fn cond_set_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriInterpCx<'mir, 'tcx>,
+fn cond_set_clock_id<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
@@ -372,8 +372,8 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     )
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_mutexattr_init(
         &mut self,
         attr_op: &OpTy<'tcx, Provenance>,

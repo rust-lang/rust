@@ -33,7 +33,7 @@ impl FileDescription for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.read(bytes))
@@ -43,7 +43,7 @@ impl FileDescription for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &[u8],
-        _ecx: &mut MiriInterpCx<'_, 'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.write(bytes))
@@ -86,8 +86,8 @@ impl FileDescription for FileHandle {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn macos_stat_write_buf(
         &mut self,
         metadata: FileMetadata,
@@ -254,8 +254,8 @@ fn maybe_sync_file(
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn open(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
         if args.len() < 2 {
             throw_ub_format!(
@@ -1540,7 +1540,7 @@ struct FileMetadata {
 
 impl FileMetadata {
     fn from_path<'tcx>(
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         path: &Path,
         follow_symlink: bool,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
@@ -1551,7 +1551,7 @@ impl FileMetadata {
     }
 
     fn from_fd<'tcx>(
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let Some(file_descriptor) = ecx.machine.fds.get(fd) else {
@@ -1573,7 +1573,7 @@ impl FileMetadata {
     }
 
     fn from_meta<'tcx>(
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = match metadata {

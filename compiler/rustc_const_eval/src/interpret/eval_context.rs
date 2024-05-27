@@ -34,7 +34,7 @@ use crate::errors;
 use crate::util;
 use crate::{fluent_generated as fluent, ReportErrorExt};
 
-pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
     ///
     /// Note: the stack is provided by the machine.
@@ -49,7 +49,7 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub memory: Memory<'mir, 'tcx, M>,
+    pub memory: Memory<'tcx, M>,
 
     /// The recursion limit (cached from `tcx.recursion_limit(())`)
     pub recursion_limit: Limit,
@@ -345,16 +345,16 @@ impl<'tcx> FrameInfo<'tcx> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> HasDataLayout for InterpCx<'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'mir, 'tcx, M>
+impl<'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'tcx, M>
 where
-    M: Machine<'mir, 'tcx>,
+    M: Machine<'tcx>,
 {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -362,16 +362,16 @@ where
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'mir, 'tcx, M>
+impl<'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'tcx, M>
 where
-    M: Machine<'mir, 'tcx>,
+    M: Machine<'tcx>,
 {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
     type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
@@ -391,7 +391,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpC
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
     type FnAbiOfResult = InterpResult<'tcx, &'tcx FnAbi<'tcx, Ty<'tcx>>>;
 
     fn handle_fn_abi_err(
@@ -484,7 +484,7 @@ pub fn format_interp_error<'tcx>(dcx: &DiagCtxt, e: InterpErrorInfo<'tcx>) -> St
     s
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         root_span: Span,
@@ -544,7 +544,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn body(&self) -> &'mir mir::Body<'tcx> {
+    pub fn body(&self) -> &'tcx mir::Body<'tcx> {
         self.frame().body
     }
 
@@ -1203,10 +1203,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn dump_place(
-        &self,
-        place: &PlaceTy<'tcx, M::Provenance>,
-    ) -> PlacePrinter<'_, 'mir, 'tcx, M> {
+    pub fn dump_place(&self, place: &PlaceTy<'tcx, M::Provenance>) -> PlacePrinter<'_, 'tcx, M> {
         PlacePrinter { ecx: self, place: *place.place() }
     }
 
@@ -1218,14 +1215,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
 #[doc(hidden)]
 /// Helper struct for the `dump_place` function.
-pub struct PlacePrinter<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
-    ecx: &'a InterpCx<'mir, 'tcx, M>,
+pub struct PlacePrinter<'a, 'tcx, M: Machine<'tcx>> {
+    ecx: &'a InterpCx<'tcx, M>,
     place: Place<M::Provenance>,
 }
 
-impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
-    for PlacePrinter<'a, 'mir, 'tcx, M>
-{
+impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for PlacePrinter<'a, 'tcx, M> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.place {
             Place::Local { local, offset, locals_addr } => {

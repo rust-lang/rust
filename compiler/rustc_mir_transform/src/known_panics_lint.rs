@@ -64,7 +64,7 @@ impl<'tcx> MirLint<'tcx> for KnownPanicsLint {
 /// Visits MIR nodes, performs const propagation
 /// and runs lint checks as it goes
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, DummyMachine>,
+    ecx: InterpCx<'tcx, DummyMachine>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     worklist: Vec<BasicBlock>,

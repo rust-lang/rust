@@ -234,8 +234,8 @@ impl ToSoft for f32 {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Checks if the given crate/module exists.
     fn have_module(&self, path: &[&str]) -> bool {
         try_resolve_did(*self.eval_context_ref().tcx, path, None).is_some()
@@ -573,23 +573,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         /// Visiting the memory covered by a `MemPlace`, being aware of
         /// whether we are inside an `UnsafeCell` or not.
-        struct UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
+        struct UnsafeCellVisitor<'ecx, 'tcx, F>
         where
             F: FnMut(&MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx>,
         {
-            ecx: &'ecx MiriInterpCx<'mir, 'tcx>,
+            ecx: &'ecx MiriInterpCx<'tcx>,
             unsafe_cell_action: F,
         }
 
-        impl<'ecx, 'mir, 'tcx: 'mir, F> ValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
-            for UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
+        impl<'ecx, 'tcx, F> ValueVisitor<'tcx, MiriMachine<'tcx>> for UnsafeCellVisitor<'ecx, 'tcx, F>
         where
             F: FnMut(&MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx>,
         {
             type V = MPlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
-            fn ecx(&self) -> &MiriInterpCx<'mir, 'tcx> {
+            fn ecx(&self) -> &MiriInterpCx<'tcx> {
                 self.ecx
             }
 
@@ -920,7 +919,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         slice: &ImmTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, &'a [u8]>
     where
-        'mir: 'a,
+        'tcx: 'a,
     {
         let this = self.eval_context_ref();
         let (ptr, len) = slice.to_scalar_pair();
@@ -933,7 +932,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Read a sequence of bytes until the first null terminator.
     fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, &'a [u8]>
     where
-        'mir: 'a,
+        'tcx: 'a,
     {
         let this = self.eval_context_ref();
         let size1 = Size::from_bytes(1);
@@ -1176,7 +1175,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
 
         fn float_to_int_inner<'tcx, F: rustc_apfloat::Float>(
-            this: &MiriInterpCx<'_, 'tcx>,
+            this: &MiriInterpCx<'tcx>,
             src: F,
             cast_to: TyAndLayout<'tcx>,
             round: rustc_apfloat::Round,
@@ -1299,7 +1298,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
+impl<'tcx> MiriMachine<'tcx> {
     /// Get the current span in the topmost function which is workspace-local and not
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.

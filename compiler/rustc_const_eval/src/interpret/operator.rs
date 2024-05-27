@@ -11,7 +11,7 @@ use tracing::trace;
 
 use super::{err_ub, throw_ub, ImmTy, InterpCx, Machine};
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> ImmTy<'tcx, M::Provenance> {
         let res = Ord::cmp(&lhs, &rhs);
         return ImmTy::from_ordering(res, *self.tcx);
