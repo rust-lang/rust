@@ -151,8 +151,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.generics_of(def_id)
     }
 
-    fn type_of_instantiated(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        self.type_of(def_id).instantiate(self, args)
+    fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
+        self.type_of(def_id)
     }
 
     fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {

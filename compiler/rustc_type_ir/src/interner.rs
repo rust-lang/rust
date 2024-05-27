@@ -7,26 +7,22 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
-    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, GenericArgKind,
-    NormalizesTo, ProjectionPredicate, SubtypePredicate, TermKind, TraitPredicate, TraitRef,
-};
+use crate::{self as ty, DebugWithInfcx};
 
 pub trait Interner:
     Sized
     + Copy
-    + IrPrint<AliasTy<Self>>
-    + IrPrint<AliasTerm<Self>>
-    + IrPrint<TraitRef<Self>>
-    + IrPrint<TraitPredicate<Self>>
-    + IrPrint<ExistentialTraitRef<Self>>
-    + IrPrint<ExistentialProjection<Self>>
-    + IrPrint<ProjectionPredicate<Self>>
-    + IrPrint<NormalizesTo<Self>>
-    + IrPrint<SubtypePredicate<Self>>
-    + IrPrint<CoercePredicate<Self>>
-    + IrPrint<FnSig<Self>>
+    + IrPrint<ty::AliasTy<Self>>
+    + IrPrint<ty::AliasTerm<Self>>
+    + IrPrint<ty::TraitRef<Self>>
+    + IrPrint<ty::TraitPredicate<Self>>
+    + IrPrint<ty::ExistentialTraitRef<Self>>
+    + IrPrint<ty::ExistentialProjection<Self>>
+    + IrPrint<ty::ProjectionPredicate<Self>>
+    + IrPrint<ty::NormalizesTo<Self>>
+    + IrPrint<ty::SubtypePredicate<Self>>
+    + IrPrint<ty::CoercePredicate<Self>>
+    + IrPrint<ty::FnSig<Self>>
 {
     type DefId: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type AdtDef: Copy + Debug + Hash + Eq;
@@ -39,9 +35,9 @@ pub trait Interner:
         + DebugWithInfcx<Self>
         + Hash
         + Eq
-        + IntoKind<Kind = GenericArgKind<Self>>
+        + IntoKind<Kind = ty::GenericArgKind<Self>>
         + TypeVisitable<Self>;
-    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = TermKind<Self>> + TypeVisitable<Self>;
+    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<Self>> + TypeVisitable<Self>;
 
     type BoundVarKinds: Copy
         + Debug
@@ -51,7 +47,7 @@ pub trait Interner:
         + Default;
     type BoundVarKind: Copy + Debug + Hash + Eq;
 
-    type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
+    type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = ty::CanonicalVarInfo<Self>>;
     type PredefinedOpaques: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
     type ExternalConstraints: Copy + Debug + Hash + Eq;
@@ -99,23 +95,23 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
-    fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
     // FIXME: Remove after uplifting `EarlyBinder`
-    fn type_of_instantiated(self, def_id: Self::DefId, args: Self::GenericArgs) -> Self::Ty;
+    fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
 
-    fn alias_ty_kind(self, alias: AliasTy<Self>) -> AliasTyKind;
+    fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
 
-    fn alias_term_kind(self, alias: AliasTerm<Self>) -> AliasTermKind;
+    fn alias_term_kind(self, alias: ty::AliasTerm<Self>) -> ty::AliasTermKind;
 
     fn trait_ref_and_own_args_for_alias(
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (TraitRef<Self>, Self::OwnItemArgs);
+    ) -> (ty::TraitRef<Self>, Self::OwnItemArgs);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 
