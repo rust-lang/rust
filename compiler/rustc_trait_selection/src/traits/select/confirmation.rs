@@ -1161,7 +1161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(DefineOpaqueTypes::No, target, source_trait)
+                    .sup(DefineOpaqueTypes::Yes, target, source_trait)
                     .map_err(|_| Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.
