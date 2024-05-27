@@ -2097,7 +2097,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_ty.defining_node);
     let ty = tcx.type_of(assoc_ty.item.def_id);
     let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
-    let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
+    let term: ty::EarlyBinder<'tcx, ty::Term<'tcx>> = if is_const {
         let did = assoc_ty.item.def_id;
         let identity_args = crate::traits::GenericArgs::identity_for_item(tcx, did);
         let uv = ty::UnevaluatedConst::new(did, identity_args);

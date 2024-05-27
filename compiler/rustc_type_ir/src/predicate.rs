@@ -567,7 +567,7 @@ impl<I: Interner> AliasTerm<I> {
                 I::Const::new_unevaluated(
                     interner,
                     ty::UnevaluatedConst::new(self.def_id, self.args),
-                    interner.type_of_instantiated(self.def_id, self.args),
+                    interner.type_of(self.def_id).instantiate(interner, &self.args),
                 )
                 .into()
             }

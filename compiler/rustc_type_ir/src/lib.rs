@@ -1,6 +1,6 @@
 #![cfg_attr(
     feature = "nightly",
-    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
+    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs, negative_impls)
 )]
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]

@@ -138,6 +138,14 @@ impl<'tcx> Region<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
+    fn new_bound(
+        interner: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundRegion,
+    ) -> Self {
+        Region::new_bound(interner, debruijn, var)
+    }
+
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon })
     }
@@ -325,6 +333,12 @@ impl<'tcx> Deref for Region<'tcx> {
 pub struct EarlyParamRegion {
     pub index: u32,
     pub name: Symbol,
+}
+
+impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
+    fn index(self) -> u32 {
+        self.index
+    }
 }
 
 impl std::fmt::Debug for EarlyParamRegion {

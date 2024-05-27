@@ -194,7 +194,7 @@ where
     }
 }
 
-impl<'tcx, S, V> Stable<'tcx> for ty::EarlyBinder<S>
+impl<'tcx, S, V> Stable<'tcx> for ty::EarlyBinder<'tcx, S>
 where
     S: Stable<'tcx, T = V>,
 {

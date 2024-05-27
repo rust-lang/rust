@@ -4686,6 +4686,7 @@ dependencies = [
  "rustc_span",
  "rustc_type_ir_macros",
  "smallvec",
+ "tracing",
 ]
 
 [[package]]

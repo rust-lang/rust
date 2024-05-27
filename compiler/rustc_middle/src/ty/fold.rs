@@ -3,7 +3,9 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use tracing::{debug, instrument};
 
-pub use rustc_type_ir::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use rustc_type_ir::fold::{
+    shift_region, shift_vars, FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
@@ -411,104 +413,4 @@ impl<'tcx> TyCtxt<'tcx> {
         let bound_vars = self.mk_bound_variable_kinds_from_iter(map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Shifter
-//
-// Shifts the De Bruijn indices on all escaping bound vars by a
-// fixed amount. Useful in instantiation or when otherwise introducing
-// a binding level that is not intended to capture the existing bound
-// vars. See comment on `shift_vars_through_binders` method in
-// `rustc_middle/src/ty/generic_args.rs` for more details.
-
-struct Shifter<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    current_index: ty::DebruijnIndex,
-    amount: u32,
-}
-
-impl<'tcx> Shifter<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, amount: u32) -> Self {
-        Shifter { tcx, current_index: ty::INNERMOST, amount }
-    }
-}
-
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
-        self.current_index.shift_in(1);
-        let t = t.super_fold_with(self);
-        self.current_index.shift_out(1);
-        t
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
-            ty::ReBound(debruijn, br) if debruijn >= self.current_index => {
-                let debruijn = debruijn.shifted_in(self.amount);
-                ty::Region::new_bound(self.tcx, debruijn, br)
-            }
-            _ => r,
-        }
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match *ty.kind() {
-            ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
-                let debruijn = debruijn.shifted_in(self.amount);
-                Ty::new_bound(self.tcx, debruijn, bound_ty)
-            }
-
-            _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),
-            _ => ty,
-        }
-    }
-
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.kind()
-            && debruijn >= self.current_index
-        {
-            let debruijn = debruijn.shifted_in(self.amount);
-            ty::Const::new_bound(self.tcx, debruijn, bound_ct, ct.ty())
-        } else {
-            ct.super_fold_with(self)
-        }
-    }
-
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
-    }
-}
-
-pub fn shift_region<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    region: ty::Region<'tcx>,
-    amount: u32,
-) -> ty::Region<'tcx> {
-    match *region {
-        ty::ReBound(debruijn, br) if amount > 0 => {
-            ty::Region::new_bound(tcx, debruijn.shifted_in(amount), br)
-        }
-        _ => region,
-    }
-}
-
-pub fn shift_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: T, amount: u32) -> T
-where
-    T: TypeFoldable<TyCtxt<'tcx>>,
-{
-    debug!("shift_vars(value={:?}, amount={})", value, amount);
-
-    if amount == 0 || !value.has_escaping_bound_vars() {
-        return value;
-    }
-
-    value.fold_with(&mut Shifter::new(tcx, amount))
 }
