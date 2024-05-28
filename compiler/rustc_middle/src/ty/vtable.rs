@@ -84,10 +84,14 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         let idx: u64 = u64::try_from(idx).unwrap();
         let scalar = match entry {
             VtblEntry::MetadataDropInPlace => {
-                let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
-                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
-                let fn_ptr = Pointer::from(fn_alloc_id);
-                Scalar::from_pointer(fn_ptr, &tcx)
+                if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
+                    let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
+                    let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
+                    let fn_ptr = Pointer::from(fn_alloc_id);
+                    Scalar::from_pointer(fn_ptr, &tcx)
+                } else {
+                    Scalar::from_maybe_pointer(Pointer::null(), &tcx)
+                }
             }
             VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size),
             VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size),

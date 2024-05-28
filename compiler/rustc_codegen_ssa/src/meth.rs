@@ -15,12 +15,13 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64)
     }
 
-    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+    fn get_fn_inner<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
         ty: Ty<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        nonnull: bool,
     ) -> Bx::Value {
         // Load the function pointer from the object.
         debug!("get_fn({llvtable:?}, {ty:?}, {self:?})");
@@ -41,11 +42,33 @@ impl<'a, 'tcx> VirtualIndex {
         } else {
             let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
             let ptr = bx.load(llty, gep, ptr_align);
-            bx.nonnull_metadata(ptr);
             // VTable loads are invariant.
             bx.set_invariant_load(ptr);
+            if nonnull {
+                bx.nonnull_metadata(ptr);
+            }
             ptr
         }
+    }
+
+    pub fn get_optional_fn<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &mut Bx,
+        llvtable: Bx::Value,
+        ty: Ty<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    ) -> Bx::Value {
+        self.get_fn_inner(bx, llvtable, ty, fn_abi, false)
+    }
+
+    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &mut Bx,
+        llvtable: Bx::Value,
+        ty: Ty<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    ) -> Bx::Value {
+        self.get_fn_inner(bx, llvtable, ty, fn_abi, true)
     }
 
     pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
