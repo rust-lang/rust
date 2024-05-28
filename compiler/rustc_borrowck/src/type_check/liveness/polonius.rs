@@ -14,7 +14,7 @@ struct UseFactsExtractor<'me, 'tcx> {
     var_defined_at: &'me mut VarPointRelation,
     var_used_at: &'me mut VarPointRelation,
     location_table: &'me LocationTable,
-    var_dropped_at: &'me mut Vec<(Local, Location)>,
+    var_dropped_at: &'me mut VarPointRelation,
     move_data: &'me MoveData<'tcx>,
     path_accessed_at_base: &'me mut PathPointRelation,
 }
@@ -37,7 +37,7 @@ impl<'tcx> UseFactsExtractor<'_, 'tcx> {
 
     fn insert_drop_use(&mut self, local: Local, location: Location) {
         debug!("UseFactsExtractor::insert_drop_use()");
-        self.var_dropped_at.push((local, location));
+        self.var_dropped_at.push((local, self.location_to_index(location)));
     }
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
@@ -85,32 +85,21 @@ impl<'a, 'tcx> Visitor<'tcx> for UseFactsExtractor<'a, 'tcx> {
 pub(super) fn populate_access_facts<'a, 'tcx>(
     typeck: &mut TypeChecker<'a, 'tcx>,
     body: &Body<'tcx>,
-    location_table: &LocationTable,
     move_data: &MoveData<'tcx>,
-    // FIXME: this is an inelegant way of squirreling away a
-    // copy of `var_dropped_at` in the original `Location` format
-    // for later use in `trace::trace()`, which updates some liveness-
-    // internal data based on what Polonius saw.
-    // Ideally, that part would access the Polonius facts directly, and this
-    // would be regular facts gathering.
-    dropped_at: &mut Vec<(Local, Location)>,
 ) {
     debug!("populate_access_facts()");
+    let location_table = typeck.borrowck_context.location_table;
 
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
         let mut extractor = UseFactsExtractor {
             var_defined_at: &mut facts.var_defined_at,
             var_used_at: &mut facts.var_used_at,
-            var_dropped_at: dropped_at,
+            var_dropped_at: &mut facts.var_dropped_at,
             path_accessed_at_base: &mut facts.path_accessed_at_base,
             location_table,
             move_data,
         };
         extractor.visit_body(body);
-
-        facts.var_dropped_at.extend(
-            dropped_at.iter().map(|&(local, location)| (local, location_table.mid_index(location))),
-        );
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             debug!(
