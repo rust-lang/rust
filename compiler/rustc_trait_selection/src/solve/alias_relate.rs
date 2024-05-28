@@ -28,6 +28,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
+        debug_assert!(lhs.to_alias_term().is_some() || rhs.to_alias_term().is_some());
 
         // Structurally normalize the lhs.
         let lhs = if let Some(alias) = lhs.to_alias_term() {
