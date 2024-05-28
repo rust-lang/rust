@@ -22,7 +22,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
-    let tcx = ecx.tcx();
+    let tcx = ecx.interner();
     match *ty.kind() {
         ty::Uint(_)
         | ty::Int(_)
@@ -75,7 +75,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .tcx()
+            .interner()
             .bound_coroutine_hidden_types(def_id)
             .map(|bty| bty.instantiate(tcx, args))
             .collect()),
@@ -151,8 +151,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         //   "best effort" optimization and `sized_constraint` may return `Some`, even
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
-            if let Some(sized_crit) = def.sized_constraint(ecx.tcx()) {
-                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.tcx(), args))])
+            if let Some(sized_crit) = def.sized_constraint(ecx.interner()) {
+                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.interner(), args))])
             } else {
                 Ok(vec![])
             }
@@ -210,10 +210,10 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
         // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
-        ty::Coroutine(def_id, args) => match ecx.tcx().coroutine_movability(def_id) {
+        ty::Coroutine(def_id, args) => match ecx.interner().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
-                if ecx.tcx().features().coroutine_clone {
+                if ecx.interner().features().coroutine_clone {
                     let coroutine = args.as_coroutine();
                     Ok(vec![
                         ty::Binder::dummy(coroutine.tupled_upvars_ty()),
@@ -227,9 +227,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .tcx()
+            .interner()
             .bound_coroutine_hidden_types(def_id)
-            .map(|bty| bty.instantiate(ecx.tcx(), args))
+            .map(|bty| bty.instantiate(ecx.interner(), args))
             .collect()),
     }
 }
@@ -666,7 +666,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<Goal<'tcx, ty::Predicate<'tcx>>> {
-    let tcx = ecx.tcx();
+    let tcx = ecx.interner();
     let mut requirements = vec![];
     requirements.extend(
         tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.args).predicates,
@@ -722,7 +722,7 @@ struct ReplaceProjectionWith<'a, 'tcx> {
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
-        self.ecx.tcx()
+        self.ecx.interner()
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -739,7 +739,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
                     .eq_and_get_goals(
                         self.param_env,
                         alias_ty,
-                        proj.projection_term.expect_ty(self.ecx.tcx()),
+                        proj.projection_term.expect_ty(self.ecx.interner()),
                     )
                     .expect("expected to be able to unify goal projection with dyn's projection"),
             );
