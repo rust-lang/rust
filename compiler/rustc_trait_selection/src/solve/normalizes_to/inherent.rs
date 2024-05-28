@@ -15,7 +15,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let inherent = goal.predicate.alias.expect_ty(tcx);
 
         let impl_def_id = tcx.parent(inherent.def_id);
