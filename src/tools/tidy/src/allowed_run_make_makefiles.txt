@@ -235,7 +235,6 @@ run-make/share-generics-dylib/Makefile
 run-make/short-ice/Makefile
 run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
-run-make/simple-dylib/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile
