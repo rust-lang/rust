@@ -910,10 +910,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
-                                    .trace(c1, c2)
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
-                                    .eq(DefineOpaqueTypes::Yes, a.args, b.args)
+                                    .eq(
+                                        DefineOpaqueTypes::Yes,
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
+                                    )
                                 {
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,

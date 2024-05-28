@@ -156,6 +156,23 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         self.trace(expected, actual).eq(define_opaque_types, expected, actual)
     }
 
+    /// Equates `expected` and `found` while structurally relating aliases.
+    /// This should only be used inside of the next generation trait solver
+    /// when relating rigid aliases.
+    pub fn eq_structurally_relating_aliases<T>(
+        self,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.trace(expected, actual).eq_structurally_relating_aliases(
+            expected,
+            actual,
+        )
+    }
+
     pub fn relate<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
