@@ -270,7 +270,6 @@ else
   args="$args --volume $root_dir:/checkout$SRC_MOUNT_OPTION"
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
-  args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
 
   id=$(id -u)

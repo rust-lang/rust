@@ -30,7 +30,8 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
 
 TrivialTypeTraversalImpls! { NotConstEvaluatable }
 
-pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>, ErrorGuaranteed>;
+pub type BoundAbstractConst<'tcx> =
+    Result<Option<EarlyBinder<'tcx, ty::Const<'tcx>>>, ErrorGuaranteed>;
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, ac: T) -> T {

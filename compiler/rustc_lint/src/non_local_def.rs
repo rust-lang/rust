@@ -270,7 +270,7 @@ fn impl_trait_ref_has_enough_non_local_candidates<'tcx>(
     tcx: TyCtxt<'tcx>,
     infer_span: Span,
     trait_def_id: DefId,
-    binder: EarlyBinder<TraitRef<'tcx>>,
+    binder: EarlyBinder<'tcx, TraitRef<'tcx>>,
     mut did_has_local_parent: impl FnMut(DefId) -> bool,
 ) -> bool {
     let infcx = tcx

@@ -615,7 +615,18 @@ fn extra_info_tags<'a, 'tcx: 'a>(
 fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
     let tcx = cx.tcx();
     let header = it.fn_header(tcx).expect("printing a function which isn't a function");
-    let constness = print_constness_with_space(&header.constness, it.const_stability(tcx));
+    debug!(
+        "item_function/const: {:?} {:?} {:?} {:?}",
+        it.name,
+        &header.constness,
+        it.stable_since(tcx),
+        it.const_stability(tcx),
+    );
+    let constness = print_constness_with_space(
+        &header.constness,
+        it.stable_since(tcx),
+        it.const_stability(tcx),
+    );
     let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();

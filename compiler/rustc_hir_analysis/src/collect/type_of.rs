@@ -309,7 +309,7 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty<'_>> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
@@ -512,7 +512,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 pub(super) fn type_of_opaque(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
+) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     if let Some(def_id) = def_id.as_local() {
         use rustc_hir::*;
 

@@ -114,9 +114,11 @@ impl EraseType for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
     type Result = [u8; size_of::<Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl EraseType for Result<Option<ty::EarlyBinder<ty::Const<'_>>>, rustc_errors::ErrorGuaranteed> {
+impl EraseType
+    for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, rustc_errors::ErrorGuaranteed>
+{
     type Result = [u8; size_of::<
-        Result<Option<ty::EarlyBinder<ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
+        Result<Option<ty::EarlyBinder<'static, ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
     >()];
 }
 
@@ -165,8 +167,8 @@ impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
         [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
 }
 
-impl EraseType for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
-    type Result = [u8; size_of::<Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder>>()];
+impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+    type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {
@@ -185,15 +187,15 @@ impl EraseType for Option<ty::ImplTraitHeader<'_>> {
     type Result = [u8; size_of::<Option<ty::ImplTraitHeader<'static>>>()];
 }
 
-impl EraseType for Option<ty::EarlyBinder<Ty<'_>>> {
-    type Result = [u8; size_of::<Option<ty::EarlyBinder<Ty<'static>>>>()];
+impl EraseType for Option<ty::EarlyBinder<'_, Ty<'_>>> {
+    type Result = [u8; size_of::<Option<ty::EarlyBinder<'static, Ty<'static>>>>()];
 }
 
 impl EraseType for rustc_hir::MaybeOwner<'_> {
     type Result = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
 }
 
-impl<T: EraseType> EraseType for ty::EarlyBinder<T> {
+impl<T: EraseType> EraseType for ty::EarlyBinder<'_, T> {
     type Result = T::Result;
 }
 
