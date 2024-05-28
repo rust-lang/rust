@@ -542,17 +542,21 @@ lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may 
 
 lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-lint_non_local_definitions_impl = non-local `impl` definition, they should be avoided as they go against expectation
-    .help =
-        move this `impl` block outside the of the current {$body_kind_descr} {$depth ->
-            [one] `{$body_name}`
-           *[other] `{$body_name}` and up {$depth} bodies
-        }
-    .non_local = an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-    .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
+lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
+    .remove_help = remove `{$may_remove_part}` to make the `impl` local
+    .without_trait = methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
+    .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+    .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+    .exception = items in an anonymous const item (`const _: () = {"{"} ... {"}"}`) are treated as in the same scope as the anonymous const's declaration
     .const_anon = use a const-anon item to suppress this lint
 
-lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, they should be avoided as they go against expectation
+lint_non_local_definitions_impl_move_help =
+    move the `impl` block outside of this {$body_kind_descr} {$depth ->
+        [one] `{$body_name}`
+       *[other] `{$body_name}` and up {$depth} bodies
+    }
+
+lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
     .help =
         remove the `#[macro_export]` or move this `macro_rules!` outside the of the current {$body_kind_descr} {$depth ->
             [one] `{$body_name}`
@@ -561,7 +565,12 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, th
     .help_doctest =
         remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
-    .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module
+
+lint_non_local_definitions_may_move = may need to be moved as well
+
+lint_non_local_definitions_of_trait_not_local = `{$of_trait_str}` is not local
+
+lint_non_local_definitions_self_ty_not_local = `{$self_ty_str}` is not local
 
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier

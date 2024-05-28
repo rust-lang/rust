@@ -121,17 +121,14 @@ impl<'tcx> Predicate<'tcx> {
     #[inline]
     pub fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::WellFormed(_)) => false,
-            // `NormalizesTo` is only used in the new solver, so this shouldn't
-            // matter. Normalizing `term` would be 'wrong' however, as it changes whether
-            // `normalizes-to(<T as Trait>::Assoc, <T as Trait>::Assoc)` holds.
-            PredicateKind::NormalizesTo(..) => false,
+            PredicateKind::Clause(ClauseKind::WellFormed(_))
+            | PredicateKind::AliasRelate(..)
+            | PredicateKind::NormalizesTo(..) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
             | PredicateKind::Clause(ClauseKind::Projection(_))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::AliasRelate(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::Subtype(_)
             | PredicateKind::Coerce(_)
