@@ -16,7 +16,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use walkdir::WalkDir;
 
-use crate::builder::Kind;
+use crate::builder::{Builder, Kind};
+use crate::core::build_steps::tool;
 use crate::core::config::Target;
 use crate::utils::helpers::output;
 use crate::Build;
@@ -34,6 +35,10 @@ pub struct Finder {
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
 ];
+
+/// Minimum version threshold for libstdc++ required when using prebuilt LLVM
+/// from CI (with`llvm.download-ci-llvm` option).
+const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
     pub fn new() -> Self {
@@ -97,6 +102,35 @@ pub fn check(build: &mut Build) {
     // submodules and learn about various other aspects.
     if build.rust_info().is_managed_git_subrepository() {
         cmd_finder.must_have("git");
+    }
+
+    // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
+    if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
+        let builder = Builder::new(build);
+        let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });
+
+        match libcxx_version {
+            tool::LibcxxVersion::Gnu(version) => {
+                if LIBSTDCXX_MIN_VERSION_THRESHOLD > version {
+                    eprintln!(
+                        "\nYour system's libstdc++ version is too old for the `llvm.download-ci-llvm` option."
+                    );
+                    eprintln!("Current version detected: '{}'", version);
+                    eprintln!("Minimum required version: '{}'", LIBSTDCXX_MIN_VERSION_THRESHOLD);
+                    eprintln!(
+                        "Consider upgrading libstdc++ or disabling the `llvm.download-ci-llvm` option."
+                    );
+                    crate::exit!(1);
+                }
+            }
+            tool::LibcxxVersion::Llvm(_) => {
+                eprintln!(
+                    "\nYour system is using libc++, which is incompatible with the `llvm.download-ci-llvm` option."
+                );
+                eprintln!("Disable `llvm.download-ci-llvm` or switch to libstdc++.");
+                crate::exit!(1);
+            }
+        }
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
