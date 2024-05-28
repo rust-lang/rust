@@ -15,7 +15,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.ty().expect("no such thing as an opaque const");
 
@@ -31,7 +31,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                     return Err(NoSolution);
                 }
                 // FIXME: This may have issues when the args contain aliases...
-                match self.tcx().uses_unique_placeholders_ignoring_regions(opaque_ty.args) {
+                match self.interner().uses_unique_placeholders_ignoring_regions(opaque_ty.args) {
                     Err(NotUniqueParam::NotParam(param)) if param.is_non_region_infer() => {
                         return self.evaluate_added_goals_and_make_canonical_response(
                             Certainty::AMBIGUOUS,

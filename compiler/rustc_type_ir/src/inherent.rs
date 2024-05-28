@@ -132,7 +132,14 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 }
 
 pub trait Predicate<I: Interner<Predicate = Self>>:
-    Copy + Debug + Hash + Eq + TypeSuperVisitable<I> + TypeSuperFoldable<I> + Flags
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    + TypeSuperVisitable<I>
+    + TypeSuperFoldable<I>
+    + Flags
+    + UpcastFrom<I, ty::NormalizesTo<I>>
 {
     fn is_coinductive(self, interner: I) -> bool;
 }

@@ -14,7 +14,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let weak_ty = goal.predicate.alias;
 
         // Check where clauses
