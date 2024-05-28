@@ -6,7 +6,7 @@ use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString,
-    ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, SubdiagMessageOp,
+    ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp,
     Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::{def::Namespace, def_id::DefId};
@@ -1329,38 +1329,124 @@ pub struct SuspiciousDoubleRefCloneDiag<'a> {
 }
 
 // non_local_defs.rs
-#[derive(LintDiagnostic)]
 pub enum NonLocalDefinitionsDiag {
-    #[diag(lint_non_local_definitions_impl)]
-    #[help]
-    #[note(lint_non_local)]
-    #[note(lint_exception)]
-    #[note(lint_non_local_definitions_deprecation)]
     Impl {
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
-        #[subdiagnostic]
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
-        #[suggestion(lint_const_anon, code = "_", applicability = "machine-applicable")]
-        const_anon: Option<Span>,
+        const_anon: Option<Option<Span>>,
+        move_to: Option<(Span, Vec<Span>)>,
+        may_remove: Option<(Span, String)>,
+        has_trait: bool,
+        self_ty_str: String,
+        of_trait_str: Option<String>,
     },
-    #[diag(lint_non_local_definitions_macro_rules)]
     MacroRules {
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
-        #[help]
         help: Option<()>,
-        #[help(lint_help_doctest)]
         doctest_help: Option<()>,
-        #[note(lint_non_local)]
-        #[note(lint_exception)]
-        #[note(lint_non_local_definitions_deprecation)]
-        notes: (),
-        #[subdiagnostic]
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
     },
+}
+
+impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        match self {
+            NonLocalDefinitionsDiag::Impl {
+                depth,
+                body_kind_descr,
+                body_name,
+                cargo_update,
+                const_anon,
+                move_to,
+                may_remove,
+                has_trait,
+                self_ty_str,
+                of_trait_str,
+            } => {
+                diag.primary_message(fluent::lint_non_local_definitions_impl);
+                diag.arg("depth", depth);
+                diag.arg("body_kind_descr", body_kind_descr);
+                diag.arg("body_name", body_name);
+                diag.arg("self_ty_str", self_ty_str);
+                if let Some(of_trait_str) = of_trait_str {
+                    diag.arg("of_trait_str", of_trait_str);
+                }
+
+                if has_trait {
+                    diag.note(fluent::lint_bounds);
+                    diag.note(fluent::lint_with_trait);
+                } else {
+                    diag.note(fluent::lint_without_trait);
+                }
+
+                if let Some((move_help, may_move)) = move_to {
+                    let mut ms = MultiSpan::from_span(move_help);
+                    for sp in may_move {
+                        ms.push_span_label(sp, fluent::lint_non_local_definitions_may_move);
+                    }
+                    diag.span_help(ms, fluent::lint_non_local_definitions_impl_move_help);
+                }
+
+                if let Some((span, part)) = may_remove {
+                    diag.arg("may_remove_part", part);
+                    diag.span_suggestion(
+                        span,
+                        fluent::lint_remove_help,
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+
+                if let Some(cargo_update) = cargo_update {
+                    diag.subdiagnostic(&diag.dcx, cargo_update);
+                }
+                if let Some(const_anon) = const_anon {
+                    diag.note(fluent::lint_exception);
+                    if let Some(const_anon) = const_anon {
+                        diag.span_suggestion(
+                            const_anon,
+                            fluent::lint_const_anon,
+                            "_",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+
+                diag.note(fluent::lint_non_local_definitions_deprecation);
+            }
+            NonLocalDefinitionsDiag::MacroRules {
+                depth,
+                body_kind_descr,
+                body_name,
+                help,
+                doctest_help,
+                cargo_update,
+            } => {
+                diag.primary_message(fluent::lint_non_local_definitions_macro_rules);
+                diag.arg("depth", depth);
+                diag.arg("body_kind_descr", body_kind_descr);
+                diag.arg("body_name", body_name);
+
+                if let Some(()) = help {
+                    diag.help(fluent::lint_help);
+                }
+                if let Some(()) = doctest_help {
+                    diag.help(fluent::lint_help_doctest);
+                }
+
+                diag.note(fluent::lint_non_local);
+                diag.note(fluent::lint_non_local_definitions_deprecation);
+
+                if let Some(cargo_update) = cargo_update {
+                    diag.subdiagnostic(&diag.dcx, cargo_update);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Subdiagnostic)]
