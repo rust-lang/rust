@@ -142,7 +142,7 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(box_pointers)]
     /// struct Foo {
-    ///     x: Box<isize>,
+    ///     x: Box<i32>,
     /// }
     /// ```
     ///
