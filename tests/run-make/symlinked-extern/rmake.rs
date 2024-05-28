@@ -10,17 +10,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{create_symlink, rustc, tmp_dir};
-use std::fs;
+use run_make_support::{create_symlink, cwd, fs_wrapper, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();
-    fs::create_dir_all(tmp_dir().join("other")).unwrap();
-    create_symlink(tmp_dir().join("libfoo.rlib"), tmp_dir().join("other"));
-    rustc().input("bar.rs").library_search_path(tmp_dir()).run();
-    rustc()
-        .input("baz.rs")
-        .extern_("foo", tmp_dir().join("other/libfoo.rlib"))
-        .library_search_path(tmp_dir())
-        .run();
+    fs_wrapper::create_dir_all("other");
+    create_symlink("libfoo.rlib", "other");
+    rustc().input("bar.rs").library_search_path(cwd()).run();
+    rustc().input("baz.rs").extern_("foo", "other").library_search_path(cwd()).run();
 }

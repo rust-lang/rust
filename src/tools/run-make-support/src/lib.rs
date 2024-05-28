@@ -94,14 +94,31 @@ pub fn source_root() -> PathBuf {
 }
 
 /// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
+#[cfg(target_family = "windows")]
 pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if is_windows() {
-        use std::os::windows::fs;
-        fs::symlink_file(original, link).unwrap();
-    } else {
-        use std::os::unix::fs;
-        fs::symlink(original, link).unwrap();
+    if link.as_ref().exists() {
+        std::fs::remove_dir(link.as_ref()).unwrap();
     }
+    use std::os::windows::fs;
+    fs::symlink_file(original.as_ref(), link.as_ref()).expect(&format!(
+        "failed to create symlink {:?} for {:?}",
+        link.as_ref().display(),
+        original.as_ref().display(),
+    ));
+}
+
+/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
+#[cfg(target_family = "unix")]
+pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    if link.as_ref().exists() {
+        std::fs::remove_dir(link.as_ref()).unwrap();
+    }
+    use std::os::unix::fs;
+    fs::symlink(original.as_ref(), link.as_ref()).expect(&format!(
+        "failed to create symlink {:?} for {:?}",
+        link.as_ref().display(),
+        original.as_ref().display(),
+    ));
 }
 
 /// Construct the static library name based on the platform.
@@ -125,11 +142,7 @@ pub fn static_lib_name(name: &str) -> String {
     // ```
     assert!(!name.contains(char::is_whitespace), "static library name cannot contain whitespace");
 
-    if is_msvc() {
-        format!("{name}.lib")
-    } else {
-        format!("lib{name}.a")
-    }
+    if is_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }
 }
 
 /// Construct the dynamic library name based on the platform.
@@ -176,11 +189,7 @@ pub fn rust_lib_name(name: &str) -> String {
 
 /// Construct the binary name based on platform.
 pub fn bin_name(name: &str) -> String {
-    if is_windows() {
-        format!("{name}.exe")
-    } else {
-        name.to_string()
-    }
+    if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
 /// Return the current working directory.
