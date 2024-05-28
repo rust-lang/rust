@@ -24,33 +24,65 @@ const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u
 const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 4) };
 
-    match byte {
-        b'\t' => backslash(ascii::Char::SmallT),
-        b'\r' => backslash(ascii::Char::SmallR),
-        b'\n' => backslash(ascii::Char::SmallN),
-        b'\\' => backslash(ascii::Char::ReverseSolidus),
-        b'\'' => backslash(ascii::Char::Apostrophe),
-        b'\"' => backslash(ascii::Char::QuotationMark),
-        byte => {
-            let mut output = [ascii::Char::Null; N];
+    /// Lookup table helps us determine how to display character.
+    ///
+    /// Since ASCII characters will always be 7 bits, we can exploit this to store the 8th bit to
+    /// indicate whether the result is escaped or unescaped.
+    ///
+    /// We additionally use 0x80 (escaped NUL character) to indicate hex-escaped bytes, since
+    /// escaped NUL will not occur.
+    const LOOKUP: [u8; 256] = {
+        let mut arr = [0; 256];
+        let mut idx = 0;
+        loop {
+            arr[idx as usize] = match idx {
+                // use 8th bit to indicate escaped
+                b'\t' => 0x80 | b't',
+                b'\r' => 0x80 | b'r',
+                b'\n' => 0x80 | b'n',
+                b'\\' => 0x80 | b'\\',
+                b'\'' => 0x80 | b'\'',
+                b'"' => 0x80 | b'"',
 
-            if let Some(c) = byte.as_ascii()
-                && !byte.is_ascii_control()
-            {
-                output[0] = c;
-                (output, 0..1)
-            } else {
-                let hi = HEX_DIGITS[(byte >> 4) as usize];
-                let lo = HEX_DIGITS[(byte & 0xf) as usize];
+                // use NUL to indicate hex-escaped
+                0x00..=0x1F | 0x7F..=0xFF => 0x80 | b'\0',
 
-                output[0] = ascii::Char::ReverseSolidus;
-                output[1] = ascii::Char::SmallX;
-                output[2] = hi;
-                output[3] = lo;
-
-                (output, 0..4)
+                _ => idx,
+            };
+            if idx == 255 {
+                break;
             }
+            idx += 1;
         }
+        arr
+    };
+
+    let mut output = [ascii::Char::Null; N];
+    let lookup = LOOKUP[byte as usize];
+
+    // 8th bit indicates escape
+    if lookup & 0x80 != 0 {
+        output[0] = ascii::Char::ReverseSolidus;
+
+        // SAFETY: We explicitly mask out the eighth bit.
+        let lookup = unsafe { ascii::Char::from_u8_unchecked(lookup & 0x7F) };
+
+        // NUL indicates hex-escaped
+        if matches!(lookup, ascii::Char::Null) {
+            let hi = HEX_DIGITS[(byte >> 4) as usize];
+            let lo = HEX_DIGITS[(byte & 0xF) as usize];
+            output[1] = ascii::Char::SmallX;
+            output[2] = hi;
+            output[3] = lo;
+            (output, 0..4)
+        } else {
+            output[1] = lookup;
+            (output, 0..2)
+        }
+    } else {
+        // SAFETY: We explicitly checked for the eighth bit.
+        output[0] = unsafe { ascii::Char::from_u8_unchecked(lookup) };
+        (output, 0..1)
     }
 }
 
