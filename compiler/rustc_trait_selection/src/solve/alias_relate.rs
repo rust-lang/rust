@@ -26,7 +26,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>, ty::AliasRelationDirection)>,
     ) -> QueryResult<'tcx> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
 
         // Structurally normalize the lhs.

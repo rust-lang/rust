@@ -54,7 +54,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match goal.predicate.alias.kind(self.tcx()) {
+        match goal.predicate.alias.kind(self.interner()) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
                 let candidates = self.assemble_and_evaluate_candidates(goal);
                 self.merge_candidates(candidates)
@@ -107,7 +107,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     ) -> Result<Candidate<'tcx>, NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
-                let tcx = ecx.tcx();
+                let tcx = ecx.interner();
                 ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_projection_pred =
                         ecx.instantiate_binder_with_infer(projection_pred);
@@ -142,7 +142,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
         impl_def_id: DefId,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
 
         let goal_trait_ref = goal.predicate.alias.trait_ref(tcx);
         let impl_trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
@@ -290,8 +290,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        ecx.tcx().dcx().span_delayed_bug(
-            ecx.tcx().def_span(goal.predicate.def_id()),
+        ecx.interner().dcx().span_delayed_bug(
+            ecx.interner().def_span(goal.predicate.def_id()),
             "associated types not allowed on auto traits",
         );
         Err(NoSolution)
@@ -337,7 +337,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         let tupled_inputs_and_output =
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
@@ -380,7 +380,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
 
         let env_region = match goal_kind {
             ty::ClosureKind::Fn | ty::ClosureKind::FnMut => goal.predicate.alias.args.region_at(2),
@@ -493,7 +493,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         }
 
         let upvars_ty = ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
-            ecx.tcx(),
+            ecx.interner(),
             goal_kind,
             tupled_inputs_ty.expect_ty(),
             tupled_upvars_ty.expect_ty(),
@@ -518,7 +518,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, goal.predicate.def_id());
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
@@ -606,7 +606,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         };
 
         // Coroutines are not futures unless they come from `async` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_async(def_id) {
             return Err(NoSolution);
         }
@@ -618,7 +618,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(
+                    ecx.interner(),
+                    goal.predicate.def_id(),
+                    [self_ty],
+                ),
                 term,
             }
             .upcast(tcx),
@@ -638,7 +642,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         };
 
         // Coroutines are not Iterators unless they come from `gen` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_gen(def_id) {
             return Err(NoSolution);
         }
@@ -650,7 +654,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(
+                    ecx.interner(),
+                    goal.predicate.def_id(),
+                    [self_ty],
+                ),
                 term,
             }
             .upcast(tcx),
@@ -677,7 +685,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         };
 
         // Coroutines are not AsyncIterators unless they come from `gen` desugaring
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.coroutine_is_async_gen(def_id) {
             return Err(NoSolution);
         }
@@ -713,7 +721,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         };
 
         // `async`-desugared coroutines do not implement the coroutine trait
-        let tcx = ecx.tcx();
+        let tcx = ecx.interner();
         if !tcx.is_general_coroutine(def_id) {
             return Err(NoSolution);
         }
@@ -735,7 +743,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             goal,
             ty::ProjectionPredicate {
                 projection_term: ty::AliasTerm::new(
-                    ecx.tcx(),
+                    ecx.interner(),
                     goal.predicate.def_id(),
                     [self_ty, coroutine.resume_ty()],
                 ),
@@ -784,7 +792,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Slice(_)
             | ty::Dynamic(_, _, _)
             | ty::Tuple(_)
-            | ty::Error(_) => self_ty.discriminant_ty(ecx.tcx()),
+            | ty::Error(_) => self_ty.discriminant_ty(ecx.interner()),
 
             // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `<self_ty as DiscriminantKind>::Discriminant`
@@ -831,7 +839,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Str
             | ty::Slice(_)
             | ty::Tuple(_)
-            | ty::Error(_) => self_ty.async_destructor_ty(ecx.tcx(), goal.param_env),
+            | ty::Error(_) => self_ty.async_destructor_ty(ecx.interner(), goal.param_env),
 
             // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
             // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`
@@ -887,8 +895,9 @@ fn fetch_eligible_assoc_item_def<'tcx>(
     trait_assoc_def_id: DefId,
     impl_def_id: DefId,
 ) -> Result<Option<LeafDef>, NoSolution> {
-    let node_item = specialization_graph::assoc_def(ecx.tcx(), impl_def_id, trait_assoc_def_id)
-        .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+    let node_item =
+        specialization_graph::assoc_def(ecx.interner(), impl_def_id, trait_assoc_def_id)
+            .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
 
     let eligible = if node_item.is_final() {
         // Non-specializable items are always projectable.

@@ -95,7 +95,7 @@ pub struct EvalCtxt<
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    pub(super) inspect: ProofTreeBuilder<I>,
+    pub(super) inspect: ProofTreeBuilder<Infcx>,
 }
 
 #[derive(derivative::Derivative)]
@@ -215,7 +215,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        canonical_goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
@@ -277,7 +277,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
     ) -> QueryResult<'tcx> {
         let mut canonical_goal_evaluation =
             goal_evaluation.new_canonical_goal_evaluation(canonical_input);
@@ -344,7 +344,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
-            self.tcx(),
+            self.interner(),
             self.search_graph,
             canonical_goal,
             &mut goal_evaluation,
@@ -447,7 +447,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
             }
         } else {
             self.infcx.enter_forall(kind, |kind| {
-                let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
+                let goal = goal.with(self.interner(), ty::Binder::dummy(kind));
                 self.add_goal(GoalSource::InstantiateHigherRanked, goal);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
@@ -498,7 +498,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     ///
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let mut goals = core::mem::take(&mut self.nested_goals);
 
         // If this loop did not result in any progress, what's our final certainty.
@@ -584,11 +584,13 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
-    pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
+    pub(super) fn interner(&self) -> I {
+        self.infcx.interner()
     }
+}
 
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     pub(super) fn next_ty_infer(&mut self) -> Ty<'tcx> {
         let ty = self.infcx.next_ty_var(DUMMY_SP);
         self.inspect.add_var_value(ty);
@@ -746,7 +748,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         // NOTE: this check is purely an optimization, the structural eq would
         // always fail if the term is not an inference variable.
         if term.is_infer() {
-            let tcx = self.tcx();
+            let tcx = self.interner();
             // We need to relate `alias` to `term` treating only the outermost
             // constructor as rigid, relating any contained generic arguments as
             // normal. We do this by first structurally equating the `term`
@@ -1041,10 +1043,10 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     ) -> Option<ty::Const<'tcx>> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.infcx.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
-            Ok(Some(val)) => Some(ty::Const::new_value(self.tcx(), val, ty)),
+            Ok(Some(val)) => Some(ty::Const::new_value(self.interner(), val, ty)),
             Ok(None) | Err(ErrorHandled::TooGeneric(_)) => None,
             Err(ErrorHandled::Reported(e, _)) => {
-                Some(ty::Const::new_error(self.tcx(), e.into(), ty))
+                Some(ty::Const::new_error(self.interner(), e.into(), ty))
             }
         }
     }
@@ -1057,7 +1059,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         principal: ty::PolyTraitRef<'tcx>,
         mut supertrait_visitor: impl FnMut(&mut Self, ty::PolyTraitRef<'tcx>, usize, Option<usize>),
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let mut offset = 0;
         prepare_vtable_segments::<()>(tcx, principal, |segment| {
             match segment {

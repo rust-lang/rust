@@ -11,7 +11,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let projection_term = goal.predicate.projection_term.to_term(tcx);
         let goal = goal.with(
             tcx,
