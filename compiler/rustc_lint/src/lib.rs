@@ -80,6 +80,7 @@ mod shadowed_into_iter;
 mod traits;
 mod types;
 mod unit_bindings;
+mod unqualified_local_imports;
 mod unused;
 
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
@@ -118,6 +119,7 @@ use shadowed_into_iter::ShadowedIntoIter;
 use traits::*;
 use types::*;
 use unit_bindings::*;
+use unqualified_local_imports::*;
 use unused::*;
 
 pub use builtin::{MissingDoc, SoftLints};
@@ -234,6 +236,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
+            UnqualifiedLocalImports: UnqualifiedLocalImports,
         ]
     ]
 );
