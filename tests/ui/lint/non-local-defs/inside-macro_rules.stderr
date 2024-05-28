@@ -1,15 +1,19 @@
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/inside-macro_rules.rs:9:13
    |
+LL |         fn my_func() {
+   |         ------------ move the `impl` block outside of this function `my_func`
 LL |             impl MacroTrait for OutsideStruct {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^----------^^^^^-------------
+   |                  |              |
+   |                  |              `OutsideStruct` is not local
+   |                  `MacroTrait` is not local
 ...
 LL | m!();
    | ---- in this macro invocation
    |
-   = help: move this `impl` block outside the of the current function `my_func`
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
    = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
