@@ -5,7 +5,7 @@
 This documentation covers details that apply to a range of bare-metal targets
 for 32-bit ARM CPUs. The `arm-none-eabi` flavor of the GNU compiler toolchain is
 often used to assist compilation to these targets.
- 
+
 Details that apply only to only a specific target in this group are covered in
 their own document.
 
