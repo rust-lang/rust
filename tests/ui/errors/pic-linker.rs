@@ -6,7 +6,7 @@
 //@ ignore-macos
 //@ ignore-cross-compile
 
-//@ compile-flags -Clink-args=-Wl,-z,text
+//@ compile-flags: -Clink-args=-Wl,-z,text
 //@ run-pass
 
 fn main() {}

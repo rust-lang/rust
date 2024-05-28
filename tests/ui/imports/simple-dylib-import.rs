@@ -2,7 +2,7 @@
 // on the dynamic library simple-dylib.rs. If the test passes,
 // dylibs can be built and linked into another file successfully..
 
-//@ aux-crate: simple-dylib.rs
+//@ aux-crate:bar=simple-dylib.rs
 //@ run-pass
 
 extern crate bar;
