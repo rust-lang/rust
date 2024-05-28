@@ -86,6 +86,7 @@ mod tail_expr_drop_order;
 mod traits;
 mod types;
 mod unit_bindings;
+mod unqualified_local_imports;
 mod unused;
 
 use async_closures::AsyncClosureUsage;
@@ -126,6 +127,7 @@ use tail_expr_drop_order::TailExprDropOrder;
 use traits::*;
 use types::*;
 use unit_bindings::*;
+use unqualified_local_imports::*;
 use unused::*;
 
 #[rustfmt::skip]
@@ -249,6 +251,7 @@ late_lint_methods!(
             TailExprDropOrder: TailExprDropOrder,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
+            UnqualifiedLocalImports: UnqualifiedLocalImports,
         ]
     ]
 );
