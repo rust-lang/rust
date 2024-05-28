@@ -1,7 +1,6 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
@@ -1086,40 +1085,33 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
     }
 
-    fn adjust_allocation<'b>(
+    fn init_alloc_extra(
         ecx: &MiriInterpCx<'tcx>,
         id: AllocId,
-        alloc: Cow<'b, Allocation>,
-        kind: Option<MemoryKind>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
-    {
-        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
+        kind: MemoryKind,
+        size: Size,
+        align: Align,
+    ) -> InterpResult<'tcx, Self::AllocExtra> {
         if ecx.machine.tracked_alloc_ids.contains(&id) {
-            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
-                id,
-                alloc.size(),
-                alloc.align,
-                kind,
-            ));
+            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id, size, align, kind));
         }
 
-        let alloc = alloc.into_owned();
         let borrow_tracker = ecx
             .machine
             .borrow_tracker
             .as_ref()
-            .map(|bt| bt.borrow_mut().new_allocation(id, alloc.size(), kind, &ecx.machine));
+            .map(|bt| bt.borrow_mut().new_allocation(id, size, kind, &ecx.machine));
 
-        let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
+        let data_race = ecx.machine.data_race.as_ref().map(|data_race| {
             data_race::AllocState::new_allocation(
                 data_race,
                 &ecx.machine.threads,
-                alloc.size(),
+                size,
                 kind,
                 ecx.machine.current_span(),
             )
         });
-        let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
+        let weak_memory = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
 
         // If an allocation is leaked, we want to report a backtrace to indicate where it was
         // allocated. We don't need to record a backtrace for allocations which are allowed to
@@ -1130,17 +1122,6 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             Some(ecx.generate_stacktrace())
         };
 
-        let alloc: Allocation<Provenance, Self::AllocExtra, Self::Bytes> = alloc.adjust_from_tcx(
-            &ecx.tcx,
-            AllocExtra {
-                borrow_tracker,
-                data_race: race_alloc,
-                weak_memory: buffer_alloc,
-                backtrace,
-            },
-            |ptr| ecx.global_root_pointer(ptr),
-        )?;
-
         if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
             ecx.machine
                 .allocation_spans
@@ -1148,7 +1129,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 .insert(id, (ecx.machine.current_span(), None));
         }
 
-        Ok(Cow::Owned(alloc))
+        Ok(AllocExtra { borrow_tracker, data_race, weak_memory, backtrace })
     }
 
     fn adjust_alloc_root_pointer(
@@ -1357,7 +1338,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn init_frame_extra(
+    fn init_frame(
         ecx: &mut InterpCx<'tcx, Self>,
         frame: Frame<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
