@@ -85,6 +85,9 @@ wasi = { version = "0.11.0", features = [
 r-efi = { version = "4.5.0", features = ['rustc-dep-of-std'] }
 r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 
+[target.'cfg(target_os = "vexos")'.dependencies]
+vex-sdk = { version = "0.16.1", features = ['rustc-dep-of-std'] }
+
 [features]
 backtrace = [
     'addr2line/rustc-dep-of-std',

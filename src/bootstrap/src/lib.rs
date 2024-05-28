@@ -617,9 +617,9 @@ impl Build {
         if self.config.profiler_enabled(target) {
             features.insert("profiler");
         }
-
-        // If zkvm target, generate memcpy, etc.
-        if target.contains("zkvm") {
+        // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
+        // automatically detects this target.
+        if target.contains("zkvm") || target.contains("vex") {
             features.insert("compiler-builtins-mem");
         }
 

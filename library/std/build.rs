@@ -56,6 +56,7 @@ fn main() {
         || target_os == "zkvm"
         || target_os == "rtems"
         || target_os == "nuttx"
+        || target_os == "vexos"
 
         // See src/bootstrap/src/core/build_steps/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
