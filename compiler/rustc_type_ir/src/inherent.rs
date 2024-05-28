@@ -29,6 +29,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_var(interner: I, var: ty::TyVid) -> Self;
 
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundTy) -> Self;
+
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
@@ -65,7 +67,10 @@ pub trait Region<I: Interner<Region = Self>>:
     + Into<I::GenericArg>
     + IntoKind<Kind = ty::RegionKind<I>>
     + Flags
+    + TypeVisitable<I>
 {
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundRegion) -> Self;
+
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_static(interner: I) -> Self;
@@ -86,6 +91,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_infer(interner: I, var: ty::InferConst, ty: I::Ty) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid, ty: I::Ty) -> Self;
+
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst, ty: I::Ty) -> Self;
 
     fn new_anon_bound(
         interner: I,
@@ -161,4 +168,8 @@ pub trait BoundVarLike<I: Interner> {
     fn var(self) -> ty::BoundVar;
 
     fn assert_eq(self, var: I::BoundVarKind);
+}
+
+pub trait ParamLike {
+    fn index(self) -> u32;
 }

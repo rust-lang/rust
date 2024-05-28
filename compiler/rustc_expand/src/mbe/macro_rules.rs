@@ -223,7 +223,8 @@ fn expand_macro<'cx>(
             let arm_span = rhses[i].span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
-            let tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
+            let id = cx.current_expansion.id;
+            let tts = match transcribe(psess, &named_matches, rhs, rhs_span, transparency, id) {
                 Ok(tts) => tts,
                 Err(err) => {
                     let guar = err.emit();

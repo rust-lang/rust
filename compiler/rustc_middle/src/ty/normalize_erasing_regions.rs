@@ -125,7 +125,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: EarlyBinder<T>,
+        value: EarlyBinder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -143,7 +143,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: EarlyBinder<T>,
+        value: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
