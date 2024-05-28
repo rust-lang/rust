@@ -105,7 +105,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
-    if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
+    if !build.config.dry_run() && build.config.llvm_from_ci {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });
 
@@ -124,11 +124,7 @@ pub fn check(build: &mut Build) {
                 }
             }
             tool::LibcxxVersion::Llvm(_) => {
-                eprintln!(
-                    "\nYour system is using libc++, which is incompatible with the `llvm.download-ci-llvm` option."
-                );
-                eprintln!("Disable `llvm.download-ci-llvm` or switch to libstdc++.");
-                crate::exit!(1);
+                // FIXME: Handle libc++ version check.
             }
         }
     }
