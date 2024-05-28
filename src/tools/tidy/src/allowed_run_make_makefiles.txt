@@ -156,7 +156,6 @@ run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
-run-make/mixing-deps/Makefile
 run-make/mixing-formats/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile

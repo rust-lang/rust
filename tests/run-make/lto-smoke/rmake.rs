@@ -4,6 +4,8 @@
 
 //@ ignore-cross-compile
 
+use run_make_support::rustc;
+
 fn main() {
     let lto_flags = ["-Clto", "-Clto=yes", "-Clto=off", "-Clto=thin", "-Clto=fat"];
     for flag in lto_flags {
