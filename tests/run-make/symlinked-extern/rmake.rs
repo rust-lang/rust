@@ -3,6 +3,7 @@
 // using the --extern option to rustc, which could lead to rustc thinking
 // that it encountered two different versions of a crate, when it's
 // actually the same version found through different paths.
+// See https://github.com/rust-lang/rust/pull/16505
 
 // This test checks that --extern and symlinks together
 // can result in successful compilation.
