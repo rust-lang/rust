@@ -1266,7 +1266,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
-        use AtomicRwOrd::*;
+        use self::AtomicRwOrd::*;
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
         let this = self.eval_context_mut();

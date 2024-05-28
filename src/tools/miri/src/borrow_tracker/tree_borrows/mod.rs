@@ -23,8 +23,8 @@ mod unimap;
 #[cfg(test)]
 mod exhaustive;
 
-use perms::Permission;
-pub use tree::Tree;
+use self::perms::Permission;
+pub use self::tree::Tree;
 
 pub type AllocState = Tree;
 

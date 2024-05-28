@@ -59,7 +59,7 @@ pub struct RacingOp {
 
 impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use TerminationInfo::*;
+        use self::TerminationInfo::*;
         match self {
             Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
             Abort(msg) => write!(f, "{msg}"),
@@ -212,7 +212,7 @@ pub fn report_error<'tcx>(
 
     let (title, helps) = if let MachineStop(info) = e.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
-        use TerminationInfo::*;
+        use self::TerminationInfo::*;
         let title = match info {
             Exit { code, leak_check } => return Some((*code, *leak_check)),
             Abort(_) => Some("abnormal termination"),
@@ -579,7 +579,7 @@ pub fn report_msg<'tcx>(
 
 impl<'tcx> MiriMachine<'tcx> {
     pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
-        use NonHaltingDiagnostic::*;
+        use self::NonHaltingDiagnostic::*;
 
         let stacktrace = Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);

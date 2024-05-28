@@ -793,7 +793,7 @@ impl AccessRelatedness {
     /// for the child node. This function assumes that we propagate away from the initial
     /// access.
     pub fn for_child(self) -> Self {
-        use AccessRelatedness::*;
+        use self::AccessRelatedness::*;
         match self {
             AncestorAccess | This => AncestorAccess,
             StrictChildAccess | DistantAccess => DistantAccess,

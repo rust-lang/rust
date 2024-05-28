@@ -14,6 +14,7 @@ macro_rules! precondition {
         }
     };
 }
+#[cfg_attr(not(bootstrap), allow(unclear_local_imports))]
 pub(crate) use precondition;
 
 // Trivial impls of `Exhaustive` for the standard types with 0, 1 and 2 elements respectively.
