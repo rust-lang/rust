@@ -125,6 +125,9 @@
 //! - [`Condvar`]: Condition Variable, providing the ability to block
 //!   a thread while waiting for an event to occur.
 //!
+//! - [`LazyLock`]: Used for thread-safe, lazy initialization of a
+//!   global variable (initialization routine provided at declaration).
+//!
 //! - [`mpsc`]: Multi-producer, single-consumer queues, used for
 //!   message-based communication. Can provide a lightweight
 //!   inter-thread synchronisation mechanism, at the cost of some
@@ -133,10 +136,10 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//! - [`Once`]: Used for a thread-safe, one-time global initialization routine
+//! - [`Once`]: Used for a thread-safe, one-time global initialization routine.
 //!
 //! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
-//!   global variable.
+//!   global variable (initialization routine provided at point of use).
 //!
 //! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
 //!   multiple readers at the same time, while allowing only one
@@ -149,6 +152,7 @@
 //! [`mpsc`]: crate::sync::mpsc
 //! [`Mutex`]: crate::sync::Mutex
 //! [`Once`]: crate::sync::Once
+//! [`LazyLock`]: crate::sync::LazyLock
 //! [`OnceLock`]: crate::sync::OnceLock
 //! [`RwLock`]: crate::sync::RwLock
 
