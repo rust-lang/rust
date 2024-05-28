@@ -21,6 +21,26 @@ pub struct UnconditionalRecursion {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(mir_build_call_to_deprecated_safe_fn_requires_unsafe)]
+pub struct CallToDeprecatedSafeFnRequiresUnsafe {
+    #[label]
+    pub span: Span,
+    pub function: String,
+    #[subdiagnostic]
+    pub sub: CallToDeprecatedSafeFnRequiresUnsafeSub,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(mir_build_suggestion, applicability = "machine-applicable")]
+pub struct CallToDeprecatedSafeFnRequiresUnsafeSub {
+    #[suggestion_part(code = "unsafe {{ ")]
+    pub left: Span,
+    #[suggestion_part(code = " }}")]
+    pub right: Span,
+}
+
+
+#[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe, code = E0133)]
 #[note]
 pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {

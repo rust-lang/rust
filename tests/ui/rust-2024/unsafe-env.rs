@@ -4,7 +4,6 @@
 //@[e2024] compile-flags: -Zunstable-options
 
 use std::env;
-use std::mem;
 
 unsafe fn unsafe_fn() {}
 fn safe_fn() {}
