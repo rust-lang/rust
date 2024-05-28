@@ -126,7 +126,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// assert_eq!(LazyLock::into_inner(lazy).ok(), Some("HELLO, WORLD!".to_string()));
     /// ```
-    #[unstable(feature = "lazy_cell_consume", issue = "109736")]
+    #[unstable(feature = "lazy_cell_consume", issue = "125623")]
     pub fn into_inner(mut this: Self) -> Result<T, F> {
         let state = this.once.state();
         match state {
