@@ -22,6 +22,7 @@ Session.vim
 .favorites.json
 .settings/
 .vs/
+.helix
 
 ## Tool
 .valgrindrc
