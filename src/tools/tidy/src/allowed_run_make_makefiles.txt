@@ -145,7 +145,6 @@ run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-readonly-lib/Makefile
 run-make/lto-smoke-c/Makefile
-run-make/lto-smoke/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-crate-name/Makefile
