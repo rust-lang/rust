@@ -3,6 +3,7 @@ use std::mem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::Idx;
 use rustc_index::IndexVec;
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::traits::solve::CacheData;
 use rustc_middle::traits::solve::EvaluationCache;
@@ -261,10 +262,10 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<TyCtxt<'tcx>>,
-        inspect: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         mut prove_goal: impl FnMut(
             &mut Self,
-            &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+            &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         ) -> QueryResult<TyCtxt<'tcx>>,
     ) -> QueryResult<TyCtxt<'tcx>> {
         self.check_invariants();
@@ -426,7 +427,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<TyCtxt<'tcx>>,
         available_depth: Limit,
-        inspect: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
     ) -> Option<QueryResult<TyCtxt<'tcx>>> {
         let CacheData { result, proof_tree, additional_depth, encountered_overflow } = self
             .global_cache(tcx)
@@ -473,11 +474,11 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<TyCtxt<'tcx>>,
-        inspect: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         prove_goal: &mut F,
     ) -> StepResult<TyCtxt<'tcx>>
     where
-        F: FnMut(&mut Self, &mut ProofTreeBuilder<TyCtxt<'tcx>>) -> QueryResult<TyCtxt<'tcx>>,
+        F: FnMut(&mut Self, &mut ProofTreeBuilder<InferCtxt<'tcx>>) -> QueryResult<TyCtxt<'tcx>>,
     {
         let result = prove_goal(self, inspect);
         let stack_entry = self.pop_stack();

@@ -218,6 +218,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.check_and_mk_args(def_id, args)
     }
 
+    fn intern_canonical_goal_evaluation_step(
+        self,
+        step: solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>,
+    ) -> &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>> {
+        self.arena.alloc(step)
+    }
+
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
     }
