@@ -776,7 +776,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             let InferOk { value: (), obligations } = self
                 .infcx
                 .at(&ObligationCause::dummy(), param_env)
-                .trace(term, ctor_term)
                 .eq_structurally_relating_aliases(term, ctor_term)?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
@@ -796,11 +795,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         rhs: T,
     ) -> Result<(), NoSolution> {
         let cause = ObligationCause::dummy();
-        let InferOk { value: (), obligations } = self
-            .infcx
-            .at(&cause, param_env)
-            .trace(lhs, rhs)
-            .eq_structurally_relating_aliases(lhs, rhs)?;
+        let InferOk { value: (), obligations } =
+            self.infcx.at(&cause, param_env).eq_structurally_relating_aliases(lhs, rhs)?;
         assert!(obligations.is_empty());
         Ok(())
     }

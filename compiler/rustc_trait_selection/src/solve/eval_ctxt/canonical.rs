@@ -363,7 +363,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         for (&orig, response) in iter::zip(original_values, var_values.var_values) {
             let InferOk { value: (), obligations } = infcx
                 .at(&cause, param_env)
-                .trace(orig, response)
                 .eq_structurally_relating_aliases(orig, response)
                 .unwrap();
             assert!(obligations.is_empty());
