@@ -219,10 +219,8 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     for (i, field) in variant.fields.iter_enumerated() {
                         let field_ty = field.ty(self.tcx, args);
                         if field_ty == *cast_ty {
-                            let place = place.project_deeper(
-                                &[ProjectionElem::Field(i, *cast_ty)],
-                                self.tcx,
-                            );
+                            let place = place
+                                .project_deeper(&[ProjectionElem::Field(i, *cast_ty)], self.tcx);
                             let operand = if operand.is_move() {
                                 Operand::Move(place)
                             } else {

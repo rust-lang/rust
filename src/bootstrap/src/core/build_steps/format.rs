@@ -115,8 +115,15 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        if let Some(ignore) = ignore.strip_prefix('!') {
-            fmt_override.add(ignore).expect(ignore);
+        if ignore.starts_with('!') {
+            // A `!`-prefixed entry could be added as a whitelisted entry in `fmt_override`, i.e.
+            // strip the `!` prefix. But as soon as whitelisted entries are added, an
+            // `OverrideBuilder` will only traverse those whitelisted entries, and won't traverse
+            // any files that aren't explicitly mentioned. No bueno! Maybe there's a way to combine
+            // explicit whitelisted entries and traversal of unmentioned files, but for now just
+            // forbid such entries.
+            eprintln!("`!`-prefixed entries are not supported in rustfmt.toml, sorry");
+            crate::exit!(1);
         } else {
             fmt_override.add(&format!("!{ignore}")).expect(&ignore);
         }
