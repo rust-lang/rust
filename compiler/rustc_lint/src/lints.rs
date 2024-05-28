@@ -2768,3 +2768,7 @@ pub struct RedundantImportVisibility {
     pub import_vis: String,
     pub max_vis: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unclear_local_imports)]
+pub struct UnclearLocalImportsDiag {}
