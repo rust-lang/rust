@@ -9,8 +9,8 @@ LL |         let res = self.fut.poll(cx);
    |
 help: consider pinning the expression
    |
-LL ~         let res = let mut pinned = std::pin::pin!(self.fut);
-LL ~         pinned.as_mut().poll(cx);
+LL ~         let mut pinned = std::pin::pin!(self.fut);
+LL ~         let res = pinned.as_mut().poll(cx);
    |
 
 error: aborting due to 1 previous error
