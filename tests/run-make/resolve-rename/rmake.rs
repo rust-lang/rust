@@ -10,6 +10,7 @@ use std::fs;
 fn main() {
     rustc().extra_filename("-hash").input("foo.rs").run();
     rustc().input("bar.rs").run();
-    fs::rename(tmp_dir().join("libfoo-hash.rlib"), tmp_dir().join("libfoo-another-hash.rlib"));
+    fs::rename(tmp_dir().join("libfoo-hash.rlib"), tmp_dir().join("libfoo-another-hash.rlib"))
+        .unwrap();
     rustc().input("baz.rs").run();
 }

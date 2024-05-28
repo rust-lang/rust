@@ -246,7 +246,6 @@ run-make/static-pie/Makefile
 run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile
-run-make/suspicious-library/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
 run-make/symbols-include-type-name/Makefile
