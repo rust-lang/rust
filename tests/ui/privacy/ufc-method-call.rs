@@ -1,3 +1,9 @@
+//! This test used to report that the method call cannot
+//! call the private method `Foo<A>::foo`, even though the user
+//! explicitly selected `Foo<B>::foo`. This is because we only
+//! looked for methods of the right name, without properly checking
+//! the `Self` type
+
 //@ revisions: same_name different_name
 
 pub mod test {
