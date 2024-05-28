@@ -87,7 +87,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
     pub(crate) last_flycheck_error: Option<String>,
-    pub(crate) diagnostics_received: bool,
+    pub(crate) diagnostics_received: FxHashMap<usize, bool>,
 
     // Test explorer
     pub(crate) test_run_session: Option<Vec<flycheck::CargoTestHandle>>,
@@ -225,7 +225,7 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
             last_flycheck_error: None,
-            diagnostics_received: false,
+            diagnostics_received: FxHashMap::default(),
 
             test_run_session: None,
             test_run_sender,
