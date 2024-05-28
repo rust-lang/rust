@@ -12,8 +12,8 @@ use std::sync::mpsc::SyncSender;
 
 fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut(bool) -> bool {
     let mut cmd = Command::new(rustfmt);
-    // avoid the submodule config paths from coming into play,
-    // we only allow a single global config for the workspace for now
+    // Avoid the submodule config paths from coming into play. We only allow a single global config
+    // for the workspace for now.
     cmd.arg("--config-path").arg(&src.canonicalize().unwrap());
     cmd.arg("--edition").arg("2021");
     cmd.arg("--unstable-features");
@@ -24,7 +24,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
     cmd.args(paths);
     let cmd_debug = format!("{cmd:?}");
     let mut cmd = cmd.spawn().expect("running rustfmt");
-    // poor man's async: return a closure that'll wait for rustfmt's completion
+    // Poor man's async: return a closure that'll wait for rustfmt's completion.
     move |block: bool| -> bool {
         if !block {
             match cmd.try_wait() {
@@ -72,7 +72,7 @@ fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
     !program_out_of_date(&stamp_file, &version)
 }
 
-/// Updates the last rustfmt version used
+/// Updates the last rustfmt version used.
 fn update_rustfmt_version(build: &Builder<'_>) {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return;
@@ -115,8 +115,15 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        if let Some(ignore) = ignore.strip_prefix('!') {
-            fmt_override.add(ignore).expect(ignore);
+        if ignore.starts_with('!') {
+            // A `!`-prefixed entry could be added as a whitelisted entry in `fmt_override`, i.e.
+            // strip the `!` prefix. But as soon as whitelisted entries are added, an
+            // `OverrideBuilder` will only traverse those whitelisted entries, and won't traverse
+            // any files that aren't explicitly mentioned. No bueno! Maybe there's a way to combine
+            // explicit whitelisted entries and traversal of unmentioned files, but for now just
+            // forbid such entries.
+            eprintln!("`!`-prefixed entries are not supported in rustfmt.toml, sorry");
+            crate::exit!(1);
         } else {
             fmt_override.add(&format!("!{ignore}")).expect(&ignore);
         }
@@ -168,9 +175,10 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 untracked_count += 1;
                 fmt_override.add(&format!("!/{untracked_path}")).expect(untracked_path);
             }
-            // Only check modified files locally to speed up runtime.
-            // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
-            // we also care about CI time less since this is still very fast compared to building the compiler.
+            // Only check modified files locally to speed up runtime. We still check all files in
+            // CI to avoid bugs in `get_modified_rs_files` letting regressions slip through; we
+            // also care about CI time less since this is still very fast compared to building the
+            // compiler.
             if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
@@ -275,21 +283,23 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     .overrides(fmt_override)
     .build_parallel();
 
-    // there is a lot of blocking involved in spawning a child process and reading files to format.
-    // spawn more processes than available concurrency to keep the CPU busy
+    // There is a lot of blocking involved in spawning a child process and reading files to format.
+    // Spawn more processes than available concurrency to keep the CPU busy.
     let max_processes = build.jobs() as usize * 2;
 
-    // spawn child processes on a separate thread so we can batch entries we have received from ignore
+    // Spawn child processes on a separate thread so we can batch entries we have received from
+    // ignore.
     let thread = std::thread::spawn(move || {
         let mut children = VecDeque::new();
         while let Ok(path) = rx.recv() {
-            // try getting more paths from the channel to amortize the overhead of spawning processes
+            // Try getting more paths from the channel to amortize the overhead of spawning
+            // processes.
             let paths: Vec<_> = rx.try_iter().take(63).chain(std::iter::once(path)).collect();
 
             let child = rustfmt(&src, &rustfmt_path, paths.as_slice(), check);
             children.push_back(child);
 
-            // poll completion before waiting
+            // Poll completion before waiting.
             for i in (0..children.len()).rev() {
                 if children[i](false) {
                     children.swap_remove_back(i);
@@ -298,12 +308,12 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             }
 
             if children.len() >= max_processes {
-                // await oldest child
+                // Await oldest child.
                 children.pop_front().unwrap()(true);
             }
         }
 
-        // await remaining children
+        // Await remaining children.
         for mut child in children {
             child(true);
         }

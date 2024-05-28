@@ -691,7 +691,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!(
                                     "You can't project to field {f:?} of `DynMetadata` because \
-                                         layout is weird and thinks it doesn't have fields."
+                                     layout is weird and thinks it doesn't have fields."
                                 ),
                             );
                         }
