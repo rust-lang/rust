@@ -1,5 +1,5 @@
 error[E0624]: associated function `foo` is private
-  --> $DIR/issue-53498.rs:21:27
+  --> $DIR/ufc-method-call.rs:21:27
    |
 LL |         fn foo() {}
    |         -------- private associated function defined here

@@ -1,5 +1,5 @@
 error[E0599]: no function or associated item named `foo` found for struct `Foo<B>` in the current scope
-  --> $DIR/issue-53498.rs:21:27
+  --> $DIR/ufc-method-call.rs:21:27
    |
 LL |     pub struct Foo<T>(T);
    |     ----------------- function or associated item `foo` not found for this struct
