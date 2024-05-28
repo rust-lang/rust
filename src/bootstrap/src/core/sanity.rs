@@ -127,11 +127,7 @@ pub fn check(build: &mut Build) {
                 }
             }
             tool::LibcxxVersion::Llvm(_) => {
-                eprintln!(
-                    "\nYour system is using libc++, which is incompatible with the `llvm.download-ci-llvm` option."
-                );
-                eprintln!("Disable `llvm.download-ci-llvm` or switch to libstdc++.");
-                crate::exit!(1);
+                // FIXME: Handle libc++ version check.
             }
         }
     }
