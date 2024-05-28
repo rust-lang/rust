@@ -10,17 +10,17 @@ LL | #![feature(specialization)]
 
 error: cannot normalize `<T as Default>::Id: '_`
 
-error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id == _`
+error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id normalizes-to _`
   --> $DIR/specialization-transmute.rs:15:23
    |
 LL |     fn intu(&self) -> &Self::Id {
-   |                       ^^^^^^^^^ cannot satisfy `<T as Default>::Id == _`
+   |                       ^^^^^^^^^ cannot satisfy `<T as Default>::Id normalizes-to _`
 
-error[E0284]: type annotations needed: cannot satisfy `T <: <T as Default>::Id`
+error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id normalizes-to T`
   --> $DIR/specialization-transmute.rs:17:9
    |
 LL |         self
-   |         ^^^^ cannot satisfy `T <: <T as Default>::Id`
+   |         ^^^^ cannot satisfy `<T as Default>::Id normalizes-to T`
 
 error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
   --> $DIR/specialization-transmute.rs:28:13

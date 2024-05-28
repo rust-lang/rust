@@ -48,6 +48,12 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             rhs
         };
 
+        // Add a `make_canonical_response` probe step so that we treat this as
+        // a candidate, even if `try_evaluate_added_goals` bails due to an error.
+        // It's `Certainty::AMBIGUOUS` because this candidate is not "finished",
+        // since equating the normalized terms will lead to additional constraints.
+        self.inspect.make_canonical_response(Certainty::AMBIGUOUS);
+
         // Apply the constraints.
         self.try_evaluate_added_goals()?;
         let lhs = self.resolve_vars_if_possible(lhs);
