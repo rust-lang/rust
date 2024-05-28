@@ -374,13 +374,13 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Disable zstd to avoid a dependency on libzstd.so.
-        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
-
+        // Libraries for ELF compression.
         if !target.is_windows() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
+            cfg.define("LLVM_ENABLE_ZSTD", "ON");
         } else {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
+            cfg.define("LLVM_ENABLE_ZSTD", "OFF");
         }
 
         // Are we compiling for iOS/tvOS/watchOS/visionOS?
