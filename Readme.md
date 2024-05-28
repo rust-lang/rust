@@ -146,34 +146,19 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
 
 ## Env vars
 
-<dl>
-    <dt>CG_GCCJIT_DUMP_ALL_MODULES</dt>
-    <dd>Enables dumping of all compilation modules. When set to "1", a dump is created for each module during compilation and stored in `/tmp/reproducers/`.</dd>
-    <dt>CG_GCCJIT_DUMP_MODULE</dt>
-    <dd>Enables dumping of a specific module. When set with the module name, e.g., `CG_GCCJIT_DUMP_MODULE=module_name`, a dump of that specific module is created in `/tmp/reproducers/`.</dd>
-    <dt>CG_RUSTFLAGS</dt>
-    <dd>Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.</dd>
-    <dt>CG_GCCJIT_DUMP_TO_FILE</dt>
-    <dd>Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.</dd>
-    <dt>CG_GCCJIT_DUMP_RTL</dt>
-    <dd>Dumps RTL (Register Transfer Language) for virtual registers.</dd>
-    <dt>CG_GCCJIT_DUMP_RTL_ALL</dt>
-    <dd>Dumps all RTL passes.</dd>
-    <dt>CG_GCCJIT_DUMP_TREE_ALL</dt>
-    <dd>Dumps all tree (GIMPLE) passes.</dd>
-    <dt>CG_GCCJIT_DUMP_IPA_ALL</dt>
-    <dd>Dumps all Interprocedural Analysis (IPA) passes.</dd>
-    <dt>CG_GCCJIT_DUMP_CODE</dt>
-    <dd>Dumps the final generated code.</dd>
-    <dt>CG_GCCJIT_DUMP_GIMPLE</dt>
-    <dd>Dumps the initial GIMPLE representation.</dd>
-    <dt>CG_GCCJIT_DUMP_EVERYTHING</dt>
-    <dd>Enables dumping of all intermediate representations and passes.</dd>
-    <dt>CG_GCCJIT_KEEP_INTERMEDIATES</dt>
-    <dd>Keeps intermediate files generated during the compilation process.</dd>
-    <dt>CG_GCCJIT_VERBOSE</dt>
-    <dd>Enables verbose output from the GCC driver.</dd>
-</dl>
+ * _**CG_GCCJIT_DUMP_ALL_MODULES**_: Enables dumping of all compilation modules. When set to "1", a dump is created for each module during compilation and stored in `/tmp/reproducers/`.
+ * _**CG_GCCJIT_DUMP_MODULE**_: Enables dumping of a specific module. When set with the module name, e.g., `CG_GCCJIT_DUMP_MODULE=module_name`, a dump of that specific module is created in `/tmp/reproducers/`.
+ * _**CG_RUSTFLAGS**_: Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.
+ * _**CG_GCCJIT_DUMP_TO_FILE**_: Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.
+ * _**CG_GCCJIT_DUMP_RTL**_: Dumps RTL (Register Transfer Language) for virtual registers.
+ * _**CG_GCCJIT_DUMP_RTL_ALL**_: Dumps all RTL passes.
+ * _**CG_GCCJIT_DUMP_TREE_ALL**_: Dumps all tree (GIMPLE) passes.
+ * _**CG_GCCJIT_DUMP_IPA_ALL**_: Dumps all Interprocedural Analysis (IPA) passes.
+ * _**CG_GCCJIT_DUMP_CODE**_: Dumps the final generated code.
+ * _**CG_GCCJIT_DUMP_GIMPLE**_: Dumps the initial GIMPLE representation.
+ * _**CG_GCCJIT_DUMP_EVERYTHING**_: Enables dumping of all intermediate representations and passes.
+ * _**CG_GCCJIT_KEEP_INTERMEDIATES**_: Keeps intermediate files generated during the compilation process.
+ * _**CG_GCCJIT_VERBOSE**_: Enables verbose output from the GCC driver.
 
 ## Extra documentation
 
