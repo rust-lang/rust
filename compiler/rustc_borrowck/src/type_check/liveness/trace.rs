@@ -81,8 +81,6 @@ pub(super) fn trace<'mir, 'tcx>(
         borrowck_context.constraints.liveness_constraints.loans = Some(live_loans);
     };
 
-    let polonius_facts_gathered = typeck.borrowck_context.all_facts.is_some();
-
     let cx = LivenessContext {
         typeck,
         body,
@@ -95,9 +93,7 @@ pub(super) fn trace<'mir, 'tcx>(
 
     let mut results = LivenessResults::new(cx);
 
-    if polonius_facts_gathered {
-        results.add_extra_drop_facts(relevant_live_locals.iter().copied().collect());
-    }
+    results.add_extra_drop_facts(&relevant_live_locals);
 
     results.compute_for_all_locals(relevant_live_locals);
 
@@ -220,16 +216,17 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn add_extra_drop_facts(&mut self, relevant_live_locals: FxIndexSet<Local>) {
+    fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) -> Option<()> {
         let drop_used = self
             .cx
             .typeck
             .borrowck_context
             .all_facts
             .as_ref()
-            .map(|facts| facts.var_dropped_at.clone())
-            .into_iter()
-            .flatten();
+            .map(|facts| facts.var_dropped_at.clone())?;
+
+        let relevant_live_locals: FxIndexSet<_> = relevant_live_locals.iter().copied().collect();
+
         let locations = IntervalSet::new(self.cx.elements.num_points());
 
         for (local, location_index) in drop_used {
@@ -250,6 +247,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
                 }
             }
         }
+        Some(())
     }
 
     /// Clear the value of fields that are "per local variable".
