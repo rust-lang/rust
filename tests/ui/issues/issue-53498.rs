@@ -1,3 +1,5 @@
+//@ revisions: same_name different_name
+
 pub mod test {
     pub struct A;
     pub struct B;
@@ -8,10 +10,15 @@ pub mod test {
     }
 
     impl Foo<B> {
+        #[cfg(same_name)]
         fn foo() {}
+        #[cfg(different_name)]
+        fn bar() {}
     }
 }
 
 fn main() {
-    test::Foo::<test::B>::foo(); //~ ERROR associated function `foo` is private
+    test::Foo::<test::B>::foo();
+    //[same_name]~^ ERROR associated function `foo` is private
+    //[different_name]~^^ ERROR associated function `foo` is private
 }
