@@ -18,7 +18,7 @@ I'm not sure why subtracting anything is necessary, but it fixes memory permissi
 __heap_end = __cold_end - __stack_length - 0x1000;
 
 SECTIONS {
-    .code_signature {
+    .code_signature : {
         KEEP(*(.code_signature))
         . = __cold_start + 0x20;
     } > COLD

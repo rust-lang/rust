@@ -1,4 +1,3 @@
-#[path = "../unsupported/alloc.rs"]
 pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
@@ -16,7 +15,6 @@ pub mod os;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-#[path = "../unsupported/stdio.rs"]
 pub mod stdio;
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
@@ -29,3 +27,18 @@ pub mod time;
 #[deny(unsafe_op_in_unsafe_fn)]
 mod common;
 pub use common::*;
+
+// This function is needed by the panic runtime. The symbol is named in
+// pre-link args for the target specification, so keep that in sync.
+#[cfg(not(test))]
+#[no_mangle]
+// NB. used by both libunwind and libpanic_abort
+pub extern "C" fn __rust_abort() -> ! {
+    unsafe {
+        vex_sdk::vexSystemExitRequest();
+    }
+
+    loop {
+        crate::hint::spin_loop()
+    }
+}
