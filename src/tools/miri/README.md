@@ -448,28 +448,19 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
-Moreover, Miri recognizes some environment variables (unless noted otherwise, these are supported
-by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
+Moreover, Miri recognizes some environment variables:
 
-* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
-  should be skipped. If it is set to `no`, they are skipped. This is used to allow automated IDE
-  actions to avoid the auto ops.
-* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
-  Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
 * `MIRIFLAGS` defines extra flags to be passed to Miri.
 * `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the standard library that
   it will build and use for interpretation. This directory must point to the `library` subdirectory
   of a `rust-lang/rust` repository checkout.
-* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri`, this skips the automatic
+* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri test`/`cargo miri run`, this skips the automatic
   setup -- only set this if you do not want to use the automatically created sysroot. When invoking
   `cargo miri setup`, this indicates where the sysroot will be put.
-* `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
-  By default, the number of cores is used.
 * `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
-  and running no_std programs. (Miri has a heuristic to detect no-std targets based on the target
-  name; this environment variable is only needed when that heuristic fails.)
-* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
-  `stderr` or `stdout` files match the actual output.
+  and running no_std programs. This should *not usually be used*; Miri has a heuristic to detect
+  no-std targets based on the target name. Setting this on a target that does support libstd can
+  lead to confusing results.
 
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 
