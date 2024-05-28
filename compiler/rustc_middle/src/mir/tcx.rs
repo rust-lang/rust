@@ -180,7 +180,10 @@ impl<'tcx> Rvalue<'tcx> {
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
-            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
+            Rvalue::UnaryOp(op, ref operand) => {
+                let arg_ty = operand.ty(local_decls, tcx);
+                op.ty(tcx, arg_ty)
+            }
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
@@ -277,6 +280,27 @@ impl<'tcx> BinOp {
                 // these should be integer-like types of the same size.
                 assert_eq!(lhs_ty, rhs_ty);
                 tcx.ty_ordering_enum(None)
+            }
+        }
+    }
+}
+
+impl<'tcx> UnOp {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, arg_ty: Ty<'tcx>) -> Ty<'tcx> {
+        match self {
+            UnOp::Not | UnOp::Neg => arg_ty,
+            UnOp::PtrMetadata => {
+                let pointee_ty = arg_ty
+                    .builtin_deref(true)
+                    .unwrap_or_else(|| bug!("PtrMetadata of non-dereferenceable ty {arg_ty:?}"));
+                if pointee_ty.is_trivially_sized(tcx) {
+                    tcx.types.unit
+                } else {
+                    let Some(metadata_def_id) = tcx.lang_items().metadata_type() else {
+                        bug!("No metadata_type lang item while looking at {arg_ty:?}")
+                    };
+                    Ty::new_projection(tcx, metadata_def_id, [pointee_ty])
+                }
             }
         }
     }

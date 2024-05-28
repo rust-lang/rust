@@ -526,6 +526,7 @@ impl<'tcx> Stable<'tcx> for mir::UnOp {
         match self {
             UnOp::Not => stable_mir::mir::UnOp::Not,
             UnOp::Neg => stable_mir::mir::UnOp::Neg,
+            UnOp::PtrMetadata => stable_mir::mir::UnOp::PtrMetadata,
         }
     }
 }

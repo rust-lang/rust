@@ -100,7 +100,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     assert!(layout.is_sized(), "unsized const value");
 
     if layout.is_zst() {
-        return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
+        return CValue::zst(layout);
     }
 
     match const_val {

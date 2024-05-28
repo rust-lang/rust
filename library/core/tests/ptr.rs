@@ -1171,3 +1171,15 @@ fn test_ptr_from_raw_parts_in_const() {
     assert_eq!(EMPTY_SLICE_PTR.addr(), 123);
     assert_eq!(EMPTY_SLICE_PTR.len(), 456);
 }
+
+#[test]
+fn test_ptr_metadata_in_const() {
+    use std::fmt::Debug;
+
+    const ARRAY_META: () = std::ptr::metadata::<[u16; 3]>(&[1, 2, 3]);
+    const SLICE_META: usize = std::ptr::metadata::<[u16]>(&[1, 2, 3]);
+    const DYN_META: DynMetadata<dyn Debug> = std::ptr::metadata::<dyn Debug>(&[0_u8; 42]);
+    assert_eq!(ARRAY_META, ());
+    assert_eq!(SLICE_META, 3);
+    assert_eq!(DYN_META.size_of(), 42);
+}

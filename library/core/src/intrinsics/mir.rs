@@ -360,6 +360,10 @@ define!("mir_assume", fn Assume(operand: bool));
 define!("mir_deinit", fn Deinit<T>(place: T));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
 define!("mir_len", fn Len<T>(place: T) -> usize);
+define!(
+    "mir_ptr_metadata",
+    fn PtrMetadata<P: ?Sized>(place: *const P) -> <P as ::core::ptr::Pointee>::Metadata
+);
 define!("mir_copy_for_deref", fn CopyForDeref<T>(place: T) -> T);
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
