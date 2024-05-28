@@ -268,6 +268,17 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     }
 }
 
+/// Check that `haystack` does not contain `needle`. Panic otherwise.
+pub fn assert_not_contains(haystack: &str, needle: &str) {
+    if haystack.contains(needle) {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle was unexpectedly found in haystack");
+    }
+}
+
 /// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct
 /// containing a `cmd: Command` field and a `output` function. The provided helpers are:
 ///
