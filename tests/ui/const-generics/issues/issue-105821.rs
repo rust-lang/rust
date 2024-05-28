@@ -1,5 +1,5 @@
 //@ failure-status: 101
-//@ known-bug: unknown
+//@ known-bug: rust-lang/rust#125451
 //@ normalize-stderr-test "note: .*\n\n" -> ""
 //@ normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
 //@ normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
