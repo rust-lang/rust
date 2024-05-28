@@ -10,5 +10,9 @@
 //@ compile-flags: -C lto
 //@ no-prefer-dynamic
 //@ ignore-nto Crash analysis impossible at SIGSEGV in QNX Neutrino
+//@ ignore-ios Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-tvos Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-watchos Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-visionos Stack probes are enabled, but the SIGSEGV handler isn't
 
 include!("stack-probes.rs");

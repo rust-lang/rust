@@ -2,7 +2,7 @@
 include ../tools.mk
 
 # ignore-windows
-# ignore-macos
+# ignore-apple
 
 # Test for #39529.
 # `-z text` causes ld to error if there are any non-PIC sections

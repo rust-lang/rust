@@ -9,7 +9,7 @@
 //@ [keep-thunk-extern] compile-flags: -Zfunction-return=keep -Zfunction-return=thunk-extern
 //@ [thunk-extern-keep] compile-flags: -Zfunction-return=thunk-extern -Zfunction-return=keep
 //@ only-x86_64
-//@ ignore-x86_64-apple-darwin Symbol is called `___x86_return_thunk` (Darwin's extra underscore)
+//@ ignore-apple Symbol is called `___x86_return_thunk` (Darwin's extra underscore)
 //@ ignore-sgx Tests incompatible with LVI mitigations
 
 #![crate_type = "lib"]
