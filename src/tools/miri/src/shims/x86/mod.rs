@@ -105,6 +105,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
+            "pclmulqdq" => {
+                let [left, right, imm] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                pclmulqdq(this, left, right, imm, dest)?;
+            }
+
             name if name.starts_with("sse.") => {
                 return sse::EvalContextExt::emulate_x86_sse_intrinsic(
                     this, link_name, abi, args, dest,
@@ -1129,6 +1136,68 @@ fn pmulhrsw<'tcx>(
 
         this.write_scalar(Scalar::from_i16(res), &dest)?;
     }
+
+    Ok(())
+}
+
+/// Perform a carry-less multiplication of two 64-bit integers, selected from left and right according to imm8,
+/// and store the results in dst.
+///
+/// Left and right are both vectors of type 2 x i64. Only bits 0 and 4 of imm8 matter;
+/// they select the element of left and right, respectively.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128>
+fn pclmulqdq<'tcx>(
+    this: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    imm8: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    assert_eq!(left.layout, right.layout);
+    assert_eq!(left.layout.size, dest.layout.size);
+
+    // Transmute to `[u64; 2]`
+
+    let array_layout = this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u64, 2))?;
+    let left = left.transmute(array_layout, this)?;
+    let right = right.transmute(array_layout, this)?;
+    let dest = dest.transmute(array_layout, this)?;
+
+    let imm8 = this.read_scalar(imm8)?.to_u8()?;
+
+    // select the 64-bit integer from left that the user specified (low or high)
+    let index = if (imm8 & 0x01) == 0 { 0 } else { 1 };
+    let left = this.read_scalar(&this.project_index(&left, index)?)?.to_u64()?;
+
+    // select the 64-bit integer from right that the user specified (low or high)
+    let index = if (imm8 & 0x10) == 0 { 0 } else { 1 };
+    let right = this.read_scalar(&this.project_index(&right, index)?)?.to_u64()?;
+
+    // Perform carry-less multiplication
+    //
+    // This operation is like long multiplication, but ignores all carries.
+    // That idea corresponds to the xor operator, which is used in the implementation.
+    //
+    // Wikipedia has an example https://en.wikipedia.org/wiki/Carry-less_product#Example
+    let mut result: u128 = 0;
+
+    for i in 0..64 {
+        // if the i-th bit in right is set
+        if (right & (1 << i)) != 0 {
+            // xor result with `left` shifted to the left by i positions
+            result ^= (left as u128) << i;
+        }
+    }
+
+    let result_low = (result & 0xFFFF_FFFF_FFFF_FFFF) as u64;
+    let result_high = (result >> 64) as u64;
+
+    let dest_low = this.project_index(&dest, 0)?;
+    this.write_scalar(Scalar::from_u64(result_low), &dest_low)?;
+
+    let dest_high = this.project_index(&dest, 1)?;
+    this.write_scalar(Scalar::from_u64(result_high), &dest_high)?;
 
     Ok(())
 }
