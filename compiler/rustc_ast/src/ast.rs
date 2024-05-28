@@ -1393,7 +1393,7 @@ pub enum ExprKind {
     /// An array (e.g, `[a, b, c, d]`).
     Array(ThinVec<P<Expr>>),
     /// Allow anonymous constants from an inline `const` block
-    ConstBlock(AnonConst),
+    ConstBlock(P<Expr>),
     /// A function call
     ///
     /// The first field resolves to the function itself,

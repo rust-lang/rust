@@ -1,11 +1,35 @@
 error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui/arithmetic_side_effects.rs:188:36
+   |
+LL |     let _ = const { let mut n = 1; n += 1; n };
+   |                                    ^^^^^^
+   |
+   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui/arithmetic_side_effects.rs:191:40
+   |
+LL |     let _ = const { let mut n = 1; n = n + 1; n };
+   |                                        ^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui/arithmetic_side_effects.rs:194:40
+   |
+LL |     let _ = const { let mut n = 1; n = 1 + n; n };
+   |                                        ^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> tests/ui/arithmetic_side_effects.rs:200:59
+   |
+LL |     let _ = const { let mut n = 1; n = -1; n = -(-1); n = -n; n };
+   |                                                           ^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
   --> tests/ui/arithmetic_side_effects.rs:304:5
    |
 LL |     _n += 1;
    |     ^^^^^^^
-   |
-   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
   --> tests/ui/arithmetic_side_effects.rs:305:5
@@ -727,5 +751,5 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |     one.sub_assign(1);
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 121 previous errors
+error: aborting due to 125 previous errors
 

@@ -3,6 +3,7 @@
 // generic parameters.
 
 use crate::FnCtxt;
+use hir::def::DefKind;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -16,7 +17,7 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TypeSuperFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_trait_selection::solve;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -295,11 +296,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }
-            hir::ExprKind::ConstBlock(anon_const) => {
-                self.visit_node_id(e.span, anon_const.hir_id);
-
-                let body = self.tcx().hir().body(anon_const.body);
-                self.visit_body(body);
+            hir::ExprKind::ConstBlock(_) => {
+                let feed = self.tcx().create_def(self.fcx.body_id, kw::Empty, DefKind::InlineConst);
+                feed.def_span(e.span);
+                feed.local_def_id_to_hir_id(e.hir_id);
+                self.typeck_results.inline_consts.insert(e.hir_id.local_id, feed.def_id());
             }
             _ => {}
         }

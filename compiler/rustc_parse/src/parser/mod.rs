@@ -25,8 +25,8 @@ use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
-    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
+    self as ast, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs, Expr,
+    ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
     VisibilityKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
@@ -1260,12 +1260,9 @@ impl<'a> Parser<'a> {
         }
         self.eat_keyword(kw::Const);
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
-        let anon_const = AnonConst {
-            id: DUMMY_NODE_ID,
-            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
-        };
-        let blk_span = anon_const.value.span;
-        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
+        let expr = self.mk_expr(blk.span, ExprKind::Block(blk, None));
+        let blk_span = expr.span;
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(expr), attrs))
     }
 
     /// Parses mutability (`mut` or nothing).

@@ -6,7 +6,6 @@ use std::ops::ControlFlow;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::IndexEntry;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
@@ -392,18 +391,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeInterpreter<'tcx> {
         instance: ty::InstanceDef<'tcx>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         match instance {
-            ty::InstanceDef::Item(def) => {
-                if ecx.tcx.is_ctfe_mir_available(def) {
-                    Ok(ecx.tcx.mir_for_ctfe(def))
-                } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
-                    ecx.tcx.dcx().bug("This is likely a const item that is missing from its impl");
-                } else {
-                    // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
-                    // so this should be unreachable.
-                    let path = ecx.tcx.def_path_str(def);
-                    bug!("trying to call extern function `{path}` at compile-time");
-                }
-            }
+            ty::InstanceDef::Item(def) => Ok(ecx.tcx.mir_for_ctfe(def)),
             _ => Ok(ecx.tcx.instance_mir(instance)),
         }
     }

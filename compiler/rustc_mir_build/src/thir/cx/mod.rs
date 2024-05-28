@@ -13,10 +13,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::HirId;
 use rustc_hir::Node;
-use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use tracing::instrument;
 
 pub(crate) fn thir_body(
@@ -24,7 +24,22 @@ pub(crate) fn thir_body(
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
-    let body = hir.body(hir.body_owned_by(owner_def));
+    let body;
+    let body = match tcx.def_kind(owner_def) {
+        // Inline consts do not have bodies of their own, so create one to make the follow-up logic simpler.
+        DefKind::InlineConst => {
+            let e = hir.expect_expr(tcx.local_def_id_to_hir_id(owner_def));
+            body = hir::Body {
+                params: &[],
+                value: match e.kind {
+                    hir::ExprKind::ConstBlock(body) => body,
+                    _ => span_bug!(e.span, "InlineConst was not a ConstBlock: {e:#?}"),
+                },
+            };
+            &body
+        }
+        _ => hir.body(hir.body_owned_by(owner_def)),
+    };
     let mut cx = Cx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
@@ -165,7 +180,7 @@ impl<'tcx> Cx<'tcx> {
         &'a mut self,
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
-        body: &'tcx hir::Body<'tcx>,
+        body: &hir::Body<'tcx>,
     ) -> impl Iterator<Item = Param<'tcx>> + 'a {
         let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
 

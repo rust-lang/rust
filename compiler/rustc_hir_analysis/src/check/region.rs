@@ -407,11 +407,14 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     match expr.kind {
         // Manually recurse over closures and inline consts, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure(&hir::Closure { body, .. })
-        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) => {
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
+        hir::ExprKind::ConstBlock(expr) => visitor.enter_body(expr.hir_id, |this| {
+            this.cx.var_parent = None;
+            resolve_local(this, None, Some(expr));
+        }),
         hir::ExprKind::AssignOp(_, left_expr, right_expr) => {
             debug!(
                 "resolve_expr - enabling pessimistic_yield, was previously {}",
@@ -782,6 +785,32 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         }
         self.enter_scope(Scope { id, data: ScopeData::Node });
     }
+
+    fn enter_body(&mut self, hir_id: hir::HirId, f: impl FnOnce(&mut Self)) {
+        // Save all state that is specific to the outer function
+        // body. These will be restored once down below, once we've
+        // visited the body.
+        let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
+        let outer_cx = self.cx;
+        let outer_ts = mem::take(&mut self.terminating_scopes);
+        // The 'pessimistic yield' flag is set to true when we are
+        // processing a `+=` statement and have to make pessimistic
+        // control flow assumptions. This doesn't apply to nested
+        // bodies within the `+=` statements. See #69307.
+        let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
+        self.terminating_scopes.insert(hir_id.local_id);
+
+        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::CallSite });
+        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::Arguments });
+
+        f(self);
+
+        // Restore context we had at the start.
+        self.expr_and_pat_count = outer_ec;
+        self.cx = outer_cx;
+        self.terminating_scopes = outer_ts;
+        self.pessimistic_yield = outer_pessimistic_yield;
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
@@ -801,60 +830,40 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             self.cx.parent
         );
 
-        // Save all state that is specific to the outer function
-        // body. These will be restored once down below, once we've
-        // visited the body.
-        let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
-        let outer_cx = self.cx;
-        let outer_ts = mem::take(&mut self.terminating_scopes);
-        // The 'pessimistic yield' flag is set to true when we are
-        // processing a `+=` statement and have to make pessimistic
-        // control flow assumptions. This doesn't apply to nested
-        // bodies within the `+=` statements. See #69307.
-        let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
-        self.terminating_scopes.insert(body.value.hir_id.local_id);
+        self.enter_body(body.value.hir_id, |this| {
+            if this.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
+                // The arguments and `self` are parented to the fn.
+                this.cx.var_parent = this.cx.parent.take();
+                for param in body.params {
+                    this.visit_pat(param.pat);
+                }
 
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite });
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments });
-
-        // The arguments and `self` are parented to the fn.
-        self.cx.var_parent = self.cx.parent.take();
-        for param in body.params {
-            self.visit_pat(param.pat);
-        }
-
-        // The body of the every fn is a root scope.
-        self.cx.parent = self.cx.var_parent;
-        if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
-            self.visit_expr(body.value)
-        } else {
-            // Only functions have an outer terminating (drop) scope, while
-            // temporaries in constant initializers may be 'static, but only
-            // according to rvalue lifetime semantics, using the same
-            // syntactical rules used for let initializers.
-            //
-            // e.g., in `let x = &f();`, the temporary holding the result from
-            // the `f()` call lives for the entirety of the surrounding block.
-            //
-            // Similarly, `const X: ... = &f();` would have the result of `f()`
-            // live for `'static`, implying (if Drop restrictions on constants
-            // ever get lifted) that the value *could* have a destructor, but
-            // it'd get leaked instead of the destructor running during the
-            // evaluation of `X` (if at all allowed by CTFE).
-            //
-            // However, `const Y: ... = g(&f());`, like `let y = g(&f());`,
-            // would *not* let the `f()` temporary escape into an outer scope
-            // (i.e., `'static`), which means that after `g` returns, it drops,
-            // and all the associated destruction scope rules apply.
-            self.cx.var_parent = None;
-            resolve_local(self, None, Some(body.value));
-        }
-
-        // Restore context we had at the start.
-        self.expr_and_pat_count = outer_ec;
-        self.cx = outer_cx;
-        self.terminating_scopes = outer_ts;
-        self.pessimistic_yield = outer_pessimistic_yield;
+                // The body of the every fn is a root scope.
+                this.cx.parent = this.cx.var_parent;
+                this.visit_expr(body.value)
+            } else {
+                // Only functions have an outer terminating (drop) scope, while
+                // temporaries in constant initializers may be 'static, but only
+                // according to rvalue lifetime semantics, using the same
+                // syntactical rules used for let initializers.
+                //
+                // e.g., in `let x = &f();`, the temporary holding the result from
+                // the `f()` call lives for the entirety of the surrounding block.
+                //
+                // Similarly, `const X: ... = &f();` would have the result of `f()`
+                // live for `'static`, implying (if Drop restrictions on constants
+                // ever get lifted) that the value *could* have a destructor, but
+                // it'd get leaked instead of the destructor running during the
+                // evaluation of `X` (if at all allowed by CTFE).
+                //
+                // However, `const Y: ... = g(&f());`, like `let y = g(&f());`,
+                // would *not* let the `f()` temporary escape into an outer scope
+                // (i.e., `'static`), which means that after `g` returns, it drops,
+                // and all the associated destruction scope rules apply.
+                this.cx.var_parent = None;
+                resolve_local(this, None, Some(body.value));
+            }
+        })
     }
 
     fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) {
