@@ -97,10 +97,21 @@ struct RustfmtConfig {
     ignore: Vec<String>,
 }
 
-pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
+pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
+    if !paths.is_empty() {
+        eprintln!("path arguments are not accepted");
+        crate::exit!(1);
+    };
     if build.config.dry_run() {
         return;
     }
+
+    // By default, we only check modified files locally to speed up runtime. Exceptions are if
+    // `--all` is specified or we are in CI. We check all files in CI to avoid bugs in
+    // `get_modified_rs_files` letting regressions slip through; we also care about CI time less
+    // since this is still very fast compared to building the compiler.
+    let all = all || CiEnv::is_ci();
+
     let mut builder = ignore::types::TypesBuilder::new();
     builder.add_defaults();
     builder.select("rust");
@@ -175,11 +186,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 untracked_count += 1;
                 fmt_override.add(&format!("!/{untracked_path}")).expect(untracked_path);
             }
-            // Only check modified files locally to speed up runtime. We still check all files in
-            // CI to avoid bugs in `get_modified_rs_files` letting regressions slip through; we
-            // also care about CI time less since this is still very fast compared to building the
-            // compiler.
-            if !CiEnv::is_ci() && paths.is_empty() {
+            if !all {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         if files.len() <= 10 {
@@ -233,55 +240,8 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
-    let walker = match paths.first() {
-        Some(first) => {
-            let find_shortcut_candidates = |p: &PathBuf| {
-                let mut candidates = Vec::new();
-                for entry in
-                    WalkBuilder::new(src.clone()).max_depth(Some(3)).build().map_while(Result::ok)
-                {
-                    if let Some(dir_name) = p.file_name() {
-                        if entry.path().is_dir() && entry.file_name() == dir_name {
-                            candidates.push(entry.into_path());
-                        }
-                    }
-                }
-                candidates
-            };
-
-            // Only try to look for shortcut candidates for single component paths like
-            // `std` and not for e.g. relative paths like `../library/std`.
-            let should_look_for_shortcut_dir = |p: &PathBuf| p.components().count() == 1;
-
-            let mut walker = if should_look_for_shortcut_dir(first) {
-                if let [single_candidate] = &find_shortcut_candidates(first)[..] {
-                    WalkBuilder::new(single_candidate)
-                } else {
-                    WalkBuilder::new(first)
-                }
-            } else {
-                WalkBuilder::new(src.join(first))
-            };
-
-            for path in &paths[1..] {
-                if should_look_for_shortcut_dir(path) {
-                    if let [single_candidate] = &find_shortcut_candidates(path)[..] {
-                        walker.add(single_candidate);
-                    } else {
-                        walker.add(path);
-                    }
-                } else {
-                    walker.add(src.join(path));
-                }
-            }
-
-            walker
-        }
-        None => WalkBuilder::new(src.clone()),
-    }
-    .types(matcher)
-    .overrides(fmt_override)
-    .build_parallel();
+    let walker =
+        WalkBuilder::new(src.clone()).types(matcher).overrides(fmt_override).build_parallel();
 
     // There is a lot of blocking involved in spawning a child process and reading files to format.
     // Spawn more processes than available concurrency to keep the CPU busy.
