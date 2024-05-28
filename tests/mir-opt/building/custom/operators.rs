@@ -30,3 +30,13 @@ pub fn f(a: i32, b: bool) -> i32 {
         Return()
     })
 }
+
+// EMIT_MIR operators.g.runtime.after.mir
+#[custom_mir(dialect = "runtime")]
+pub fn g(p: *const i32, q: *const [i32]) {
+    mir!({
+        let a = PtrMetadata(p);
+        let b = PtrMetadata(q);
+        Return()
+    })
+}

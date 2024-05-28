@@ -207,7 +207,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         assert!(cast_to.ty.is_unsafe_ptr());
         // Handle casting any ptr to raw ptr (might be a fat ptr).
         if cast_to.size == src.layout.size {
-            // Thin or fat pointer that just hast the ptr kind of target type changed.
+            // Thin or fat pointer that just has the ptr kind of target type changed.
             return Ok(ImmTy::from_immediate(**src, cast_to));
         } else {
             // Casting the metadata away from a fat ptr.
