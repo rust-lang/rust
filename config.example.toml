@@ -87,6 +87,9 @@
 # library provided by LLVM.
 #static-libstdcpp = false
 
+# Enable LLVM to use zstd for compression.
+#libzstd = false
+
 # Whether to use Ninja to build LLVM. This runs much faster than make.
 #ninja = true
 
