@@ -1952,6 +1952,8 @@ supported_targets! {
 
     ("armv7-sony-vita-newlibeabihf", armv7_sony_vita_newlibeabihf),
 
+    ("armv7a-vex-v5", armv7a_vex_v5),
+
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
