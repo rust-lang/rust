@@ -87,7 +87,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
     pub(crate) last_flycheck_error: Option<String>,
-    pub(crate) diagnostics_received: FxHashMap<usize, bool>,
+    pub(crate) flycheck_status: FxHashMap<usize, FlycheckStatus>,
 
     // Test explorer
     pub(crate) test_run_session: Option<Vec<flycheck::CargoTestHandle>>,
@@ -166,6 +166,14 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum FlycheckStatus {
+    Unknown,
+    Started,
+    DiagnosticReceived,
+    Finished,
+}
+
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
 
 impl GlobalState {
@@ -225,7 +233,7 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
             last_flycheck_error: None,
-            diagnostics_received: FxHashMap::default(),
+            flycheck_status: FxHashMap::default(),
 
             test_run_session: None,
             test_run_sender,
@@ -512,4 +520,13 @@ pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<FileId
     let path = from_proto::vfs_path(url)?;
     let res = vfs.file_id(&path).ok_or_else(|| anyhow::format_err!("file not found: {path}"))?;
     Ok(res)
+}
+
+impl FlycheckStatus {
+    pub(crate) fn should_clear_old_diagnostics(&self) -> bool {
+        match self {
+            FlycheckStatus::Unknown | FlycheckStatus::Started => false,
+            FlycheckStatus::DiagnosticReceived | FlycheckStatus::Finished => true,
+        }
+    }
 }
