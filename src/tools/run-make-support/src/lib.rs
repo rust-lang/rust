@@ -362,7 +362,7 @@ macro_rules! impl_common_helpers {
                 self
             }
 
-            /// Inspect what the underlying [`Command`][::std::process::Command] is up to the
+            /// Inspect what the underlying [`Command`] is up to the
             /// current construction.
             pub fn inspect<I>(&mut self, inspector: I) -> &mut Self
             where
