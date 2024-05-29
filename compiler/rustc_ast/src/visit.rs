@@ -826,10 +826,10 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(
     ctxt: AssocCtxt,
 ) -> V::Result {
     let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
-    walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     try_visit!(visitor.visit_ident(ident));
     try_visit!(kind.walk(item, ctxt, visitor));
+    walk_list!(visitor, visit_attribute, attrs);
     V::Result::output()
 }
 

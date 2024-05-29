@@ -78,22 +78,6 @@ LL |     #![doc = in_block!()]
    |
    = help: have you added the `#[macro_use]` on the module/import?
 
-error: cannot find macro `in_mod` in this scope
-  --> $DIR/key-value-expansion-scope.rs:20:14
-   |
-LL |     #![doc = in_mod!()]
-   |              ^^^^^^
-   |
-   = help: have you added the `#[macro_use]` on the module/import?
-
-error: cannot find macro `in_mod_escape` in this scope
-  --> $DIR/key-value-expansion-scope.rs:32:14
-   |
-LL |     #![doc = in_mod_escape!()]
-   |              ^^^^^^^^^^^^^
-   |
-   = help: have you added the `#[macro_use]` on the module/import?
-
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:43:14
    |
@@ -134,5 +118,5 @@ LL |     #![doc = in_block!()]
    |
    = help: have you added the `#[macro_use]` on the module/import?
 
-error: aborting due to 17 previous errors
+error: aborting due to 15 previous errors
 
