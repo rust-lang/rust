@@ -233,6 +233,7 @@ lint_drop_trait_constraints =
 lint_dropping_copy_types = calls to `std::mem::drop` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`
     .note = use `let _ = ...` to ignore the expression or result
+    .suggestion = use `let _ = ...` to ignore the expression or result
 
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`

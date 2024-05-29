@@ -668,11 +668,25 @@ pub struct DropRefDiag<'a> {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_dropping_copy_types)]
-#[note]
 pub struct DropCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,
+    #[subdiagnostic]
+    pub sugg: DropCopySuggestion,
+}
+
+#[derive(Subdiagnostic)]
+pub enum DropCopySuggestion {
+    #[note(lint_note)]
+    Note,
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    Suggestion {
+        #[suggestion_part(code = "let _ = ")]
+        start_span: Span,
+        #[suggestion_part(code = "")]
+        end_span: Span,
+    },
 }
 
 #[derive(LintDiagnostic)]
