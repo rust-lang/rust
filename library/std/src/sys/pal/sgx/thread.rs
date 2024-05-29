@@ -15,7 +15,7 @@ pub use self::task_queue::JoinNotifier;
 
 mod task_queue {
     use super::wait_notify;
-    use crate::sync::{Mutex, MutexGuard, Once};
+    use crate::sync::{Mutex, MutexGuard};
 
     pub type JoinHandle = wait_notify::Waiter;
 
@@ -32,6 +32,8 @@ mod task_queue {
         done: JoinNotifier,
     }
 
+    unsafe impl Send for Task {}
+
     impl Task {
         pub(super) fn new(p: Box<dyn FnOnce()>) -> (Task, JoinHandle) {
             let (done, recv) = wait_notify::new();
@@ -46,17 +48,11 @@ mod task_queue {
     }
 
     #[cfg_attr(test, linkage = "available_externally")]
-    #[export_name = "_ZN16__rust_internals3std3sys3sgx6thread15TASK_QUEUE_INITE"]
-    static TASK_QUEUE_INIT: Once = Once::new();
-    #[cfg_attr(test, linkage = "available_externally")]
     #[export_name = "_ZN16__rust_internals3std3sys3sgx6thread10TASK_QUEUEE"]
-    static mut TASK_QUEUE: Option<Mutex<Vec<Task>>> = None;
+    static TASK_QUEUE: Mutex<Vec<Task>> = Mutex::new(Vec::new());
 
     pub(super) fn lock() -> MutexGuard<'static, Vec<Task>> {
-        unsafe {
-            TASK_QUEUE_INIT.call_once(|| TASK_QUEUE = Some(Default::default()));
-            TASK_QUEUE.as_ref().unwrap().lock().unwrap()
-        }
+        TASK_QUEUE.lock().unwrap()
     }
 }
 
