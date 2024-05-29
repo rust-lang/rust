@@ -8,7 +8,7 @@ use std::cell::Cell;
 use crate::abi::{FnAbi, Layout, LayoutShape};
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
-use crate::mir::{BinOp, Body, Place};
+use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::MachineInfo;
 use crate::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
@@ -226,6 +226,9 @@ pub trait Context {
 
     /// Get the resulting type of binary operation.
     fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty;
+
+    /// Get the resulting type of unary operation.
+    fn unop_ty(&self, un_op: UnOp, arg: Ty) -> Ty;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

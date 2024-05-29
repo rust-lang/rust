@@ -1,5 +1,5 @@
 # ignore-cross-compile
-# ignore-macos
+# ignore-apple
 
 include ../tools.mk
 

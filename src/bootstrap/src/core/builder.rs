@@ -888,6 +888,7 @@ impl<'a> Builder<'a> {
                 doc::Tidy,
                 doc::Bootstrap,
                 doc::Releases,
+                doc::RunMakeSupport,
             ),
             Kind::Dist => describe!(
                 dist::Docs,

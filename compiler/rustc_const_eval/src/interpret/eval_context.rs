@@ -819,7 +819,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             tracing_span: SpanGuard::new(),
             extra: (),
         };
-        let frame = M::init_frame_extra(self, pre_frame)?;
+        let frame = M::init_frame(self, pre_frame)?;
         self.stack_mut().push(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).

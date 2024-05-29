@@ -239,7 +239,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn allocate_raw_ptr(
         &mut self,
-        alloc: Allocation,
+        alloc: Allocation<M::Provenance, (), M::Bytes>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let id = self.tcx.reserve_alloc_id();
@@ -248,8 +248,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
-        let alloc = M::adjust_allocation(self, id, Cow::Owned(alloc), Some(kind))?;
-        self.memory.alloc_map.insert(id, (kind, alloc.into_owned()));
+        // We have set things up so we don't need to call `adjust_from_tcx` here,
+        // so we avoid copying the entire allocation contents.
+        let extra = M::init_alloc_extra(self, id, kind, alloc.size(), alloc.align)?;
+        let alloc = alloc.with_extra(extra);
+        self.memory.alloc_map.insert(id, (kind, alloc));
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
     }
 
@@ -583,11 +586,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         M::before_access_global(self.tcx, &self.machine, id, alloc, def_id, is_write)?;
         // We got tcx memory. Let the machine initialize its "extra" stuff.
-        M::adjust_allocation(
+        M::adjust_global_allocation(
             self,
             id, // always use the ID we got as input, not the "hidden" one.
-            Cow::Borrowed(alloc.inner()),
-            M::GLOBAL_KIND.map(MemoryKind::Machine),
+            alloc.inner(),
         )
     }
 

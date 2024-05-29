@@ -11,7 +11,7 @@
 //@ [LINUX] filecheck-flags: -DINSTR_PROF_COVFUN=__llvm_covfun
 //@ [LINUX] filecheck-flags: '-DCOMDAT_IF_SUPPORTED=, comdat'
 
-//@ [DARWIN] only-macos
+//@ [DARWIN] only-apple
 //@ [DARWIN] filecheck-flags: -DINSTR_PROF_DATA=__DATA,__llvm_prf_data,regular,live_support
 //@ [DARWIN] filecheck-flags: -DINSTR_PROF_NAME=__DATA,__llvm_prf_names
 //@ [DARWIN] filecheck-flags: -DINSTR_PROF_CNTS=__DATA,__llvm_prf_cnts
@@ -49,7 +49,7 @@ where
 
 pub fn wrap_with<F, T>(inner: T, should_wrap: bool, wrapper: F)
 where
-    F: FnOnce(&T)
+    F: FnOnce(&T),
 {
     if should_wrap {
         wrapper(&inner)

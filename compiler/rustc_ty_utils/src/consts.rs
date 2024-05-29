@@ -94,7 +94,7 @@ fn check_binop(op: mir::BinOp) -> bool {
 fn check_unop(op: mir::UnOp) -> bool {
     use mir::UnOp::*;
     match op {
-        Not | Neg => true,
+        Not | Neg | PtrMetadata => true,
     }
 }
 

@@ -2122,7 +2122,6 @@ ui/issues/issue-33687.rs
 ui/issues/issue-33770.rs
 ui/issues/issue-3389.rs
 ui/issues/issue-33941.rs
-ui/issues/issue-33992.rs
 ui/issues/issue-34047.rs
 ui/issues/issue-34074.rs
 ui/issues/issue-34209.rs

@@ -773,6 +773,7 @@ pub enum PrintKind {
     TargetLibdir,
     CrateName,
     Cfg,
+    CheckCfg,
     CallingConventions,
     TargetList,
     TargetCPUs,
@@ -1443,7 +1444,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "print",
             "Compiler information to print on stdout",
-            "[crate-name|file-names|sysroot|target-libdir|cfg|calling-conventions|\
+            "[crate-name|file-names|sysroot|target-libdir|cfg|check-cfg|calling-conventions|\
              target-list|target-cpus|target-features|relocation-models|code-models|\
              tls-models|target-spec-json|all-target-specs-json|native-static-libs|\
              stack-protector-strategies|link-args|deployment-target]",
@@ -1859,6 +1860,7 @@ fn collect_print_requests(
         ("all-target-specs-json", PrintKind::AllTargetSpecs),
         ("calling-conventions", PrintKind::CallingConventions),
         ("cfg", PrintKind::Cfg),
+        ("check-cfg", PrintKind::CheckCfg),
         ("code-models", PrintKind::CodeModels),
         ("crate-name", PrintKind::CrateName),
         ("deployment-target", PrintKind::DeploymentTarget),
@@ -1905,6 +1907,16 @@ fn collect_print_requests(
                     early_dcx.early_fatal(
                         "the `-Z unstable-options` flag must also be passed to \
                          enable the all-target-specs-json print option",
+                    );
+                }
+            }
+            Some((_, PrintKind::CheckCfg)) => {
+                if unstable_opts.unstable_options {
+                    PrintKind::CheckCfg
+                } else {
+                    early_dcx.early_fatal(
+                        "the `-Z unstable-options` flag must also be passed to \
+                         enable the check-cfg print option",
                     );
                 }
             }

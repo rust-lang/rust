@@ -144,7 +144,6 @@ run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-readonly-lib/Makefile
 run-make/lto-smoke-c/Makefile
-run-make/lto-smoke/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-crate-name/Makefile
@@ -156,7 +155,6 @@ run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
-run-make/mixing-deps/Makefile
 run-make/mixing-formats/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
@@ -238,7 +236,6 @@ run-make/short-ice/Makefile
 run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
 run-make/simple-dylib/Makefile
-run-make/simple-rlib/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile

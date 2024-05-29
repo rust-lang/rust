@@ -1,6 +1,6 @@
 //@ revisions: all strong basic none missing
 //@ assembly-output: emit-asm
-//@ ignore-macos slightly different policy on stack protection of arrays
+//@ ignore-apple slightly different policy on stack protection of arrays
 //@ ignore-msvc stack check code uses different function names
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32-bare
@@ -17,11 +17,8 @@
 // See comments on https://github.com/rust-lang/rust/issues/114903.
 
 #![crate_type = "lib"]
-
 #![allow(incomplete_features)]
-
 #![feature(unsized_locals, unsized_fn_params)]
-
 
 // CHECK-LABEL: emptyfn:
 #[no_mangle]

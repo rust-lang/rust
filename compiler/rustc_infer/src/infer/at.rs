@@ -48,11 +48,6 @@ pub struct At<'a, 'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-pub struct Trace<'a, 'tcx> {
-    at: At<'a, 'tcx>,
-    trace: TypeTrace<'tcx>,
-}
-
 impl<'tcx> InferCtxt<'tcx> {
     #[inline]
     pub fn at<'a>(
@@ -109,9 +104,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
     /// appears in the signature.
-    ///
-    /// See [`At::trace`] and [`Trace::sub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn sup<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -121,13 +113,19 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).sup(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields
+            .sup()
+            .relate(expected, actual)
+            .map(|_| InferOk { value: (), obligations: fields.obligations })
     }
 
     /// Makes `expected <: actual`.
-    ///
-    /// See [`At::trace`] and [`Trace::sub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn sub<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -137,13 +135,19 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).sub(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields
+            .sub()
+            .relate(expected, actual)
+            .map(|_| InferOk { value: (), obligations: fields.obligations })
     }
 
-    /// Makes `expected <: actual`.
-    ///
-    /// See [`At::trace`] and [`Trace::eq`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
+    /// Makes `expected == actual`.
     pub fn eq<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -153,7 +157,40 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).eq(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields
+            .equate(StructurallyRelateAliases::No)
+            .relate(expected, actual)
+            .map(|_| InferOk { value: (), obligations: fields.obligations })
+    }
+
+    /// Equates `expected` and `found` while structurally relating aliases.
+    /// This should only be used inside of the next generation trait solver
+    /// when relating rigid aliases.
+    pub fn eq_structurally_relating_aliases<T>(
+        self,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        assert!(self.infcx.next_trait_solver());
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            DefineOpaqueTypes::Yes,
+        );
+        fields
+            .equate(StructurallyRelateAliases::Yes)
+            .relate(expected, actual)
+            .map(|_| InferOk { value: (), obligations: fields.obligations })
     }
 
     pub fn relate<T>(
@@ -185,9 +222,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    ///
-    /// See [`At::trace`] and [`Trace::lub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn lub<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -197,15 +231,21 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).lub(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields
+            .lub()
+            .relate(expected, actual)
+            .map(|value| InferOk { value, obligations: fields.obligations })
     }
 
     /// Computes the greatest-lower-bound, or mutual subtype, of two
     /// values. As with `lub` order doesn't matter, except for error
     /// cases.
-    ///
-    /// See [`At::trace`] and [`Trace::glb`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn glb<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -215,105 +255,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).glb(define_opaque_types, expected, actual)
-    }
-
-    /// Sets the "trace" values that will be used for
-    /// error-reporting, but doesn't actually perform any operation
-    /// yet (this is useful when you want to set the trace using
-    /// distinct values from those you wish to operate upon).
-    pub fn trace<T>(self, expected: T, actual: T) -> Trace<'a, 'tcx>
-    where
-        T: ToTrace<'tcx>,
-    {
-        let trace = ToTrace::to_trace(self.cause, true, expected, actual);
-        Trace { at: self, trace }
-    }
-}
-
-impl<'a, 'tcx> Trace<'a, 'tcx> {
-    /// Makes `a <: b`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn sub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .sub()
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    /// Makes `a :> b`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn sup<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .sup()
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    /// Makes `a == b`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn eq<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .equate(StructurallyRelateAliases::No)
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    /// Equates `a` and `b` while structurally relating aliases. This should only
-    /// be used inside of the next generation trait solver when relating rigid aliases.
-    #[instrument(skip(self), level = "debug")]
-    pub fn eq_structurally_relating_aliases<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        debug_assert!(at.infcx.next_trait_solver());
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, DefineOpaqueTypes::Yes);
-        fields
-            .equate(StructurallyRelateAliases::Yes)
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub fn lub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .lub()
-            .relate(a, b)
-            .map(move |t| InferOk { value: t, obligations: fields.obligations })
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub fn glb<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
         fields
             .glb()
-            .relate(a, b)
-            .map(move |t| InferOk { value: t, obligations: fields.obligations })
+            .relate(expected, actual)
+            .map(|value| InferOk { value, obligations: fields.obligations })
     }
 }
 
