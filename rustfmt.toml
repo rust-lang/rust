@@ -15,7 +15,6 @@ ignore = [
     # - some UI tests are broken by different formatting
     # - some require special comments in a particular position (e.g. `EMIT_MIR` comments)
     "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
-    "/tests/coverage/",
     "/tests/coverage-run-rustdoc/",
     "/tests/crashes/",
     "/tests/debuginfo/",
