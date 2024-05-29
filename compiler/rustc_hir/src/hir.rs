@@ -2,7 +2,7 @@ use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::FnKind;
-use crate::LangItem;
+use crate::{LangItem, CRATE_HIR_ID};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
@@ -3817,6 +3817,41 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             _ => None,
+        }
+    }
+
+    pub fn hir_id(self) -> HirId {
+        match self {
+            Node::Param(p) => p.hir_id,
+            Node::Item(i) => i.hir_id(),
+            Node::ForeignItem(n) => n.hir_id(),
+            Node::TraitItem(n) => n.hir_id(),
+            Node::ImplItem(n) => n.hir_id(),
+            Node::Variant(n) => n.hir_id,
+            Node::Field(n) => n.hir_id,
+            Node::AnonConst(n) => n.hir_id,
+            Node::Expr(n) => n.hir_id,
+            Node::ExprField(n) => n.hir_id,
+            Node::Stmt(n) => n.hir_id,
+            Node::PathSegment(n) => n.hir_id,
+            Node::Ty(n) => n.hir_id,
+            Node::TypeBinding(n) => n.hir_id,
+            Node::TraitRef(n) => n.hir_ref_id,
+            Node::Pat(n) => n.hir_id,
+            Node::PatField(n) => n.hir_id,
+            Node::Arm(n) => n.hir_id,
+            Node::Block(n) => n.hir_id,
+            Node::LetStmt(n) => n.hir_id,
+            Node::Ctor(n) => n.ctor_hir_id().unwrap(),
+            Node::Lifetime(n) => n.hir_id,
+            Node::GenericParam(n) => n.hir_id,
+            Node::Crate(_) => CRATE_HIR_ID,
+            Node::Infer(n) => n.hir_id,
+            Node::WhereBoundPredicate(n) => n.hir_id,
+            Node::ArrayLenInfer(n) => n.hir_id,
+            Node::PreciseCapturingNonLifetimeArg(n) => n.hir_id,
+            Node::Synthetic => unreachable!(),
+            Node::Err(span) => todo!("tried to get hir id of error node: {span:?}"),
         }
     }
 
