@@ -42,6 +42,20 @@ warning: unknown lint: `x5100`
 LL | #![deny(x5100)]
    |         ^^^^^
 
+warning: use of deprecated attribute `crate_id`: no longer used.
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:84:1
+   |
+LL | #![crate_id = "10"]
+   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated attribute `no_start`: no longer used.
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:94:1
+   |
+LL | #![no_start]
+   | ^^^^^^^^^^^^ help: remove this attribute
+
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:105:8
    |
@@ -1178,4 +1192,3 @@ LL | #![feature(rust1)]
    = note: `#[warn(stable_features)]` on by default
 
 warning: 173 warnings emitted
-

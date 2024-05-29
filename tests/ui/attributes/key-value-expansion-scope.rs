@@ -1,6 +1,6 @@
-#![doc = in_root!()] // FIXME, this is a bug
+#![doc = in_root!()] //~ ERROR cannot find macro `in_root` in this scope
 #![doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
-#![doc = in_mod_escape!()] // FIXME, this is a bug
+#![doc = in_mod_escape!()] //~ ERROR cannot find macro `in_mod_escape` in this scope
 #![doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
 
 #[doc = in_root!()] //~ ERROR cannot find macro `in_root` in this scope
@@ -17,7 +17,7 @@ fn before() {
 macro_rules! in_root { () => { "" } }
 
 mod macros_stay {
-    #![doc = in_mod!()] // FIXME, this is a bug
+    #![doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
 
     macro_rules! in_mod { () => { "" } }
 
@@ -29,7 +29,7 @@ mod macros_stay {
 
 #[macro_use]
 mod macros_escape {
-    #![doc = in_mod_escape!()] // FIXME, this is a bug
+    #![doc = in_mod_escape!()] //~ ERROR cannot find macro `in_mod_escape` in this scope
 
     macro_rules! in_mod_escape { () => { "" } }
 
