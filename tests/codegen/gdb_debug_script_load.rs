@@ -1,6 +1,6 @@
 //
 //@ ignore-windows
-//@ ignore-macos
+//@ ignore-apple
 //@ ignore-wasm
 //@ ignore-emscripten
 

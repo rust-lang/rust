@@ -1,10 +1,10 @@
 include ../tools.mk
 
 # ignore-windows
-# ignore-macos
+# ignore-apple
 #
 # This feature only works when the output object format is ELF so we ignore
-# macOS and Windows
+# Apple and Windows
 
 # check that the .stack_sizes section is generated
 all:

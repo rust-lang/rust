@@ -1,4 +1,4 @@
-# only-macos
+# only-apple
 
 include ../tools.mk
 

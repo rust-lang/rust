@@ -1,9 +1,9 @@
 include ../tools.mk
 
-# only-macos
+# only-apple
 #
 # This checks that `#[used]` passes through to the linker on
-# darwin. This is subject to change in the future, see
+# Apple targets. This is subject to change in the future, see
 # https://github.com/rust-lang/rust/pull/93718 for discussion
 
 all:

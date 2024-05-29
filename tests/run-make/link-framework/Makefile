@@ -1,4 +1,4 @@
-# only-macos
+# only-apple
 #
 # Check that linking to a framework actually makes it to the linker.
 
