@@ -145,12 +145,6 @@ impl server::Server for SpanIdServer<'_> {
     fn span_local_file(&mut self, _span: Self::Span) -> Option<String> {
         None
     }
-    fn span_save_span(&mut self, _span: Self::Span) -> usize {
-        0
-    }
-    fn span_recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
-        self.call_site
-    }
     /// Recent feature, not yet in the proc_macro
     ///
     /// See PR:
