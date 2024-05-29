@@ -419,8 +419,12 @@ impl StepDescription {
             .map(|desc| (desc.should_run)(ShouldRun::new(builder, desc.kind)))
             .collect::<Vec<_>>();
 
-        if builder.download_rustc() && (builder.kind == Kind::Dist || builder.kind == Kind::Install) {
-            eprintln!("ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.", builder.kind.as_str());
+        if builder.download_rustc() && (builder.kind == Kind::Dist || builder.kind == Kind::Install)
+        {
+            eprintln!(
+                "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
+                builder.kind.as_str()
+            );
             crate::exit!(1);
         }
 

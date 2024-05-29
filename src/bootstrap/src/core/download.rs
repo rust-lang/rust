@@ -764,7 +764,7 @@ fn path_is_dylib(path: &Path) -> bool {
 
 /// Checks whether the CI rustc is available for the given target triple.
 pub(crate) fn is_ci_rustc_available_for_target(target_triple: &str, llvm_assertions: bool) -> bool {
-    // FIXME: This list should be auto-generated.
+    // All tier 1 targets and tier 2 targets with host tools.
     const SUPPORTED_PLATFORMS: &[&str] = &[
         "aarch64-apple-darwin",
         "aarch64-pc-windows-msvc",
