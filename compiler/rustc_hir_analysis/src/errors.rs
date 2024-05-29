@@ -1523,7 +1523,7 @@ pub struct StaticMutRef<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: StaticMutRefSugg,
+    pub sugg: Option<StaticMutRefSugg>,
     pub shared: &'a str,
 }
 
@@ -1562,34 +1562,8 @@ pub struct RefOfMutStatic<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: RefOfMutStaticSugg,
+    pub sugg: Option<StaticMutRefSugg>,
     pub shared: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub enum RefOfMutStaticSugg {
-    #[suggestion(
-        hir_analysis_suggestion,
-        style = "verbose",
-        code = "addr_of!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
-    #[suggestion(
-        hir_analysis_suggestion_mut,
-        style = "verbose",
-        code = "addr_of_mut!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
 }
 
 #[derive(Diagnostic)]
