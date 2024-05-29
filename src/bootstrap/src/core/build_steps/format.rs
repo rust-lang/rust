@@ -35,9 +35,9 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
         let status = cmd.wait().unwrap();
         if !status.success() {
             eprintln!(
-                "Running `{}` failed.\nIf you're running `tidy`, \
-                        try again with `--bless`. Or, if you just want to format \
-                        code, run `./x.py fmt` instead.",
+                "fmt error: Running `{}` failed.\nIf you're running `tidy`, \
+                try again with `--bless`. Or, if you just want to format \
+                code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
             crate::exit!(1);
@@ -99,7 +99,7 @@ struct RustfmtConfig {
 
 pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     if !paths.is_empty() {
-        eprintln!("path arguments are not accepted");
+        eprintln!("fmt error: path arguments are not accepted");
         crate::exit!(1);
     };
     if build.config.dry_run() {
@@ -118,8 +118,8 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     let matcher = builder.build().unwrap();
     let rustfmt_config = build.src.join("rustfmt.toml");
     if !rustfmt_config.exists() {
-        eprintln!("Not running formatting checks; rustfmt.toml does not exist.");
-        eprintln!("This may happen in distributed tarballs.");
+        eprintln!("fmt error: Not running formatting checks; rustfmt.toml does not exist.");
+        eprintln!("fmt error: This may happen in distributed tarballs.");
         return;
     }
     let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
@@ -133,7 +133,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             // any files that aren't explicitly mentioned. No bueno! Maybe there's a way to combine
             // explicit whitelisted entries and traversal of unmentioned files, but for now just
             // forbid such entries.
-            eprintln!("`!`-prefixed entries are not supported in rustfmt.toml, sorry");
+            eprintln!("fmt error: `!`-prefixed entries are not supported in rustfmt.toml, sorry");
             crate::exit!(1);
         } else {
             fmt_override.add(&format!("!{ignore}")).expect(&ignore);
@@ -177,7 +177,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             );
             let mut untracked_count = 0;
             for untracked_path in untracked_paths {
-                println!("skip untracked path {untracked_path} during rustfmt invocations");
+                println!("fmt: skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
@@ -191,7 +191,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                     Ok(Some(files)) => {
                         if files.len() <= 10 {
                             for file in &files {
-                                println!("formatting modified file {file}");
+                                println!("fmt: formatting modified file {file}");
                             }
                         } else {
                             let pluralized = |count| if count > 1 { "files" } else { "file" };
@@ -205,7 +205,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                                 )
                             };
                             println!(
-                                "formatting {} modified {}{}",
+                                "fmt: formatting {} modified {}{}",
                                 files.len(),
                                 pluralized(files.len()),
                                 untracked_msg
@@ -217,24 +217,23 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                     }
                     Ok(None) => {}
                     Err(err) => {
-                        println!(
-                            "WARN: Something went wrong when running git commands:\n{err}\n\
-                            Falling back to formatting all files."
-                        );
+                        eprintln!("fmt warning: Something went wrong running git commands:");
+                        eprintln!("fmt warning: {err}");
+                        eprintln!("fmt warning: Falling back to formatting all files.");
                     }
                 }
             }
         } else {
-            println!("Not in git tree. Skipping git-aware format checks");
+            eprintln!("fmt: warning: Not in git tree. Skipping git-aware format checks");
         }
     } else {
-        println!("Could not find usable git. Skipping git-aware format checks");
+        eprintln!("fmt: warning: Could not find usable git. Skipping git-aware format checks");
     }
 
     let fmt_override = fmt_override.build().unwrap();
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
-        eprintln!("./x.py fmt is not supported on this channel");
+        eprintln!("fmt error: `x fmt` is not supported on this channel");
         crate::exit!(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
