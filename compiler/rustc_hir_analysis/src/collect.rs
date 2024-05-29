@@ -1478,7 +1478,7 @@ pub fn suggest_impl_trait<'tcx>(
         ),
         (
             infcx.tcx.lang_items().future_trait(),
-            infcx.tcx.get_diagnostic_item(sym::FutureOutput),
+            infcx.tcx.lang_items().future_output(),
             format_as_assoc,
         ),
         (

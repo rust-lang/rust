@@ -407,16 +407,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                      output_coroutine_ty,
                      coroutine_return_ty,
                  }| {
-                    let (projection_term, term) = match tcx.item_name(goal.predicate.def_id()) {
-                        sym::CallOnceFuture => (
+                    let lang_items = tcx.lang_items();
+                    let (projection_term, term) = if Some(goal.predicate.def_id())
+                        == lang_items.call_once_future()
+                    {
+                        (
                             ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
                                 [goal.predicate.self_ty(), tupled_inputs_ty],
                             ),
                             output_coroutine_ty.into(),
-                        ),
-                        sym::CallRefFuture => (
+                        )
+                    } else if Some(goal.predicate.def_id()) == lang_items.call_ref_future() {
+                        (
                             ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
@@ -427,8 +431,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                                 ],
                             ),
                             output_coroutine_ty.into(),
-                        ),
-                        sym::Output => (
+                        )
+                    } else if Some(goal.predicate.def_id()) == lang_items.async_fn_once_output() {
+                        (
                             ty::AliasTerm::new(
                                 tcx,
                                 goal.predicate.def_id(),
@@ -438,8 +443,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                                 ],
                             ),
                             coroutine_return_ty.into(),
-                        ),
-                        name => bug!("no such associated type: {name}"),
+                        )
+                    } else {
+                        bug!("no such associated type in `AsyncFn*`: {:?}", goal.predicate.def_id())
                     };
                     ty::ProjectionPredicate { projection_term, term }
                 },
