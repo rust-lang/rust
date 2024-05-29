@@ -1,3 +1,2 @@
 #[no_mangle]
-pub fn bar() {
-}
+pub fn bar() {}

@@ -12,14 +12,12 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="freeze"]
-trait Freeze { }
-#[lang="copy"]
-trait Copy { }
-
-
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 // Passed as `[i64 x 2]`, since it's an aggregate with size <= 128 bits, align < 128 bits.
 #[repr(C)]
@@ -31,7 +29,7 @@ pub struct Align8 {
 // repr(transparent), so same as above.
 #[repr(transparent)]
 pub struct Transparent8 {
-    a: Align8
+    a: Align8,
 }
 
 // Passed as `[i64 x 2]`, since it's an aggregate with size <= 128 bits, align < 128 bits.
@@ -47,8 +45,6 @@ extern "C" {
     fn test_8(a: Align8, b: Transparent8, c: Wrapped8);
 }
 
-
-
 // Passed as `i128`, since it's an aggregate with size <= 128 bits, align = 128 bits.
 // EXCEPT on Linux, where there's a special case to use its unadjusted alignment,
 // making it the same as `Align8`, so it's be passed as `[i64 x 2]`.
@@ -62,7 +58,7 @@ pub struct Align16 {
 // repr(transparent), so same as above.
 #[repr(transparent)]
 pub struct Transparent16 {
-    a: Align16
+    a: Align16,
 }
 
 // Passed as `i128`, since it's an aggregate with size <= 128 bits, align = 128 bits.
@@ -79,8 +75,6 @@ extern "C" {
     fn test_16(a: Align16, b: Transparent16, c: Wrapped16);
 }
 
-
-
 // Passed as `i128`, since it's an aggregate with size <= 128 bits, align = 128 bits.
 #[repr(C)]
 pub struct I128 {
@@ -90,13 +84,13 @@ pub struct I128 {
 // repr(transparent), so same as above.
 #[repr(transparent)]
 pub struct TransparentI128 {
-    a: I128
+    a: I128,
 }
 
 // Passed as `i128`, since it's an aggregate with size <= 128 bits, align = 128 bits.
 #[repr(C)]
 pub struct WrappedI128 {
-    pub a: I128
+    pub a: I128,
 }
 
 extern "C" {
@@ -105,8 +99,6 @@ extern "C" {
     // windows: declare void @test_i128(i128, i128, i128)
     fn test_i128(a: I128, b: TransparentI128, c: WrappedI128);
 }
-
-
 
 // Passed as `[2 x i64]`, since it's an aggregate with size <= 128 bits, align < 128 bits.
 // Note that the Linux special case does not apply, because packing is not considered "adjustment".
@@ -119,13 +111,13 @@ pub struct Packed {
 // repr(transparent), so same as above.
 #[repr(transparent)]
 pub struct TransparentPacked {
-    a: Packed
+    a: Packed,
 }
 
 // Passed as `[2 x i64]`, since it's an aggregate with size <= 128 bits, align < 128 bits.
 #[repr(C)]
 pub struct WrappedPacked {
-    pub a: Packed
+    pub a: Packed,
 }
 
 extern "C" {
@@ -135,13 +127,19 @@ extern "C" {
     fn test_packed(a: Packed, b: TransparentPacked, c: WrappedPacked);
 }
 
-
-
 pub unsafe fn main(
-    a1: Align8, a2: Transparent8, a3: Wrapped8,
-    b1: Align16, b2: Transparent16, b3: Wrapped16,
-    c1: I128, c2: TransparentI128, c3: WrappedI128,
-    d1: Packed, d2: TransparentPacked, d3: WrappedPacked,
+    a1: Align8,
+    a2: Transparent8,
+    a3: Wrapped8,
+    b1: Align16,
+    b2: Transparent16,
+    b3: Wrapped16,
+    c1: I128,
+    c2: TransparentI128,
+    c3: WrappedI128,
+    d1: Packed,
+    d2: TransparentPacked,
+    d3: WrappedPacked,
 ) {
     test_8(a1, a2, a3);
     test_16(b1, b2, b3);

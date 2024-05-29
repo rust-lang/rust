@@ -6,20 +6,20 @@
 #[repr(packed)]
 pub struct Packed1 {
     dealign: u8,
-    data: u32
+    data: u32,
 }
 
 #[repr(packed(2))]
 pub struct Packed2 {
     dealign: u8,
-    data: u32
+    data: u32,
 }
 
 // CHECK-LABEL: @write_pkd1
 #[no_mangle]
 pub fn write_pkd1(pkd: &mut Packed1) -> u32 {
-// CHECK: %{{.*}} = load i32, ptr %{{.*}}, align 1
-// CHECK: store i32 42, ptr %{{.*}}, align 1
+    // CHECK: %{{.*}} = load i32, ptr %{{.*}}, align 1
+    // CHECK: store i32 42, ptr %{{.*}}, align 1
     let result = pkd.data;
     pkd.data = 42;
     result
@@ -28,8 +28,8 @@ pub fn write_pkd1(pkd: &mut Packed1) -> u32 {
 // CHECK-LABEL: @write_pkd2
 #[no_mangle]
 pub fn write_pkd2(pkd: &mut Packed2) -> u32 {
-// CHECK: %{{.*}} = load i32, ptr %{{.*}}, align 2
-// CHECK: store i32 42, ptr %{{.*}}, align 2
+    // CHECK: %{{.*}} = load i32, ptr %{{.*}}, align 2
+    // CHECK: store i32 42, ptr %{{.*}}, align 2
     let result = pkd.data;
     pkd.data = 42;
     result
@@ -39,21 +39,21 @@ pub struct Array([i32; 8]);
 #[repr(packed)]
 pub struct BigPacked1 {
     dealign: u8,
-    data: Array
+    data: Array,
 }
 
 #[repr(packed(2))]
 pub struct BigPacked2 {
     dealign: u8,
-    data: Array
+    data: Array,
 }
 
 // CHECK-LABEL: @call_pkd1
 #[no_mangle]
 pub fn call_pkd1(f: fn() -> Array) -> BigPacked1 {
-// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca [32 x i8]
-// CHECK: call void %{{.*}}(ptr noalias nocapture noundef sret{{.*}} dereferenceable(32) [[ALLOCA]])
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
+    // CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca [32 x i8]
+    // CHECK: call void %{{.*}}(ptr noalias nocapture noundef sret{{.*}} dereferenceable(32) [[ALLOCA]])
+    // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
     // check that calls whose destination is a field of a packed struct
     // go through an alloca rather than calling the function with an
     // unaligned destination.
@@ -63,9 +63,9 @@ pub fn call_pkd1(f: fn() -> Array) -> BigPacked1 {
 // CHECK-LABEL: @call_pkd2
 #[no_mangle]
 pub fn call_pkd2(f: fn() -> Array) -> BigPacked2 {
-// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca [32 x i8]
-// CHECK: call void %{{.*}}(ptr noalias nocapture noundef sret{{.*}} dereferenceable(32) [[ALLOCA]])
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
+    // CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca [32 x i8]
+    // CHECK: call void %{{.*}}(ptr noalias nocapture noundef sret{{.*}} dereferenceable(32) [[ALLOCA]])
+    // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
     // check that calls whose destination is a field of a packed struct
     // go through an alloca rather than calling the function with an
     // unaligned destination.
@@ -119,14 +119,14 @@ pub struct Packed2Pair(u8, u32);
 // CHECK-LABEL: @pkd1_pair
 #[no_mangle]
 pub fn pkd1_pair(pair1: &mut Packed1Pair, pair2: &mut Packed1Pair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 1 %{{.*}}, i{{[0-9]+}} 5, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 1 %{{.*}}, i{{[0-9]+}} 5, i1 false)
     *pair2 = *pair1;
 }
 
 // CHECK-LABEL: @pkd2_pair
 #[no_mangle]
 pub fn pkd2_pair(pair1: &mut Packed2Pair, pair2: &mut Packed2Pair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 2 %{{.*}}, i{{[0-9]+}} 6, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 2 %{{.*}}, i{{[0-9]+}} 6, i1 false)
     *pair2 = *pair1;
 }
 
@@ -141,13 +141,13 @@ pub struct Packed2NestedPair((u32, u32));
 // CHECK-LABEL: @pkd1_nested_pair
 #[no_mangle]
 pub fn pkd1_nested_pair(pair1: &mut Packed1NestedPair, pair2: &mut Packed1NestedPair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 1 %{{.*}}, i{{[0-9]+}} 8, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 %{{.*}}, ptr align 1 %{{.*}}, i{{[0-9]+}} 8, i1 false)
     *pair2 = *pair1;
 }
 
 // CHECK-LABEL: @pkd2_nested_pair
 #[no_mangle]
 pub fn pkd2_nested_pair(pair1: &mut Packed2NestedPair, pair2: &mut Packed2NestedPair) {
-// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 2 %{{.*}}, i{{[0-9]+}} 8, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 2 %{{.*}}, ptr align 2 %{{.*}}, i{{[0-9]+}} 8, i1 false)
     *pair2 = *pair1;
 }

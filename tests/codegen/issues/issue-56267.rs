@@ -1,6 +1,6 @@
 //@ compile-flags: -C no-prepopulate-passes
 
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 #[allow(dead_code)]
 pub struct Foo<T> {

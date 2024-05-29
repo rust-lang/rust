@@ -18,9 +18,12 @@
 #![no_std]
 #![no_core]
 
-#[lang="sized"] trait Sized { }
-#[lang="freeze"] trait Freeze { }
-#[lang="copy"] trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 // This struct will be passed as a single `i64` or `i32`.
 // This may be (if `i64)) larger than the Rust layout, which is just `{ i16, i16 }`.
@@ -104,7 +107,6 @@ pub unsafe fn return_twou16s() -> TwoU16s {
     // powerpc64: [[RETVAL:%.+]] = alloca [4 x i8], align 2
     // powerpc64: call void @returns_twou16s(ptr {{.+}} [[RETVAL]])
 
-
     // The other targets copy the cast ABI type to an alloca.
 
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [8 x i8], align [[ABI_ALIGN:8]]
@@ -150,7 +152,6 @@ pub unsafe fn return_fiveu16s() -> FiveU16s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.
 
     // powerpc64: call void @returns_fiveu16s(ptr {{.+}} [[RET_PTR]])
-
 
     // The other targets copy the cast ABI type to the sret pointer.
 
@@ -198,7 +199,6 @@ pub unsafe fn return_doubledouble() -> DoubleDouble {
 
     // powerpc64: [[RETVAL:%.+]] = alloca [16 x i8], align 8
     // powerpc64: call void @returns_doubledouble(ptr {{.+}} [[RETVAL]])
-
 
     // The other targets copy the cast ABI type to an alloca.
 
@@ -265,7 +265,6 @@ pub unsafe fn return_doublefloat() -> DoubleFloat {
 
     // powerpc64: [[RETVAL:%.+]] = alloca [16 x i8], align 8
     // powerpc64: call void @returns_doublefloat(ptr {{.+}} [[RETVAL]])
-
 
     // The other targets copy the cast ABI type to an alloca.
 

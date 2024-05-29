@@ -10,9 +10,15 @@ pub trait Trait {
     fn f(&self);
 }
 
-pub struct WrapperWithAlign1<T: ?Sized> { x: u8, y: T }
+pub struct WrapperWithAlign1<T: ?Sized> {
+    x: u8,
+    y: T,
+}
 
-pub struct WrapperWithAlign2<T: ?Sized> { x: u16, y: T }
+pub struct WrapperWithAlign2<T: ?Sized> {
+    x: u16,
+    y: T,
+}
 
 pub struct Struct<W: ?Sized> {
     _field: i8,
@@ -22,7 +28,7 @@ pub struct Struct<W: ?Sized> {
 // CHECK-LABEL: @eliminates_runtime_check_when_align_1
 #[no_mangle]
 pub fn eliminates_runtime_check_when_align_1(
-    x: &Struct<WrapperWithAlign1<dyn Trait>>
+    x: &Struct<WrapperWithAlign1<dyn Trait>>,
 ) -> &WrapperWithAlign1<dyn Trait> {
     // CHECK: load [[USIZE:i[0-9]+]], {{.+}} !range [[RANGE_META:![0-9]+]]
     // CHECK-NOT: llvm.umax
@@ -35,7 +41,7 @@ pub fn eliminates_runtime_check_when_align_1(
 // CHECK-LABEL: @does_not_eliminate_runtime_check_when_align_2
 #[no_mangle]
 pub fn does_not_eliminate_runtime_check_when_align_2(
-    x: &Struct<WrapperWithAlign2<dyn Trait>>
+    x: &Struct<WrapperWithAlign2<dyn Trait>>,
 ) -> &WrapperWithAlign2<dyn Trait> {
     // CHECK: [[X0:%[0-9]+]] = load [[USIZE]], {{.+}} !range [[RANGE_META]]
     // CHECK: {{icmp|llvm.umax}}

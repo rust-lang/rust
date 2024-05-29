@@ -13,12 +13,11 @@
 
 #![feature(no_core, lang_items)]
 #![no_core]
-#[lang="sized"]
-trait Sized { }
-#[lang="copy"]
-trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 impl Copy for u32 {}
-
 
 // CHECK: define i32 @peach{{.*}}[[PEACH_ATTRS:\#[0-9]+]] {
 #[no_mangle]

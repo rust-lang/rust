@@ -27,6 +27,6 @@ trait Sized {}
 
 #[no_mangle]
 pub fn foo() {
-// CHECK: @foo() unnamed_addr #0
-// CHECK: attributes #0 = { {{.*}}"probe-stack"="inline-asm"{{.*}} }
+    // CHECK: @foo() unnamed_addr #0
+    // CHECK: attributes #0 = { {{.*}}"probe-stack"="inline-asm"{{.*}} }
 }
