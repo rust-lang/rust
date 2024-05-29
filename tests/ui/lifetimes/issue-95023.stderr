@@ -38,7 +38,7 @@ error[E0277]: expected a `FnMut(&isize)` closure, found `Error`
 LL | impl Fn(&isize) for Error {
    |                     ^^^^^ expected an `FnMut(&isize)` closure, found `Error`
    |
-   = help: the trait `FnMut<(&isize,)>` is not implemented for `Error`
+   = help: the trait `FnMut(&isize)` is not implemented for `Error`
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 

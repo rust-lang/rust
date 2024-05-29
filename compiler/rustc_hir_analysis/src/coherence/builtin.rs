@@ -554,7 +554,7 @@ fn infringing_fields_error(
                         if let ty::Param(_) = ty.kind() {
                             bounds.push((
                                 format!("{ty}"),
-                                trait_ref.print_only_trait_path().to_string(),
+                                trait_ref.print_trait_sugared().to_string(),
                                 Some(trait_ref.def_id),
                             ));
                         }
