@@ -24,7 +24,6 @@ run-make/compiler-rt-works-on-mingw/Makefile
 run-make/compressed-debuginfo/Makefile
 run-make/const-prop-lint/Makefile
 run-make/const_fn_mir/Makefile
-run-make/crate-data-smoke/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/crate-name-priority/Makefile
 run-make/cross-lang-lto-clang/Makefile
