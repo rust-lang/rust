@@ -565,7 +565,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
-    from_raw_parts(without_provenance(0), ())
+    from_raw_parts(without_provenance::<()>(0), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -591,7 +591,7 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
-    from_raw_parts_mut(without_provenance_mut(0), ())
+    from_raw_parts_mut(without_provenance_mut::<()>(0), ())
 }
 
 /// Creates a pointer with the given address and no provenance.
@@ -835,7 +835,7 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    intrinsics::aggregate_raw_ptr(data, len)
+    from_raw_parts(data, len)
 }
 
 /// Forms a raw mutable slice from a pointer and a length.
@@ -881,7 +881,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    intrinsics::aggregate_raw_ptr(data, len)
+    from_raw_parts_mut(data, len)
 }
 
 /// Swaps the values at two mutable locations of the same type, without
