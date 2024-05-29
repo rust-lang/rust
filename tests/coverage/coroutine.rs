@@ -18,7 +18,8 @@ fn get_u32(val: bool) -> Result<u32, String> {
 
 fn main() {
     let is_true = std::env::args().len() == 1;
-    let mut coroutine = #[coroutine] || {
+    let mut coroutine = #[coroutine]
+    || {
         yield get_u32(is_true);
         return "foo";
     };

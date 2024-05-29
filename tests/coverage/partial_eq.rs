@@ -10,11 +10,7 @@ pub struct Version {
 
 impl Version {
     pub fn new(major: usize, minor: usize, patch: usize) -> Self {
-        Self {
-            major,
-            minor,
-            patch,
-        }
+        Self { major, minor, patch }
     }
 }
 
