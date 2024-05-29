@@ -52,7 +52,7 @@
                    ^0
    LL|       |
    LL|      1|    let mut val = InStruct {
-   LL|      1|        in_struct_field: 101,
+   LL|      1|        in_struct_field: 101, //
    LL|      1|    };
    LL|      1|
    LL|      1|    val.default_trait_func();

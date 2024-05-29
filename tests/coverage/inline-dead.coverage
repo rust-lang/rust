@@ -14,7 +14,7 @@
    LL|       |#[inline]
    LL|      1|fn live<const B: bool>() -> u32 {
    LL|      1|    if B {
-   LL|      0|        dead()
+   LL|      0|        dead() //
    LL|       |    } else {
    LL|      1|        0
    LL|       |    }
