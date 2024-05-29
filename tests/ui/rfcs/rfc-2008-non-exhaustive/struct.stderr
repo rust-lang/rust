@@ -17,6 +17,11 @@ LL | #[non_exhaustive]
    | ----------------- cannot be constructed because it is `#[non_exhaustive]`
 LL | pub struct TupleStruct(pub u16, pub u16);
    | ^^^^^^^^^^^^^^^^^^^^^^
+help: consider using a struct pattern instead: `TupleStruct { .. }`
+  --> $DIR/struct.rs:23:32
+   |
+LL |     let ts_explicit = structs::TupleStruct(640, 480);
+   |                                ^^^^^^^^^^^
 
 error[E0603]: unit struct `UnitStruct` is private
   --> $DIR/struct.rs:32:32
@@ -31,6 +36,11 @@ LL | #[non_exhaustive]
    | ----------------- cannot be constructed because it is `#[non_exhaustive]`
 LL | pub struct UnitStruct;
    | ^^^^^^^^^^^^^^^^^^^^^
+help: consider using a struct pattern instead: `UnitStruct { .. }`
+  --> $DIR/struct.rs:32:32
+   |
+LL |     let us_explicit = structs::UnitStruct;
+   |                                ^^^^^^^^^^
 
 error[E0639]: cannot create non-exhaustive struct using struct expression
   --> $DIR/struct.rs:7:14
