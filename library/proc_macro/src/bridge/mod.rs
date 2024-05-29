@@ -75,8 +75,6 @@ macro_rules! with_api {
             fn span_subspan(span: $Span, start: Bound<usize>, end: Bound<usize>) -> Option<$Span>;
             fn span_resolved_at(span: $Span, at: $Span) -> $Span;
             fn span_source_text(span: $Span) -> Option<String>;
-            fn span_save_span(span: $Span) -> usize;
-            fn span_recover_proc_macro_span(id: usize) -> $Span;
 
             fn symbol_normalize_and_validate_ident(string: &str) -> Result<$Symbol, ()>;
         }

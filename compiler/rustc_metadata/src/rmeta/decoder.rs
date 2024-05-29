@@ -1455,15 +1455,6 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.native_libraries.decode((self, tcx))
     }
 
-    fn get_proc_macro_quoted_span(self, tcx: TyCtxt<'_>, index: usize) -> Span {
-        self.root
-            .tables
-            .proc_macro_quoted_spans
-            .get((self, tcx), index)
-            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
-            .decode((self, tcx))
-    }
-
     fn get_foreign_modules(self, tcx: TyCtxt<'_>) -> impl Iterator<Item = ForeignModule> {
         self.root.foreign_modules.decode((self, tcx))
     }

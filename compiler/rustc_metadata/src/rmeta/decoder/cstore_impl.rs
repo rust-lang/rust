@@ -624,15 +624,6 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn get_proc_macro_quoted_span_untracked(
-        &self,
-        tcx: TyCtxt<'_>,
-        cnum: CrateNum,
-        id: usize,
-    ) -> Span {
-        self.get_crate_data(cnum).get_proc_macro_quoted_span(tcx, id)
-    }
-
     pub fn set_used_recursively(&mut self, cnum: CrateNum) {
         let cmeta = self.get_crate_data_mut(cnum);
         if !cmeta.used {
