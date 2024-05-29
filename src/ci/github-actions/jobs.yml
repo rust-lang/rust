@@ -118,6 +118,9 @@ auto:
   - image: armhf-gnu
     <<: *job-linux-4c
 
+  - image: riscv64gc-gnu
+    <<: *job-linux-4c
+
   - image: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
