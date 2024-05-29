@@ -4,8 +4,6 @@
 //@ needs-rust-lld
 //@ only-x86_64-unknown-linux-gnu
 
-extern crate run_make_support;
-
 use run_make_support::regex::Regex;
 use run_make_support::rustc;
 use std::process::Output;
