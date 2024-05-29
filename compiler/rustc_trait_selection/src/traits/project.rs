@@ -1680,14 +1680,8 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                         args.coroutine_captures_by_ref_ty(),
                     )
                 } else {
-                    let async_fn_kind_trait_def_id =
-                        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                    let upvars_projection_def_id = tcx
-                        .associated_items(async_fn_kind_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Upvars)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let upvars_projection_def_id =
+                        tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
                     let tupled_upvars_ty = Ty::new_projection(
                         tcx,
                         upvars_projection_def_id,
@@ -1816,14 +1810,8 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                             args.coroutine_captures_by_ref_ty(),
                         )
                     } else {
-                        let async_fn_kind_trait_def_id =
-                            tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                        let upvars_projection_def_id = tcx
-                            .associated_items(async_fn_kind_trait_def_id)
-                            .filter_by_name_unhygienic(sym::Upvars)
-                            .next()
-                            .unwrap()
-                            .def_id;
+                        let upvars_projection_def_id =
+                            tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
                         // When we don't know the closure kind (and therefore also the closure's upvars,
                         // which are computed at the same time), we must delay the computation of the
                         // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait

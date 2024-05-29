@@ -146,6 +146,7 @@ mod internal_implementation_detail {
         // `for<'env> fn() -> (&'env T, ...)`. This allows us to represent the binder
         // of the closure's self-capture, and these upvar types will be instantiated with
         // the `'closure_env` region provided to the associated type.
+        #[cfg_attr(not(bootstrap), lang = "async_fn_kind_upvars")]
         type Upvars<'closure_env, Inputs, Upvars, BorrowedUpvarsAsFnPtr>;
     }
 }

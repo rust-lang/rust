@@ -438,6 +438,7 @@ symbols! {
         async_fn,
         async_fn_in_trait,
         async_fn_kind_helper,
+        async_fn_kind_upvars,
         async_fn_mut,
         async_fn_once,
         async_fn_once_output,
