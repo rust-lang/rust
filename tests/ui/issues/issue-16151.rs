@@ -25,5 +25,6 @@ fn main() {
     }
     unsafe {
         assert_eq!(DROP_COUNT, 3);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

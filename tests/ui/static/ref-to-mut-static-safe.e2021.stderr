@@ -1,5 +1,5 @@
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/reference-to-mut-static-safe.rs:9:14
+  --> $DIR/ref-to-mut-static-safe.rs:9:14
    |
 LL |     let _x = &X;
    |              ^^ shared reference to mutable static
@@ -14,7 +14,7 @@ LL |     let _x = addr_of!(X);
    |              ~~~~~~~~~~~
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/reference-to-mut-static-safe.rs:9:15
+  --> $DIR/ref-to-mut-static-safe.rs:9:15
    |
 LL |     let _x = &X;
    |               ^ use of mutable static

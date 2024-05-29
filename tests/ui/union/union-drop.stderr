@@ -1,0 +1,53 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop.rs:39:20
+   |
+LL |         assert_eq!(CHECK, 0);
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop.rs:44:20
+   |
+LL |         assert_eq!(CHECK, 1); // 1, dtor of U is called
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop.rs:49:20
+   |
+LL |         assert_eq!(CHECK, 2); // 2, dtor of W is called
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop.rs:54:20
+   |
+LL |         assert_eq!(CHECK, 2); // 2, Y has no dtor
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop.rs:60:20
+   |
+LL |         assert_eq!(CHECK, 2); // 2, dtor of U *not* called for u2
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: 5 warnings emitted
+

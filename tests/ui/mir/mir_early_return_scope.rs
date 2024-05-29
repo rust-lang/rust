@@ -25,5 +25,6 @@ fn main() {
     inner();
     unsafe {
         assert_eq!(DROP, true);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

@@ -77,5 +77,6 @@ fn main() {
     let _ = &mut x[Foo..Foo];
     unsafe {
         assert_eq!(COUNT, 8);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

@@ -22,11 +22,15 @@ impl Drop for Foo {
 fn main() {
     unsafe {
         assert_eq!(HIT, 0);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
         thread::spawn(|| {
             assert_eq!(HIT, 0);
+            //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
             A.with(|_| ());
             assert_eq!(HIT, 0);
+            //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
         }).join().unwrap();
         assert_eq!(HIT, 1);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

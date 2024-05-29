@@ -64,4 +64,5 @@ fn main() {
     x.baz();
 
     unsafe { assert_eq!(COUNT, 2*2*3*3*5*5*7*7*11*11*13*13*17); }
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 }

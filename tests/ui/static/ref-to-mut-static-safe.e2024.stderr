@@ -1,5 +1,5 @@
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-to-mut-static-safe.rs:9:14
+  --> $DIR/ref-to-mut-static-safe.rs:9:14
    |
 LL |     let _x = &X;
    |              ^^ shared reference to mutable static

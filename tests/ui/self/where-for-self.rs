@@ -47,5 +47,6 @@ fn main() {
     foo2(&x);
     unsafe {
         assert_eq!(COUNT, 12);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

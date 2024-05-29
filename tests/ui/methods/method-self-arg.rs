@@ -43,4 +43,5 @@ fn main() {
     x.foo(&x);
 
     unsafe { assert_eq!(COUNT, 2*3*3*3*5*5*5*7*7*7); }
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 }
