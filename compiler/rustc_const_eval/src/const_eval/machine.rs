@@ -643,7 +643,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeInterpreter<'tcx> {
     }
 
     #[inline(always)]
-    fn init_frame_extra(
+    fn init_frame(
         ecx: &mut InterpCx<'tcx, Self>,
         frame: Frame<'tcx>,
     ) -> InterpResult<'tcx, Frame<'tcx>> {

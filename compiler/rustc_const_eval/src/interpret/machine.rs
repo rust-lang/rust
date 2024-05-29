@@ -329,27 +329,41 @@ pub trait Machine<'tcx>: Sized {
         ptr: Pointer<Self::Provenance>,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)>;
 
-    /// Called to adjust allocations to the Provenance and AllocExtra of this machine.
+    /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
     ///
     /// If `alloc` contains pointers, then they are all pointing to globals.
-    ///
-    /// The way we construct allocations is to always first construct it without extra and then add
-    /// the extra. This keeps uniform code paths for handling both allocations created by CTFE for
-    /// globals, and allocations created by Miri during evaluation.
-    ///
-    /// `kind` is the kind of the allocation being adjusted; it can be `None` when
-    /// it's a global and `GLOBAL_KIND` is `None`.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
     /// allocation (because a copy had to be done to adjust things), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn adjust_allocation<'b>(
+    fn adjust_global_allocation<'b>(
         ecx: &InterpCx<'tcx, Self>,
         id: AllocId,
-        alloc: Cow<'b, Allocation>,
-        kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
+        alloc: &'b Allocation,
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
+    {
+        // The default implementation does a copy; CTFE machines have a more efficient implementation
+        // based on their particular choice for `Provenance`, `AllocExtra`, and `Bytes`.
+        let kind = Self::GLOBAL_KIND
+            .expect("if GLOBAL_KIND is None, adjust_global_allocation must be overwritten");
+        let alloc = alloc.adjust_from_tcx(&ecx.tcx, |ptr| ecx.global_root_pointer(ptr))?;
+        let extra =
+            Self::init_alloc_extra(ecx, id, MemoryKind::Machine(kind), alloc.size(), alloc.align)?;
+        Ok(Cow::Owned(alloc.with_extra(extra)))
+    }
+
+    /// Initialize the extra state of an allocation.
+    ///
+    /// This is guaranteed to be called exactly once on all allocations that are accessed by the
+    /// program.
+    fn init_alloc_extra(
+        ecx: &InterpCx<'tcx, Self>,
+        id: AllocId,
+        kind: MemoryKind<Self::MemoryKind>,
+        size: Size,
+        align: Align,
+    ) -> InterpResult<'tcx, Self::AllocExtra>;
 
     /// Return a "root" pointer for the given allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation, or the one returned from the heap allocator.
@@ -473,7 +487,7 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Called immediately before a new stack frame gets pushed.
-    fn init_frame_extra(
+    fn init_frame(
         ecx: &mut InterpCx<'tcx, Self>,
         frame: Frame<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, Frame<'tcx, Self::Provenance, Self::FrameExtra>>;
@@ -590,13 +604,23 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn adjust_allocation<'b>(
+    fn adjust_global_allocation<'b>(
         _ecx: &InterpCx<$tcx, Self>,
         _id: AllocId,
-        alloc: Cow<'b, Allocation>,
-        _kind: Option<MemoryKind<Self::MemoryKind>>,
+        alloc: &'b Allocation,
     ) -> InterpResult<$tcx, Cow<'b, Allocation<Self::Provenance>>> {
-        Ok(alloc)
+        // Overwrite default implementation: no need to adjust anything.
+        Ok(Cow::Borrowed(alloc))
+    }
+
+    fn init_alloc_extra(
+        _ecx: &InterpCx<$tcx, Self>,
+        _id: AllocId,
+        _kind: MemoryKind<Self::MemoryKind>,
+        _size: Size,
+        _align: Align,
+    ) -> InterpResult<$tcx, Self::AllocExtra> {
+        Ok(())
     }
 
     fn extern_static_pointer(
