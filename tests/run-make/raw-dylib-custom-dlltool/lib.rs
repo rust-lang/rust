@@ -1,5 +1,5 @@
 #[link(name = "extern_1", kind = "raw-dylib")]
-extern {
+extern "C" {
     fn extern_fn_1();
 }
 

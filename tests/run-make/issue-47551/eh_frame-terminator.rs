@@ -7,9 +7,7 @@ struct Foo {
 
 impl Foo {
     const fn new() -> Self {
-        Self {
-            array: [0x1122_3344_5566_7788; 10240]
-        }
+        Self { array: [0x1122_3344_5566_7788; 10240] }
     }
 }
 

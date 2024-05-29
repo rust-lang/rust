@@ -2,4 +2,4 @@
 #[derive(Copy, Clone)]
 pub struct Foo;
 
-pub fn main() { }
+pub fn main() {}

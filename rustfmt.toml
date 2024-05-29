@@ -20,7 +20,7 @@ ignore = [
     "/tests/incremental/",
     "/tests/mir-opt/",
     "/tests/pretty/",
-    "/tests/run-make/",
+    "/tests/run-make/translation/test.rs", # Contains syntax errors.
     "/tests/run-make-fulldeps/",
     "/tests/run-pass-valgrind/",
     "/tests/rustdoc/",

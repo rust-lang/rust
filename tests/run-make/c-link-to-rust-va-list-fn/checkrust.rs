@@ -1,16 +1,16 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
 
-use std::ffi::{c_char, c_double, c_int, c_long, c_longlong};
 use std::ffi::VaList;
-use std::ffi::{CString, CStr};
+use std::ffi::{c_char, c_double, c_int, c_long, c_longlong};
+use std::ffi::{CStr, CString};
 
 macro_rules! continue_if {
     ($cond:expr) => {
         if !($cond) {
             return 0xff;
         }
-    }
+    };
 }
 
 unsafe fn compare_c_str(ptr: *const c_char, val: &str) -> bool {
@@ -59,13 +59,11 @@ pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == 16);
     continue_if!(ap.arg::<c_char>() == 'A' as c_char);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Skip Me!"));
-    ap.with_copy(|mut ap| {
-        if compare_c_str(ap.arg::<*const c_char>(), "Correct") {
-            0
-        } else {
-            0xff
-        }
-    })
+    ap.with_copy(
+        |mut ap| {
+            if compare_c_str(ap.arg::<*const c_char>(), "Correct") { 0 } else { 0xff }
+        },
+    )
 }
 
 #[no_mangle]

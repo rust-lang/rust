@@ -2,4 +2,6 @@
 
 extern crate bar;
 
-pub fn main() { bar::baz() }
+pub fn main() {
+    bar::baz()
+}

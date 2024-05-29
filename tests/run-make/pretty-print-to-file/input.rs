@@ -1,5 +1,5 @@
-#[crate_type="lib"]
+#[crate_type = "lib"]
 
-pub fn
-foo() -> i32
-{ 45 }
+pub fn foo() -> i32 {
+    45
+}

@@ -1,3 +1,3 @@
 fn main() {
-    let x = Baz{};
+    let x = Baz {};
 }
