@@ -1,5 +1,5 @@
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:10:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:11:5
    |
 LL |     forget(&SomeStruct);
    |     ^^^^^^^-----------^
@@ -7,9 +7,9 @@ LL |     forget(&SomeStruct);
    |            argument has type `&SomeStruct`
    |
 note: the lint level is defined here
-  --> $DIR/forgetting_references.rs:3:9
+  --> $DIR/forgetting_references-can-fixed.rs:4:9
    |
-LL | #![warn(forgetting_references)]
+LL | #![deny(forgetting_references)]
    |         ^^^^^^^^^^^^^^^^^^^^^
 help: use `let _ = ...` to ignore the expression or result
    |
@@ -17,8 +17,8 @@ LL -     forget(&SomeStruct);
 LL +     let _ = &SomeStruct;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:13:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:14:5
    |
 LL |     forget(&owned);
    |     ^^^^^^^------^
@@ -31,8 +31,8 @@ LL -     forget(&owned);
 LL +     let _ = &owned;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:14:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:15:5
    |
 LL |     forget(&&owned);
    |     ^^^^^^^-------^
@@ -45,8 +45,8 @@ LL -     forget(&&owned);
 LL +     let _ = &&owned;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:15:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:16:5
    |
 LL |     forget(&mut owned);
    |     ^^^^^^^----------^
@@ -59,8 +59,8 @@ LL -     forget(&mut owned);
 LL +     let _ = &mut owned;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:19:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:20:5
    |
 LL |     forget(&*reference1);
    |     ^^^^^^^------------^
@@ -73,8 +73,8 @@ LL -     forget(&*reference1);
 LL +     let _ = &*reference1;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:22:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:23:5
    |
 LL |     forget(reference2);
    |     ^^^^^^^----------^
@@ -87,8 +87,8 @@ LL -     forget(reference2);
 LL +     let _ = reference2;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:25:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:26:5
    |
 LL |     forget(reference3);
    |     ^^^^^^^----------^
@@ -101,38 +101,8 @@ LL -     forget(reference3);
 LL +     let _ = reference3;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:31:14
-   |
-LL |         1 => forget(&*reference1),
-   |              ^^^^^^^------------^
-   |                     |
-   |                     argument has type `&SomeStruct`
-   |
-   = note: use `let _ = ...` to ignore the expression or result
-
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:32:14
-   |
-LL |         2 => forget(reference3),
-   |              ^^^^^^^----------^
-   |                     |
-   |                     argument has type `&SomeStruct`
-   |
-   = note: use `let _ = ...` to ignore the expression or result
-
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:33:14
-   |
-LL |         3 => forget(reference4),
-   |              ^^^^^^^----------^
-   |                     |
-   |                     argument has type `&SomeStruct`
-   |
-   = note: use `let _ = ...` to ignore the expression or result
-
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:40:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:31:5
    |
 LL |     forget(&val);
    |     ^^^^^^^----^
@@ -145,8 +115,8 @@ LL -     forget(&val);
 LL +     let _ = &val;
    |
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
-  --> $DIR/forgetting_references.rs:48:5
+error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+  --> $DIR/forgetting_references-can-fixed.rs:39:5
    |
 LL |     std::mem::forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^-----------^
@@ -159,5 +129,5 @@ LL -     std::mem::forget(&SomeStruct);
 LL +     let _ = &SomeStruct;
    |
 
-warning: 12 warnings emitted
+error: aborting due to 9 previous errors
 

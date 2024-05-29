@@ -232,12 +232,9 @@ lint_drop_trait_constraints =
 
 lint_dropping_copy_types = calls to `std::mem::drop` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`
-    .note = use `let _ = ...` to ignore the expression or result
-    .suggestion = use `let _ = ...` to ignore the expression or result
 
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
-    .note = use `let _ = ...` to ignore the expression or result
 
 lint_duplicate_macro_attribute =
     duplicated attribute
@@ -272,10 +269,9 @@ lint_for_loops_over_fallibles =
 
 lint_forgetting_copy_types = calls to `std::mem::forget` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`
-    .note = use `let _ = ...` to ignore the expression or result
+
 lint_forgetting_references = calls to `std::mem::forget` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
-    .note = use `let _ = ...` to ignore the expression or result
 
 lint_hidden_glob_reexport = private item shadows public glob re-export
     .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here
@@ -893,6 +889,8 @@ lint_unused_op = unused {$op} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_unused_result = unused result of type `{$ty}`
+
+lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
