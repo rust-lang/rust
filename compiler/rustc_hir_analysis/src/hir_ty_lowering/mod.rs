@@ -89,8 +89,8 @@ pub enum PredicateFilter {
 pub trait HirTyLowerer<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
-    /// Returns the [`DefId`] of the overarching item whose constituents get lowered.
-    fn item_def_id(&self) -> DefId;
+    /// Returns the [`LocalDefId`] of the overarching item whose constituents get lowered.
+    fn item_def_id(&self) -> LocalDefId;
 
     /// Returns `true` if the current context allows the use of inference variables.
     fn allow_infer(&self) -> bool;
@@ -1493,16 +1493,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let def_id = self.item_def_id();
             debug!(item_def_id = ?def_id);
 
-            let parent_def_id = def_id
-                .as_local()
-                .map(|def_id| tcx.local_def_id_to_hir_id(def_id))
-                .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
+            // FIXME: document why/how this is different from `tcx.local_parent(def_id)`
+            let parent_def_id =
+                tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
             debug!(?parent_def_id);
 
             // If the trait in segment is the same as the trait defining the item,
             // use the `<Self as ..>` syntax in the error.
-            let is_part_of_self_trait_constraints = def_id == trait_def_id;
-            let is_part_of_fn_in_self_trait = parent_def_id == Some(trait_def_id);
+            let is_part_of_self_trait_constraints = def_id.to_def_id() == trait_def_id;
+            let is_part_of_fn_in_self_trait = parent_def_id == trait_def_id;
 
             let type_names = if is_part_of_self_trait_constraints || is_part_of_fn_in_self_trait {
                 vec!["Self".to_string()]
@@ -1983,7 +1982,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         let sig_generics = self.tcx().generics_of(sig_id);
-        let parent = self.tcx().parent(self.item_def_id());
+        let parent = self.tcx().local_parent(self.item_def_id());
         let parent_generics = self.tcx().generics_of(parent);
 
         let parent_is_trait = (self.tcx().def_kind(parent) == DefKind::Trait) as usize;
@@ -2022,7 +2021,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let sig = self.tcx().fn_sig(sig_id);
         let sig_generics = self.tcx().generics_of(sig_id);
 
-        let parent = self.tcx().parent(self.item_def_id());
+        let parent = self.tcx().local_parent(self.item_def_id());
         let parent_def_kind = self.tcx().def_kind(parent);
 
         let sig = if let DefKind::Impl { .. } = parent_def_kind

@@ -218,8 +218,8 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> DefId {
-        self.body_id.to_def_id()
+    fn item_def_id(&self) -> LocalDefId {
+        self.body_id
     }
 
     fn allow_infer(&self) -> bool {
