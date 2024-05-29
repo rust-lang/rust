@@ -26,7 +26,7 @@ fn main() {
         "{:?} < {:?} = {}",
         version_3_2_1,
         version_3_3_0,
-        version_3_2_1 < version_3_3_0
+        version_3_2_1 < version_3_3_0, //
     );
 }
 

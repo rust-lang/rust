@@ -31,28 +31,28 @@ pub fn used_inline_function() {
 
 #[inline(always)]
 pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
-    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
+    println!("used_only_from_bin_crate_generic_function with {arg:?}");
 }
 // Expect for above function: `Unexecuted instantiation` (see notes in `used_crate.rs`)
 
 #[inline(always)]
 pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
-    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
+    println!("used_only_from_this_lib_crate_generic_function with {arg:?}");
 }
 
 #[inline(always)]
 pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
-    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+    println!("used_from_bin_crate_and_lib_crate_generic_function with {arg:?}");
 }
 
 #[inline(always)]
 pub fn used_with_same_type_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
-    println!("used_with_same_type_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+    println!("used_with_same_type_from_bin_crate_and_lib_crate_generic_function with {arg:?}");
 }
 
 #[inline(always)]
 pub fn unused_generic_function<T: Debug>(arg: T) {
-    println!("unused_generic_function with {:?}", arg);
+    println!("unused_generic_function with {arg:?}");
 }
 
 #[inline(always)]
