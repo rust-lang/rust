@@ -21,7 +21,6 @@ run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
 run-make/compressed-debuginfo/Makefile
-run-make/const-prop-lint/Makefile
 run-make/const_fn_mir/Makefile
 run-make/crate-data-smoke/Makefile
 run-make/crate-hash-rustc-version/Makefile
