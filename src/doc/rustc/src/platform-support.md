@@ -88,7 +88,7 @@ target | notes
 -------|-------
 [`aarch64-apple-darwin`](platform-support/apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
 `aarch64-pc-windows-msvc` | ARM64 Windows MSVC
-`aarch64-unknown-linux-musl` | ARM64 Linux with musl 1.2.3
+`aarch64-unknown-linux-musl` | ARM64 Linux with musl 1.2.5
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | Armv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
 `armv7-unknown-linux-gnueabihf` | Armv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
@@ -101,7 +101,7 @@ target | notes
 `s390x-unknown-linux-gnu` | S390x Linux (kernel 3.2, glibc 2.17)
 `x86_64-unknown-freebsd` | 64-bit FreeBSD
 `x86_64-unknown-illumos` | illumos
-`x86_64-unknown-linux-musl` | 64-bit Linux with musl 1.2.3
+`x86_64-unknown-linux-musl` | 64-bit Linux with musl 1.2.5
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
 
 ## Tier 2 without Host Tools
@@ -145,28 +145,28 @@ target | std | notes
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | ARM64 UEFI
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | Armv6 Android
-`arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.3
-`arm-unknown-linux-musleabihf` | ✓ | Armv6 Linux with musl 1.2.3, hardfloat
+`arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.5
+`arm-unknown-linux-musleabihf` | ✓ | Armv6 Linux with musl 1.2.5, hardfloat
 [`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ✓ | Arm64EC Windows MSVC
 [`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
 [`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | Armv5TE Linux (kernel 4.4, glibc 2.23)
-`armv5te-unknown-linux-musleabi` | ✓ | Armv5TE Linux with musl 1.2.3
+`armv5te-unknown-linux-musleabi` | ✓ | Armv5TE Linux with musl 1.2.5
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | Armv7-A Android
 `armv7-unknown-linux-gnueabi` | ✓ | Armv7-A Linux (kernel 4.15, glibc 2.27)
-`armv7-unknown-linux-musleabi` | ✓ | Armv7-A Linux with musl 1.2.3
-`armv7-unknown-linux-musleabihf` | ✓ | Armv7-A Linux with musl 1.2.3, hardfloat
+`armv7-unknown-linux-musleabi` | ✓ | Armv7-A Linux with musl 1.2.5
+`armv7-unknown-linux-musleabihf` | ✓ | Armv7-A Linux with musl 1.2.5, hardfloat
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | Armv7-A OpenHarmony
 [`armv7a-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare Armv7-A
 [`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, hardfloat
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE [^x86_32-floats-x87]
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^x86_32-floats-x87]
-`i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, musl 1.2.3 [^x86_32-floats-x87]
+`i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, musl 1.2.5 [^x86_32-floats-x87]
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android [^x86_32-floats-return-ABI]
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | 32-bit x86 MinGW (Windows 10+), LLVM ABI [^x86_32-floats-return-ABI]
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD [^x86_32-floats-return-ABI]
-`i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.3 [^x86_32-floats-return-ABI]
+`i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.5 [^x86_32-floats-return-ABI]
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 32-bit UEFI
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * | LoongArch64 Bare-metal (LP64S ABI)
@@ -294,7 +294,7 @@ target | std | host | notes
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 [`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * | | Bare Hexagon (v60+, HVX)
-[`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ | | Hexagon Linux with musl 1.2.3
+[`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ | | Hexagon Linux with musl 1.2.5
 [`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS [^x86_32-floats-return-ABI]
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS  [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86, restricted to Pentium
@@ -310,15 +310,15 @@ target | std | host | notes
 `i686-wrs-vxworks` | ? |  | [^x86_32-floats-return-ABI]
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
-`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.3
+`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5
 `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
-[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.3
+[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5
 `mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23)
-`mips64-unknown-linux-muslabi64` | ✓ |  | MIPS64 Linux, N64 ABI, musl 1.2.3
+`mips64-unknown-linux-muslabi64` | ✓ |  | MIPS64 Linux, N64 ABI, musl 1.2.5
 `mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23)
-`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.3
+`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5
 `mipsel-unknown-linux-gnu` | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23)
-`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.3
+`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5
 [`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
 [`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
@@ -330,7 +330,7 @@ target | std | host | notes
 [`mipsisa64r6el-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ✓ | ✓ | 64-bit MIPS Release 6 Little Endian
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
-`powerpc-unknown-linux-musl` | ? |  | PowerPC Linux with musl 1.2.3
+`powerpc-unknown-linux-musl` | ? |  | PowerPC Linux with musl 1.2.5
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
 [`powerpc-unknown-openbsd`](platform-support/powerpc-unknown-openbsd.md) | * |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
@@ -338,13 +338,13 @@ target | std | host | notes
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
 `powerpc64le-unknown-freebsd` |   |   | PPC64LE FreeBSD
 `powerpc-unknown-freebsd` |   |   | PowerPC FreeBSD
-`powerpc64-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.3
+`powerpc64-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.5
 `powerpc64-wrs-vxworks` | ? |  |
-`powerpc64le-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.3, Little Endian
+`powerpc64le-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.5, Little Endian
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
-`riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl 1.2.3 + RISCV32 support patches)
+`riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl 1.2.5 + RISCV32 support patches)
 [`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32ima-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMA ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
@@ -354,11 +354,11 @@ target | std | host | notes
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |   | RISC-V Hermit
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` |   |   | RISC-V Fuchsia
-`riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.3)
+`riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.5)
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 [`riscv64-linux-android`](platform-support/android.md) |   |   | RISC-V 64-bit Android
-`s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, musl 1.2.3)
+`s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, musl 1.2.5)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * |  | Bare 32-bit SPARC V7+
 [`sparc64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/sparc64
@@ -367,14 +367,14 @@ target | std | host | notes
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
 `thumbv7a-pc-windows-msvc` | ✓ |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
-`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.3
+`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.5
 [`wasm32-wasip2`](platform-support/wasm32-wasip2.md) | ✓ |  | WebAssembly
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
-[`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl 1.2.3
+[`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl 1.2.5
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
