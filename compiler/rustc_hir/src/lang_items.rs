@@ -228,13 +228,18 @@ language_item_table! {
     AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
-    AsyncFnKindHelper,       sym::async_fn_kind_helper,async_fn_kind_helper,       Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnOnceOutput,       sym::async_fn_once_output, async_fn_once_output,       Target::AssocTy,        GenericRequirement::Exact(1);
+    CallOnceFuture,          sym::call_once_future,    call_once_future,           Target::AssocTy,        GenericRequirement::Exact(1);
+    CallRefFuture,           sym::call_ref_future,     call_ref_future,            Target::AssocTy,        GenericRequirement::Exact(2);
+    AsyncFnKindHelper,       sym::async_fn_kind_helper, async_fn_kind_helper,      Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnKindUpvars,       sym::async_fn_kind_upvars, async_fn_kind_upvars,      Target::AssocTy,          GenericRequirement::Exact(5);
 
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Iterator,                sym::iterator,            iterator_trait,             Target::Trait,          GenericRequirement::Exact(0);
     FusedIterator,           sym::fused_iterator,      fused_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
+    FutureOutput,            sym::future_output,       future_output,              Target::AssocTy,        GenericRequirement::Exact(0);
     AsyncIterator,           sym::async_iterator,      async_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
 
     CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
