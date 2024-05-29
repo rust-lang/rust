@@ -91,6 +91,7 @@ mod normalize_array_len;
 mod nrvo;
 mod prettify;
 mod promote_consts;
+mod promote_consts_local_arrays;
 mod ref_prop;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
@@ -342,14 +343,22 @@ fn mir_promoted(
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
+    let promote_array = promote_consts_local_arrays::PromoteArraysOpt::default();
     pm::run_passes(
         tcx,
         &mut body,
-        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
+        &[
+            &promote_pass,
+            &promote_array,
+            &simplify::SimplifyCfg::PromoteConsts,
+            &coverage::InstrumentCoverage,
+        ],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
-    let promoted = promote_pass.promoted_fragments.into_inner();
+    let mut promoted = promote_pass.promoted_fragments.into_inner();
+    let array_promoted = promote_array.promoted_fragments.into_inner();
+    promoted.extend(array_promoted);
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
