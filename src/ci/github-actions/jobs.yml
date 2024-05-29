@@ -91,6 +91,9 @@ pr:
     <<: *job-linux-16c
   - image: x86_64-gnu-tools
     <<: *job-linux-16c
+  # TODO: This is temporary and for testing https://github.com/rust-lang/rust/pull/125669
+  - image: riscv64gc-gnu
+    <<: *job-linux-4c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
