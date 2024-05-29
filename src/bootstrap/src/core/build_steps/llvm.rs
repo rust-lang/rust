@@ -378,6 +378,7 @@ impl Step for Llvm {
         if !target.is_windows() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
             cfg.define("LLVM_ENABLE_ZSTD", "ON");
+            cfg.define("LLVM_USE_STATIC_ZSTD", "TRUE");
         } else {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
             cfg.define("LLVM_ENABLE_ZSTD", "OFF");
