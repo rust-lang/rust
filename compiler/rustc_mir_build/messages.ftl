@@ -99,6 +99,8 @@ mir_build_deref_raw_pointer_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_exceeds_mcdc_condition_num_limit =  Conditions number of the decision ({$conditions_num}) exceeds limit ({$max_conditions_num}). MCDC analysis will not count this expression.
 
+mir_build_exceeds_mcdc_decision_depth = Number of decisions evaluated simultaneously exceeds limit ({$max_decision_depth}). MCDC analysis will not count this decision.
+
 mir_build_extern_static_requires_unsafe =
     use of extern static is unsafe and requires unsafe block
     .note = extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior

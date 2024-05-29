@@ -320,9 +320,18 @@ pub struct MCDCBranchSpan {
     /// If `None`, this actually represents a normal branch span inserted for
     /// code that was too complex for MC/DC.
     pub condition_info: Option<ConditionInfo>,
-    pub true_marker: BlockMarkerId,
-    pub false_marker: BlockMarkerId,
+    pub markers: MCDCBranchMarkers,
     pub decision_depth: u16,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum MCDCBranchMarkers {
+    /// The first indicates true branch, the second indicates the false branch.
+    Boolean(BlockMarkerId, BlockMarkerId),
+    /// The first indicates blocks where the pattern is tested, the second indicates
+    /// the blocks where going to if the pattern was matched.
+    PatternMatching(Vec<BlockMarkerId>, Vec<BlockMarkerId>),
 }
 
 #[derive(Copy, Clone, Debug)]

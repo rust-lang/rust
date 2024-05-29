@@ -2,7 +2,7 @@
 //@ edition: 2021
 //@ min-llvm-version: 18
 //@ compile-flags: -Zcoverage-options=mcdc
-//@ llvm-cov-flags: --show-mcdc
+//@ llvm-cov-flags: --show-branches=count --show-mcdc
 
 fn nested_if_in_condition(a: bool, b: bool, c: bool) {
     if a && if b || c { true } else { false } {

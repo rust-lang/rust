@@ -537,8 +537,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: Place<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'_, 'tcx>,
-        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
-    ) -> Option<TestBranch<'tcx>> {
+        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<(&mut Candidate<'_, 'tcx>, Span)>>,
+    ) -> Option<(TestBranch<'tcx>, Span)> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
@@ -585,10 +585,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .iter()
                         .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
                 };
-                if sorted_candidates
-                    .get(&TestBranch::Failure)
-                    .is_some_and(|candidates| candidates.iter().any(is_conflicting_candidate))
-                {
+                if sorted_candidates.get(&TestBranch::Failure).is_some_and(|candidates| {
+                    candidates.iter().map(|(candidate, _)| candidate).any(is_conflicting_candidate)
+                }) {
                     fully_matched = false;
                     None
                 } else {
@@ -748,6 +747,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         };
 
+        let matched_span = match_pair.pattern.span;
         if fully_matched {
             // Replace the match pair by its sub-pairs.
             let match_pair = candidate.match_pairs.remove(match_pair_index);
@@ -756,7 +756,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidate.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
         }
 
-        ret
+        ret.map(|branch| (branch, matched_span))
     }
 }
 

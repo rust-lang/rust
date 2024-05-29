@@ -3,7 +3,9 @@ use std::collections::BTreeSet;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind};
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind, MCDCBranchMarkers,
+};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_span::Span;
 
@@ -34,12 +36,17 @@ pub(super) struct BranchPair {
 #[derive(Debug)]
 pub(super) struct MCDCBranch {
     pub(super) span: Span,
-    pub(super) true_bcb: BasicCoverageBlock,
-    pub(super) false_bcb: BasicCoverageBlock,
+    pub(super) branch_bcbs: MCDCBranchBlocks,
     /// If `None`, this actually represents a normal branch mapping inserted
     /// for code that was too complex for MC/DC.
     pub(super) condition_info: Option<ConditionInfo>,
     pub(super) decision_depth: u16,
+}
+
+#[derive(Debug)]
+pub(super) enum MCDCBranchBlocks {
+    Boolean(BasicCoverageBlock, BasicCoverageBlock),
+    PatternMatching(Vec<BasicCoverageBlock>, Vec<BasicCoverageBlock>),
 }
 
 /// Associates an MC/DC decision with its join BCBs.
@@ -135,9 +142,20 @@ impl ExtractedMappings {
             insert(true_bcb);
             insert(false_bcb);
         }
-        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_branches {
-            insert(true_bcb);
-            insert(false_bcb);
+        for MCDCBranch { branch_bcbs, .. } in mcdc_branches {
+            match branch_bcbs {
+                MCDCBranchBlocks::Boolean(true_bcb, false_bcb) => {
+                    insert(*true_bcb);
+                    insert(*false_bcb);
+                }
+                MCDCBranchBlocks::PatternMatching(test_bcbs, true_bcbs) => {
+                    test_bcbs
+                        .into_iter()
+                        .chain(true_bcbs.into_iter())
+                        .copied()
+                        .for_each(&mut insert);
+                }
+            }
         }
 
         // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
@@ -226,31 +244,48 @@ pub(super) fn extract_mcdc_mappings(
     let bcb_from_marker =
         |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
 
-    let check_branch_bcb =
-        |raw_span: Span, true_marker: BlockMarkerId, false_marker: BlockMarkerId| {
-            // For now, ignore any branch span that was introduced by
-            // expansion. This makes things like assert macros less noisy.
-            if !raw_span.ctxt().outer_expn_data().is_root() {
-                return None;
-            }
-            let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
+    let check_branch_bcb = |raw_span: Span,
+                            first_markers: &[BlockMarkerId],
+                            second_markers: &[BlockMarkerId]| {
+        // For now, ignore any branch span that was introduced by
+        // expansion. This makes things like assert macros less noisy.
+        if !raw_span.ctxt().outer_expn_data().is_root() {
+            return None;
+        }
+        let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
 
-            let true_bcb = bcb_from_marker(true_marker)?;
-            let false_bcb = bcb_from_marker(false_marker)?;
-            Some((span, true_bcb, false_bcb))
-        };
+        let test_bcbs =
+            first_markers.into_iter().copied().map(&bcb_from_marker).collect::<Option<Vec<_>>>()?;
+        let true_bcbs = second_markers
+            .into_iter()
+            .copied()
+            .map(&bcb_from_marker)
+            .collect::<Option<Vec<_>>>()?;
+
+        Some((span, test_bcbs, true_bcbs))
+    };
 
     mcdc_branches.extend(branch_info.mcdc_branch_spans.iter().filter_map(
         |&mir::coverage::MCDCBranchSpan {
              span: raw_span,
              condition_info,
-             true_marker,
-             false_marker,
+             ref markers,
              decision_depth,
          }| {
-            let (span, true_bcb, false_bcb) =
-                check_branch_bcb(raw_span, true_marker, false_marker)?;
-            Some(MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth })
+            let (span, branch_bcbs) = match markers {
+                MCDCBranchMarkers::Boolean(true_marker, false_marker) => {
+                    let (span, true_bcb, false_bcb) =
+                        check_branch_bcb(raw_span, &[*true_marker], &[*false_marker])?;
+                    (span, MCDCBranchBlocks::Boolean(true_bcb[0], false_bcb[0]))
+                }
+                MCDCBranchMarkers::PatternMatching(test_markers, true_markers) => {
+                    let (span, test_bcbs, true_bcbs) =
+                        check_branch_bcb(raw_span, test_markers, true_markers)?;
+                    (span, MCDCBranchBlocks::PatternMatching(test_bcbs, true_bcbs))
+                }
+            };
+
+            Some(MCDCBranch { span, branch_bcbs, condition_info, decision_depth })
         },
     ));
 

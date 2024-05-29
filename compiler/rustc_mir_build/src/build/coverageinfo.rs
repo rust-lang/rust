@@ -181,12 +181,11 @@ impl<'tcx> Builder<'_, 'tcx> {
 
         // Separate path for handling branches when MC/DC is enabled.
         if let Some(mcdc_info) = branch_info.mcdc_info.as_mut() {
-            let inject_block_marker = |source_info, block| {
-                branch_info.markers.inject_block_marker(&mut self.cfg, source_info, block)
-            };
+            let inject_block_marker =
+                |block| branch_info.markers.inject_block_marker(&mut self.cfg, source_info, block);
             mcdc_info.visit_evaluated_condition(
                 self.tcx,
-                source_info,
+                source_info.span,
                 then_block,
                 else_block,
                 inject_block_marker,
@@ -210,9 +209,22 @@ impl<'tcx> Builder<'_, 'tcx> {
         // Bail out if branch coverage is not enabled for this function.
         let Some(branch_info) = self.coverage_branch_info.as_mut() else { return };
 
-        // FIXME(#124144) This may need special handling when MC/DC is enabled.
-
         let source_info = SourceInfo { span: pattern.span, scope: self.source_scope };
+
+        if let Some(mcdc_info) = branch_info.mcdc_info.as_mut() {
+            let inject_block_marker =
+                |block| branch_info.markers.inject_block_marker(&mut self.cfg, source_info, block);
+
+            mcdc_info.visit_evaluated_condition(
+                self.tcx,
+                pattern.span,
+                true_block,
+                false_block,
+                inject_block_marker,
+            );
+            return;
+        }
+
         branch_info.add_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
     }
 }

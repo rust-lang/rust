@@ -174,6 +174,30 @@ impl CoverageGraph {
         // can't have a separate counter anyway.)
         self.predecessors[bcb].len() > 1
     }
+
+    pub(super) fn insert_bcb_in_edge(
+        &mut self,
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+        bb: BasicBlock,
+    ) -> BasicCoverageBlock {
+        let (Some(predecessor_idx), Some(successor_idx)) = (
+            self.predecessors[to_bcb].iter().position(|&predecessor| predecessor == from_bcb),
+            self.successors[from_bcb].iter().position(|&successor| successor == to_bcb),
+        ) else {
+            bug!("the edge does not exist");
+        };
+        self.predecessors[to_bcb].swap_remove(predecessor_idx);
+        self.successors[from_bcb].swap_remove(successor_idx);
+
+        let new_bcb = self.bcbs.push(BasicCoverageBlockData::from(vec![bb]));
+        assert_eq!(self.predecessors.push(vec![from_bcb]), new_bcb);
+        self.successors[from_bcb].push(new_bcb);
+        assert_eq!(self.successors.push(vec![to_bcb]), new_bcb);
+        self.predecessors[to_bcb].push(new_bcb);
+
+        new_bcb
+    }
 }
 
 impl Index<BasicCoverageBlock> for CoverageGraph {

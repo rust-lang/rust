@@ -405,11 +405,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // unreachable.
         let otherwise_block = self.cfg.start_new_block();
 
+        // One candidate means the pattern is irrefutable, thus it never fails and no need to instrument mcdc.
+        let instrument_mcdc = candidates.len() > 1 && self.tcx.sess.instrument_coverage_mcdc();
+        if instrument_mcdc {
+            self.mcdc_create_pattern_matching_decision();
+        }
         // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
         self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
 
         let source_info = self.source_info(scrutinee_span);
+
+        if instrument_mcdc {
+            self.mcdc_finish_pattern_matching_decision(
+                block,
+                candidates.iter().map(|candidate| candidate.extra_data.span),
+            );
+        }
 
         // Matching on a `scrutinee_place` with an uninhabited type doesn't
         // generate any memory reads by itself, and so if the place "expression"
@@ -504,6 +516,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         opt_scrutinee_place,
                     );
 
+                    let candidate_span = candidate.extra_data.span;
+
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         candidate,
@@ -512,6 +526,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((arm, match_scope)),
                         false,
                     );
+
+                    this.mcdc_visit_decision_ends(candidate_span, [arm_block]);
 
                     this.fixed_temps_scope = old_dedup_scope;
 
@@ -1768,11 +1784,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
     ) -> (
         &'b mut [&'c mut Candidate<'pat, 'tcx>],
-        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
+        FxIndexMap<TestBranch<'tcx>, Vec<(&'b mut Candidate<'pat, 'tcx>, Span)>>,
     ) {
         // For each of the possible outcomes, collect vector of candidates that apply if the test
         // has that particular outcome.
-        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
+        let mut target_candidates: FxIndexMap<_, Vec<(&mut Candidate<'_, '_>, Span)>> =
+            Default::default();
 
         let total_candidate_count = candidates.len();
 
@@ -1780,13 +1797,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // point we may encounter a candidate where the test is not relevant; at that point, we stop
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
-            let Some(branch) =
+            let Some((branch, matched_span)) =
                 self.sort_candidate(match_place, test, candidate, &target_candidates)
             else {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();
-            target_candidates.entry(branch).or_insert_with(Vec::new).push(candidate);
+            target_candidates
+                .entry(branch)
+                .or_insert_with(Vec::new)
+                .push((candidate, matched_span));
             candidates = rest;
         }
 
@@ -1906,6 +1926,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate and build a test from it.
         let (match_place, test) = self.pick_test(candidates);
 
+        // Patterns like `Some(A) | Some(B)` need spans for their target branches separately.
+        // Keep it in original order so that our condition id assignment can be more intuitive.
+        let mut mcdc_coverage_targets: Option<Vec<_>> =
+            self.tcx.sess.instrument_coverage_mcdc().then(Vec::new);
+
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome.
         let (remaining_candidates, target_candidates) =
@@ -1930,8 +1955,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // For each outcome of test, process the candidates that still apply.
         let target_blocks: FxIndexMap<_, _> = target_candidates
             .into_iter()
-            .map(|(branch, mut candidates)| {
+            .map(|(branch, candidates)| {
                 let candidate_start = self.cfg.start_new_block();
+                let (mut candidates, coverage_matched_spans): (Vec<_>, Vec<_>) =
+                    candidates.into_iter().unzip();
+                if let Some(coverage_targets) = mcdc_coverage_targets.as_mut() {
+                    coverage_targets.push((candidate_start, coverage_matched_spans));
+                }
                 self.match_candidates(
                     span,
                     scrutinee_span,
@@ -1942,6 +1972,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 (branch, candidate_start)
             })
             .collect();
+
+        if let Some(coverage_targets) = mcdc_coverage_targets.take() {
+            self.visit_mcdc_pattern_matching_conditions(
+                start_block,
+                coverage_targets,
+                remainder_start,
+            );
+        }
 
         // Perform the test, branching to one of N blocks.
         self.perform_test(
@@ -2003,6 +2041,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             false,
         );
 
+        self.mcdc_visit_decision_ends(pat.span, [post_guard_block, otherwise_post_guard_block]);
         // If branch coverage is enabled, record this branch.
         self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_post_guard_block);
 
@@ -2499,6 +2538,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 true,
             );
 
+            this.mcdc_visit_decision_ends(pattern.span, [matching, failure]);
             // If branch coverage is enabled, record this branch.
             this.visit_coverage_conditional_let(pattern, matching, failure);
 
