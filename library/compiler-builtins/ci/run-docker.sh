@@ -76,7 +76,7 @@ if [ "${1:-}" = "--help" ] || [ "$#" -gt 1 ]; then
     usage: ./ci/run-docker.sh [target]
 
     you can also set DOCKER_BASE_IMAGE to use something other than the default
-    ubuntu:18.04 (or rustlang/rust:nightly).
+    ubuntu:24.04 (or rustlang/rust:nightly).
   "
   exit
 fi
