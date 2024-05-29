@@ -1,0 +1,41 @@
+error[E0603]: unit variant `Unit` is private
+  --> $DIR/non-exhaustive-variant-hint-issue-107165.rs:39:19
+   |
+LL |         Elibrary::Unit => (),
+   |                   ^^^^ private unit variant
+   |
+note: the unit variant `Unit` is defined here
+  --> $DIR/auxiliary/non_exhaustive_structs_and_variants_lib.rs:3:5
+   |
+LL |     #[non_exhaustive]
+   |     ----------------- cannot be constructed because it is `#[non_exhaustive]`
+LL |     Unit,
+   |     ^^^^
+help: consider using a struct pattern instead: `Unit { .. }`
+  --> $DIR/auxiliary/non_exhaustive_structs_and_variants_lib.rs:3:5
+   |
+LL |     Unit,
+   |     ^^^^
+
+error[E0603]: tuple variant `Tuple` is private
+  --> $DIR/non-exhaustive-variant-hint-issue-107165.rs:45:19
+   |
+LL |         Elibrary::Tuple(_) => (),
+   |                   ^^^^^ private tuple variant
+   |
+note: the tuple variant `Tuple` is defined here
+  --> $DIR/auxiliary/non_exhaustive_structs_and_variants_lib.rs:6:5
+   |
+LL |     #[non_exhaustive]
+   |     ----------------- cannot be constructed because it is `#[non_exhaustive]`
+LL |     Tuple(i64),
+   |     ^^^^^
+help: consider using a struct pattern instead: `Tuple { .. }`
+  --> $DIR/auxiliary/non_exhaustive_structs_and_variants_lib.rs:6:5
+   |
+LL |     Tuple(i64),
+   |     ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
