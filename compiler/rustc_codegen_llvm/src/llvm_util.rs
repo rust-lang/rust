@@ -1,6 +1,6 @@
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
+    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
     UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
@@ -614,6 +614,15 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         })
         .flatten();
     features.extend(feats);
+
+    // -Zfixed-x18
+    if sess.opts.unstable_opts.fixed_x18 {
+        if sess.target.arch != "aarch64" {
+            sess.dcx().emit_fatal(FixedX18InvalidArch { arch: &sess.target.arch });
+        } else {
+            features.push("+reserve-x18".into());
+        }
+    }
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.dcx().emit_err(TargetFeatureDisableOrEnable {
