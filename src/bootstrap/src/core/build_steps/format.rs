@@ -25,16 +25,19 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
     cmd.args(paths);
     let cmd_debug = format!("{cmd:?}");
     let mut cmd = cmd.spawn().expect("running rustfmt");
-    // Poor man's async: return a closure that'll wait for rustfmt's completion.
+    // Poor man's async: return a closure that might wait for rustfmt's completion (depending on
+    // the value of the `block` argument).
     move |block: bool| -> bool {
-        if !block {
+        let status = if !block {
             match cmd.try_wait() {
-                Ok(Some(_)) => {}
-                _ => return false,
+                Ok(Some(status)) => Ok(status),
+                Ok(None) => return false,
+                Err(err) => Err(err),
             }
-        }
-        let status = cmd.wait().unwrap();
-        if !status.success() {
+        } else {
+            cmd.wait()
+        };
+        if !status.unwrap().success() {
             eprintln!(
                 "fmt error: Running `{}` failed.\nIf you're running `tidy`, \
                 try again with `--bless`. Or, if you just want to format \
