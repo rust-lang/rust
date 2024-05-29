@@ -99,8 +99,6 @@ macro_rules! with_api {
                 fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
                 fn source_text($self: $S::Span) -> Option<String>;
-                fn save_span($self: $S::Span) -> usize;
-                fn recover_proc_macro_span(id: usize) -> $S::Span;
             },
             Symbol {
                 fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
