@@ -128,6 +128,8 @@ pub(crate) struct Options {
     pub(crate) enable_per_target_ignores: bool,
     /// Do not run doctests, compile them if should_test is active.
     pub(crate) no_run: bool,
+    /// What sources are being mapped.
+    pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -211,6 +213,7 @@ impl fmt::Debug for Options {
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
             .field("test_builder_wrappers", &self.test_builder_wrappers)
+            .field("remap-file-prefix", &self.remap_path_prefix)
             .field("nocapture", &self.nocapture)
             .field("scrape_examples_options", &self.scrape_examples_options)
             .field("unstable_features", &self.unstable_features)
@@ -371,6 +374,13 @@ impl Options {
 
         let codegen_options = CodegenOptions::build(early_dcx, matches);
         let unstable_opts = UnstableOptions::build(early_dcx, matches);
+
+        let remap_path_prefix = match parse_remap_path_prefix(&matches) {
+            Ok(prefix_mappings) => prefix_mappings,
+            Err(err) => {
+                early_dcx.early_fatal(err);
+            }
+        };
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
 
@@ -772,6 +782,7 @@ impl Options {
             run_check,
             no_run,
             test_builder_wrappers,
+            remap_path_prefix,
             nocapture,
             crate_name,
             output_format,
@@ -818,6 +829,21 @@ impl Options {
             .opt_path()
             .filter(|p| matches!(p.extension(), Some(e) if e == "md" || e == "markdown"))
     }
+}
+
+fn parse_remap_path_prefix(
+    matches: &getopts::Matches,
+) -> Result<Vec<(PathBuf, PathBuf)>, &'static str> {
+    matches
+        .opt_strs("remap-path-prefix")
+        .into_iter()
+        .map(|remap| {
+            remap
+                .rsplit_once('=')
+                .ok_or("--remap-path-prefix must contain '=' between FROM and TO")
+                .map(|(from, to)| (PathBuf::from(from), PathBuf::from(to)))
+        })
+        .collect()
 }
 
 /// Prints deprecation warnings for deprecated options
