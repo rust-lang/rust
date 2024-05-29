@@ -450,7 +450,7 @@ mod mut_ptr;
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
-/// This is semantically equivalent to calling [`ptr::read`] and discarding
+/// This is almost the same as calling [`ptr::read`] and discarding
 /// the result, but has the following advantages:
 ///
 /// * It is *required* to use `drop_in_place` to drop unsized types like
