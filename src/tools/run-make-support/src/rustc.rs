@@ -211,7 +211,7 @@ impl Rustc {
 
     /// Get the [`Output`] of the finished process.
     #[track_caller]
-    pub fn command_output(&mut self) -> ::std::process::Output {
+    pub fn command_output(&mut self) -> Output {
         // let's make sure we piped all the input and outputs
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
