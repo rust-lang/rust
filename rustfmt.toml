@@ -17,7 +17,7 @@ ignore = [
     "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
     "/tests/crashes/",                # Many tests contain syntax errors.
     "/tests/debuginfo/",              # Tests are somewhat sensitive to source code layout.
-    "/tests/incremental/",
+    "/tests/incremental/",            # Tests are somewhat sensitive to source code layout.
     "/tests/mir-opt/",
     "/tests/pretty/",
     "/tests/run-make/translation/test.rs", # Contains syntax errors.
