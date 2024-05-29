@@ -973,7 +973,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn reverse(&mut self) {
+    pub fn reverse(&mut self) -> &mut [T] {
         let half_len = self.len() / 2;
         let Range { start, end } = self.as_mut_ptr_range();
 
@@ -1012,6 +1012,8 @@ impl<T> [T] {
                 i += 1;
             }
         }
+
+        self
     }
 
     /// Returns an iterator over the slice.
