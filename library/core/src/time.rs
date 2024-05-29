@@ -223,6 +223,67 @@ impl Duration {
         }
     }
 
+    /// Creates a new `Duration` from the specified number of whole seconds and
+    /// additional nanoseconds.
+    ///
+    /// If the number of nanoseconds is greater than 1 billion (the number of
+    /// nanoseconds in a second), then it will carry over into the seconds provided.
+    ///
+    /// Returns `None` if the carry from the nanoseconds overflows the seconds
+    /// counter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_new_checked)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new_checked(5, 0), Some(Duration::new(5, 0)));
+    /// assert_eq!(Duration::new_checked(u64::MAX, u32::MAX), None);
+    /// ```
+    #[unstable(feature = "duration_new_checked", issue = "125748")]
+    #[inline]
+    #[must_use]
+    pub const fn new_checked(secs: u64, nanos: u32) -> Option<Duration> {
+        if nanos < NANOS_PER_SEC {
+            // SAFETY: nanos < NANOS_PER_SEC, therefore nanos is within the valid range
+            Some(Duration { secs, nanos: unsafe { Nanoseconds(nanos) } })
+        } else {
+            let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
+                Some(secs) => secs,
+                None => return None,
+            };
+            let nanos = nanos % NANOS_PER_SEC;
+            // SAFETY: nanos % NANOS_PER_SEC < NANOS_PER_SEC, therefore nanos is within the valid range
+            Some(Duration { secs, nanos: unsafe { Nanoseconds(nanos) } })
+        }
+    }
+
+    /// Creates a new `Duration` from the specified number of whole seconds and
+    /// sub-second nanoseconds.
+    ///
+    /// # Safety
+    ///
+    /// The value of `subsec_nanos` must be less than 1 billion (the number of
+    /// nanoseconds in a second).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_new_checked)]
+    /// use std::time::Duration;
+    ///
+    /// let five_seconds = unsafe { Duration::new_unchecked(5, 0) };
+    /// ```
+    #[unstable(feature = "duration_new_checked", issue = "125748")]
+    #[inline]
+    #[must_use]
+    pub const unsafe fn new_unchecked(secs: u64, subsec_nanos: u32) -> Duration {
+        // SAFETY: The safety requirements of `new_unchecked()` require that
+        // subsec_nanos < NANOS_PER_SEC.
+        Duration { secs, nanos: unsafe { Nanoseconds(subsec_nanos) } }
+    }
+
     /// Creates a new `Duration` from the specified number of whole seconds.
     ///
     /// # Examples
