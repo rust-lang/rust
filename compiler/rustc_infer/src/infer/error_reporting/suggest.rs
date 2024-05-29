@@ -578,10 +578,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     walk_stmt(self, ex)
                 }
             }
-
-            fn visit_body(&mut self, body: &'v hir::Body<'v>) -> Self::Result {
-                hir::intravisit::walk_body(self, body)
-            }
         }
 
         self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body_id| {

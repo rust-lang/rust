@@ -4748,7 +4748,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
         }
     }
 
-    fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+    fn visit_body(&mut self, body: &hir::Body<'v>) {
         assert!(!self.in_block_tail);
         self.in_block_tail = true;
         hir::intravisit::walk_body(self, body);

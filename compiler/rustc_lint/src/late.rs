@@ -125,7 +125,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         });
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         lint_callback!(self, check_body, body);
         hir_visit::walk_body(self, body);
         lint_callback!(self, check_body_post, body);

@@ -1163,7 +1163,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
     /// For closures, we first visit the parameters and then the content,
     /// as we prefer those.
-    fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
+    fn visit_body(&mut self, body: &Body<'tcx>) {
         for param in body.params {
             debug!(
                 "param: span {:?}, ty_span {:?}, pat.span {:?}",

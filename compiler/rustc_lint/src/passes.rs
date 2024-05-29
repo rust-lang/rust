@@ -7,8 +7,8 @@ use rustc_session::lint::LintPass;
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
-            fn check_body(a: &'tcx rustc_hir::Body<'tcx>);
-            fn check_body_post(a: &'tcx rustc_hir::Body<'tcx>);
+            fn check_body(a: &rustc_hir::Body<'tcx>);
+            fn check_body_post(a: &rustc_hir::Body<'tcx>);
             fn check_crate();
             fn check_crate_post();
             fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_hir::HirId);

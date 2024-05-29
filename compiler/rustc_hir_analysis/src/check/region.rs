@@ -818,7 +818,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_block(self, b);
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         let body_id = body.id();
         let owner_id = self.tcx.hir().body_owner_def_id(body_id);
 

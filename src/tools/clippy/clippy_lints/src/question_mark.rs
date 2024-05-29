@@ -370,11 +370,11 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
+    fn check_body(&mut self, _: &LateContext<'tcx>, _: &Body<'tcx>) {
         self.try_block_depth_stack.push(0);
     }
 
-    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
+    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &Body<'tcx>) {
         self.try_block_depth_stack.pop();
     }
 
