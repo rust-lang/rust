@@ -6,7 +6,6 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::Parser;
@@ -16,7 +15,6 @@ use rustc_proc_macro::bridge::{
 };
 use rustc_proc_macro::{Delimiter, Level};
 use rustc_session::parse::ParseSess;
-use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 
@@ -432,8 +430,6 @@ pub(crate) struct Rustc<'a, 'b> {
     def_site: Span,
     call_site: Span,
     mixed_site: Span,
-    krate: CrateNum,
-    rebased_spans: FxHashMap<usize, Span>,
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
@@ -443,8 +439,6 @@ impl<'a, 'b> Rustc<'a, 'b> {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
             call_site: ecx.with_call_site_ctxt(expn_data.call_site),
             mixed_site: ecx.with_mixed_site_ctxt(expn_data.call_site),
-            krate: expn_data.macro_def_id.unwrap().krate,
-            rebased_spans: FxHashMap::default(),
             ecx,
         }
     }
@@ -787,43 +781,6 @@ impl server::Span for Rustc<'_, '_> {
 
     fn source_text(&mut self, span: Self::Span) -> Option<String> {
         self.psess().source_map().span_to_snippet(span).ok()
-    }
-
-    /// Saves the provided span into the metadata of
-    /// *the crate we are currently compiling*, which must
-    /// be a proc-macro crate. This id can be passed to
-    /// `recover_proc_macro_span` when our current crate
-    /// is *run* as a proc-macro.
-    ///
-    /// Let's suppose that we have two crates - `my_client`
-    /// and `my_proc_macro`. The `my_proc_macro` crate
-    /// contains a procedural macro `my_macro`, which
-    /// is implemented as: `quote! { "hello" }`
-    ///
-    /// When we *compile* `my_proc_macro`, we will execute
-    /// the `quote` proc-macro. This will save the span of
-    /// "hello" into the metadata of `my_proc_macro`. As a result,
-    /// the body of `my_proc_macro` (after expansion) will end
-    /// up containing a call that looks like this:
-    /// `proc_macro::Ident::new("hello", proc_macro::Span::recover_proc_macro_span(0))`
-    ///
-    /// where `0` is the id returned by this function.
-    /// When `my_proc_macro` *executes* (during the compilation of `my_client`),
-    /// the call to `recover_proc_macro_span` will load the corresponding
-    /// span from the metadata of `my_proc_macro` (which we have access to,
-    /// since we've loaded `my_proc_macro` from disk in order to execute it).
-    /// In this way, we have obtained a span pointing into `my_proc_macro`
-    fn save_span(&mut self, span: Self::Span) -> usize {
-        self.psess().save_proc_macro_span(span)
-    }
-
-    fn recover_proc_macro_span(&mut self, id: usize) -> Self::Span {
-        let (resolver, krate, def_site) = (&*self.ecx.resolver, self.krate, self.def_site);
-        *self.rebased_spans.entry(id).or_insert_with(|| {
-            // FIXME: `SyntaxContext` for spans from proc macro crates is lost during encoding,
-            // replace it with a def-site context until we are encoding it properly.
-            resolver.get_proc_macro_quoted_span(krate, id).with_ctxt(def_site.ctxt())
-        })
     }
 }
 

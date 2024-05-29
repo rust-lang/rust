@@ -19,7 +19,7 @@ use rustc_expand::expand::{
 };
 use rustc_expand::{MacroRulesMacroExpander, compile_declarative_macro};
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::BuiltinLintDiag;
@@ -478,10 +478,6 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         path: &ast::Path,
     ) -> Result<bool, Indeterminate> {
         self.path_accessible(expn_id, path, &[MacroNS])
-    }
-
-    fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
-        self.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.tcx.sess)
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
