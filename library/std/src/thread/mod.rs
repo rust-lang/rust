@@ -164,7 +164,6 @@ use crate::env;
 use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
-use crate::marker::PhantomData;
 use crate::mem::{self, forget};
 use crate::num::NonZero;
 use crate::panic;
@@ -459,7 +458,7 @@ impl Builder {
     unsafe fn spawn_unchecked_<'a, 'scope, F, T>(
         self,
         f: F,
-        scope_data: Option<Arc<scoped::ScopeData>>,
+        scope_data: Option<&'scope scoped::ScopeData>,
     ) -> io::Result<JoinInner<'scope, T>>
     where
         F: FnOnce() -> T,
@@ -494,11 +493,8 @@ impl Builder {
         });
         let their_thread = my_thread.clone();
 
-        let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
-            scope: scope_data,
-            result: UnsafeCell::new(None),
-            _marker: PhantomData,
-        });
+        let my_packet: Arc<Packet<'scope, T>> =
+            Arc::new(Packet { scope: scope_data, result: UnsafeCell::new(None) });
         let their_packet = my_packet.clone();
 
         let output_capture = crate::io::set_output_capture(None);
@@ -1535,9 +1531,8 @@ pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 // An Arc to the packet is stored into a `JoinInner` which in turns is placed
 // in `JoinHandle`.
 struct Packet<'scope, T> {
-    scope: Option<Arc<scoped::ScopeData>>,
+    scope: Option<&'scope scoped::ScopeData>,
     result: UnsafeCell<Option<Result<T>>>,
-    _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
 }
 
 // Due to the usage of `UnsafeCell` we need to manually implement Sync.
