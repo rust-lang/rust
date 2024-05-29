@@ -1397,6 +1397,9 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     diag.arg("macro_kind", macro_kind);
                     diag.note(fluent::lint_macro_to_change);
                 }
+                if let Some(cargo_update) = cargo_update {
+                    diag.subdiagnostic(&diag.dcx, cargo_update);
+                }
 
                 if has_trait {
                     diag.note(fluent::lint_bounds);
@@ -1423,9 +1426,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     );
                 }
 
-                if let Some(cargo_update) = cargo_update {
-                    diag.subdiagnostic(&diag.dcx, cargo_update);
-                }
                 if let Some(const_anon) = const_anon {
                     diag.note(fluent::lint_exception);
                     if let Some(const_anon) = const_anon {
