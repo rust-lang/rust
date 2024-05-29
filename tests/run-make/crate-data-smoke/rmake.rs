@@ -1,6 +1,6 @@
 use std::process::Output;
 
-use run_make_support::{bin_name, rust_lib, rustc};
+use run_make_support::{bin_name, rust_lib_name, rustc};
 
 fn compare_stdout<S: AsRef<str>>(output: Output, expected: S) {
     assert_eq!(
@@ -34,10 +34,10 @@ fn main() {
     );
     compare_stdout(
         rustc().print("file-names").input("lib.rs").run(),
-        rust_lib("mylib").file_name().unwrap().to_string_lossy(),
+        rust_lib_name("mylib"),
     );
     compare_stdout(
         rustc().print("file-names").input("rlib.rs").run(),
-        rust_lib("mylib").file_name().unwrap().to_string_lossy(),
+        rust_lib_name("mylib"),
     );
 }
