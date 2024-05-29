@@ -61,7 +61,7 @@ show you the MIR for your program. Try putting this program into play
 (or [clicking on this link][sample-play]), and then clicking the "MIR"
 button on the top:
 
-[sample-play]: https://play.rust-lang.org/?gist=30074856e62e74e91f06abd19bd72ece&version=stable
+[sample-play]: https://play.rust-lang.org/?gist=30074856e62e74e91f06abd19bd72ece&version=stable&edition=2021
 
 ```rust
 fn main() {
