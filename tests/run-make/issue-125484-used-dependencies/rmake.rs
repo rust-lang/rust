@@ -6,14 +6,12 @@
 // make compiletest annotations reproduce the ICE with the minimizations from issues #125474 and
 // #125484.
 
-extern crate run_make_support;
-
 use run_make_support::{rustc, tmp_dir};
 
 fn main() {
     // The dependency is not itself significant, apart from sharing a name with one of main's
     // modules.
-    rustc().crate_name("same").crate_type("lib").input("dependency.rs").run();
+    rustc().crate_name("same").crate_type("rlib").input("dependency.rs").run();
 
     // Here, an ICE would happen when building the linker command.
     rustc().input("main.rs").extern_("same", tmp_dir().join("libsame.rlib")).run();
