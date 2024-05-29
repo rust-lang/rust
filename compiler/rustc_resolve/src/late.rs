@@ -4502,6 +4502,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 self.visit_expr(elem);
                 self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::Yes));
             }
+            ExprKind::ConstBlock(ref expr) => {
+                self.resolve_anon_const_manual(false, AnonConstKind::InlineConst, |this| {
+                    this.visit_expr(expr)
+                });
+            }
             ExprKind::Index(ref elem, ref idx, _) => {
                 self.resolve_expr(elem, Some(expr));
                 self.visit_expr(idx);
