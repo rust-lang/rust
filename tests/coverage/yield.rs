@@ -5,7 +5,8 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let mut coroutine = #[coroutine] || {
+    let mut coroutine = #[coroutine]
+    || {
         yield 1;
         return "foo";
     };
@@ -19,7 +20,8 @@ fn main() {
         _ => panic!("unexpected value from resume"),
     }
 
-    let mut coroutine = #[coroutine] || {
+    let mut coroutine = #[coroutine]
+    || {
         yield 1;
         yield 2;
         yield 3;
