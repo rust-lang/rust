@@ -59,6 +59,7 @@
   [nvptx64] needs-llvm-components: nvptx
 */
 // FIXME: disabled since it fails on CI saying the csky component is missing
+// see https://github.com/rust-lang/rust/issues/125697
 /* revisions: csky
   [csky] compile-flags: --target csky-unknown-linux-gnuabiv2
   [csky] needs-llvm-components: csky
