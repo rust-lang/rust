@@ -44,8 +44,8 @@ fn main() {
 
     let _ = unsafe { *core::ptr::addr_of!(a) };
 
-    // do NOT lint for array as sematic differences with/out `*&`.
     let _repeat = *&[0; 64];
+    // do NOT lint for array as sematic differences with/out `*&`.
     let _arr = *&[0, 1, 2, 3, 4];
 }
 

@@ -48,6 +48,9 @@ impl EarlyLintPass for DerefAddrOf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind
             && let ExprKind::AddrOf(_, ref mutability, ref addrof_target) = without_parens(deref_target).kind
+            // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
+            // See #12854 for details.
+            && !matches!(addrof_target.kind, ExprKind::Array(_))
             && deref_target.span.eq_ctxt(e.span)
             && !addrof_target.span.from_expansion()
         {
