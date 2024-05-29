@@ -12,60 +12,82 @@ mod int_to_float {
     use super::*;
 
     macro_rules! i_to_f {
-        ($($from:ty, $into:ty, $fn:ident);*;) => {
+        ($f_ty:ty, $apfloat_ty:ident, $sys_available:meta, $($i_ty:ty, $fn:ident);*;) => {
             $(
                 #[test]
                 fn $fn() {
                     use compiler_builtins::float::conv::$fn;
                     use compiler_builtins::int::Int;
 
-                    fuzz(N, |x: $from| {
-                        let f0 = x as $into;
-                        let f1: $into = $fn(x);
-                        // This makes sure that the conversion produced the best rounding possible, and does
-                        // this independent of `x as $into` rounding correctly.
-                        // This assumes that float to integer conversion is correct.
-                        let y_minus_ulp = <$into>::from_bits(f1.to_bits().wrapping_sub(1)) as $from;
-                        let y = f1 as $from;
-                        let y_plus_ulp = <$into>::from_bits(f1.to_bits().wrapping_add(1)) as $from;
-                        let error_minus = <$from as Int>::abs_diff(y_minus_ulp, x);
-                        let error = <$from as Int>::abs_diff(y, x);
-                        let error_plus = <$from as Int>::abs_diff(y_plus_ulp, x);
-                        // The first two conditions check that none of the two closest float values are
-                        // strictly closer in representation to `x`. The second makes sure that rounding is
-                        // towards even significand if two float values are equally close to the integer.
-                        if error_minus < error
-                            || error_plus < error
-                            || ((error_minus == error || error_plus == error)
-                                && ((f0.to_bits() & 1) != 0))
-                        {
-                            if !cfg!(any(
-                                target_arch = "powerpc",
-                                target_arch = "powerpc64"
-                            )) {
-                                panic!(
-                                    "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
-                                    stringify!($fn),
-                                    x,
-                                    f1.to_bits(),
-                                    y_minus_ulp,
-                                    y,
-                                    y_plus_ulp,
-                                    error_minus,
-                                    error,
-                                    error_plus,
-                                );
+                    fuzz(N, |x: $i_ty| {
+                        let f0 = apfloat_fallback!(
+                            $f_ty, $apfloat_ty, $sys_available,
+                            |x| x as $f_ty;
+                            // When the builtin is not available, we need to use a different conversion
+                            // method (since apfloat doesn't support `as` casting).
+                            |x: $i_ty| {
+                                use compiler_builtins::int::MinInt;
+
+                                let apf = if <$i_ty>::SIGNED {
+                                    FloatTy::from_i128(x.try_into().unwrap()).value
+                                } else {
+                                    FloatTy::from_u128(x.try_into().unwrap()).value
+                                };
+
+                                <$f_ty>::from_bits(apf.to_bits())
+                            },
+                            x
+                        );
+                        let f1: $f_ty = $fn(x);
+
+                        #[cfg($sys_available)] {
+                            // This makes sure that the conversion produced the best rounding possible, and does
+                            // this independent of `x as $into` rounding correctly.
+                            // This assumes that float to integer conversion is correct.
+                            let y_minus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_sub(1)) as $i_ty;
+                            let y = f1 as $i_ty;
+                            let y_plus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_add(1)) as $i_ty;
+                            let error_minus = <$i_ty as Int>::abs_diff(y_minus_ulp, x);
+                            let error = <$i_ty as Int>::abs_diff(y, x);
+                            let error_plus = <$i_ty as Int>::abs_diff(y_plus_ulp, x);
+
+                            // The first two conditions check that none of the two closest float values are
+                            // strictly closer in representation to `x`. The second makes sure that rounding is
+                            // towards even significand if two float values are equally close to the integer.
+                            if error_minus < error
+                                || error_plus < error
+                                || ((error_minus == error || error_plus == error)
+                                    && ((f0.to_bits() & 1) != 0))
+                            {
+                                if !cfg!(any(
+                                    target_arch = "powerpc",
+                                    target_arch = "powerpc64"
+                                )) {
+                                    panic!(
+                                        "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
+                                        stringify!($fn),
+                                        x,
+                                        f1.to_bits(),
+                                        y_minus_ulp,
+                                        y,
+                                        y_plus_ulp,
+                                        error_minus,
+                                        error,
+                                        error_plus,
+                                    );
+                                }
                             }
                         }
+
                         // Test against native conversion. We disable testing on all `x86` because of
                         // rounding bugs with `i686`. `powerpc` also has the same rounding bug.
-                        if f0 != f1 && !cfg!(any(
+                        if !Float::eq_repr(f0, f1) && !cfg!(any(
                             target_arch = "x86",
                             target_arch = "powerpc",
                             target_arch = "powerpc64"
                         )) {
                             panic!(
-                                "{}({}): std: {}, builtins: {}",
+                                "{}({}): std: {:?}, builtins: {:?}",
                                 stringify!($fn),
                                 x,
                                 f0,
@@ -78,19 +100,22 @@ mod int_to_float {
         };
     }
 
-    i_to_f! {
-        u32, f32, __floatunsisf;
-        u32, f64, __floatunsidf;
-        i32, f32, __floatsisf;
-        i32, f64, __floatsidf;
-        u64, f32, __floatundisf;
-        u64, f64, __floatundidf;
-        i64, f32, __floatdisf;
-        i64, f64, __floatdidf;
-        u128, f32, __floatuntisf;
-        u128, f64, __floatuntidf;
-        i128, f32, __floattisf;
-        i128, f64, __floattidf;
+    i_to_f! { f32, Single, all(),
+        u32, __floatunsisf;
+        i32, __floatsisf;
+        u64, __floatundisf;
+        i64, __floatdisf;
+        u128, __floatuntisf;
+        i128, __floattisf;
+    }
+
+    i_to_f! { f64, Double, all(),
+        u32, __floatunsidf;
+        i32, __floatsidf;
+        u64, __floatundidf;
+        i64, __floatdidf;
+        u128, __floatuntidf;
+        i128, __floattidf;
     }
 }
 
