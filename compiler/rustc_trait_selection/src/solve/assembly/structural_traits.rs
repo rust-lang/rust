@@ -454,12 +454,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
                     .upcast(tcx),
             ];
-            let future_output_def_id = tcx
-                .associated_items(future_trait_def_id)
-                .filter_by_name_unhygienic(sym::Output)
-                .next()
-                .unwrap()
-                .def_id;
+            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -510,12 +505,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 );
             }
 
-            let future_output_def_id = tcx
-                .associated_items(future_trait_def_id)
-                .filter_by_name_unhygienic(sym::Output)
-                .next()
-                .unwrap()
-                .def_id;
+            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {

@@ -1880,13 +1880,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                    let future_output_def_id = tcx
-                        .associated_items(future_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
@@ -1919,13 +1913,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                    let future_output_def_id = tcx
-                        .associated_items(future_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
