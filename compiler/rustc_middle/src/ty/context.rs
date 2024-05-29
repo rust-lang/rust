@@ -729,9 +729,10 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
+        let hir_id = HirId::make_owner(self.def_id());
+        self.local_def_id_to_hir_node(hir::Node::Synthetic(hir_id));
 
-        let node = hir::OwnerNode::Synthetic;
+        let node = hir::OwnerNode::Synthetic(hir_id);
         let bodies = Default::default();
         let attrs = hir::AttributeMap::EMPTY;
 

@@ -3465,7 +3465,7 @@ pub enum OwnerNode<'hir> {
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
     Crate(&'hir Mod<'hir>),
-    Synthetic,
+    Synthetic(HirId),
 }
 
 impl<'hir> OwnerNode<'hir> {
@@ -3475,7 +3475,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ForeignItem(ForeignItem { ident, .. })
             | OwnerNode::ImplItem(ImplItem { ident, .. })
             | OwnerNode::TraitItem(TraitItem { ident, .. }) => Some(*ident),
-            OwnerNode::Crate(..) | OwnerNode::Synthetic => None,
+            OwnerNode::Crate(..) | OwnerNode::Synthetic(_) => None,
         }
     }
 
@@ -3486,7 +3486,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { span, .. })
             | OwnerNode::TraitItem(TraitItem { span, .. }) => *span,
             OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => *inner_span,
-            OwnerNode::Synthetic => unreachable!(),
+            OwnerNode::Synthetic(_) => unreachable!(),
         }
     }
 
@@ -3545,7 +3545,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { owner_id, .. })
             | OwnerNode::ForeignItem(ForeignItem { owner_id, .. }) => *owner_id,
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
-            OwnerNode::Synthetic => unreachable!(),
+            OwnerNode::Synthetic(_) => unreachable!(),
         }
     }
 
@@ -3589,7 +3589,7 @@ impl<'hir> Into<Node<'hir>> for OwnerNode<'hir> {
             OwnerNode::ImplItem(n) => Node::ImplItem(n),
             OwnerNode::TraitItem(n) => Node::TraitItem(n),
             OwnerNode::Crate(n) => Node::Crate(n),
-            OwnerNode::Synthetic => Node::Synthetic,
+            OwnerNode::Synthetic(id) => Node::Synthetic(id),
         }
     }
 }
@@ -3628,7 +3628,7 @@ pub enum Node<'hir> {
     ArrayLenInfer(&'hir InferArg),
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
     // Created by query feeding
-    Synthetic,
+    Synthetic(HirId),
     Err(Span),
 }
 
@@ -3677,7 +3677,7 @@ impl<'hir> Node<'hir> {
             | Node::Infer(..)
             | Node::WhereBoundPredicate(..)
             | Node::ArrayLenInfer(..)
-            | Node::Synthetic
+            | Node::Synthetic(_)
             | Node::Err(..) => None,
         }
     }
@@ -3789,7 +3789,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(i) => Some(OwnerNode::TraitItem(i)),
             Node::ImplItem(i) => Some(OwnerNode::ImplItem(i)),
             Node::Crate(i) => Some(OwnerNode::Crate(i)),
-            Node::Synthetic => Some(OwnerNode::Synthetic),
+            Node::Synthetic(id) => Some(OwnerNode::Synthetic(id)),
             _ => None,
         }
     }
@@ -3850,7 +3850,7 @@ impl<'hir> Node<'hir> {
             Node::WhereBoundPredicate(n) => n.hir_id,
             Node::ArrayLenInfer(n) => n.hir_id,
             Node::PreciseCapturingNonLifetimeArg(n) => n.hir_id,
-            Node::Synthetic => unreachable!(),
+            Node::Synthetic(hir_id) => hir_id,
             Node::Err(span) => todo!("tried to get hir id of error node: {span:?}"),
         }
     }

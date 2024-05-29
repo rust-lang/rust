@@ -175,9 +175,9 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Returns HIR ID for the given `LocalDefId`.
-    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
-        desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key) }
+    /// Returns the HIR for the given `LocalDefId`.
+    query local_def_id_to_hir_node(key: LocalDefId) -> hir::Node<'tcx> {
+        desc { |tcx| "getting HIR of `{}`", tcx.def_path_str(key) }
         feedable
     }
 

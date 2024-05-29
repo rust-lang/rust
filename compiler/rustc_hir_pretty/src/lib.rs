@@ -118,7 +118,7 @@ impl<'a> State<'a> {
                 self.print_bounds(":", pred.bounds);
             }
             Node::ArrayLenInfer(_) => self.word("_"),
-            Node::Synthetic => unreachable!(),
+            Node::Synthetic(_) => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
     }

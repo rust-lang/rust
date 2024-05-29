@@ -299,7 +299,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::ExprKind::ConstBlock(_) => {
                 let feed = self.tcx().create_def(self.fcx.body_id, kw::Empty, DefKind::InlineConst);
                 feed.def_span(e.span);
-                feed.local_def_id_to_hir_id(e.hir_id);
+                feed.local_def_id_to_hir_node(hir::Node::Synthetic(e.hir_id));
                 self.typeck_results.inline_consts.insert(e.hir_id.local_id, feed.def_id());
             }
             _ => {}

@@ -1,6 +1,6 @@
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
-use crate::query::LocalCrate;
+use crate::query::{IntoQueryParam, LocalCrate};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_ast::visit::{walk_list, VisitorResult};
@@ -125,6 +125,12 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn hir_node_by_def_id(self, id: LocalDefId) -> Node<'tcx> {
         self.hir_node(self.local_def_id_to_hir_id(id))
+    }
+
+    /// Returns HIR ID for the given `LocalDefId`.
+    #[inline]
+    pub fn local_def_id_to_hir_id(self, id: impl IntoQueryParam<LocalDefId>) -> HirId {
+        self.local_def_id_to_hir_node(id).hir_id()
     }
 
     /// Returns `HirId` of the parent HIR node of node with this `hir_id`.
@@ -925,7 +931,7 @@ impl<'hir> Map<'hir> {
             Node::WhereBoundPredicate(pred) => pred.span,
             Node::ArrayLenInfer(inf) => inf.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
-            Node::Synthetic => unreachable!(),
+            Node::Synthetic(_) => unreachable!(),
             Node::Err(span) => span,
         }
     }
@@ -1195,7 +1201,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::Crate(..) => String::from("(root_crate)"),
         Node::WhereBoundPredicate(_) => node_str("where bound predicate"),
         Node::ArrayLenInfer(_) => node_str("array len infer"),
-        Node::Synthetic => unreachable!(),
+        Node::Synthetic(_) => unreachable!(),
         Node::Err(_) => node_str("error"),
         Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
     }

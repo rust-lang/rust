@@ -2587,7 +2587,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             hir::OwnerNode::ImplItem(i) => visitor.visit_impl_item(i),
             hir::OwnerNode::TraitItem(i) => visitor.visit_trait_item(i),
             hir::OwnerNode::Crate(_) => bug!("OwnerNode::Crate doesn't not have generics"),
-            hir::OwnerNode::Synthetic => unreachable!(),
+            hir::OwnerNode::Synthetic(_) => unreachable!(),
         }
 
         let ast_generics = self.tcx.hir().get_generics(lifetime_scope).unwrap();

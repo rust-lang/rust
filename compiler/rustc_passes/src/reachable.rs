@@ -273,7 +273,7 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Field(_)
             | Node::Ty(_)
             | Node::Crate(_)
-            | Node::Synthetic => {}
+            | Node::Synthetic(_) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",

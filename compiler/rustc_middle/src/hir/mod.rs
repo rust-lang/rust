@@ -163,10 +163,15 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owners[def_id] {
-        MaybeOwner::Owner(_) => HirId::make_owner(def_id),
-        MaybeOwner::NonOwner(hir_id) => hir_id,
-        MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
+    providers.local_def_id_to_hir_node = |tcx, def_id| {
+        let hir = tcx.hir_crate(());
+        match hir.owners[def_id] {
+            MaybeOwner::Owner(info) => info.node().into(),
+            MaybeOwner::NonOwner(hir_id) => {
+                hir.owners[hir_id.owner.def_id].unwrap().nodes.nodes[hir_id.local_id].node
+            }
+            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
+        }
     };
     providers.opt_hir_owner_nodes =
         |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);

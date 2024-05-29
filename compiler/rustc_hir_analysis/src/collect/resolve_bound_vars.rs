@@ -261,7 +261,7 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
             visitor.visit_impl_item(item)
         }
         hir::OwnerNode::Crate(_) => {}
-        hir::OwnerNode::Synthetic => unreachable!(),
+        hir::OwnerNode::Synthetic(_) => unreachable!(),
     }
 
     let mut rl = ResolveBoundVars::default();

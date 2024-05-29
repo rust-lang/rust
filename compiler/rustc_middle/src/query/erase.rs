@@ -338,6 +338,7 @@ macro_rules! tcx_lifetime {
 }
 
 tcx_lifetime! {
+    rustc_hir::Node,
     rustc_middle::middle::exported_symbols::ExportedSymbol,
     rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,
