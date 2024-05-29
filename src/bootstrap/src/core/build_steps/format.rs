@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::SyncSender;
+use std::sync::Mutex;
 
 fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut(bool) -> bool {
     let mut cmd = Command::new(rustfmt);
@@ -97,6 +98,21 @@ struct RustfmtConfig {
     ignore: Vec<String>,
 }
 
+// Prints output describing a collection of paths, with lines such as "formatted modified file
+// foo/bar/baz" or "skipped 20 untracked files".
+fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
+    let len = paths.len();
+    let adjective =
+        if let Some(adjective) = adjective { format!("{adjective} ") } else { String::new() };
+    if len <= 10 {
+        for path in paths {
+            println!("fmt: {verb} {adjective}file {path}");
+        }
+    } else {
+        println!("fmt: {verb} {len} {adjective}files");
+    }
+}
+
 pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     if !paths.is_empty() {
         eprintln!("fmt error: path arguments are not accepted");
@@ -149,6 +165,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         Err(_) => false,
     };
 
+    let mut adjective = None;
     if git_available {
         let in_working_tree = match build
             .config
@@ -172,45 +189,27 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                     .arg("-z")
                     .arg("--untracked-files=normal"),
             );
-            let untracked_paths = untracked_paths_output.split_terminator('\0').filter_map(
-                |entry| entry.strip_prefix("?? "), // returns None if the prefix doesn't match
-            );
-            let mut untracked_count = 0;
+            let untracked_paths: Vec<_> = untracked_paths_output
+                .split_terminator('\0')
+                .filter_map(
+                    |entry| entry.strip_prefix("?? "), // returns None if the prefix doesn't match
+                )
+                .map(|x| x.to_string())
+                .collect();
+            print_paths("skipped", Some("untracked"), &untracked_paths);
+
             for untracked_path in untracked_paths {
-                println!("fmt: skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
-                untracked_count += 1;
-                fmt_override.add(&format!("!/{untracked_path}")).expect(untracked_path);
+                fmt_override.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             if !all {
+                adjective = Some("modified");
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
-                        if files.len() <= 10 {
-                            for file in &files {
-                                println!("fmt: formatting modified file {file}");
-                            }
-                        } else {
-                            let pluralized = |count| if count > 1 { "files" } else { "file" };
-                            let untracked_msg = if untracked_count == 0 {
-                                "".to_string()
-                            } else {
-                                format!(
-                                    ", skipped {} untracked {}",
-                                    untracked_count,
-                                    pluralized(untracked_count),
-                                )
-                            };
-                            println!(
-                                "fmt: formatting {} modified {}{}",
-                                files.len(),
-                                pluralized(files.len()),
-                                untracked_msg
-                            );
-                        }
                         for file in files {
                             fmt_override.add(&format!("/{file}")).expect(&file);
                         }
@@ -278,16 +277,33 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         }
     });
 
+    let formatted_paths = Mutex::new(Vec::new());
+    let formatted_paths_ref = &formatted_paths;
     walker.run(|| {
         let tx = tx.clone();
         Box::new(move |entry| {
+            let cwd = std::env::current_dir();
             let entry = t!(entry);
             if entry.file_type().map_or(false, |t| t.is_file()) {
+                formatted_paths_ref.lock().unwrap().push({
+                    // `into_path` produces an absolute path. Try to strip `cwd` to get a shorter
+                    // relative path.
+                    let mut path = entry.clone().into_path();
+                    if let Ok(cwd) = cwd {
+                        if let Ok(path2) = path.strip_prefix(cwd) {
+                            path = path2.to_path_buf();
+                        }
+                    }
+                    path.display().to_string()
+                });
                 t!(tx.send(entry.into_path()));
             }
             ignore::WalkState::Continue
         })
     });
+    let mut paths = formatted_paths.into_inner().unwrap();
+    paths.sort();
+    print_paths(if check { "checked" } else { "formatted" }, adjective, &paths);
 
     drop(tx);
 
