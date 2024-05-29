@@ -907,10 +907,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-        let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return;
         };
-        let body = self.tcx.hir().body(body_id);
         expr_finder.visit_expr(body.value);
         let Some(expr) = expr_finder.result else {
             return;
@@ -1369,12 +1368,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // Issue #104961, we need to add parentheses properly for compound expressions
                         // for example, `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
-                        let Some(body_id) =
+                        let Some(body) =
                             self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                         else {
                             return false;
                         };
-                        let body = self.tcx.hir().body(body_id);
                         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                         expr_finder.visit_expr(body.value);
                         let Some(expr) = expr_finder.result else {
@@ -1476,10 +1474,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
-        let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return false;
         };
-        let body = self.tcx.hir().body(body_id);
         expr_finder.visit_expr(body.value);
         let mut maybe_suggest = |suggested_ty, count, suggestions| {
             // Remapping bound vars here
@@ -1805,10 +1802,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
         }
 
-        let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(obligation.cause.body_id));
+        let body = self.tcx.hir().body_owned_by(obligation.cause.body_id);
 
         let mut visitor = ReturnsVisitor::default();
-        visitor.visit_body(body);
+        visitor.visit_body(&body);
 
         let mut sugg =
             vec![(span.shrink_to_lo(), "Box<".to_string()), (span.shrink_to_hi(), ">".to_string())];
@@ -2348,13 +2345,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ?span,
         );
 
-        let coroutine_body = coroutine_did
-            .as_local()
-            .and_then(|def_id| hir.maybe_body_owned_by(def_id))
-            .map(|body_id| hir.body(body_id));
+        let coroutine_body =
+            coroutine_did.as_local().and_then(|def_id| hir.maybe_body_owned_by(def_id));
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = coroutine_body {
-            visitor.visit_body(body);
+            visitor.visit_body(&body);
         }
         debug!(awaits = ?visitor.awaits);
 

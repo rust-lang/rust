@@ -399,8 +399,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let hir = self.infcx.tcx.hir();
-        if let Some(body_id) = hir.maybe_body_owned_by(self.mir_def_id()) {
-            let expr = hir.body(body_id).value;
+        if let Some(body) = hir.maybe_body_owned_by(self.mir_def_id()) {
+            let expr = body.value;
             let place = &self.move_data.move_paths[mpi].place;
             let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
             let mut finder = ExpressionFinder {
@@ -556,11 +556,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
         let map = self.infcx.tcx.hir();
-        let body_id = map.body_owned_by(self.mir_def_id());
-        let body = map.body(body_id);
+        let body = map.body_owned_by(self.mir_def_id());
 
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
-        visitor.visit_body(body);
+        visitor.visit_body(&body);
 
         let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
@@ -665,7 +664,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let mut visitor = LetVisitor { decl_span, sugg_span: None };
-            visitor.visit_body(body);
+            visitor.visit_body(&body);
             if let Some(span) = visitor.sugg_span {
                 self.suggest_assign_value(&mut err, moved_place, span);
             }

@@ -1695,7 +1695,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
 
         if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id) {
-            visitor.visit_nested_body(body_id);
+            visitor.visit_nested_body(body_id.id());
         }
     }
 

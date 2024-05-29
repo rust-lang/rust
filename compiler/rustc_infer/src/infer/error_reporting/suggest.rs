@@ -580,10 +580,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body_id| {
-            let body = self.tcx.hir().body(body_id);
+        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
-                .visit_body(body)
+                .visit_body(&body)
                 .is_break()
                 .then(|| TypeErrorAdditionalDiags::AddLetForLetChains { span: span.shrink_to_lo() })
         })

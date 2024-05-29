@@ -2133,7 +2133,9 @@ impl Discriminant {
     /// Will be `None` in the case of cross-crate reexports, and may be
     /// simplified
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.expr.map(|body| rendered_const(tcx, body))
+        self.expr.map(|body| {
+            rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
+        })
     }
     pub(crate) fn value(&self, tcx: TyCtxt<'_>, with_underscores: bool) -> String {
         print_evaluated_const(tcx, self.value, with_underscores, false).unwrap()
@@ -2419,7 +2421,7 @@ impl ConstantKind {
             ConstantKind::TyConst { ref expr } => expr.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
-                rendered_const(tcx, body)
+                rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
             }
         }
     }

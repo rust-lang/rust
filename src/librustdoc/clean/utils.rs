@@ -342,7 +342,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
             let s = if let Some(def) = def.as_local() {
-                rendered_const(cx.tcx, cx.tcx.hir().body_owned_by(def))
+                rendered_const(cx.tcx, &cx.tcx.hir().body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
             };
