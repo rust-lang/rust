@@ -328,6 +328,7 @@ pub mod consts {
     pub const FRAC_1_SQRT_PI: f64 = 0.564189583547756286948079451560772586_f64;
 
     /// 1/sqrt(2π)
+    #[doc(alias = "FRAC_1_SQRT_TAU")]
     #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_2PI: f64 = 0.398942280401432677939946059934381868_f64;
 
