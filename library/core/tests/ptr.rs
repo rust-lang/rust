@@ -965,7 +965,7 @@ fn thin_box() {
         fn value_ptr(&self) -> *const T {
             let (_, offset) = self.layout();
             let data_ptr = unsafe { self.ptr.cast::<u8>().as_ptr().add(offset) };
-            ptr::from_raw_parts(data_ptr.cast(), self.meta())
+            ptr::from_raw_parts(data_ptr, self.meta())
         }
 
         fn value_mut_ptr(&mut self) -> *mut T {
@@ -973,7 +973,7 @@ fn thin_box() {
             // FIXME: can this line be shared with the same in `value_ptr()`
             // without upsetting Stacked Borrows?
             let data_ptr = unsafe { self.ptr.cast::<u8>().as_ptr().add(offset) };
-            from_raw_parts_mut(data_ptr.cast(), self.meta())
+            from_raw_parts_mut(data_ptr, self.meta())
         }
     }
 

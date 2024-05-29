@@ -16,7 +16,7 @@ fn demo_byte_add_fat(_1: *const [u32], _2: usize) -> *const [u32] {
             let mut _6: usize;
             scope 5 (inlined std::ptr::metadata::<[u32]>) {
             }
-            scope 6 (inlined std::ptr::from_raw_parts::<[u32]>) {
+            scope 6 (inlined std::ptr::from_raw_parts::<[u32], ()>) {
             }
         }
     }
