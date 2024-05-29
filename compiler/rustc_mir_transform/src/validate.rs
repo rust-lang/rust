@@ -1109,6 +1109,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::Int(..) | ty::Uint(..) | ty::Bool
                         );
                     }
+                    UnOp::PtrMetadata => {
+                        if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
+                            // It would probably be fine to support this in earlier phases,
+                            // but at the time of writing it's only ever introduced from intrinsic lowering,
+                            // so earlier things can just `bug!` on it.
+                            self.fail(location, "PtrMetadata should be in runtime MIR only");
+                        }
+
+                        check_kinds!(a, "Cannot PtrMetadata non-pointer type {:?}", ty::RawPtr(..));
+                    }
                 }
             }
             Rvalue::ShallowInitBox(operand, _) => {

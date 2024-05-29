@@ -346,6 +346,15 @@ impl BinOp {
 pub enum UnOp {
     Not,
     Neg,
+    PtrMetadata,
+}
+
+impl UnOp {
+    /// Return the type of this operation for the given input Ty.
+    /// This function does not perform type checking, and it currently doesn't handle SIMD.
+    pub fn ty(&self, arg_ty: Ty) -> Ty {
+        with(|ctx| ctx.unop_ty(*self, arg_ty))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -580,7 +589,10 @@ impl Rvalue {
                 let ty = op.ty(lhs_ty, rhs_ty);
                 Ok(Ty::new_tuple(&[ty, Ty::bool_ty()]))
             }
-            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => operand.ty(locals),
+            Rvalue::UnaryOp(op, operand) => {
+                let arg_ty = operand.ty(locals)?;
+                Ok(op.ty(arg_ty))
+            }
             Rvalue::Discriminant(place) => {
                 let place_ty = place.ty(locals)?;
                 place_ty
