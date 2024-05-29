@@ -1916,7 +1916,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             };
             err.subdiagnostic(self.tcx.dcx(), note);
             if let Some(err_help) = err_help {
-                err.span_help(def_span, err_help);
+                err.span_help(ident.span, err_help);
             }
         }
         // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
