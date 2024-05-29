@@ -14,7 +14,6 @@ ignore = [
     # - some contain syntax errors that cause rustfmt to give an error
     # - some UI tests are broken by different formatting
     # - some require special comments in a particular position (e.g. `EMIT_MIR` comments)
-    "/tests/assembly/",
     "/tests/auxiliary/",
     "/tests/codegen/",
     "/tests/codegen-units/",

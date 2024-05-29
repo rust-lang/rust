@@ -8,7 +8,7 @@
 #![feature(core_intrinsics)]
 #![feature(rustc_attrs)]
 
-extern {
+extern "C" {
     fn may_panic();
 
     #[rustc_nounwind]
@@ -19,7 +19,9 @@ struct LogOnDrop;
 
 impl Drop for LogOnDrop {
     fn drop(&mut self) {
-        unsafe { log_number(0); }
+        unsafe {
+            log_number(0);
+        }
     }
 }
 
@@ -27,7 +29,9 @@ impl Drop for LogOnDrop {
 #[no_mangle]
 pub fn test_cleanup() {
     let _log_on_drop = LogOnDrop;
-    unsafe { may_panic(); }
+    unsafe {
+        may_panic();
+    }
 
     // CHECK-NOT: call
     // CHECK: try
@@ -41,12 +45,16 @@ pub fn test_cleanup() {
 #[no_mangle]
 pub fn test_rtry() {
     unsafe {
-        core::intrinsics::catch_unwind(|_| {
-            may_panic();
-        }, core::ptr::null_mut(), |data, exception| {
-            log_number(data as usize);
-            log_number(exception as usize);
-        });
+        core::intrinsics::catch_unwind(
+            |_| {
+                may_panic();
+            },
+            core::ptr::null_mut(),
+            |data, exception| {
+                log_number(data as usize);
+                log_number(exception as usize);
+            },
+        );
     }
 
     // CHECK-NOT: call
