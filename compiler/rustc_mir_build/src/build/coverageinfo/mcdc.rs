@@ -217,12 +217,13 @@ impl MCDCInfoBuilder {
                 }
                 _ => {
                     // Do not generate mcdc mappings and statements for decisions with too many conditions.
-                    let rebase_idx = self.branch_spans.len() - decision.conditions_num + 1;
+                    // Therefore, first erase the condition info of the (N-1) previous branch spans.
+                    let rebase_idx = self.branch_spans.len() - (decision.conditions_num - 1);
                     for branch in &mut self.branch_spans[rebase_idx..] {
                         branch.condition_info = None;
                     }
 
-                    // ConditionInfo of this branch shall also be reset.
+                    // Then, erase this last branch span's info too, for a total of N.
                     condition_info = None;
 
                     tcx.dcx().emit_warn(MCDCExceedsConditionNumLimit {
