@@ -140,11 +140,11 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     }
     let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
-    let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
+    let mut override_builder = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
         if ignore.starts_with('!') {
-            // A `!`-prefixed entry could be added as a whitelisted entry in `fmt_override`, i.e.
-            // strip the `!` prefix. But as soon as whitelisted entries are added, an
+            // A `!`-prefixed entry could be added as a whitelisted entry in `override_builder`,
+            // i.e. strip the `!` prefix. But as soon as whitelisted entries are added, an
             // `OverrideBuilder` will only traverse those whitelisted entries, and won't traverse
             // any files that aren't explicitly mentioned. No bueno! Maybe there's a way to combine
             // explicit whitelisted entries and traversal of unmentioned files, but for now just
@@ -152,7 +152,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             eprintln!("fmt error: `!`-prefixed entries are not supported in rustfmt.toml, sorry");
             crate::exit!(1);
         } else {
-            fmt_override.add(&format!("!{ignore}")).expect(&ignore);
+            override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
     }
     let git_available = match Command::new("git")
@@ -204,14 +204,14 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
-                fmt_override.add(&format!("!/{untracked_path}")).expect(&untracked_path);
+                override_builder.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             if !all {
                 adjective = Some("modified");
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         for file in files {
-                            fmt_override.add(&format!("/{file}")).expect(&file);
+                            override_builder.add(&format!("/{file}")).expect(&file);
                         }
                     }
                     Ok(None) => {}
@@ -229,7 +229,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         eprintln!("fmt: warning: Could not find usable git. Skipping git-aware format checks");
     }
 
-    let fmt_override = fmt_override.build().unwrap();
+    let override_ = override_builder.build().unwrap(); // `override` is a reserved keyword
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("fmt error: `x fmt` is not supported on this channel");
@@ -238,8 +238,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
-    let walker =
-        WalkBuilder::new(src.clone()).types(matcher).overrides(fmt_override).build_parallel();
+    let walker = WalkBuilder::new(src.clone()).types(matcher).overrides(override_).build_parallel();
 
     // There is a lot of blocking involved in spawning a child process and reading files to format.
     // Spawn more processes than available concurrency to keep the CPU busy.
