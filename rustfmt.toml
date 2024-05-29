@@ -16,7 +16,7 @@ ignore = [
     # - some require special comments in a particular position (e.g. `EMIT_MIR` comments)
     "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
     "/tests/crashes/",                # Many tests contain syntax errors.
-    "/tests/debuginfo/",
+    "/tests/debuginfo/",              # Tests are somewhat sensitive to source code layout.
     "/tests/incremental/",
     "/tests/mir-opt/",
     "/tests/pretty/",
