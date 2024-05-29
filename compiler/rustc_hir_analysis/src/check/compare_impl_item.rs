@@ -460,8 +460,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let trait_to_impl_args = impl_trait_ref.args;
 
-    let impl_m_hir_id = tcx.local_def_id_to_hir_id(impl_m_def_id);
-    let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
+    let return_span = tcx.local_def_id_to_hir_node(impl_m_def_id).fn_decl().unwrap().output.span();
     let cause = ObligationCause::new(
         return_span,
         impl_m_def_id,

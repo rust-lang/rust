@@ -981,10 +981,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let hir_id = self.infcx.tcx.local_def_id_to_hir_id(def_id);
-        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
-        debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
+        let expr = self.infcx.tcx.local_def_id_to_hir_node(def_id).expect_expr();
+        debug!("closure_span: hir_id={:?} expr={:?}", expr.hir_id, expr.kind);
+        if let hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr.kind {
             for (captured_place, place) in
                 self.infcx.tcx.closure_captures(def_id).iter().zip(places)
             {

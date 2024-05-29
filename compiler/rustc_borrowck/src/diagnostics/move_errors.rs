@@ -319,7 +319,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let Some(use_spans) = use_spans else { return };
         // We only care about the case where a closure captured a binding.
         let UseSpans::ClosureUse { args_span, .. } = use_spans else { return };
-        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+        let Some(body_id) = self.mir_hir().body_id() else { return };
         // Fetch the type of the expression corresponding to the closure-captured binding.
         let Some(captured_ty) = typeck_results.node_type_opt(upvar_hir_id) else { return };
         if !self.implements_clone(captured_ty) {

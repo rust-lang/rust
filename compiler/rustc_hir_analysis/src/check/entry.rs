@@ -195,12 +195,13 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
 fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_def_id = start_def_id.expect_local();
-    let start_id = tcx.local_def_id_to_hir_id(start_def_id);
+    let start_node = tcx.local_def_id_to_hir_node(start_def_id);
+    let start_id = start_node.hir_id();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id).instantiate_identity();
     match start_t.kind() {
         ty::FnDef(..) => {
-            if let Node::Item(it) = tcx.hir_node(start_id) {
+            if let Node::Item(it) = start_node {
                 if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {

@@ -111,8 +111,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         None => {}
     }
 
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let node = tcx.hir_node(hir_id);
+    let node = tcx.local_def_id_to_hir_node(def_id);
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
@@ -295,7 +294,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
-        let opaque_ty_node = tcx.parent_hir_node(hir_id);
+        let opaque_ty_node = tcx.parent_hir_node(node.hir_id());
         let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
             bug!("unexpected {opaque_ty_node:?}")
         };
@@ -369,8 +368,7 @@ fn const_evaluatable_predicates_of(
         }
     }
 
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let node = tcx.hir_node(hir_id);
+    let node = tcx.local_def_id_to_hir_node(def_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
     if let hir::Node::Item(item) = node
@@ -390,7 +388,7 @@ fn const_evaluatable_predicates_of(
         collector.visit_generics(generics);
     }
 
-    if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
+    if let Some(fn_sig) = node.fn_sig() {
         debug!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
         collector.visit_fn_decl(fn_sig.decl);
     }
@@ -655,14 +653,13 @@ pub(super) fn type_param_predicates(
         .unwrap_or_default();
     let mut extend = None;
 
-    let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
+    let hir_node = tcx.local_def_id_to_hir_node(item_def_id);
 
-    let hir_node = tcx.hir_node(item_hir_id);
     let Some(hir_generics) = hir_node.generics() else { return result };
     if let Node::Item(item) = hir_node
         && let ItemKind::Trait(..) = item.kind
         // Implied `Self: Trait` and supertrait bounds.
-        && param_id == item_hir_id
+        && param_id == item.hir_id()
     {
         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id.to_def_id());
         extend = Some((identity_trait_ref.upcast(tcx), item.span));

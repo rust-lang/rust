@@ -203,6 +203,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         self.body.source.def_id().expect_local()
     }
 
+    pub(crate) fn mir_hir(&self) -> hir::Node<'tcx> {
+        self.infcx.tcx.local_def_id_to_hir_node(self.mir_def_id())
+    }
+
     pub(crate) fn mir_hir_id(&self) -> hir::HirId {
         self.infcx.tcx.local_def_id_to_hir_id(self.mir_def_id())
     }
@@ -342,7 +346,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         }
                     };
                     let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
-                        tcx.hir().expect_expr(self.mir_hir_id()).kind
+                        self.mir_hir().expect_expr().kind
                     else {
                         bug!("Closure is not defined by a closure expr");
                     };
@@ -423,7 +427,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         argument_index: usize,
     ) -> Option<&hir::Ty<'tcx>> {
-        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(self.mir_hir_id())?;
+        let fn_decl = self.mir_hir().fn_decl()?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
@@ -680,11 +684,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         }
 
-        let mir_hir_id = self.mir_hir_id();
-
-        let (return_span, mir_description, hir_ty) = match tcx.hir_node(mir_hir_id) {
-            hir::Node::Expr(hir::Expr {
+        let (return_span, mir_description, hir_ty) = match self.mir_hir() {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, kind, fn_decl_span, .. }),
+                hir_id: mir_hir_id,
                 ..
             }) => {
                 let (mut span, mut hir_ty) = match fn_decl.output {
@@ -881,7 +884,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let type_name =
             self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;
 
-        let yield_span = match tcx.hir_node(self.mir_hir_id()) {
+        let yield_span = match self.mir_hir() {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..

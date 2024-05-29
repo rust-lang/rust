@@ -1816,7 +1816,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'tcx>, place: Place<'tcx>) {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
-        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+        let Some(body_id) = self.mir_hir().body_id() else { return };
 
         struct FindUselessClone<'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -2019,7 +2019,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     pub(crate) fn find_expr(&self, span: Span) -> Option<&hir::Expr<'_>> {
         let tcx = self.infcx.tcx;
-        let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
+        let body_id = self.mir_hir().body_id()?;
         let mut expr_finder = FindExprBySpan::new(span, tcx);
         expr_finder.visit_expr(tcx.hir().body(body_id).value);
         expr_finder.result
@@ -2175,7 +2175,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
 
-        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+        let Some(body_id) = self.mir_hir().body_id() else { return };
         let typeck_results = tcx.typeck(self.mir_def_id());
 
         struct ExprFinder<'hir> {
@@ -2367,7 +2367,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let local_ty = self.body.local_decls[local].ty;
 
         // Get the body the error happens in
-        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+        let Some(body_id) = self.mir_hir().body_id() else { return };
 
         let body_expr = hir.body(body_id).value;
 
@@ -2582,7 +2582,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let hir::Node::ImplItem(hir::ImplItem {
             kind: hir::ImplItemKind::Fn(_fn_sig, body_id),
             ..
-        }) = self.infcx.tcx.hir_node(self.mir_hir_id())
+        }) = self.mir_hir()
             && let hir::Node::Expr(expr) = self.infcx.tcx.hir_node(body_id.hir_id)
         {
             let mut finder = ExpressionFinder {
@@ -4132,8 +4132,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure_like(did.to_def_id());
-        let fn_hir_id = self.infcx.tcx.local_def_id_to_hir_id(did);
-        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
+        let fn_decl = self.infcx.tcx.local_def_id_to_hir_node(did).fn_decl()?;
 
         // We need to work out which arguments to highlight. We do this by looking
         // at the return type, where there are three cases:
