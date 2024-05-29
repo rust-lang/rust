@@ -216,6 +216,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-profile-use -d 'us
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l check -d 'check formatting instead of applying'
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l all -d 'apply to all appropriate files, not just those that have been modified'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l include-default-paths -d 'include default paths in addition to the provided ones'
