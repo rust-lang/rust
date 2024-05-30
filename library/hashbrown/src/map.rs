@@ -224,7 +224,7 @@ where
 #[cfg_attr(feature = "inline-more", inline)]
 fn equivalent_key<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
 where
-    Q: ?Sized + Equivalent<K>,
+    Q: Equivalent<K> + ?Sized,
 {
     move |x| k.equivalent(&x.0)
 }
@@ -234,7 +234,7 @@ where
 #[cfg_attr(feature = "inline-more", inline)]
 fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
 where
-    Q: ?Sized + Equivalent<K>,
+    Q: Equivalent<K> + ?Sized,
 {
     move |x| k.equivalent(x)
 }
@@ -1264,9 +1264,9 @@ where
     /// assert_eq!(words["horseyland"], 1);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn entry_ref<'a, 'b, Q: ?Sized>(&'a mut self, key: &'b Q) -> EntryRef<'a, 'b, K, Q, V, S, A>
+    pub fn entry_ref<'a, 'b, Q>(&'a mut self, key: &'b Q) -> EntryRef<'a, 'b, K, Q, V, S, A>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let hash = make_hash::<Q, S>(&self.hash_builder, key);
         if let Some(elem) = self.table.find(hash, equivalent_key(key)) {
@@ -1305,9 +1305,9 @@ where
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[inline]
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    pub fn get<Q>(&self, k: &Q) -> Option<&V>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner(k) {
@@ -1336,9 +1336,9 @@ where
     /// assert_eq!(map.get_key_value(&2), None);
     /// ```
     #[inline]
-    pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+    pub fn get_key_value<Q>(&self, k: &Q) -> Option<(&K, &V)>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner(k) {
@@ -1348,9 +1348,9 @@ where
     }
 
     #[inline]
-    fn get_inner<Q: ?Sized>(&self, k: &Q) -> Option<&(K, V)>
+    fn get_inner<Q>(&self, k: &Q) -> Option<&(K, V)>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         if self.table.is_empty() {
             None
@@ -1384,9 +1384,9 @@ where
     /// assert_eq!(map.get_key_value_mut(&2), None);
     /// ```
     #[inline]
-    pub fn get_key_value_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<(&K, &mut V)>
+    pub fn get_key_value_mut<Q>(&mut self, k: &Q) -> Option<(&K, &mut V)>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner_mut(k) {
@@ -1415,9 +1415,9 @@ where
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
+    pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         self.get_inner(k).is_some()
     }
@@ -1446,9 +1446,9 @@ where
     /// assert_eq!(map.get_mut(&2), None);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner_mut(k) {
@@ -1458,9 +1458,9 @@ where
     }
 
     #[inline]
-    fn get_inner_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut (K, V)>
+    fn get_inner_mut<Q>(&mut self, k: &Q) -> Option<&mut (K, V)>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         if self.table.is_empty() {
             None
@@ -1513,9 +1513,9 @@ where
     /// ]);
     /// assert_eq!(got, None);
     /// ```
-    pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
+    pub fn get_many_mut<Q, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         self.get_many_mut_inner(ks).map(|res| res.map(|(_, v)| v))
     }
@@ -1565,12 +1565,12 @@ where
     /// ]);
     /// assert_eq!(got, None);
     /// ```
-    pub unsafe fn get_many_unchecked_mut<Q: ?Sized, const N: usize>(
+    pub unsafe fn get_many_unchecked_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
     ) -> Option<[&'_ mut V; N]>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         self.get_many_unchecked_mut_inner(ks)
             .map(|res| res.map(|(_, v)| v))
@@ -1620,12 +1620,12 @@ where
     /// ]);
     /// assert_eq!(got, None);
     /// ```
-    pub fn get_many_key_value_mut<Q: ?Sized, const N: usize>(
+    pub fn get_many_key_value_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
     ) -> Option<[(&'_ K, &'_ mut V); N]>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         self.get_many_mut_inner(ks)
             .map(|res| res.map(|(k, v)| (&*k, v)))
@@ -1675,44 +1675,41 @@ where
     /// ]);
     /// assert_eq!(got, None);
     /// ```
-    pub unsafe fn get_many_key_value_unchecked_mut<Q: ?Sized, const N: usize>(
+    pub unsafe fn get_many_key_value_unchecked_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
     ) -> Option<[(&'_ K, &'_ mut V); N]>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         self.get_many_unchecked_mut_inner(ks)
             .map(|res| res.map(|(k, v)| (&*k, v)))
     }
 
-    fn get_many_mut_inner<Q: ?Sized, const N: usize>(
-        &mut self,
-        ks: [&Q; N],
-    ) -> Option<[&'_ mut (K, V); N]>
+    fn get_many_mut_inner<Q, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut (K, V); N]>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let hashes = self.build_hashes_inner(ks);
         self.table
             .get_many_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
     }
 
-    unsafe fn get_many_unchecked_mut_inner<Q: ?Sized, const N: usize>(
+    unsafe fn get_many_unchecked_mut_inner<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
     ) -> Option<[&'_ mut (K, V); N]>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let hashes = self.build_hashes_inner(ks);
         self.table
             .get_many_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
     }
 
-    fn build_hashes_inner<Q: ?Sized, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
+    fn build_hashes_inner<Q, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let mut hashes = [0_u64; N];
         for i in 0..N {
@@ -1892,9 +1889,9 @@ where
     /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    pub fn remove<Q>(&mut self, k: &Q) -> Option<V>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.remove_entry(k) {
@@ -1931,9 +1928,9 @@ where
     /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+    pub fn remove_entry<Q>(&mut self, k: &Q) -> Option<(K, V)>
     where
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let hash = make_hash::<Q, S>(&self.hash_builder, k);
         self.table.remove_entry(hash, equivalent_key(k))
@@ -2229,10 +2226,10 @@ where
     }
 }
 
-impl<K, Q: ?Sized, V, S, A> Index<&Q> for HashMap<K, V, S, A>
+impl<K, Q, V, S, A> Index<&Q> for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
-    Q: Hash + Equivalent<K>,
+    Q: Hash + Equivalent<K> + ?Sized,
     S: BuildHasher,
     A: Allocator,
 {
@@ -3160,10 +3157,10 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilderMut<'a, K, V, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S, A>
+    pub fn from_key<Q>(self, k: &Q) -> RawEntryMut<'a, K, V, S, A>
     where
         S: BuildHasher,
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let hash = make_hash::<Q, S>(&self.map.hash_builder, k);
         self.from_key_hashed_nocheck(hash, k)
@@ -3193,9 +3190,9 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilderMut<'a, K, V, S, A> {
     /// ```
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S, A>
+    pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S, A>
     where
-        Q: Equivalent<K>,
+        Q: Equivalent<K> + ?Sized,
     {
         self.from_hash(hash, equivalent(k))
     }
@@ -3266,10 +3263,10 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilder<'a, K, V, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
+    pub fn from_key<Q>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
         S: BuildHasher,
-        Q: Hash + Equivalent<K>,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
         let hash = make_hash::<Q, S>(&self.map.hash_builder, k);
         self.from_key_hashed_nocheck(hash, k)
@@ -3297,9 +3294,9 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilder<'a, K, V, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
+    pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
-        Q: Equivalent<K>,
+        Q: Equivalent<K> + ?Sized,
     {
         self.from_hash(hash, equivalent(k))
     }
