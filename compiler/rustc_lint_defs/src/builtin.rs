@@ -37,6 +37,7 @@ declare_lint_pass! {
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
+        DEPRECATED_SAFE,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
@@ -4842,5 +4843,53 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124559 <https://github.com/rust-lang/rust/issues/124559>",
+    };
+}
+
+declare_lint! {
+    /// The `deprecated_safe` lint detects unsafe functions being used as safe
+    /// functions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(deprecated_safe)]
+    /// // edition 2021
+    /// use std::env;
+    /// fn enable_backtrace() {
+    ///     env::set_var("RUST_BACKTRACE", "1");
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust [editions] allow the language to evolve without breaking backward
+    /// compatibility. This lint catches code that uses `unsafe` functions that
+    /// were declared as safe (non-`unsafe`) in earlier editions. If you switch
+    /// the compiler to a new edition without updating the code, then it
+    /// will fail to compile if you are using a function previously marked as
+    /// safe.
+    ///
+    /// You can audit the code to see if it suffices the preconditions of the
+    /// `unsafe` code, and if it does, you can wrap it in an `unsafe` block. If
+    /// you can't fulfill the preconditions, you probably need to switch to a
+    /// different way of doing what you want to achieve.
+    ///
+    /// This lint can automatically wrap the calls in `unsafe` blocks, but this
+    /// obviously cannot verify that the preconditions of the `unsafe`
+    /// functions are fulfilled, so that is still up to the user.
+    ///
+    /// The lint is currently "allow" by default, but that might change in the
+    /// future.
+    ///
+    /// [editions]: https://doc.rust-lang.org/edition-guide/
+    pub DEPRECATED_SAFE,
+    Allow,
+    "detects unsafe functions being used as safe functions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
     };
 }

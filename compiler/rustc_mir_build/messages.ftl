@@ -28,6 +28,12 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .value_borrowed_label = value borrowed here after move
     .suggestion = borrow this binding in the pattern to avoid moving the value
 
+mir_build_call_to_deprecated_safe_fn_requires_unsafe =
+    call to deprecated safe function `{$function}` is unsafe and requires unsafe block
+    .note = consult the function's documentation for information on how to avoid undefined behavior
+    .label = call to unsafe function
+    .suggestion = you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
+
 mir_build_call_to_fn_with_requires_unsafe =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block
     .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->

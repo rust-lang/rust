@@ -9,7 +9,7 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
-use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
+use rustc_session::lint::builtin::{DEPRECATED_SAFE, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
@@ -110,14 +110,34 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 );
                 self.suggest_unsafe_block = false;
             }
-            SafetyContext::Safe => {
-                kind.emit_requires_unsafe_err(
+            SafetyContext::Safe => match kind {
+                // Allow calls to deprecated-safe unsafe functions if the
+                // caller is from an edition before 2024.
+                UnsafeOpKind::CallToUnsafeFunction(Some(id))
+                    if !span.at_least_rust_2024()
+                        && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
+                {
+                    self.tcx.emit_node_span_lint(
+                        DEPRECATED_SAFE,
+                        self.hir_context,
+                        span,
+                        CallToDeprecatedSafeFnRequiresUnsafe {
+                            span,
+                            function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
+                            sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
+                                left: span.shrink_to_lo(),
+                                right: span.shrink_to_hi(),
+                            },
+                        },
+                    )
+                }
+                _ => kind.emit_requires_unsafe_err(
                     self.tcx,
                     span,
                     self.hir_context,
                     unsafe_op_in_unsafe_fn_allowed,
-                );
-            }
+                ),
+            },
         }
     }
 

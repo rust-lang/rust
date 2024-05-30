@@ -172,18 +172,14 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     unsafe { ENV.as_ref().unwrap().lock().unwrap().get_mut(k).cloned() }
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    unsafe {
-        let (k, v) = (k.to_owned(), v.to_owned());
-        ENV.as_ref().unwrap().lock().unwrap().insert(k, v);
-    }
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    let (k, v) = (k.to_owned(), v.to_owned());
+    ENV.as_ref().unwrap().lock().unwrap().insert(k, v);
     Ok(())
 }
 
-pub fn unsetenv(k: &OsStr) -> io::Result<()> {
-    unsafe {
-        ENV.as_ref().unwrap().lock().unwrap().remove(k);
-    }
+pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
+    ENV.as_ref().unwrap().lock().unwrap().remove(k);
     Ok(())
 }
 
