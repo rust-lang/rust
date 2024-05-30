@@ -28,14 +28,14 @@ mod task_queue {
     }
 
     pub(super) struct Task {
-        p: Box<dyn FnOnce()>,
+        p: Box<dyn FnOnce() + Send>,
         done: JoinNotifier,
     }
 
     unsafe impl Send for Task {}
 
     impl Task {
-        pub(super) fn new(p: Box<dyn FnOnce()>) -> (Task, JoinHandle) {
+        pub(super) fn new(p: Box<dyn FnOnce() + Send>) -> (Task, JoinHandle) {
             let (done, recv) = wait_notify::new();
             let done = JoinNotifier(Some(done));
             (Task { p, done }, recv)
@@ -97,7 +97,7 @@ pub mod wait_notify {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce() + Send>) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
         unsafe { usercalls::launch_thread()? };
         let (task, handle) = task_queue::Task::new(p);
