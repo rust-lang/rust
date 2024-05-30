@@ -176,8 +176,7 @@ pub fn non_canonical_clone_derive(_: TokenStream) -> TokenStream {
         struct NonCanonicalClone;
         impl Clone for NonCanonicalClone {
             fn clone(&self) -> Self {
-                let a = *self;
-                a
+                todo!()
             }
         }
         impl Copy for NonCanonicalClone {}
