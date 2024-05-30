@@ -90,7 +90,7 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 if [ "$EXTERNAL_LLVM" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
   # Likewise, only demand we test all LLVM components if we know we built LLVM with them
-  export COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS=1
+  export COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS=1
 elif [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     echo "error: dist builds should always use optimized compiler-rt!" >&2
     exit 1
