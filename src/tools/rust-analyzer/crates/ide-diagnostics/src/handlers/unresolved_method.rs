@@ -161,8 +161,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         // we could omit generic parameters cause compiler can deduce it automatically
         if !need_to_take_receiver_as_first_arg && !generic_parameters.is_empty() {
             let generic_parameters = generic_parameters.join(", ");
-            receiver_type_adt_name =
-                format!("{receiver_type_adt_name}::<{generic_parameters}>");
+            receiver_type_adt_name = format!("{receiver_type_adt_name}::<{generic_parameters}>");
         }
 
         let method_name = call.name_ref()?;
