@@ -246,8 +246,11 @@ pub trait Visitor<'ast>: Sized {
     fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) -> Self::Result {
         walk_generic_arg(self, generic_arg)
     }
-    fn visit_assoc_constraint(&mut self, constraint: &'ast AssocConstraint) -> Self::Result {
-        walk_assoc_constraint(self, constraint)
+    fn visit_assoc_item_constraint(
+        &mut self,
+        constraint: &'ast AssocItemConstraint,
+    ) -> Self::Result {
+        walk_assoc_item_constraint(self, constraint)
     }
     fn visit_attribute(&mut self, attr: &'ast Attribute) -> Self::Result {
         walk_attribute(self, attr)
@@ -558,7 +561,7 @@ where
                 match arg {
                     AngleBracketedArg::Arg(a) => try_visit!(visitor.visit_generic_arg(a)),
                     AngleBracketedArg::Constraint(c) => {
-                        try_visit!(visitor.visit_assoc_constraint(c))
+                        try_visit!(visitor.visit_assoc_item_constraint(c))
                     }
                 }
             }
@@ -582,18 +585,18 @@ where
     }
 }
 
-pub fn walk_assoc_constraint<'a, V: Visitor<'a>>(
+pub fn walk_assoc_item_constraint<'a, V: Visitor<'a>>(
     visitor: &mut V,
-    constraint: &'a AssocConstraint,
+    constraint: &'a AssocItemConstraint,
 ) -> V::Result {
     try_visit!(visitor.visit_ident(constraint.ident));
     visit_opt!(visitor, visit_generic_args, &constraint.gen_args);
     match &constraint.kind {
-        AssocConstraintKind::Equality { term } => match term {
+        AssocItemConstraintKind::Equality { term } => match term {
             Term::Ty(ty) => try_visit!(visitor.visit_ty(ty)),
             Term::Const(c) => try_visit!(visitor.visit_anon_const(c)),
         },
-        AssocConstraintKind::Bound { bounds } => {
+        AssocItemConstraintKind::Bound { bounds } => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
     }

@@ -300,23 +300,30 @@ impl GenericArg<'_> {
     }
 }
 
+/// The generic arguments and associated item constraints of a path segment.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct GenericArgs<'hir> {
     /// The generic arguments for this path segment.
     pub args: &'hir [GenericArg<'hir>],
-    /// Bindings (equality constraints) on associated types, if present.
-    /// E.g., `Foo<A = Bar>`.
-    pub bindings: &'hir [TypeBinding<'hir>],
-    /// Were arguments written in parenthesized form `Fn(T) -> U`?
+    /// The associated item constraints for this path segment.
+    pub constraints: &'hir [AssocItemConstraint<'hir>],
+    /// Whether the arguments were written in parenthesized form (e.g., `Fn(T) -> U`).
+    ///
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
     pub parenthesized: GenericArgsParentheses,
-    /// The span encompassing arguments and the surrounding brackets `<>` or `()`
+    /// The span encompassing the arguments, constraints and the surrounding brackets (`<>` or `()`).
+    ///
+    /// For example:
+    ///
+    /// ```ignore (illustrative)
     ///       Foo<A, B, AssocTy = D>           Fn(T, U, V) -> W
     ///          ^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^
+    /// ```
+    ///
     /// Note that this may be:
     /// - empty, if there are no generic brackets (but there may be hidden lifetimes)
-    /// - dummy, if this was generated while desugaring
+    /// - dummy, if this was generated during desugaring
     pub span_ext: Span,
 }
 
@@ -324,39 +331,63 @@ impl<'hir> GenericArgs<'hir> {
     pub const fn none() -> Self {
         Self {
             args: &[],
-            bindings: &[],
+            constraints: &[],
             parenthesized: GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         }
     }
 
-    pub fn inputs(&self) -> &[Ty<'hir>] {
-        if self.parenthesized == GenericArgsParentheses::ParenSugar {
-            for arg in self.args {
-                match arg {
-                    GenericArg::Lifetime(_) => {}
-                    GenericArg::Type(ref ty) => {
-                        if let TyKind::Tup(ref tys) = ty.kind {
-                            return tys;
-                        }
-                        break;
-                    }
-                    GenericArg::Const(_) => {}
-                    GenericArg::Infer(_) => {}
-                }
-            }
+    /// Obtain the list of input types and the output type if the generic arguments are parenthesized.
+    ///
+    /// Returns the `Ty0, Ty1, ...` and the `RetTy` in `Trait(Ty0, Ty1, ...) -> RetTy`.
+    /// Panics if the parenthesized arguments have an incorrect form (this shouldn't happen).
+    pub fn paren_sugar_inputs_output(&self) -> Option<(&[Ty<'hir>], &Ty<'hir>)> {
+        if self.parenthesized != GenericArgsParentheses::ParenSugar {
+            return None;
         }
-        panic!("GenericArgs::inputs: not a `Fn(T) -> U`");
+
+        let inputs = self
+            .args
+            .iter()
+            .find_map(|arg| {
+                let GenericArg::Type(ty) = arg else { return None };
+                let TyKind::Tup(tys) = &ty.kind else { return None };
+                Some(tys)
+            })
+            .unwrap();
+
+        Some((inputs, self.paren_sugar_output_inner()))
     }
 
-    pub fn has_err(&self) -> bool {
-        self.args.iter().any(|arg| match arg {
-            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err(_)),
-            _ => false,
-        }) || self.bindings.iter().any(|arg| match arg.kind {
-            TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err(_)),
-            _ => false,
-        })
+    /// Obtain the output type if the generic arguments are parenthesized.
+    ///
+    /// Returns the `RetTy` in `Trait(Ty0, Ty1, ...) -> RetTy`.
+    /// Panics if the parenthesized arguments have an incorrect form (this shouldn't happen).
+    pub fn paren_sugar_output(&self) -> Option<&Ty<'hir>> {
+        (self.parenthesized == GenericArgsParentheses::ParenSugar)
+            .then(|| self.paren_sugar_output_inner())
+    }
+
+    fn paren_sugar_output_inner(&self) -> &Ty<'hir> {
+        let [constraint] = self.constraints.try_into().unwrap();
+        debug_assert_eq!(constraint.ident.name, sym::Output);
+        constraint.ty().unwrap()
+    }
+
+    pub fn has_err(&self) -> Option<ErrorGuaranteed> {
+        self.args
+            .iter()
+            .find_map(|arg| {
+                let GenericArg::Type(ty) = arg else { return None };
+                let TyKind::Err(guar) = ty.kind else { return None };
+                Some(guar)
+            })
+            .or_else(|| {
+                self.constraints.iter().find_map(|constraint| {
+                    let TyKind::Err(guar) = constraint.ty()?.kind else { return None };
+                    Some(guar)
+                })
+            })
     }
 
     #[inline]
@@ -383,9 +414,11 @@ impl<'hir> GenericArgs<'hir> {
             .count()
     }
 
-    /// The span encompassing the text inside the surrounding brackets.
-    /// It will also include bindings if they aren't in the form `-> Ret`
-    /// Returns `None` if the span is empty (e.g. no brackets) or dummy
+    /// The span encompassing the arguments and constraints[^1] inside the surrounding brackets.
+    ///
+    /// Returns `None` if the span is empty (i.e., no brackets) or dummy.
+    ///
+    /// [^1]: Unless of the form `-> Ty` (see [`GenericArgsParentheses`]).
     pub fn span(&self) -> Option<Span> {
         let span_ext = self.span_ext()?;
         Some(span_ext.with_lo(span_ext.lo() + BytePos(1)).with_hi(span_ext.hi() - BytePos(1)))
@@ -660,9 +693,7 @@ impl<'hir> Generics<'hir> {
             |bound| {
                 let span_for_parentheses = if let Some(trait_ref) = bound.trait_ref()
                     && let [.., segment] = trait_ref.path.segments
-                    && segment.args().parenthesized == GenericArgsParentheses::ParenSugar
-                    && let [binding] = segment.args().bindings
-                    && let TypeBindingKind::Equality { term: Term::Ty(ret_ty) } = binding.kind
+                    && let Some(ret_ty) = segment.args().paren_sugar_output()
                     && let ret_ty = ret_ty.peel_refs()
                     && let TyKind::TraitObject(
                         _,
@@ -748,7 +779,7 @@ impl<'hir> Generics<'hir> {
 /// A single predicate in a where-clause.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum WherePredicate<'hir> {
-    /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
+    /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
     BoundPredicate(WhereBoundPredicate<'hir>),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate<'hir>),
@@ -2356,22 +2387,41 @@ pub enum ImplItemKind<'hir> {
     Type(&'hir Ty<'hir>),
 }
 
-/// An associated item binding.
+/// A constraint on an associated item.
 ///
 /// ### Examples
 ///
-/// * `Trait<A = Ty, B = Ty>`
-/// * `Trait<G<Ty> = Ty>`
-/// * `Trait<A: Bound>`
-/// * `Trait<C = { Ct }>` (under feature `associated_const_equality`)
-/// * `Trait<f(): Bound>` (under feature `return_type_notation`)
+/// * the `A = Ty` and `B = Ty` in `Trait<A = Ty, B = Ty>`
+/// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
+/// * the `A: Bound` in `Trait<A: Bound>`
+/// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `f(): Bound` in `Trait<f(): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct TypeBinding<'hir> {
+pub struct AssocItemConstraint<'hir> {
     pub hir_id: HirId,
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
-    pub kind: TypeBindingKind<'hir>,
+    pub kind: AssocItemConstraintKind<'hir>,
     pub span: Span,
+}
+
+impl<'hir> AssocItemConstraint<'hir> {
+    /// Obtain the type on the RHS of an assoc ty equality constraint if applicable.
+    pub fn ty(self) -> Option<&'hir Ty<'hir>> {
+        match self.kind {
+            AssocItemConstraintKind::Equality { term: Term::Ty(ty) } => Some(ty),
+            _ => None,
+        }
+    }
+
+    /// Obtain the const on the RHS of an assoc const equality constraint if applicable.
+    pub fn ct(self) -> Option<&'hir AnonConst> {
+        match self.kind {
+            AssocItemConstraintKind::Equality { term: Term::Const(ct) } => Some(ct),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -2392,28 +2442,18 @@ impl<'hir> From<&'hir AnonConst> for Term<'hir> {
     }
 }
 
-// Represents the two kinds of type bindings.
+/// The kind of [associated item constraint][AssocItemConstraint].
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub enum TypeBindingKind<'hir> {
-    /// E.g., `Foo<Bar: Send>`.
-    Constraint { bounds: &'hir [GenericBound<'hir>] },
-    /// E.g., `Foo<Bar = ()>`.
+pub enum AssocItemConstraintKind<'hir> {
+    /// An equality constraint for an associated item (e.g., `AssocTy = Ty` in `Trait<AssocTy = Ty>`).
+    ///
+    /// Also known as an *associated item binding* (we *bind* an associated item to a term).
+    ///
+    /// Furthermore, associated type equality constraints can also be referred to as *associated type
+    /// bindings*. Similarly with associated const equality constraints and *associated const bindings*.
     Equality { term: Term<'hir> },
-}
-
-impl TypeBinding<'_> {
-    pub fn ty(&self) -> &Ty<'_> {
-        match self.kind {
-            TypeBindingKind::Equality { term: Term::Ty(ref ty) } => ty,
-            _ => panic!("expected equality type binding for parenthesized generic args"),
-        }
-    }
-    pub fn opt_const(&self) -> Option<&'_ AnonConst> {
-        match self.kind {
-            TypeBindingKind::Equality { term: Term::Const(ref c) } => Some(c),
-            _ => None,
-        }
-    }
+    /// A bound on an associated type (e.g., `AssocTy: Bound` in `Trait<AssocTy: Bound>`).
+    Bound { bounds: &'hir [GenericBound<'hir>] },
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -3609,7 +3649,7 @@ pub enum Node<'hir> {
     Stmt(&'hir Stmt<'hir>),
     PathSegment(&'hir PathSegment<'hir>),
     Ty(&'hir Ty<'hir>),
-    TypeBinding(&'hir TypeBinding<'hir>),
+    AssocItemConstraint(&'hir AssocItemConstraint<'hir>),
     TraitRef(&'hir TraitRef<'hir>),
     Pat(&'hir Pat<'hir>),
     PatField(&'hir PatField<'hir>),
@@ -3658,7 +3698,7 @@ impl<'hir> Node<'hir> {
             | Node::PathSegment(PathSegment { ident, .. }) => Some(*ident),
             Node::Lifetime(lt) => Some(lt.ident),
             Node::GenericParam(p) => Some(p.name.ident()),
-            Node::TypeBinding(b) => Some(b.ident),
+            Node::AssocItemConstraint(c) => Some(c.ident),
             Node::PatField(f) => Some(f.ident),
             Node::ExprField(f) => Some(f.ident),
             Node::PreciseCapturingNonLifetimeArg(a) => Some(a.ident),
@@ -3834,7 +3874,7 @@ impl<'hir> Node<'hir> {
         expect_stmt,          &'hir Stmt<'hir>,         Node::Stmt(n),         n;
         expect_path_segment,  &'hir PathSegment<'hir>,  Node::PathSegment(n),  n;
         expect_ty,            &'hir Ty<'hir>,           Node::Ty(n),           n;
-        expect_type_binding,  &'hir TypeBinding<'hir>,  Node::TypeBinding(n),  n;
+        expect_assoc_item_constraint,  &'hir AssocItemConstraint<'hir>,  Node::AssocItemConstraint(n),  n;
         expect_trait_ref,     &'hir TraitRef<'hir>,     Node::TraitRef(n),     n;
         expect_pat,           &'hir Pat<'hir>,          Node::Pat(n),          n;
         expect_pat_field,     &'hir PatField<'hir>,     Node::PatField(n),     n;
