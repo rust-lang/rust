@@ -9,17 +9,14 @@ fn main() {
     let proc_crate_name = "foobar_macro";
     let crate_name = "foobar";
 
-    let dylib_name = String::from_utf8(
-        rustc()
-            .crate_name(proc_crate_name)
-            .crate_type("dylib")
-            .arg("--print")
-            .arg("file-names")
-            .arg("-")
-            .command_output()
-            .stdout,
-    )
-    .unwrap();
+    let output = rustc()
+        .crate_name(proc_crate_name)
+        .crate_type("dylib")
+        .arg("--print")
+        .arg("file-names")
+        .arg("-")
+        .run();
+    let dylib_name = String::from_utf8(output.stdout).unwrap();
 
     rustc()
         .input("src/proc.rs")

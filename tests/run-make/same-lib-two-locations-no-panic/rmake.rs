@@ -7,22 +7,22 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{dynamic_lib, rust_lib, rustc, tmp_dir};
+use run_make_support::{dynamic_lib, dynamic_lib_name, rust_lib, rust_lib_name, rustc, tmp_dir};
 use std::fs;
 
 fn main() {
     let tmp_dir_other = tmp_dir().join("other");
 
-    fs::create_dir(&tmp_dir_other);
+    fs::create_dir(&tmp_dir_other).unwrap();
     rustc().input("foo.rs").crate_type("dylib").arg("-Cprefer-dynamic").run();
-    fs::rename(dynamic_lib("foo"), &tmp_dir_other);
+    fs::rename(dynamic_lib("foo"), tmp_dir_other.join(dynamic_lib_name("foo"))).unwrap();
     rustc().input("foo.rs").crate_type("dylib").arg("-Cprefer-dynamic").run();
     rustc().input("bar.rs").library_search_path(&tmp_dir_other).run();
-    fs::remove_dir_all(tmp_dir());
+    fs::remove_dir_all(tmp_dir()).unwrap();
 
-    fs::create_dir_all(&tmp_dir_other);
+    fs::create_dir_all(&tmp_dir_other).unwrap();
     rustc().input("foo.rs").crate_type("rlib").run();
-    fs::rename(rust_lib("foo"), &tmp_dir_other);
+    fs::rename(rust_lib("foo"), tmp_dir_other.join(rust_lib_name("foo"))).unwrap();
     rustc().input("foo.rs").crate_type("rlib").run();
     rustc().input("bar.rs").library_search_path(tmp_dir_other).run();
 }

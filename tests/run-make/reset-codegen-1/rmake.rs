@@ -31,8 +31,9 @@ fn main() {
         ("multi-output", Some("asm,obj")),
     ];
     for (output_file, emit) in flags {
-        fs::remove_file(output_file).unwrap_or_default();
+        fs::remove_dir_all(tmp_dir()).unwrap_or_default();
+        fs::create_dir_all(tmp_dir()).unwrap();
         compile(output_file, emit);
-        fs::remove_file(output_file);
+        fs::remove_dir_all(tmp_dir()).unwrap();
     }
 }
