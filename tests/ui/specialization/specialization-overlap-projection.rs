@@ -15,13 +15,10 @@ trait Assoc {
 
 impl<T> Assoc for T {
     default type Output = bool;
-    //[next]~^ ERROR type annotations needed
 }
 
 impl Assoc for u8 { type Output = u8; }
-//[next]~^ ERROR type annotations needed
 impl Assoc for u16 { type Output = u16; }
-//[next]~^ ERROR type annotations needed
 
 trait Foo {}
 impl Foo for u32 {}

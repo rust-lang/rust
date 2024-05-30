@@ -9,7 +9,7 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0119]: conflicting implementations of trait `Foo` for type `u32`
-  --> $DIR/specialization-overlap-projection.rs:28:1
+  --> $DIR/specialization-overlap-projection.rs:25:1
    |
 LL | impl Foo for u32 {}
    | ---------------- first implementation here
@@ -17,7 +17,7 @@ LL | impl Foo for <u8 as Assoc>::Output {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
 
 error[E0119]: conflicting implementations of trait `Foo` for type `u32`
-  --> $DIR/specialization-overlap-projection.rs:30:1
+  --> $DIR/specialization-overlap-projection.rs:27:1
    |
 LL | impl Foo for u32 {}
    | ---------------- first implementation here
@@ -25,25 +25,6 @@ LL | impl Foo for u32 {}
 LL | impl Foo for <u16 as Assoc>::Output {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
 
-error[E0282]: type annotations needed
-  --> $DIR/specialization-overlap-projection.rs:17:27
-   |
-LL |     default type Output = bool;
-   |                           ^^^^ cannot infer type for associated type `<T as Assoc>::Output`
+error: aborting due to 2 previous errors; 1 warning emitted
 
-error[E0282]: type annotations needed
-  --> $DIR/specialization-overlap-projection.rs:21:35
-   |
-LL | impl Assoc for u8 { type Output = u8; }
-   |                                   ^^ cannot infer type for associated type `<u8 as Assoc>::Output`
-
-error[E0282]: type annotations needed
-  --> $DIR/specialization-overlap-projection.rs:23:36
-   |
-LL | impl Assoc for u16 { type Output = u16; }
-   |                                    ^^^ cannot infer type for associated type `<u16 as Assoc>::Output`
-
-error: aborting due to 5 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0119, E0282.
-For more information about an error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0119`.

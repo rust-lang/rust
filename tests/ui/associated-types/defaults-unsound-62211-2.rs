@@ -1,8 +1,6 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] known-bug: rust-lang/trait-system-refactor-initiative#46
-//@[next] check-pass
 
 //! Regression test for https://github.com/rust-lang/rust/issues/62211
 //!
@@ -24,10 +22,11 @@ trait UncheckedCopy: Sized {
     // This Output is said to be Copy. Yet we default to Self
     // and it's accepted, not knowing if Self ineed is Copy
     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-    //[current]~^ ERROR the trait bound `Self: Copy` is not satisfied
-    //[current]~| ERROR the trait bound `Self: Deref` is not satisfied
-    //[current]~| ERROR cannot add-assign `&'static str` to `Self`
-    //[current]~| ERROR `Self` doesn't implement `std::fmt::Display`
+    //~^ ERROR the trait bound `Self: Copy` is not satisfied
+    //~| ERROR the trait bound `Self: Deref` is not satisfied
+    //~| ERROR cannot add-assign `&'static str` to `Self`
+    //~| ERROR `Self` doesn't implement `std::fmt::Display`
+    //[next]~| ERROR type mismatch resolving `<Self as Deref>::Target == str`
 
     // We said the Output type was Copy, so we can Copy it freely!
     fn unchecked_copy(other: &Self::Output) -> Self::Output {
