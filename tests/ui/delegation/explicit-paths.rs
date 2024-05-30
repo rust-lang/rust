@@ -22,9 +22,7 @@ mod fn_to_other {
     use super::*;
 
     reuse Trait::foo1;
-    //~^ ERROR delegation to a trait method from a free function is not supported yet
     reuse <S as Trait>::foo2;
-    //~^ ERROR delegation to a trait method from a free function is not supported yet
     reuse to_reuse::foo3;
     reuse S::foo4;
     //~^ ERROR cannot find function `foo4` in `S`
