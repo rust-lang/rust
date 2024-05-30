@@ -36,9 +36,8 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 
 # exotic linkages
-rm tests/ui/issues/issue-33992.rs # unsupported linkages
-rm tests/incremental/hashes/function_interfaces.rs # same
-rm tests/incremental/hashes/statics.rs # same
+rm tests/incremental/hashes/function_interfaces.rs
+rm tests/incremental/hashes/statics.rs
 
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
@@ -93,7 +92,6 @@ rm -r tests/run-make/print-to-output # requires --print relocation-models
 # requires asm, llvm-ir and/or llvm-bc emit support
 # =============================================
 rm -r tests/run-make/emit-named-files
-rm -r tests/run-make/issue-30063
 rm -r tests/run-make/multiple-emits
 rm -r tests/run-make/output-type-permutations
 rm -r tests/run-make/emit-to-stdout
