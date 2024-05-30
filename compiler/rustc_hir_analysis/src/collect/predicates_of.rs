@@ -1,6 +1,7 @@
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
+use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
@@ -109,6 +110,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
 
         None => {}
+    }
+
+    // For a delegation item inherit predicates from callee.
+    if let Some(sig_id) = tcx.hir().opt_delegation_sig_id(def_id)
+        && let Some(predicates) = inherit_predicates_for_delegation_item(tcx, def_id, sig_id)
+    {
+        return predicates;
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
