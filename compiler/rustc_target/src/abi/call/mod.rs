@@ -236,8 +236,10 @@ impl Reg {
                 _ => panic!("unsupported integer: {self:?}"),
             },
             RegKind::Float => match self.size.bits() {
+                16 => dl.f16_align.abi,
                 32 => dl.f32_align.abi,
                 64 => dl.f64_align.abi,
+                128 => dl.f128_align.abi,
                 _ => panic!("unsupported float: {self:?}"),
             },
             RegKind::Vector => dl.vector_align(self.size).abi,
