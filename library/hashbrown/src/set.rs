@@ -858,9 +858,9 @@ where
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+    pub fn contains<Q>(&self, value: &Q) -> bool
     where
-        Q: Hash + Equivalent<T>,
+        Q: Hash + Equivalent<T> + ?Sized,
     {
         self.map.contains_key(value)
     }
@@ -884,9 +884,9 @@ where
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
+    pub fn get<Q>(&self, value: &Q) -> Option<&T>
     where
-        Q: Hash + Equivalent<T>,
+        Q: Hash + Equivalent<T> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.map.get_key_value(value) {
@@ -939,9 +939,9 @@ where
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
     #[inline]
-    pub fn get_or_insert_owned<Q: ?Sized>(&mut self, value: &Q) -> &T
+    pub fn get_or_insert_owned<Q>(&mut self, value: &Q) -> &T
     where
-        Q: Hash + Equivalent<T> + ToOwned<Owned = T>,
+        Q: Hash + Equivalent<T> + ToOwned<Owned = T> + ?Sized,
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
@@ -971,9 +971,9 @@ where
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
+    pub fn get_or_insert_with<Q, F>(&mut self, value: &Q, f: F) -> &T
     where
-        Q: Hash + Equivalent<T>,
+        Q: Hash + Equivalent<T> + ?Sized,
         F: FnOnce(&Q) -> T,
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
@@ -1187,9 +1187,9 @@ where
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
+    pub fn remove<Q>(&mut self, value: &Q) -> bool
     where
-        Q: Hash + Equivalent<T>,
+        Q: Hash + Equivalent<T> + ?Sized,
     {
         self.map.remove(value).is_some()
     }
@@ -1213,9 +1213,9 @@ where
     /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
     /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+    pub fn take<Q>(&mut self, value: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T>,
+        Q: Hash + Equivalent<T> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.map.remove_entry(value) {
