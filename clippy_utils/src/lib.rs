@@ -3370,3 +3370,25 @@ pub fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
         Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
     )
 }
+
+/// Returns true if the given `expr` is a block or resembled as a block,
+/// such as `if`, `loop`, `match` expressions etc.
+pub fn is_block_like(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Block(..) | ExprKind::ConstBlock(..) | ExprKind::If(..) | ExprKind::Loop(..) | ExprKind::Match(..)
+    )
+}
+
+/// Returns true if the given `expr` is binary expression that needs to be wrapped in parentheses.
+pub fn binary_expr_needs_parentheses(expr: &Expr<'_>) -> bool {
+    fn contains_block(expr: &Expr<'_>, is_operand: bool) -> bool {
+        match expr.kind {
+            ExprKind::Binary(_, lhs, _) => contains_block(lhs, true),
+            _ if is_block_like(expr) => is_operand,
+            _ => false,
+        }
+    }
+
+    contains_block(expr, false)
+}

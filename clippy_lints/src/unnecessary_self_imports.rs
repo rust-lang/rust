@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for imports ending in `::{self}`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// In most cases, this can be written much more cleanly by omitting `::{self}`.
     ///
     /// ### Known problems

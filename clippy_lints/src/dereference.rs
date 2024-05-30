@@ -2,7 +2,9 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{implements_trait, is_manually_drop, peel_mid_ty_refs};
-use clippy_utils::{expr_use_ctxt, get_parent_expr, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode};
+use clippy_utils::{
+    expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
+};
 use core::mem;
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
@@ -1038,14 +1040,8 @@ fn report<'tcx>(
             );
         },
         State::ExplicitDeref { mutability } => {
-            if matches!(
-                expr.kind,
-                ExprKind::Block(..)
-                    | ExprKind::ConstBlock(_)
-                    | ExprKind::If(..)
-                    | ExprKind::Loop(..)
-                    | ExprKind::Match(..)
-            ) && let ty::Ref(_, ty, _) = data.adjusted_ty.kind()
+            if is_block_like(expr)
+                && let ty::Ref(_, ty, _) = data.adjusted_ty.kind()
                 && ty.is_sized(cx.tcx, cx.param_env)
             {
                 // Rustc bug: auto deref doesn't work on block expression when targeting sized types.

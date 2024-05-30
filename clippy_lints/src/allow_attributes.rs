@@ -19,10 +19,11 @@ declare_clippy_lint! {
     /// This lint only warns outer attributes (`#[allow]`), as inner attributes
     /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
     ///
-    /// ### Why is this bad?
-    /// `#[expect]` attributes suppress the lint emission, but emit a warning, if
+    /// ### Why restrict this?
+    /// `#[allow]` attributes can linger after their reason for existence is gone.
+    /// `#[expect]` attributes suppress the lint emission, but emit a warning if
     /// the expectation is unfulfilled. This can be useful to be notified when the
-    /// lint is no longer triggered.
+    /// lint is no longer triggered, which may indicate the attribute can be removed.
     ///
     /// ### Example
     /// ```rust,ignore
