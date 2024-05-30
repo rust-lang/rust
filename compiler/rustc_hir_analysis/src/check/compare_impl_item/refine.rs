@@ -267,7 +267,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
             .explicit_item_bounds(future_ty.def_id)
             .iter_instantiated_copied(tcx, future_ty.args)
             .find_map(|(clause, _)| match clause.kind().no_bound_vars()? {
-                ty::ClauseKind::Projection(proj) => proj.term.ty(),
+                ty::ClauseKind::Projection(proj) => proj.term.as_type(),
                 _ => None,
             })
         else {

@@ -750,7 +750,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                     let output = bounds
                         .projection_bounds()
                         .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
-                        .map(|p| p.map_bound(|p| p.term.ty().unwrap()));
+                        .map(|p| p.map_bound(|p| p.term.expect_type()));
                     Some(ExprFnSig::Trait(bound.map_bound(|b| b.args.type_at(0)), output, None))
                 },
                 _ => None,
@@ -798,7 +798,7 @@ fn sig_from_bounds<'tcx>(
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(pred.kind().rebind(p.term.ty().unwrap()));
+                output = Some(pred.kind().rebind(p.term.expect_type()));
             },
             _ => (),
         }
@@ -836,7 +836,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = pred.kind().rebind(p.term.ty()).transpose();
+                output = pred.kind().rebind(p.term.as_type()).transpose();
             },
             _ => (),
         }
