@@ -2,51 +2,53 @@ OUTPUT_FORMAT("elf32-littlearm")
 
 ENTRY(_start)
 
-__cold_start = 0x03800000;
-__cold_length = 0x04800000;
-__cold_end = __cold_start + __cold_length;
+__user_ram_start = 0x03800000;
+__user_ram_length = 0x04800000;
+__user_ram_end = __user_ram_start + __user_ram_length;
 
 MEMORY {
-    COLD : ORIGIN = __cold_start, LENGTH = __cold_length
+    USER_RAM : ORIGIN = __user_ram_start, LENGTH = __user_ram_length
 }
 
 __stack_length = 0x400000;
-/*
-I'm not sure why subtracting anything is necessary, but it fixes memory permission errors.
-0x1000 is an arbitrary number that works.
-*/
-__heap_end = __cold_end - __stack_length - 0x1000;
+__heap_end = __user_ram_end - __stack_length - 64;
 
 SECTIONS {
-    .code_signature : {
+    .code_signature __user_ram_start : {
         KEEP(*(.code_signature))
-        . = __cold_start + 0x20;
-    } > COLD
-    .text : {
-        KEEP(*(.text.boot))
+    } > USER_RAM = 0
+
+    .text __user_ram_start + 0x20 : {
+        *(.text.boot)
         *(.text .text.*)
-    } > COLD
+    } > USER_RAM
+
     .rodata : {
-        __rodata_start = .;
-        *(.rodata1 .rodata1.*)
-        __rodata_end = .;
-    } > COLD
+        *(.rodata .rodata.*)
+    } > USER_RAM
+
     .data : {
         *(.data .data.*)
-        *(.data1 .data1.*)
-    } > COLD
+    } > USER_RAM
+
     .bss : {
         __bss_start = .;
         *(.bss .bss.*)
         __bss_end = .;
-    } > COLD
+    } > USER_RAM
+
     .heap (NOLOAD) : ALIGN(4) {
         __heap_start = .;
         . = __heap_end;
-    } > COLD
+    } > USER_RAM
+
     .stack (NOLOAD) : ALIGN(8) {
-        __stack_end = .;
+        __stack_bottom = .;
         . += __stack_length;
-        __stack_start = .;
-    } > COLD
+        __stack_top = .;
+    } > USER_RAM
+
+    /DISCARD/ : {
+        *(.ARM.exidx)
+    }
 }
