@@ -183,9 +183,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         const_: Const::from_bool(this.tcx, constant),
                     },
                 );
-                let rhs = unpack!(this.expr_into_dest(destination, continuation, rhs));
+                let mut rhs_block = unpack!(this.expr_into_dest(destination, continuation, rhs));
+                // Instrument the lowered RHS's value for condition coverage.
+                // (Does nothing if condition coverage is not enabled.)
+                this.visit_coverage_standalone_condition(rhs, destination, &mut rhs_block);
+
                 let target = this.cfg.start_new_block();
-                this.cfg.goto(rhs, source_info, target);
+                this.cfg.goto(rhs_block, source_info, target);
                 this.cfg.goto(short_circuit, source_info, target);
                 target.unit()
             }

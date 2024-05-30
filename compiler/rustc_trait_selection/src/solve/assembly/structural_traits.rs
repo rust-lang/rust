@@ -9,7 +9,6 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, Upcast};
-use rustc_span::sym;
 
 use crate::solve::EvalCtxt;
 
@@ -22,7 +21,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
-    let tcx = ecx.tcx();
+    let tcx = ecx.interner();
     match *ty.kind() {
         ty::Uint(_)
         | ty::Int(_)
@@ -75,7 +74,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .tcx()
+            .interner()
             .bound_coroutine_hidden_types(def_id)
             .map(|bty| bty.instantiate(tcx, args))
             .collect()),
@@ -151,8 +150,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         //   "best effort" optimization and `sized_constraint` may return `Some`, even
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
-            if let Some(sized_crit) = def.sized_constraint(ecx.tcx()) {
-                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.tcx(), args))])
+            if let Some(sized_crit) = def.sized_constraint(ecx.interner()) {
+                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.interner(), args))])
             } else {
                 Ok(vec![])
             }
@@ -210,10 +209,10 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
         // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
-        ty::Coroutine(def_id, args) => match ecx.tcx().coroutine_movability(def_id) {
+        ty::Coroutine(def_id, args) => match ecx.interner().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
-                if ecx.tcx().features().coroutine_clone {
+                if ecx.interner().features().coroutine_clone {
                     let coroutine = args.as_coroutine();
                     Ok(vec![
                         ty::Binder::dummy(coroutine.tupled_upvars_ty()),
@@ -227,9 +226,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .tcx()
+            .interner()
             .bound_coroutine_hidden_types(def_id)
-            .map(|bty| bty.instantiate(ecx.tcx(), args))
+            .map(|bty| bty.instantiate(ecx.interner(), args))
             .collect()),
     }
 }
@@ -454,12 +453,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
                     .upcast(tcx),
             ];
-            let future_output_def_id = tcx
-                .associated_items(future_trait_def_id)
-                .filter_by_name_unhygienic(sym::Output)
-                .next()
-                .unwrap()
-                .def_id;
+            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -510,12 +504,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 );
             }
 
-            let future_output_def_id = tcx
-                .associated_items(future_trait_def_id)
-                .filter_by_name_unhygienic(sym::Output)
-                .next()
-                .unwrap()
-                .def_id;
+            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -592,13 +581,7 @@ fn coroutine_closure_to_ambiguous_coroutine<'tcx>(
     args: ty::CoroutineClosureArgs<'tcx>,
     sig: ty::CoroutineClosureSignature<'tcx>,
 ) -> Ty<'tcx> {
-    let async_fn_kind_trait_def_id = tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-    let upvars_projection_def_id = tcx
-        .associated_items(async_fn_kind_trait_def_id)
-        .filter_by_name_unhygienic(sym::Upvars)
-        .next()
-        .unwrap()
-        .def_id;
+    let upvars_projection_def_id = tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
     let tupled_upvars_ty = Ty::new_projection(
         tcx,
         upvars_projection_def_id,
@@ -666,7 +649,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<Goal<'tcx, ty::Predicate<'tcx>>> {
-    let tcx = ecx.tcx();
+    let tcx = ecx.interner();
     let mut requirements = vec![];
     requirements.extend(
         tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.args).predicates,
@@ -722,7 +705,7 @@ struct ReplaceProjectionWith<'a, 'tcx> {
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
-        self.ecx.tcx()
+        self.ecx.interner()
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -739,7 +722,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
                     .eq_and_get_goals(
                         self.param_env,
                         alias_ty,
-                        proj.projection_term.expect_ty(self.ecx.tcx()),
+                        proj.projection_term.expect_ty(self.ecx.interner()),
                     )
                     .expect("expected to be able to unify goal projection with dyn's projection"),
             );

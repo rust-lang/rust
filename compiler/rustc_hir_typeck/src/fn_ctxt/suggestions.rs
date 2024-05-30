@@ -1055,6 +1055,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .take_while(|(_, node)| {
                     // look at parents until we find the first body owner
                     node.body_id().is_none()
+                        && !matches!(
+                            node,
+                            Node::Expr(Expr { kind: ExprKind::ConstBlock { .. }, .. })
+                        )
                 })
                 .any(|(parent_id, _)| self.is_loop(parent_id));
 

@@ -37,6 +37,10 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
             scope 11 (inlined slice_from_raw_parts::<u8>) {
                 debug data => _4;
                 debug len => _5;
+                scope 12 (inlined std::ptr::from_raw_parts::<[u8], u8>) {
+                    debug data_pointer => _4;
+                    debug metadata => _5;
+                }
             }
         }
     }

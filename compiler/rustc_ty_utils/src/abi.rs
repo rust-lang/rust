@@ -520,7 +520,8 @@ fn fn_abi_sanity_check<'tcx>(
                     assert!(
                         matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
                             || matches!(spec_abi, SpecAbi::PtxKernel | SpecAbi::Unadjusted),
-                        r#"`PassMode::Direct` for aggregates only allowed for "unadjusted" and "ptx-kernel" functions and on wasm\nProblematic type: {:#?}"#,
+                        "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
+                          Problematic type: {:#?}",
                         arg.layout,
                     );
                 }

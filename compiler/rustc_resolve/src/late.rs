@@ -4033,9 +4033,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[inline]
-    /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
+    /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items or
+    // an invalid `use foo::*;` was found, which can cause unbounded ammounts of "item not found"
+    // errors. We silence them all.
     fn should_report_errs(&self) -> bool {
         !(self.r.tcx.sess.opts.actually_rustdoc && self.in_func_body)
+            && !self.r.glob_error.is_some()
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
@@ -4502,8 +4505,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 self.visit_expr(elem);
                 self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::Yes));
             }
-            ExprKind::ConstBlock(ref ct) => {
-                self.resolve_anon_const(ct, AnonConstKind::InlineConst);
+            ExprKind::ConstBlock(ref expr) => {
+                self.resolve_anon_const_manual(false, AnonConstKind::InlineConst, |this| {
+                    this.visit_expr(expr)
+                });
             }
             ExprKind::Index(ref elem, ref idx, _) => {
                 self.resolve_expr(elem, Some(expr));

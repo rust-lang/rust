@@ -93,10 +93,6 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
         self.with_context(Constant, |v| intravisit::walk_anon_const(v, c));
     }
 
-    fn visit_inline_const(&mut self, c: &'hir hir::ConstBlock) {
-        self.with_context(Constant, |v| intravisit::walk_inline_const(v, c));
-    }
-
     fn visit_fn(
         &mut self,
         fk: hir::intravisit::FnKind<'hir>,
@@ -288,6 +284,9 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     e.span,
                     self.cx_stack.len() - 1,
                 )
+            }
+            hir::ExprKind::ConstBlock(expr) => {
+                self.with_context(Constant, |v| intravisit::walk_expr(v, expr));
             }
             _ => intravisit::walk_expr(self, e),
         }

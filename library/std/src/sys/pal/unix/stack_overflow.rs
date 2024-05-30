@@ -491,6 +491,14 @@ mod imp {
     }
 }
 
+// This is intentionally not enabled on iOS/tvOS/watchOS/visionOS, as it uses
+// several symbols that might lead to rejections from the App Store, namely
+// `sigaction`, `sigaltstack`, `sysctlbyname`, `mmap`, `munmap` and `mprotect`.
+//
+// This might be overly cautious, though it is also what Swift does (and they
+// usually have fewer qualms about forwards compatibility, since the runtime
+// is shipped with the OS):
+// <https://github.com/apple/swift/blob/swift-5.10-RELEASE/stdlib/public/runtime/CrashHandlerMacOS.cpp>
 #[cfg(not(any(
     target_os = "linux",
     target_os = "freebsd",

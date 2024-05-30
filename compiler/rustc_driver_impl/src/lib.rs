@@ -804,6 +804,39 @@ fn print_crate_info(
                     println_info!("{cfg}");
                 }
             }
+            CheckCfg => {
+                let mut check_cfgs: Vec<String> = Vec::with_capacity(410);
+
+                // INSTABILITY: We are sorting the output below.
+                #[allow(rustc::potential_query_instability)]
+                for (name, expected_values) in &sess.psess.check_config.expecteds {
+                    use crate::config::ExpectedValues;
+                    match expected_values {
+                        ExpectedValues::Any => check_cfgs.push(format!("{name}=any()")),
+                        ExpectedValues::Some(values) => {
+                            check_cfgs.extend(values.iter().map(|value| {
+                                if let Some(value) = value {
+                                    format!("{name}=\"{value}\"")
+                                } else {
+                                    name.to_string()
+                                }
+                            }))
+                        }
+                    }
+                }
+
+                check_cfgs.sort_unstable();
+                if !sess.psess.check_config.exhaustive_names {
+                    if !sess.psess.check_config.exhaustive_values {
+                        println_info!("any()=any()");
+                    } else {
+                        println_info!("any()");
+                    }
+                }
+                for check_cfg in check_cfgs {
+                    println_info!("{check_cfg}");
+                }
+            }
             CallingConventions => {
                 let mut calling_conventions = rustc_target::spec::abi::all_names();
                 calling_conventions.sort_unstable();

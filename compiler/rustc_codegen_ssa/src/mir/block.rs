@@ -500,6 +500,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
+        source_info: &mir::SourceInfo,
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: mir::UnwindAction,
@@ -523,90 +524,106 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.val.llval];
             &args1[..]
         };
-        let (drop_fn, fn_abi, drop_instance) =
-            match ty.kind() {
-                // FIXME(eddyb) perhaps move some of this logic into
-                // `Instance::resolve_drop_in_place`?
-                ty::Dynamic(_, _, ty::Dyn) => {
-                    // IN THIS ARM, WE HAVE:
-                    // ty = *mut (dyn Trait)
-                    // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
-                    //                       args[0]    args[1]
-                    //
-                    // args = ( Data, Vtable )
-                    //                  |
-                    //                  v
-                    //                /-------\
-                    //                | ...   |
-                    //                \-------/
-                    //
-                    let virtual_drop = Instance {
-                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
-                        args: drop_fn.args,
-                    };
-                    debug!("ty = {:?}", ty);
-                    debug!("drop_fn = {:?}", drop_fn);
-                    debug!("args = {:?}", args);
-                    let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                    let vtable = args[1];
-                    // Truncate vtable off of args list
-                    args = &args[..1];
-                    (
-                        meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                            .get_fn(bx, vtable, ty, fn_abi),
-                        fn_abi,
-                        virtual_drop,
-                    )
-                }
-                ty::Dynamic(_, _, ty::DynStar) => {
-                    // IN THIS ARM, WE HAVE:
-                    // ty = *mut (dyn* Trait)
-                    // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
-                    //
-                    // args = [ * ]
-                    //          |
-                    //          v
-                    //      ( Data, Vtable )
-                    //                |
-                    //                v
-                    //              /-------\
-                    //              | ...   |
-                    //              \-------/
-                    //
-                    //
-                    // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
-                    //
-                    // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
-                    // vtable = (*args[0]).1   // loads the vtable out
-                    // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
-                    //
-                    // SO THEN WE CAN USE THE ABOVE CODE.
-                    let virtual_drop = Instance {
-                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
-                        args: drop_fn.args,
-                    };
-                    debug!("ty = {:?}", ty);
-                    debug!("drop_fn = {:?}", drop_fn);
-                    debug!("args = {:?}", args);
-                    let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                    let meta_ptr = place.project_field(bx, 1);
-                    let meta = bx.load_operand(meta_ptr);
-                    // Truncate vtable off of args list
-                    args = &args[..1];
-                    debug!("args' = {:?}", args);
-                    (
-                        meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                            .get_fn(bx, meta.immediate(), ty, fn_abi),
-                        fn_abi,
-                        virtual_drop,
-                    )
-                }
-                _ => (
-                    bx.get_fn_addr(drop_fn),
-                    bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
-                    drop_fn,
-                ),
-            };
+        let (maybe_null, drop_fn, fn_abi, drop_instance) = match ty.kind() {
+            // FIXME(eddyb) perhaps move some of this logic into
+            // `Instance::resolve_drop_in_place`?
+            ty::Dynamic(_, _, ty::Dyn) => {
+                // IN THIS ARM, WE HAVE:
+                // ty = *mut (dyn Trait)
+                // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
+                //                       args[0]    args[1]
+                //
+                // args = ( Data, Vtable )
+                //                  |
+                //                  v
+                //                /-------\
+                //                | ...   |
+                //                \-------/
+                //
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
+                    args: drop_fn.args,
+                };
+                debug!("ty = {:?}", ty);
+                debug!("drop_fn = {:?}", drop_fn);
+                debug!("args = {:?}", args);
+                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                let vtable = args[1];
+                // Truncate vtable off of args list
+                args = &args[..1];
+                (
+                    true,
+                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                        .get_optional_fn(bx, vtable, ty, fn_abi),
+                    fn_abi,
+                    virtual_drop,
+                )
+            }
+            ty::Dynamic(_, _, ty::DynStar) => {
+                // IN THIS ARM, WE HAVE:
+                // ty = *mut (dyn* Trait)
+                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
+                //
+                // args = [ * ]
+                //          |
+                //          v
+                //      ( Data, Vtable )
+                //                |
+                //                v
+                //              /-------\
+                //              | ...   |
+                //              \-------/
+                //
+                //
+                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
+                //
+                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
+                // vtable = (*args[0]).1   // loads the vtable out
+                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
+                //
+                // SO THEN WE CAN USE THE ABOVE CODE.
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
+                    args: drop_fn.args,
+                };
+                debug!("ty = {:?}", ty);
+                debug!("drop_fn = {:?}", drop_fn);
+                debug!("args = {:?}", args);
+                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                let meta_ptr = place.project_field(bx, 1);
+                let meta = bx.load_operand(meta_ptr);
+                // Truncate vtable off of args list
+                args = &args[..1];
+                debug!("args' = {:?}", args);
+                (
+                    true,
+                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                        .get_optional_fn(bx, meta.immediate(), ty, fn_abi),
+                    fn_abi,
+                    virtual_drop,
+                )
+            }
+            _ => (
+                false,
+                bx.get_fn_addr(drop_fn),
+                bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
+                drop_fn,
+            ),
+        };
+
+        // We generate a null check for the drop_fn. This saves a bunch of relocations being
+        // generated for no-op drops.
+        if maybe_null {
+            let is_not_null = bx.append_sibling_block("is_not_null");
+            let llty = bx.fn_ptr_backend_type(fn_abi);
+            let null = bx.const_null(llty);
+            let non_null =
+                bx.icmp(base::bin_op_to_icmp_predicate(mir::BinOp::Ne, false), drop_fn, null);
+            bx.cond_br(non_null, is_not_null, helper.llbb_with_cleanup(self, target));
+            bx.switch_to_block(is_not_null);
+            self.set_debug_loc(bx, *source_info);
+        }
+
         helper.do_call(
             self,
             bx,
@@ -617,7 +634,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             unwind,
             &[],
             Some(drop_instance),
-            mergeable_succ,
+            !maybe_null && mergeable_succ,
         )
     }
 
@@ -1346,9 +1363,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => {
-                self.codegen_drop_terminator(helper, bx, place, target, unwind, mergeable_succ())
-            }
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => self
+                .codegen_drop_terminator(
+                    helper,
+                    bx,
+                    &terminator.source_info,
+                    place,
+                    target,
+                    unwind,
+                    mergeable_succ(),
+                ),
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, unwind } => self
                 .codegen_assert_terminator(

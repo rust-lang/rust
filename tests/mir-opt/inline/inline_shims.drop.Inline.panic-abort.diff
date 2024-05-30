@@ -27,10 +27,12 @@
 +                 }
 +             }
 +             scope 7 (inlined slice_from_raw_parts_mut::<A>) {
++                 scope 8 (inlined std::ptr::from_raw_parts_mut::<[A], A>) {
++                 }
 +             }
 +         }
 +     }
-+     scope 8 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
++     scope 9 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
 +         let mut _14: isize;
 +         let mut _15: isize;
 +     }

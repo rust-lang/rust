@@ -159,7 +159,23 @@ pub enum CoverageLevel {
     Block,
     /// Also instrument branch points (includes block coverage).
     Branch,
-    /// Instrument for MC/DC. Mostly a superset of branch coverage, but might
+    /// Same as branch coverage, but also adds branch instrumentation for
+    /// certain boolean expressions that are not directly used for branching.
+    ///
+    /// For example, in the following code, `b` does not directly participate
+    /// in a branch, but condition coverage will instrument it as its own
+    /// artificial branch:
+    /// ```
+    /// # let (a, b) = (false, true);
+    /// let x = a && b;
+    /// //           ^ last operand
+    /// ```
+    ///
+    /// This level is mainly intended to be a stepping-stone towards full MC/DC
+    /// instrumentation, so it might be removed in the future when MC/DC is
+    /// sufficiently complete, or if it is making MC/DC changes difficult.
+    Condition,
+    /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
     /// differ in some corner cases.
     Mcdc,
 }
@@ -773,6 +789,7 @@ pub enum PrintKind {
     TargetLibdir,
     CrateName,
     Cfg,
+    CheckCfg,
     CallingConventions,
     TargetList,
     TargetCPUs,
@@ -1443,7 +1460,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "print",
             "Compiler information to print on stdout",
-            "[crate-name|file-names|sysroot|target-libdir|cfg|calling-conventions|\
+            "[crate-name|file-names|sysroot|target-libdir|cfg|check-cfg|calling-conventions|\
              target-list|target-cpus|target-features|relocation-models|code-models|\
              tls-models|target-spec-json|all-target-specs-json|native-static-libs|\
              stack-protector-strategies|link-args|deployment-target]",
@@ -1859,6 +1876,7 @@ fn collect_print_requests(
         ("all-target-specs-json", PrintKind::AllTargetSpecs),
         ("calling-conventions", PrintKind::CallingConventions),
         ("cfg", PrintKind::Cfg),
+        ("check-cfg", PrintKind::CheckCfg),
         ("code-models", PrintKind::CodeModels),
         ("crate-name", PrintKind::CrateName),
         ("deployment-target", PrintKind::DeploymentTarget),
@@ -1905,6 +1923,16 @@ fn collect_print_requests(
                     early_dcx.early_fatal(
                         "the `-Z unstable-options` flag must also be passed to \
                          enable the all-target-specs-json print option",
+                    );
+                }
+            }
+            Some((_, PrintKind::CheckCfg)) => {
+                if unstable_opts.unstable_options {
+                    PrintKind::CheckCfg
+                } else {
+                    early_dcx.early_fatal(
+                        "the `-Z unstable-options` flag must also be passed to \
+                         enable the check-cfg print option",
                     );
                 }
             }

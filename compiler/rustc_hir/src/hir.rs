@@ -876,6 +876,9 @@ pub struct OwnerNodes<'tcx> {
     pub nodes: IndexVec<ItemLocalId, ParentedNode<'tcx>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
+    /// Whether the body contains inline constants that are created for the query system during typeck
+    /// of the body.
+    pub has_inline_consts: bool,
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
@@ -1592,14 +1595,6 @@ pub struct AnonConst {
     pub span: Span,
 }
 
-/// An inline constant expression `const { something }`.
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub struct ConstBlock {
-    pub hir_id: HirId,
-    pub def_id: LocalDefId,
-    pub body: BodyId,
-}
-
 /// An expression.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
@@ -1886,7 +1881,7 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ExprKind<'hir> {
     /// Allow anonymous constants from an inline `const` block
-    ConstBlock(ConstBlock),
+    ConstBlock(&'hir Expr<'hir>),
     /// An array (e.g., `[a, b, c, d]`).
     Array(&'hir [Expr<'hir>]),
     /// A function call.
@@ -3609,7 +3604,6 @@ pub enum Node<'hir> {
     Variant(&'hir Variant<'hir>),
     Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
-    ConstBlock(&'hir ConstBlock),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -3670,7 +3664,6 @@ impl<'hir> Node<'hir> {
             Node::PreciseCapturingNonLifetimeArg(a) => Some(a.ident),
             Node::Param(..)
             | Node::AnonConst(..)
-            | Node::ConstBlock(..)
             | Node::Expr(..)
             | Node::Stmt(..)
             | Node::Block(..)
@@ -3768,7 +3761,6 @@ impl<'hir> Node<'hir> {
             }
 
             Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
-            Node::ConstBlock(constant) => Some((constant.def_id, constant.body)),
 
             _ => None,
         }
@@ -3837,7 +3829,6 @@ impl<'hir> Node<'hir> {
         expect_variant,       &'hir Variant<'hir>,      Node::Variant(n),      n;
         expect_field,         &'hir FieldDef<'hir>,     Node::Field(n),        n;
         expect_anon_const,    &'hir AnonConst,          Node::AnonConst(n),    n;
-        expect_inline_const,  &'hir ConstBlock,         Node::ConstBlock(n),   n;
         expect_expr,          &'hir Expr<'hir>,         Node::Expr(n),         n;
         expect_expr_field,    &'hir ExprField<'hir>,    Node::ExprField(n),    n;
         expect_stmt,          &'hir Stmt<'hir>,         Node::Stmt(n),         n;

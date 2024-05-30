@@ -1680,14 +1680,8 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                         args.coroutine_captures_by_ref_ty(),
                     )
                 } else {
-                    let async_fn_kind_trait_def_id =
-                        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                    let upvars_projection_def_id = tcx
-                        .associated_items(async_fn_kind_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Upvars)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let upvars_projection_def_id =
+                        tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
                     let tupled_upvars_ty = Ty::new_projection(
                         tcx,
                         upvars_projection_def_id,
@@ -1816,14 +1810,8 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                             args.coroutine_captures_by_ref_ty(),
                         )
                     } else {
-                        let async_fn_kind_trait_def_id =
-                            tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                        let upvars_projection_def_id = tcx
-                            .associated_items(async_fn_kind_trait_def_id)
-                            .filter_by_name_unhygienic(sym::Upvars)
-                            .next()
-                            .unwrap()
-                            .def_id;
+                        let upvars_projection_def_id =
+                            tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
                         // When we don't know the closure kind (and therefore also the closure's upvars,
                         // which are computed at the same time), we must delay the computation of the
                         // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
@@ -1880,13 +1868,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                    let future_output_def_id = tcx
-                        .associated_items(future_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
@@ -1919,13 +1901,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                    let future_output_def_id = tcx
-                        .associated_items(future_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),

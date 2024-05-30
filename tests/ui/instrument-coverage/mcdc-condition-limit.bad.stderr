@@ -1,0 +1,8 @@
+warning: Conditions number of the decision (7) exceeds limit (6). MCDC analysis will not count this expression.
+  --> $DIR/mcdc-condition-limit.rs:29:8
+   |
+LL |     if a && b && c && d && e && f && g {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

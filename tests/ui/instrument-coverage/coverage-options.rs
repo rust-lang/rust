@@ -1,5 +1,5 @@
 //@ needs-profiler-support
-//@ revisions: block branch mcdc bad
+//@ revisions: block branch condition mcdc bad
 //@ compile-flags -Cinstrument-coverage
 
 //@ [block] check-pass
@@ -7,6 +7,9 @@
 
 //@ [branch] check-pass
 //@ [branch] compile-flags: -Zcoverage-options=branch
+
+//@ [condition] check-pass
+//@ [condition] compile-flags: -Zcoverage-options=condition
 
 //@ [mcdc] check-pass
 //@ [mcdc] compile-flags: -Zcoverage-options=mcdc

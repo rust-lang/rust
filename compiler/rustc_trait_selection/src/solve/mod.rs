@@ -133,7 +133,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 
     fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
-        if self.tcx().check_is_object_safe(trait_def_id) {
+        if self.interner().check_is_object_safe(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
@@ -274,7 +274,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         if let ty::Alias(..) = ty.kind() {
             let normalized_ty = self.next_ty_infer();
             let alias_relate_goal = Goal::new(
-                self.tcx(),
+                self.interner(),
                 param_env,
                 ty::PredicateKind::AliasRelate(
                     ty.into(),

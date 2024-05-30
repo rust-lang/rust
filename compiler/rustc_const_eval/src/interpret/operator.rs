@@ -9,7 +9,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use tracing::trace;
 
-use super::{err_ub, throw_ub, ImmTy, InterpCx, Machine};
+use super::{err_ub, throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> ImmTy<'tcx, M::Provenance> {
@@ -415,11 +415,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::UnOp::*;
 
         let layout = val.layout;
-        let val = val.to_scalar();
         trace!("Running unary op {:?}: {:?} ({})", un_op, val, layout.ty);
 
         match layout.ty.kind() {
             ty::Bool => {
+                let val = val.to_scalar();
                 let val = val.to_bool()?;
                 let res = match un_op {
                     Not => !val,
@@ -428,6 +428,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Ok(ImmTy::from_bool(res, *self.tcx))
             }
             ty::Float(fty) => {
+                let val = val.to_scalar();
                 // No NaN adjustment here, `-` is a bitwise operation!
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
@@ -436,8 +437,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
                 Ok(ImmTy::from_scalar(res, layout))
             }
-            _ => {
-                assert!(layout.ty.is_integral());
+            _ if layout.ty.is_integral() => {
+                let val = val.to_scalar();
                 let val = val.to_bits(layout.size)?;
                 let res = match un_op {
                     Not => self.truncate(!val, layout), // bitwise negation, then truncate
@@ -450,8 +451,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // Truncate to target type.
                         self.truncate(res, layout)
                     }
+                    _ => span_bug!(self.cur_span(), "Invalid integer op {:?}", un_op),
                 };
                 Ok(ImmTy::from_uint(res, layout))
+            }
+            ty::RawPtr(..) => {
+                assert_eq!(un_op, PtrMetadata);
+                let (_, meta) = val.to_scalar_and_meta();
+                Ok(match meta {
+                    MemPlaceMeta::Meta(scalar) => {
+                        let ty = un_op.ty(*self.tcx, val.layout.ty);
+                        let layout = self.layout_of(ty)?;
+                        ImmTy::from_scalar(scalar, layout)
+                    }
+                    MemPlaceMeta::None => {
+                        let unit_layout = self.layout_of(self.tcx.types.unit)?;
+                        ImmTy::uninit(unit_layout)
+                    }
+                })
+            }
+            _ => {
+                bug!("Unexpected unary op argument {val:?}")
             }
         }
     }

@@ -548,10 +548,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             }
             TerminatorKind::Drop { place, target, unwind: _, replace: _ } => {
                 let drop_place = codegen_place(fx, *place);
-                crate::abi::codegen_drop(fx, source_info, drop_place);
-
-                let target_block = fx.get_block(*target);
-                fx.bcx.ins().jump(target_block, &[]);
+                crate::abi::codegen_drop(fx, source_info, drop_place, *target);
             }
         };
     }
@@ -619,22 +616,34 @@ fn codegen_stmt<'tcx>(
                 Rvalue::UnaryOp(un_op, ref operand) => {
                     let operand = codegen_operand(fx, operand);
                     let layout = operand.layout();
-                    let val = operand.load_scalar(fx);
                     let res = match un_op {
-                        UnOp::Not => match layout.ty.kind() {
-                            ty::Bool => {
-                                let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
-                                CValue::by_val(res, layout)
+                        UnOp::Not => {
+                            let val = operand.load_scalar(fx);
+                            match layout.ty.kind() {
+                                ty::Bool => {
+                                    let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
+                                    CValue::by_val(res, layout)
+                                }
+                                ty::Uint(_) | ty::Int(_) => {
+                                    CValue::by_val(fx.bcx.ins().bnot(val), layout)
+                                }
+                                _ => unreachable!("un op Not for {:?}", layout.ty),
                             }
-                            ty::Uint(_) | ty::Int(_) => {
-                                CValue::by_val(fx.bcx.ins().bnot(val), layout)
+                        }
+                        UnOp::Neg => {
+                            let val = operand.load_scalar(fx);
+                            match layout.ty.kind() {
+                                ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
+                                ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
+                                _ => unreachable!("un op Neg for {:?}", layout.ty),
                             }
-                            _ => unreachable!("un op Not for {:?}", layout.ty),
-                        },
-                        UnOp::Neg => match layout.ty.kind() {
-                            ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
-                            ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
-                            _ => unreachable!("un op Neg for {:?}", layout.ty),
+                        }
+                        UnOp::PtrMetadata => match layout.abi {
+                            Abi::Scalar(_) => CValue::zst(dest_layout),
+                            Abi::ScalarPair(_, _) => {
+                                CValue::by_val(operand.load_scalar_pair(fx).1, dest_layout)
+                            }
+                            _ => bug!("Unexpected `PtrToMetadata` operand: {operand:?}"),
                         },
                     };
                     lval.write_cvalue(fx, res);

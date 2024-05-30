@@ -353,6 +353,11 @@ impl Session {
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Branch
     }
 
+    pub fn instrument_coverage_condition(&self) -> bool {
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Condition
+    }
+
     pub fn instrument_coverage_mcdc(&self) -> bool {
         self.instrument_coverage()
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc

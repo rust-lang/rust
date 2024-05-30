@@ -1158,7 +1158,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
                 .at(cause, self.param_env)
-                .trace(prev_ty, new_ty)
                 .lub(DefineOpaqueTypes::Yes, a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
 

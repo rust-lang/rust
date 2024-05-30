@@ -4,10 +4,9 @@
 //@ no-prefer-dynamic
 //@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
-//@ ignore-macos
 
-use std::process::Command;
 use std::env;
+use std::process::Command;
 
 struct Bomb;
 
@@ -23,7 +22,6 @@ fn main() {
 
     if let Some(s) = args.next() {
         if &*s == "foo" {
-
             let _bomb = Bomb;
 
             panic!("try to catch me");
