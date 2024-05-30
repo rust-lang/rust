@@ -4406,8 +4406,12 @@ where
     Vacant(VacantEntryRef<'a, 'b, K, Q, V, S, A>),
 }
 
-impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator> Debug
-    for EntryRef<'_, '_, K, Q, V, S, A>
+impl<K, Q, V, S, A> Debug for EntryRef<'_, '_, K, Q, V, S, A>
+where
+    K: Borrow<Q>,
+    Q: Debug + ?Sized,
+    V: Debug,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -4510,8 +4514,12 @@ where
 {
 }
 
-impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator> Debug
-    for OccupiedEntryRef<'_, '_, K, Q, V, S, A>
+impl<K, Q, V, S, A> Debug for OccupiedEntryRef<'_, '_, K, Q, V, S, A>
+where
+    K: Borrow<Q>,
+    Q: Debug + ?Sized,
+    V: Debug,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntryRef")
@@ -4557,8 +4565,11 @@ pub struct VacantEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator = Global> {
     table: &'a mut HashMap<K, V, S, A>,
 }
 
-impl<K: Borrow<Q>, Q: ?Sized + Debug, V, S, A: Allocator> Debug
-    for VacantEntryRef<'_, '_, K, Q, V, S, A>
+impl<K, Q, V, S, A> Debug for VacantEntryRef<'_, '_, K, Q, V, S, A>
+where
+    K: Borrow<Q>,
+    Q: Debug + ?Sized,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntryRef").field(&self.key()).finish()
