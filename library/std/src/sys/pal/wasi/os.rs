@@ -244,7 +244,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     .flatten()
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     run_with_cstr(k.as_bytes(), &|k| {
         run_with_cstr(v.as_bytes(), &|v| unsafe {
             let _guard = env_write_lock();
@@ -253,7 +253,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     })
 }
 
-pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     run_with_cstr(n.as_bytes(), &|nbuf| unsafe {
         let _guard = env_write_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)

@@ -578,6 +578,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
         through unstable paths"
     ),
+    rustc_attr!(
+        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes,
+        "rustc_deprecated_safe_2024 is supposed to be used in libstd only",
+    ),
+
 
     // ==========================================================================
     // Internal attributes: Type system related:
