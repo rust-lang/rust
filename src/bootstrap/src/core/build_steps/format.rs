@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::SyncSender;
+use std::sync::Mutex;
 
 fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut(bool) -> bool {
     let mut cmd = Command::new(rustfmt);
@@ -24,20 +25,23 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
     cmd.args(paths);
     let cmd_debug = format!("{cmd:?}");
     let mut cmd = cmd.spawn().expect("running rustfmt");
-    // Poor man's async: return a closure that'll wait for rustfmt's completion.
+    // Poor man's async: return a closure that might wait for rustfmt's completion (depending on
+    // the value of the `block` argument).
     move |block: bool| -> bool {
-        if !block {
+        let status = if !block {
             match cmd.try_wait() {
-                Ok(Some(_)) => {}
-                _ => return false,
+                Ok(Some(status)) => Ok(status),
+                Ok(None) => return false,
+                Err(err) => Err(err),
             }
-        }
-        let status = cmd.wait().unwrap();
-        if !status.success() {
+        } else {
+            cmd.wait()
+        };
+        if !status.unwrap().success() {
             eprintln!(
-                "Running `{}` failed.\nIf you're running `tidy`, \
-                        try again with `--bless`. Or, if you just want to format \
-                        code, run `./x.py fmt` instead.",
+                "fmt error: Running `{}` failed.\nIf you're running `tidy`, \
+                try again with `--bless`. Or, if you just want to format \
+                code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
             crate::exit!(1);
@@ -97,35 +101,61 @@ struct RustfmtConfig {
     ignore: Vec<String>,
 }
 
-pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
+// Prints output describing a collection of paths, with lines such as "formatted modified file
+// foo/bar/baz" or "skipped 20 untracked files".
+fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
+    let len = paths.len();
+    let adjective =
+        if let Some(adjective) = adjective { format!("{adjective} ") } else { String::new() };
+    if len <= 10 {
+        for path in paths {
+            println!("fmt: {verb} {adjective}file {path}");
+        }
+    } else {
+        println!("fmt: {verb} {len} {adjective}files");
+    }
+}
+
+pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
+    if !paths.is_empty() {
+        eprintln!("fmt error: path arguments are not accepted");
+        crate::exit!(1);
+    };
     if build.config.dry_run() {
         return;
     }
+
+    // By default, we only check modified files locally to speed up runtime. Exceptions are if
+    // `--all` is specified or we are in CI. We check all files in CI to avoid bugs in
+    // `get_modified_rs_files` letting regressions slip through; we also care about CI time less
+    // since this is still very fast compared to building the compiler.
+    let all = all || CiEnv::is_ci();
+
     let mut builder = ignore::types::TypesBuilder::new();
     builder.add_defaults();
     builder.select("rust");
     let matcher = builder.build().unwrap();
     let rustfmt_config = build.src.join("rustfmt.toml");
     if !rustfmt_config.exists() {
-        eprintln!("Not running formatting checks; rustfmt.toml does not exist.");
-        eprintln!("This may happen in distributed tarballs.");
+        eprintln!("fmt error: Not running formatting checks; rustfmt.toml does not exist.");
+        eprintln!("fmt error: This may happen in distributed tarballs.");
         return;
     }
     let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
-    let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
+    let mut override_builder = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
         if ignore.starts_with('!') {
-            // A `!`-prefixed entry could be added as a whitelisted entry in `fmt_override`, i.e.
-            // strip the `!` prefix. But as soon as whitelisted entries are added, an
+            // A `!`-prefixed entry could be added as a whitelisted entry in `override_builder`,
+            // i.e. strip the `!` prefix. But as soon as whitelisted entries are added, an
             // `OverrideBuilder` will only traverse those whitelisted entries, and won't traverse
             // any files that aren't explicitly mentioned. No bueno! Maybe there's a way to combine
             // explicit whitelisted entries and traversal of unmentioned files, but for now just
             // forbid such entries.
-            eprintln!("`!`-prefixed entries are not supported in rustfmt.toml, sorry");
+            eprintln!("fmt error: `!`-prefixed entries are not supported in rustfmt.toml, sorry");
             crate::exit!(1);
         } else {
-            fmt_override.add(&format!("!{ignore}")).expect(&ignore);
+            override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
     }
     let git_available = match Command::new("git")
@@ -138,6 +168,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         Err(_) => false,
     };
 
+    let mut adjective = None;
     if git_available {
         let in_working_tree = match build
             .config
@@ -161,127 +192,56 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                     .arg("-z")
                     .arg("--untracked-files=normal"),
             );
-            let untracked_paths = untracked_paths_output.split_terminator('\0').filter_map(
-                |entry| entry.strip_prefix("?? "), // returns None if the prefix doesn't match
-            );
-            let mut untracked_count = 0;
+            let untracked_paths: Vec<_> = untracked_paths_output
+                .split_terminator('\0')
+                .filter_map(
+                    |entry| entry.strip_prefix("?? "), // returns None if the prefix doesn't match
+                )
+                .map(|x| x.to_string())
+                .collect();
+            print_paths("skipped", Some("untracked"), &untracked_paths);
+
             for untracked_path in untracked_paths {
-                println!("skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
-                untracked_count += 1;
-                fmt_override.add(&format!("!/{untracked_path}")).expect(untracked_path);
+                override_builder.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
-            // Only check modified files locally to speed up runtime. We still check all files in
-            // CI to avoid bugs in `get_modified_rs_files` letting regressions slip through; we
-            // also care about CI time less since this is still very fast compared to building the
-            // compiler.
-            if !CiEnv::is_ci() && paths.is_empty() {
+            if !all {
+                adjective = Some("modified");
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
-                        if files.len() <= 10 {
-                            for file in &files {
-                                println!("formatting modified file {file}");
-                            }
-                        } else {
-                            let pluralized = |count| if count > 1 { "files" } else { "file" };
-                            let untracked_msg = if untracked_count == 0 {
-                                "".to_string()
-                            } else {
-                                format!(
-                                    ", skipped {} untracked {}",
-                                    untracked_count,
-                                    pluralized(untracked_count),
-                                )
-                            };
-                            println!(
-                                "formatting {} modified {}{}",
-                                files.len(),
-                                pluralized(files.len()),
-                                untracked_msg
-                            );
-                        }
                         for file in files {
-                            fmt_override.add(&format!("/{file}")).expect(&file);
+                            override_builder.add(&format!("/{file}")).expect(&file);
                         }
                     }
                     Ok(None) => {}
                     Err(err) => {
-                        println!(
-                            "WARN: Something went wrong when running git commands:\n{err}\n\
-                            Falling back to formatting all files."
-                        );
+                        eprintln!("fmt warning: Something went wrong running git commands:");
+                        eprintln!("fmt warning: {err}");
+                        eprintln!("fmt warning: Falling back to formatting all files.");
                     }
                 }
             }
         } else {
-            println!("Not in git tree. Skipping git-aware format checks");
+            eprintln!("fmt: warning: Not in git tree. Skipping git-aware format checks");
         }
     } else {
-        println!("Could not find usable git. Skipping git-aware format checks");
+        eprintln!("fmt: warning: Could not find usable git. Skipping git-aware format checks");
     }
 
-    let fmt_override = fmt_override.build().unwrap();
+    let override_ = override_builder.build().unwrap(); // `override` is a reserved keyword
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
-        eprintln!("./x.py fmt is not supported on this channel");
+        eprintln!("fmt error: `x fmt` is not supported on this channel");
         crate::exit!(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
-    let walker = match paths.first() {
-        Some(first) => {
-            let find_shortcut_candidates = |p: &PathBuf| {
-                let mut candidates = Vec::new();
-                for entry in
-                    WalkBuilder::new(src.clone()).max_depth(Some(3)).build().map_while(Result::ok)
-                {
-                    if let Some(dir_name) = p.file_name() {
-                        if entry.path().is_dir() && entry.file_name() == dir_name {
-                            candidates.push(entry.into_path());
-                        }
-                    }
-                }
-                candidates
-            };
-
-            // Only try to look for shortcut candidates for single component paths like
-            // `std` and not for e.g. relative paths like `../library/std`.
-            let should_look_for_shortcut_dir = |p: &PathBuf| p.components().count() == 1;
-
-            let mut walker = if should_look_for_shortcut_dir(first) {
-                if let [single_candidate] = &find_shortcut_candidates(first)[..] {
-                    WalkBuilder::new(single_candidate)
-                } else {
-                    WalkBuilder::new(first)
-                }
-            } else {
-                WalkBuilder::new(src.join(first))
-            };
-
-            for path in &paths[1..] {
-                if should_look_for_shortcut_dir(path) {
-                    if let [single_candidate] = &find_shortcut_candidates(path)[..] {
-                        walker.add(single_candidate);
-                    } else {
-                        walker.add(path);
-                    }
-                } else {
-                    walker.add(src.join(path));
-                }
-            }
-
-            walker
-        }
-        None => WalkBuilder::new(src.clone()),
-    }
-    .types(matcher)
-    .overrides(fmt_override)
-    .build_parallel();
+    let walker = WalkBuilder::new(src.clone()).types(matcher).overrides(override_).build_parallel();
 
     // There is a lot of blocking involved in spawning a child process and reading files to format.
     // Spawn more processes than available concurrency to keep the CPU busy.
@@ -319,16 +279,33 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         }
     });
 
+    let formatted_paths = Mutex::new(Vec::new());
+    let formatted_paths_ref = &formatted_paths;
     walker.run(|| {
         let tx = tx.clone();
         Box::new(move |entry| {
+            let cwd = std::env::current_dir();
             let entry = t!(entry);
             if entry.file_type().map_or(false, |t| t.is_file()) {
+                formatted_paths_ref.lock().unwrap().push({
+                    // `into_path` produces an absolute path. Try to strip `cwd` to get a shorter
+                    // relative path.
+                    let mut path = entry.clone().into_path();
+                    if let Ok(cwd) = cwd {
+                        if let Ok(path2) = path.strip_prefix(cwd) {
+                            path = path2.to_path_buf();
+                        }
+                    }
+                    path.display().to_string()
+                });
                 t!(tx.send(entry.into_path()));
             }
             ignore::WalkState::Continue
         })
     });
+    let mut paths = formatted_paths.into_inner().unwrap();
+    paths.sort();
+    print_paths(if check { "checked" } else { "formatted" }, adjective, &paths);
 
     drop(tx);
 

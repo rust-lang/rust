@@ -9,7 +9,6 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, Upcast};
-use rustc_span::sym;
 
 use crate::solve::EvalCtxt;
 
@@ -454,12 +453,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
                     .upcast(tcx),
             ];
-            let future_output_def_id = tcx
-                .associated_items(future_trait_def_id)
-                .filter_by_name_unhygienic(sym::Output)
-                .next()
-                .unwrap()
-                .def_id;
+            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -510,12 +504,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 );
             }
 
-            let future_output_def_id = tcx
-                .associated_items(future_trait_def_id)
-                .filter_by_name_unhygienic(sym::Output)
-                .next()
-                .unwrap()
-                .def_id;
+            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -592,13 +581,7 @@ fn coroutine_closure_to_ambiguous_coroutine<'tcx>(
     args: ty::CoroutineClosureArgs<'tcx>,
     sig: ty::CoroutineClosureSignature<'tcx>,
 ) -> Ty<'tcx> {
-    let async_fn_kind_trait_def_id = tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-    let upvars_projection_def_id = tcx
-        .associated_items(async_fn_kind_trait_def_id)
-        .filter_by_name_unhygienic(sym::Upvars)
-        .next()
-        .unwrap()
-        .def_id;
+    let upvars_projection_def_id = tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
     let tupled_upvars_ty = Ty::new_projection(
         tcx,
         upvars_projection_def_id,
