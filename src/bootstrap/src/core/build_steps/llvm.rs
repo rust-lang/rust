@@ -374,16 +374,6 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Libraries for ELF compression.
-        if !target.is_windows() {
-            cfg.define("LLVM_ENABLE_ZLIB", "ON");
-            cfg.define("LLVM_ENABLE_ZSTD", "ON");
-            cfg.define("LLVM_USE_STATIC_ZSTD", "TRUE");
-        } else {
-            cfg.define("LLVM_ENABLE_ZLIB", "OFF");
-            cfg.define("LLVM_ENABLE_ZSTD", "OFF");
-        }
-
         // Are we compiling for iOS/tvOS/watchOS/visionOS?
         if target.contains("apple-ios")
             || target.contains("apple-tvos")
@@ -826,6 +816,16 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
         if !target.contains("apple") {
             cfg.define("LLVM_ENABLE_LLD", "ON");
         }
+    }
+
+    // Libraries for ELF compression.
+    if !target.is_windows() {
+        cfg.define("LLVM_ENABLE_ZLIB", "ON");
+        cfg.define("LLVM_ENABLE_ZSTD", "ON");
+        cfg.define("LLVM_USE_STATIC_ZSTD", "TRUE");
+    } else {
+        cfg.define("LLVM_ENABLE_ZLIB", "OFF");
+        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
     }
 
     if let Some(ref linker) = builder.config.llvm_use_linker {
