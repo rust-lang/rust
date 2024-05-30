@@ -1,8 +1,0 @@
-error: internal compiler error: compiler/rustc_borrowck/src/universal_regions.rs:LL:CC: cannot convert `'{erased}` to a region vid
-
-query stack during panic:
-#0 [mir_borrowck] borrow-checking `<impl at $DIR/issue-105821.rs:21:1: 23:24>::R`
-#1 [analysis] running analysis passes on this crate
-end of query stack
-error: aborting due to 1 previous error
-

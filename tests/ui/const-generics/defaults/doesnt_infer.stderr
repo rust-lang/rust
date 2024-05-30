@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `Foo<_>`
-  --> $DIR/doesnt_infer.rs:11:9
+  --> $DIR/doesnt_infer.rs:13:9
    |
 LL |     let foo = Foo::foo();
    |         ^^^

@@ -995,10 +995,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                    // FIXME(BoxyUwU): Really we should not be calling `ct.ty()` for any variant
+                    // other than `ConstKind::Value`. Unfortunately this would require looking in the
+                    // env for any `ConstArgHasType` assumptions for parameters and placeholders. I
+                    // don't really want to implement this in the old solver so I haven't.
+                    //
+                    // We do still stall on infer vars though as otherwise a goal like:
+                    // `ConstArgHasType(?x: usize, usize)` can succeed even though it might later
+                    // get unified with some const that is not of type `usize`.
+                    let ct = self.infcx.shallow_resolve_const(ct);
+                    let ct_ty = match ct.kind() {
+                        ty::ConstKind::Infer(ty::InferConst::Var(_)) => {
+                            return Ok(EvaluatedToAmbig);
+                        }
+                        ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
+                        _ => ct.ty(),
+                    };
+
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
                         // Only really excercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
-                        ct.ty(),
+                        ct_ty,
                         ty,
                     ) {
                         Ok(inf_ok) => self.evaluate_predicates_recursively(

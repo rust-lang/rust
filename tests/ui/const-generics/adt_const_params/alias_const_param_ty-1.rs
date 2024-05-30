@@ -1,5 +1,7 @@
-//@ known-bug: #114456
+//@ check-pass
 #![feature(adt_const_params, lazy_type_alias)]
+//~^ WARN: the feature `adt_const_params` is incomplete
+//~| WARN: the feature `lazy_type_alias` is incomplete
 
 pub type Matrix = [usize; 1];
 const EMPTY_MATRIX: Matrix = [0; 1];
