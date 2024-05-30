@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             && deref.any(|l| {
                 l.peel_refs().is_slice()
                     || l.peel_refs().is_array()
-                    || ty_has_appliciable_get_function(cx, l.peel_refs(), expr_ty, expr)
+                    || ty_has_applicable_get_function(cx, l.peel_refs(), expr_ty, expr)
             })
         {
             let note = "the suggestion might not be applicable in constant blocks";
@@ -244,25 +244,27 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
 
 /// Checks if the output Ty of the `get` method on this Ty (if any) matches the Ty returned by the
 /// indexing operation (if any).
-fn ty_has_appliciable_get_function<'tcx>(
+fn ty_has_applicable_get_function<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
     array_ty: Ty<'tcx>,
     index_expr: &Expr<'_>,
 ) -> bool {
-    if let ty::Adt(_, array_args) = array_ty.kind()
+    if let ty::Adt(_, _) = array_ty.kind()
         && let Some(get_output_ty) = get_adt_inherent_method(cx, ty, sym!(get)).map(|m| {
             cx.tcx
                 .fn_sig(m.def_id)
-                .instantiate(cx.tcx, array_args)
+                .skip_binder()
                 .output()
                 .skip_binder()
         })
         && let ty::Adt(def, args) = get_output_ty.kind()
         && cx.tcx.is_diagnostic_item(sym::Option, def.0.did)
-        && let Some(option_generic_param) = args.get(0)
+        && let Some(option_generic_param) = args.first()
         && let generic_ty = option_generic_param.expect_ty().peel_refs()
-        && cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
+        // FIXME: ideally this would handle type params and projections properly, for now just assume it's the same type
+        && (cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
+            || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_, _)))
     {
         true
     } else {

@@ -76,7 +76,7 @@ impl<T> Index<i32> for Y<T> {
 struct Z<T>(T);
 impl<T> Z<T> {
     fn get<T2>() -> T2 {
-        todo!()
+        unimplemented!()
     }
 }
 impl<T> Index<i32> for Z<T> {
