@@ -348,7 +348,7 @@ impl Duration {
     #[inline]
     pub const fn from_weeks(weeks: u64) -> Duration {
         if weeks > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK) {
-            panic!("overflow in Duration::from_days");
+            panic!("overflow in Duration::from_weeks");
         }
 
         Duration::from_secs(weeks * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY * DAYS_PER_WEEK)

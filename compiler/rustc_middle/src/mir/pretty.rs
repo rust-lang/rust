@@ -512,12 +512,12 @@ fn write_coverage_branch_info(
         )?;
     }
 
-    for coverage::MCDCDecisionSpan { span, conditions_num, end_markers, decision_depth } in
+    for coverage::MCDCDecisionSpan { span, num_conditions, end_markers, decision_depth } in
         mcdc_decision_spans
     {
         writeln!(
             w,
-            "{INDENT}coverage mcdc decision {{ conditions_num: {conditions_num:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
+            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
         )?;
     }
 
