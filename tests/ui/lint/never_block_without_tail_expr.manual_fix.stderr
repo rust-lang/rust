@@ -1,0 +1,90 @@
+error: diverging block without tail expression which has non-unit type
+  --> $DIR/never_block_without_tail_expr.rs:11:16
+   |
+LL |       let _: ! = {
+   |  ________________^
+LL | |
+LL | |
+LL | |         return;
+LL | |         ();
+LL | |     };
+   | |_____^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see https://github.com/rust-lang/rust/issues/123747
+   = note: if the last statement is `return`, `break`, or `continue`, it will still compile in Rust 2024
+   = help: the tail expression in this block must have an appropriate type, this can be achieved by moving the diverging expression to the end
+note: the lint level is defined here
+  --> $DIR/never_block_without_tail_expr.rs:5:9
+   |
+LL | #![deny(never_block_without_tail_expr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diverging block without tail expression which has non-unit type
+  --> $DIR/never_block_without_tail_expr.rs:18:16
+   |
+LL |       let _: ! = {
+   |  ________________^
+LL | |
+LL | |
+LL | |         return;
+LL | |
+LL | |         fn helper() {}
+LL | |     };
+   | |_____^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see https://github.com/rust-lang/rust/issues/123747
+   = note: if the last statement is `return`, `break`, or `continue`, it will still compile in Rust 2024
+   = help: the tail expression in this block must have an appropriate type, this can be achieved by moving the diverging expression to the end
+
+error: diverging block without tail expression which has non-unit type
+  --> $DIR/never_block_without_tail_expr.rs:28:17
+   |
+LL |       let _: u8 = {
+   |  _________________^
+LL | |
+LL | |
+LL | |         abort();
+   | |                - help: remove semicolon here
+LL | |     };
+   | |_____^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see https://github.com/rust-lang/rust/issues/123747
+   = note: if the last statement is `return`, `break`, or `continue`, it will still compile in Rust 2024
+
+error: diverging block without tail expression which has non-unit type
+  --> $DIR/never_block_without_tail_expr.rs:47:17
+   |
+LL |       let _: u8 = {
+   |  _________________^
+LL | |
+LL | |
+LL | |         loop {};
+   | |                - help: remove semicolon here
+LL | |     };
+   | |_____^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see https://github.com/rust-lang/rust/issues/123747
+   = note: if the last statement is `return`, `break`, or `continue`, it will still compile in Rust 2024
+
+error: diverging block without tail expression which has non-unit type
+  --> $DIR/never_block_without_tail_expr.rs:55:13
+   |
+LL |   fn e() -> ! {
+   |  _____________^
+LL | |
+LL | |
+LL | |     loop {};
+   | |            - help: remove semicolon here
+LL | | }
+   | |_^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see https://github.com/rust-lang/rust/issues/123747
+   = note: if the last statement is `return`, `break`, or `continue`, it will still compile in Rust 2024
+
+error: aborting due to 5 previous errors
+

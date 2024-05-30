@@ -1,0 +1,80 @@
+//@ revisions: auto_fix manual_fix
+//@[auto_fix] run-rustfix
+#![feature(never_type)]
+#![allow(unreachable_code, unused)]
+#![deny(never_block_without_tail_expr)]
+
+fn main() {}
+
+#[cfg(manual_fix)]
+fn a() {
+    let _: ! = {
+        //[manual_fix]~^ error: diverging block without tail expression which has non-unit type
+        //[manual_fix]~| warn: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+        return;
+        ();
+    };
+
+    let _: ! = {
+        //[manual_fix]~^ error: diverging block without tail expression which has non-unit type
+        //[manual_fix]~| warn: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+        return;
+
+        fn helper() {}
+    };
+}
+
+fn b() {
+    let _: u8 = {
+        //~^ error: diverging block without tail expression which has non-unit type
+        //~| warn: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+        abort();
+    };
+}
+
+// TODO: this suggestion does not work, because macro expansion looses the span of `;`
+//       see <https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/How.20to.20get.20span.20of.20the.20macro.20call.2C.20not.20internals.3F/near/441575274>
+// fn c() {
+//     let _: u8 = {
+//         // ~^ error: diverging block without tail expression which has non-unit type
+//         // ~| warn: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+//         panic!();
+//     };
+// }
+
+fn d() {
+    #[rustfmt::skip]
+    let _: u8 = {
+        //~^ error: diverging block without tail expression which has non-unit type
+        //~| warn: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+        loop {};
+    };
+}
+
+#[rustfmt::skip]
+fn e() -> ! {
+    //~^ error: diverging block without tail expression which has non-unit type
+    //~| warn: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+    loop {};
+}
+
+// `return;` & company are currently allowed
+fn okay() {
+    let _: u8 = {
+        return;
+    };
+
+    loop {
+        let _: u8 = {
+            break;
+        };
+
+        let _: u8 = {
+            continue;
+        };
+    }
+}
+
+fn abort() -> ! {
+    loop {}
+}
