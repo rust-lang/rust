@@ -1,5 +1,5 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{codes::*, Diag, EmissionGuarantee, StashKey};
+use rustc_errors::{codes::*, Diag, EmissionGuarantee, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
@@ -17,13 +17,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         self_ty: &hir::Ty<'_>,
         in_path: bool,
-    ) {
+    ) -> Option<ErrorGuaranteed> {
         let tcx = self.tcx();
 
         let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
             self_ty.kind
         else {
-            return;
+            return None;
         };
 
         let needs_bracket = in_path
@@ -70,7 +70,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
-            diag.stash(self_ty.span, StashKey::TraitMissingMethod);
+            diag.stash(self_ty.span, StashKey::TraitMissingMethod)
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
@@ -83,6 +83,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 self.maybe_suggest_blanket_trait_impl(self_ty, lint);
             });
+            None
         }
     }
 

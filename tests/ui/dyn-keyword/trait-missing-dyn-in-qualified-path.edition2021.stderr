@@ -1,13 +1,13 @@
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:24
+  --> $DIR/trait-missing-dyn-in-qualified-path.rs:5:19
    |
-LL | fn ice() -> impl AsRef<Fn(&())> {
-   |                        ^^^^^^^
+LL |     let x: u32 = <Default>::default();
+   |                   ^^^^^^^
    |
 help: add `dyn` keyword before this trait
    |
-LL | fn ice() -> impl AsRef<dyn Fn(&())> {
-   |                        +++
+LL |     let x: u32 = <dyn Default>::default();
+   |                   +++
 
 error: aborting due to 1 previous error
 

@@ -14,10 +14,8 @@ fn f<T>(
          1
      }],
 ) -> impl Iterator<Item = SubAssign> {
-//~^ ERROR the type parameter `Rhs` must be explicitly specified
-//~| ERROR `()` is not an iterator
+//~^ ERROR `()` is not an iterator
 //~| ERROR trait objects must include the `dyn` keyword
-//~| ERROR the type parameter `Rhs` must be explicitly specified [E0393]
 }
 
 pub fn main() {}

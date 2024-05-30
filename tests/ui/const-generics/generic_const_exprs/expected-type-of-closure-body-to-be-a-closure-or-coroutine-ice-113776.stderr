@@ -16,29 +16,6 @@ help: you might be missing a type parameter
 LL | fn f<T, F>(
    |       +++
 
-error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
-   |
-LL | ) -> impl Iterator<Item = SubAssign> {
-   |                           ^^^^^^^^^ help: set the type parameter to the desired type: `SubAssign<Rhs>`
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-   = note: type parameter `Rhs` must be specified for this
-   |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
-
-error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
-   |
-LL | ) -> impl Iterator<Item = SubAssign> {
-   |                           ^^^^^^^^^ help: set the type parameter to the desired type: `SubAssign<Rhs>`
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-   = note: type parameter `Rhs` must be specified for this
-   |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error[E0277]: `()` is not an iterator
   --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:6
    |
@@ -62,7 +39,7 @@ help: you might have meant to write a bound here
 LL | ) -> impl Iterator<Item: SubAssign> {
    |                        ~
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0393, E0412, E0782.
+Some errors have detailed explanations: E0277, E0412, E0782.
 For more information about an error, try `rustc --explain E0277`.
