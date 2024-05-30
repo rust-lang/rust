@@ -1,3 +1,4 @@
+use rustc_ast_ir::Movability;
 use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -31,20 +32,8 @@ pub trait Interner:
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + Deref<Target = [Self::GenericArg]>;
-    type GenericArg: Copy
-        + Debug
-        + Hash
-        + Eq
-        + IntoKind<Kind = ty::GenericArgKind<Self>>
-        + TypeVisitable<Self>
-        + Relate<Self>;
-    type Term: Copy
-        + Debug
-        + Hash
-        + Eq
-        + IntoKind<Kind = ty::TermKind<Self>>
-        + TypeFoldable<Self>
-        + Relate<Self>;
+    type GenericArg: GenericArg<Self>;
+    type Term: Term<Self>;
 
     type BoundVarKinds: Copy
         + Debug
@@ -74,7 +63,12 @@ pub trait Interner:
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
-    type BoundExistentialPredicates: Copy + Debug + Hash + Eq + Relate<Self>;
+    type BoundExistentialPredicates: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Relate<Self>
+        + IntoIterator<Item = ty::Binder<Self, ty::ExistentialPredicate<Self>>>;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
     type Safety: Safety<Self> + TypeFoldable<Self> + Relate<Self>;
@@ -153,6 +147,34 @@ pub trait Interner:
 
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
+
+    fn bound_coroutine_hidden_types(
+        self,
+        def_id: Self::DefId,
+    ) -> impl Iterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+
+    fn fn_sig(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::FnSig<Self>>>;
+
+    fn coroutine_movability(self, def_id: Self::DefId) -> Movability;
+
+    fn coroutine_for_closure(self, def_id: Self::DefId) -> Self::DefId;
+
+    fn generics_require_sized_self(self, def_id: Self::DefId) -> bool;
+
+    fn item_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl Iterator<Item = Self::Clause>>;
+
+    fn super_predicates_of(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl Iterator<Item = Self::Clause>>;
+
+    fn has_target_features(self, def_id: Self::DefId) -> bool;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

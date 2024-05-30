@@ -786,6 +786,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         tcx.types.bool
     }
 
+    fn new_u8(tcx: TyCtxt<'tcx>) -> Self {
+        tcx.types.u8
+    }
+
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferTy) -> Self {
         Ty::new_infer(tcx, infer)
     }

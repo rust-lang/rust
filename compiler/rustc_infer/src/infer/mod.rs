@@ -44,7 +44,7 @@ use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -404,6 +404,25 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
                 ty::Const::new_infer(self.tcx, InferConst::EffectVar(self.root_effect_var(vid)))
             }
         }
+    }
+
+    fn instantiate_binder_with_infer<T: TypeFoldable<Self::Interner> + Copy>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+    ) -> T {
+        self.instantiate_binder_with_fresh_vars(
+            DUMMY_SP,
+            BoundRegionConversionTime::HigherRankedType,
+            value,
+        )
+    }
+
+    fn enter_forall<T: TypeFoldable<Self::Interner> + Copy, U>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U {
+        self.enter_forall(value, f)
     }
 }
 

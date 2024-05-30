@@ -154,7 +154,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type VariancesOf = &'tcx [ty::Variance];
 
-    fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf {
+    fn variances_of(self, def_id: DefId) -> Self::VariancesOf {
         self.variances_of(def_id)
     }
 
@@ -198,7 +198,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn trait_ref_and_own_args_for_alias(
         self,
-        def_id: Self::DefId,
+        def_id: DefId,
         args: Self::GenericArgs,
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
@@ -246,7 +246,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_type_list_from_iter(args)
     }
 
-    fn parent(self, def_id: Self::DefId) -> Self::DefId {
+    fn parent(self, def_id: DefId) -> DefId {
         self.parent(def_id)
     }
 
@@ -258,6 +258,49 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn features(self) -> Self::Features {
         self.features()
+    }
+
+    fn bound_coroutine_hidden_types(
+        self,
+        def_id: DefId,
+    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
+        self.bound_coroutine_hidden_types(def_id)
+    }
+
+    fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+        self.fn_sig(def_id)
+    }
+
+    fn coroutine_movability(self, def_id: DefId) -> rustc_ast::Movability {
+        self.coroutine_movability(def_id)
+    }
+
+    fn coroutine_for_closure(self, def_id: DefId) -> DefId {
+        self.coroutine_for_closure(def_id)
+    }
+
+    fn generics_require_sized_self(self, def_id: DefId) -> bool {
+        self.generics_require_sized_self(def_id)
+    }
+
+    fn item_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = ty::Clause<'tcx>>> {
+        self.item_bounds(def_id).map_bound(IntoIterator::into_iter)
+    }
+
+    fn super_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = ty::Clause<'tcx>>> {
+        ty::EarlyBinder::bind(
+            self.super_predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
+        )
+    }
+
+    fn has_target_features(self, def_id: DefId) -> bool {
+        !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
 }
 
@@ -280,6 +323,10 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
 impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
     fn generic_const_exprs(self) -> bool {
         self.generic_const_exprs
+    }
+
+    fn coroutine_clone(self) -> bool {
+        self.coroutine_clone
     }
 }
 

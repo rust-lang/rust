@@ -29,6 +29,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 {
     fn new_bool(interner: I) -> Self;
 
+    fn new_u8(interner: I) -> Self;
+
     fn new_infer(interner: I, var: ty::InferTy) -> Self;
 
     fn new_var(interner: I, var: ty::TyVid) -> Self;
@@ -38,6 +40,18 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
+
+    fn new_projection(
+        interner: I,
+        def_id: I::DefId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> Self {
+        Ty::new_alias(
+            interner,
+            ty::AliasTyKind::Projection,
+            ty::AliasTy::new(interner, def_id, args),
+        )
+    }
 
     fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self;
 
@@ -75,6 +89,12 @@ pub trait Ty<I: Interner<Ty = Self>>:
         It: Iterator<Item = T>,
         T: CollectAndApply<Self, Self>;
 
+    fn new_fn_def(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_fn_ptr(interner: I, sig: ty::Binder<I, ty::FnSig<I>>) -> Self;
+
+    fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
+
     fn tuple_fields(self) -> I::Tys;
 
     fn to_opt_closure_kind(self) -> Option<ty::ClosureKind>;
@@ -83,11 +103,17 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn from_coroutine_closure_kind(interner: I, kind: ty::ClosureKind) -> Self;
 
-    fn new_fn_def(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn is_ty_var(self) -> bool {
+        matches!(self.kind(), ty::Infer(ty::TyVar(_)))
+    }
 
-    fn new_fn_ptr(interner: I, sig: ty::Binder<I, ty::FnSig<I>>) -> Self;
-
-    fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
+    fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
+        match self.kind() {
+            ty::FnPtr(sig) => sig,
+            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, &args),
+            _ => todo!("TODO:"),
+        }
+    }
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
@@ -122,7 +148,6 @@ pub trait Region<I: Interner<Region = Self>>:
     + Into<I::GenericArg>
     + IntoKind<Kind = ty::RegionKind<I>>
     + Flags
-    + TypeVisitable<I>
     + Relate<I>
 {
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundRegion) -> Self;
@@ -164,6 +189,25 @@ pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
     fn count(&self) -> usize;
 }
 
+pub trait GenericArg<I: Interner<GenericArg = Self>>:
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    + IntoKind<Kind = ty::GenericArgKind<I>>
+    + TypeVisitable<I>
+    + Relate<I>
+    + From<I::Ty>
+    + From<I::Region>
+    + From<I::Const>
+{
+}
+
+pub trait Term<I: Interner<Term = Self>>:
+    Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<I>> + TypeFoldable<I> + Relate<I>
+{
+}
+
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     Copy
     + Debug
@@ -172,7 +216,6 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     + IntoIterator<Item = I::GenericArg>
     + Deref<Target: Deref<Target = [I::GenericArg]>>
     + Default
-    + TypeFoldable<I>
     + Relate<I>
 {
     fn type_at(self, i: usize) -> I::Ty;
@@ -188,6 +231,16 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     fn split_closure_args(self) -> ty::ClosureArgsParts<I>;
     fn split_coroutine_closure_args(self) -> ty::CoroutineClosureArgsParts<I>;
     fn split_coroutine_args(self) -> ty::CoroutineArgsParts<I>;
+
+    fn as_closure(self) -> ty::ClosureArgs<I> {
+        ty::ClosureArgs { args: self }
+    }
+    fn as_coroutine_closure(self) -> ty::CoroutineClosureArgs<I> {
+        ty::CoroutineClosureArgs { args: self }
+    }
+    fn as_coroutine(self) -> ty::CoroutineArgs<I> {
+        ty::CoroutineArgs { args: self }
+    }
 }
 
 pub trait Predicate<I: Interner<Predicate = Self>>:
@@ -198,7 +251,10 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
     + Flags
+    + UpcastFrom<I, I::Clause>
     + UpcastFrom<I, ty::NormalizesTo<I>>
+    + UpcastFrom<I, ty::TraitRef<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
 {
     fn is_coinductive(self, interner: I) -> bool;
 }
@@ -208,6 +264,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + Debug
     + Hash
     + Eq
+    + TypeFoldable<I>
     // FIXME: Remove these, uplift the `Upcast` impls.
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
@@ -242,8 +299,17 @@ pub trait ParamLike {
 
 pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn def_id(self) -> I::DefId;
+
+    fn is_phantom_data(self) -> bool;
+
+    // FIXME: perhaps use `all_fields` and expose `FieldDef`.
+    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl Iterator<Item = I::Ty>>;
+
+    fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
 }
 
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
+
+    fn coroutine_clone(self) -> bool;
 }
