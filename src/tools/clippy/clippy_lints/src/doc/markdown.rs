@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, SuggestionStyle};
@@ -30,6 +30,7 @@ pub fn check(
             word = tmp_word;
         }
 
+        let original_len = word.len();
         word = word.trim_start_matches(trim_pattern);
 
         // Remove leading or trailing single `:` which may be part of a sentence.
@@ -42,6 +43,25 @@ pub fn check(
 
         if valid_idents.contains(word) || word.chars().all(|c| c == ':') {
             continue;
+        }
+
+        // Ensure that all reachable matching closing parens are included as well.
+        let size_diff = original_len - word.len();
+        let mut open_parens = 0;
+        let mut close_parens = 0;
+        for c in word.chars() {
+            if c == '(' {
+                open_parens += 1;
+            } else if c == ')' {
+                close_parens += 1;
+            }
+        }
+        while close_parens < open_parens
+            && let Some(tmp_word) = orig_word.get(size_diff..=(word.len() + size_diff))
+            && tmp_word.ends_with(')')
+        {
+            word = tmp_word;
+            close_parens += 1;
         }
 
         // Adjust for the current word
@@ -92,13 +112,15 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
     if let Ok(url) = Url::parse(word) {
         // try to get around the fact that `foo::bar` parses as a valid URL
         if !url.cannot_be_a_base() {
-            span_lint(
+            span_lint_and_sugg(
                 cx,
                 DOC_MARKDOWN,
                 span,
                 "you should put bare URLs between `<`/`>` or make a proper Markdown link",
+                "try",
+                format!("<{word}>"),
+                Applicability::MachineApplicable,
             );
-
             return;
         }
     }

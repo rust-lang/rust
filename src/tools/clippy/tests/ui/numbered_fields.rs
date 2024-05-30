@@ -42,4 +42,9 @@ fn main() {
 
     // Aliases can't be tuple constructed #8638
     let _ = Alias { 0: 0, 1: 1, 2: 2 };
+
+    // Issue #12367
+    struct TupleStructVec(Vec<usize>);
+
+    let _ = TupleStructVec { 0: vec![0, 1, 2, 3] };
 }

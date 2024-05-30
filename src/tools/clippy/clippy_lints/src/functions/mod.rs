@@ -338,8 +338,10 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Lints when `impl Trait` is being used in a function's parameters.
-    /// ### Why is this bad?
-    /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
+    ///
+    /// ### Why restrict this?
+    /// Turbofish syntax (`::<>`) cannot be used to specify the type of an `impl Trait` parameter,
+    /// making `impl Trait` less powerful. Readability may also be a factor.
     ///
     /// ### Example
     /// ```no_run
@@ -366,9 +368,8 @@ declare_clippy_lint! {
     /// Lints when the name of function parameters from trait impl is
     /// different than its default implementation.
     ///
-    /// ### Why is this bad?
-    /// Using the default name for parameters of a trait method is often
-    /// more desirable for consistency's sake.
+    /// ### Why restrict this?
+    /// Using the default name for parameters of a trait method is more consistent.
     ///
     /// ### Example
     /// ```rust

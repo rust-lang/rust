@@ -7,10 +7,10 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the usage of division (/) and remainder (%) operations
-    /// when performed on any integer types using the default Div and Rem trait implementations.
+    /// Checks for the usage of division (`/`) and remainder (`%`) operations
+    /// when performed on any integer types using the default `Div` and `Rem` trait implementations.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// In cryptographic contexts, division can result in timing sidechannel vulnerabilities,
     /// and needs to be replaced with constant-time code instead (e.g. Barrett reduction).
     ///

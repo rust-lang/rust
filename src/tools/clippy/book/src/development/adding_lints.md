@@ -587,6 +587,11 @@ declare_clippy_lint! {
 }
 ```
 
+If the lint is in the `restriction` group because it lints things that are not
+necessarily “bad” but are more of a style choice, then replace the
+“Why is this bad?” section heading with “Why restrict this?”, to avoid writing
+“Why is this bad? It isn't, but ...”.
+
 Once your lint is merged, this documentation will show up in the [lint
 list][lint_list].
 

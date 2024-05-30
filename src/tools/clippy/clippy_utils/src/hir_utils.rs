@@ -769,7 +769,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 // closures inherit TypeckResults
                 self.hash_expr(self.cx.tcx.hir().body(body).value);
             },
-            ExprKind::ConstBlock(ref l_id) => {
+            ExprKind::ConstBlock(l_id) => {
                 self.hash_expr(l_id);
             },
             ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {

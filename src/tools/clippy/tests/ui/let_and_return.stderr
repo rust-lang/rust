@@ -78,5 +78,75 @@ LL +                 E::B(x) => x,
 LL +             }) as _
    |
 
-error: aborting due to 5 previous errors
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:216:9
+   |
+LL |         let s = if true { "a".to_string() } else { "b".to_string() } + "c";
+   |         ------------------------------------------------------------------- unnecessary `let` binding
+LL |         s
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         (if true { "a".to_string() } else { "b".to_string() } + "c")
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:222:9
+   |
+LL |         let s = "c".to_string() + if true { "a" } else { "b" };
+   |         ------------------------------------------------------- unnecessary `let` binding
+LL |         s
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         "c".to_string() + if true { "a" } else { "b" }
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:228:9
+   |
+LL |         let s = { "a".to_string() } + "b" + { "c" } + "d";
+   |         -------------------------------------------------- unnecessary `let` binding
+LL |         s
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         ({ "a".to_string() } + "b" + { "c" } + "d")
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:236:13
+   |
+LL |             let s = if true { 2 } else { 3 } << 4;
+   |             -------------------------------------- unnecessary `let` binding
+LL |             s
+   |             ^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL ~             (if true { 2 } else { 3 } << 4)
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:241:13
+   |
+LL |             let s = { true } || { false } && { 2 <= 3 };
+   |             -------------------------------------------- unnecessary `let` binding
+LL |             s
+   |             ^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL ~             ({ true } || { false } && { 2 <= 3 })
+   |
+
+error: aborting due to 10 previous errors
 

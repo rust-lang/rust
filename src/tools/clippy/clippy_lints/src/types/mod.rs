@@ -217,7 +217,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `Rc<T>` and `Arc<T>` when `T` is a mutable buffer type such as `String` or `Vec`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Expressions such as `Rc<String>` usually have no advantage over `Rc<str>`, since
     /// it is larger and involves an extra level of indirection, and doesn't implement `Borrow<str>`.
     ///
@@ -274,7 +274,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `Rc<Mutex<T>>`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// `Rc` is used in single thread and `Mutex` is used in multi thread.
     /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
     ///

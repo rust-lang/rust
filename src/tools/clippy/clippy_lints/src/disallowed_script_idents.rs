@@ -20,11 +20,11 @@ declare_clippy_lint! {
     /// [aliases]: http://www.unicode.org/reports/tr24/tr24-31.html#Script_Value_Aliases
     /// [supported_scripts]: https://www.unicode.org/iso15924/iso15924-codes.html
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// It may be not desired to have many different scripts for
     /// identifiers in the codebase.
     ///
-    /// Note that if you only want to allow plain English, you might want to use
+    /// Note that if you only want to allow typical English, you might want to use
     /// built-in [`non_ascii_idents`] lint instead.
     ///
     /// [`non_ascii_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#non-ascii-idents

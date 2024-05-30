@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of the [`dbg!`](https://doc.rust-lang.org/std/macro.dbg.html) macro.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `dbg!` macro is intended as a debugging tool. It should not be present in released
     /// software or committed to a version control system.
     ///

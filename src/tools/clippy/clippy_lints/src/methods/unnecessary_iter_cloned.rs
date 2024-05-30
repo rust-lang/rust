@@ -38,7 +38,7 @@ pub fn check_for_loop_iter(
 ) -> bool {
     if let Some(grandparent) = get_parent_expr(cx, expr).and_then(|parent| get_parent_expr(cx, parent))
         && let Some(ForLoop { pat, body, .. }) = ForLoop::hir(grandparent)
-        && let (clone_or_copy_needed, addr_of_exprs) = clone_or_copy_needed(cx, pat, body)
+        && let (clone_or_copy_needed, references_to_binding) = clone_or_copy_needed(cx, pat, body)
         && !clone_or_copy_needed
         && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
     {
@@ -123,14 +123,12 @@ pub fn check_for_loop_iter(
                     Applicability::MachineApplicable
                 };
                 diag.span_suggestion(expr.span, "use", snippet, applicability);
-                for addr_of_expr in addr_of_exprs {
-                    match addr_of_expr.kind {
-                        ExprKind::AddrOf(_, _, referent) => {
-                            let span = addr_of_expr.span.with_hi(referent.span.lo());
-                            diag.span_suggestion(span, "remove this `&`", "", applicability);
-                        },
-                        _ => unreachable!(),
-                    }
+                if !references_to_binding.is_empty() {
+                    diag.multipart_suggestion(
+                        "remove any references to the binding",
+                        references_to_binding,
+                        applicability,
+                    );
                 }
             },
         );
