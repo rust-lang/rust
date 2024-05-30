@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
         }
     }
 
-    fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &Body<'_>) {
         if self.possible_borrowers.last().map_or(false, |&(local_def_id, _)| {
             local_def_id == cx.tcx.hir().body_owner_def_id(body.id())
         }) {

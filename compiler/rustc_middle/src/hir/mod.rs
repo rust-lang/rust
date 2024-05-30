@@ -194,8 +194,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.fn_arg_names = |tcx, def_id| {
         let hir = tcx.hir();
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
+        if let Some(body_id) = tcx.hir_node_by_def_id(def_id).body_id() {
             tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
         } else if let Node::TraitItem(&TraitItem {
             kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
@@ -204,11 +203,15 @@ pub fn provide(providers: &mut Providers) {
         | Node::ForeignItem(&ForeignItem {
             kind: ForeignItemKind::Fn(_, idents, _),
             ..
-        }) = tcx.hir_node(hir_id)
+        }) = tcx.hir_node(tcx.local_def_id_to_hir_id(def_id))
         {
             idents
         } else {
-            span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", def_id);
+            span_bug!(
+                hir.span(tcx.local_def_id_to_hir_id(def_id)),
+                "fn_arg_names: unexpected item {:?}",
+                def_id
+            );
         }
     };
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;

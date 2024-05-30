@@ -1677,9 +1677,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if should_encode_const(tcx.def_kind(def_id)) {
                     let qualifs = tcx.mir_const_qualif(def_id);
                     record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-                    let body_id = tcx.hir().maybe_body_owned_by(def_id);
-                    if let Some(body_id) = body_id {
-                        let const_data = rendered_const(self.tcx, body_id);
+                    let body = tcx.hir().maybe_body_owned_by(def_id);
+                    if let Some(body) = body {
+                        let const_data = rendered_const(self.tcx, &body, def_id);
                         record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
                     }
                 }
@@ -2368,9 +2368,9 @@ pub fn provide(providers: &mut Providers) {
 /// Whenever possible, prefer to evaluate the constant first and try to
 /// use a different method for pretty-printing. Ideally this function
 /// should only ever be used as a fallback.
-pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
+pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: LocalDefId) -> String {
     let hir = tcx.hir();
-    let value = &hir.body(body).value;
+    let value = body.value;
 
     #[derive(PartialEq, Eq)]
     enum Classification {
@@ -2426,13 +2426,13 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
 
         // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
         // other formatting artifacts.
-        Literal | Simple => id_to_string(&hir, body.hir_id),
+        Literal | Simple => id_to_string(&hir, body.id().hir_id),
 
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it
         //        would not actually need any disambiguation.
         Complex => {
-            if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+            if tcx.def_kind(def_id) == DefKind::AnonConst {
                 "{ _ }".to_owned()
             } else {
                 "_".to_owned()

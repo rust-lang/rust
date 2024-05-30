@@ -2451,11 +2451,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let Some(ty::GenericArgKind::Type(_)) = arg.map(|arg| arg.unpack())
-                    && let Some(body_id) =
-                        self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
+                    && let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-                    expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
+                    expr_finder.visit_expr(&body.value);
 
                     if let Some(hir::Expr {
                         kind:

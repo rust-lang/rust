@@ -647,8 +647,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let hir_map = self.infcx.tcx.hir();
             let def_id = self.body.source.def_id();
             let Some(local_def_id) = def_id.as_local() else { return };
-            let Some(body_id) = hir_map.maybe_body_owned_by(local_def_id) else { return };
-            let body = self.infcx.tcx.hir().body(body_id);
+            let Some(body) = hir_map.maybe_body_owned_by(local_def_id) else { return };
 
             let mut v = SuggestIndexOperatorAlternativeVisitor {
                 assign_span: span,
@@ -656,7 +655,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ty,
                 suggested: false,
             };
-            v.visit_body(body);
+            v.visit_body(&body);
             if !v.suggested {
                 err.help(format!(
                     "to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API",
@@ -746,9 +745,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // `fn foo(&x: &i32)` -> `fn foo(&(mut x): &i32)`
         let def_id = self.body.source.def_id();
         if let Some(local_def_id) = def_id.as_local()
-            && let Some(body_id) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
-            && let body = self.infcx.tcx.hir().body(body_id)
-            && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(body).break_value()
+            && let Some(body) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
+            && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(&body).break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::LetStmt(hir::LetStmt {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
@@ -867,8 +865,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         }
-        if let Some(body_id) = hir_map.maybe_body_owned_by(self.mir_def_id())
-            && let Block(block, _) = hir_map.body(body_id).value.kind
+        if let Some(body) = hir_map.maybe_body_owned_by(self.mir_def_id())
+            && let Block(block, _) = body.value.kind
         {
             // `span` corresponds to the expression being iterated, find the `for`-loop desugared
             // expression with that span in order to identify potential fixes when encountering a
@@ -1189,10 +1187,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             Some((false, err_label_span, message, _)) => {
                 let def_id = self.body.source.def_id();
                 let hir_id = if let Some(local_def_id) = def_id.as_local()
-                    && let Some(body_id) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
+                    && let Some(body) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
                 {
-                    let body = self.infcx.tcx.hir().body(body_id);
-                    BindingFinder { span: err_label_span }.visit_body(body).break_value()
+                    BindingFinder { span: err_label_span }.visit_body(&body).break_value()
                 } else {
                     None
                 };

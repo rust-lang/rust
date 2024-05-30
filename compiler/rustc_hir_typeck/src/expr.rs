@@ -909,8 +909,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the first place.
             assert_ne!(encl_item_id.def_id, encl_body_owner_id);
 
-            let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
-            let encl_body = self.tcx.hir().body(encl_body_id);
+            let encl_body = self.tcx.hir().body_owned_by(encl_body_owner_id);
 
             err.encl_body_span = Some(encl_body.value.span);
             err.encl_fn_span = Some(*encl_fn_span);
