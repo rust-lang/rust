@@ -767,11 +767,33 @@ fn buffer_capacity_required(mut file: &File) -> Option<usize> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for &File {
+    /// Read some bytes from the file.
+    ///
+    /// See [`Read::read`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `read` function on Unix and
+    /// the `NtReadFile` function on Windows. Note that this [may change in
+    /// the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 
+    /// Like `read`, except that it reads into a slice of buffers.
+    ///
+    /// See [`Read::read_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `readv` function on Unix and
+    /// falls back to the `read` implementation on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
@@ -782,6 +804,16 @@ impl Read for &File {
         self.inner.read_buf(cursor)
     }
 
+    /// Determines if `File` has an efficient `read_vectored` implementation.
+    ///
+    /// See [`Read::is_read_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// Note that this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
@@ -803,19 +835,63 @@ impl Read for &File {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for &File {
+    /// Write some bytes from the file.
+    ///
+    /// See [`Write::write`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `write` function on Unix and
+    /// the `NtWriteFile` function on Windows. Note that this [may change in
+    /// the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
 
+    /// Like `write`, except that it writes into a slice of buffers.
+    ///
+    /// See [`Write::write_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `writev` function on Unix
+    /// and falls back to the `write` implementation on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 
+    /// Determines if `File` has an efficient `write_vectored` implementation.
+    ///
+    /// See [`Write::is_write_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// Note that this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn is_write_vectored(&self) -> bool {
         self.inner.is_write_vectored()
     }
 
+    /// Flushes the file, ensuring that all intermediately buffered contents
+    /// reach their destination.
+    ///
+    /// See [`Write::flush`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// Since a `File` structure doesn't contain any buffers, this function is
+    /// currently a no-op on Unix and Windows. Note that this [may change in
+    /// the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         self.inner.flush()
