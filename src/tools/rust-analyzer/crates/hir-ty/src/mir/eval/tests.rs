@@ -77,7 +77,7 @@ fn check_panic(ra_fixture: &str, expected_panic: &str) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let e = eval_main(&db, file_id).unwrap_err();
-    assert_eq!(e.is_panic().unwrap_or_else(|| panic!("unexpected error: {:?}", e)), expected_panic);
+    assert_eq!(e.is_panic().unwrap_or_else(|| panic!("unexpected error: {e:?}")), expected_panic);
 }
 
 #[test]

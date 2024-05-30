@@ -242,7 +242,7 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .iter()
             .enumerate()
             .map(|(index, _)| {
-                let new_name = new_field_name((format!("_{}", index)).into(), &data.names_in_scope);
+                let new_name = new_field_name((format!("_{index}")).into(), &data.names_in_scope);
                 (index.to_string().into(), new_name)
             })
             .collect(),

@@ -670,7 +670,7 @@ fn render_const_scalar(
         TyKind::FnDef(..) => ty.hir_fmt(f),
         TyKind::Function(_) | TyKind::Raw(_, _) => {
             let it = u128::from_le_bytes(pad16(b, false));
-            write!(f, "{:#X} as ", it)?;
+            write!(f, "{it:#X} as ")?;
             ty.hir_fmt(f)
         }
         TyKind::Array(ty, len) => {

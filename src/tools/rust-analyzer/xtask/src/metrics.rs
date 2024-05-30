@@ -64,7 +64,7 @@ impl flags::Metrics {
         };
 
         let mut file =
-            fs::File::options().write(true).create(true).open(format!("target/{}.json", name))?;
+            fs::File::options().write(true).create(true).open(format!("target/{name}.json"))?;
         writeln!(file, "{}", metrics.json())?;
         eprintln!("{metrics:#?}");
         Ok(())

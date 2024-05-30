@@ -172,7 +172,7 @@ pub fn ty_alias(
     assignment: Option<(ast::Type, Option<ast::WhereClause>)>,
 ) -> ast::TypeAlias {
     let mut s = String::new();
-    s.push_str(&format!("type {}", ident));
+    s.push_str(&format!("type {ident}"));
 
     if let Some(list) = generic_param_list {
         s.push_str(&list.to_string());
@@ -297,7 +297,7 @@ pub fn impl_trait(
         };
 
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
-        .map_or_else(|| " ".to_owned(), |wc| format!("\n{}\n", wc));
+        .map_or_else(|| " ".to_owned(), |wc| format!("\n{wc}\n"));
 
     let body = match body {
         Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),

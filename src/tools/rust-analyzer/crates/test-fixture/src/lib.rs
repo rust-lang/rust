@@ -196,7 +196,7 @@ impl ChangeFixture {
                     origin,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
-                assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
+                assert!(prev.is_none(), "multiple crates with same name: {crate_name}");
                 for dep in meta.deps {
                     let prelude = match &meta.extern_prelude {
                         Some(v) => v.contains(&dep),

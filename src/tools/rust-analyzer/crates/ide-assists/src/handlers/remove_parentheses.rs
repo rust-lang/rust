@@ -48,7 +48,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 }
                 None => false,
             };
-            let expr = if need_to_add_ws { format!(" {}", expr) } else { expr.to_string() };
+            let expr = if need_to_add_ws { format!(" {expr}") } else { expr.to_string() };
 
             builder.replace(parens.syntax().text_range(), expr)
         },

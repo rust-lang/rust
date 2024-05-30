@@ -106,7 +106,7 @@ impl AbsPathBuf {
     /// Panics if `path` is not absolute.
     pub fn assert(path: Utf8PathBuf) -> AbsPathBuf {
         AbsPathBuf::try_from(path)
-            .unwrap_or_else(|path| panic!("expected absolute path, got {}", path))
+            .unwrap_or_else(|path| panic!("expected absolute path, got {path}"))
     }
 
     /// Wrap the given absolute path in `AbsPathBuf`

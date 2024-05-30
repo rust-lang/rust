@@ -140,7 +140,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         acc.add_group(
             &group_label,
             assist_id,
-            format!("Import `{}`", import_name),
+            format!("Import `{import_name}`"),
             range,
             |builder| {
                 let scope = match scope.clone() {
@@ -165,7 +165,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                 acc.add_group(
                     &group_label,
                     assist_id,
-                    format!("Import `{} as _`", import_name),
+                    format!("Import `{import_name} as _`"),
                     range,
                     |builder| {
                         let scope = match scope.clone() {

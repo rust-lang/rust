@@ -363,7 +363,7 @@ impl MirEvalError {
                         )?;
                     }
                     Either::Right(closure) => {
-                        writeln!(f, "In {:?}", closure)?;
+                        writeln!(f, "In {closure:?}")?;
                     }
                 }
                 let source_map = db.body_with_source_map(*def).1;
@@ -424,7 +424,7 @@ impl MirEvalError {
             | MirEvalError::StackOverflow
             | MirEvalError::CoerceUnsizedError(_)
             | MirEvalError::InternalError(_)
-            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{:?}", err)?,
+            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{err:?}")?,
         }
         Ok(())
     }

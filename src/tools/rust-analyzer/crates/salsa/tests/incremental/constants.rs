@@ -13,12 +13,12 @@ pub(crate) trait ConstantsDatabase: TestContext {
 }
 
 fn add(db: &dyn ConstantsDatabase, key1: char, key2: char) -> usize {
-    db.log().add(format!("add({}, {})", key1, key2));
+    db.log().add(format!("add({key1}, {key2})"));
     db.input(key1) + db.input(key2)
 }
 
 fn add3(db: &dyn ConstantsDatabase, key1: char, key2: char, key3: char) -> usize {
-    db.log().add(format!("add3({}, {}, {})", key1, key2, key3));
+    db.log().add(format!("add3({key1}, {key2}, {key3})"));
     db.add(key1, key2) + db.input(key3)
 }
 
