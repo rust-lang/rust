@@ -32,8 +32,6 @@ mod task_queue {
         done: JoinNotifier,
     }
 
-    unsafe impl Send for Task {}
-
     impl Task {
         pub(super) fn new(p: Box<dyn FnOnce() + Send>) -> (Task, JoinHandle) {
             let (done, recv) = wait_notify::new();
