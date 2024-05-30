@@ -820,6 +820,8 @@ impl<'a> Parser<'a> {
         }
 
         stmt.span = stmt.span.to(self.prev_token.span);
+        trace!(?stmt.span, ?self.prev_token.span, ?add_semi_to_stmt, ?eat_semi, ?stmt);
+        debug_assert!(stmt.span.contains(self.prev_token.span));
         Ok(Some(stmt))
     }
 
