@@ -286,7 +286,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // implemented, but rather from a "second order" obligation, where an associated
             // type has a projection coming from another associated type.
             // See `tests/ui/traits/assoc-type-in-superbad.rs` for an example.
-            if let Some(term_ty) = proj.term.ty()
+            if let Some(term_ty) = proj.term.as_type()
                 && let Some(impl_item_span) = ty_to_impl_span(term_ty)
             {
                 cause.span = impl_item_span;

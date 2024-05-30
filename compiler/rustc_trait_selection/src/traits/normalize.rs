@@ -259,7 +259,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     obligations.len = ?self.obligations.len(),
                     "AssocTypeNormalizer: normalized type"
                 );
-                normalized_ty.ty().unwrap()
+                normalized_ty.expect_type()
             }
 
             ty::Projection => {
@@ -289,7 +289,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 )
                 .ok()
                 .flatten()
-                .map(|term| term.ty().unwrap())
+                .map(|term| term.expect_type())
                 .map(|normalized_ty| {
                     PlaceholderReplacer::replace_placeholders(
                         infcx,

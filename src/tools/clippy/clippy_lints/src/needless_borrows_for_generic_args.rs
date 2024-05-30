@@ -311,7 +311,7 @@ fn is_mixed_projection_predicate<'tcx>(
 ) -> bool {
     let generics = cx.tcx.generics_of(callee_def_id);
     // The predicate requires the projected type to equal a type parameter from the parent context.
-    if let Some(term_ty) = projection_predicate.term.ty()
+    if let Some(term_ty) = projection_predicate.term.as_type()
         && let ty::Param(term_param_ty) = term_ty.kind()
         && (term_param_ty.index as usize) < generics.parent_count
     {
@@ -370,7 +370,7 @@ fn replace_types<'tcx>(
         if replaced.insert(param_ty.index) {
             for projection_predicate in projection_predicates {
                 if projection_predicate.projection_term.self_ty() == param_ty.to_ty(cx.tcx)
-                    && let Some(term_ty) = projection_predicate.term.ty()
+                    && let Some(term_ty) = projection_predicate.term.as_type()
                     && let ty::Param(term_param_ty) = term_ty.kind()
                 {
                     let projection = projection_predicate
