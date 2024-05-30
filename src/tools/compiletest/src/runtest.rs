@@ -506,8 +506,20 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    /// Runs a [`Command`] and waits for it to finish, then converts its exit
+    /// status and output streams into a [`ProcRes`].
+    ///
+    /// The command might have succeeded or failed; it is the caller's
+    /// responsibility to check the exit status and take appropriate action.
+    ///
+    /// # Panics
+    /// Panics if the command couldn't be executed at all
+    /// (e.g. because the executable could not be found).
+    #[must_use = "caller should check whether the command succeeded"]
     fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
-        let output = cmd.output().unwrap_or_else(|e| panic!("failed to exec `{cmd:?}`: {e:?}"));
+        let output = cmd
+            .output()
+            .unwrap_or_else(|e| self.fatal(&format!("failed to exec `{cmd:?}` because: {e}")));
 
         let proc_res = ProcRes {
             status: output.status,
@@ -1232,7 +1244,7 @@ impl<'test> TestCx<'test> {
         } else {
             self.config.lldb_python_dir.as_ref().unwrap().to_string()
         };
-        self.cmd2procres(
+        self.run_command_to_procres(
             Command::new(&self.config.python)
                 .arg(&lldb_script_path)
                 .arg(test_executable)
@@ -1240,28 +1252,6 @@ impl<'test> TestCx<'test> {
                 .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
                 .env("PYTHONPATH", pythonpath),
         )
-    }
-
-    fn cmd2procres(&self, cmd: &mut Command) -> ProcRes {
-        let (status, out, err) = match cmd.output() {
-            Ok(Output { status, stdout, stderr }) => {
-                (status, String::from_utf8(stdout).unwrap(), String::from_utf8(stderr).unwrap())
-            }
-            Err(e) => self.fatal(&format!(
-                "Failed to setup Python process for \
-                 LLDB script: {}",
-                e
-            )),
-        };
-
-        self.dump_output(&out, &err);
-        ProcRes {
-            status,
-            stdout: out,
-            stderr: err,
-            truncated: Truncated::No,
-            cmdline: format!("{:?}", cmd),
-        }
     }
 
     fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
@@ -2683,7 +2673,7 @@ impl<'test> TestCx<'test> {
             if self.config.bless {
                 cmd.arg("--bless");
             }
-            let res = self.cmd2procres(&mut cmd);
+            let res = self.run_command_to_procres(&mut cmd);
             if !res.status.success() {
                 self.fatal_proc_rec_with_ctx("htmldocck failed!", &res, |mut this| {
                     this.compare_to_default_rustdoc(&out_dir)
@@ -2860,7 +2850,7 @@ impl<'test> TestCx<'test> {
         let root = self.config.find_rust_src_root().unwrap();
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
-        let res = self.cmd2procres(
+        let res = self.run_command_to_procres(
             Command::new(self.config.jsondocck_path.as_ref().unwrap())
                 .arg("--doc-dir")
                 .arg(root.join(&out_dir))
@@ -2878,7 +2868,7 @@ impl<'test> TestCx<'test> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
 
-        let res = self.cmd2procres(
+        let res = self.run_command_to_procres(
             Command::new(self.config.jsondoclint_path.as_ref().unwrap()).arg(&json_out),
         );
 
@@ -3526,7 +3516,7 @@ impl<'test> TestCx<'test> {
             cmd.arg("--sysroot").arg(&stage0_sysroot);
         }
 
-        let res = self.cmd2procres(&mut cmd);
+        let res = self.run_command_to_procres(&mut cmd);
         if !res.status.success() {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
@@ -3687,7 +3677,7 @@ impl<'test> TestCx<'test> {
             let root = self.config.find_rust_src_root().unwrap();
             let file_stem =
                 self.testpaths.file.file_stem().and_then(|f| f.to_str()).expect("no file stem");
-            let res = self.cmd2procres(
+            let res = self.run_command_to_procres(
                 Command::new(&nodejs)
                     .arg(root.join("src/tools/rustdoc-js/tester.js"))
                     .arg("--doc-folder")
