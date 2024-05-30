@@ -3,6 +3,7 @@ use std::cmp::max;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -33,6 +34,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use rustc_type_ir::elaborate::supertrait_def_ids;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -1614,10 +1616,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("applicable_candidates: {:?}", applicable_candidates);
 
         if applicable_candidates.len() > 1 {
-            if let Some(pick) =
-                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
-            {
-                return Some(Ok(pick));
+            if self.tcx.features().supertrait_item_shadowing() {
+                if let Some(pick) =
+                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
+                {
+                    return Some(Ok(pick));
+                }
+            } else {
+                if let Some(pick) =
+                    self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
+                {
+                    return Some(Ok(pick));
+                }
             }
         }
 
@@ -2076,6 +2086,52 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             item: probes[0].0.item,
             kind: TraitPick,
             import_ids: probes[0].0.import_ids.clone(),
+            autoderefs: 0,
+            autoref_or_ptr_adjustment: None,
+            self_ty,
+            unstable_candidates: vec![],
+            receiver_steps: None,
+        })
+    }
+
+    /// Much like `collapse_candidates_to_trait_pick`, this method allows us to collapse
+    /// multiple conflicting picks if there is one pick whose trait container is a subtrait
+    /// of the trait containers of all of the other picks.
+    ///
+    /// This implements RFC #3624.
+    fn collapse_candidates_to_subtrait_pick(
+        &self,
+        self_ty: Ty<'tcx>,
+        probes: &[(&Candidate<'tcx>, ProbeResult)],
+    ) -> Option<Pick<'tcx>> {
+        let mut child_pick = probes[0].0;
+        let mut supertraits: SsoHashSet<_> =
+            supertrait_def_ids(self.tcx, child_pick.item.trait_container(self.tcx)?).collect();
+
+        // All other picks should be a supertrait of the `child_pick`.
+        // If it's not, then we update the `child_pick` and the `supertraits`
+        // list.
+        for (p, _) in &probes[1..] {
+            let p_container = p.item.trait_container(self.tcx)?;
+            if !supertraits.contains(&p_container) {
+                // This pick is not a supertrait of the `child_pick`.
+                // Check if it's a subtrait of the `child_pick`, which
+                // is sufficient to imply that all of the previous picks
+                // are also supertraits of this pick.
+                supertraits = supertrait_def_ids(self.tcx, p_container).collect();
+                if supertraits.contains(&child_pick.item.trait_container(self.tcx).unwrap()) {
+                    child_pick = *p;
+                } else {
+                    // `child_pick` is not a supertrait of this pick. Bail.
+                    return None;
+                }
+            }
+        }
+
+        Some(Pick {
+            item: child_pick.item,
+            kind: TraitPick,
+            import_ids: child_pick.import_ids.clone(),
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
