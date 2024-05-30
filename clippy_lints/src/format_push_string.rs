@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Detects cases where the result of a `format!` call is
     /// appended to an existing `String`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Introduces an extra, avoidable heap allocation.
     ///
     /// ### Known problems

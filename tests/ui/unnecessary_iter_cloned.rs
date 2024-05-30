@@ -170,3 +170,32 @@ fn check_mut_iteratee_and_modify_inner_variable() {
         }
     }
 }
+
+mod issue_12821 {
+    fn foo() {
+        let v: Vec<_> = "hello".chars().collect();
+        for c in v.iter().cloned() {
+            //~^ ERROR: unnecessary use of `cloned`
+            println!("{c}"); // should not suggest to remove `&`
+        }
+    }
+
+    fn bar() {
+        let v: Vec<_> = "hello".chars().collect();
+        for c in v.iter().cloned() {
+            //~^ ERROR: unnecessary use of `cloned`
+            let ref_c = &c; //~ HELP: remove any references to the binding
+            println!("{ref_c}");
+        }
+    }
+
+    fn baz() {
+        let v: Vec<_> = "hello".chars().enumerate().collect();
+        for (i, c) in v.iter().cloned() {
+            //~^ ERROR: unnecessary use of `cloned`
+            let ref_c = &c; //~ HELP: remove any references to the binding
+            let ref_i = &i;
+            println!("{i} {ref_c}"); // should not suggest to remove `&` from `i`
+        }
+    }
+}

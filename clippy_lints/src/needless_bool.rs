@@ -6,8 +6,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    higher, is_else_clause, is_expn_of, is_parent_stmt, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
-    SpanlessEq,
+    higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt, peel_blocks, peel_blocks_with_stmt,
+    span_extract_comment, SpanlessEq,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -121,14 +121,7 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
     | ExprKind::Type(i, _)
     | ExprKind::Index(i, _, _) = inner.kind
     {
-        if matches!(
-            i.kind,
-            ExprKind::Block(..)
-                | ExprKind::ConstBlock(..)
-                | ExprKind::If(..)
-                | ExprKind::Loop(..)
-                | ExprKind::Match(..)
-        ) {
+        if is_block_like(i) {
             return true;
         }
         inner = i;

@@ -12,7 +12,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of items through absolute paths, like `std::env::current_dir`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Many codebases have their own style when it comes to importing, but one that is seldom used
     /// is using absolute paths *everywhere*. This is generally considered unidiomatic, and you
     /// should add a `use` statement.

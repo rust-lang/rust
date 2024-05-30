@@ -66,7 +66,7 @@ declare_clippy_lint! {
     /// Checks for printing on *stdout*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// People often print on *stdout* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// Checks for printing on *stderr*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// People often print on *stderr* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
@@ -110,15 +110,18 @@ declare_clippy_lint! {
     /// Checks for usage of `Debug` formatting. The purpose of this
     /// lint is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
-    /// The purpose of the `Debug` trait is to facilitate
-    /// debugging Rust code. It should not be used in user-facing output.
+    /// ### Why restrict this?
+    /// The purpose of the `Debug` trait is to facilitate debugging Rust code,
+    /// and [no guarantees are made about its output][stability].
+    /// It should not be used in user-facing output.
     ///
     /// ### Example
     /// ```no_run
     /// # let foo = "bar";
     /// println!("{:?}", foo);
     /// ```
+    ///
+    /// [stability]: https://doc.rust-lang.org/stable/std/fmt/trait.Debug.html#stability
     #[clippy::version = "pre 1.29.0"]
     pub USE_DEBUG,
     restriction,

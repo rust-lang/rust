@@ -12,9 +12,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `let _ = <expr>` where expr is `#[must_use]`
     ///
-    /// ### Why is this bad?
-    /// It's better to explicitly handle the value of a `#[must_use]`
-    /// expr
+    /// ### Why restrict this?
+    /// To ensure that all `#[must_use]` types are used rather than ignored.
     ///
     /// ### Example
     /// ```no_run
@@ -96,8 +95,8 @@ declare_clippy_lint! {
     /// Checks for `let _ = <expr>` without a type annotation, and suggests to either provide one,
     /// or remove the `let` keyword altogether.
     ///
-    /// ### Why is this bad?
-    /// The `let _ = <expr>` expression ignores the value of `<expr>` but will remain doing so even
+    /// ### Why restrict this?
+    /// The `let _ = <expr>` expression ignores the value of `<expr>`, but will continue to do so even
     /// if the type were to change, thus potentially introducing subtle bugs. By supplying a type
     /// annotation, one will be forced to re-visit the decision to ignore the value in such cases.
     ///

@@ -1,18 +1,22 @@
 error: use of a disallowed method `rustc_lint::context::LintContext::span_lint`
   --> tests/ui-internal/disallow_span_lint.rs:14:5
    |
-LL |     cx.span_lint(lint, span, |lint| { lint.primary_message(msg); });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     cx.span_lint(lint, span, |lint| {
+LL | |         lint.primary_message(msg);
+LL | |     });
+   | |______^
    |
    = note: this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint*` functions instead (from clippy.toml)
    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
 
 error: use of a disallowed method `rustc_middle::ty::context::TyCtxt::node_span_lint`
-  --> tests/ui-internal/disallow_span_lint.rs:18:5
+  --> tests/ui-internal/disallow_span_lint.rs:20:5
    |
-LL |     tcx.node_span_lint(lint, hir_id, span, |lint| { lint.primary_message(msg); });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     tcx.node_span_lint(lint, hir_id, span, |lint| {
+LL | |         lint.primary_message(msg);
+LL | |     });
+   | |______^
    |
    = note: this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint_hir*` functions instead (from clippy.toml)
 

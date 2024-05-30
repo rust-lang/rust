@@ -13,13 +13,20 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for functions that are only used once. Does not lint tests.
     ///
-    /// ### Why is this bad?
-    /// It's usually not, splitting a function into multiple parts often improves readability and in
-    /// the case of generics, can prevent the compiler from duplicating the function dozens of
-    /// time; instead, only duplicating a thunk. But this can prevent segmentation across a
-    /// codebase, where many small functions are used only once.
+    /// ### Why restrict this?
+    /// If a function is only used once (perhaps because it used to be used more widely),
+    /// then the code could be simplified by moving that function's code into its caller.
     ///
-    /// Note: If this lint is used, prepare to allow this a lot.
+    /// However, there are reasons not to do this everywhere:
+    ///
+    /// * Splitting a large function into multiple parts often improves readability
+    ///   by giving names to its parts.
+    /// * A function’s signature might serve a necessary purpose, such as constraining
+    ///   the type of a closure passed to it.
+    /// * Generic functions might call non-generic functions to reduce duplication
+    ///   in the produced machine code.
+    ///
+    /// If this lint is used, prepare to `#[allow]` it a lot.
     ///
     /// ### Example
     /// ```no_run

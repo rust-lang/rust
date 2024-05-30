@@ -20,6 +20,28 @@ fn array() {
     };
 
     let _ = if false { ["test"].iter() } else { [].iter() };
+
+    let smth = Some(vec![1, 2, 3]);
+
+    // Don't trigger when the empty collection iter is relied upon for its concrete type
+    // But do trigger if it is just an iterator, despite being an argument to a method
+    for i in smth.as_ref().map_or([].iter(), |s| s.iter()).chain(std::iter::empty()) {
+        println!("{i}");
+    }
+
+    // Same as above, but for empty collection iters with extra layers
+    for i in smth.as_ref().map_or({ [].iter() }, |s| s.iter()) {
+        println!("{y}", y = i + 1);
+    }
+
+    // Same as above, but for regular function calls
+    for i in Option::map_or(smth.as_ref(), [].iter(), |s| s.iter()) {
+        println!("{i}");
+    }
+
+    // Same as above, but when there are no predicates that mention the collection iter type.
+    let mut iter = [34, 228, 35].iter();
+    let _ = std::mem::replace(&mut iter, [].iter());
 }
 
 macro_rules! in_macros {

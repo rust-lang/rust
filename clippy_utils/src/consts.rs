@@ -412,8 +412,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
-            ExprKind::ConstBlock(e) |
-            ExprKind::DropTemps(e) => self.expr(e),
+            ExprKind::ConstBlock(e) | ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => {
                 self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |this, result| {
                     let result = mir_to_const(this.lcx, result)?;
@@ -491,8 +490,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// leaves the local crate.
     pub fn expr_is_empty(&mut self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(e) |
-            ExprKind::DropTemps(e) => self.expr_is_empty(e),
+            ExprKind::ConstBlock(e) | ExprKind::DropTemps(e) => self.expr_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
                     .typeck_results
