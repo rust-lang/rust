@@ -80,6 +80,13 @@ impl Cc {
         self
     }
 
+    /// Specify path of the output binary.
+    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg("-o");
+        self.cmd.arg(path.as_ref());
+        self
+    }
+
     /// Get the [`Output`][::std::process::Output] of the finished process.
     pub fn command_output(&mut self) -> ::std::process::Output {
         self.cmd.output().expect("failed to get output of finished process")
