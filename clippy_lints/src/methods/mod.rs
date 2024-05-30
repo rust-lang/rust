@@ -5052,7 +5052,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
 }
 
 const FN_HEADER: hir::FnHeader = hir::FnHeader {
-    unsafety: hir::Unsafety::Normal,
+    safety: hir::Safety::Safe,
     constness: hir::Constness::NotConst,
     asyncness: hir::IsAsync::NotAsync,
     abi: rustc_target::spec::abi::Abi::Rust,
@@ -5228,7 +5228,5 @@ impl OutType {
 }
 
 fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
-    expected.constness == actual.constness
-        && expected.unsafety == actual.unsafety
-        && expected.asyncness == actual.asyncness
+    expected.constness == actual.constness && expected.safety == actual.safety && expected.asyncness == actual.asyncness
 }

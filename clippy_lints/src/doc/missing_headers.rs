@@ -2,7 +2,7 @@ use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_D
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_doc_hidden, return_ty};
-use rustc_hir::{BodyId, FnSig, OwnerId, Unsafety};
+use rustc_hir::{BodyId, FnSig, OwnerId, Safety};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{sym, Span};
@@ -32,14 +32,14 @@ pub fn check(
     }
 
     let span = cx.tcx.def_span(owner_id);
-    match (headers.safety, sig.header.unsafety) {
-        (false, Unsafety::Unsafe) => span_lint(
+    match (headers.safety, sig.header.safety) {
+        (false, Safety::Unsafe) => span_lint(
             cx,
             MISSING_SAFETY_DOC,
             span,
             "unsafe function's docs miss `# Safety` section",
         ),
-        (true, Unsafety::Normal) => span_lint(
+        (true, Safety::Safe) => span_lint(
             cx,
             UNNECESSARY_SAFETY_DOC,
             span,

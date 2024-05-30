@@ -282,7 +282,7 @@ mod issue_9218 {
         todo!()
     }
 
-    // These two's return types don't use use 'a so it's not okay
+    // These two's return types don't use 'a so it's not okay
     fn cow_bad_ret_ty_1<'a>(input: &'a Cow<'a, str>) -> &'static str {
         //~^ ERROR: using a reference to `Cow` is not recommended
         todo!()

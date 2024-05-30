@@ -13,7 +13,7 @@ use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AnonConst, Expr, ImplItemKind, ItemKind, Node, TraitItemKind, Unsafety};
+use rustc_hir::{AnonConst, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
@@ -474,13 +474,13 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     }
                 },
                 ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
-                    (false, Unsafety::Unsafe) => span_lint(
+                    (false, Safety::Unsafe) => span_lint(
                         cx,
                         MISSING_SAFETY_DOC,
                         cx.tcx.def_span(item.owner_id),
                         "docs for unsafe trait missing `# Safety` section",
                     ),
-                    (true, Unsafety::Normal) => span_lint(
+                    (true, Safety::Safe) => span_lint(
                         cx,
                         UNNECESSARY_SAFETY_DOC,
                         cx.tcx.def_span(item.owner_id),
