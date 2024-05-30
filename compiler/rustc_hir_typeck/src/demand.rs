@@ -327,8 +327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
-        let body =
-            hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
+        let body = hir.body_owned_by(self.body_id);
         expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.

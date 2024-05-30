@@ -578,16 +578,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     walk_stmt(self, ex)
                 }
             }
-
-            fn visit_body(&mut self, body: &'v hir::Body<'v>) -> Self::Result {
-                hir::intravisit::walk_body(self, body)
-            }
         }
 
-        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body_id| {
-            let body = self.tcx.hir().body(body_id);
+        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
-                .visit_body(body)
+                .visit_body(&body)
                 .is_break()
                 .then(|| TypeErrorAdditionalDiags::AddLetForLetChains { span: span.shrink_to_lo() })
         })
