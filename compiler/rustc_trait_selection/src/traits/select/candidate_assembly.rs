@@ -946,7 +946,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // since we don't actually use them.
                 &mut vec![],
             )
-            .ty()
+            .as_type()
             .unwrap();
 
             if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }

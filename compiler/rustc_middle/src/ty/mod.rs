@@ -626,12 +626,20 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    pub fn ty(&self) -> Option<Ty<'tcx>> {
+    pub fn as_type(&self) -> Option<Ty<'tcx>> {
         if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
     }
 
-    pub fn ct(&self) -> Option<Const<'tcx>> {
+    pub fn expect_type(&self) -> Ty<'tcx> {
+        self.as_type().expect("expected a type, but found a const")
+    }
+
+    pub fn as_const(&self) -> Option<Const<'tcx>> {
         if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
+    }
+
+    pub fn expect_const(&self) -> Const<'tcx> {
+        self.as_const().expect("expected a const, but found a type")
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {

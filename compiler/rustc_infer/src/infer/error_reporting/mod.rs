@@ -425,7 +425,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         ty::ClauseKind::Projection(projection_predicate)
                             if projection_predicate.projection_term.def_id == item_def_id =>
                         {
-                            projection_predicate.term.ty()
+                            projection_predicate.term.as_type()
                         }
                         _ => None,
                     })
