@@ -84,15 +84,6 @@ pub fn parse_crate_attrs_from_source_str(
     new_parser_from_source_str(psess, name, source).parse_inner_attributes()
 }
 
-pub fn parse_stream_from_source_str(
-    name: FileName,
-    source: String,
-    psess: &ParseSess,
-    override_span: Option<Span>,
-) -> TokenStream {
-    source_file_to_stream(psess, psess.source_map().new_source_file(name, source), override_span)
-}
-
 /// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(psess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
     panictry_buffer!(maybe_new_parser_from_source_str(psess, name, source))
@@ -142,6 +133,15 @@ fn maybe_source_file_to_parser(
 
 // Base abstractions
 
+pub fn source_str_to_stream(
+    name: FileName,
+    source: String,
+    psess: &ParseSess,
+    override_span: Option<Span>,
+) -> TokenStream {
+    source_file_to_stream(psess, psess.source_map().new_source_file(name, source), override_span)
+}
+
 /// Given a `source_file`, produces a sequence of token trees.
 pub fn source_file_to_stream(
     psess: &ParseSess,
@@ -165,7 +165,7 @@ fn maybe_file_to_stream<'psess>(
         ));
     });
 
-    lexer::parse_token_trees(psess, src.as_str(), source_file.start_pos, override_span)
+    lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span)
 }
 
 /// Given a stream and the `ParseSess`, produces a parser.
@@ -195,13 +195,13 @@ pub fn parse_in<'a, T>(
 pub fn fake_token_stream_for_item(psess: &ParseSess, item: &ast::Item) -> TokenStream {
     let source = pprust::item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, psess, Some(item.span))
+    source_str_to_stream(filename, source, psess, Some(item.span))
 }
 
 pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> TokenStream {
     let source = pprust::crate_to_string_for_macros(krate);
     let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, psess, Some(krate.spans.inner_span))
+    source_str_to_stream(filename, source, psess, Some(krate.spans.inner_span))
 }
 
 pub fn parse_cfg_attr(

@@ -42,7 +42,7 @@ pub(crate) struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
-pub(crate) fn parse_token_trees<'psess, 'src>(
+pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
@@ -66,7 +66,7 @@ pub(crate) fn parse_token_trees<'psess, 'src>(
         last_lifetime: None,
     };
     let (stream, res, unmatched_delims) =
-        tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
+        tokentrees::TokenTreesReader::lex_all_token_trees(string_reader);
     match res {
         Ok(()) if unmatched_delims.is_empty() => Ok(stream),
         _ => {

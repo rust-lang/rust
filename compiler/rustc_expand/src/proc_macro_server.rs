@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
-use rustc_parse::parse_stream_from_source_str;
+use rustc_parse::source_str_to_stream;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
@@ -538,7 +538,7 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse_stream_from_source_str(
+        source_str_to_stream(
             FileName::proc_macro_source_code(src),
             src.to_string(),
             self.psess(),
