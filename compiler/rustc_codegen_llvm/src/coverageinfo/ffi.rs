@@ -118,7 +118,7 @@ pub mod mcdc {
     #[derive(Clone, Copy, Debug, Default)]
     pub struct DecisionParameters {
         bitmap_idx: u32,
-        conditions_num: u16,
+        num_conditions: u16,
     }
 
     // ConditionId in llvm is `unsigned int` at 18 while `int16_t` at [19](https://github.com/llvm/llvm-project/pull/81257)
@@ -177,8 +177,9 @@ pub mod mcdc {
     }
 
     impl From<DecisionInfo> for DecisionParameters {
-        fn from(value: DecisionInfo) -> Self {
-            Self { bitmap_idx: value.bitmap_idx, conditions_num: value.conditions_num }
+        fn from(info: DecisionInfo) -> Self {
+            let DecisionInfo { bitmap_idx, num_conditions } = info;
+            Self { bitmap_idx, num_conditions }
         }
     }
 }

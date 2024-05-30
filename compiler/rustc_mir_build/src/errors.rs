@@ -812,12 +812,12 @@ pub struct NonEmptyNeverPattern<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_exceeds_mcdc_condition_num_limit)]
-pub(crate) struct MCDCExceedsConditionNumLimit {
+#[diag(mir_build_exceeds_mcdc_condition_limit)]
+pub(crate) struct MCDCExceedsConditionLimit {
     #[primary_span]
     pub span: Span,
-    pub conditions_num: usize,
-    pub max_conditions_num: usize,
+    pub num_conditions: usize,
+    pub max_conditions: usize,
 }
 
 #[derive(Diagnostic)]
