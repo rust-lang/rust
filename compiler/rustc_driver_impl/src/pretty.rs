@@ -169,7 +169,7 @@ impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
                 self.tcx
                     .hir()
                     .maybe_body_owned_by(expr.hir_id.owner.def_id)
-                    .map(|body_id| self.tcx.typeck_body(body_id))
+                    .map(|body_id| self.tcx.typeck_body(body_id.id()))
             });
 
             if let Some(typeck_results) = typeck_results {

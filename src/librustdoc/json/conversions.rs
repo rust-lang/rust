@@ -820,7 +820,10 @@ impl FromWithTcx<clean::Static> for Static {
         Static {
             type_: stat.type_.into_tcx(tcx),
             mutable: stat.mutability == ast::Mutability::Mut,
-            expr: stat.expr.map(|e| rendered_const(tcx, e)).unwrap_or_default(),
+            expr: stat
+                .expr
+                .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
+                .unwrap_or_default(),
         }
     }
 }

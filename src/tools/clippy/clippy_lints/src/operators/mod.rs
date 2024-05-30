@@ -868,11 +868,11 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
         self.arithmetic_context.expr_post(e.hir_id);
     }
 
-    fn check_body(&mut self, cx: &LateContext<'tcx>, b: &'tcx Body<'_>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, b: &Body<'_>) {
         self.arithmetic_context.enter_body(cx, b);
     }
 
-    fn check_body_post(&mut self, cx: &LateContext<'tcx>, b: &'tcx Body<'_>) {
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, b: &Body<'_>) {
         self.arithmetic_context.body_post(cx, b);
     }
 }

@@ -544,9 +544,8 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
     root_ctxt: &'a TypeckRootCtxt<'tcx>,
     body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body_id =
+    let body =
         root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
-    let body = root_ctxt.tcx.hir().body(body_id);
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {

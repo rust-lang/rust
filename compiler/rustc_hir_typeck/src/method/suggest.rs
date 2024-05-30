@@ -505,9 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::def::Res::Local(recv_id) = path.res
             && let Some(segment) = path.segments.first()
         {
-            let map = self.infcx.tcx.hir();
-            let body_id = self.tcx.hir().body_owned_by(self.body_id);
-            let body = map.body(body_id);
+            let body = self.tcx.hir().body_owned_by(self.body_id);
 
             if let Node::Expr(call_expr) = self.tcx.parent_hir_node(rcvr.hir_id) {
                 let mut let_visitor = LetVisitor {
@@ -518,7 +516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method_name,
                     sugg_let: None,
                 };
-                let_visitor.visit_body(body);
+                let_visitor.visit_body(&body);
                 if let Some(sugg_let) = let_visitor.sugg_let
                     && let Some(self_ty) = self.node_ty_opt(sugg_let.init_hir_id)
                 {
@@ -2429,9 +2427,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             seg1.ident.span,
             StashKey::CallAssocMethod,
             |err| {
-                let map = self.infcx.tcx.hir();
-                let body_id = self.tcx.hir().body_owned_by(self.body_id);
-                let body = map.body(body_id);
+                let body = self.tcx.hir().body_owned_by(self.body_id);
                 struct LetVisitor {
                     ident_name: Symbol,
                 }
@@ -2453,7 +2449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let Node::Expr(call_expr) = self.tcx.parent_hir_node(seg1.hir_id)
                     && let ControlFlow::Break(Some(expr)) =
-                        (LetVisitor { ident_name: seg1.ident.name }).visit_body(body)
+                        (LetVisitor { ident_name: seg1.ident.name }).visit_body(&body)
                     && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
                 {
                     let probe = self.lookup_probe_for_diagnostic(

@@ -1973,8 +1973,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             *expr
         } else {
             let body_def_id = hir.enclosing_body_owner(expr.hir_id);
-            let body_id = hir.body_owned_by(body_def_id);
-            let body = hir.body(body_id);
+            let body = hir.body_owned_by(body_def_id);
 
             // Get tail expr of the body
             match body.value.kind {
