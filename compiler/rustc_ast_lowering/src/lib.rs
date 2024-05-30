@@ -96,6 +96,8 @@ struct LoweringContext<'a, 'hir> {
 
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
+    /// Whether there were inline consts that typeck will split out into bodies
+    has_inline_consts: bool,
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
     /// Collect items that were created by lowering the current owner.
@@ -158,6 +160,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             item_local_id_counter: hir::ItemLocalId::ZERO,
             node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
+            has_inline_consts: false,
 
             // Lowering state.
             catch_scope: None,
@@ -567,6 +570,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
+        let current_has_inline_consts = std::mem::take(&mut self.has_inline_consts);
         let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
@@ -593,6 +597,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.attrs = current_attrs;
         self.bodies = current_bodies;
+        self.has_inline_consts = current_has_inline_consts;
         self.node_id_to_local_id = current_node_ids;
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
@@ -629,6 +634,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
         let trait_map = std::mem::take(&mut self.trait_map);
+        let has_inline_consts = std::mem::take(&mut self.has_inline_consts);
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
@@ -646,7 +652,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hash_owner_nodes(node, &bodies, &attrs);
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
-        let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
+        let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies, has_inline_consts };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })

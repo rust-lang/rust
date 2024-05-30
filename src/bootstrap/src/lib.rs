@@ -660,10 +660,11 @@ impl Build {
 
         // hardcoded subcommands
         match &self.config.cmd {
-            Subcommand::Format { check } => {
+            Subcommand::Format { check, all } => {
                 return core::build_steps::format::format(
                     &builder::Builder::new(self),
                     *check,
+                    *all,
                     &self.config.paths,
                 );
             }

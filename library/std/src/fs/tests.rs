@@ -1431,7 +1431,7 @@ fn metadata_access_times() {
     assert_eq!(check!(a.modified()), check!(a.modified()));
     assert_eq!(check!(b.accessed()), check!(b.modified()));
 
-    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
+    if cfg!(target_vendor = "apple") || cfg!(target_os = "windows") {
         check!(a.created());
         check!(b.created());
     }

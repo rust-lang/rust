@@ -174,7 +174,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         unimplemented!()
     }
 
-    fn init_frame_extra(
+    fn init_frame(
         _ecx: &mut InterpCx<'tcx, Self>,
         _frame: interpret::Frame<'tcx, Self::Provenance>,
     ) -> interpret::InterpResult<'tcx, interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>>

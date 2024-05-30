@@ -5,7 +5,7 @@
 pub fn dylib_path_var() -> &'static str {
     if cfg!(target_os = "windows") {
         "PATH"
-    } else if cfg!(target_os = "macos") {
+    } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
     } else if cfg!(target_os = "haiku") {
         "LIBRARY_PATH"

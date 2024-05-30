@@ -3,25 +3,18 @@ version = "Two"
 use_small_heuristics = "Max"
 merge_derives = false
 
-# by default we ignore everything in the repository
-# tidy only checks files which are not ignored, each entry follows gitignore style
+# Files to ignore. Each entry uses gitignore syntax, but `!` prefixes aren't allowed.
 ignore = [
     "/build/",
     "/*-build/",
     "/build-*/",
     "/vendor/",
 
-    # tests for now are not formatted, as they are sometimes pretty-printing constrained
-    # (and generally rustfmt can move around comments in UI-testing incompatible ways)
-    "/tests/*",
+    # Tests for now are not formatted, as they are sometimes pretty-printing constrained
+    # (and generally rustfmt can move around comments in UI-testing incompatible ways).
+    "/tests/",
 
-    # but we still want to format rmake.rs files in tests/run-make/ so we need to do this
-    # dance to avoid the parent directory from being excluded
-    "!/tests/run-make/",
-    "/tests/run-make/*/*.rs",
-    "!/tests/run-make/*/rmake.rs",
-
-    # do not format submodules
+    # Do not format submodules.
     # FIXME: sync submodule list with tidy/bootstrap/etc
     # tidy/src/walk.rs:filter_dirs
     "library/backtrace",
@@ -43,7 +36,7 @@ ignore = [
     "src/tools/rustc-perf",
     "src/tools/rustfmt",
 
-    # these are ignored by a standard cargo fmt run
+    # These are ignored by a standard cargo fmt run.
     "compiler/rustc_codegen_cranelift/scripts",
     "compiler/rustc_codegen_cranelift/example/gen_block_iterate.rs", # uses edition 2024
 ]

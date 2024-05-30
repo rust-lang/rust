@@ -836,21 +836,6 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    fn combine_fields<'a>(
-        &'a self,
-        trace: TypeTrace<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: DefineOpaqueTypes,
-    ) -> CombineFields<'a, 'tcx> {
-        CombineFields {
-            infcx: self,
-            trace,
-            param_env,
-            obligations: PredicateObligations::new(),
-            define_opaque_types,
-        }
-    }
-
     pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, expected: T, actual: T) -> bool
     where
         T: at::ToTrace<'tcx>,

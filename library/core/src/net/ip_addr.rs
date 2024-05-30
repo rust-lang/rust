@@ -460,12 +460,11 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv4Addr;
     ///
     /// assert_eq!(Ipv4Addr::BITS, 32);
     /// ```
-    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
     pub const BITS: u32 = 32;
 
     /// Converts an IPv4 address into a `u32` representation using native byte order.
@@ -479,7 +478,6 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
@@ -487,7 +485,6 @@ impl Ipv4Addr {
     /// ```
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
@@ -495,8 +492,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x00), Ipv4Addr::from_bits(addr_bits));
     ///
     /// ```
-    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
-    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn to_bits(self) -> u32 {
@@ -510,14 +507,13 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::from(0x12345678);
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
     /// ```
-    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
-    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_bits(bits: u32) -> Ipv4Addr {
@@ -1238,12 +1234,11 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::BITS, 128);
     /// ```
-    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
     pub const BITS: u32 = 128;
 
     /// Converts an IPv6 address into a `u128` representation using native byte order.
@@ -1257,7 +1252,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::new(
@@ -1268,7 +1262,6 @@ impl Ipv6Addr {
     /// ```
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::new(
@@ -1284,8 +1277,8 @@ impl Ipv6Addr {
     ///     Ipv6Addr::from_bits(addr_bits));
     ///
     /// ```
-    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
-    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn to_bits(self) -> u128 {
@@ -1299,7 +1292,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_bits)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
@@ -1310,8 +1302,8 @@ impl Ipv6Addr {
     ///     ),
     ///     addr);
     /// ```
-    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
-    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_bits(bits: u128) -> Ipv6Addr {

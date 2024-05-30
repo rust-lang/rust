@@ -11,11 +11,10 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
-    if arg.layout.is_aggregate() && arg.layout.size.bits() > 64 {
-        arg.make_indirect();
-    } else {
-        // FIXME: this is wrong! Need to decide which ABI we really want here.
-        arg.make_direct_deprecated();
+    if arg.layout.is_aggregate() {
+        arg.make_indirect_byval(None);
+    } else if arg.layout.size.bits() < 32 {
+        arg.extend_integer_width_to(32);
     }
 }
 

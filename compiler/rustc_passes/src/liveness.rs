@@ -147,6 +147,11 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
+    // Don't run for inline consts, they are collected together with their parent
+    if let DefKind::InlineConst = tcx.def_kind(def_id) {
+        return;
+    }
+
     // Don't run unused pass for #[naked]
     if tcx.has_attr(def_id.to_def_id(), sym::naked) {
         return;
@@ -1144,11 +1149,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Lit(..)
-            | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
             | hir::ExprKind::Path(hir::QPath::LangItem(..))
             | hir::ExprKind::OffsetOf(..) => succ,
+
+            hir::ExprKind::ConstBlock(expr) => self.propagate_through_expr(expr, succ),
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident

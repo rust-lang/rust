@@ -1,102 +1,129 @@
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:13:5
    |
 LL | const Z: () = {
-   |       - help: use a const-anon item to suppress this lint: `_`
+   | -----------
+   | |     |
+   | |     help: use a const-anon item to suppress this lint: `_`
+   | move the `impl` block outside of this constant `Z`
 ...
 LL |     impl Uto for &Test {}
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^---^^^^^-----
+   |          |       |
+   |          |       `&'_ Test` is not local
+   |          `Uto` is not local
    |
-   = help: move this `impl` block outside the of the current constant `Z`
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
    = note: `#[warn(non_local_definitions)]` on by default
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:24:5
    |
+LL | static A: u32 = {
+   | ------------- move the `impl` block outside of this static `A`
 LL |     impl Uto2 for Test {}
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^----
+   |          |        |
+   |          |        `Test` is not local
+   |          `Uto2` is not local
    |
-   = help: move this `impl` block outside the of the current static `A`
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:32:5
    |
+LL | const B: u32 = {
+   | ------------ move the `impl` block outside of this constant `B`
 LL |     impl Uto3 for Test {}
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^----^^^^^----
+   |          |        |
+   |          |        `Test` is not local
+   |          `Uto3` is not local
    |
-   = help: move this `impl` block outside the of the current constant `B`
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:43:5
    |
-LL | /     impl Test {
-LL | |
-LL | |         fn foo() {}
-LL | |     }
-   | |_____^
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+LL |     impl Test {
+   |     ^^^^^----
+   |          |
+   |          `Test` is not local
    |
-   = help: move this `impl` block outside the of the current function `main`
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:50:9
    |
-LL | /         impl Test {
-LL | |
-LL | |             fn hoo() {}
-LL | |         }
-   | |_________^
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main`
+...
+LL |         impl Test {
+   |         ^^^^^----
+   |              |
+   |              `Test` is not local
    |
-   = help: move this `impl` block outside the of the current inline constant `<unnameable>` and up 2 bodies
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:59:9
    |
-LL | /         impl Test {
-LL | |
-LL | |             fn foo2() {}
-LL | |         }
-   | |_________^
+LL |     const _: u32 = {
+   |     ------------ move the `impl` block outside of this constant `_` and up 2 bodies
+LL |         impl Test {
+   |         ^^^^^----
+   |              |
+   |              `Test` is not local
    |
-   = help: move this `impl` block outside the of the current constant `_` and up 2 bodies
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
+   = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:72:9
    |
+LL |     let _a = || {
+   |              -- move the `impl` block outside of this closure `<unnameable>` and up 2 bodies
 LL |         impl Uto9 for Test {}
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^----^^^^^----
+   |              |        |
+   |              |        `Test` is not local
+   |              `Uto9` is not local
    |
-   = help: move this `impl` block outside the of the current closure `<unnameable>` and up 2 bodies
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: non-local `impl` definition, they should be avoided as they go against expectation
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:79:9
    |
-LL |         impl Uto10 for Test {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL |       type A = [u32; {
+   |  ____________________-
+LL | |         impl Uto10 for Test {}
+   | |         ^^^^^-----^^^^^----
+   | |              |         |
+   | |              |         `Test` is not local
+   | |              `Uto10` is not local
+LL | |
+...  |
+LL | |     }];
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
    |
-   = help: move this `impl` block outside the of the current constant expression `<unnameable>` and up 2 bodies
-   = note: an `impl` definition is non-local if it is nested inside an item and may impact type checking outside of that item. This can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: one exception to the rule are anon-const (`const _: () = { ... }`) at top-level module and anon-const at the same nesting as the trait or type
+   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: 8 warnings emitted

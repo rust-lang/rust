@@ -42,6 +42,17 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub define_opaque_types: DefineOpaqueTypes,
 }
 
+impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
+    pub fn new(
+        infcx: &'infcx InferCtxt<'tcx>,
+        trace: TypeTrace<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+    ) -> Self {
+        Self { infcx, trace, param_env, define_opaque_types, obligations: vec![] }
+    }
+}
+
 impl<'tcx> InferCtxt<'tcx> {
     pub fn super_combine_tys<R>(
         &self,

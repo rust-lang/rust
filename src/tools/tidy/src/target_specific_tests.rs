@@ -15,6 +15,7 @@ const KNOWN_LLVM_COMPONENTS: &[&str] = &[
     "arm",
     "avr",
     "bpf",
+    "csky",
     "hexagon",
     "loongarch",
     "m68k",

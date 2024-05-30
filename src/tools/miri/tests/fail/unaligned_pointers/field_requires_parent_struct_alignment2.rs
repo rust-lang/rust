@@ -7,7 +7,7 @@ pub struct Aligned {
     _pad: [u8; 11],
     packed: Packed,
 }
-#[repr(packed)]
+#[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct Packed {
     _pad: [u8; 5],

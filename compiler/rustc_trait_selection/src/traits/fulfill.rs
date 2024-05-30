@@ -566,10 +566,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)
-                                    .trace(c1, c2)
                                     // Can define opaque types as this is only reachable with
                                     // `generic_const_exprs`
-                                    .eq(DefineOpaqueTypes::Yes, a.args, b.args)
+                                    .eq(
+                                        DefineOpaqueTypes::Yes,
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
+                                    )
                                 {
                                     return ProcessResult::Changed(mk_pending(
                                         new_obligations.into_obligations(),

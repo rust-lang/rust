@@ -82,7 +82,8 @@ mod expressions {
     fn expr_const_block() {
         const {};
         const { 1 };
-        const {
+        const
+            {
                 struct S;
             };
     }

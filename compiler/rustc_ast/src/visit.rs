@@ -852,10 +852,10 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(
     ctxt: AssocCtxt,
 ) -> V::Result {
     let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
-    walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     try_visit!(visitor.visit_ident(ident));
     try_visit!(kind.walk(item, ctxt, visitor));
+    walk_list!(visitor, visit_attribute, attrs);
     V::Result::output()
 }
 
@@ -951,7 +951,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprKind::ConstBlock(anon_const) => try_visit!(visitor.visit_anon_const(anon_const)),
+        ExprKind::ConstBlock(anon_const) => try_visit!(visitor.visit_expr(anon_const)),
         ExprKind::Repeat(element, count) => {
             try_visit!(visitor.visit_expr(element));
             try_visit!(visitor.visit_anon_const(count));

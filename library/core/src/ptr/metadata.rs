@@ -3,6 +3,8 @@
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics::aggregate_raw_ptr;
+#[cfg(not(bootstrap))]
+use crate::intrinsics::ptr_metadata;
 use crate::marker::Freeze;
 
 /// Provides the pointer metadata type of any pointed-to type.
@@ -94,10 +96,17 @@ pub trait Thin = Pointee<Metadata = ()>;
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
-    // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-    // and PtrComponents<T> have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { PtrRepr { const_ptr: ptr }.components.metadata }
+    #[cfg(bootstrap)]
+    {
+        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+        // and PtrComponents<T> have the same memory layouts. Only std can make this
+        // guarantee.
+        unsafe { PtrRepr { const_ptr: ptr }.components.metadata }
+    }
+    #[cfg(not(bootstrap))]
+    {
+        ptr_metadata(ptr)
+    }
 }
 
 /// Forms a (possibly-wide) raw pointer from a data pointer and metadata.
@@ -111,7 +120,7 @@ pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn from_raw_parts<T: ?Sized>(
-    data_pointer: *const (),
+    data_pointer: *const impl Thin,
     metadata: <T as Pointee>::Metadata,
 ) -> *const T {
     aggregate_raw_ptr(data_pointer, metadata)
@@ -125,13 +134,14 @@ pub const fn from_raw_parts<T: ?Sized>(
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn from_raw_parts_mut<T: ?Sized>(
-    data_pointer: *mut (),
+    data_pointer: *mut impl Thin,
     metadata: <T as Pointee>::Metadata,
 ) -> *mut T {
     aggregate_raw_ptr(data_pointer, metadata)
 }
 
 #[repr(C)]
+#[cfg(bootstrap)]
 union PtrRepr<T: ?Sized> {
     const_ptr: *const T,
     mut_ptr: *mut T,
@@ -139,15 +149,18 @@ union PtrRepr<T: ?Sized> {
 }
 
 #[repr(C)]
+#[cfg(bootstrap)]
 struct PtrComponents<T: ?Sized> {
     data_pointer: *const (),
     metadata: <T as Pointee>::Metadata,
 }
 
 // Manual impl needed to avoid `T: Copy` bound.
+#[cfg(bootstrap)]
 impl<T: ?Sized> Copy for PtrComponents<T> {}
 
 // Manual impl needed to avoid `T: Clone` bound.
+#[cfg(bootstrap)]
 impl<T: ?Sized> Clone for PtrComponents<T> {
     fn clone(&self) -> Self {
         *self
@@ -209,18 +222,14 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
         // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
         // `Send` part!
         // SAFETY: DynMetadata always contains a valid vtable pointer
-        return unsafe {
-            crate::intrinsics::vtable_size(self.vtable_ptr() as *const ())
-        };
+        return unsafe { crate::intrinsics::vtable_size(self.vtable_ptr() as *const ()) };
     }
 
     /// Returns the alignment of the type associated with this vtable.
     #[inline]
     pub fn align_of(self) -> usize {
         // SAFETY: DynMetadata always contains a valid vtable pointer
-        return unsafe {
-            crate::intrinsics::vtable_align(self.vtable_ptr() as *const ())
-        };
+        return unsafe { crate::intrinsics::vtable_align(self.vtable_ptr() as *const ()) };
     }
 
     /// Returns the size and alignment together as a `Layout`

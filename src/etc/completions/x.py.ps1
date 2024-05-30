@@ -275,6 +275,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--reproducible-artifact', 'reproducible-artifact', [CompletionResultType]::ParameterName, 'Additional reproducible artifacts that should be added to the reproducible artifacts archive')
             [CompletionResult]::new('--set', 'set', [CompletionResultType]::ParameterName, 'override options in config.toml')
             [CompletionResult]::new('--check', 'check', [CompletionResultType]::ParameterName, 'check formatting instead of applying')
+            [CompletionResult]::new('--all', 'all', [CompletionResultType]::ParameterName, 'apply to all appropriate files, not just those that have been modified')
             [CompletionResult]::new('-v', 'v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', 'verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-i', 'i', [CompletionResultType]::ParameterName, 'use incremental compilation')

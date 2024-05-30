@@ -13,11 +13,14 @@ use rustc_middle::traits::solve::{
     inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::specialization_graph;
+use rustc_middle::ty::AliasRelationDirection;
+use rustc_middle::ty::TypeFolder;
 use rustc_middle::ty::{
     self, InferCtxtLike, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::DUMMY_SP;
+use rustc_type_ir::fold::TypeSuperFoldable;
 use rustc_type_ir::{self as ir, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::ops::ControlFlow;
@@ -95,7 +98,7 @@ pub struct EvalCtxt<
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    pub(super) inspect: ProofTreeBuilder<I>,
+    pub(super) inspect: ProofTreeBuilder<Infcx>,
 }
 
 #[derive(derivative::Derivative)]
@@ -215,7 +218,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        canonical_goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
@@ -277,7 +280,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        goal_evaluation: &mut ProofTreeBuilder<TyCtxt<'tcx>>,
+        goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
     ) -> QueryResult<'tcx> {
         let mut canonical_goal_evaluation =
             goal_evaluation.new_canonical_goal_evaluation(canonical_input);
@@ -344,7 +347,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
-            self.tcx(),
+            self.interner(),
             self.search_graph,
             canonical_goal,
             &mut goal_evaluation,
@@ -447,7 +450,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
             }
         } else {
             self.infcx.enter_forall(kind, |kind| {
-                let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
+                let goal = goal.with(self.interner(), ty::Binder::dummy(kind));
                 self.add_goal(GoalSource::InstantiateHigherRanked, goal);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
@@ -455,13 +458,23 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    pub(super) fn add_normalizes_to_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
+    pub(super) fn add_normalizes_to_goal(&mut self, mut goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
+        goal.predicate = goal
+            .predicate
+            .fold_with(&mut ReplaceAliasWithInfer { ecx: self, param_env: goal.param_env });
         self.inspect.add_normalizes_to_goal(self.infcx, self.max_input_universe, goal);
         self.nested_goals.normalizes_to_goals.push(goal);
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+    pub(super) fn add_goal(
+        &mut self,
+        source: GoalSource,
+        mut goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) {
+        goal.predicate = goal
+            .predicate
+            .fold_with(&mut ReplaceAliasWithInfer { ecx: self, param_env: goal.param_env });
         self.inspect.add_goal(self.infcx, self.max_input_universe, source, goal);
         self.nested_goals.goals.push((source, goal));
     }
@@ -498,7 +511,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     ///
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let mut goals = core::mem::take(&mut self.nested_goals);
 
         // If this loop did not result in any progress, what's our final certainty.
@@ -584,11 +597,13 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
-    pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
+    pub(super) fn interner(&self) -> I {
+        self.infcx.interner()
     }
+}
 
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     pub(super) fn next_ty_infer(&mut self) -> Ty<'tcx> {
         let ty = self.infcx.next_ty_var(DUMMY_SP);
         self.inspect.add_var_value(ty);
@@ -746,7 +761,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         // NOTE: this check is purely an optimization, the structural eq would
         // always fail if the term is not an inference variable.
         if term.is_infer() {
-            let tcx = self.tcx();
+            let tcx = self.interner();
             // We need to relate `alias` to `term` treating only the outermost
             // constructor as rigid, relating any contained generic arguments as
             // normal. We do this by first structurally equating the `term`
@@ -761,7 +776,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             let InferOk { value: (), obligations } = self
                 .infcx
                 .at(&ObligationCause::dummy(), param_env)
-                .trace(term, ctor_term)
                 .eq_structurally_relating_aliases(term, ctor_term)?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
@@ -781,11 +795,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         rhs: T,
     ) -> Result<(), NoSolution> {
         let cause = ObligationCause::dummy();
-        let InferOk { value: (), obligations } = self
-            .infcx
-            .at(&cause, param_env)
-            .trace(lhs, rhs)
-            .eq_structurally_relating_aliases(lhs, rhs)?;
+        let InferOk { value: (), obligations } =
+            self.infcx.at(&cause, param_env).eq_structurally_relating_aliases(lhs, rhs)?;
         assert!(obligations.is_empty());
         Ok(())
     }
@@ -1041,10 +1052,10 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     ) -> Option<ty::Const<'tcx>> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.infcx.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
-            Ok(Some(val)) => Some(ty::Const::new_value(self.tcx(), val, ty)),
+            Ok(Some(val)) => Some(ty::Const::new_value(self.interner(), val, ty)),
             Ok(None) | Err(ErrorHandled::TooGeneric(_)) => None,
             Err(ErrorHandled::Reported(e, _)) => {
-                Some(ty::Const::new_error(self.tcx(), e.into(), ty))
+                Some(ty::Const::new_error(self.interner(), e.into(), ty))
             }
         }
     }
@@ -1057,7 +1068,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         principal: ty::PolyTraitRef<'tcx>,
         mut supertrait_visitor: impl FnMut(&mut Self, ty::PolyTraitRef<'tcx>, usize, Option<usize>),
     ) {
-        let tcx = self.tcx();
+        let tcx = self.interner();
         let mut offset = 0;
         prepare_vtable_segments::<()>(tcx, principal, |segment| {
             match segment {
@@ -1082,5 +1093,65 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             }
             ControlFlow::Continue(())
         });
+    }
+}
+
+/// Eagerly replace aliases with inference variables, emitting `AliasRelate`
+/// goals, used when adding goals to the `EvalCtxt`. We compute the
+/// `AliasRelate` goals before evaluating the actual goal to get all the
+/// constraints we can.
+///
+/// This is a performance optimization to more eagerly detect cycles during trait
+/// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
+struct ReplaceAliasWithInfer<'me, 'a, 'tcx> {
+    ecx: &'me mut EvalCtxt<'a, InferCtxt<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'_, '_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.ecx.interner()
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match *ty.kind() {
+            ty::Alias(..) if !ty.has_escaping_bound_vars() => {
+                let infer_ty = self.ecx.next_ty_infer();
+                let normalizes_to = ty::PredicateKind::AliasRelate(
+                    ty.into(),
+                    infer_ty.into(),
+                    AliasRelationDirection::Equate,
+                );
+                self.ecx.add_goal(
+                    GoalSource::Misc,
+                    Goal::new(self.interner(), self.param_env, normalizes_to),
+                );
+                infer_ty
+            }
+            _ => ty.super_fold_with(self),
+        }
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match ct.kind() {
+            ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
+                let infer_ct = self.ecx.next_const_infer(ct.ty());
+                let normalizes_to = ty::PredicateKind::AliasRelate(
+                    ct.into(),
+                    infer_ct.into(),
+                    AliasRelationDirection::Equate,
+                );
+                self.ecx.add_goal(
+                    GoalSource::Misc,
+                    Goal::new(self.interner(), self.param_env, normalizes_to),
+                );
+                infer_ct
+            }
+            _ => ct.super_fold_with(self),
+        }
+    }
+
+    fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if predicate.allow_normalization() { predicate.super_fold_with(self) } else { predicate }
     }
 }

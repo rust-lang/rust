@@ -38,7 +38,6 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     match node {
         hir::Node::Ctor(_)
         | hir::Node::AnonConst(_)
-        | hir::Node::ConstBlock(_)
         | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
             hir::Constness::Const
         }
@@ -57,6 +56,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
             if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
         }
         hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
+        hir::Node::Expr(e) if let hir::ExprKind::ConstBlock(_) = e.kind => hir::Constness::Const,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
                 if fn_kind.constness() == hir::Constness::Const {

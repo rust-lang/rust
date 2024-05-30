@@ -1140,7 +1140,13 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 );
                 crate::exit!(1);
             }
-            crate::core::build_steps::format::format(builder, !builder.config.cmd.bless(), &[]);
+            let all = false;
+            crate::core::build_steps::format::format(
+                builder,
+                !builder.config.cmd.bless(),
+                all,
+                &[],
+            );
         }
 
         builder.info("tidy check");

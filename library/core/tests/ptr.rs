@@ -965,7 +965,7 @@ fn thin_box() {
         fn value_ptr(&self) -> *const T {
             let (_, offset) = self.layout();
             let data_ptr = unsafe { self.ptr.cast::<u8>().as_ptr().add(offset) };
-            ptr::from_raw_parts(data_ptr.cast(), self.meta())
+            ptr::from_raw_parts(data_ptr, self.meta())
         }
 
         fn value_mut_ptr(&mut self) -> *mut T {
@@ -973,7 +973,7 @@ fn thin_box() {
             // FIXME: can this line be shared with the same in `value_ptr()`
             // without upsetting Stacked Borrows?
             let data_ptr = unsafe { self.ptr.cast::<u8>().as_ptr().add(offset) };
-            from_raw_parts_mut(data_ptr.cast(), self.meta())
+            from_raw_parts_mut(data_ptr, self.meta())
         }
     }
 
@@ -1170,4 +1170,16 @@ fn test_ptr_from_raw_parts_in_const() {
         std::ptr::slice_from_raw_parts(std::ptr::without_provenance(123), 456);
     assert_eq!(EMPTY_SLICE_PTR.addr(), 123);
     assert_eq!(EMPTY_SLICE_PTR.len(), 456);
+}
+
+#[test]
+fn test_ptr_metadata_in_const() {
+    use std::fmt::Debug;
+
+    const ARRAY_META: () = std::ptr::metadata::<[u16; 3]>(&[1, 2, 3]);
+    const SLICE_META: usize = std::ptr::metadata::<[u16]>(&[1, 2, 3]);
+    const DYN_META: DynMetadata<dyn Debug> = std::ptr::metadata::<dyn Debug>(&[0_u8; 42]);
+    assert_eq!(ARRAY_META, ());
+    assert_eq!(SLICE_META, 3);
+    assert_eq!(DYN_META.size_of(), 42);
 }
