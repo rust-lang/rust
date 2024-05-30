@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::LintStore;
-use rustc_lint_defs::{declare_tool_lint, Lint, LintId};
+use rustc_lint_defs::{declare_tool_lint, Lint, LintId, LintPass};
 use rustc_session::{lint, Session};
 
 use std::sync::LazyLock as Lazy;
@@ -31,9 +31,10 @@ where
     allowed_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints::get_lints()
+        lint::builtin::HardwiredLints::default()
+            .get_lints()
             .into_iter()
-            .chain(rustc_lint::SoftLints::get_lints())
+            .chain(rustc_lint::SoftLints::default().get_lints())
     };
 
     let lint_opts = lints()

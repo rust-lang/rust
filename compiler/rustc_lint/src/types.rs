@@ -170,7 +170,7 @@ declare_lint! {
     "detects ambiguous wide pointer comparisons"
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
