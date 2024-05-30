@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
+use crate::drop_bomb::DropBomb;
 use crate::{handle_failed_output, set_host_rpath};
 
 /// Construct a plain `rustdoc` invocation with no flags set.
@@ -16,34 +17,36 @@ pub fn rustdoc() -> Rustdoc {
     Rustdoc::new()
 }
 
+#[must_use]
 #[derive(Debug)]
 pub struct Rustdoc {
     cmd: Command,
     stdin: Option<Box<[u8]>>,
+    drop_bomb: DropBomb,
 }
 
 crate::impl_common_helpers!(Rustdoc);
 
-fn setup_common() -> Command {
+fn setup_common() -> (Command, DropBomb) {
     let rustdoc = env::var("RUSTDOC").unwrap();
     let mut cmd = Command::new(rustdoc);
     set_host_rpath(&mut cmd);
-    cmd
+    (cmd, DropBomb::arm("rustdoc invocation must be executed"))
 }
 
 impl Rustdoc {
     /// Construct a bare `rustdoc` invocation.
     pub fn bare() -> Self {
-        let cmd = setup_common();
-        Self { cmd, stdin: None }
+        let (cmd, drop_bomb) = setup_common();
+        Self { cmd, stdin: None, drop_bomb }
     }
 
     /// Construct a `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
     pub fn new() -> Self {
-        let mut cmd = setup_common();
+        let (mut cmd, drop_bomb) = setup_common();
         let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
         cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-        Self { cmd, stdin: None }
+        Self { cmd, stdin: None, drop_bomb }
     }
 
     /// Specify where an external library is located.
@@ -96,7 +99,7 @@ impl Rustdoc {
 
     /// Get the [`Output`] of the finished process.
     #[track_caller]
-    pub fn command_output(&mut self) -> ::std::process::Output {
+    pub fn command_output(&mut self) -> Output {
         // let's make sure we piped all the input and outputs
         self.cmd.stdin(Stdio::piped());
         self.cmd.stdout(Stdio::piped());
@@ -156,17 +159,5 @@ impl Rustdoc {
         self.cmd.arg("--output-format");
         self.cmd.arg(format);
         self
-    }
-
-    #[track_caller]
-    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
-        let caller_location = std::panic::Location::caller();
-        let caller_line_number = caller_location.line();
-
-        let output = self.command_output();
-        if output.status.code().unwrap() != code {
-            handle_failed_output(&self.cmd, output, caller_line_number);
-        }
-        output
     }
 }

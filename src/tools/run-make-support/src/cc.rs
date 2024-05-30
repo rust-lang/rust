@@ -2,6 +2,7 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
+use crate::drop_bomb::DropBomb;
 use crate::{bin_name, cygpath_windows, handle_failed_output, is_msvc, is_windows, tmp_dir, uname};
 
 /// Construct a new platform-specific C compiler invocation.
@@ -14,9 +15,11 @@ pub fn cc() -> Cc {
 
 /// A platform-specific C compiler invocation builder. The specific C compiler used is
 /// passed down from compiletest.
+#[must_use]
 #[derive(Debug)]
 pub struct Cc {
     cmd: Command,
+    drop_bomb: DropBomb,
 }
 
 crate::impl_common_helpers!(Cc);
@@ -36,7 +39,7 @@ impl Cc {
             cmd.arg(flag);
         }
 
-        Self { cmd }
+        Self { cmd, drop_bomb: DropBomb::arm("cc invocation must be executed") }
     }
 
     /// Specify path of the input file.
@@ -87,6 +90,7 @@ impl Cc {
 }
 
 /// `EXTRACFLAGS`
+#[must_use]
 pub fn extra_c_flags() -> Vec<&'static str> {
     // Adapted from tools.mk (trimmed):
     //
@@ -145,6 +149,7 @@ pub fn extra_c_flags() -> Vec<&'static str> {
 }
 
 /// `EXTRACXXFLAGS`
+#[must_use]
 pub fn extra_cxx_flags() -> Vec<&'static str> {
     // Adapted from tools.mk (trimmed):
     //
