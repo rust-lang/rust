@@ -13,8 +13,9 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for the usage of the `to_ne_bytes` method and/or the function `from_ne_bytes`.
     ///
-    /// ### Why is this bad?
-    /// It's not, but some may prefer to specify the target endianness explicitly.
+    /// ### Why restrict this?
+    /// To ensure use of explicitly chosen endianness rather than the target’s endianness,
+    /// such as when implementing network protocols or file formats rather than FFI.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -31,9 +32,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for the usage of the `to_le_bytes` method and/or the function `from_le_bytes`.
     ///
-    /// ### Why is this bad?
-    /// It's not, but some may wish to lint usage of this method, either to suggest using the host
-    /// endianness or big endian.
+    /// ### Why restrict this?
+    /// To ensure use of big endian or the target’s endianness rather than little endian.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -50,9 +50,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for the usage of the `to_be_bytes` method and/or the function `from_be_bytes`.
     ///
-    /// ### Why is this bad?
-    /// It's not, but some may wish to lint usage of this method, either to suggest using the host
-    /// endianness or little endian.
+    /// ### Why restrict this?
+    /// To ensure use of little endian or the target’s endianness rather than big endian.
     ///
     /// ### Example
     /// ```rust,ignore

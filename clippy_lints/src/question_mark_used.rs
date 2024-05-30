@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for expressions that use the question mark operator and rejects them.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Sometimes code wants to avoid the question mark operator because for instance a local
     /// block requires a macro to re-throw errors to attach additional information to the
     /// error.

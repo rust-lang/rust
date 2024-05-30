@@ -30,9 +30,8 @@ declare_clippy_lint! {
     /// this lint can still be used to highlight areas of interest and ensure a good understanding
     /// of ownership semantics.
     ///
-    /// ### Why is this bad?
-    /// It isn't bad in general. But in some contexts it can be desirable
-    /// because it increases ownership hints in the code, and will guard against some changes
+    /// ### Why restrict this?
+    /// It increases ownership hints in the code, and will guard against some changes
     /// in ownership.
     ///
     /// ### Example

@@ -260,7 +260,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for wildcard enum matches using `_`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// New enum variants added by library updates can be missed.
     ///
     /// ### Known problems
@@ -435,7 +435,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Correctness and readability. It's like having a wildcard pattern after
     /// matching all enum variants explicitly.
     ///
@@ -861,7 +861,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `Err(x)?`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `?` operator is designed to allow calls that
     /// can fail to be easily chained. For example, `foo()?.bar()` or
     /// `foo(bar()?)`. Because `Err(x)?` can't be used that way (it will

@@ -10,7 +10,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks assertions without a custom panic message.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Without a good custom message, it'd be hard to understand what went wrong when the assertion fails.
     /// A good custom message should be more about why the failure of the assertion is problematic
     /// and not what is failed because the assertion already conveys that.

@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Checks for usage of if expressions with an `else if` branch,
     /// but without a final `else` branch.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Some coding guidelines require this (e.g., MISRA-C:2004 Rule 14.10).
     ///
     /// ### Example
