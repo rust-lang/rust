@@ -281,6 +281,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         };
 
         if let Some(result) = self.lookup_global_cache(tcx, input, available_depth, inspect) {
+            debug!("global cache hit");
             return result;
         }
 
@@ -365,7 +366,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
                 for _ in 0..FIXPOINT_STEP_LIMIT {
                     match self.fixpoint_step_in_task(tcx, input, inspect, &mut prove_goal) {
                         StepResult::Done(final_entry, result) => return (final_entry, result),
-                        StepResult::HasChanged => {}
+                        StepResult::HasChanged => debug!("fixpoint changed provisional results"),
                     }
                 }
 
