@@ -562,7 +562,7 @@ impl SelfProfiler {
         // ASLR is disabled and the heap is otherwise deterministic.
         let pid: u32 = process::id();
         let filename = format!("{crate_name}-{pid:07}.rustc_profile");
-        let path = output_directory.join(&filename);
+        let path = output_directory.join(filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
 
