@@ -1,4 +1,4 @@
-use crate::traits::specialization_graph;
+use crate::traits::specialization_graph::{self, LeafDef, Node};
 
 use super::assembly::structural_traits::AsyncCallableRelevantTypes;
 use super::assembly::{self, structural_traits, Candidate};
@@ -9,7 +9,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::MaybeCause;
-use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::BuiltinImplSource;
@@ -189,8 +188,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             // In case the associated item is hidden due to specialization, we have to
             // return ambiguity this would otherwise be incomplete, resulting in
             // unsoundness during coherence (#105782).
-            let Some(assoc_def) = fetch_eligible_assoc_item_def(
-                ecx,
+            let Some(assoc_def) = ecx.fetch_eligible_assoc_item_def(
                 goal.param_env,
                 goal_trait_ref,
                 goal.predicate.def_id(),
@@ -235,16 +233,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             //
             // And then map these args to the args of the defining impl of `Assoc`, going
             // from `[u32, u64]` to `[u32, i32, u64]`.
-            let impl_args_with_gat =
-                goal.predicate.alias.args.rebase_onto(tcx, goal_trait_ref.def_id, impl_args);
-            let args = ecx.translate_args(
-                goal.param_env,
-                impl_def_id,
-                impl_args_with_gat,
-                assoc_def.defining_node,
-            );
+            let associated_item_args =
+                ecx.translate_args(&assoc_def, goal, impl_def_id, impl_args, impl_trait_ref)?;
 
-            if !tcx.check_args_compatible(assoc_def.item.def_id, args) {
+            if !tcx.check_args_compatible(assoc_def.item.def_id, associated_item_args) {
                 return error_response(
                     ecx,
                     "associated item has mismatched generic item arguments",
@@ -272,7 +264,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
             };
 
-            ecx.instantiate_normalizes_to_term(goal, term.instantiate(tcx, args));
+            ecx.instantiate_normalizes_to_term(goal, term.instantiate(tcx, associated_item_args));
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -889,38 +881,79 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
     }
 }
 
-/// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.
-///
-/// FIXME: We should merge these 3 implementations as it's likely that they otherwise
-/// diverge.
-#[instrument(level = "trace", skip(ecx, param_env), ret)]
-fn fetch_eligible_assoc_item_def<'tcx>(
-    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
-    goal_trait_ref: ty::TraitRef<'tcx>,
-    trait_assoc_def_id: DefId,
-    impl_def_id: DefId,
-) -> Result<Option<LeafDef>, NoSolution> {
-    let node_item =
-        specialization_graph::assoc_def(ecx.interner(), impl_def_id, trait_assoc_def_id)
-            .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+    fn translate_args(
+        &mut self,
+        assoc_def: &LeafDef,
+        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
+        impl_def_id: DefId,
+        impl_args: ty::GenericArgsRef<'tcx>,
+        impl_trait_ref: rustc_type_ir::TraitRef<TyCtxt<'tcx>>,
+    ) -> Result<ty::GenericArgsRef<'tcx>, NoSolution> {
+        let tcx = self.interner();
+        Ok(match assoc_def.defining_node {
+            Node::Trait(_) => goal.predicate.alias.args,
+            Node::Impl(target_impl_def_id) => {
+                if target_impl_def_id == impl_def_id {
+                    // Same impl, no need to fully translate, just a rebase from
+                    // the trait is sufficient.
+                    goal.predicate.alias.args.rebase_onto(tcx, impl_trait_ref.def_id, impl_args)
+                } else {
+                    let target_args = self.fresh_args_for_item(target_impl_def_id);
+                    let target_trait_ref = tcx
+                        .impl_trait_ref(target_impl_def_id)
+                        .unwrap()
+                        .instantiate(tcx, target_args);
+                    // Relate source impl to target impl by equating trait refs.
+                    self.eq(goal.param_env, impl_trait_ref, target_trait_ref)?;
+                    // Also add predicates since they may be needed to constrain the
+                    // target impl's params.
+                    self.add_goals(
+                        GoalSource::Misc,
+                        tcx.predicates_of(target_impl_def_id)
+                            .instantiate(tcx, target_args)
+                            .into_iter()
+                            .map(|(pred, _)| goal.with(tcx, pred)),
+                    );
+                    goal.predicate.alias.args.rebase_onto(tcx, impl_trait_ref.def_id, target_args)
+                }
+            }
+        })
+    }
 
-    let eligible = if node_item.is_final() {
-        // Non-specializable items are always projectable.
-        true
-    } else {
-        // Only reveal a specializable default if we're past type-checking
-        // and the obligation is monomorphic, otherwise passes such as
-        // transmute checking and polymorphic MIR optimizations could
-        // get a result which isn't correct for all monomorphizations.
-        if param_env.reveal() == Reveal::All {
-            let poly_trait_ref = ecx.resolve_vars_if_possible(goal_trait_ref);
-            !poly_trait_ref.still_further_specializable()
+    /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.
+    ///
+    /// FIXME: We should merge these 3 implementations as it's likely that they otherwise
+    /// diverge.
+    #[instrument(level = "trace", skip(self, param_env), ret)]
+    fn fetch_eligible_assoc_item_def(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        goal_trait_ref: ty::TraitRef<'tcx>,
+        trait_assoc_def_id: DefId,
+        impl_def_id: DefId,
+    ) -> Result<Option<LeafDef>, NoSolution> {
+        let node_item =
+            specialization_graph::assoc_def(self.interner(), impl_def_id, trait_assoc_def_id)
+                .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+
+        let eligible = if node_item.is_final() {
+            // Non-specializable items are always projectable.
+            true
         } else {
-            trace!(?node_item.item.def_id, "not eligible due to default");
-            false
-        }
-    };
+            // Only reveal a specializable default if we're past type-checking
+            // and the obligation is monomorphic, otherwise passes such as
+            // transmute checking and polymorphic MIR optimizations could
+            // get a result which isn't correct for all monomorphizations.
+            if param_env.reveal() == Reveal::All {
+                let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
+                !poly_trait_ref.still_further_specializable()
+            } else {
+                trace!(?node_item.item.def_id, "not eligible due to default");
+                false
+            }
+        };
 
-    if eligible { Ok(Some(node_item)) } else { Ok(None) }
+        if eligible { Ok(Some(node_item)) } else { Ok(None) }
+    }
 }
