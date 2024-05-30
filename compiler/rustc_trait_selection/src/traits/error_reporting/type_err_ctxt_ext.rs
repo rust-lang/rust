@@ -2685,6 +2685,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .with_span_label(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
+
+            // Given some `ConstArgHasType(?x, usize)`, we should not emit an error such as
+            // "type annotations needed: cannot satisfy the constant `_` has type `usize`"
+            // Instead we should emit a normal error suggesting the user to turbofish the
+            // const parameter that is currently being inferred. Unfortunately we cannot
+            // nicely emit such an error so we delay an ICE incase nobody else reports it
+            // for us.
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                return self.tcx.sess.dcx().span_delayed_bug(
+                    span,
+                    format!(
+                        "`ambiguous ConstArgHasType({:?}, {:?}) unaccompanied by inference error`",
+                        ct, ty
+                    ),
+                );
+            }
             _ => {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;

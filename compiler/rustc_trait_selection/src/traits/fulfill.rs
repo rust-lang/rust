@@ -429,16 +429,37 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // This is because this is not ever a useful obligation to report
                 // as the cause of an overflow.
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                    match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really excercised by generic_const_exprs
-                        DefineOpaqueTypes::Yes,
-                        ct.ty(),
-                        ty,
-                    ) {
-                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
-                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::Select(
-                            SelectionError::Unimplemented,
-                        )),
+                    // FIXME(BoxyUwU): Really we should not be calling `ct.ty()` for any variant
+                    // other than `ConstKind::Value`. Unfortunately this would require looking in the
+                    // env for any `ConstArgHasType` assumptions for parameters and placeholders. I
+                    // don't really want to implement this in the old solver so I haven't.
+                    //
+                    // We do still stall on infer vars though as otherwise a goal like:
+                    // `ConstArgHasType(?x: usize, usize)` can succeed even though it might later
+                    // get unified with some const that is not of type `usize`.
+                    let ct = self.selcx.infcx.shallow_resolve_const(ct);
+                    match ct.kind() {
+                        ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
+                            pending_obligation.stalled_on.clear();
+                            pending_obligation.stalled_on.extend([TyOrConstInferVar::Const(vid)]);
+                            ProcessResult::Unchanged
+                        }
+                        ty::ConstKind::Error(_) => return ProcessResult::Changed(vec![]),
+                        _ => {
+                            match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
+                                // Only really excercised by generic_const_exprs
+                                DefineOpaqueTypes::Yes,
+                                ct.ty(),
+                                ty,
+                            ) {
+                                Ok(inf_ok) => {
+                                    ProcessResult::Changed(mk_pending(inf_ok.into_obligations()))
+                                }
+                                Err(_) => ProcessResult::Error(FulfillmentErrorCode::Select(
+                                    SelectionError::Unimplemented,
+                                )),
+                            }
+                        }
                     }
                 }
 

@@ -1,5 +1,6 @@
-//@ known-bug: #114456
+//@ check-pass
 #![feature(adt_const_params)]
+//~^ WARN: the feature `adt_const_params` is incomplete
 
 const EMPTY_MATRIX: <Type as Trait>::Matrix = [0; 1];
 
@@ -12,8 +13,12 @@ impl Walk<EMPTY_MATRIX> {
 }
 
 pub enum Type {}
-pub trait Trait { type Matrix; }
-impl Trait for Type { type Matrix = [usize; 1]; }
+pub trait Trait {
+    type Matrix;
+}
+impl Trait for Type {
+    type Matrix = [usize; 1];
+}
 
 fn main() {
     let _ = Walk::new();
