@@ -145,8 +145,8 @@ pub fn dynamic_lib_name(name: &str) -> String {
     }
 }
 
-/// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with the library name.
+/// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will
+/// return a path with `$TMPDIR` joined with the library name.
 #[must_use]
 pub fn rust_lib(name: &str) -> PathBuf {
     tmp_dir().join(rust_lib_name(name))
