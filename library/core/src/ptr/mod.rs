@@ -450,8 +450,13 @@ mod mut_ptr;
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
-/// This is semantically equivalent to calling [`ptr::read`] and discarding
+/// This is almost the same as calling [`ptr::read`] and discarding
 /// the result, but has the following advantages:
+// FIXME: say something more useful than "almost the same"?
+// There are open questions here: `read` requires the value to be fully valid, e.g. if `T` is a
+// `bool` it must be 0 or 1, if it is a reference then it must be dereferenceable. `drop_in_place`
+// only requires that `*to_drop` be "valid for dropping" and we have not defined what that means. In
+// Miri it currently (May 2024) requires nothing at all for types without drop glue.
 ///
 /// * It is *required* to use `drop_in_place` to drop unsized types like
 ///   trait objects, because they can't be read out onto the stack and
