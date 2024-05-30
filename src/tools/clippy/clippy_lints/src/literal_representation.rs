@@ -132,8 +132,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns if there is a better representation for a numeric literal.
     ///
-    /// ### Why is this bad?
-    /// Especially for big powers of 2 a hexadecimal representation is more
+    /// ### Why restrict this?
+    /// Especially for big powers of 2, a hexadecimal representation is usually more
     /// readable than a decimal representation.
     ///
     /// ### Example

@@ -331,12 +331,17 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 }
 
 fn get_lint_declaration(name_upper: &str, category: &str) -> String {
+    let justification_heading = if category == "restriction" {
+        "Why restrict this?"
+    } else {
+        "Why is this bad?"
+    };
     formatdoc!(
         r#"
             declare_clippy_lint! {{
                 /// ### What it does
                 ///
-                /// ### Why is this bad?
+                /// ### {justification_heading}
                 ///
                 /// ### Example
                 /// ```no_run

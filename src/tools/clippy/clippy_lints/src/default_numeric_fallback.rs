@@ -22,9 +22,8 @@ declare_clippy_lint! {
     ///
     /// See [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md) for more information about the fallback.
     ///
-    /// ### Why is this bad?
-    /// For those who are very careful about types, default numeric fallback
-    /// can be a pitfall that cause unexpected runtime behavior.
+    /// ### Why restrict this?
+    /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
     /// This lint can only be allowed at the function level or above.

@@ -9,11 +9,13 @@ declare_clippy_lint! {
     /// ### What it does
     /// Detects calls to the `exit()` function which terminates the program.
     ///
-    /// ### Why is this bad?
-    /// Exit terminates the program at the location it is called. For unrecoverable
-    /// errors `panics` should be used to provide a stacktrace and potentially other
-    /// information. A normal termination or one with an error code should happen in
-    /// the main function.
+    /// ### Why restrict this?
+    /// `exit()` immediately terminates the program with no information other than an exit code.
+    /// This provides no means to troubleshoot a problem, and may be an unexpected side effect.
+    ///
+    /// Codebases may use this lint to require that all exits are performed either by panicking
+    /// (which produces a message, a code location, and optionally a backtrace)
+    /// or by returning from `main()` (which is a single place to look).
     ///
     /// ### Example
     /// ```no_run

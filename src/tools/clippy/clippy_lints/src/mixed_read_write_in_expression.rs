@@ -12,9 +12,10 @@ declare_clippy_lint! {
     /// whether the read occurs before or after the write depends on the evaluation
     /// order of sub-expressions.
     ///
-    /// ### Why is this bad?
-    /// It is often confusing to read. As described [here](https://doc.rust-lang.org/reference/expressions.html?highlight=subexpression#evaluation-order-of-operands),
-    /// the operands of these expressions are evaluated before applying the effects of the expression.
+    /// ### Why restrict this?
+    /// While [the evaluation order of sub-expressions] is fully specified in Rust,
+    /// it still may be confusing to read an expression where the evaluation order
+    /// affects its behavior.
     ///
     /// ### Known problems
     /// Code which intentionally depends on the evaluation
@@ -40,6 +41,8 @@ declare_clippy_lint! {
     /// };
     /// let a = tmp + x;
     /// ```
+    ///
+    /// [order]: (https://doc.rust-lang.org/reference/expressions.html?highlight=subexpression#evaluation-order-of-operands)
     #[clippy::version = "pre 1.29.0"]
     pub MIXED_READ_WRITE_IN_EXPRESSION,
     restriction,

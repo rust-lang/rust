@@ -160,42 +160,10 @@ LL ~         match (mutex1.lock().unwrap().s.len(), true, value) {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:279:15
-   |
-LL |         match mutex3.lock().unwrap().s.as_str() {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |                 mutex1.lock().unwrap().s.len();
-   |                 ---------------------- another value with significant `Drop` created here
-LL |                 mutex2.lock().unwrap().s.len();
-   |                 ---------------------- another value with significant `Drop` created here
-...
-LL |         };
-   |          - temporary lives until here
-   |
-   = note: this might lead to deadlocks or other unexpected behavior
-
-error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:291:22
-   |
-LL |         match (true, mutex3.lock().unwrap().s.as_str()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |                 mutex1.lock().unwrap().s.len();
-   |                 ---------------------- another value with significant `Drop` created here
-LL |                 mutex2.lock().unwrap().s.len();
-   |                 ---------------------- another value with significant `Drop` created here
-...
-LL |         };
-   |          - temporary lives until here
-   |
-   = note: this might lead to deadlocks or other unexpected behavior
-
-error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:312:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:319:11
    |
 LL |     match mutex.lock().unwrap().s.len() > 1 {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |             mutex.lock().unwrap().s.len();
    |             --------------------- another value with significant `Drop` created here
@@ -206,15 +174,15 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     let value = mutex.lock().unwrap().s.len() > 1;
-LL ~     match value {
+LL ~     let value = mutex.lock().unwrap().s.len();
+LL ~     match value > 1 {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:321:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:328:15
    |
 LL |     match 1 < mutex.lock().unwrap().s.len() {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |             mutex.lock().unwrap().s.len();
    |             --------------------- another value with significant `Drop` created here
@@ -225,15 +193,15 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     let value = 1 < mutex.lock().unwrap().s.len();
-LL ~     match value {
+LL ~     let value = mutex.lock().unwrap().s.len();
+LL ~     match 1 < value {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:341:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:348:11
    |
 LL |     match mutex1.lock().unwrap().s.len() < mutex2.lock().unwrap().s.len() {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |                 mutex1.lock().unwrap().s.len(),
    |                 ---------------------- another value with significant `Drop` created here
@@ -246,15 +214,36 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     let value = mutex1.lock().unwrap().s.len() < mutex2.lock().unwrap().s.len();
-LL ~     match value {
+LL ~     let value = mutex1.lock().unwrap().s.len();
+LL ~     match value < mutex2.lock().unwrap().s.len() {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:354:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:348:44
+   |
+LL |     match mutex1.lock().unwrap().s.len() < mutex2.lock().unwrap().s.len() {
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |                 mutex1.lock().unwrap().s.len(),
+   |                 ---------------------- another value with significant `Drop` created here
+LL |                 mutex2.lock().unwrap().s.len()
+   |                 ---------------------- another value with significant `Drop` created here
+...
+LL |     };
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = mutex2.lock().unwrap().s.len();
+LL ~     match mutex1.lock().unwrap().s.len() < value {
+   |
+
+error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:361:11
    |
 LL |     match mutex1.lock().unwrap().s.len() >= mutex2.lock().unwrap().s.len() {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |                 mutex1.lock().unwrap().s.len(),
    |                 ---------------------- another value with significant `Drop` created here
@@ -267,15 +256,36 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     let value = mutex1.lock().unwrap().s.len() >= mutex2.lock().unwrap().s.len();
-LL ~     match value {
+LL ~     let value = mutex1.lock().unwrap().s.len();
+LL ~     match value >= mutex2.lock().unwrap().s.len() {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:391:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:361:45
+   |
+LL |     match mutex1.lock().unwrap().s.len() >= mutex2.lock().unwrap().s.len() {
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |                 mutex1.lock().unwrap().s.len(),
+   |                 ---------------------- another value with significant `Drop` created here
+LL |                 mutex2.lock().unwrap().s.len()
+   |                 ---------------------- another value with significant `Drop` created here
+...
+LL |     };
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = mutex2.lock().unwrap().s.len();
+LL ~     match mutex1.lock().unwrap().s.len() >= value {
+   |
+
+error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:398:11
    |
 LL |     match get_mutex_guard().s.len() > 1 {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |             mutex1.lock().unwrap().s.len();
    |             ---------------------- another value with significant `Drop` created here
@@ -286,12 +296,12 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     let value = get_mutex_guard().s.len() > 1;
-LL ~     match value {
+LL ~     let value = get_mutex_guard().s.len();
+LL ~     match value > 1 {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:410:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:417:11
    |
 LL |       match match i {
    |  ___________^
@@ -299,9 +309,9 @@ LL | |
 LL | |
 LL | |         100 => mutex1.lock().unwrap(),
 ...  |
+LL | |     .s
 LL | |     .len()
-LL | |         > 1
-   | |___________^
+   | |__________^
 ...
 LL |               mutex1.lock().unwrap().s.len();
    |               ---------------------- another value with significant `Drop` created here
@@ -319,13 +329,12 @@ LL +         100 => mutex1.lock().unwrap(),
 LL +         _ => mutex2.lock().unwrap(),
 LL +     }
 LL +     .s
-LL +     .len()
-LL +         > 1;
+LL +     .len();
 LL ~     match value
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:438:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:445:11
    |
 LL |       match if i > 1 {
    |  ___________^
@@ -333,9 +342,9 @@ LL | |
 LL | |
 LL | |         mutex1.lock().unwrap()
 ...  |
+LL | |     .s
 LL | |     .len()
-LL | |         > 1
-   | |___________^
+   | |__________^
 ...
 LL |               mutex1.lock().unwrap().s.len();
    |               ---------------------- another value with significant `Drop` created here
@@ -354,13 +363,12 @@ LL +     } else {
 LL +         mutex2.lock().unwrap()
 LL +     }
 LL +     .s
-LL +     .len()
-LL +         > 1;
+LL +     .len();
 LL ~     match value
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:494:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:501:11
    |
 LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -374,25 +382,11 @@ LL |     };
 help: try moving the temporary above the match and create a copy
    |
 LL ~     let value = *s.lock().deref().deref();
-LL ~     match value {
+LL ~     match (&value) {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:524:11
-   |
-LL |     match s.lock().deref().deref() {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |         matcher => println!("Value is {}", s.lock().deref()),
-   |                                            -------- another value with significant `Drop` created here
-LL |         _ => println!("Value was not a match"),
-LL |     };
-   |      - temporary lives until here
-   |
-   = note: this might lead to deadlocks or other unexpected behavior
-
-error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:545:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:551:11
    |
 LL |     match mutex.lock().unwrap().i = i {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -411,10 +405,10 @@ LL ~     match () {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:553:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:559:15
    |
 LL |     match i = mutex.lock().unwrap().i {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |             println!("{}", mutex.lock().unwrap().i);
    |                            --------------------- another value with significant `Drop` created here
@@ -425,12 +419,12 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     i = mutex.lock().unwrap().i;
-LL ~     match () {
+LL ~     let value = mutex.lock().unwrap().i;
+LL ~     match i = value {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:561:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:567:11
    |
 LL |     match mutex.lock().unwrap().i += 1 {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -449,10 +443,10 @@ LL ~     match () {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:569:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:575:16
    |
 LL |     match i += mutex.lock().unwrap().i {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |             println!("{}", mutex.lock().unwrap().i);
    |                            --------------------- another value with significant `Drop` created here
@@ -463,12 +457,12 @@ LL |     };
    = note: this might lead to deadlocks or other unexpected behavior
 help: try moving the temporary above the match
    |
-LL ~     i += mutex.lock().unwrap().i;
-LL ~     match () {
+LL ~     let value = mutex.lock().unwrap().i;
+LL ~     match i += value {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:634:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:640:11
    |
 LL |     match rwlock.read().unwrap().to_number() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -477,20 +471,14 @@ LL |     };
    |      - temporary lives until here
    |
    = note: this might lead to deadlocks or other unexpected behavior
-
-error: temporary with significant `Drop` in `for` loop condition will live until the end of the `for` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:646:14
+help: try moving the temporary above the match
    |
-LL |     for s in rwlock.read().unwrap().iter() {
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     }
-   |      - temporary lives until here
+LL ~     let value = rwlock.read().unwrap().to_number();
+LL ~     match value {
    |
-   = note: this might lead to deadlocks or other unexpected behavior
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:663:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:668:11
    |
 LL |     match mutex.lock().unwrap().foo() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -506,7 +494,7 @@ LL ~     match value {
    |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
-  --> tests/ui/significant_drop_in_scrutinee.rs:726:11
+  --> tests/ui/significant_drop_in_scrutinee.rs:731:11
    |
 LL |     match guard.take().len() {
    |           ^^^^^^^^^^^^^^^^^^
@@ -519,6 +507,38 @@ help: try moving the temporary above the match
    |
 LL ~     let value = guard.take().len();
 LL ~     match value {
+   |
+
+error: temporary with significant `Drop` in `for` loop condition will live until the end of the `for` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:757:16
+   |
+LL |     for val in mutex.lock().unwrap().copy_old_lifetime() {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     }
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = mutex.lock().unwrap().copy_old_lifetime();
+LL ~     for val in value {
+   |
+
+error: temporary with significant `Drop` in `for` loop condition will live until the end of the `for` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:797:17
+   |
+LL |     for val in [mutex.lock().unwrap()[0], 2] {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     }
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = mutex.lock().unwrap()[0];
+LL ~     for val in [value, 2] {
    |
 
 error: aborting due to 27 previous errors

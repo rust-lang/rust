@@ -274,11 +274,20 @@ fn should_trigger_lint_for_tuple_in_scrutinee() {
             },
             (_, _, _) => {},
         };
+    }
+}
 
+// Should not trigger lint since `String::as_str` returns a reference (i.e., `&str`)
+// to the locked data (i.e., the `String`) and it is not surprising that matching such
+// a reference needs to keep the data locked until the end of the match block.
+fn should_not_trigger_lint_for_string_as_str() {
+    let mutex1 = Mutex::new(StateWithField { s: "one".to_owned() });
+
+    {
+        let mutex2 = Mutex::new(StateWithField { s: "two".to_owned() });
         let mutex3 = Mutex::new(StateWithField { s: "three".to_owned() });
+
         match mutex3.lock().unwrap().s.as_str() {
-            //~^ ERROR: temporary with significant `Drop` in `match` scrutinee will live until
-            //~| NOTE: this might lead to deadlocks or other unexpected behavior
             "three" => {
                 println!("started");
                 mutex1.lock().unwrap().s.len();
@@ -289,8 +298,6 @@ fn should_trigger_lint_for_tuple_in_scrutinee() {
         };
 
         match (true, mutex3.lock().unwrap().s.as_str()) {
-            //~^ ERROR: temporary with significant `Drop` in `match` scrutinee will live until
-            //~| NOTE: this might lead to deadlocks or other unexpected behavior
             (_, "three") => {
                 println!("started");
                 mutex1.lock().unwrap().s.len();
@@ -514,16 +521,15 @@ impl StateStringWithBoxedMutexGuard {
     }
 }
 
-fn should_trigger_lint_for_boxed_mutex_guard_holding_string() {
+fn should_not_trigger_lint_for_string_ref() {
     let s = StateStringWithBoxedMutexGuard::new();
 
     let matcher = String::from("A String");
 
-    // Should trigger lint because a temporary Box holding a type with a significant drop in a match
-    // scrutinee may have a potentially surprising lifetime.
+    // Should not trigger lint because the second `deref` returns a string reference (`&String`).
+    // So it is not surprising that matching the reference implies that the lock needs to be held
+    // until the end of the block.
     match s.lock().deref().deref() {
-        //~^ ERROR: temporary with significant `Drop` in `match` scrutinee will live until the
-        //~| NOTE: this might lead to deadlocks or other unexpected behavior
         matcher => println!("Value is {}", s.lock().deref()),
         _ => println!("Value was not a match"),
     };
@@ -639,13 +645,12 @@ fn should_trigger_lint_for_non_ref_move_and_clone_suggestion() {
     };
 }
 
-fn should_trigger_lint_for_read_write_lock_for_loop() {
-    // For-in loops desugar to match expressions and are prone to the type of deadlock this lint is
-    // designed to look for.
+fn should_not_trigger_lint_for_read_write_lock_for_loop() {
     let rwlock = RwLock::<Vec<String>>::new(vec!["1".to_string()]);
+    // Should not trigger lint. Since we're iterating over the data, it's obvious that the lock
+    // has to be held until the iteration finishes.
+    // https://github.com/rust-lang/rust-clippy/issues/8987
     for s in rwlock.read().unwrap().iter() {
-        //~^ ERROR: temporary with significant `Drop` in `for` loop condition will live until
-        //~| NOTE: this might lead to deadlocks or other unexpected behavior
         println!("{}", s);
     }
 }
@@ -729,6 +734,71 @@ fn should_not_trigger_for_significant_drop_ref() {
         0 => println!("empty"),
         _ => println!("not empty"),
     };
+}
+
+struct Foo<'a>(&'a Vec<u32>);
+
+impl<'a> Foo<'a> {
+    fn copy_old_lifetime(&self) -> &'a Vec<u32> {
+        self.0
+    }
+
+    fn reborrow_new_lifetime(&self) -> &Vec<u32> {
+        self.0
+    }
+}
+
+fn should_trigger_lint_if_and_only_if_lifetime_is_irrelevant() {
+    let vec = Vec::new();
+    let mutex = Mutex::new(Foo(&vec));
+
+    // Should trigger lint even if `copy_old_lifetime()` has a lifetime, as the lifetime of
+    // `&vec` is unrelated to the temporary with significant drop (i.e., the `MutexGuard`).
+    for val in mutex.lock().unwrap().copy_old_lifetime() {
+        //~^ ERROR: temporary with significant `Drop` in `for` loop condition will live until the
+        //~| NOTE: this might lead to deadlocks or other unexpected behavior
+        println!("{}", val);
+    }
+
+    // Should not trigger lint because `reborrow_new_lifetime()` has a lifetime and the
+    // lifetime is related to the temporary with significant drop (i.e., the `MutexGuard`).
+    for val in mutex.lock().unwrap().reborrow_new_lifetime() {
+        println!("{}", val);
+    }
+}
+
+fn should_not_trigger_lint_for_complex_lifetime() {
+    let mutex = Mutex::new(vec!["hello".to_owned()]);
+    let string = "world".to_owned();
+
+    // Should not trigger lint due to the relevant lifetime.
+    for c in mutex.lock().unwrap().first().unwrap().chars() {
+        println!("{}", c);
+    }
+
+    // Should trigger lint due to the irrelevant lifetime.
+    //
+    // FIXME: The lifetime is too complex to analyze. In order to avoid false positives, we do not
+    // trigger lint.
+    for c in mutex.lock().unwrap().first().map(|_| &string).unwrap().chars() {
+        println!("{}", c);
+    }
+}
+
+fn should_not_trigger_lint_with_explicit_drop() {
+    let mutex = Mutex::new(vec![1]);
+
+    // Should not trigger lint since the drop explicitly happens.
+    for val in [drop(mutex.lock().unwrap()), ()] {
+        println!("{:?}", val);
+    }
+
+    // Should trigger lint if there is no explicit drop.
+    for val in [mutex.lock().unwrap()[0], 2] {
+        //~^ ERROR: temporary with significant `Drop` in `for` loop condition will live until the
+        //~| NOTE: this might lead to deadlocks or other unexpected behavior
+        println!("{:?}", val);
+    }
 }
 
 fn main() {}
