@@ -40,6 +40,11 @@ pub struct TripleU16 {
     h: u16,
 }
 #[repr(C)]
+pub struct DoubleI32 {
+    f: i32,
+    g: i32,
+}
+#[repr(C)]
 pub struct TripleU32 {
     f: u32,
     g: u32,
@@ -184,6 +189,12 @@ pub unsafe extern "C" fn f_triple_u8_ret() -> TripleU8 {
 #[no_mangle]
 pub unsafe extern "C" fn f_triple_u16_ret() -> TripleU16 {
     TripleU16 { f: 18, g: 19, h: 20 }
+}
+
+// CHECK: .visible .func (.param .align 4 .b8 func_retval0[8]) f_double_i32_ret(
+#[no_mangle]
+pub unsafe extern "C" fn f_double_i32_ret() -> DoubleI32 {
+    DoubleI32 { f: 1, g: 2 }
 }
 
 // CHECK: .visible .func (.param .align 4 .b8 func_retval0[12]) f_triple_u32_ret(
