@@ -1406,11 +1406,10 @@ where
     }
 }
 
-impl<T, S, A> BitOr<&HashSet<T, S, A>> for &HashSet<T, S, A>
+impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
 {
     type Output = HashSet<T, S>;
 
@@ -1434,16 +1433,15 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.union(rhs).cloned().collect()
     }
 }
 
-impl<T, S, A> BitAnd<&HashSet<T, S, A>> for &HashSet<T, S, A>
+impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
 {
     type Output = HashSet<T, S>;
 
@@ -1467,7 +1465,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitand(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.intersection(rhs).cloned().collect()
     }
 }
