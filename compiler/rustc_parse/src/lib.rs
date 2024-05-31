@@ -89,7 +89,7 @@ pub fn maybe_new_parser_from_source_str(
     name: FileName,
     source: String,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
-    maybe_source_file_to_parser(psess, psess.source_map().new_source_file(name, source))
+    maybe_new_parser_from_source_file(psess, psess.source_map().new_source_file(name, source))
 }
 
 /// Creates a new parser, aborting if the file doesn't exist. If a span is given, that is used on
@@ -104,12 +104,12 @@ pub fn new_parser_from_file<'a>(psess: &'a ParseSess, path: &Path, sp: Option<Sp
         err.emit();
     });
 
-    unwrap_or_emit_fatal(maybe_source_file_to_parser(psess, source_file))
+    unwrap_or_emit_fatal(maybe_new_parser_from_source_file(psess, source_file))
 }
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing
 /// the initial token stream.
-fn maybe_source_file_to_parser(
+fn maybe_new_parser_from_source_file(
     psess: &ParseSess,
     source_file: Lrc<SourceFile>,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
