@@ -1,4 +1,3 @@
-
 # Parameter `Ty`/`Const`/`Region`s
 
 When inside of generic items, types can be written that use in scope generic parameters, for example `fn foo<'a, T>(_: &'a Vec<T>)`. In this specific case
@@ -31,7 +30,7 @@ struct Foo<T>(Vec<T>);
 The `Vec<T>` type is represented as `TyKind::Adt(Vec, &[GenericArgKind::Type(Param("T", 0))])`.
 
 The name is somewhat self explanatory, it's the name of the type parameter. The index of the type parameter is an integer indicating
-its order in the list of generic parameters in scope (note: this includes parameters defined on items on outter scopes than the item the parameter is defined on). Consider the following examples:
+its order in the list of generic parameters in scope (note: this includes parameters defined on items on outer scopes than the item the parameter is defined on). Consider the following examples:
 
 ```rust,ignore
 struct Foo<A, B> {
@@ -50,7 +49,7 @@ impl<X, Y> Foo<X, Y> {
 }
 ```
 
-Concretely given the `ty::Generics` for the item the parameter is defined on, if the index is `10` then starting from the root `parent`, it will be the eleventh parameter to be introduced.
+Concretely given the `ty::Generics` for the item the parameter is defined on, if the index is `2` then starting from the root `parent`, it will be the third parameter to be introduced. For example in the above example, `Z` has index `2` and is the third generic parameter to be introduced, starting from the `impl` block. 
 
 The index fully defines the `Ty` and is the only part of `TyKind::Param` that matters for reasoning about the code we are compiling. 
 

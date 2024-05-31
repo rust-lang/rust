@@ -1,7 +1,6 @@
-
 # `Binder` and Higher ranked regions
 
-Sometimes we define generic parmeters not on an item but as part of a type or a where clauses. As an example the type `for<'a> fn(&'a u32)` or the where clause `for<'a> T: Trait<'a>` both introduce a generic lifetime parameter named `'a`. Currently there is no stable syntax for `for<T>` or `for<const N: usize>` but on nightly the `non_lifetime_binders` feature can be used to write where clauses (but not types) using `for<T>`/`for<const N: usize>`.
+Sometimes we define generic parmeters not on an item but as part of a type or a where clauses. As an example the type `for<'a> fn(&'a u32)` or the where clause `for<'a> T: Trait<'a>` both introduce a generic lifetime named `'a`. Currently there is no stable syntax for `for<T>` or `for<const N: usize>` but on nightly `feature(non_lifetime_binders)` feature can be used to write where clauses (but not types) using `for<T>`/`for<const N: usize>`.
 
 The `for` is referred to as a "binder" because it brings new names into scope. In rustc we use the `Binder` type to track where these parameters are introduced and what the parameters are (i.e. how many and whether they the parameter is a type/const/region). A type such as `for<'a> fn(&'a u32)` would be
 represented in rustc as:
@@ -44,7 +43,7 @@ Binder(
     &[BoundVariarbleKind::Region(...)],
 )
 ```
-This would cause all kinds of issues as the region `'^1_0` refers to a binder at a higher level than the outtermost binder i.e. it is an escaping bound var. The `'^1` region (also writeable as `'^0_1`) is also ill formed as the binder it refers to does not introduce a second parameter. Modern day rustc will ICE when constructing this binder due to both of those regions, in the past we would have simply allowed this to work and then ran into issues in other parts of the codebase. 
+This would cause all kinds of issues as the region `'^1_0` refers to a binder at a higher level than the outermost binder i.e. it is an escaping bound var. The `'^1` region (also writeable as `'^0_1`) is also ill formed as the binder it refers to does not introduce a second parameter. Modern day rustc will ICE when constructing this binder due to both of those regions, in the past we would have simply allowed this to work and then ran into issues in other parts of the codebase. 
 
 [`Binder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Binder.html
 [`BoundVar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.BoundVar.html

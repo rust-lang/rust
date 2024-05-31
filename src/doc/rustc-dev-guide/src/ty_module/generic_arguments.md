@@ -1,5 +1,7 @@
 # ADTs and Generic Arguments
 
+The term `ADT` stands for "Algebraic data type", in rust this refers to a struct, enum, or union.
+
 ## ADTs Representation
 
 Let's consider the example of a type like `MyStruct<u32>`, where `MyStruct` is defined like so:
@@ -25,14 +27,14 @@ There are two parts:
   parameters. In our example, this is the `MyStruct` part *without* the argument `u32`.
   (Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
   they are all represented using `TyKind::Adt`.)
-- The [`GenericArgs`][GenericArgs] is a list of values that are to be substituted
+- The [`GenericArgs`] is a list of values that are to be substituted
 for the generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like
 `[u32]`. We’ll dig more into generics and substitutions in a little bit.
 
 [adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
-[GenericArgs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
+[`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
 
-**`AdtDef` and `DefId`**
+### **`AdtDef` and `DefId`**
 
 For every type defined in the source code, there is a unique `DefId` (see [this
 chapter](hir.md#identifiers-in-the-hir)). This includes ADTs and generics. In the `MyStruct<T>`
@@ -65,8 +67,8 @@ struct MyStruct<T> {
 // Want to do: MyStruct<A> ==> MyStruct<B>
 ```
 
-in an example like this, we can subst from `MyStruct<A>` to `MyStruct<B>` (and so on) very cheaply,
-by just replacing the one reference to `A` with `B`. But if we eagerly substituted all the fields,
+in an example like this, we can instantiate `MyStruct<A>` as `MyStruct<B>` (and so on) very cheaply,
+by just replacing the one reference to `A` with `B`. But if we eagerly instantiated all the fields,
 that could be a lot more work because we might have to go through all of the fields in the `AdtDef`
 and update all of their types.
 
@@ -81,7 +83,7 @@ definition of that name, and not carried along “within” the type itself).
 
 Given a generic type `MyType<A, B, …>`, we have to store the list of generic arguments for `MyType`.
 
-In rustc this is done using [GenericArgs]. `GenericArgs` is a thin pointer to a slice of [`GenericArg`] representing a list of generic arguments for a generic item. For example, given a `struct HashMap<K, V>` with two type parameters, `K` and `V`, the `GenericArgs` used to represent the type `HashMap<i32, u32>` would be represented by `&'tcx [tcx.types.i32, tcx.types.u32]`.
+In rustc this is done using [`GenericArgs`]. `GenericArgs` is a thin pointer to a slice of [`GenericArg`] representing a list of generic arguments for a generic item. For example, given a `struct HashMap<K, V>` with two type parameters, `K` and `V`, the `GenericArgs` used to represent the type `HashMap<i32, u32>` would be represented by `&'tcx [tcx.types.i32, tcx.types.u32]`.
 
 `GenericArg` is conceptually an `enum` with three variants, one for type arguments, one for const arguments and one for lifetime arguments.
 In practice that is actually represented by [`GenericArgKind`] and [`GenericArg`] is a more space efficient version that has a method to
@@ -110,7 +112,7 @@ fn deal_with_generic_arg<'tcx>(generic_arg: GenericArg<'tcx>) -> GenericArg<'tcx
 [list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.List.html
 [`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GenericArg.html
 [`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.GenericArgKind.html
-[GenericArgs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
+[`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
 
 So pulling it all together:
 
@@ -123,4 +125,4 @@ For the `MyStruct<U>` written in the `Foo` type alias, we would represent it in 
 
 - There would be an `AdtDef` (and corresponding `DefId`) for `MyStruct`.
 - There would be a `GenericArgs` containing the list `[GenericArgKind::Type(Ty(u32))]`
-- This is one `TyKind::Adt` containing the `AdtDef` of `MyStruct` with the `GenericArgs` above.
+- And finally a `TyKind::Adt` with the `AdtDef` and `GenericArgs` listed above.

@@ -10,8 +10,7 @@ The `ty` module defines how the Rust compiler represents types internally. It al
 When we talk about how rustc represents types,  we usually refer to a type called `Ty` . There are
 quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/ru
-]stc_middle/ty/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 The specific `Ty` we are referring to is [`rustc_middle::ty::Ty`][ty_ty] (and not
 [`rustc_hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going

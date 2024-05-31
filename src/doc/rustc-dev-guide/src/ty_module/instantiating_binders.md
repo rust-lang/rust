@@ -16,16 +16,16 @@ fn main() {
 ```
 In this example we are providing an argument of type `for<'a> fn(&'^0 u32) -> &'^0 u32` to `bar`, we do not want to allow `T` to be inferred to the type `&'^0 u32` as it would be rather nonsensical (and likely unsound if we did not happen to ICE, `main` has no idea what `'a` is so how would the borrow checker handle a borrow with lifetime `'a`).
 
-Unlike `EarlyBinder` we do not instantiate `Binder` with some concrete set of arguments from the user, i.e. `['b, 'static]` as arguments to a `for<'a1, 'a2> fn(&'a1 u32, &'a2 u32)`. Instead we always instantiate the binder with inference variables of placeholders.
+Unlike `EarlyBinder` we typically do not instantiate `Binder` with some concrete set of arguments from the user, i.e. `['b, 'static]` as arguments to a `for<'a1, 'a2> fn(&'a1 u32, &'a2 u32)`. Instead we usually instantiate the binder with inference variables or placeholders.
 
 ## Instantiating with inference variables
 
-We instantiate binders with inference variables when we are trying to infer a possible instantiation of the binder, i.e. calling higher ranked function pointers or attempting to use a higher ranked where clause to prove some bound (non exhaustive list). For example, given the `higher_ranked_fn_ptr` from the example above, if we were to call it with `&10_u32` we would: 
+We instantiate binders with inference variables when we are trying to infer a possible instantiation of the binder, e.g. calling higher ranked function pointers or attempting to use a higher ranked where-clause to prove some bound. For example, given the `higher_ranked_fn_ptr` from the example above, if we were to call it with `&10_u32` we would: 
 - Instantaite the binder with infer vars yielding a signature of `fn(&'?0 u32) -> &'?0 u32)`
 - Equate the type of the provided argument `&10_u32` (&'static u32) with the type in the signature, `&'?0 u32`, inferring `'?0 = 'static`
 - The provided arguments were correct as we were successfully able to unify the types of the provided arguments with the types of the arguments in fn ptr signature
 
-As another example of instantiating with infer vars, given some `where for<'a> T: Trait<'a>`, if we were attempting to prove that `T: Trait<'static>` holds we would:
+As another example of instantiating with infer vars, given some `for<'a> T: Trait<'a>` where-clause, if we were attempting to prove that `T: Trait<'static>` holds we would:
 - Instantiate the binder with infer vars yielding a where clause of `T: Trait<'?0>`
 - Equate the goal of `T: Trait<'static>` with the instantiated where clause, inferring `'?0 = 'static`
 - The goal holds because we were successfully able to unify `T: Trait<'static>` with `T: Trait<'?0>`
@@ -34,11 +34,11 @@ Instantiating binders with inference variables can be accomplished by using the 
 
 ## Instantiating with placeholders
 
-Placeholders are very similar to `Ty/ConstKind::Param`/`ReEarlyParam`, they represent some unknown type that is only equal to itself. `Ty`/`Const` and `Region` all have a `Placeholder` variant that is comprised of a `Universe` and a `BoundVar`. 
+Placeholders are very similar to `Ty/ConstKind::Param`/`ReEarlyParam`, they represent some unknown type that is only equal to itself. `Ty`/`Const` and `Region` all have a [`Placeholder`] variant that is comprised of a [`Universe`] and a [`BoundVar`]. 
 
 The `Universe` tracks which binder the placeholder originated from, and the `BoundVar` tracks which parameter on said binder that this placeholder corresponds to. Equality of placeholders is determined solely by whether the universes are equal and the `BoundVar`s are equal. See the [chapter on Placeholders and Universes][ch_placeholders_universes] for more information.
 
-When talking with other rustc devs or seeing `Debug` formatted `Ty`/`Const`/`Region`s, `Placeholder` will often be written as `'!UNIVERSE_IDX`. For example given some type `for<'a> fn(&'a u32, for<'b> fn(&'b &'a u32))`, after instantiating both binders (assuming the `Universe` in the current `InferCtxt` was `U0` beforehand), the type of `&'b &'a u32` would be represented as `&'!2_0 &!1_0 u32`.
+When talking with other rustc devs or seeing `Debug` formatted `Ty`/`Const`/`Region`s, `Placeholder` will often be written as `'!UNIVERSE_BOUNDVARS`. For example given some type `for<'a> fn(&'a u32, for<'b> fn(&'b &'a u32))`, after instantiating both binders (assuming the `Universe` in the current `InferCtxt` was `U0` beforehand), the type of `&'b &'a u32` would be represented as `&'!2_0 &!1_0 u32`.
 
 When the universe of the placeholder is `0`, it will be entirely omitted from the debug output, i.e. `!0_2` would be printed as `!2`. This rarely happens in practice though as we increase the universe in the `InferCtxt` when instantiating a binder with placeholders so usually the lowest universe placeholders encounterable are ones in `U1`.
 
@@ -105,7 +105,7 @@ the `RePlaceholder` for the `'b` parameter is in a higher universe to track the 
 
 ## Instantiating with `ReLateParam`
 
-As discussed in a previous chapter, `RegionKind` has two variants for representing generic parameters, `ReLateParam` and `ReEarlyParam`. `ReLateParam` is conceptually a `Placeholder` that is always in the root universe (`U0`). It is used when instantiating late bound parameters on functions/closures. It's actual representation is relatively different from both `ReEarlyParam` and `RePlaceholder`:
+As discussed in a previous chapter, `RegionKind` has two variants for representing generic parameters, `ReLateParam` and `ReEarlyParam`. `ReLateParam` is conceptually a `Placeholder` that is always in the root universe (`U0`). It is used when instantiating late bound parameters of functions/closures while inside of them. Its actual representation is relatively different from both `ReEarlyParam` and `RePlaceholder`:
 - A `DefId` for the item that introduced the late bound generic parameter
 - A [`BoundRegionKind`] which either specifies the `DefId` of the generic parameter and its name (via a `Symbol`), or that this placeholder is representing the anonymous lifetime of a `Fn`/`FnMut` closure's self borrow. There is also a variant for `BrAnon` but this is not used for `ReLateParam`.
 
@@ -140,3 +140,6 @@ As a concrete example, accessing the signature of a function we are type checkin
 [`InferCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html
 [`EarlyBinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.EarlyBinder.html
 [`Binder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Binder.html
+[`Placeholder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Placeholder.html
+[`Universe`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.UniverseIndex.html
+[`BoundVar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.BoundVar.html
