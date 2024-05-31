@@ -13,6 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
+use rustc_parse::parser::Parser;
 use rustc_parse::source_str_to_stream;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
@@ -553,11 +554,7 @@ impl server::TokenStream for Rustc<'_, '_> {
     fn expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         // Parse the expression from our tokenstream.
         let expr: PResult<'_, _> = try {
-            let mut p = rustc_parse::stream_to_parser(
-                self.psess(),
-                stream.clone(),
-                Some("proc_macro expand expr"),
-            );
+            let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
             let expr = p.parse_expr()?;
             if p.token != token::Eof {
                 p.unexpected()?;

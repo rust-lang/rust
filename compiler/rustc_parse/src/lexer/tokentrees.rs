@@ -2,6 +2,7 @@ use super::diagnostics::report_suspicious_mismatch_block;
 use super::diagnostics::same_indentation_level;
 use super::diagnostics::TokenTreeDiagInfo;
 use super::{StringReader, UnmatchedDelim};
+use crate::Parser;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
@@ -231,7 +232,7 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
     ) -> Vec<PErr<'psess>> {
         // If there are unclosed delims, see if there are diff markers and if so, point them
         // out instead of complaining about the unclosed delims.
-        let mut parser = crate::stream_to_parser(self.string_reader.psess, tts, None);
+        let mut parser = Parser::new(self.string_reader.psess, tts, None);
         let mut diff_errs = vec![];
         // Suggest removing a `{` we think appears in an `if`/`while` condition.
         // We want to suggest removing a `{` only if we think we're in an `if`/`while` condition,

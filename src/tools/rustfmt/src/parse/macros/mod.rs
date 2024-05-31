@@ -2,7 +2,7 @@ use rustc_ast::token::{Delimiter, NonterminalKind, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ast, ptr};
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
-use rustc_parse::{stream_to_parser, MACRO_ARGUMENTS};
+use rustc_parse::MACRO_ARGUMENTS;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{self, kw};
 use rustc_span::Symbol;
@@ -15,7 +15,7 @@ pub(crate) mod cfg_if;
 pub(crate) mod lazy_static;
 
 fn build_stream_parser<'a>(psess: &'a ParseSess, tokens: TokenStream) -> Parser<'a> {
-    stream_to_parser(psess, tokens, MACRO_ARGUMENTS).recovery(Recovery::Forbidden)
+    Parser::new(psess, tokens, MACRO_ARGUMENTS).recovery(Recovery::Forbidden)
 }
 
 fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {

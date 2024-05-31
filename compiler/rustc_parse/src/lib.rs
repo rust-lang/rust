@@ -123,7 +123,7 @@ fn maybe_source_file_to_parser(
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
     let stream = maybe_source_file_to_stream(psess, source_file, None)?;
-    let mut parser = stream_to_parser(psess, stream, None);
+    let mut parser = Parser::new(psess, stream, None);
     if parser.token == token::Eof {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt(), None);
     }
@@ -166,15 +166,6 @@ fn maybe_source_file_to_stream<'psess>(
     });
 
     lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span)
-}
-
-/// Given a stream and the `ParseSess`, produces a parser.
-pub fn stream_to_parser<'a>(
-    psess: &'a ParseSess,
-    stream: TokenStream,
-    subparser_name: Option<&'static str>,
-) -> Parser<'a> {
-    Parser::new(psess, stream, subparser_name)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
