@@ -1,8 +1,8 @@
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-39259.rs:6:17
    |
 LL | impl Fn(u32) -> u32 for S {
-   |                 ^^^ associated type not allowed here
+   |                 ^^^ associated item constraint not allowed here
    |
 help: parenthesized trait syntax expands to `Fn<(u32,), Output=u32>`
   --> $DIR/issue-39259.rs:6:6

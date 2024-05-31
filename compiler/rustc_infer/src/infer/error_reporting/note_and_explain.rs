@@ -182,7 +182,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         diag.help("type parameters must be constrained to match other types");
-                        if tcx.sess.teach(diag.code.unwrap()) {
+                        if diag.code.is_some_and(|code| tcx.sess.teach(code)) {
                             diag.help(
                                 "given a type parameter `T` and a method `foo`:
 ```
@@ -663,7 +663,7 @@ impl<T> Trait<T> for X {
                  https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
             );
         }
-        if tcx.sess.teach(diag.code.unwrap()) {
+        if diag.code.is_some_and(|code| tcx.sess.teach(code)) {
             diag.help(
                 "given an associated type `T` and a method `foo`:
 ```

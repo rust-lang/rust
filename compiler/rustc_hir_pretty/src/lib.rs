@@ -89,7 +89,7 @@ impl<'a> State<'a> {
             Node::Stmt(a) => self.print_stmt(a),
             Node::PathSegment(a) => self.print_path_segment(a),
             Node::Ty(a) => self.print_type(a),
-            Node::TypeBinding(a) => self.print_type_binding(a),
+            Node::AssocItemConstraint(a) => self.print_assoc_item_constraint(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
             Node::Pat(a) => self.print_pat(a),
             Node::PatField(a) => self.print_patfield(a),
@@ -1135,7 +1135,7 @@ impl<'a> State<'a> {
         self.print_ident(segment.ident);
 
         let generic_args = segment.args();
-        if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
+        if !generic_args.args.is_empty() || !generic_args.constraints.is_empty() {
             self.print_generic_args(generic_args, true);
         }
 
@@ -1676,9 +1676,9 @@ impl<'a> State<'a> {
                     });
                 }
 
-                for binding in generic_args.bindings {
+                for constraint in generic_args.constraints {
                     start_or_comma(self);
-                    self.print_type_binding(binding);
+                    self.print_assoc_item_constraint(constraint);
                 }
 
                 if !empty.get() {
@@ -1686,13 +1686,15 @@ impl<'a> State<'a> {
                 }
             }
             hir::GenericArgsParentheses::ParenSugar => {
+                let (inputs, output) = generic_args.paren_sugar_inputs_output().unwrap();
+
                 self.word("(");
-                self.commasep(Inconsistent, generic_args.inputs(), |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, inputs, |s, ty| s.print_type(ty));
                 self.word(")");
 
                 self.space_if_not_bol();
                 self.word_space("->");
-                self.print_type(generic_args.bindings[0].ty());
+                self.print_type(output);
             }
             hir::GenericArgsParentheses::ReturnTypeNotation => {
                 self.word("(..)");
@@ -1700,19 +1702,19 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_type_binding(&mut self, binding: &hir::TypeBinding<'_>) {
-        self.print_ident(binding.ident);
-        self.print_generic_args(binding.gen_args, false);
+    fn print_assoc_item_constraint(&mut self, constraint: &hir::AssocItemConstraint<'_>) {
+        self.print_ident(constraint.ident);
+        self.print_generic_args(constraint.gen_args, false);
         self.space();
-        match binding.kind {
-            hir::TypeBindingKind::Equality { ref term } => {
+        match constraint.kind {
+            hir::AssocItemConstraintKind::Equality { ref term } => {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
                     Term::Const(ref c) => self.print_anon_const(c),
                 }
             }
-            hir::TypeBindingKind::Constraint { bounds } => {
+            hir::AssocItemConstraintKind::Bound { bounds } => {
                 self.print_bounds(":", bounds);
             }
         }

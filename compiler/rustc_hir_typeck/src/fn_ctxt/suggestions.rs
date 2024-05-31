@@ -848,19 +848,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
                     && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
                         trait_ref.trait_ref.path.segments.last()
-                    && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
-                    && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } =
-                        ty_binding.kind
+                    && let [constraint] = generic_args.constraints
+                    && let Some(ty) = constraint.ty()
                 {
                     // Check if async function's return type was omitted.
                     // Don't emit suggestions if the found type is `impl Future<...>`.
                     debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
-                        if term.span.is_empty() {
+                        if ty.span.is_empty() {
                             err.subdiagnostic(
                                 self.dcx(),
                                 errors::AddReturnTypeSuggestion::Add {
-                                    span: term.span,
+                                    span: ty.span,
                                     found: found.to_string(),
                                 },
                             );
@@ -868,10 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             err.subdiagnostic(
                                 self.dcx(),
-                                errors::ExpectedReturnTypeLabel::Other {
-                                    span: term.span,
-                                    expected,
-                                },
+                                errors::ExpectedReturnTypeLabel::Other { span: ty.span, expected },
                             );
                         }
                     }

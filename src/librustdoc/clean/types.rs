@@ -1626,9 +1626,9 @@ impl Type {
         if let Type::ImplTrait(mut v) = self
             && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = v.pop()
             && let Some(segment) = trait_.segments.pop()
-            && let GenericArgs::AngleBracketed { mut bindings, .. } = segment.args
-            && let Some(binding) = bindings.pop()
-            && let TypeBindingKind::Equality { term } = binding.kind
+            && let GenericArgs::AngleBracketed { mut constraints, .. } = segment.args
+            && let Some(constraint) = constraints.pop()
+            && let AssocItemConstraintKind::Equality { term } = constraint.kind
             && let Term::Type(ty) = term
         {
             ty
@@ -2260,34 +2260,38 @@ impl GenericArg {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
-    AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
+    AngleBracketed { args: Box<[GenericArg]>, constraints: ThinVec<AssocItemConstraint> },
     Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
 impl GenericArgs {
     pub(crate) fn is_empty(&self) -> bool {
         match self {
-            GenericArgs::AngleBracketed { args, bindings } => {
-                args.is_empty() && bindings.is_empty()
+            GenericArgs::AngleBracketed { args, constraints } => {
+                args.is_empty() && constraints.is_empty()
             }
             GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
         }
     }
-    pub(crate) fn bindings<'a>(&'a self) -> Box<dyn Iterator<Item = TypeBinding> + 'a> {
+    pub(crate) fn constraints<'a>(&'a self) -> Box<dyn Iterator<Item = AssocItemConstraint> + 'a> {
         match self {
-            GenericArgs::AngleBracketed { bindings, .. } => Box::new(bindings.iter().cloned()),
+            GenericArgs::AngleBracketed { constraints, .. } => {
+                Box::new(constraints.iter().cloned())
+            }
             GenericArgs::Parenthesized { output, .. } => Box::new(
                 output
                     .as_ref()
-                    .map(|ty| TypeBinding {
+                    .map(|ty| AssocItemConstraint {
                         assoc: PathSegment {
                             name: sym::Output,
                             args: GenericArgs::AngleBracketed {
                                 args: Vec::new().into_boxed_slice(),
-                                bindings: ThinVec::new(),
+                                constraints: ThinVec::new(),
                             },
                         },
-                        kind: TypeBindingKind::Equality { term: Term::Type((**ty).clone()) },
+                        kind: AssocItemConstraintKind::Equality {
+                            term: Term::Type((**ty).clone()),
+                        },
                     })
                     .into_iter(),
             ),
@@ -2546,18 +2550,27 @@ pub(crate) struct ProcMacro {
     pub(crate) helpers: Vec<Symbol>,
 }
 
-/// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
-/// `A: Send + Sync` in `Foo<A: Send + Sync>`).
+/// A constraint on an associated item.
+///
+/// ### Examples
+///
+/// * the `A = Ty` and `B = Ty` in `Trait<A = Ty, B = Ty>`
+/// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
+/// * the `A: Bound` in `Trait<A: Bound>`
+/// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `f(): Bound` in `Trait<f(): Bound>` (feature `return_type_notation`)
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct TypeBinding {
+pub(crate) struct AssocItemConstraint {
     pub(crate) assoc: PathSegment,
-    pub(crate) kind: TypeBindingKind,
+    pub(crate) kind: AssocItemConstraintKind,
 }
 
+/// The kind of [associated item constraint][AssocItemConstraint].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) enum TypeBindingKind {
+pub(crate) enum AssocItemConstraintKind {
     Equality { term: Term },
-    Constraint { bounds: Vec<GenericBound> },
+    Bound { bounds: Vec<GenericBound> },
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

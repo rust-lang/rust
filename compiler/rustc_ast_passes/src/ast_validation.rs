@@ -671,7 +671,7 @@ impl<'a> AstValidator<'a> {
         let constraint_sugg = data.args.iter().filter_map(|a| match a {
             AngleBracketedArg::Arg(_) => None,
             AngleBracketedArg::Constraint(c) => {
-                Some(pprust::to_string(|s| s.print_assoc_constraint(c)))
+                Some(pprust::to_string(|s| s.print_assoc_item_constraint(c)))
             }
         });
         format!(
@@ -1199,11 +1199,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 for arg in &data.args {
                     match arg {
                         AngleBracketedArg::Arg(arg) => self.visit_generic_arg(arg),
-                        // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
-                        // are allowed to contain nested `impl Trait`.
+                        // Associated type bindings such as `Item = impl Debug` in
+                        // `Iterator<Item = Debug>` are allowed to contain nested `impl Trait`.
                         AngleBracketedArg::Constraint(constraint) => {
                             self.with_impl_trait(None, |this| {
-                                this.visit_assoc_constraint(constraint);
+                                this.visit_assoc_item_constraint(constraint);
                             });
                         }
                     }
@@ -1363,7 +1363,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
-                // The lowered form of parenthesized generic args contains a type binding.
+                // The lowered form of parenthesized generic args contains an associated type binding.
                 Some(ast::GenericArgs::Parenthesized(args)) => {
                     self.dcx().emit_err(errors::NegativeBoundWithParentheticalNotation {
                         span: args.span,
@@ -1589,11 +1589,13 @@ fn deny_equality_constraints(
                 let len = assoc_path.segments.len() - 1;
                 let gen_args = args.as_deref().cloned();
                 // Build `<Bar = RhsTy>`.
-                let arg = AngleBracketedArg::Constraint(AssocConstraint {
+                let arg = AngleBracketedArg::Constraint(AssocItemConstraint {
                     id: rustc_ast::node_id::DUMMY_NODE_ID,
                     ident: *ident,
                     gen_args,
-                    kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
+                    kind: AssocItemConstraintKind::Equality {
+                        term: predicate.rhs_ty.clone().into(),
+                    },
                     span: ident.span,
                 });
                 // Add `<Bar = RhsTy>` to `Foo`.
