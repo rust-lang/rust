@@ -1,6 +1,8 @@
 mod markdown;
 mod rust;
 
+pub(crate) use markdown::test as test_markdown;
+
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;

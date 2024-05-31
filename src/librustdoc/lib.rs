@@ -728,7 +728,7 @@ fn main_args(
         core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
 
     match (options.should_test, options.markdown_input()) {
-        (true, Some(_)) => return wrap_return(&diag, markdown::test(options)),
+        (true, Some(_)) => return wrap_return(&diag, doctest::test_markdown(options)),
         (true, None) => return doctest::run(&diag, options),
         (false, Some(input)) => {
             let input = input.to_owned();
