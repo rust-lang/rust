@@ -2026,10 +2026,19 @@ pub(super) fn check_type_bounds<'tcx>(
     // to its definition type. This should be the param-env we use to *prove* the
     // predicate too, but we don't do that because of performance issues.
     // See <https://github.com/rust-lang/rust/pull/117542#issue-1976337685>.
+    let trait_projection_ty = Ty::new_projection(tcx, trait_ty.def_id, rebased_args);
+    let impl_identity_ty = tcx.type_of(impl_ty.def_id).instantiate_identity();
     let normalize_param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
     for mut obligation in util::elaborate(tcx, obligations) {
-        let normalized_predicate =
-            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate);
+        let normalized_predicate = if infcx.next_trait_solver() {
+            obligation.predicate.fold_with(&mut ReplaceTy {
+                tcx,
+                from: trait_projection_ty,
+                to: impl_identity_ty,
+            })
+        } else {
+            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate)
+        };
         debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
         obligation.predicate = normalized_predicate;
 
@@ -2048,6 +2057,22 @@ pub(super) fn check_type_bounds<'tcx>(
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, &assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
+}
+
+struct ReplaceTy<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    from: Ty<'tcx>,
+    to: Ty<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceTy<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if self.from == ty { self.to } else { ty.super_fold_with(self) }
+    }
 }
 
 /// Install projection predicates that allow GATs to project to their own

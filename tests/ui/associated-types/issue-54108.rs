@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 use std::ops::Add;
 
 pub trait Encoder {
@@ -18,6 +22,7 @@ where
 {
     type Size = <Self as SubEncoder>::ActualSize;
     //~^ ERROR: cannot add `<T as SubEncoder>::ActualSize` to `<T as SubEncoder>::ActualSize`
+    //[next]~| ERROR type mismatch resolving `<<T as SubEncoder>::ActualSize as Add>::Output == <T as SubEncoder>::ActualSize`
 
     fn foo(&self) -> Self::Size {
         self.bar() + self.bar()
