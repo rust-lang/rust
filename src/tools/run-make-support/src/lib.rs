@@ -123,12 +123,23 @@ pub fn dynamic_lib_name(name: &str) -> String {
     // ```
     assert!(!name.contains(char::is_whitespace), "dynamic library name cannot contain whitespace");
 
+    let extension = dynamic_lib_extension();
     if is_darwin() {
-        format!("lib{name}.dylib")
+        format!("lib{name}.{extension}")
     } else if is_windows() {
-        format!("{name}.dll")
+        format!("{name}.{extension}")
     } else {
-        format!("lib{name}.so")
+        format!("lib{name}.{extension}")
+    }
+}
+
+pub fn dynamic_lib_extension() -> &'static str {
+    if is_darwin() {
+        "dylib"
+    } else if is_windows() {
+        "dll"
+    } else {
+        "so"
     }
 }
 
@@ -249,16 +260,13 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     }
 
     let dir2 = dir2.as_ref();
-    for entry in fs::read_dir(dir1).unwrap() {
-        let entry = entry.unwrap();
-        let entry_name = entry.file_name();
-        let path = entry.path();
-
-        if path.is_dir() {
-            recursive_diff(&path, &dir2.join(entry_name));
+    read_dir(dir1, |entry_path| {
+        let entry_name = entry_path.file_name().unwrap();
+        if entry_path.is_dir() {
+            recursive_diff(&entry_path, &dir2.join(entry_name));
         } else {
             let path2 = dir2.join(entry_name);
-            let file1 = read_file(&path);
+            let file1 = read_file(&entry_path);
             let file2 = read_file(&path2);
 
             // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
@@ -267,10 +275,16 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
             assert!(
                 file1 == file2,
                 "`{}` and `{}` have different content",
-                path.display(),
+                entry_path.display(),
                 path2.display(),
             );
         }
+    });
+}
+
+pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
+    for entry in fs::read_dir(dir).unwrap() {
+        callback(&entry.unwrap().path());
     }
 }
 
