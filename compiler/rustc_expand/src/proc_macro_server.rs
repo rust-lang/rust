@@ -540,9 +540,9 @@ impl server::TokenStream for Rustc<'_, '_> {
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
         source_str_to_stream(
+            self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
-            self.psess(),
             Some(self.call_site),
         )
     }

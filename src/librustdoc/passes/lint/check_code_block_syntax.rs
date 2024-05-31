@@ -51,7 +51,7 @@ fn check_rust_syntax(
     let span = DUMMY_SP.apply_mark(expn_id.to_expn_id(), Transparency::Transparent);
 
     let is_empty = rustc_driver::catch_fatal_errors(|| {
-        source_str_to_stream(FileName::Custom(String::from("doctest")), source, &psess, Some(span))
+        source_str_to_stream(&psess, FileName::Custom(String::from("doctest")), source, Some(span))
             .is_empty()
     })
     .unwrap_or(false);

@@ -82,7 +82,7 @@ where
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let psess = psess();
-    source_str_to_stream(PathBuf::from("bogofile").into(), source_str, &psess, None)
+    source_str_to_stream(&psess, PathBuf::from("bogofile").into(), source_str, None)
 }
 
 /// Parses a string, returns a crate.

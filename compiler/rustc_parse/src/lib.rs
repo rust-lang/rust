@@ -95,9 +95,9 @@ fn maybe_new_parser_from_source_file(
 }
 
 pub fn source_str_to_stream(
+    psess: &ParseSess,
     name: FileName,
     source: String,
-    psess: &ParseSess,
     override_span: Option<Span>,
 ) -> TokenStream {
     source_file_to_stream(psess, psess.source_map().new_source_file(name, source), override_span)
@@ -147,13 +147,13 @@ pub fn parse_in<'a, T>(
 pub fn fake_token_stream_for_item(psess: &ParseSess, item: &ast::Item) -> TokenStream {
     let source = pprust::item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
-    source_str_to_stream(filename, source, psess, Some(item.span))
+    source_str_to_stream(psess, filename, source, Some(item.span))
 }
 
 pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> TokenStream {
     let source = pprust::crate_to_string_for_macros(krate);
     let filename = FileName::macro_expansion_source_code(&source);
-    source_str_to_stream(filename, source, psess, Some(krate.spans.inner_span))
+    source_str_to_stream(psess, filename, source, Some(krate.spans.inner_span))
 }
 
 pub fn parse_cfg_attr(
