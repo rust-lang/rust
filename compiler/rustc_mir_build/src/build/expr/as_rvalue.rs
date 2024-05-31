@@ -20,6 +20,8 @@ use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
 
+use std::slice;
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
     /// scope expression.
@@ -192,7 +194,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         value,
                     )
                 );
-                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
+                let result_operand = Operand::Move(Place::from(result));
+                this.record_operands_moved(slice::from_ref(&result_operand));
+                block.and(Rvalue::Use(result_operand))
             }
             ExprKind::Cast { source } => {
                 let source_expr = &this.thir[source];
@@ -360,6 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
+                this.record_operands_moved(&fields.raw);
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
             }
             ExprKind::Tuple { ref fields } => {
@@ -381,6 +386,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
+                this.record_operands_moved(&fields.raw);
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
             ExprKind::Closure(box ClosureExpr {
@@ -483,6 +489,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Box::new(AggregateKind::CoroutineClosure(closure_id.to_def_id(), args))
                     }
                 };
+                this.record_operands_moved(&operands.raw);
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {

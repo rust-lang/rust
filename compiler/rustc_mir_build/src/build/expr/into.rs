@@ -382,6 +382,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty,
                     active_field_index,
                 ));
+                this.record_operands_moved(&fields.raw);
                 this.cfg.push_assign(
                     block,
                     source_info,
@@ -560,6 +561,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     )
                 );
                 let resume = this.cfg.start_new_block();
+                this.record_operands_moved(slice::from_ref(&value));
                 this.cfg.terminate(
                     block,
                     source_info,
