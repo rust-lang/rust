@@ -710,7 +710,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub(crate) fn find_testable_code<T: doctest::Tester>(
+pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -720,7 +720,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
     find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
 }
 
-pub(crate) fn find_codes<T: doctest::Tester>(
+pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -773,7 +773,7 @@ pub(crate) fn find_codes<T: doctest::Tester>(
                     nb_lines -= 1;
                 }
                 let line = tests.get_line() + nb_lines + 1;
-                tests.add_test(text, block_info, line);
+                tests.visit_test(text, block_info, line);
                 prev_offset = offset.start;
             }
             Event::Start(Tag::Heading(level, _, _)) => {
@@ -781,7 +781,7 @@ pub(crate) fn find_codes<T: doctest::Tester>(
             }
             Event::Text(ref s) if register_header.is_some() => {
                 let level = register_header.unwrap();
-                tests.register_header(s, level);
+                tests.visit_header(s, level);
                 register_header = None;
             }
             _ => {}

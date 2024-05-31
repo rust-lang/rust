@@ -983,12 +983,12 @@ impl IndividualTestOptions {
     }
 }
 
-pub(crate) trait Tester {
-    fn add_test(&mut self, test: String, config: LangString, line: usize);
+pub(crate) trait DoctestVisitor {
+    fn visit_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
         0
     }
-    fn register_header(&mut self, _name: &str, _level: u32) {}
+    fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
 pub(crate) struct Collector {
@@ -1091,8 +1091,8 @@ impl Collector {
     }
 }
 
-impl Tester for Collector {
-    fn add_test(&mut self, test: String, config: LangString, line: usize) {
+impl DoctestVisitor for Collector {
+    fn visit_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
         let crate_name = self.crate_name.clone();
@@ -1242,7 +1242,7 @@ impl Tester for Collector {
         }
     }
 
-    fn register_header(&mut self, name: &str, level: u32) {
+    fn visit_header(&mut self, name: &str, level: u32) {
         if self.use_headers {
             // We use these headings as test names, so it's good if
             // they're valid identifiers.
@@ -1287,8 +1287,8 @@ impl Tester for Collector {
 }
 
 #[cfg(test)] // used in tests
-impl Tester for Vec<usize> {
-    fn add_test(&mut self, _test: String, _config: LangString, line: usize) {
+impl DoctestVisitor for Vec<usize> {
+    fn visit_test(&mut self, _test: String, _config: LangString, line: usize) {
         self.push(line);
     }
 }
