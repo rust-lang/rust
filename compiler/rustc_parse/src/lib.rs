@@ -39,20 +39,17 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a `Vec<Diag>` instead of a single `Diag`.
-macro_rules! panictry_buffer {
-    ($e:expr) => {{
-        use std::result::Result::{Err, Ok};
-        match $e {
-            Ok(e) => e,
-            Err(errs) => {
-                for e in errs {
-                    e.emit();
-                }
-                FatalError.raise()
+// Unwrap the result if `Ok`, otherwise emit the diagnostics and abort.
+fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
+    match expr {
+        Ok(expr) => expr,
+        Err(errs) => {
+            for err in errs {
+                err.emit();
             }
+            FatalError.raise()
         }
-    }};
+    }
 }
 
 pub fn parse_crate_from_file<'a>(input: &Path, psess: &'a ParseSess) -> PResult<'a, ast::Crate> {
@@ -86,7 +83,7 @@ pub fn parse_crate_attrs_from_source_str(
 
 /// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(psess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
-    panictry_buffer!(maybe_new_parser_from_source_str(psess, name, source))
+    unwrap_or_emit_fatal(maybe_new_parser_from_source_str(psess, name, source))
 }
 
 /// Creates a new parser from a source string. Returns any buffered errors from lexing the initial
@@ -112,7 +109,7 @@ pub fn new_parser_from_file<'a>(psess: &'a ParseSess, path: &Path, sp: Option<Sp
         err.emit();
     });
 
-    panictry_buffer!(maybe_source_file_to_parser(psess, source_file))
+    unwrap_or_emit_fatal(maybe_source_file_to_parser(psess, source_file))
 }
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing
@@ -148,7 +145,7 @@ pub fn source_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> TokenStream {
-    panictry_buffer!(maybe_source_file_to_stream(psess, source_file, override_span))
+    unwrap_or_emit_fatal(maybe_source_file_to_stream(psess, source_file, override_span))
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
