@@ -88,6 +88,9 @@ RUN rm -rf /tmp/riscv-pk
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# Avoid "fatal: detected dubious ownership in repository at '/checkout'" error
+RUN git config --global --add safe.directory /checkout
+
 ENV RUST_CONFIGURE_ARGS --qemu-riscv64-rootfs=/tmp/rootfs
 ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target riscv64gc-unknown-linux-gnu
 
