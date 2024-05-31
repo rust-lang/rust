@@ -47,35 +47,6 @@ fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
     }
 }
 
-pub fn parse_crate_from_file<'a>(input: &Path, psess: &'a ParseSess) -> PResult<'a, ast::Crate> {
-    let mut parser = new_parser_from_file(psess, input, None);
-    parser.parse_crate_mod()
-}
-
-pub fn parse_crate_attrs_from_file<'a>(
-    input: &Path,
-    psess: &'a ParseSess,
-) -> PResult<'a, ast::AttrVec> {
-    let mut parser = new_parser_from_file(psess, input, None);
-    parser.parse_inner_attributes()
-}
-
-pub fn parse_crate_from_source_str(
-    name: FileName,
-    source: String,
-    psess: &ParseSess,
-) -> PResult<'_, ast::Crate> {
-    new_parser_from_source_str(psess, name, source).parse_crate_mod()
-}
-
-pub fn parse_crate_attrs_from_source_str(
-    name: FileName,
-    source: String,
-    psess: &ParseSess,
-) -> PResult<'_, ast::AttrVec> {
-    new_parser_from_source_str(psess, name, source).parse_inner_attributes()
-}
-
 /// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(psess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
     unwrap_or_emit_fatal(maybe_new_parser_from_source_str(psess, name, source))
