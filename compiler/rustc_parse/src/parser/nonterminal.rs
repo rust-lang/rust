@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
-                && (token.span.edition().at_least_rust_2024() || !token.is_keyword(kw::Const))
+                && (!token.is_keyword(kw::Const) || token.span.edition().at_least_rust_2024())
             }
             NonterminalKind::Ty => token.can_begin_type(),
             NonterminalKind::Ident => get_macro_ident(token).is_some(),
