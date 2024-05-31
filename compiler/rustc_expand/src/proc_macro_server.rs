@@ -14,7 +14,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::Parser;
-use rustc_parse::source_str_to_stream;
+use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
@@ -467,7 +467,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
         let name = FileName::proc_macro_source_code(s);
-        let mut parser = rustc_parse::new_parser_from_source_str(self.psess(), name, s.to_owned());
+        let mut parser =
+            unwrap_or_emit_fatal(new_parser_from_source_str(self.psess(), name, s.to_owned()));
 
         let first_span = parser.token.span.data();
         let minus_present = parser.eat(&token::BinOp(token::Minus));
@@ -539,12 +540,12 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        source_str_to_stream(
+        unwrap_or_emit_fatal(source_str_to_stream(
             self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
             Some(self.call_site),
-        )
+        ))
     }
 
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {

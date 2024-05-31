@@ -19,7 +19,9 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_parse::{new_parser_from_file, new_parser_from_source_str, validate_attr};
+use rustc_parse::{
+    new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
+};
 use rustc_passes::{abi_test, hir_stats, layout_test};
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
@@ -43,12 +45,12 @@ use tracing::{info, instrument};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || {
-        let mut parser = match &sess.io.input {
+        let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
             Input::File(file) => new_parser_from_file(&sess.psess, file, None),
             Input::Str { input, name } => {
                 new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
             }
-        };
+        });
         parser.parse_crate_mod()
     })?;
 
