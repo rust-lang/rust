@@ -10,7 +10,7 @@ use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::*;
 use crate::core::DocContext;
-use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
+use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::visit::DocVisitor;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
@@ -45,7 +45,7 @@ pub(crate) struct Tests {
 }
 
 impl crate::doctest::DoctestVisitor for Tests {
-    fn visit_test(&mut self, _: String, config: LangString, _: usize) {
+    fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine) {
         if config.rust && config.ignore == Ignore::None {
             self.found_tests += 1;
         }

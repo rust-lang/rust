@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 
 use crate::config::Options as RustdocOptions;
-use crate::html::markdown::{ErrorCodes, Ignore, LangString};
+use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
 
 use self::rust::HirCollector;
@@ -961,10 +961,7 @@ struct ScrapedDoctest {
 }
 
 pub(crate) trait DoctestVisitor {
-    fn visit_test(&mut self, test: String, config: LangString, line: usize);
-    fn get_line(&self) -> usize {
-        0
-    }
+    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine);
     fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
@@ -1187,8 +1184,8 @@ fn doctest_run_fn(
 
 #[cfg(test)] // used in tests
 impl DoctestVisitor for Vec<usize> {
-    fn visit_test(&mut self, _test: String, _config: LangString, line: usize) {
-        self.push(line);
+    fn visit_test(&mut self, _test: String, _config: LangString, rel_line: MdRelLine) {
+        self.push(1 + rel_line.offset());
     }
 }
 

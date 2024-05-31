@@ -710,6 +710,28 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
+/// A newtype that represents a relative line number in Markdown.
+///
+/// In other words, this represents an offset from the first line of Markdown
+/// in a doc comment or other source. If the first Markdown line appears on line 32,
+/// and the `MdRelLine` is 3, then the absolute line for this one is 35. I.e., it's
+/// a zero-based offset.
+pub(crate) struct MdRelLine {
+    offset: usize,
+}
+
+impl MdRelLine {
+    /// See struct docs.
+    pub(crate) const fn new(offset: usize) -> Self {
+        Self { offset }
+    }
+
+    /// See struct docs.
+    pub(crate) const fn offset(self) -> usize {
+        self.offset
+    }
+}
+
 pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
     doc: &str,
     tests: &mut T,
@@ -772,7 +794,7 @@ pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
                 if nb_lines != 0 && !&doc[prev_offset..offset.start].ends_with('\n') {
                     nb_lines -= 1;
                 }
-                let line = tests.get_line() + nb_lines + 1;
+                let line = MdRelLine::new(nb_lines);
                 tests.visit_test(text, block_info, line);
                 prev_offset = offset.start;
             }

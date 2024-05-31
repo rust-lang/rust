@@ -15,7 +15,7 @@ use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 
 use super::{DoctestVisitor, ScrapedDoctest};
 use crate::clean::{types::AttributesExt, Attributes};
-use crate::html::markdown::{self, ErrorCodes, LangString};
+use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
     source_map: Lrc<SourceMap>,
@@ -36,10 +36,17 @@ impl RustCollector {
         }
         filename
     }
+
+    fn get_base_line(&self) -> usize {
+        let sp_lo = self.position.lo().to_usize();
+        let loc = self.source_map.lookup_char_pos(BytePos(sp_lo as u32));
+        loc.line
+    }
 }
 
 impl DoctestVisitor for RustCollector {
-    fn visit_test(&mut self, test: String, config: LangString, line: usize) {
+    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
+        let line = self.get_base_line() + rel_line.offset();
         self.tests.push(ScrapedDoctest {
             filename: self.get_filename(),
             line,
@@ -47,12 +54,6 @@ impl DoctestVisitor for RustCollector {
             langstr: config,
             text: test,
         });
-    }
-
-    fn get_line(&self) -> usize {
-        let line = self.position.lo().to_usize();
-        let line = self.source_map.lookup_char_pos(BytePos(line as u32)).line;
-        if line > 0 { line - 1 } else { line }
     }
 
     fn visit_header(&mut self, _name: &str, _level: u32) {}

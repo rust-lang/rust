@@ -9,7 +9,7 @@ use super::{
     generate_args_file, CreateRunnableDoctests, DoctestVisitor, GlobalTestOptions, ScrapedDoctest,
 };
 use crate::config::Options;
-use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
+use crate::html::markdown::{find_testable_code, ErrorCodes, LangString, MdRelLine};
 
 struct MdCollector {
     tests: Vec<ScrapedDoctest>,
@@ -18,8 +18,10 @@ struct MdCollector {
 }
 
 impl DoctestVisitor for MdCollector {
-    fn visit_test(&mut self, test: String, config: LangString, line: usize) {
+    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
         let filename = self.filename.clone();
+        // First line of Markdown is line 1.
+        let line = 1 + rel_line.offset();
         self.tests.push(ScrapedDoctest {
             filename,
             line,
@@ -27,10 +29,6 @@ impl DoctestVisitor for MdCollector {
             langstr: config,
             text: test,
         });
-    }
-
-    fn get_line(&self) -> usize {
-        0
     }
 
     fn visit_header(&mut self, name: &str, level: u32) {
