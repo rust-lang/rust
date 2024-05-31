@@ -526,7 +526,7 @@ pub enum IntTy {
 impl IntTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes(),
             IntTy::I8 => 1,
             IntTy::I16 => 2,
             IntTy::I32 => 4,
@@ -549,7 +549,7 @@ pub enum UintTy {
 impl UintTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes(),
             UintTy::U8 => 1,
             UintTy::U16 => 2,
             UintTy::U32 => 4,
@@ -1185,7 +1185,7 @@ impl Allocation {
         match self.read_int()? {
             0 => Ok(false),
             1 => Ok(true),
-            val @ _ => Err(error!("Unexpected value for bool: `{val}`")),
+            val => Err(error!("Unexpected value for bool: `{val}`")),
         }
     }
 

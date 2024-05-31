@@ -10,10 +10,15 @@ use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP};
 use crate::runtest::{static_regex, Emit, ProcRes, TestCx, WillExecute};
 
 impl<'test> TestCx<'test> {
+    fn coverage_dump_path(&self) -> &Path {
+        self.config
+            .coverage_dump_path
+            .as_deref()
+            .unwrap_or_else(|| self.fatal("missing --coverage-dump"))
+    }
+
     pub(crate) fn run_coverage_map_test(&self) {
-        let Some(coverage_dump_path) = &self.config.coverage_dump_path else {
-            self.fatal("missing --coverage-dump");
-        };
+        let coverage_dump_path = self.coverage_dump_path();
 
         let (proc_res, llvm_ir_path) = self.compile_test_and_save_ir();
         if !proc_res.status.success() {
@@ -102,8 +107,10 @@ impl<'test> TestCx<'test> {
         let proc_res = self.run_llvm_tool("llvm-cov", |cmd| {
             cmd.args(["show", "--format=text", "--show-line-counts-or-regions"]);
 
-            cmd.arg("--Xdemangler");
-            cmd.arg(self.config.rust_demangler_path.as_ref().unwrap());
+            // Specify the demangler binary and its arguments.
+            let coverage_dump_path = self.coverage_dump_path();
+            cmd.arg("--Xdemangler").arg(coverage_dump_path);
+            cmd.arg("--Xdemangler").arg("--demangle");
 
             cmd.arg("--instr-profile");
             cmd.arg(&profdata_path);

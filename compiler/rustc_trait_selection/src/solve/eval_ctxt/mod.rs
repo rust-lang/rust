@@ -12,7 +12,6 @@ use rustc_middle::bug;
 use rustc_middle::traits::solve::{
     inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AliasRelationDirection;
 use rustc_middle::ty::TypeFolder;
 use rustc_middle::ty::{
@@ -898,16 +897,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             self.inspect.add_var_value(arg);
         }
         args
-    }
-
-    pub(super) fn translate_args(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        source_impl: DefId,
-        source_args: ty::GenericArgsRef<'tcx>,
-        target_node: specialization_graph::Node,
-    ) -> ty::GenericArgsRef<'tcx> {
-        crate::traits::translate_args(self.infcx, param_env, source_impl, source_args, target_node)
     }
 
     pub(super) fn register_ty_outlives(&self, ty: Ty<'tcx>, lt: ty::Region<'tcx>) {
