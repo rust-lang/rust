@@ -34,11 +34,6 @@ mod errors;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-// A bunch of utility functions of the form `parse_<thing>_from_<source>`
-// where <thing> includes crate, expr, item, stmt, tts, and one that
-// uses a HOF to parse anything, and <source> includes file and
-// `source_str`.
-
 // Unwrap the result if `Ok`, otherwise emit the diagnostics and abort.
 fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
     match expr {
@@ -127,8 +122,6 @@ fn maybe_source_file_to_parser(
 
     Ok(parser)
 }
-
-// Base abstractions
 
 pub fn source_str_to_stream(
     name: FileName,
