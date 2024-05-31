@@ -156,7 +156,7 @@ fn pretty_terminator<W: Write>(writer: &mut W, terminator: &TerminatorKind) -> i
 
 fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind) -> io::Result<()> {
     use self::TerminatorKind::*;
-    const INDENT: &'static str = "        ";
+    const INDENT: &str = "        ";
     match terminator {
         Goto { .. } => write!(writer, "{INDENT}goto"),
         SwitchInt { discr, .. } => {
@@ -315,7 +315,7 @@ fn pretty_operand(operand: &Operand) -> String {
 }
 
 fn pretty_const(literal: &Const) -> String {
-    with(|cx| cx.const_pretty(&literal))
+    with(|cx| cx.const_pretty(literal))
 }
 
 fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {

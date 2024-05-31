@@ -524,7 +524,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
         } else {
             let mut s_ = Vec::with_capacity(flags.width);
             s_.extend(repeat(b' ').take(n));
-            s_.extend(s.into_iter());
+            s_.extend(s);
             s = s_;
         }
     }
