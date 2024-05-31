@@ -12,7 +12,7 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind, UnwindAction, UnwindTerminateReason, RETURN_PLACE,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::util::Discr;
+use rustc_middle::ty::util::{AsyncDropGlueMorphology, Discr};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::source_map::respan;
@@ -116,15 +116,25 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn build(self) -> Body<'tcx> {
-        let (tcx, def_id, Some(self_ty)) = (self.tcx, self.def_id, self.self_ty) else {
+        let (tcx, Some(self_ty)) = (self.tcx, self.self_ty) else {
             return self.build_zst_output();
         };
+        match self_ty.async_drop_glue_morphology(tcx) {
+            AsyncDropGlueMorphology::Noop => span_bug!(
+                self.span,
+                "async drop glue shim generator encountered type with noop async drop glue morphology"
+            ),
+            AsyncDropGlueMorphology::DeferredDropInPlace => {
+                return self.build_deferred_drop_in_place();
+            }
+            AsyncDropGlueMorphology::Custom => (),
+        }
 
         let surface_drop_kind = || {
-            let param_env = tcx.param_env_reveal_all_normalized(def_id);
-            if self_ty.has_surface_async_drop(tcx, param_env) {
+            let adt_def = self_ty.ty_adt_def()?;
+            if adt_def.async_destructor(tcx).is_some() {
                 Some(SurfaceDropKind::Async)
-            } else if self_ty.has_surface_drop(tcx, param_env) {
+            } else if adt_def.destructor(tcx).is_some() {
                 Some(SurfaceDropKind::Sync)
             } else {
                 None
@@ -264,6 +274,13 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
     fn build_zst_output(mut self) -> Body<'tcx> {
         self.put_zst_output();
+        self.return_()
+    }
+
+    fn build_deferred_drop_in_place(mut self) -> Body<'tcx> {
+        self.put_self();
+        let deferred = self.combine_deferred_drop_in_place();
+        self.combine_fuse(deferred);
         self.return_()
     }
 
@@ -441,6 +458,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         )
     }
 
+    fn combine_deferred_drop_in_place(&mut self) -> Ty<'tcx> {
+        self.apply_combinator(
+            1,
+            LangItem::AsyncDropDeferredDropInPlace,
+            &[self.self_ty.unwrap().into()],
+        )
+    }
+
     fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
         self.apply_combinator(1, LangItem::AsyncDropFuse, &[inner_future_ty.into()])
     }
@@ -481,7 +506,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         if let Some(ty) = self.self_ty {
             debug_assert_eq!(
                 output.ty(&self.locals, self.tcx),
-                ty.async_destructor_ty(self.tcx, self.param_env),
+                ty.async_destructor_ty(self.tcx),
                 "output async destructor types did not match for type: {ty:?}",
             );
         }

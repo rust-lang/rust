@@ -1,6 +1,11 @@
 //@revisions: stack tree
 //@compile-flags: -Zmiri-strict-provenance
 //@[tree]compile-flags: -Zmiri-tree-borrows
+
+// WARNING: If you would ever want to modify this test,
+// please consider modifying rustc's async drop test at
+// `tests/ui/async-await/async-drop.rs`.
+
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker, async_closure)]
 #![allow(incomplete_features, dead_code)]
 

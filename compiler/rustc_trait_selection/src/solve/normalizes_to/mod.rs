@@ -845,7 +845,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::Str
             | ty::Slice(_)
             | ty::Tuple(_)
-            | ty::Error(_) => self_ty.async_destructor_ty(ecx.interner(), goal.param_env),
+            | ty::Error(_) => self_ty.async_destructor_ty(ecx.interner()),
 
             // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
             // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`

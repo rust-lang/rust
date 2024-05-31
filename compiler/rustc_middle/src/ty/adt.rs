@@ -24,7 +24,9 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
+use super::{
+    AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
@@ -575,6 +577,12 @@ impl<'tcx> AdtDef<'tcx> {
 
     pub fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<Destructor> {
         tcx.adt_destructor(self.did())
+    }
+
+    // FIXME: consider combining this method with `AdtDef::destructor` and removing
+    // this version
+    pub fn async_destructor(self, tcx: TyCtxt<'tcx>) -> Option<AsyncDestructor> {
+        tcx.adt_async_destructor(self.did())
     }
 
     /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,

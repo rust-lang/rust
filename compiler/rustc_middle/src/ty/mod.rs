@@ -1172,6 +1172,15 @@ pub struct Destructor {
     pub constness: hir::Constness,
 }
 
+// FIXME: consider combining this definition with regular `Destructor`
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub struct AsyncDestructor {
+    /// The `DefId` of the async destructor future constructor
+    pub ctor: DefId,
+    /// The `DefId` of the async destructor future type
+    pub future: DefId,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantFlags(u8);
 bitflags::bitflags! {
