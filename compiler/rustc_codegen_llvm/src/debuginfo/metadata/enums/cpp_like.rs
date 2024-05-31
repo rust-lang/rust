@@ -12,7 +12,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{LayoutOf, TyAndLayout},
-        AdtDef, CoroutineArgs, Ty,
+        AdtDef, CoroutineArgs, CoroutineArgsExt, Ty,
     },
 };
 use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
