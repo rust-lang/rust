@@ -15,6 +15,7 @@ This print option works similarly to `--print=cfg` (modulo check-cfg specifics):
  - `cfg(feature, values("foo", "bar"))`: `feature="foo"` and `feature="bar"`
  - `cfg(feature, values(none(), ""))`: `feature` and `feature=""`
  - `cfg(feature, values(any()))`: `feature=any()`
+ - `cfg(feature, values())`: `feature=`
  - `cfg(any())`: `any()`
  - *nothing*: `any()=any()`
 
