@@ -3,7 +3,7 @@
 ## Common Target Details
 
 This documentation covers details that apply to a range of bare-metal targets
-for 32-bit ARM CPUs. The `arm-none-eabi` flavor of the GNU compiler toolchain is
+for 32-bit Arm CPUs. The `arm-none-eabi` flavor of the GNU compiler toolchain is
 often used to assist compilation to these targets.
 
 Details that apply only to only a specific target in this group are covered in
@@ -11,55 +11,55 @@ their own document.
 
 ### Tier 2 Target List
 
-- ARM A-Profile Architectures
+- Arm A-Profile Architectures
   - `armv7a-none-eabi`
-- ARM R-Profile Architectures
+- Arm R-Profile Architectures
   - [`armv7r-none-eabi` and `armv7r-none-eabihf`](armv7r-none-eabi.md)
   - [`armebv7r-none-eabi` and `armebv7r-none-eabihf`](armv7r-none-eabi.md)
-- ARM M-Profile Architectures
+- Arm M-Profile Architectures
   - [`thumbv6m-none-eabi`](thumbv6m-none-eabi.md)
   - [`thumbv7m-none-eabi`](thumbv7m-none-eabi.md)
   - [`thumbv7em-none-eabi` and `thumbv7em-none-eabihf`](thumbv7em-none-eabi.md)
   - [`thumbv8m.base-none-eabi`](thumbv8m.base-none-eabi.md)
   - [`thumbv8m.main-none-eabi` and `thumbv8m.main-none-eabihf`](thumbv8m.main-none-eabi.md)
-- *Legacy* ARM Architectures
+- *Legacy* Arm Architectures
   - None
 
 ### Tier 3 Target List
 
-- ARM A-Profile Architectures
+- Arm A-Profile Architectures
   - `armv7a-none-eabihf`
-- ARM R-Profile Architectures
+- Arm R-Profile Architectures
   - [`armv8r-none-eabihf`](armv8r-none-eabihf.md)
-- ARM M-Profile Architectures
+- Arm M-Profile Architectures
   - None
-- *Legacy* ARM Architectures
+- *Legacy* Arm Architectures
   - [`armv4t-none-eabi` and `thumbv4t-none-eabi`](armv4t-none-eabi.md)
   - [`armv5te-none-eabi` and `thumbv5te-none-eabi`](armv5te-none-eabi.md)
 
 ## Instruction Sets
 
-There are two 32-bit instruction set architectures (ISAs) defined by ARM:
+There are two 32-bit instruction set architectures (ISAs) defined by Arm:
 
 - The [*A32 ISA*][a32-isa], with fixed-width 32-bit instructions. Previously
-  known as the *ARM* ISA, this originated with the original ARM1 of 1985 and has
+  known as the *Arm* ISA, this originated with the original Arm1 of 1985 and has
   been updated by various revisions to the architecture specifications ever
   since.
 - The [*T32 ISA*][t32-isa], with a mix of 16-bit and 32-bit width instructions.
   Note that this term includes both the original 16-bit width *Thumb* ISA
-  introduced with the ARMv4T architecture in 1994, and the later 16/32-bit sized
-  *Thumb-2* ISA introduced with the ARMv6T2 architecture in 2003.
+  introduced with the Armv4T architecture in 1994, and the later 16/32-bit sized
+  *Thumb-2* ISA introduced with the Armv6T2 architecture in 2003.
 
-Again, these ISAs have been revised by subsequent revisions to the relevant ARM
+Again, these ISAs have been revised by subsequent revisions to the relevant Arm
 architecture specifications.
 
 There is also a 64-bit ISA with fixed-width 32-bit instructions called the *A64
 ISA*, but targets which implement that instruction set generally start with
 `aarch64*` and are discussed elsewhere.
 
-Rust targets starting with `arm*` generate ARM (A32) code by default, whilst
-targets named `thumb*` generate Thumb (T32) code by default. Most ARM chips
-support both Thumb mode and ARM mode, with the notable exception that M-profile
+Rust targets starting with `arm*` generate Arm (A32) code by default, whilst
+targets named `thumb*` generate Thumb (T32) code by default. Most Arm chips
+support both Thumb mode and Arm mode, with the notable exception that M-profile
 processors (`thumbv*m*-none-eabi*` targets) *only* support Thumb-mode.
 
 Rust targets ending with `eabi` use the so-called *soft-float ABI*: functions
@@ -92,14 +92,14 @@ instructions.
 
 ## Target CPU and Target Feature options
 
-It is possible to tell Rust (or LLVM) that you have a specific model of ARM
+It is possible to tell Rust (or LLVM) that you have a specific model of Arm
 processor, using the [`-C target-cpu`][target-cpu] option. You can also control
 whether Rust (or LLVM) will include instructions that target optional hardware
 features, e.g. hardware floating-point, or Advanced SIMD operations, using [`-C
 target-feature`][target-feature].
 
 It is important to note that selecting a *target-cpu* will typically enable
-*all* the optional features available from ARM on that model of CPU and your
+*all* the optional features available from Arm on that model of CPU and your
 particular implementation of that CPU may not have those features available. In
 that case, you can use `-C target-feature=-option` to turn off the specific CPU
 features you do not have available, leaving you with the optimized instruction
@@ -116,7 +116,7 @@ uses (likely linker related ones):
 
 ```toml
 rustflags = [
-  # Usual ARM bare-metal linker setup
+  # Usual Arm bare-metal linker setup
   "-Clink-arg=-Tlink.x",
   "-Clink-arg=--nmagic",
   # tell Rust we have a Cortex-M55
@@ -139,7 +139,7 @@ These targets are cross-compiled and use static linking.
 
 By default, the `lld` linker included with Rust will be used; however, you may
 want to use the GNU linker instead. This can be obtained for Windows/Mac/Linux
-from the [ARM Developer Website][arm-gnu-toolchain], or possibly from your OS's
+from the [Arm Developer Website][arm-gnu-toolchain], or possibly from your OS's
 package manager. To use it, add the following to your `.cargo/config.toml`:
 
 ```toml
@@ -185,7 +185,7 @@ Most of `core` should work as expected, with the following notes:
   specific kind of FPU)
 * Integer division is also emulated in software on some targets, depending on
   the target, `target-cpu` and `target-feature`s.
-* Older ARM architectures (e.g. ARMv4, ARMv5TE and ARMv6-M) are limited to basic
+* Older Arm architectures (e.g. Armv4, Armv5TE and Armv6-M) are limited to basic
   [`load`][atomic-load] and [`store`][atomic-store] operations, and not more
   advanced operations like [`fetch_add`][fetch-add] or
   [`compare_exchange`][compare-exchange].
