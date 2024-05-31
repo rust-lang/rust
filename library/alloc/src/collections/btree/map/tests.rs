@@ -2104,6 +2104,7 @@ create_append_test!(test_append_1700, 1700);
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[cfg_attr(bootstrap, ignore = "test requires compiler fix from current nightly")]
 fn test_append_drop_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -2118,7 +2119,7 @@ fn test_append_drop_leak() {
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
     assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1); // should be 2 were it not for Rust issue #47949
+    assert_eq!(b.dropped(), 2);
     assert_eq!(c.dropped(), 2);
 }
 

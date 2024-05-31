@@ -520,15 +520,21 @@ fn construct_fn<'tcx>(
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
         let fn_end = span_with_body.shrink_to_hi();
-        let return_block =
-            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+        let return_block = unpack!(builder.in_breakable_scope(
+            None,
+            Place::return_place(),
+            Some(call_site_scope),
+            fn_end,
+            |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(START_BLOCK, arguments, arg_scope, expr)
                 }))
-            }));
+            },
+        ));
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         builder.build_drop_trees();
+        builder.unschedule_return_place_drop();
         return_block.unit()
     }));
 
@@ -579,7 +585,7 @@ fn construct_const<'a, 'tcx>(
         Builder::new(thir, infcx, def, hir_id, span, 0, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
-    unpack!(block = builder.expr_into_dest(Place::return_place(), block, expr));
+    unpack!(block = builder.expr_into_dest(Place::return_place(), None, block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -976,7 +982,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             self.cfg.start_new_block().unit()
         } else {
-            self.expr_into_dest(Place::return_place(), block, expr_id)
+            let body = self.tcx.hir().body_owned_by(self.def_id);
+            let call_site_scope =
+                region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::CallSite };
+            self.expr_into_dest(Place::return_place(), Some(call_site_scope), block, expr_id)
         }
     }
 

@@ -186,10 +186,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value_ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
-                // initialize the box contents:
+                // Initialize the box contents. No scope is needed since the
+                // `Box` is already scheduled to be dropped.
                 unpack!(
                     block = this.expr_into_dest(
                         this.tcx.mk_place_deref(Place::from(result)),
+                        None,
                         block,
                         value,
                     )

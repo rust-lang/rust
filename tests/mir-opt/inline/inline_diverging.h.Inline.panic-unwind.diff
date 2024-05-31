@@ -29,14 +29,14 @@
 +         StorageLive(_4);
 +         StorageLive(_3);
 +         _3 = &_2;
-+         _4 = <fn() -> ! {sleep} as Fn<()>>::call(move _3, const ()) -> [return: bb1, unwind: bb5];
++         _4 = <fn() -> ! {sleep} as Fn<()>>::call(move _3, const ()) -> [return: bb1, unwind: bb6];
 +     }
 + 
 +     bb1: {
 +         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = &_2;
-+         _6 = <fn() -> ! {sleep} as Fn<()>>::call(move _5, const ()) -> [return: bb2, unwind: bb4];
++         _6 = <fn() -> ! {sleep} as Fn<()>>::call(move _5, const ()) -> [return: bb2, unwind: bb5];
 +     }
 + 
 +     bb2: {
@@ -46,7 +46,7 @@
 +         _1 = (move _7, _6);
 +         StorageDead(_7);
 +         StorageDead(_4);
-+         drop(_2) -> [return: bb3, unwind continue];
++         drop(_2) -> [return: bb3, unwind: bb4];
 +     }
 + 
 +     bb3: {
@@ -54,14 +54,18 @@
 +     }
 + 
 +     bb4 (cleanup): {
-+         drop(_4) -> [return: bb5, unwind terminate(cleanup)];
++         drop(_1) -> [return: bb7, unwind terminate(cleanup)];
 +     }
 + 
 +     bb5 (cleanup): {
-+         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
++         drop(_4) -> [return: bb6, unwind terminate(cleanup)];
 +     }
 + 
 +     bb6 (cleanup): {
++         drop(_2) -> [return: bb7, unwind terminate(cleanup)];
++     }
++ 
++     bb7 (cleanup): {
 +         resume;
       }
   }
