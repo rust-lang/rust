@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_interface::interface;
 use rustc_parse::new_parser_from_source_str;
@@ -19,10 +19,9 @@ use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
+use rustc_span::FileName;
 use rustc_target::spec::{Target, TargetTriple};
 
-use std::env;
 use std::fs::File;
 use std::io::{self, Write};
 use std::panic;
@@ -38,7 +37,8 @@ use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
 
-use self::rust::HirCollector;
+use self::markdown::MdDoctest;
+use self::rust::{HirCollector, RustDoctest};
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone, Default)]
@@ -182,29 +182,19 @@ pub(crate) fn run(
                     let mut collector = Collector::new(
                         tcx.crate_name(LOCAL_CRATE).to_string(),
                         options,
-                        false,
                         opts,
-                        Some(compiler.sess.psess.clone_source_map()),
-                        None,
-                        enable_per_target_ignores,
                         file_path,
                     );
 
-                    let mut hir_collector = HirCollector {
-                        sess: &compiler.sess,
-                        collector: &mut collector,
-                        map: tcx.hir(),
-                        codes: ErrorCodes::from(
-                            compiler.sess.opts.unstable_features.is_nightly_build(),
-                        ),
+                    let hir_collector = HirCollector::new(
+                        &compiler.sess,
+                        tcx.hir(),
+                        ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
+                        enable_per_target_ignores,
                         tcx,
-                    };
-                    hir_collector.visit_testable(
-                        "".to_string(),
-                        CRATE_DEF_ID,
-                        tcx.hir().span(CRATE_HIR_ID),
-                        |this| tcx.hir().walk_toplevel_module(this),
                     );
+                    let tests = hir_collector.collect_crate();
+                    tests.into_iter().for_each(|t| collector.add_test(ScrapedDoctest::Rust(t)));
 
                     collector
                 });
@@ -985,6 +975,12 @@ impl IndividualTestOptions {
     }
 }
 
+/// A doctest scraped from the code, ready to be turned into a runnable test.
+enum ScrapedDoctest {
+    Rust(RustDoctest),
+    Markdown(MdDoctest),
+}
+
 pub(crate) trait DoctestVisitor {
     fn visit_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
@@ -996,36 +992,9 @@ pub(crate) trait DoctestVisitor {
 pub(crate) struct Collector {
     pub(crate) tests: Vec<test::TestDescAndFn>,
 
-    // The name of the test displayed to the user, separated by `::`.
-    //
-    // In tests from Rust source, this is the path to the item
-    // e.g., `["std", "vec", "Vec", "push"]`.
-    //
-    // In tests from a markdown file, this is the titles of all headers (h1~h6)
-    // of the sections that contain the code block, e.g., if the markdown file is
-    // written as:
-    //
-    // ``````markdown
-    // # Title
-    //
-    // ## Subtitle
-    //
-    // ```rust
-    // assert!(true);
-    // ```
-    // ``````
-    //
-    // the `names` vector of that test will be `["Title", "Subtitle"]`.
-    names: Vec<String>,
-
     rustdoc_options: RustdocOptions,
-    use_headers: bool,
-    enable_per_target_ignores: bool,
     crate_name: String,
     opts: GlobalTestOptions,
-    position: Span,
-    source_map: Option<Lrc<SourceMap>>,
-    filename: Option<PathBuf>,
     visited_tests: FxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
     compiling_test_count: AtomicUsize,
@@ -1036,24 +1005,14 @@ impl Collector {
     pub(crate) fn new(
         crate_name: String,
         rustdoc_options: RustdocOptions,
-        use_headers: bool,
         opts: GlobalTestOptions,
-        source_map: Option<Lrc<SourceMap>>,
-        filename: Option<PathBuf>,
-        enable_per_target_ignores: bool,
         arg_file: PathBuf,
     ) -> Collector {
         Collector {
             tests: Vec::new(),
-            names: Vec::new(),
             rustdoc_options,
-            use_headers,
-            enable_per_target_ignores,
             crate_name,
             opts,
-            position: DUMMY_SP,
-            source_map,
-            filename,
             visited_tests: FxHashMap::default(),
             unused_extern_reports: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
@@ -1061,8 +1020,8 @@ impl Collector {
         }
     }
 
-    fn generate_name(&self, line: usize, filename: &FileName) -> String {
-        let mut item_path = self.names.join("::");
+    fn generate_name(&self, filename: &FileName, line: usize, logical_path: &[String]) -> String {
+        let mut item_path = logical_path.join("::");
         item_path.retain(|c| c != ' ');
         if !item_path.is_empty() {
             item_path.push(' ');
@@ -1070,40 +1029,24 @@ impl Collector {
         format!("{} - {item_path}(line {line})", filename.prefer_local())
     }
 
-    pub(crate) fn set_position(&mut self, position: Span) {
-        self.position = position;
-    }
-
-    fn get_filename(&self) -> FileName {
-        if let Some(ref source_map) = self.source_map {
-            let filename = source_map.span_to_filename(self.position);
-            if let FileName::Real(ref filename) = filename
-                && let Ok(cur_dir) = env::current_dir()
-                && let Some(local_path) = filename.local_path()
-                && let Ok(path) = local_path.strip_prefix(&cur_dir)
-            {
-                return path.to_owned().into();
+    fn add_test(&mut self, test: ScrapedDoctest) {
+        let (filename, line, logical_path, langstr, text) = match test {
+            ScrapedDoctest::Rust(RustDoctest { filename, line, logical_path, langstr, text }) => {
+                (filename, line, logical_path, langstr, text)
             }
-            filename
-        } else if let Some(ref filename) = self.filename {
-            filename.clone().into()
-        } else {
-            FileName::Custom("input".to_owned())
-        }
-    }
-}
+            ScrapedDoctest::Markdown(MdDoctest { filename, line, logical_path, langstr, text }) => {
+                (filename, line, logical_path, langstr, text)
+            }
+        };
 
-impl DoctestVisitor for Collector {
-    fn visit_test(&mut self, test: String, config: LangString, line: usize) {
-        let filename = self.get_filename();
-        let name = self.generate_name(line, &filename);
+        let name = self.generate_name(&filename, line, &logical_path);
         let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
-        let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
+        let edition = langstr.edition.unwrap_or(self.rustdoc_options.edition);
         let target_str = self.rustdoc_options.target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
-        let no_run = config.no_run || self.rustdoc_options.no_run;
-        if !config.compile_fail {
+        let no_run = langstr.no_run || self.rustdoc_options.no_run;
+        if !langstr.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
 
@@ -1140,11 +1083,11 @@ impl DoctestVisitor for Collector {
         let rustdoc_test_options =
             IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
 
-        debug!("creating test {name}: {test}");
+        debug!("creating test {name}: {text}");
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
-                ignore: match config.ignore {
+                ignore: match langstr.ignore {
                     Ignore::All => true,
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
@@ -1157,7 +1100,7 @@ impl DoctestVisitor for Collector {
                 end_col: 0,
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
-                compile_fail: config.compile_fail,
+                compile_fail: langstr.compile_fail,
                 no_run,
                 test_type: test::TestType::DocTest,
             },
@@ -1166,11 +1109,11 @@ impl DoctestVisitor for Collector {
                     unused_externs.lock().unwrap().push(uext);
                 };
                 let res = run_test(
-                    &test,
+                    &text,
                     &crate_name,
                     line,
                     rustdoc_test_options,
-                    config,
+                    langstr,
                     no_run,
                     &opts,
                     edition,
@@ -1232,59 +1175,6 @@ impl DoctestVisitor for Collector {
                 Ok(())
             })),
         });
-    }
-
-    fn get_line(&self) -> usize {
-        if let Some(ref source_map) = self.source_map {
-            let line = self.position.lo().to_usize();
-            let line = source_map.lookup_char_pos(BytePos(line as u32)).line;
-            if line > 0 { line - 1 } else { line }
-        } else {
-            0
-        }
-    }
-
-    fn visit_header(&mut self, name: &str, level: u32) {
-        if self.use_headers {
-            // We use these headings as test names, so it's good if
-            // they're valid identifiers.
-            let name = name
-                .chars()
-                .enumerate()
-                .map(|(i, c)| {
-                    if (i == 0 && rustc_lexer::is_id_start(c))
-                        || (i != 0 && rustc_lexer::is_id_continue(c))
-                    {
-                        c
-                    } else {
-                        '_'
-                    }
-                })
-                .collect::<String>();
-
-            // Here we try to efficiently assemble the header titles into the
-            // test name in the form of `h1::h2::h3::h4::h5::h6`.
-            //
-            // Suppose that originally `self.names` contains `[h1, h2, h3]`...
-            let level = level as usize;
-            if level <= self.names.len() {
-                // ... Consider `level == 2`. All headers in the lower levels
-                // are irrelevant in this new level. So we should reset
-                // `self.names` to contain headers until <h2>, and replace that
-                // slot with the new name: `[h1, name]`.
-                self.names.truncate(level);
-                self.names[level - 1] = name;
-            } else {
-                // ... On the other hand, consider `level == 5`. This means we
-                // need to extend `self.names` to contain five headers. We fill
-                // in the missing level (<h4>) with `_`. Thus `self.names` will
-                // become `[h1, h2, h3, "_", name]`.
-                if level - 1 > self.names.len() {
-                    self.names.resize(level - 1, "_".to_owned());
-                }
-                self.names.push(name);
-            }
-        }
     }
 }
 
