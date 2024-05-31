@@ -5,7 +5,7 @@ use alloc::borrow::ToOwned;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
-use core::ops::{BitAnd, BitOr, BitXor, Sub};
+use core::ops::{Add, BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
@@ -1499,6 +1499,38 @@ where
     /// ```
     fn bitxor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.symmetric_difference(rhs).cloned().collect()
+    }
+}
+
+impl<T, S> Add<&HashSet<T, S>> for &HashSet<T, S>
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher + Default,
+{
+    type Output = HashSet<T, S>;
+
+    /// Returns the union of `self` and `rhs` as a new `HashSet<T, S>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<_> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let set = &a + &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2, 3, 4];
+    /// for x in &set {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn add(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+        self.union(rhs).cloned().collect()
     }
 }
 
