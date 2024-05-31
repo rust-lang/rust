@@ -40,7 +40,7 @@ pub struct SccData<S: Idx> {
 }
 
 impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
-    pub fn new(graph: &(impl DirectedGraph<Node = N> + Successors)) -> Self {
+    pub fn new(graph: &impl Successors<Node = N>) -> Self {
         SccsConstruction::construct(graph)
     }
 
