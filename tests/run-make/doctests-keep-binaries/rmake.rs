@@ -10,7 +10,7 @@ fn setup_test_env<F: FnOnce(&Path, &Path)>(callback: F) {
     create_dir(&out_dir).expect("failed to create doctests folder");
     rustc().input("t.rs").crate_type("rlib").run();
     callback(&out_dir, &tmp_dir().join("libt.rlib"));
-    remove_dir_all(out_dir);
+    remove_dir_all(out_dir).unwrap();
 }
 
 fn check_generated_binaries() {
@@ -60,6 +60,6 @@ fn main() {
             .extern_("t", "libt.rlib")
             .run();
 
-        remove_dir_all(run_dir_path);
+        remove_dir_all(run_dir_path).unwrap();
     });
 }

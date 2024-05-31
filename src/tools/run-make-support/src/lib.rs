@@ -6,6 +6,7 @@
 pub mod cc;
 pub mod clang;
 pub mod diff;
+mod drop_bomb;
 pub mod llvm_readobj;
 pub mod run;
 pub mod rustc;
@@ -31,52 +32,62 @@ pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
 /// Path of `TMPDIR` (a temporary build directory, not under `/tmp`).
+#[must_use]
 pub fn tmp_dir() -> PathBuf {
     env::var_os("TMPDIR").unwrap().into()
 }
 
 /// `TARGET`
+#[must_use]
 pub fn target() -> String {
     env::var("TARGET").unwrap()
 }
 
 /// Check if target is windows-like.
+#[must_use]
 pub fn is_windows() -> bool {
     target().contains("windows")
 }
 
 /// Check if target uses msvc.
+#[must_use]
 pub fn is_msvc() -> bool {
     target().contains("msvc")
 }
 
 /// Check if target uses macOS.
+#[must_use]
 pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
 /// Construct a path to a static library under `$TMPDIR` given the library name. This will return a
 /// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
+#[must_use]
 pub fn static_lib(name: &str) -> PathBuf {
     tmp_dir().join(static_lib_name(name))
 }
 
+#[must_use]
 pub fn python_command() -> Command {
     let python_path = std::env::var("PYTHON").expect("PYTHON environment variable does not exist");
     Command::new(python_path)
 }
 
+#[must_use]
 pub fn htmldocck() -> Command {
     let mut python = python_command();
     python.arg(source_path().join("src/etc/htmldocck.py"));
     python
 }
 
+#[must_use]
 pub fn source_path() -> PathBuf {
     std::env::var("S").expect("S variable does not exist").into()
 }
 
 /// Construct the static library name based on the platform.
+#[must_use]
 pub fn static_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
     //
@@ -102,11 +113,13 @@ pub fn static_lib_name(name: &str) -> String {
 
 /// Construct a path to a dynamic library under `$TMPDIR` given the library name. This will return a
 /// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
+#[must_use]
 pub fn dynamic_lib(name: &str) -> PathBuf {
     tmp_dir().join(dynamic_lib_name(name))
 }
 
 /// Construct the dynamic library name based on the platform.
+#[must_use]
 pub fn dynamic_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
     //
@@ -132,8 +145,9 @@ pub fn dynamic_lib_name(name: &str) -> String {
     }
 }
 
-/// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with the library name.
+/// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will
+/// return a path with `$TMPDIR` joined with the library name.
+#[must_use]
 pub fn rust_lib(name: &str) -> PathBuf {
     tmp_dir().join(rust_lib_name(name))
 }
@@ -145,12 +159,14 @@ pub fn rust_lib_name(name: &str) -> String {
 }
 
 /// Construct the binary name based on platform.
+#[must_use]
 pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
+#[must_use]
 #[track_caller]
 pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
     let caller_location = std::panic::Location::caller();
@@ -169,6 +185,7 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
 }
 
 /// Run `uname`. This assumes that `uname` is available on the platform!
+#[must_use]
 #[track_caller]
 pub fn uname() -> String {
     let caller_location = std::panic::Location::caller();
@@ -285,19 +302,21 @@ pub fn assert_not_contains(haystack: &str, needle: &str) {
     }
 }
 
+// FIXME(jieyouxu): convert this macro to become a command wrapper trait.
 /// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct
-/// containing a `cmd: Command` field and a `output` function. The provided helpers are:
+/// containing a `cmd: Command` field, a `command_output()` function, and a `drop_bomb` field. The
+/// provided helpers can be grouped into a few categories:
 ///
 /// 1. Generic argument acceptors: `arg` and `args` (delegated to [`Command`]). These are intended
 ///    to be *fallback* argument acceptors, when specific helpers don't make sense. Prefer to add
 ///    new specific helper methods over relying on these generic argument providers.
 /// 2. Environment manipulation methods: `env`, `env_remove` and `env_clear`: these delegate to
 ///    methods of the same name on [`Command`].
-/// 3. Output and execution: `output`, `run` and `run_fail` are provided. `output` waits for the
-///    command to finish running and returns the process's [`Output`]. `run` and `run_fail` are
-///    higher-level convenience methods which waits for the command to finish running and assert
-///    that the command successfully ran or failed as expected. Prefer `run` and `run_fail` when
-///    possible.
+/// 3. Output and execution: `run`, `run_fail` and `run_fail_assert_exit_code` are provided. `run*`
+///    are higher-level convenience methods which waits for the command to finish running and assert
+///    that the command successfully ran or failed as expected.
+///
+/// `command_output()` should almost never be used in test code.
 ///
 /// Example usage:
 ///
@@ -378,9 +397,16 @@ macro_rules! impl_common_helpers {
                 self
             }
 
+            /// Set the path where the command will be run.
+            pub fn current_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+                self.cmd.current_dir(path);
+                self
+            }
+
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
             pub fn run(&mut self) -> ::std::process::Output {
+                self.drop_bomb.defuse();
                 let caller_location = ::std::panic::Location::caller();
                 let caller_line_number = caller_location.line();
 
@@ -394,6 +420,7 @@ macro_rules! impl_common_helpers {
             /// Run the constructed command and assert that it does not successfully run.
             #[track_caller]
             pub fn run_fail(&mut self) -> ::std::process::Output {
+                self.drop_bomb.defuse();
                 let caller_location = ::std::panic::Location::caller();
                 let caller_line_number = caller_location.line();
 
@@ -404,10 +431,20 @@ macro_rules! impl_common_helpers {
                 output
             }
 
-            /// Set the path where the command will be run.
-            pub fn current_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
-                self.cmd.current_dir(path);
-                self
+            /// Run the constructed command and assert that it does not successfully run and
+            /// exits with the expected exit code.
+            // FIXME(jieyouxu): we should probably *always* assert the expected exit code?
+            #[track_caller]
+            pub fn run_fail_assert_exit_code(&mut self, code: i32) -> ::std::process::Output {
+                self.drop_bomb.defuse();
+                let caller_location = ::std::panic::Location::caller();
+                let caller_line_number = caller_location.line();
+
+                let output = self.command_output();
+                if output.status.code().unwrap() != code {
+                    handle_failed_output(&self.cmd, output, caller_line_number);
+                }
+                output
             }
         }
     };

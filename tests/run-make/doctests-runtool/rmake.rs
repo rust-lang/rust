@@ -33,6 +33,6 @@ fn main() {
         .current_dir(tmp_dir())
         .run();
 
-    remove_dir_all(run_dir);
-    remove_dir_all(run_tool);
+    remove_dir_all(run_dir).unwrap();
+    remove_dir_all(run_tool).unwrap();
 }

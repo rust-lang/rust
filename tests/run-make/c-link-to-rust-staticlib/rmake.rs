@@ -10,6 +10,6 @@ fn main() {
     rustc().input("foo.rs").run();
     cc().input("bar.c").input(static_lib("foo")).out_exe("bar").args(&extra_c_flags()).run();
     run("bar");
-    fs::remove_file(static_lib("foo"));
+    fs::remove_file(static_lib("foo")).unwrap();
     run("bar");
 }
