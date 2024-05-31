@@ -2070,16 +2070,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 if let Some(guard) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty, in_path) {
-                    if let hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) =
-                        tcx.parent_hir_node(hir_ty.hir_id)
-                    {
-                        // `tests/ui/suggestions/issue-116434-2021.rs` and others would otherwise
-                        // fail with no error beign emitted. We restrict the silencing only to
-                        // expressions, as those *will* emit the error *and* also produce further
-                        // knock-down errors.
-                    } else {
-                        return Ty::new_error(tcx, guard);
-                    }
+                    return Ty::new_error(tcx, guard);
                 }
 
                 let repr = match repr {

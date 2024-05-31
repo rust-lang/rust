@@ -61,16 +61,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let label = "add `dyn` keyword before this trait";
             let mut diag =
                 rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
-            if self_ty.span.can_be_used_for_suggestions()
-                && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
-            {
-                // FIXME: Only emit this suggestion if the trait is object safe.
-                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+            let mut downgrade = false;
+            if self_ty.span.can_be_used_for_suggestions() {
+                let (non_object_safe, should_downgrade) =
+                    self.maybe_suggest_impl_trait(self_ty, &mut diag);
+                downgrade = should_downgrade;
+                if !non_object_safe {
+                    // Only emit this suggestion if the trait is object safe.
+                    diag.multipart_suggestion_verbose(
+                        label,
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
-            diag.stash(self_ty.span, StashKey::TraitMissingMethod)
+            if downgrade {
+                // FIXME: Delayed bugs and stashing are not compatible, so we paper over it here by
+                // consuming the diagnostic without emitting it, instead of downgrading it.
+                diag.delay_as_bug();
+                None
+            } else {
+                diag.stash(self_ty.span, StashKey::TraitMissingMethod)
+            }
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
@@ -153,7 +168,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Make sure that we are in the condition to suggest `impl Trait`.
-    fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
+    ///
+    /// Returns whether a suggestion was provided and whether the error itself should not be emitted
+    fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> (bool, bool) {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
@@ -168,13 +185,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 owner_id,
                 ..
             }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
-            _ => return false,
+            _ => return (false, false),
         };
         let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
-            return false;
+            return (false, false);
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
         let mut is_downgradable = true;
+        let mut downgrade = false;
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|o| match o.trait_ref.path.res {
@@ -214,9 +232,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
             } else if is_downgradable {
                 // We'll emit the object safety error already, with a structured suggestion.
-                diag.downgrade_to_delayed_bug();
+                downgrade = true;
             }
-            return true;
+            return (true, downgrade);
         }
         for ty in sig.decl.inputs {
             if ty.hir_id != self_ty.hir_id {
@@ -240,7 +258,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
                 if is_downgradable {
                     // We'll emit the object safety error already, with a structured suggestion.
-                    diag.downgrade_to_delayed_bug();
+                    downgrade = true;
                 }
             } else {
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
@@ -261,9 +279,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     Applicability::MachineApplicable,
                 );
             }
-            return true;
+            return (true, downgrade);
         }
-        false
+        (false, downgrade)
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {

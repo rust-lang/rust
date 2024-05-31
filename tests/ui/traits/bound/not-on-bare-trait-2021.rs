@@ -7,12 +7,10 @@ trait Foo {
 
 fn foo(_x: Foo + Send) {
     //~^ ERROR trait objects must include the `dyn` keyword
-    //~| ERROR size for values of type
 }
 fn bar(x: Foo) -> Foo {
     //~^ ERROR trait objects must include the `dyn` keyword
     //~| ERROR trait objects must include the `dyn` keyword
-    //~| ERROR size for values of type
     x
 }
 
