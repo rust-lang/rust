@@ -4,5 +4,20 @@ error: expected `{`, found keyword `unsafe`
 LL | extern "C" unsafe {
    |            ^^^^^^ expected `{`
 
-error: aborting due to 1 previous error
+error: extern block cannot be declared unsafe
+  --> $DIR/unsafe-foreign-mod-2.rs:1:12
+   |
+LL | extern "C" unsafe {
+   |            ^^^^^^
+
+error: items in unadorned `extern` blocks cannot have safety qualifiers
+  --> $DIR/unsafe-foreign-mod-2.rs:4:5
+   |
+LL | extern "C" unsafe {
+   | ----------------- help: add unsafe to this `extern` block
+...
+LL |     unsafe fn foo();
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

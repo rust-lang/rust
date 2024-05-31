@@ -4858,7 +4858,10 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,edition2024
+    /// ```rust,edition2024,ignore
+    /// #![feature(unsafe_extern_blocks)]
+    /// #![allow(dead_code)]
+    ///
     /// extern "C" {
     ///     fn foo(_: i32);
     /// }
@@ -4880,5 +4883,5 @@ declare_lint! {
     pub MISSING_UNSAFE_ON_EXTERN,
     Allow,
     "detects missing unsafe keyword on extern declarations",
-    @edition Edition2024 => Warn;
+    @edition Edition2024 => Deny;
 }

@@ -1,5 +1,5 @@
-warning: extern blocks should be unsafe
-  --> $DIR/extern-items.rs:7:1
+error: extern blocks should be unsafe
+  --> $DIR/extern-items.rs:9:1
    |
 LL | / extern "C" {
 LL | |
@@ -8,7 +8,7 @@ LL | |     fn test1(i: i32);
 LL | | }
    | |_^
    |
-   = note: `#[warn(missing_unsafe_on_extern)]` on by default
+   = note: `#[deny(missing_unsafe_on_extern)]` on by default
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 

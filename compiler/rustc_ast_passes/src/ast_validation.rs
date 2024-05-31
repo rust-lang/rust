@@ -440,16 +440,14 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_foreign_item_safety(&self, item_span: Span, safety: Safety) {
-        match safety {
-            Safety::Unsafe(_) | Safety::Safe(_)
-                if self.extern_mod_safety == Some(Safety::Default) =>
-            {
-                self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                    item_span,
-                    block: self.current_extern_span(),
-                });
-            }
-            _ => {}
+        if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_))
+            && (self.extern_mod_safety == Some(Safety::Default)
+                || !self.features.unsafe_extern_blocks)
+        {
+            self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                item_span,
+                block: self.current_extern_span(),
+            });
         }
     }
 
@@ -1044,13 +1042,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         errors::VisibilityNotPermittedNote::IndividualForeignItems,
                     );
 
-                    if &Safety::Default == safety {
-                        this.lint_buffer.buffer_lint(
-                            MISSING_UNSAFE_ON_EXTERN,
-                            item.id,
-                            item.span,
-                            BuiltinLintDiag::MissingUnsafeOnExtern,
-                        );
+                    if this.features.unsafe_extern_blocks {
+                        if &Safety::Default == safety {
+                            this.lint_buffer.buffer_lint(
+                                MISSING_UNSAFE_ON_EXTERN,
+                                item.id,
+                                item.span,
+                                BuiltinLintDiag::MissingUnsafeOnExtern,
+                            );
+                        }
+                    } else if let &Safety::Unsafe(span) = safety {
+                        this.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
                     }
 
                     if abi.is_none() {
