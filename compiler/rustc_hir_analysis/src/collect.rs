@@ -374,10 +374,6 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         self.item_def_id
     }
 
-    fn allow_infer(&self) -> bool {
-        false
-    }
-
     fn re_infer(
         &self,
         _: Option<&ty::GenericParamDef>,

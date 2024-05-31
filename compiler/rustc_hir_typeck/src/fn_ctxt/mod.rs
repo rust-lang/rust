@@ -222,10 +222,6 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         self.body_id
     }
 
-    fn allow_infer(&self) -> bool {
-        true
-    }
-
     fn re_infer(
         &self,
         def: Option<&ty::GenericParamDef>,

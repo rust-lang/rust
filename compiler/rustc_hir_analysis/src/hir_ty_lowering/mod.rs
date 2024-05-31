@@ -90,9 +90,6 @@ pub trait HirTyLowerer<'tcx> {
     /// Returns the [`LocalDefId`] of the overarching item whose constituents get lowered.
     fn item_def_id(&self) -> LocalDefId;
 
-    /// Returns `true` if the current context allows the use of inference variables.
-    fn allow_infer(&self) -> bool;
-
     /// Returns the region to use when a lifetime is omitted (and not elided).
     ///
     /// The `object_lifetime_default` argument states whether this lifetime is from a reference.
