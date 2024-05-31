@@ -122,7 +122,7 @@ fn maybe_source_file_to_parser(
     source_file: Lrc<SourceFile>,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
-    let stream = maybe_file_to_stream(psess, source_file, None)?;
+    let stream = maybe_source_file_to_stream(psess, source_file, None)?;
     let mut parser = stream_to_parser(psess, stream, None);
     if parser.token == token::Eof {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt(), None);
@@ -148,12 +148,12 @@ pub fn source_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> TokenStream {
-    panictry_buffer!(maybe_file_to_stream(psess, source_file, override_span))
+    panictry_buffer!(maybe_source_file_to_stream(psess, source_file, override_span))
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
 /// parsing the token stream.
-fn maybe_file_to_stream<'psess>(
+fn maybe_source_file_to_stream<'psess>(
     psess: &'psess ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
