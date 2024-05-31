@@ -10,7 +10,9 @@ error: expected item, found keyword `pub`
   --> $DIR/keyword-order.rs:3:9
    |
 LL | default pub const async unsafe extern fn err() {}
-   |         ^^^ expected item
+   |         ^^^--------------------------------------
+   |         |
+   |         unexpected item at this position
    |
    = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 

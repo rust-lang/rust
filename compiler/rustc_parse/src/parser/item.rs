@@ -1,7 +1,8 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, TrailingToken,
+    AttemptLocalParseRecovery, AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle,
+    Trailing, TrailingToken,
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -40,6 +41,7 @@ impl<'a> Parser<'a> {
         let mod_kind = if self.eat(&token::Semi) {
             ModKind::Unloaded
         } else {
+            // mod blocks are parsed recursively
             self.expect(&token::OpenDelim(Delimiter::Brace))?;
             let (inner_attrs, items, inner_span) =
                 self.parse_mod(&token::CloseDelim(Delimiter::Brace))?;
@@ -72,27 +74,82 @@ impl<'a> Parser<'a> {
         }
 
         if !self.eat(term) {
-            let token_str = super::token_descr(&self.token);
+            // The last token should be `term`: either EOF or `}`. If it's not that means that we've had an error
+            // parsing an item
             if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
-                let msg = format!("expected item, found {token_str}");
-                let mut err = self.dcx().struct_span_err(self.token.span, msg);
-                let span = self.token.span;
-                if self.is_kw_followed_by_ident(kw::Let) {
-                    err.span_label(
-                        span,
-                        "consider using `const` or `static` instead of `let` for global variables",
-                    );
-                } else {
-                    err.span_label(span, "expected item")
-                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
-                };
-                return Err(err);
+                self.fallback_incorrect_item()?;
             }
         }
 
         let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
         let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
         Ok((attrs, items, mod_spans))
+    }
+
+    fn fallback_incorrect_item(&mut self) -> PResult<'a, ()> {
+        let token_str = super::token_descr(&self.token);
+        let mut err = self
+            .dcx()
+            .struct_span_err(self.token.span, format!("expected item, found {token_str}"));
+
+        let stmt = match self.parse_full_stmt(AttemptLocalParseRecovery::No) {
+            Ok(stmt) => stmt,
+            Err(e) => {
+                // We don't really care about an error parsing this statement.
+                e.cancel();
+                return Err(err);
+            }
+        };
+
+        if let Some(stmt) = stmt {
+            let span = stmt.span;
+            match &stmt.kind {
+                StmtKind::Let(_) => {
+                    err.span_label(span, "unexpected `let` binding outside of a function")
+                        .help(format!("consider using `const` or `static` instead of `let` for global variables, or put it inside of a function:  fn foo() {{ {} }}",
+                        pprust::stmt_to_string(&stmt)));
+                }
+                StmtKind::Semi(expr) | StmtKind::Expr(expr) => {
+                    match expr.kind {
+                        ExprKind::Err(_) => {
+                            err.span_label(expr.span, "error parsing this expression");
+                        }
+                        ExprKind::Array(_) => {
+                            // If it's an array it's possible that it's an attribute
+                            // that is missing a `#`.
+                            err.span_label(span, "unexpected array")
+                                .help(
+                                    format!("If you wanted an array consider putting it inside a function: fn foo() {{ {} }}",
+                                    pprust::expr_to_string(expr)))
+                                .span_help(span.shrink_to_lo(), "If you wanted an attribute consider adding `#`");
+                        }
+                        ExprKind::Unary(UnOp::Not, _) => {
+                            // This might be an inner attribute wihtout #...
+                            err.span_label(span, "unexpected expression");
+                        }
+                        _ => {
+                            err.span_label(span, "unexpected expression").help(format!(
+                                "consider putting it inside a function: fn foo() {{ {} }}",
+                                pprust::expr_to_string(expr)
+                            ));
+                        }
+                    };
+                }
+                StmtKind::MacCall(_) => {
+                    err.span_label(span, "unexpected macro call at this position");
+                }
+                StmtKind::Item(_) => {
+                    err.span_label(span, "unexpected item at this position");
+                }
+                StmtKind::Empty => {
+                    unreachable!("should have been handled by maybe_consume_incorrect_semicolon");
+                }
+            };
+        }
+
+        err.note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
+
+        return Err(err);
     }
 }
 
@@ -2312,10 +2369,18 @@ impl<'a> Parser<'a> {
         vis: &Visibility,
         case: Case,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
+        // Let's have an example function
+        // const unsafe fn <'a, T> foo(arg: &'a T) -> i32
+        //   where T: Send {
+        //     1+1
+        //   }
+
         let fn_span = self.token.span;
-        let header = self.parse_fn_front_matter(vis, case)?; // `const ... fn`
+        let header = self.parse_fn_front_matter(vis, case)?; // `const unsafe`
         let ident = self.parse_ident()?; // `foo`
-        let mut generics = self.parse_generics()?; // `<'a, T, ...>`
+        let mut generics = self.parse_generics()?; // `<'a, T>`
+
+        // (arg: &'a T) -> i32
         let decl = match self.parse_fn_decl(
             fn_parse_mode.req_name,
             AllowPlus::Yes,
@@ -2332,10 +2397,10 @@ impl<'a> Parser<'a> {
                 }
             }
         };
-        generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
+        generics.where_clause = self.parse_where_clause()?; // `where T: Send`
 
         let mut sig_hi = self.prev_token.span;
-        let body = self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body)?; // `;` or `{ ... }`.
+        let body = self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body)?; // `{ 1+1 }` but could also be `;`
         let fn_sig_span = sig_lo.to(sig_hi);
         Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
     }
