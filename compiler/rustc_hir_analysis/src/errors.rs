@@ -290,8 +290,8 @@ pub struct AmbiguousLifetimeBound {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_assoc_type_binding_not_allowed, code = E0229)]
-pub struct AssocTypeBindingNotAllowed {
+#[diag(hir_analysis_assoc_item_constraints_not_allowed_here, code = E0229)]
+pub struct AssocItemConstraintsNotAllowedHere {
     #[primary_span]
     #[label]
     pub span: Span,

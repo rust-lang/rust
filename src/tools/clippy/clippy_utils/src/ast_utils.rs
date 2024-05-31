@@ -108,7 +108,7 @@ pub fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
 pub fn eq_angle_arg(l: &AngleBracketedArg, r: &AngleBracketedArg) -> bool {
     match (l, r) {
         (AngleBracketedArg::Arg(l), AngleBracketedArg::Arg(r)) => eq_generic_arg(l, r),
-        (AngleBracketedArg::Constraint(l), AngleBracketedArg::Constraint(r)) => eq_assoc_constraint(l, r),
+        (AngleBracketedArg::Constraint(l), AngleBracketedArg::Constraint(r)) => eq_assoc_item_constraint(l, r),
         _ => false,
     }
 }
@@ -802,8 +802,8 @@ fn eq_term(l: &Term, r: &Term) -> bool {
     }
 }
 
-pub fn eq_assoc_constraint(l: &AssocConstraint, r: &AssocConstraint) -> bool {
-    use AssocConstraintKind::*;
+pub fn eq_assoc_item_constraint(l: &AssocItemConstraint, r: &AssocItemConstraint) -> bool {
+    use AssocItemConstraintKind::*;
     eq_id(l.ident, r.ident)
         && match (&l.kind, &r.kind) {
             (Equality { term: l }, Equality { term: r }) => eq_term(l, r),

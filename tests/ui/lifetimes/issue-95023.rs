@@ -2,7 +2,7 @@ struct ErrorKind;
 struct Error(ErrorKind);
 impl Fn(&isize) for Error {
     //~^ ERROR manual implementations of `Fn` are experimental [E0183]
-    //~^^ ERROR associated type bindings are not allowed here [E0229]
+    //~^^ ERROR associated item constraints are not allowed here [E0229]
     //~| ERROR not all trait items implemented
     //~| ERROR expected a `FnMut(&isize)` closure, found `Error`
     fn foo<const N: usize>(&self) -> Self::B<{ N }>;

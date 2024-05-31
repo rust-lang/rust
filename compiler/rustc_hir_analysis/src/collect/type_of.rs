@@ -220,9 +220,10 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     .position(|arg| arg.hir_id() == hir_id)
                     .map(|index| (index, seg))
                     .or_else(|| {
-                        args.bindings
+                        args.constraints
                             .iter()
-                            .filter_map(TypeBinding::opt_const)
+                            .copied()
+                            .filter_map(AssocItemConstraint::ct)
                             .position(|ct| ct.hir_id == hir_id)
                             .map(|idx| (idx, seg))
                     })

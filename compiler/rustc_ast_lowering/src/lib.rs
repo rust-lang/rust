@@ -967,24 +967,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.flattened() }
     }
 
-    /// Given an associated type constraint like one of these:
-    ///
-    /// ```ignore (illustrative)
-    /// T: Iterator<Item: Debug>
-    ///             ^^^^^^^^^^^
-    /// T: Iterator<Item = Debug>
-    ///             ^^^^^^^^^^^^
-    /// ```
-    ///
-    /// returns a `hir::TypeBinding` representing `Item`.
-    #[instrument(level = "debug", skip(self))]
-    fn lower_assoc_ty_constraint(
+    /// Lower an associated item constraint.
+    #[instrument(level = "debug", skip_all)]
+    fn lower_assoc_item_constraint(
         &mut self,
-        constraint: &AssocConstraint,
+        constraint: &AssocItemConstraint,
         itctx: ImplTraitContext,
-    ) -> hir::TypeBinding<'hir> {
-        debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
-        // lower generic arguments of identifier in constraint
+    ) -> hir::AssocItemConstraint<'hir> {
+        debug!(?constraint, ?itctx);
+        // Lower the generic arguments for the associated item.
         let gen_args = if let Some(gen_args) = &constraint.gen_args {
             let gen_args_ctor = match gen_args {
                 GenericArgs::AngleBracketed(data) => {
@@ -1000,7 +991,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         };
                         GenericArgsCtor {
                             args: Default::default(),
-                            bindings: &[],
+                            constraints: &[],
                             parenthesized,
                             span: data.inputs_span,
                         }
@@ -1030,7 +1021,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         err.emit();
                         GenericArgsCtor {
                             args: Default::default(),
-                            bindings: &[],
+                            constraints: &[],
                             parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
                             span: data.span,
                         }
@@ -1052,14 +1043,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.arena.alloc(hir::GenericArgs::none())
         };
         let kind = match &constraint.kind {
-            AssocConstraintKind::Equality { term } => {
+            AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     Term::Ty(ty) => self.lower_ty(ty, itctx).into(),
                     Term::Const(c) => self.lower_anon_const(c).into(),
                 };
-                hir::TypeBindingKind::Equality { term }
+                hir::AssocItemConstraintKind::Equality { term }
             }
-            AssocConstraintKind::Bound { bounds } => {
+            AssocItemConstraintKind::Bound { bounds } => {
                 // Disallow ATB in dyn types
                 if self.is_in_dyn_type {
                     let suggestion = match itctx {
@@ -1083,18 +1074,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     });
                     let err_ty =
                         &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
-                    hir::TypeBindingKind::Equality { term: err_ty.into() }
+                    hir::AssocItemConstraintKind::Equality { term: err_ty.into() }
                 } else {
-                    // Desugar `AssocTy: Bounds` into a type binding where the
+                    // Desugar `AssocTy: Bounds` into an assoc type binding where the
                     // later desugars into a trait predicate.
                     let bounds = self.lower_param_bounds(bounds, itctx);
 
-                    hir::TypeBindingKind::Constraint { bounds }
+                    hir::AssocItemConstraintKind::Bound { bounds }
                 }
             }
         };
 
-        hir::TypeBinding {
+        hir::AssocItemConstraint {
             hir_id: self.lower_node_id(constraint.id),
             ident: self.lower_ident(constraint.ident),
             gen_args,
@@ -2014,7 +2005,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let bound_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
-            bindings: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, opaque_ty_span, output_ty)],
+            constraints: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, opaque_ty_span, output_ty)],
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
@@ -2587,10 +2578,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-/// Helper struct for delayed construction of GenericArgs.
+/// Helper struct for the delayed construction of [`hir::GenericArgs`].
 struct GenericArgsCtor<'hir> {
     args: SmallVec<[hir::GenericArg<'hir>; 4]>,
-    bindings: &'hir [hir::TypeBinding<'hir>],
+    constraints: &'hir [hir::AssocItemConstraint<'hir>],
     parenthesized: hir::GenericArgsParentheses,
     span: Span,
 }
@@ -2670,14 +2661,14 @@ impl<'hir> GenericArgsCtor<'hir> {
 
     fn is_empty(&self) -> bool {
         self.args.is_empty()
-            && self.bindings.is_empty()
+            && self.constraints.is_empty()
             && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
     fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
             args: this.arena.alloc_from_iter(self.args),
-            bindings: self.bindings,
+            constraints: self.constraints,
             parenthesized: self.parenthesized,
             span_ext: this.lower_span(self.span),
         };

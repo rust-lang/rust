@@ -508,7 +508,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let ast::AngleBracketedArg::Constraint(constraint) = param else {
                     continue;
                 };
-                let ast::AssocConstraintKind::Bound { bounds } = &constraint.kind else {
+                let ast::AssocItemConstraintKind::Bound { bounds } = &constraint.kind else {
                     continue;
                 };
                 for bound in bounds {
@@ -3390,11 +3390,11 @@ fn mk_where_bound_predicate(
         };
         let mut segments = ThinVec::from(preceding);
 
-        let added_constraint = ast::AngleBracketedArg::Constraint(ast::AssocConstraint {
+        let added_constraint = ast::AngleBracketedArg::Constraint(ast::AssocItemConstraint {
             id: DUMMY_NODE_ID,
             ident: last.ident,
             gen_args: None,
-            kind: ast::AssocConstraintKind::Equality {
+            kind: ast::AssocItemConstraintKind::Equality {
                 term: ast::Term::Ty(ast::ptr::P(ast::Ty {
                     kind: ast::TyKind::Path(None, poly_trait_ref.trait_ref.path.clone()),
                     id: DUMMY_NODE_ID,

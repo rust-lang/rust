@@ -167,7 +167,7 @@ impl PathSegment {
     }
 }
 
-/// The arguments of a path segment.
+/// The generic arguments and associated item constraints of a path segment.
 ///
 /// E.g., `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -221,14 +221,13 @@ pub struct AngleBracketedArgs {
     pub args: ThinVec<AngleBracketedArg>,
 }
 
-/// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
-/// or a constraint on an associated item, e.g., `Item = String` or `Item: Bound`.
+/// Either an argument for a generic parameter or a constraint on an associated item.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AngleBracketedArg {
-    /// Argument for a generic parameter.
+    /// A generic argument for a generic parameter.
     Arg(GenericArg),
-    /// Constraint for an associated item.
-    Constraint(AssocConstraint),
+    /// A constraint on an associated item.
+    Constraint(AssocItemConstraint),
 }
 
 impl AngleBracketedArg {
@@ -418,7 +417,7 @@ impl Default for WhereClause {
 /// A single predicate in a where-clause.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum WherePredicate {
-    /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
+    /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
@@ -2034,18 +2033,25 @@ impl UintTy {
     }
 }
 
-/// A constraint on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
-/// `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`).
+/// A constraint on an associated item.
+///
+/// ### Examples
+///
+/// * the `A = Ty` and `B = Ty` in `Trait<A = Ty, B = Ty>`
+/// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
+/// * the `A: Bound` in `Trait<A: Bound>`
+/// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `f(): Bound` in `Trait<f(): Bound>` (feature `return_type_notation`)
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct AssocConstraint {
+pub struct AssocItemConstraint {
     pub id: NodeId,
     pub ident: Ident,
     pub gen_args: Option<GenericArgs>,
-    pub kind: AssocConstraintKind,
+    pub kind: AssocItemConstraintKind,
     pub span: Span,
 }
 
-/// The kinds of an `AssocConstraint`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum Term {
     Ty(P<Ty>),
@@ -2064,12 +2070,17 @@ impl From<AnonConst> for Term {
     }
 }
 
-/// The kinds of an `AssocConstraint`.
+/// The kind of [associated item constraint][AssocItemConstraint].
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AssocConstraintKind {
-    /// E.g., `A = Bar`, `A = 3` in `Foo<A = Bar>` where A is an associated type.
+pub enum AssocItemConstraintKind {
+    /// An equality constraint for an associated item (e.g., `AssocTy = Ty` in `Trait<AssocTy = Ty>`).
+    ///
+    /// Also known as an *associated item binding* (we *bind* an associated item to a term).
+    ///
+    /// Furthermore, associated type equality constraints can also be referred to as *associated type
+    /// bindings*. Similarly with associated const equality constraints and *associated const bindings*.
     Equality { term: Term },
-    /// E.g. `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`.
+    /// A bound on an associated type (e.g., `AssocTy: Bound` in `Trait<AssocTy: Bound>`).
     Bound { bounds: GenericBounds },
 }
 

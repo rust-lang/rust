@@ -12,7 +12,7 @@ use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::{universal_regions::DefiningTy, MirBorrowckCtxt};
@@ -843,13 +843,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }) = opaque_ty.kind
             && let Some(segment) = trait_ref.trait_ref.path.segments.last()
             && let Some(args) = segment.args
-            && let [
-                hir::TypeBinding {
-                    ident: Ident { name: sym::Output, .. },
-                    kind: hir::TypeBindingKind::Equality { term: hir::Term::Ty(ty) },
-                    ..
-                },
-            ] = args.bindings
+            && let [constraint] = args.constraints
+            && constraint.ident.name == sym::Output
+            && let Some(ty) = constraint.ty()
         {
             ty
         } else {
