@@ -355,6 +355,22 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
         self.infcx.set_tainted_by_errors(e)
     }
+
+    fn lower_fn_sig(
+        &self,
+        decl: &rustc_hir::FnDecl<'tcx>,
+        _generics: Option<&rustc_hir::Generics<'_>>,
+        _hir_id: rustc_hir::HirId,
+        _hir_ty: Option<&hir::Ty<'_>>,
+    ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
+        let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_arg_ty(a, None)).collect();
+
+        let output_ty = match decl.output {
+            hir::FnRetTy::Return(output) => self.lowerer().lower_ty(output),
+            hir::FnRetTy::DefaultReturn(..) => self.tcx().types.unit,
+        };
+        (input_tys, output_ty)
+    }
 }
 
 /// The `ty` representation of a user-provided type. Depending on the use-site

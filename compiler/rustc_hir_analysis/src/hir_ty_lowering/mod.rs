@@ -20,7 +20,6 @@ mod lint;
 mod object_safety;
 
 use crate::bounds::Bounds;
-use crate::collect::HirPlaceholderCollector;
 use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
 use crate::hir_ty_lowering::errors::{prohibit_assoc_item_constraint, GenericsArgsErrExtend};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
@@ -34,7 +33,6 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
@@ -156,6 +154,14 @@ pub trait HirTyLowerer<'tcx> {
         item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx>;
+
+    fn lower_fn_sig(
+        &self,
+        decl: &hir::FnDecl<'tcx>,
+        generics: Option<&hir::Generics<'_>>,
+        hir_id: HirId,
+        hir_ty: Option<&hir::Ty<'_>>,
+    ) -> (Vec<Ty<'tcx>>, Ty<'tcx>);
 
     /// Returns `AdtDef` if `ty` is an ADT.
     ///
@@ -2306,91 +2312,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let bound_vars = tcx.late_bound_vars(hir_id);
         debug!(?bound_vars);
 
-        // We proactively collect all the inferred type params to emit a single error per fn def.
-        let mut visitor = HirPlaceholderCollector::default();
-        let mut infer_replacements = vec![];
-
-        if let Some(generics) = generics {
-            walk_generics(&mut visitor, generics);
-        }
-
-        let input_tys: Vec<_> = decl
-            .inputs
-            .iter()
-            .enumerate()
-            .map(|(i, a)| {
-                if let hir::TyKind::Infer = a.kind
-                    && !self.allow_infer()
-                {
-                    if let Some(suggested_ty) =
-                        self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
-                    {
-                        infer_replacements.push((a.span, suggested_ty.to_string()));
-                        return Ty::new_error_with_message(
-                            self.tcx(),
-                            a.span,
-                            suggested_ty.to_string(),
-                        );
-                    }
-                }
-
-                // Only visit the type looking for `_` if we didn't fix the type above
-                visitor.visit_ty(a);
-                self.lower_arg_ty(a, None)
-            })
-            .collect();
-
-        let output_ty = match decl.output {
-            hir::FnRetTy::Return(output) => {
-                if let hir::TyKind::Infer = output.kind
-                    && !self.allow_infer()
-                    && let Some(suggested_ty) =
-                        self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
-                {
-                    infer_replacements.push((output.span, suggested_ty.to_string()));
-                    Ty::new_error_with_message(self.tcx(), output.span, suggested_ty.to_string())
-                } else {
-                    visitor.visit_ty(output);
-                    self.lower_ty(output)
-                }
-            }
-            hir::FnRetTy::DefaultReturn(..) => tcx.types.unit,
-        };
+        let (input_tys, output_ty) = self.lower_fn_sig(decl, generics, hir_id, hir_ty);
 
         debug!(?output_ty);
 
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
-
-        if !self.allow_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {
-            // We always collect the spans for placeholder types when evaluating `fn`s, but we
-            // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_infer` gates this behavior. We check for the presence of
-            // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
-
-            let mut diag = crate::collect::placeholder_type_error_diag(
-                tcx,
-                generics,
-                visitor.0,
-                infer_replacements.iter().map(|(s, _)| *s).collect(),
-                true,
-                hir_ty,
-                "function",
-            );
-
-            if !infer_replacements.is_empty() {
-                diag.multipart_suggestion(
-                    format!(
-                    "try replacing `_` with the type{} in the corresponding trait method signature",
-                    rustc_errors::pluralize!(infer_replacements.len()),
-                ),
-                    infer_replacements,
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            self.set_tainted_by_errors(diag.emit());
-        }
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.
@@ -2421,7 +2348,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// corresponding function in the trait that the impl implements, if it exists.
     /// If arg_idx is Some, then it corresponds to an input type index, otherwise it
     /// corresponds to the return type.
-    fn suggest_trait_fn_ty_for_impl_fn_infer(
+    pub(super) fn suggest_trait_fn_ty_for_impl_fn_infer(
         &self,
         fn_hir_id: HirId,
         arg_idx: Option<usize>,

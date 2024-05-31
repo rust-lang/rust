@@ -19,10 +19,10 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, E0228};
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, walk_generics, Visitor};
+use rustc_hir::{self as hir};
 use rustc_hir::{GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
@@ -528,6 +528,89 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
         self.tainted_by_errors.set(Some(err));
+    }
+
+    fn lower_fn_sig(
+        &self,
+        decl: &hir::FnDecl<'tcx>,
+        generics: Option<&hir::Generics<'_>>,
+        hir_id: rustc_hir::HirId,
+        hir_ty: Option<&hir::Ty<'_>>,
+    ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
+        let tcx = self.tcx();
+        // We proactively collect all the inferred type params to emit a single error per fn def.
+        let mut visitor = HirPlaceholderCollector::default();
+        let mut infer_replacements = vec![];
+
+        if let Some(generics) = generics {
+            walk_generics(&mut visitor, generics);
+        }
+
+        let input_tys = decl
+            .inputs
+            .iter()
+            .enumerate()
+            .map(|(i, a)| {
+                if let hir::TyKind::Infer = a.kind {
+                    if let Some(suggested_ty) =
+                        self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
+                    {
+                        infer_replacements.push((a.span, suggested_ty.to_string()));
+                        return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
+                    }
+                }
+
+                // Only visit the type looking for `_` if we didn't fix the type above
+                visitor.visit_ty(a);
+                self.lowerer().lower_arg_ty(a, None)
+            })
+            .collect();
+
+        let output_ty = match decl.output {
+            hir::FnRetTy::Return(output) => {
+                if let hir::TyKind::Infer = output.kind
+                    && let Some(suggested_ty) =
+                        self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
+                {
+                    infer_replacements.push((output.span, suggested_ty.to_string()));
+                    Ty::new_error_with_message(tcx, output.span, suggested_ty.to_string())
+                } else {
+                    visitor.visit_ty(output);
+                    self.lower_ty(output)
+                }
+            }
+            hir::FnRetTy::DefaultReturn(..) => tcx.types.unit,
+        };
+
+        if !(visitor.0.is_empty() && infer_replacements.is_empty()) {
+            // We check for the presence of
+            // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
+
+            let mut diag = crate::collect::placeholder_type_error_diag(
+                tcx,
+                generics,
+                visitor.0,
+                infer_replacements.iter().map(|(s, _)| *s).collect(),
+                true,
+                hir_ty,
+                "function",
+            );
+
+            if !infer_replacements.is_empty() {
+                diag.multipart_suggestion(
+                    format!(
+                    "try replacing `_` with the type{} in the corresponding trait method signature",
+                    rustc_errors::pluralize!(infer_replacements.len()),
+                ),
+                    infer_replacements,
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            self.set_tainted_by_errors(diag.emit());
+        }
+
+        (input_tys, output_ty)
     }
 }
 
