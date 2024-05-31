@@ -1,6 +1,6 @@
 # `print=check-cfg`
 
-The tracking issue for this feature is: [#XXXXXX](https://github.com/rust-lang/rust/issues/XXXXXX).
+The tracking issue for this feature is: [#125704](https://github.com/rust-lang/rust/issues/125704).
 
 ------------------------
 
