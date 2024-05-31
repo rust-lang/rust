@@ -214,6 +214,9 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> boo
             kw::Static,
         ]
         .contains(&name)
+        // Please note the order of the check here, the edition is not check on every
+        // token by only on the possible one.
+        || (kw::Underscore == name && span.edition().at_least_rust_2024())
 }
 
 fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
