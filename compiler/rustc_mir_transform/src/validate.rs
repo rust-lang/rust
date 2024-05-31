@@ -8,7 +8,9 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance};
+use rustc_middle::ty::{
+    self, CoroutineArgsExt, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;

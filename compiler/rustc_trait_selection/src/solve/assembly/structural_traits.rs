@@ -554,8 +554,8 @@ fn coroutine_closure_to_certain_coroutine<'tcx>(
     goal_kind: ty::ClosureKind,
     goal_region: ty::Region<'tcx>,
     def_id: DefId,
-    args: ty::CoroutineClosureArgs<'tcx>,
-    sig: ty::CoroutineClosureSignature<'tcx>,
+    args: ty::CoroutineClosureArgs<TyCtxt<'tcx>>,
+    sig: ty::CoroutineClosureSignature<TyCtxt<'tcx>>,
 ) -> Ty<'tcx> {
     sig.to_coroutine_given_kind_and_upvars(
         tcx,
@@ -578,8 +578,8 @@ fn coroutine_closure_to_ambiguous_coroutine<'tcx>(
     goal_kind: ty::ClosureKind,
     goal_region: ty::Region<'tcx>,
     def_id: DefId,
-    args: ty::CoroutineClosureArgs<'tcx>,
-    sig: ty::CoroutineClosureSignature<'tcx>,
+    args: ty::CoroutineClosureArgs<TyCtxt<'tcx>>,
+    sig: ty::CoroutineClosureSignature<TyCtxt<'tcx>>,
 ) -> Ty<'tcx> {
     let upvars_projection_def_id = tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
     let tupled_upvars_ty = Ty::new_projection(

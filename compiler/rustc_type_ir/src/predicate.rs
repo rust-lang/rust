@@ -604,7 +604,7 @@ impl<I: Interner> AliasTerm<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::OwnItemArgs) {
+    pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::GenericArgsSlice) {
         interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
     }
 

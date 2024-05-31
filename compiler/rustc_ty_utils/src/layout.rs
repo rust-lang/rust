@@ -10,7 +10,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, EarlyBinder, FieldDef, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, FieldDef, GenericArgsRef, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
