@@ -575,8 +575,9 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         })?;
 
         // # Add our attributes to the buffer.
-        // It's theoretically possible for the attribute count to exceed a u32 value.
-        // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
+        // It's theoretically possible for the attribute count to exceed a u32
+        // value. Therefore, we ensure that we don't add more attributes than
+        // the buffer was initialized for.
         for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
             sys::cvt(unsafe {
                 sys::c::UpdateProcThreadAttribute(
