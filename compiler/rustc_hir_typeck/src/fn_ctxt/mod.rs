@@ -226,12 +226,17 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         true
     }
 
-    fn re_infer(&self, def: Option<&ty::GenericParamDef>, span: Span) -> Option<ty::Region<'tcx>> {
+    fn re_infer(
+        &self,
+        def: Option<&ty::GenericParamDef>,
+        span: Span,
+        _object_lifetime_default: bool,
+    ) -> ty::Region<'tcx> {
         let v = match def {
             Some(def) => infer::RegionParameterDefinition(span, def.name),
             None => infer::MiscVariable(span),
         };
-        Some(self.next_region_var(v))
+        self.next_region_var(v)
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {

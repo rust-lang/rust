@@ -18,7 +18,7 @@ use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
+use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, E0228};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -378,8 +378,27 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         false
     }
 
-    fn re_infer(&self, _: Option<&ty::GenericParamDef>, _: Span) -> Option<ty::Region<'tcx>> {
-        None
+    fn re_infer(
+        &self,
+        _: Option<&ty::GenericParamDef>,
+        span: Span,
+        object_lifetime_default: bool,
+    ) -> ty::Region<'tcx> {
+        if object_lifetime_default {
+            let e = struct_span_code_err!(
+                self.tcx().dcx(),
+                span,
+                E0228,
+                "the lifetime bound for this object type cannot be deduced \
+                from context; please supply an explicit bound"
+            )
+            .emit();
+            self.set_tainted_by_errors(e);
+            ty::Region::new_error(self.tcx(), e)
+        } else {
+            // This indicates an illegal lifetime in a non-assoc-trait position
+            ty::Region::new_error_with_message(self.tcx(), span, "unelided lifetime in signature")
+        }
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {

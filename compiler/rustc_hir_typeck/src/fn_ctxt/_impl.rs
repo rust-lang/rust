@@ -1325,7 +1325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        self.fcx.re_infer(Some(param), self.span).unwrap().into()
+                        self.fcx.re_infer(Some(param), self.span, false).into()
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {

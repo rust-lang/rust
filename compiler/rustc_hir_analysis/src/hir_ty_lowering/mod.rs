@@ -96,8 +96,14 @@ pub trait HirTyLowerer<'tcx> {
     fn allow_infer(&self) -> bool;
 
     /// Returns the region to use when a lifetime is omitted (and not elided).
-    fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
-    -> Option<ty::Region<'tcx>>;
+    ///
+    /// The `object_lifetime_default` argument states whether this lifetime is from a reference.
+    fn re_infer(
+        &self,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+        object_lifetime_default: bool,
+    ) -> ty::Region<'tcx>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
@@ -292,21 +298,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             Some(rbv::ResolvedArg::Error(guar)) => ty::Region::new_error(tcx, guar),
 
-            None => {
-                self.re_infer(def, lifetime.ident.span).unwrap_or_else(|| {
-                    debug!(?lifetime, "unelided lifetime in signature");
-
-                    // This indicates an illegal lifetime
-                    // elision. `resolve_lifetime` should have
-                    // reported an error in this case -- but if
-                    // not, let's error out.
-                    ty::Region::new_error_with_message(
-                        tcx,
-                        lifetime.ident.span,
-                        "unelided lifetime in signature",
-                    )
-                })
-            }
+            None => self.re_infer(def, lifetime.ident.span, false),
         }
     }
 
@@ -513,20 +505,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                 }
                 match param.kind {
-                    GenericParamDefKind::Lifetime => self
-                        .lowerer
-                        .re_infer(Some(param), self.span)
-                        .unwrap_or_else(|| {
-                            debug!(?param, "unelided lifetime in signature");
-
-                            // This indicates an illegal lifetime in a non-assoc-trait position
-                            ty::Region::new_error_with_message(
-                                tcx,
-                                self.span,
-                                "unelided lifetime in signature",
-                            )
-                        })
-                        .into(),
+                    GenericParamDefKind::Lifetime => {
+                        self.lowerer.re_infer(Some(param), self.span, false).into()
+                    }
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.

@@ -327,24 +327,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
                     self.lower_lifetime(lifetime, None)
                 } else {
-                    self.re_infer(None, span).unwrap_or_else(|| {
-                        let err = struct_span_code_err!(
-                            tcx.dcx(),
-                            span,
-                            E0228,
-                            "the lifetime bound for this object type cannot be deduced \
-                             from context; please supply an explicit bound"
-                        );
-                        let e = if borrowed {
-                            // We will have already emitted an error E0106 complaining about a
-                            // missing named lifetime in `&dyn Trait`, so we elide this one.
-                            err.delay_as_bug()
-                        } else {
-                            err.emit()
-                        };
-                        self.set_tainted_by_errors(e);
-                        ty::Region::new_error(tcx, e)
-                    })
+                    self.re_infer(None, span, !borrowed)
                 }
             })
         };
