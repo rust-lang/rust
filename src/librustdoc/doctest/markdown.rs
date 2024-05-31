@@ -5,7 +5,9 @@ use std::fs::read_to_string;
 use rustc_span::FileName;
 use tempfile::tempdir;
 
-use super::{generate_args_file, Collector, DoctestVisitor, GlobalTestOptions, ScrapedDoctest};
+use super::{
+    generate_args_file, CreateRunnableDoctests, DoctestVisitor, GlobalTestOptions, ScrapedDoctest,
+};
 use crate::config::Options;
 use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
 
@@ -119,8 +121,12 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         None,
     );
 
-    let mut collector =
-        Collector::new(options.input.filestem().to_string(), options.clone(), opts, file_path);
+    let mut collector = CreateRunnableDoctests::new(
+        options.input.filestem().to_string(),
+        options.clone(),
+        opts,
+        file_path,
+    );
     md_collector.tests.into_iter().for_each(|t| collector.add_test(ScrapedDoctest::Markdown(t)));
     crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
     Ok(())

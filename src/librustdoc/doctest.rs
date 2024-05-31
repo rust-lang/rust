@@ -179,7 +179,7 @@ pub(crate) fn run(
 
                     let opts = scrape_test_config(crate_attrs);
                     let enable_per_target_ignores = options.enable_per_target_ignores;
-                    let mut collector = Collector::new(
+                    let mut collector = CreateRunnableDoctests::new(
                         tcx.crate_name(LOCAL_CRATE).to_string(),
                         options,
                         opts,
@@ -989,7 +989,7 @@ pub(crate) trait DoctestVisitor {
     fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
-pub(crate) struct Collector {
+pub(crate) struct CreateRunnableDoctests {
     pub(crate) tests: Vec<test::TestDescAndFn>,
 
     rustdoc_options: RustdocOptions,
@@ -1001,14 +1001,14 @@ pub(crate) struct Collector {
     arg_file: PathBuf,
 }
 
-impl Collector {
+impl CreateRunnableDoctests {
     pub(crate) fn new(
         crate_name: String,
         rustdoc_options: RustdocOptions,
         opts: GlobalTestOptions,
         arg_file: PathBuf,
-    ) -> Collector {
-        Collector {
+    ) -> CreateRunnableDoctests {
+        CreateRunnableDoctests {
             tests: Vec::new(),
             rustdoc_options,
             crate_name,
@@ -1105,77 +1105,122 @@ impl Collector {
                 test_type: test::TestType::DocTest,
             },
             testfn: test::DynTestFn(Box::new(move || {
-                let report_unused_externs = |uext| {
-                    unused_externs.lock().unwrap().push(uext);
-                };
-                let res = run_test(
-                    &text,
-                    &crate_name,
-                    line,
-                    rustdoc_test_options,
-                    langstr,
-                    no_run,
-                    &opts,
-                    edition,
-                    path,
-                    report_unused_externs,
-                );
-
-                if let Err(err) = res {
-                    match err {
-                        TestFailure::CompileError => {
-                            eprint!("Couldn't compile the test.");
-                        }
-                        TestFailure::UnexpectedCompilePass => {
-                            eprint!("Test compiled successfully, but it's marked `compile_fail`.");
-                        }
-                        TestFailure::UnexpectedRunPass => {
-                            eprint!("Test executable succeeded, but it's marked `should_panic`.");
-                        }
-                        TestFailure::MissingErrorCodes(codes) => {
-                            eprint!("Some expected error codes were not found: {codes:?}");
-                        }
-                        TestFailure::ExecutionError(err) => {
-                            eprint!("Couldn't run the test: {err}");
-                            if err.kind() == io::ErrorKind::PermissionDenied {
-                                eprint!(" - maybe your tempdir is mounted with noexec?");
-                            }
-                        }
-                        TestFailure::ExecutionFailure(out) => {
-                            eprintln!("Test executable failed ({reason}).", reason = out.status);
-
-                            // FIXME(#12309): An unfortunate side-effect of capturing the test
-                            // executable's output is that the relative ordering between the test's
-                            // stdout and stderr is lost. However, this is better than the
-                            // alternative: if the test executable inherited the parent's I/O
-                            // handles the output wouldn't be captured at all, even on success.
-                            //
-                            // The ordering could be preserved if the test process' stderr was
-                            // redirected to stdout, but that functionality does not exist in the
-                            // standard library, so it may not be portable enough.
-                            let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
-                            let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
-
-                            if !stdout.is_empty() || !stderr.is_empty() {
-                                eprintln!();
-
-                                if !stdout.is_empty() {
-                                    eprintln!("stdout:\n{stdout}");
-                                }
-
-                                if !stderr.is_empty() {
-                                    eprintln!("stderr:\n{stderr}");
-                                }
-                            }
-                        }
-                    }
-
-                    panic::resume_unwind(Box::new(()));
-                }
-                Ok(())
+                doctest_run_fn(
+                    RunnableDoctest {
+                        crate_name,
+                        line,
+                        rustdoc_test_options,
+                        langstr,
+                        no_run,
+                        opts,
+                        edition,
+                        path,
+                        text,
+                    },
+                    unused_externs,
+                )
             })),
         });
     }
+}
+
+/// A doctest that is ready to run.
+struct RunnableDoctest {
+    crate_name: String,
+    line: usize,
+    rustdoc_test_options: IndividualTestOptions,
+    langstr: LangString,
+    no_run: bool,
+    opts: GlobalTestOptions,
+    edition: Edition,
+    path: PathBuf,
+    text: String,
+}
+
+fn doctest_run_fn(
+    test: RunnableDoctest,
+    unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+) -> Result<(), String> {
+    let RunnableDoctest {
+        crate_name,
+        line,
+        rustdoc_test_options,
+        langstr,
+        no_run,
+        opts,
+        edition,
+        path,
+        text,
+    } = test;
+
+    let report_unused_externs = |uext| {
+        unused_externs.lock().unwrap().push(uext);
+    };
+    let res = run_test(
+        &text,
+        &crate_name,
+        line,
+        rustdoc_test_options,
+        langstr,
+        no_run,
+        &opts,
+        edition,
+        path,
+        report_unused_externs,
+    );
+
+    if let Err(err) = res {
+        match err {
+            TestFailure::CompileError => {
+                eprint!("Couldn't compile the test.");
+            }
+            TestFailure::UnexpectedCompilePass => {
+                eprint!("Test compiled successfully, but it's marked `compile_fail`.");
+            }
+            TestFailure::UnexpectedRunPass => {
+                eprint!("Test executable succeeded, but it's marked `should_panic`.");
+            }
+            TestFailure::MissingErrorCodes(codes) => {
+                eprint!("Some expected error codes were not found: {codes:?}");
+            }
+            TestFailure::ExecutionError(err) => {
+                eprint!("Couldn't run the test: {err}");
+                if err.kind() == io::ErrorKind::PermissionDenied {
+                    eprint!(" - maybe your tempdir is mounted with noexec?");
+                }
+            }
+            TestFailure::ExecutionFailure(out) => {
+                eprintln!("Test executable failed ({reason}).", reason = out.status);
+
+                // FIXME(#12309): An unfortunate side-effect of capturing the test
+                // executable's output is that the relative ordering between the test's
+                // stdout and stderr is lost. However, this is better than the
+                // alternative: if the test executable inherited the parent's I/O
+                // handles the output wouldn't be captured at all, even on success.
+                //
+                // The ordering could be preserved if the test process' stderr was
+                // redirected to stdout, but that functionality does not exist in the
+                // standard library, so it may not be portable enough.
+                let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
+                let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
+
+                if !stdout.is_empty() || !stderr.is_empty() {
+                    eprintln!();
+
+                    if !stdout.is_empty() {
+                        eprintln!("stdout:\n{stdout}");
+                    }
+
+                    if !stderr.is_empty() {
+                        eprintln!("stderr:\n{stderr}");
+                    }
+                }
+            }
+        }
+
+        panic::resume_unwind(Box::new(()));
+    }
+    Ok(())
 }
 
 #[cfg(test)] // used in tests
