@@ -238,7 +238,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                let args: Box<[_]> = args
+                let spanned_args: Box<[_]> = args
                     .into_iter()
                     .copied()
                     .map(|arg| Spanned {
@@ -246,10 +246,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         span: this.thir.exprs[arg].span,
                     })
                     .collect();
+                let args: Vec<_> = spanned_args.iter().map(|arg| arg.node.clone()).collect();
 
                 let success = this.cfg.start_new_block();
-
-                this.record_operands_moved(&args);
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
@@ -258,7 +257,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info,
                     TerminatorKind::Call {
                         func: fun,
-                        args,
+                        args: spanned_args,
                         unwind: UnwindAction::Continue,
                         destination,
                         // The presence or absence of a return edge affects control-flow sensitive
@@ -278,6 +277,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
                 this.diverge_from(block);
+
+                // This is here and not before `diverge_from` to avoid breaking
+                // the example in #80949.
+                // FIXME(matthewjasper): Look at this again if Polonius is
+                // stabilized.
+                this.record_operands_moved(&args);
                 success.unit()
             }
             ExprKind::Use { source } => this.expr_into_dest(destination, block, source),

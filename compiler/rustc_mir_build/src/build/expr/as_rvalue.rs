@@ -738,7 +738,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 block = success;
             }
-            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
+            this.record_operands_moved(&[value_operand]);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
