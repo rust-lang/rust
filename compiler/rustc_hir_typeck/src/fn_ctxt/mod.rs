@@ -213,8 +213,8 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
