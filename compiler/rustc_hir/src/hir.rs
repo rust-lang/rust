@@ -2131,6 +2131,7 @@ impl LoopSource {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable_Generic)]
+// FIXME: eagerly report these errors and remove this enum and the wfcheck.
 pub enum LoopIdError {
     OutsideLoopScope,
     UnlabeledCfInWhileCondition,

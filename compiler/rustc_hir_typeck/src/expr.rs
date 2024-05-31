@@ -335,7 +335,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
-            ExprKind::ConstBlock(ref block) => self.check_expr_with_expectation(block, expected),
+            ExprKind::ConstBlock(ref block) => {
+                self.check_expr_const_block(block, expr.hir_id, expr.span, expected)
+            }
             ExprKind::Repeat(element, ref count) => {
                 self.check_expr_repeat(element, count, expected, expr)
             }
@@ -903,15 +905,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We are inside a function body, so reporting "return statement
             // outside of function body" needs an explanation.
 
-            let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
-
             // If this didn't hold, we would not have to report an error in
             // the first place.
-            assert_ne!(encl_item_id.def_id, encl_body_owner_id);
+            assert_ne!(encl_item_id.def_id, self.body_id);
 
-            let encl_body = self.tcx.hir().body_owned_by(encl_body_owner_id);
-
-            err.encl_body_span = Some(encl_body.value.span);
+            err.encl_body_span = Some(self.tcx.def_span(self.body_id));
             err.encl_fn_span = Some(*encl_fn_span);
         }
 
@@ -1456,6 +1454,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             );
         }
+    }
+
+    fn check_expr_const_block(
+        &self,
+        block: &'tcx hir::Expr<'tcx>,
+        hir_id: HirId,
+        span: Span,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        let feed = self.tcx().create_def(self.body_id, kw::Empty, DefKind::InlineConst);
+        feed.def_span(span);
+        feed.local_def_id_to_hir_id(hir_id);
+        self.typeck_results.borrow_mut().inline_consts.insert(hir_id.local_id, feed.def_id());
+
+        // Create a new function context.
+        let fcx = FnCtxt::new(self, self.param_env, feed.key());
+
+        let ty = fcx.check_expr_with_expectation(block, expected);
+        fcx.require_type_is_sized(ty, block.span, ObligationCauseCode::ConstSized);
+        fcx.write_ty(block.hir_id, ty);
+        ty
     }
 
     fn check_expr_repeat(

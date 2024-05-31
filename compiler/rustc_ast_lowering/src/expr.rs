@@ -76,7 +76,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(c) => {
                     self.has_inline_consts = true;
-                    hir::ExprKind::ConstBlock(self.lower_expr(c))
+                    self.with_new_scopes(e.span, |this| {
+                        hir::ExprKind::ConstBlock(this.lower_expr(c))
+                    })
                 }
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
