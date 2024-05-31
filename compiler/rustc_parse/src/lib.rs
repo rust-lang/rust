@@ -208,6 +208,10 @@ pub fn parse_cfg_attr(
     attr: &Attribute,
     psess: &ParseSess,
 ) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
+    const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
+    const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
+        <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>";
+
     match attr.get_normal_item().args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
             if !tokens.is_empty() =>
@@ -222,16 +226,12 @@ pub fn parse_cfg_attr(
                 }
             }
         }
-        _ => error_malformed_cfg_attr_missing(attr.span, psess),
+        _ => {
+            psess.dcx.emit_err(errors::MalformedCfgAttr {
+                span: attr.span,
+                sugg: CFG_ATTR_GRAMMAR_HELP,
+            });
+        }
     }
     None
-}
-
-const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
-const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
-    <https://doc.rust-lang.org/reference/conditional-compilation.html\
-    #the-cfg_attr-attribute>";
-
-fn error_malformed_cfg_attr_missing(span: Span, psess: &ParseSess) {
-    psess.dcx.emit_err(errors::MalformedCfgAttr { span, sugg: CFG_ATTR_GRAMMAR_HELP });
 }
