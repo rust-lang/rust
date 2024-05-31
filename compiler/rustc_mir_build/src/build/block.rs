@@ -1,4 +1,5 @@
 use crate::build::matches::{DeclareLetBindings, EmitStorageLive, ScheduleDrops};
+use crate::build::scope::DropKind;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region::Scope;
@@ -12,6 +13,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn ast_block(
         &mut self,
         destination: Place<'tcx>,
+        scope: Option<Scope>,
         block: BasicBlock,
         ast_block: BlockId,
         source_info: SourceInfo,
@@ -20,11 +22,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.thir[ast_block];
         self.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
             if targeted_by_break {
-                this.in_breakable_scope(None, destination, span, |this| {
-                    Some(this.ast_block_stmts(destination, block, span, stmts, expr, region_scope))
+                this.in_breakable_scope(None, destination, scope, span, |this| {
+                    Some(this.ast_block_stmts(
+                        destination,
+                        scope,
+                        block,
+                        span,
+                        stmts,
+                        expr,
+                        region_scope,
+                    ))
                 })
             } else {
-                this.ast_block_stmts(destination, block, span, stmts, expr, region_scope)
+                this.ast_block_stmts(destination, scope, block, span, stmts, expr, region_scope)
             }
         })
     }
@@ -32,6 +42,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn ast_block_stmts(
         &mut self,
         destination: Place<'tcx>,
+        scope: Option<Scope>,
         mut block: BasicBlock,
         span: Span,
         stmts: &[StmtId],
@@ -169,6 +180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     unpack!(
                         failure_block = this.ast_block(
                             dummy_place,
+                            None,
                             failure_entry,
                             *else_block,
                             this.source_info(else_block_span),
@@ -333,7 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.block_context
                 .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
 
-            unpack!(block = this.expr_into_dest(destination, block, expr_id));
+            unpack!(block = this.expr_into_dest(destination, scope, block, expr_id));
             let popped = this.block_context.pop();
 
             assert!(popped.is_some_and(|bf| bf.is_tail_expr()));
@@ -350,6 +362,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
                 this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
+            } else if let Some(destination_local) = destination.as_local()
+                && let Some(scope) = scope
+            {
+                this.schedule_drop(span, scope, destination_local, DropKind::Value);
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block

@@ -350,6 +350,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn match_expr(
         &mut self,
         destination: Place<'tcx>,
+        destination_scope: Option<region::Scope>,
         mut block: BasicBlock,
         scrutinee_id: ExprId,
         arms: &[ArmId],
@@ -386,6 +387,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.lower_match_arms(
             destination,
+            destination_scope,
             scrutinee_place,
             scrutinee_span,
             arm_candidates,
@@ -442,19 +444,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// (by [Builder::lower_match_tree]).
     ///
     /// `outer_source_info` is the SourceInfo for the whole match.
+    /// [Builder::lower_match_tree]).
     fn lower_match_arms(
         &mut self,
         destination: Place<'tcx>,
+        destination_scope: Option<region::Scope>,
         scrutinee_place_builder: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
         arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
+        if arm_candidates.is_empty() {
+            // If there are no arms to schedule drops, then we have to do it
+            // manually.
+            if let Some(scope) = destination_scope {
+                self.schedule_drop(
+                    outer_source_info.span,
+                    scope,
+                    destination.as_local().unwrap(),
+                    DropKind::Value,
+                );
+            }
+            return self.cfg.start_new_block().unit();
+        }
+
+        let mut first_arm = true;
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
                 debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
+
+                if first_arm {
+                    first_arm = false;
+                } else if let Some(scope) = destination_scope {
+                    // Unschedule the drop from the previous arm, it will then
+                    // be rescheduled by the end of this arm.
+                    self.unschedule_drop(scope, destination.as_local().unwrap());
+                }
 
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
@@ -500,7 +527,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.source_scope = source_scope;
                     }
 
-                    this.expr_into_dest(destination, arm_block, arm.body)
+                    this.expr_into_dest(destination, destination_scope, arm_block, arm.body)
                 })
             })
             .collect();
@@ -621,13 +648,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                let region_scope = self.region_scope_tree.var_scope(var.0.local_id);
+
+                unpack!(block = self.expr_into_dest(place, region_scope, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet(None), place);
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -653,6 +681,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
+                let region_scope = self.region_scope_tree.var_scope(var.0.local_id);
                 let place = self.storage_live_binding(
                     block,
                     var,
@@ -660,7 +689,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                unpack!(block = self.expr_into_dest(place, region_scope, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -695,7 +724,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
