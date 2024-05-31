@@ -188,15 +188,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     checker.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
     checker.check_signature_annotation(body);
 
-    liveness::generate(
-        &mut checker,
-        body,
-        elements,
-        flow_inits,
-        move_data,
-        location_table,
-        use_polonius,
-    );
+    liveness::generate(&mut checker, body, elements, flow_inits, move_data, use_polonius);
 
     translate_outlives_facts(&mut checker);
     let opaque_type_values = infcx.take_opaque_types();
