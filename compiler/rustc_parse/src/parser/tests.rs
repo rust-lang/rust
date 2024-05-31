@@ -1,5 +1,5 @@
 use crate::parser::ForceCollect;
-use crate::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
+use crate::{new_parser_from_source_str, parser::Parser, source_str_to_stream};
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
@@ -82,11 +82,7 @@ where
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let psess = psess();
-    source_file_to_stream(
-        &psess,
-        psess.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
-        None,
-    )
+    source_str_to_stream(PathBuf::from("bogofile").into(), source_str, &psess, None)
 }
 
 /// Parses a string, returns a crate.
