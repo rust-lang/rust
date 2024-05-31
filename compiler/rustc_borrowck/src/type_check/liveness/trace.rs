@@ -16,6 +16,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::ResultsCursor;
 
+use crate::location::RichLocation;
 use crate::{
     region_infer::values::{self, LiveLoans},
     type_check::liveness::local_use_map::LocalUseMap,
@@ -46,7 +47,6 @@ pub(super) fn trace<'mir, 'tcx>(
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
-    polonius_drop_used: Option<Vec<(Local, Location)>>,
 ) {
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, elements, body);
 
@@ -93,9 +93,7 @@ pub(super) fn trace<'mir, 'tcx>(
 
     let mut results = LivenessResults::new(cx);
 
-    if let Some(drop_used) = polonius_drop_used {
-        results.add_extra_drop_facts(drop_used, relevant_live_locals.iter().copied().collect())
-    }
+    results.add_extra_drop_facts(&relevant_live_locals);
 
     results.compute_for_all_locals(relevant_live_locals);
 
@@ -218,21 +216,38 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn add_extra_drop_facts(
-        &mut self,
-        drop_used: Vec<(Local, Location)>,
-        relevant_live_locals: FxIndexSet<Local>,
-    ) {
+    fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) -> Option<()> {
+        let drop_used = self
+            .cx
+            .typeck
+            .borrowck_context
+            .all_facts
+            .as_ref()
+            .map(|facts| facts.var_dropped_at.clone())?;
+
+        let relevant_live_locals: FxIndexSet<_> = relevant_live_locals.iter().copied().collect();
+
         let locations = IntervalSet::new(self.cx.elements.num_points());
 
-        for (local, location) in drop_used {
+        for (local, location_index) in drop_used {
             if !relevant_live_locals.contains(&local) {
                 let local_ty = self.cx.body.local_decls[local].ty;
                 if local_ty.has_free_regions() {
+                    let location = match self
+                        .cx
+                        .typeck
+                        .borrowck_context
+                        .location_table
+                        .to_location(location_index)
+                    {
+                        RichLocation::Start(l) => l,
+                        RichLocation::Mid(l) => l,
+                    };
                     self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);
                 }
             }
         }
+        Some(())
     }
 
     /// Clear the value of fields that are "per local variable".
