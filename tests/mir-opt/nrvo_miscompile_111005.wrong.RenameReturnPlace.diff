@@ -1,5 +1,5 @@
-- // MIR for `wrong` before DestinationPropagation
-+ // MIR for `wrong` after DestinationPropagation
+- // MIR for `wrong` before RenameReturnPlace
++ // MIR for `wrong` after RenameReturnPlace
   
   fn wrong(_1: char) -> char {
       let mut _0: char;
@@ -9,9 +9,8 @@
 -         _2 = _1;
 -         _0 = _2;
 -         _2 = const 'b';
-+         nop;
 +         _0 = _1;
-+         _1 = const 'b';
++         _0 = const 'b';
           return;
       }
   }
