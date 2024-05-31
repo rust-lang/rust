@@ -3431,11 +3431,23 @@ impl<'test> TestCx<'test> {
         let build_root = self.config.build_base.parent().unwrap().parent().unwrap();
         let build_root = cwd.join(&build_root);
 
-        let tmpdir = cwd.join(self.output_base_name());
-        if tmpdir.exists() {
-            self.aggressive_rm_rf(&tmpdir).unwrap();
+        // We construct the following directory tree for each rmake.rs test:
+        // ```
+        // base_dir/
+        //     rmake.exe
+        //     scratch/
+        // ```
+        // having the executable separate from the scratch directory allows the recipes to
+        // `remove_dir_all(scratch)` without running into permission denied issues because
+        // the executable is not under the `scratch/` directory.
+        //
+        // This setup diverges from legacy Makefile run-make tests.
+        let base_dir = cwd.join(self.output_base_name());
+        if base_dir.exists() {
+            self.aggressive_rm_rf(&base_dir).unwrap();
         }
-        create_dir_all(&tmpdir).unwrap();
+        let rmake_out_dir = base_dir.join("rmake_out");
+        create_dir_all(&rmake_out_dir).unwrap();
 
         // HACK: assume stageN-target, we only want stageN.
         let stage = self.config.stage_id.split('-').next().unwrap();
@@ -3452,8 +3464,11 @@ impl<'test> TestCx<'test> {
         stage_std_path.push("lib");
 
         // Then, we need to build the recipe `rmake.rs` and link in the support library.
-        let recipe_bin =
-            tmpdir.join(if self.config.target.contains("windows") { "rmake.exe" } else { "rmake" });
+        let recipe_bin = base_dir.join(if self.config.target.contains("windows") {
+            "rmake.exe"
+        } else {
+            "rmake"
+        });
 
         let mut support_lib_deps = PathBuf::new();
         support_lib_deps.push(&build_root);
@@ -3494,7 +3509,7 @@ impl<'test> TestCx<'test> {
             .env("S", &src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("TMPDIR", &tmpdir)
+            .env("TMPDIR", &rmake_out_dir)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
             .env(dylib_env_var(), &host_dylib_env_paths)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
@@ -3530,7 +3545,7 @@ impl<'test> TestCx<'test> {
         let dylib_env_paths = env::join_paths(dylib_env_paths).unwrap();
 
         let mut target_rpath_env_path = Vec::new();
-        target_rpath_env_path.push(&tmpdir);
+        target_rpath_env_path.push(&rmake_out_dir);
         target_rpath_env_path.extend(&orig_dylib_env_paths);
         let target_rpath_env_path = env::join_paths(target_rpath_env_path).unwrap();
 
@@ -3546,7 +3561,7 @@ impl<'test> TestCx<'test> {
             .env("S", &src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("TMPDIR", &tmpdir)
+            .env("TMPDIR", &rmake_out_dir)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
