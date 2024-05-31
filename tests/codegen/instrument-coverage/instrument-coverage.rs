@@ -12,12 +12,10 @@
 // CHECK: @__llvm_profile_filename = {{.*}}"default_%m_%p.profraw\00"{{.*}}
 // CHECK: @__llvm_coverage_mapping
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 #[inline(never)]
-fn some_function() {
-
-}
+fn some_function() {}
 
 pub fn some_other_function() {
     some_function();

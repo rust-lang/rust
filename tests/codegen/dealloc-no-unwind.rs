@@ -1,13 +1,17 @@
 //@ compile-flags: -O
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 struct A;
 
 impl Drop for A {
     fn drop(&mut self) {
-        extern "C" { fn foo(); }
-        unsafe { foo(); }
+        extern "C" {
+            fn foo();
+        }
+        unsafe {
+            foo();
+        }
     }
 }
 

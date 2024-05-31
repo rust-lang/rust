@@ -1,1 +1,3 @@
-pub const fn f() -> usize { 5 }
+pub const fn f() -> usize {
+    5
+}

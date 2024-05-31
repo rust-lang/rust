@@ -10,9 +10,27 @@ ignore = [
     "/build-*/",
     "/vendor/",
 
-    # Tests for now are not formatted, as they are sometimes pretty-printing constrained
-    # (and generally rustfmt can move around comments in UI-testing incompatible ways).
-    "/tests/",
+    # Some tests are not formatted, for multiple reasons:
+    # - some contain syntax errors that cause rustfmt to give an error
+    # - some UI tests are broken by different formatting
+    # - some require special comments in a particular position (e.g. `EMIT_MIR` comments)
+    "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
+    "/tests/crashes/",                # Many tests contain syntax errors.
+    "/tests/debuginfo/",              # Tests are somewhat sensitive to source code layout.
+    "/tests/incremental/",            # Tests are somewhat sensitive to source code layout.
+    "/tests/mir-opt/",
+    "/tests/pretty/",
+    "/tests/run-make/translation/test.rs", # Contains syntax errors.
+    "/tests/run-make-fulldeps/",
+    "/tests/run-pass-valgrind/",
+    "/tests/rustdoc/",
+    "/tests/rustdoc-gui/",
+    "/tests/rustdoc-js/",
+    "/tests/rustdoc-json/",
+    "/tests/rustdoc-js-std/",
+    "/tests/rustdoc-ui/",
+    "/tests/ui/",
+    "/tests/ui-fulldeps/",
 
     # Do not format submodules.
     # FIXME: sync submodule list with tidy/bootstrap/etc

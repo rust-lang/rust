@@ -1,3 +1,3 @@
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
-pub fn something(){}
+pub fn something() {}

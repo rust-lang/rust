@@ -3,8 +3,9 @@
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 
-use std::intrinsics::{prefetch_read_data, prefetch_write_data,
-                      prefetch_read_instruction, prefetch_write_instruction};
+use std::intrinsics::{
+    prefetch_read_data, prefetch_read_instruction, prefetch_write_data, prefetch_write_instruction,
+};
 
 #[no_mangle]
 pub fn check_prefetch_read_data(data: &[i8]) {

@@ -9,7 +9,7 @@ pub extern "C" fn tt_new(a: u64, b: u64) -> TT {
     TT::AA(a, b)
 }
 
-#[repr(C,u8)]
+#[repr(C, u8)]
 pub enum T {
     A(u64),
     B,

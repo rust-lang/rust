@@ -1,5 +1,5 @@
 #![feature(no_core, intrinsics, lang_items)]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 #![no_core]
 
 extern "rust-intrinsic" {

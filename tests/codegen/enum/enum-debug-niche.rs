@@ -23,7 +23,12 @@
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 
-enum E { A, B, C, D(bool) }
+enum E {
+    A,
+    B,
+    C,
+    D(bool),
+}
 
 pub fn main() {
     let e = E::D(true);

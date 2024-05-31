@@ -1,4 +1,4 @@
-#![crate_type="bin"]
+#![crate_type = "bin"]
 
 extern crate an_rlib;
 

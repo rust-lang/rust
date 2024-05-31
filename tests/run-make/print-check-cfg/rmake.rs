@@ -40,19 +40,21 @@ fn main() {
         /*contains*/ &["feature", "feature=\"\"", "feature=\"test\"", "feature=\"lol\""],
     );
     check(
-        /*args*/ &[
+        /*args*/
+        &[
             r#"--check-cfg=cfg(feature, values(any()))"#,
-            r#"--check-cfg=cfg(feature, values("tmp"))"#
+            r#"--check-cfg=cfg(feature, values("tmp"))"#,
         ],
         /*has_any*/ false,
         /*has_any_any*/ false,
         /*contains*/ &["unix", "miri", "feature=any()"],
     );
     check(
-        /*args*/ &[
+        /*args*/
+        &[
             r#"--check-cfg=cfg(has_foo, has_bar)"#,
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
-            r#"--check-cfg=cfg(feature, values("tmp"))"#
+            r#"--check-cfg=cfg(feature, values("tmp"))"#,
         ],
         /*has_any*/ false,
         /*has_any_any*/ false,

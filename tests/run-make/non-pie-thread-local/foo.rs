@@ -2,7 +2,9 @@
 
 struct Destroy;
 impl Drop for Destroy {
-    fn drop(&mut self) { println!("drop"); }
+    fn drop(&mut self) {
+        println!("drop");
+    }
 }
 
 thread_local! {

@@ -4,7 +4,7 @@
 //@ needs-sanitizer-address
 //@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -Copt-level=0
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![feature(no_sanitize)]
 
 // CHECK-LABEL: ; no_sanitize::unsanitized

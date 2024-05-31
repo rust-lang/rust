@@ -2,7 +2,7 @@ extern crate raw_dylib_test;
 extern crate raw_dylib_test_wrapper;
 
 #[link(name = "extern_2", kind = "raw-dylib")]
-extern {
+extern "C" {
     fn extern_fn_2();
 }
 
