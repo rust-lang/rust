@@ -3,11 +3,13 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::higher;
+use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -104,7 +106,15 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             return;
         }
 
-        if let ExprKind::Index(array, index, _) = &expr.kind {
+        if let ExprKind::Index(array, index, _) = &expr.kind
+            && let expr_ty = cx.typeck_results().expr_ty(array)
+            && let mut deref = deref_chain(cx, expr_ty)
+            && deref.any(|l| {
+                l.peel_refs().is_slice()
+                    || l.peel_refs().is_array()
+                    || ty_has_applicable_get_function(cx, l.peel_refs(), expr_ty, expr)
+            })
+        {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::Range::hir(index) {
@@ -230,4 +240,34 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
     };
 
     (start, end)
+}
+
+/// Checks if the output Ty of the `get` method on this Ty (if any) matches the Ty returned by the
+/// indexing operation (if any).
+fn ty_has_applicable_get_function<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: Ty<'tcx>,
+    array_ty: Ty<'tcx>,
+    index_expr: &Expr<'_>,
+) -> bool {
+    if let ty::Adt(_, _) = array_ty.kind()
+        && let Some(get_output_ty) = get_adt_inherent_method(cx, ty, sym!(get)).map(|m| {
+            cx.tcx
+                .fn_sig(m.def_id)
+                .skip_binder()
+                .output()
+                .skip_binder()
+        })
+        && let ty::Adt(def, args) = get_output_ty.kind()
+        && cx.tcx.is_diagnostic_item(sym::Option, def.0.did)
+        && let Some(option_generic_param) = args.first()
+        && let generic_ty = option_generic_param.expect_ty().peel_refs()
+        // FIXME: ideally this would handle type params and projections properly, for now just assume it's the same type
+        && (cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
+            || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_, _)))
+    {
+        true
+    } else {
+        false
+    }
 }
