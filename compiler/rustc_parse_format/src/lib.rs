@@ -286,13 +286,11 @@ impl<'a> Iterator for Parser<'a> {
                                     lbrace_byte_pos.to(InnerOffset(rbrace_byte_pos.0 + width)),
                                 );
                             }
-                        } else {
-                            if let Some(&(_, maybe)) = self.cur.peek() {
-                                match maybe {
-                                    '?' => self.suggest_format_debug(),
-                                    '<' | '^' | '>' => self.suggest_format_align(maybe),
-                                    _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
-                                }
+                        } else if let Some(&(_, maybe)) = self.cur.peek() {
+                            match maybe {
+                                '?' => self.suggest_format_debug(),
+                                '<' | '^' | '>' => self.suggest_format_align(maybe),
+                                _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
                             }
                         }
                         Some(NextArgument(Box::new(arg)))
@@ -1028,7 +1026,7 @@ fn find_width_map_from_snippet(
                     if next_c == '{' {
                         // consume up to 6 hexanumeric chars
                         let digits_len =
-                            s.clone().take(6).take_while(|(_, c)| c.is_digit(16)).count();
+                            s.clone().take(6).take_while(|(_, c)| c.is_ascii_hexdigit()).count();
 
                         let len_utf8 = s
                             .as_str()
@@ -1047,14 +1045,14 @@ fn find_width_map_from_snippet(
                         width += required_skips + 2;
 
                         s.nth(digits_len);
-                    } else if next_c.is_digit(16) {
+                    } else if next_c.is_ascii_hexdigit() {
                         width += 1;
 
                         // We suggest adding `{` and `}` when appropriate, accept it here as if
                         // it were correct
                         let mut i = 0; // consume up to 6 hexanumeric chars
                         while let (Some((_, c)), _) = (s.next(), i < 6) {
-                            if c.is_digit(16) {
+                            if c.is_ascii_hexdigit() {
                                 width += 1;
                             } else {
                                 break;
