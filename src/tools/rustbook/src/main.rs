@@ -8,6 +8,9 @@ use clap::{arg, ArgMatches, Command};
 use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
+use mdbook_trpl_listing::TrplListing;
+use mdbook_trpl_note::TrplNote;
+
 fn main() {
     let crate_version = concat!("v", crate_version!());
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
@@ -65,6 +68,14 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
 
     if let Some(dest_dir) = args.get_one::<PathBuf>("dest-dir") {
         book.config.build.build_dir = dest_dir.into();
+    }
+
+    if book.config.get_preprocessor("trpl-note").is_some() {
+        book.with_preprocessor(TrplNote);
+    }
+
+    if book.config.get_preprocessor("trpl-listing").is_some() {
+        book.with_preprocessor(TrplListing);
     }
 
     book.build()?;
