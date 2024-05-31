@@ -1,0 +1,112 @@
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:18:5
+   |
+LL | /     if !set.contains(&value) {
+LL | |         set.insert(value);
+LL | |         println!("Just a comment");
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:18:13
+   |
+LL |     if !set.contains(&value) {
+   |             ^^^^^^^^^^^^^^^^
+   = note: `-D clippy::hashset-insert-after-contains` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::hashset_insert_after_contains)]`
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:23:5
+   |
+LL | /     if set.contains(&value) {
+LL | |         set.insert(value);
+LL | |         println!("Just a comment");
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:23:12
+   |
+LL |     if set.contains(&value) {
+   |            ^^^^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:28:5
+   |
+LL | /     if !set.contains(&value) {
+LL | |         set.insert(value);
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:28:13
+   |
+LL |     if !set.contains(&value) {
+   |             ^^^^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:32:5
+   |
+LL | /     if !!set.contains(&value) {
+LL | |         set.insert(value);
+LL | |         println!("Just a comment");
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:32:14
+   |
+LL |     if !!set.contains(&value) {
+   |              ^^^^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:37:5
+   |
+LL | /     if (&set).contains(&value) {
+LL | |         set.insert(value);
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:37:15
+   |
+LL |     if (&set).contains(&value) {
+   |               ^^^^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:42:5
+   |
+LL | /     if !set.contains(borrow_value) {
+LL | |         set.insert(*borrow_value);
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:42:13
+   |
+LL |     if !set.contains(borrow_value) {
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/hashset_insert_after_contains.rs:47:5
+   |
+LL | /     if !borrow_set.contains(&value) {
+LL | |         borrow_set.insert(value);
+LL | |     }
+   | |_____^
+   |
+   = note: `HashSet::insert` returns whether it was inserted
+help: remove the `HashSet::contains` call
+  --> tests/ui/hashset_insert_after_contains.rs:47:20
+   |
+LL |     if !borrow_set.contains(&value) {
+   |                    ^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

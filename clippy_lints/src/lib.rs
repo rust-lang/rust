@@ -150,6 +150,7 @@ mod from_raw_with_void_ptr;
 mod from_str_radix_10;
 mod functions;
 mod future_not_send;
+mod hashset_insert_after_contains;
 mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
@@ -1172,6 +1173,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     });
     store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(msrv())));
     store.register_early_pass(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers));
+    store.register_late_pass(|_| Box::new(hashset_insert_after_contains::HashsetInsertAfterContains));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
