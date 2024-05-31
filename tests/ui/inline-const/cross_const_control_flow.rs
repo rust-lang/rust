@@ -33,8 +33,7 @@ fn loop_continue() {
 
 async fn await_across_const_block() {
     const { async {}.await }
-    //~^ ERROR: mismatched types
-    //~| ERROR: yield expression outside of coroutine literal
+    //~^ ERROR: `await` is only allowed inside `async` functions and blocks
 }
 
 fn main() {}

@@ -77,7 +77,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::ConstBlock(c) => {
                     self.has_inline_consts = true;
                     self.with_new_scopes(e.span, |this| {
-                        hir::ExprKind::ConstBlock(this.lower_expr(c))
+                        let coroutine_kind = this.coroutine_kind.take();
+                        let e = hir::ExprKind::ConstBlock(this.lower_expr(c));
+                        this.coroutine_kind = coroutine_kind;
+                        e
                     })
                 }
                 ExprKind::Repeat(expr, count) => {
