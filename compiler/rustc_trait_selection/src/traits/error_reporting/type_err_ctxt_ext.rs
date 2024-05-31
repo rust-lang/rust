@@ -48,7 +48,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, ExpnKind, Span, Symbol, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
@@ -638,6 +638,32 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             err.span_label(span, explanation);
                         }
 
+                        if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
+                            if !self.tcx.object_safety_violations(trait_ref.def_id()).is_empty() {
+                                match (
+                                    obligation.cause.code(),
+                                    trait_ref.skip_binder().self_ty().kind(),
+                                ) {
+                                    (
+                                        ObligationCauseCode::WhereClauseInExpr(..),
+                                        ty::Dynamic(..),
+                                    ) => {
+                                        return err.delay_as_bug();
+                                    }
+                                    (ObligationCauseCode::SizedCallReturnType(did), _) => {
+                                        let fn_sig = self.tcx.fn_sig(did);
+                                        let ret_kind =
+                                            fn_sig.skip_binder().output().skip_binder().kind();
+                                        if let ty::Param(param_ty) = ret_kind
+                                            && param_ty.name == kw::SelfUpper
+                                        {
+                                            return err.delay_as_bug();
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
                         if let ObligationCauseCode::Coercion { source, target } =
                             *obligation.cause.code().peel_derives()
                         {
