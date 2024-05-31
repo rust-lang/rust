@@ -92,7 +92,6 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
-use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
 
@@ -127,8 +126,6 @@ struct Scope {
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
-
-    moved_locals: Vec<Local>,
 
     /// The drop index that will drop everything in and below this scope on an
     /// unwind path.
@@ -445,7 +442,6 @@ impl<'tcx> Scopes<'tcx> {
             source_scope: vis_scope,
             region_scope: region_scope.0,
             drops: vec![],
-            moved_locals: vec![],
             cached_unwind_block: None,
             cached_coroutine_drop_block: None,
         });
@@ -752,13 +748,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn break_for_tail_call(
         &mut self,
         mut block: BasicBlock,
-        args: &[Spanned<Operand<'tcx>>],
+        args: &[Operand<'tcx>],
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let arg_drops: Vec<_> = args
             .iter()
             .rev()
-            .filter_map(|arg| match &arg.node {
+            .filter_map(|arg| match arg {
                 Operand::Copy(_) => bug!("copy op in tail call args"),
                 Operand::Move(place) => {
                     let local =
@@ -1102,14 +1098,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
     }
 
-    /// Indicates that the "local operand" stored in `local` is
+    /// Indicates that the "local operands" stored in `local` are
     /// *moved* at some point during execution (see `local_scope` for
     /// more information about what a "local operand" is -- in short,
     /// it's an intermediate operand created as part of preparing some
     /// MIR instruction). We use this information to suppress
-    /// redundant drops on the non-unwind paths. This results in less
-    /// MIR, but also avoids spurious borrow check errors
-    /// (c.f. #64391).
+    /// redundant drops. This results in less MIR, but also avoids spurious
+    /// borrow check errors (c.f. #64391).
     ///
     /// Example: when compiling the call to `foo` here:
     ///
@@ -1138,27 +1133,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    pub(crate) fn record_operands_moved(&mut self, operands: &[Spanned<Operand<'tcx>>]) {
+    pub(crate) fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
         assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand.node {
+        let locals_moved = operands.iter().flat_map(|operand| match operand {
             Operand::Copy(_) | Operand::Constant(_) => None,
             Operand::Move(place) => place.as_local(),
         });
 
         for local in locals_moved {
-            // check if we have a Drop for this operand and -- if so
-            // -- add it to the list of moved operands. Note that this
-            // local might not have been an operand created for this
-            // call, it could come from other places too.
-            if scope.drops.iter().any(|drop| drop.local == local && drop.kind == DropKind::Value) {
-                scope.moved_locals.push(local);
-            }
+            // Unschedule drops from the scope.
+            scope.drops.retain(|drop| drop.local != local || drop.kind != DropKind::Value);
         }
+        scope.invalidate_cache();
     }
 
     // Other
@@ -1381,14 +1372,6 @@ fn build_scope_drops<'tcx>(
                 debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
                 debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
                 unwind_to = unwind_drops.drops[unwind_to].next;
-
-                // If the operand has been moved, and we are not on an unwind
-                // path, then don't generate the drop. (We only take this into
-                // account for non-unwind paths so as not to disturb the
-                // caching mechanism.)
-                if scope.moved_locals.iter().any(|&o| o == local) {
-                    continue;
-                }
 
                 unwind_drops.add_entry_point(block, unwind_to);
 

@@ -106,7 +106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 this.in_scope((region_scope, source_info), lint_level, |this| {
                     let fun = unpack!(block = this.as_local_operand(block, fun));
-                    let args: Box<[_]> = args
+                    let spanned_args: Box<[_]> = args
                         .into_iter()
                         .copied()
                         .map(|arg| Spanned {
@@ -114,6 +114,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: this.thir.exprs[arg].span,
                         })
                         .collect();
+                    let args: Vec<_> = spanned_args.iter().map(|arg| arg.node.clone()).collect();
 
                     this.record_operands_moved(&args);
 
@@ -124,7 +125,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.terminate(
                         block,
                         source_info,
-                        TerminatorKind::TailCall { func: fun, args, fn_span },
+                        TerminatorKind::TailCall { func: fun, args: spanned_args, fn_span },
                     );
 
                     this.cfg.start_new_block().unit()
