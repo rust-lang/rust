@@ -365,7 +365,8 @@ fn run_test(
     test: &str,
     crate_name: &str,
     line: usize,
-    rustdoc_options: IndividualTestOptions,
+    rustdoc_options: &RustdocOptions,
+    test_options: IndividualTestOptions,
     mut lang_string: LangString,
     no_run: bool,
     opts: &GlobalTestOptions,
@@ -379,12 +380,12 @@ fn run_test(
         lang_string.test_harness,
         opts,
         edition,
-        Some(&rustdoc_options.test_id),
+        Some(&test_options.test_id),
     );
 
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
-    let output_file = rustdoc_options.outdir.path().join(rust_out);
+    let output_file = test_options.outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -392,7 +393,7 @@ fn run_test(
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
-    compiler.arg(&format!("@{}", rustdoc_options.arg_file.display()));
+    compiler.arg(&format!("@{}", test_options.arg_file.display()));
 
     if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
         compiler.arg(format!("--sysroot={}", sysroot.display()));
@@ -405,20 +406,22 @@ fn run_test(
     if lang_string.test_harness {
         compiler.arg("--test");
     }
-    if rustdoc_options.is_json_unused_externs_enabled && !lang_string.compile_fail {
+    if rustdoc_options.json_unused_externs.is_enabled() && !lang_string.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-W").arg("unused_crate_dependencies");
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if no_run && !lang_string.compile_fail && rustdoc_options.should_persist_doctests {
+    if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
+        // FIXME: why does this code check if it *shouldn't* persist doctests
+        //        -- shouldn't it be the negation?
         compiler.arg("--emit=metadata");
     }
-    compiler.arg("--target").arg(match rustdoc_options.target {
+    compiler.arg("--target").arg(match &rustdoc_options.target {
         TargetTriple::TargetTriple(s) => s,
         TargetTriple::TargetJson { path_for_rustdoc, .. } => {
-            path_for_rustdoc.to_str().expect("target path must be valid unicode").to_string()
+            path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = rustdoc_options.error_format {
@@ -511,15 +514,15 @@ fn run_test(
     let mut cmd;
 
     let output_file = make_maybe_absolute_path(output_file);
-    if let Some(tool) = rustdoc_options.runtool {
+    if let Some(tool) = &rustdoc_options.runtool {
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
-        cmd.args(rustdoc_options.runtool_args);
+        cmd.args(&rustdoc_options.runtool_args);
         cmd.arg(output_file);
     } else {
         cmd = Command::new(output_file);
     }
-    if let Some(run_directory) = rustdoc_options.test_run_directory {
+    if let Some(run_directory) = &rustdoc_options.test_run_directory {
         cmd.current_dir(run_directory);
     }
 
@@ -923,20 +926,9 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
 }
 
 pub(crate) struct IndividualTestOptions {
-    test_builder: Option<PathBuf>,
-    test_builder_wrappers: Vec<PathBuf>,
-    is_json_unused_externs_enabled: bool,
-    should_persist_doctests: bool,
-    error_format: ErrorOutputType,
-    test_run_directory: Option<PathBuf>,
-    nocapture: bool,
     arg_file: PathBuf,
     outdir: DirState,
-    runtool: Option<String>,
-    runtool_args: Vec<String>,
-    target: TargetTriple,
     test_id: String,
-    maybe_sysroot: Option<PathBuf>,
 }
 
 impl IndividualTestOptions {
@@ -955,22 +947,7 @@ impl IndividualTestOptions {
             DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
         };
 
-        Self {
-            test_builder: options.test_builder.clone(),
-            test_builder_wrappers: options.test_builder_wrappers.clone(),
-            is_json_unused_externs_enabled: options.json_unused_externs.is_enabled(),
-            should_persist_doctests: options.persist_doctests.is_none(),
-            error_format: options.error_format,
-            test_run_directory: options.test_run_directory.clone(),
-            nocapture: options.nocapture,
-            arg_file: arg_file.into(),
-            outdir,
-            runtool: options.runtool.clone(),
-            runtool_args: options.runtool_args.clone(),
-            target: options.target.clone(),
-            test_id,
-            maybe_sysroot: options.maybe_sysroot.clone(),
-        }
+        Self { arg_file: arg_file.into(), outdir, test_id }
     }
 }
 
@@ -994,7 +971,7 @@ pub(crate) trait DoctestVisitor {
 pub(crate) struct CreateRunnableDoctests {
     pub(crate) tests: Vec<test::TestDescAndFn>,
 
-    rustdoc_options: RustdocOptions,
+    rustdoc_options: Arc<RustdocOptions>,
     crate_name: String,
     opts: GlobalTestOptions,
     visited_tests: FxHashMap<(String, usize), usize>,
@@ -1012,7 +989,7 @@ impl CreateRunnableDoctests {
     ) -> CreateRunnableDoctests {
         CreateRunnableDoctests {
             tests: Vec::new(),
-            rustdoc_options,
+            rustdoc_options: Arc::new(rustdoc_options),
             crate_name,
             opts,
             visited_tests: FxHashMap::default(),
@@ -1077,6 +1054,7 @@ impl CreateRunnableDoctests {
             },
         );
 
+        let rustdoc_options = self.rustdoc_options.clone();
         let rustdoc_test_options =
             IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
 
@@ -1112,6 +1090,7 @@ impl CreateRunnableDoctests {
                         path,
                         scraped_test: test,
                     },
+                    rustdoc_options,
                     unused_externs,
                 )
             })),
@@ -1132,6 +1111,7 @@ struct RunnableDoctest {
 
 fn doctest_run_fn(
     runnable_test: RunnableDoctest,
+    rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
     let report_unused_externs = |uext| {
@@ -1141,6 +1121,7 @@ fn doctest_run_fn(
         &runnable_test.scraped_test.text,
         &runnable_test.crate_name,
         runnable_test.scraped_test.line,
+        &rustdoc_options,
         runnable_test.rustdoc_test_options,
         runnable_test.scraped_test.langstr,
         runnable_test.no_run,
