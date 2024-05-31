@@ -421,7 +421,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             def_id: DefId,
             generic_args: &'a GenericArgs<'tcx>,
             span: Span,
-            inferred_params: Vec<Span>,
             infer_args: bool,
             incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
@@ -450,7 +449,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                 }
 
-                let mut handle_ty_args = |has_default, ty: &hir::Ty<'tcx>| {
+                let handle_ty_args = |has_default, ty: &hir::Ty<'tcx>| {
                     if has_default {
                         tcx.check_optional_stability(
                             param.def_id,
@@ -467,12 +466,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             },
                         );
                     }
-                    if let (hir::TyKind::Infer, false) = (&ty.kind, self.lowerer.allow_infer()) {
-                        self.inferred_params.push(ty.span);
-                        Ty::new_misc_error(tcx).into()
-                    } else {
-                        self.lowerer.lower_ty(ty).into()
-                    }
+                    self.lowerer.lower_ty(ty).into()
                 };
 
                 match (&param.kind, arg) {
@@ -496,12 +490,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .type_of(param.def_id)
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
-                        if self.lowerer.allow_infer() {
-                            self.lowerer.ct_infer(ty, Some(param), inf.span).into()
-                        } else {
-                            self.inferred_params.push(inf.span);
-                            ty::Const::new_misc_error(tcx, ty).into()
-                        }
+                        self.lowerer.ct_infer(ty, Some(param), inf.span).into()
                     }
                     (kind, arg) => span_bug!(
                         self.span,
@@ -604,7 +593,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             def_id,
             span,
             generic_args: segment.args(),
-            inferred_params: vec![],
             infer_args: segment.infer_args,
             incorrect_args: &arg_count.correct,
         };
