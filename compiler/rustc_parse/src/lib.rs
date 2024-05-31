@@ -100,15 +100,7 @@ pub fn source_str_to_stream(
     source: String,
     override_span: Option<Span>,
 ) -> TokenStream {
-    source_file_to_stream(psess, psess.source_map().new_source_file(name, source), override_span)
-}
-
-/// Given a `source_file`, produces a sequence of token trees.
-pub fn source_file_to_stream(
-    psess: &ParseSess,
-    source_file: Lrc<SourceFile>,
-    override_span: Option<Span>,
-) -> TokenStream {
+    let source_file = psess.source_map().new_source_file(name, source);
     unwrap_or_emit_fatal(maybe_source_file_to_stream(psess, source_file, override_span))
 }
 
