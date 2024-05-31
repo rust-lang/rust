@@ -80,7 +80,7 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
 
     let content = content.join("\n");
 
-    file.write(content.as_bytes())
+    file.write_all(content.as_bytes())
         .map_err(|error| format!("failed to write arguments to temporary file: {error:?}"))?;
     Ok(())
 }
