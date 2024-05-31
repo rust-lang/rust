@@ -37,8 +37,7 @@ use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
 
-use self::markdown::MdDoctest;
-use self::rust::{HirCollector, RustDoctest};
+use self::rust::HirCollector;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone, Default)]
@@ -194,7 +193,7 @@ pub(crate) fn run(
                         tcx,
                     );
                     let tests = hir_collector.collect_crate();
-                    tests.into_iter().for_each(|t| collector.add_test(ScrapedDoctest::Rust(t)));
+                    tests.into_iter().for_each(|t| collector.add_test(t));
 
                     collector
                 });
@@ -976,9 +975,12 @@ impl IndividualTestOptions {
 }
 
 /// A doctest scraped from the code, ready to be turned into a runnable test.
-enum ScrapedDoctest {
-    Rust(RustDoctest),
-    Markdown(MdDoctest),
+struct ScrapedDoctest {
+    filename: FileName,
+    line: usize,
+    logical_path: Vec<String>,
+    langstr: LangString,
+    text: String,
 }
 
 pub(crate) trait DoctestVisitor {
@@ -1030,27 +1032,18 @@ impl CreateRunnableDoctests {
     }
 
     fn add_test(&mut self, test: ScrapedDoctest) {
-        let (filename, line, logical_path, langstr, text) = match test {
-            ScrapedDoctest::Rust(RustDoctest { filename, line, logical_path, langstr, text }) => {
-                (filename, line, logical_path, langstr, text)
-            }
-            ScrapedDoctest::Markdown(MdDoctest { filename, line, logical_path, langstr, text }) => {
-                (filename, line, logical_path, langstr, text)
-            }
-        };
-
-        let name = self.generate_name(&filename, line, &logical_path);
+        let name = self.generate_name(&test.filename, test.line, &test.logical_path);
         let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
-        let edition = langstr.edition.unwrap_or(self.rustdoc_options.edition);
+        let edition = test.langstr.edition.unwrap_or(self.rustdoc_options.edition);
         let target_str = self.rustdoc_options.target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
-        let no_run = langstr.no_run || self.rustdoc_options.no_run;
-        if !langstr.compile_fail {
+        let no_run = test.langstr.no_run || self.rustdoc_options.no_run;
+        if !test.langstr.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
 
-        let path = match &filename {
+        let path = match &test.filename {
             FileName::Real(path) => {
                 if let Some(local_path) = path.local_path() {
                     local_path.to_path_buf()
@@ -1063,7 +1056,8 @@ impl CreateRunnableDoctests {
         };
 
         // For example `module/file.rs` would become `module_file_rs`
-        let file = filename
+        let file = test
+            .filename
             .prefer_local()
             .to_string_lossy()
             .chars()
@@ -1072,22 +1066,25 @@ impl CreateRunnableDoctests {
         let test_id = format!(
             "{file}_{line}_{number}",
             file = file,
-            line = line,
+            line = test.line,
             number = {
                 // Increases the current test number, if this file already
                 // exists or it creates a new entry with a test number of 0.
-                self.visited_tests.entry((file.clone(), line)).and_modify(|v| *v += 1).or_insert(0)
+                self.visited_tests
+                    .entry((file.clone(), test.line))
+                    .and_modify(|v| *v += 1)
+                    .or_insert(0)
             },
         );
 
         let rustdoc_test_options =
             IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
 
-        debug!("creating test {name}: {text}");
+        debug!("creating test {name}: {}", test.text);
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
-                ignore: match langstr.ignore {
+                ignore: match test.langstr.ignore {
                     Ignore::All => true,
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
@@ -1100,7 +1097,7 @@ impl CreateRunnableDoctests {
                 end_col: 0,
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
-                compile_fail: langstr.compile_fail,
+                compile_fail: test.langstr.compile_fail,
                 no_run,
                 test_type: test::TestType::DocTest,
             },
@@ -1108,14 +1105,12 @@ impl CreateRunnableDoctests {
                 doctest_run_fn(
                     RunnableDoctest {
                         crate_name,
-                        line,
                         rustdoc_test_options,
-                        langstr,
                         no_run,
                         opts,
                         edition,
                         path,
-                        text,
+                        scraped_test: test,
                     },
                     unused_externs,
                 )
@@ -1127,45 +1122,31 @@ impl CreateRunnableDoctests {
 /// A doctest that is ready to run.
 struct RunnableDoctest {
     crate_name: String,
-    line: usize,
     rustdoc_test_options: IndividualTestOptions,
-    langstr: LangString,
     no_run: bool,
     opts: GlobalTestOptions,
     edition: Edition,
     path: PathBuf,
-    text: String,
+    scraped_test: ScrapedDoctest,
 }
 
 fn doctest_run_fn(
-    test: RunnableDoctest,
+    runnable_test: RunnableDoctest,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
-    let RunnableDoctest {
-        crate_name,
-        line,
-        rustdoc_test_options,
-        langstr,
-        no_run,
-        opts,
-        edition,
-        path,
-        text,
-    } = test;
-
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
     let res = run_test(
-        &text,
-        &crate_name,
-        line,
-        rustdoc_test_options,
-        langstr,
-        no_run,
-        &opts,
-        edition,
-        path,
+        &runnable_test.scraped_test.text,
+        &runnable_test.crate_name,
+        runnable_test.scraped_test.line,
+        runnable_test.rustdoc_test_options,
+        runnable_test.scraped_test.langstr,
+        runnable_test.no_run,
+        &runnable_test.opts,
+        runnable_test.edition,
+        runnable_test.path,
         report_unused_externs,
     );
 

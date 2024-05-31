@@ -11,16 +11,8 @@ use super::{
 use crate::config::Options;
 use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
 
-pub(super) struct MdDoctest {
-    pub(super) filename: FileName,
-    pub(super) line: usize,
-    pub(super) logical_path: Vec<String>,
-    pub(super) langstr: LangString,
-    pub(super) text: String,
-}
-
 struct MdCollector {
-    tests: Vec<MdDoctest>,
+    tests: Vec<ScrapedDoctest>,
     cur_path: Vec<String>,
     filename: FileName,
 }
@@ -28,7 +20,7 @@ struct MdCollector {
 impl DoctestVisitor for MdCollector {
     fn visit_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.filename.clone();
-        self.tests.push(MdDoctest {
+        self.tests.push(ScrapedDoctest {
             filename,
             line,
             logical_path: self.cur_path.clone(),
@@ -127,7 +119,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         opts,
         file_path,
     );
-    md_collector.tests.into_iter().for_each(|t| collector.add_test(ScrapedDoctest::Markdown(t)));
+    md_collector.tests.into_iter().for_each(|t| collector.add_test(t));
     crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
     Ok(())
 }
