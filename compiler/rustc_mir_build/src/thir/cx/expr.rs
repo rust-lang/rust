@@ -939,9 +939,10 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
 
-            // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
-            // a constant reference (or constant raw pointer for `static mut`) in MIR
+            // Writing a path to a static in Rust source creates a place expression AKA lvalue
+            // THIR calls it ExprKind::Deref, so here we gin up something to deref
             Res::Def(DefKind::Static { .. }, id) => {
+                // like a ref (static) or raw ptr (extern static, static mut)
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self
                     .rvalue_scopes
