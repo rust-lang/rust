@@ -480,10 +480,15 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             _ if name.as_str().starts_with("simd_") => {
-                // Unpack non-power-of-2 #[repr(packed)]
+                // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
+                // This gives them the expected layout of a regular #[repr(simd)] vector.
                 let mut loaded_args = Vec::new();
                 for (ty, arg) in arg_tys.iter().zip(args) {
                     loaded_args.push(
+                        // #[repr(packed, simd)] vectors are passed like arrays (as references,
+                        // with reduced alignment and no padding) rather than as immediates.
+                        // We can use a vector load to fix the layout and turn the argument
+                        // into an immediate.
                         if ty.is_simd()
                             && let OperandValue::Ref(place) = arg.val
                         {
