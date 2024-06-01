@@ -424,8 +424,6 @@ declare_features! (
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
     (unstable, coverage_attribute, "1.74.0", Some(84605)),
-    /// Allows users to provide classes for fenced code block using `class:classname`.
-    (unstable, custom_code_classes_in_docs, "1.74.0", Some(79483)),
     /// Allows non-builtin attributes in inner attribute position.
     (unstable, custom_inner_attributes, "1.30.0", Some(54726)),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.

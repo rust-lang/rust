@@ -20,7 +20,6 @@
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
 //!     heading_offset: HeadingOffset::H2,
-//!     custom_code_classes_in_docs: true,
 //! };
 //! let html = md.into_string();
 //! // ... something using html
@@ -97,8 +96,6 @@ pub struct Markdown<'a> {
     /// Offset at which we render headings.
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
-    /// `true` if the `custom_code_classes_in_docs` feature is enabled.
-    pub custom_code_classes_in_docs: bool,
 }
 /// A struct like `Markdown` that renders the markdown with a table of contents.
 pub(crate) struct MarkdownWithToc<'a> {
@@ -107,8 +104,6 @@ pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) error_codes: ErrorCodes,
     pub(crate) edition: Edition,
     pub(crate) playground: &'a Option<Playground>,
-    /// `true` if the `custom_code_classes_in_docs` feature is enabled.
-    pub(crate) custom_code_classes_in_docs: bool,
 }
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
@@ -209,7 +204,6 @@ struct CodeBlocks<'p, 'a, I: Iterator<Item = Event<'a>>> {
     // Information about the playground if a URL has been specified, containing an
     // optional crate name and the URL.
     playground: &'p Option<Playground>,
-    custom_code_classes_in_docs: bool,
 }
 
 impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
@@ -218,15 +212,8 @@ impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
         error_codes: ErrorCodes,
         edition: Edition,
         playground: &'p Option<Playground>,
-        custom_code_classes_in_docs: bool,
     ) -> Self {
-        CodeBlocks {
-            inner: iter,
-            check_error_codes: error_codes,
-            edition,
-            playground,
-            custom_code_classes_in_docs,
-        }
+        CodeBlocks { inner: iter, check_error_codes: error_codes, edition, playground }
     }
 }
 
@@ -253,12 +240,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let LangString { added_classes, compile_fail, should_panic, ignore, edition, .. } =
             match kind {
                 CodeBlockKind::Fenced(ref lang) => {
-                    let parse_result = LangString::parse_without_check(
-                        lang,
-                        self.check_error_codes,
-                        false,
-                        self.custom_code_classes_in_docs,
-                    );
+                    let parse_result =
+                        LangString::parse_without_check(lang, self.check_error_codes, false);
                     if !parse_result.rust {
                         let added_classes = parse_result.added_classes;
                         let lang_string = if let Some(lang) = parse_result.unknown.first() {
@@ -733,17 +716,8 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
     error_codes: ErrorCodes,
     enable_per_target_ignores: bool,
     extra_info: Option<&ExtraInfo<'_>>,
-    custom_code_classes_in_docs: bool,
 ) {
-    find_codes(
-        doc,
-        tests,
-        error_codes,
-        enable_per_target_ignores,
-        extra_info,
-        false,
-        custom_code_classes_in_docs,
-    )
+    find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
 }
 
 pub(crate) fn find_codes<T: doctest::Tester>(
@@ -753,7 +727,6 @@ pub(crate) fn find_codes<T: doctest::Tester>(
     enable_per_target_ignores: bool,
     extra_info: Option<&ExtraInfo<'_>>,
     include_non_rust: bool,
-    custom_code_classes_in_docs: bool,
 ) {
     let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
@@ -772,7 +745,6 @@ pub(crate) fn find_codes<T: doctest::Tester>(
                                 error_codes,
                                 enable_per_target_ignores,
                                 extra_info,
-                                custom_code_classes_in_docs,
                             )
                         }
                     }
@@ -1170,29 +1142,6 @@ impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
     }
 }
 
-fn tokens(string: &str) -> impl Iterator<Item = LangStringToken<'_>> {
-    // Pandoc, which Rust once used for generating documentation,
-    // expects lang strings to be surrounded by `{}` and for each token
-    // to be proceeded by a `.`. Since some of these lang strings are still
-    // loose in the wild, we strip a pair of surrounding `{}` from the lang
-    // string and a leading `.` from each token.
-
-    let string = string.trim();
-
-    let first = string.chars().next();
-    let last = string.chars().last();
-
-    let string =
-        if first == Some('{') && last == Some('}') { &string[1..string.len() - 1] } else { string };
-
-    string
-        .split(|c| c == ',' || c == ' ' || c == '\t')
-        .map(str::trim)
-        .map(|token| token.strip_prefix('.').unwrap_or(token))
-        .filter(|token| !token.is_empty())
-        .map(|token| LangStringToken::LangToken(token))
-}
-
 impl Default for LangString {
     fn default() -> Self {
         Self {
@@ -1216,15 +1165,8 @@ impl LangString {
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
-        custom_code_classes_in_docs: bool,
     ) -> Self {
-        Self::parse(
-            string,
-            allow_error_code_check,
-            enable_per_target_ignores,
-            None,
-            custom_code_classes_in_docs,
-        )
+        Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
     }
 
     fn parse(
@@ -1232,7 +1174,6 @@ impl LangString {
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
         extra: Option<&ExtraInfo<'_>>,
-        custom_code_classes_in_docs: bool,
     ) -> Self {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
@@ -1269,11 +1210,7 @@ impl LangString {
                         seen_rust_tags = true;
                     }
                     LangStringToken::LangToken("custom") => {
-                        if custom_code_classes_in_docs {
-                            seen_custom_tag = true;
-                        } else {
-                            seen_other_tags = true;
-                        }
+                        seen_custom_tag = true;
                     }
                     LangStringToken::LangToken("test_harness") => {
                         data.test_harness = true;
@@ -1364,16 +1301,12 @@ impl LangString {
                         data.unknown.push(x.to_owned());
                     }
                     LangStringToken::KeyValueAttribute(key, value) => {
-                        if custom_code_classes_in_docs {
-                            if key == "class" {
-                                data.added_classes.push(value.to_owned());
-                            } else if let Some(extra) = extra {
-                                extra.error_invalid_codeblock_attr(format!(
-                                    "unsupported attribute `{key}`"
-                                ));
-                            }
-                        } else {
-                            seen_other_tags = true;
+                        if key == "class" {
+                            data.added_classes.push(value.to_owned());
+                        } else if let Some(extra) = extra {
+                            extra.error_invalid_codeblock_attr(format!(
+                                "unsupported attribute `{key}`"
+                            ));
                         }
                     }
                     LangStringToken::ClassAttribute(class) => {
@@ -1383,11 +1316,7 @@ impl LangString {
             }
         };
 
-        if custom_code_classes_in_docs {
-            call(&mut TagIterator::new(string, extra))
-        } else {
-            call(&mut tokens(string))
-        }
+        call(&mut TagIterator::new(string, extra));
 
         // ignore-foo overrides ignore
         if !ignores.is_empty() {
@@ -1410,7 +1339,6 @@ impl Markdown<'_> {
             edition,
             playground,
             heading_offset,
-            custom_code_classes_in_docs,
         } = self;
 
         // This is actually common enough to special-case
@@ -1433,7 +1361,7 @@ impl Markdown<'_> {
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
-        let p = CodeBlocks::new(p, codes, edition, playground, custom_code_classes_in_docs);
+        let p = CodeBlocks::new(p, codes, edition, playground);
         html::push_html(&mut s, p);
 
         s
@@ -1442,14 +1370,7 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownWithToc {
-            content: md,
-            ids,
-            error_codes: codes,
-            edition,
-            playground,
-            custom_code_classes_in_docs,
-        } = self;
+        let MarkdownWithToc { content: md, ids, error_codes: codes, edition, playground } = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
@@ -1461,7 +1382,7 @@ impl MarkdownWithToc<'_> {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
             let p = Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = CodeBlocks::new(p, codes, edition, playground, custom_code_classes_in_docs);
+            let p = CodeBlocks::new(p, codes, edition, playground);
             html::push_html(&mut s, p);
         }
 
@@ -1902,11 +1823,7 @@ pub(crate) struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-pub(crate) fn rust_code_blocks(
-    md: &str,
-    extra_info: &ExtraInfo<'_>,
-    custom_code_classes_in_docs: bool,
-) -> Vec<RustCodeBlock> {
+pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {
@@ -1923,13 +1840,7 @@ pub(crate) fn rust_code_blocks(
                     let lang_string = if syntax.is_empty() {
                         Default::default()
                     } else {
-                        LangString::parse(
-                            &*syntax,
-                            ErrorCodes::Yes,
-                            false,
-                            Some(extra_info),
-                            custom_code_classes_in_docs,
-                        )
+                        LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };
                     if !lang_string.rust {
                         continue;
