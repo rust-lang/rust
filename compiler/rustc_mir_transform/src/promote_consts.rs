@@ -970,6 +970,11 @@ fn promote_candidates<'tcx>(
     // Visit candidates in reverse, in case they're nested.
     debug!(promote_candidates = ?candidates);
 
+    // eagerly fail fast
+    if candidates.is_empty() {
+        return IndexVec::new();
+    }
+
     let mut promotions = IndexVec::new();
 
     let mut extra_statements = vec![];
