@@ -231,13 +231,7 @@ impl ConfigInfo {
             let tempfile = output_dir.join(&tempfile_name);
             let is_in_ci = std::env::var("GITHUB_ACTIONS").is_ok();
 
-            let url = format!(
-                "https://github.com/antoyo/gcc/releases/download/master-{}/libgccjit.so",
-                commit,
-            );
-
-            println!("Downloading `{}`...", url);
-            download_gccjit(url, &output_dir, tempfile_name, !is_in_ci)?;
+            download_gccjit(&commit, &output_dir, tempfile_name, !is_in_ci)?;
 
             let libgccjit_so = output_dir.join(libgccjit_so_name);
             // If we reach this point, it means the file was correctly downloaded, so let's
@@ -469,11 +463,27 @@ impl ConfigInfo {
 }
 
 fn download_gccjit(
-    url: String,
+    commit: &str,
     output_dir: &Path,
     tempfile_name: String,
     with_progress_bar: bool,
 ) -> Result<(), String> {
+    let url = if std::env::consts::OS == "linux" && std::env::consts::ARCH == "x86_64" {
+        format!("https://github.com/rust-lang/gcc/releases/download/master-{}/libgccjit.so", commit)
+    } else {
+        eprintln!(
+            "\
+Pre-compiled libgccjit.so not available for this os or architecture.
+Please compile it yourself and update the `config.toml` file
+to `download-gccjit = false` and set `gcc-path` to the appropriate directory."
+        );
+        return Err(String::from(
+            "no appropriate pre-compiled libgccjit.so available for download",
+        ));
+    };
+
+    println!("Downloading `{}`...", url);
+
     // Try curl. If that fails and we are on windows, fallback to PowerShell.
     let mut ret = run_command_with_output(
         &[
