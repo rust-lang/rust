@@ -38,7 +38,6 @@ run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
 run-make/duplicate-output-flavors/Makefile
 run-make/dylib-chain/Makefile
-run-make/emit-named-files/Makefile
 run-make/emit-path-unhashed/Makefile
 run-make/emit-shared-files/Makefile
 run-make/emit-stack-sizes/Makefile
