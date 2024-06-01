@@ -35,7 +35,7 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>)
                 output[1] = c.as_ascii().unwrap();
                 2
             }
-            c @ 0x20..0x7f => {
+            c @ 0x20..=0x7e => {
                 output[0] = c.as_ascii().unwrap();
                 1
             }
