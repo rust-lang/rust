@@ -98,8 +98,8 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn visit_local(&mut self, index: Local, context: PlaceContext, location: Location) {
-        debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {
             LocalKind::Arg => return,
@@ -111,20 +111,15 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         // then it's constant and thus drop is noop.
         // Non-uses are also irrelevant.
         if context.is_drop() || !context.is_use() {
-            debug!(
-                "visit_local: context.is_drop={:?} context.is_use={:?}",
-                context.is_drop(),
-                context.is_use(),
-            );
+            debug!(is_drop = context.is_drop(), is_use = context.is_use());
             return;
         }
 
         let temp = &mut self.temps[index];
-        debug!("visit_local: temp={:?}", temp);
+        debug!(?temp);
         *temp = match *temp {
             TempState::Undefined => match context {
-                PlaceContext::MutatingUse(MutatingUseContext::Store)
-                | PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+                PlaceContext::MutatingUse(MutatingUseContext::Store | MutatingUseContext::Call) => {
                     TempState::Defined { location, uses: 0, valid: Err(()) }
                 }
                 _ => TempState::Unpromotable,
@@ -137,7 +132,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                     | PlaceContext::NonMutatingUse(_) => true,
                     PlaceContext::MutatingUse(_) | PlaceContext::NonUse(_) => false,
                 };
-                debug!("visit_local: allowed_use={:?}", allowed_use);
+                debug!(?allowed_use);
                 if allowed_use {
                     *uses += 1;
                     return;
@@ -146,6 +141,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             }
             TempState::Unpromotable | TempState::PromotedOut => TempState::Unpromotable,
         };
+        debug!(?temp);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -972,7 +968,7 @@ fn promote_candidates<'tcx>(
     candidates: Vec<Candidate>,
 ) -> IndexVec<Promoted, Body<'tcx>> {
     // Visit candidates in reverse, in case they're nested.
-    debug!("promote_candidates({:?})", candidates);
+    debug!(promote_candidates = ?candidates);
 
     let mut promotions = IndexVec::new();
 
