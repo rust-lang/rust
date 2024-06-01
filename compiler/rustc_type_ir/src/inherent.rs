@@ -9,7 +9,7 @@ use std::ops::Deref;
 
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty, DebugWithInfcx, Interner, UpcastFrom};
+use crate::{self as ty, CollectAndApply, DebugWithInfcx, Interner, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
@@ -34,6 +34,21 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
+
+    fn new_coroutine(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_tup_from_iter<It, T>(interner: I, iter: It) -> T::Output
+    where
+        It: Iterator<Item = T>,
+        T: CollectAndApply<Self, Self>;
+
+    fn tuple_fields(self) -> I::Tys;
+
+    fn to_opt_closure_kind(self) -> Option<ty::ClosureKind>;
+
+    fn from_closure_kind(interner: I, kind: ty::ClosureKind) -> Self;
+
+    fn from_coroutine_closure_kind(interner: I, kind: ty::ClosureKind) -> Self;
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
@@ -43,17 +58,18 @@ pub trait Tys<I: Interner<Tys = Self>>:
     + Eq
     + IntoIterator<Item = I::Ty>
     + Deref<Target: Deref<Target = [I::Ty]>>
-    + TypeVisitable<I>
+    + TypeFoldable<I>
+    + Default
 {
     fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
 }
 
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
+pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq + TypeVisitable<I> {
     /// Whether this ABI is `extern "Rust"`.
     fn is_rust(self) -> bool;
 }
 
-pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
+pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq + TypeVisitable<I> {
     fn is_safe(self) -> bool;
 
     fn prefix_str(self) -> &'static str;
@@ -129,6 +145,10 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
         def_id: I::DefId,
         original_args: &[I::GenericArg],
     ) -> I::GenericArgs;
+
+    fn split_closure_args(self) -> ty::ClosureArgsParts<I>;
+    fn split_coroutine_closure_args(self) -> ty::CoroutineClosureArgsParts<I>;
+    fn split_coroutine_args(self) -> ty::CoroutineArgsParts<I>;
 }
 
 pub trait Predicate<I: Interner<Predicate = Self>>:
