@@ -27,11 +27,9 @@ jobs:
         fetch-depth: 0
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: stable
-        profile: minimal
-        override: true
+        cache: false
 
     - run: rustc ./.github/ci.rs && ./ci
       env:
