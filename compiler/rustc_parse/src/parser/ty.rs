@@ -194,7 +194,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
-            AllowCVariadic::Yes,
+            AllowCVariadic::No,
             RecoverQPath::Yes,
             RecoverReturnSign::OnlyFatArrow,
             None,
@@ -344,8 +344,9 @@ impl<'a> Parser<'a> {
             match allow_c_variadic {
                 AllowCVariadic::Yes => TyKind::CVarArgs,
                 AllowCVariadic::No => {
-                    // FIXME(Centril): Should we just allow `...` syntactically
+                    // FIXME(c_variadic): Should we just allow `...` syntactically
                     // anywhere in a type and use semantic restrictions instead?
+                    // NOTE: This may regress certain MBE calls if done incorrectly.
                     let guar = self
                         .dcx()
                         .emit_err(NestedCVariadicType { span: lo.to(self.prev_token.span) });
