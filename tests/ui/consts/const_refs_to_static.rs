@@ -9,7 +9,7 @@ const C1: &i32 = &S;
 const C1_READ: () = {
     assert!(*C1 == 0);
 };
-const C2: *const i32 = unsafe { std::ptr::addr_of!(S_MUT) };
+const C2: *const i32 = std::ptr::addr_of!(S_MUT);
 
 fn main() {
     assert_eq!(*C1, 0);
