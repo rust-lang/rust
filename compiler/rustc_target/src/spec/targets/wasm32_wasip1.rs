@@ -18,6 +18,7 @@ pub fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
+    options.env = "p1".into();
     options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
