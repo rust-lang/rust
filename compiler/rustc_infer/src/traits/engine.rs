@@ -1,7 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 use rustc_hir::def_id::DefId;
-use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty, Upcast};
 
 use super::FulfillmentError;
@@ -37,33 +36,20 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
-    #[must_use]
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
-
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
-
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
-
-    /// Among all pending obligations, collect those are stalled on a inference variable which has
-    /// changed since the last call to `select_where_possible`. Those obligations are marked as
-    /// successful and returned.
-    fn drain_unstalled_obligations(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-    ) -> Vec<PredicateObligation<'tcx>>;
-}
-
-#[extension(pub trait TraitEngineExt<'tcx>)]
-impl<'tcx, T: ?Sized + TraitEngine<'tcx>> T {
     fn register_predicate_obligations(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+        obligations: Vec<PredicateObligation<'tcx>>,
     ) {
         for obligation in obligations {
             self.register_predicate_obligation(infcx, obligation);
         }
     }
+
+    #[must_use]
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
+
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
     #[must_use]
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
@@ -74,4 +60,14 @@ impl<'tcx, T: ?Sized + TraitEngine<'tcx>> T {
 
         self.collect_remaining_errors(infcx)
     }
+
+    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
+
+    /// Among all pending obligations, collect those are stalled on a inference variable which has
+    /// changed since the last call to `select_where_possible`. Those obligations are marked as
+    /// successful and returned.
+    fn drain_unstalled_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>>;
 }

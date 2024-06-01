@@ -12,7 +12,7 @@ pub use SubregionOrigin::*;
 pub use ValuePairs::*;
 
 use crate::traits::{
-    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine, TraitEngineExt,
+    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
 };
 use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;

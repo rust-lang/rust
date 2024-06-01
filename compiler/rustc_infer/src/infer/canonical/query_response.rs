@@ -15,8 +15,8 @@ use crate::infer::canonical::{
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
 use crate::traits::query::NoSolution;
+use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use crate::traits::{TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::Idx;
 use rustc_index::IndexVec;

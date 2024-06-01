@@ -4,7 +4,6 @@ use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
