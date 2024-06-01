@@ -19,7 +19,7 @@ use crate::{
     config::Config,
     diagnostics::fetch_native_diagnostics,
     dispatch::{NotificationDispatcher, RequestDispatcher},
-    global_state::{file_id_to_url, url_to_file_id, FlycheckStatus, GlobalState},
+    global_state::{file_id_to_url, url_to_file_id, GlobalState},
     hack_recover_crate_name,
     lsp::{
         from_proto, to_proto,
@@ -804,13 +804,6 @@ impl GlobalState {
     fn handle_flycheck_msg(&mut self, message: flycheck::Message) {
         match message {
             flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
-                let flycheck_status =
-                    self.flycheck_status.entry(id).or_insert(FlycheckStatus::Unknown);
-
-                if !flycheck_status.should_clear_old_diagnostics() {
-                    self.diagnostics.clear_check(id);
-                }
-                *flycheck_status = FlycheckStatus::DiagnosticReceived;
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(),
@@ -836,35 +829,24 @@ impl GlobalState {
                 }
             }
 
+            flycheck::Message::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
+
             flycheck::Message::Progress { id, progress } => {
                 let (state, message) = match progress {
-                    flycheck::Progress::DidStart => {
-                        self.flycheck_status.insert(id, FlycheckStatus::Started);
-                        (Progress::Begin, None)
-                    }
+                    flycheck::Progress::DidStart => (Progress::Begin, None),
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
-                        // We do not clear
-                        self.flycheck_status.insert(id, FlycheckStatus::Finished);
                         (Progress::End, None)
                     }
                     flycheck::Progress::DidFailToRestart(err) => {
                         self.last_flycheck_error =
                             Some(format!("cargo check failed to start: {err}"));
-                        self.flycheck_status.insert(id, FlycheckStatus::Finished);
                         return;
                     }
                     flycheck::Progress::DidFinish(result) => {
                         self.last_flycheck_error =
                             result.err().map(|err| format!("cargo check failed to start: {err}"));
-                        let flycheck_status =
-                            self.flycheck_status.entry(id).or_insert(FlycheckStatus::Unknown);
-
-                        if !flycheck_status.should_clear_old_diagnostics() {
-                            self.diagnostics.clear_check(id);
-                        }
-                        *flycheck_status = FlycheckStatus::Finished;
                         (Progress::End, None)
                     }
                 };
