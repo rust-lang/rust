@@ -8,61 +8,70 @@ use std::ops::Deref;
 
 use run_make_support::rustc;
 
+struct CheckCfg {
+    args: &'static [&'static str],
+    contains: Contains,
+}
+
+enum Contains {
+    Some { contains: &'static [&'static str], doesnt_contain: &'static [&'static str] },
+    Only(&'static str),
+}
+
 fn main() {
-    check(
-        /*args*/ &[],
-        /*has_any*/ false,
-        /*has_any_any*/ true,
-        /*contains*/ &[],
-    );
-    check(
-        /*args*/ &["--check-cfg=cfg()"],
-        /*has_any*/ false,
-        /*has_any_any*/ false,
-        /*contains*/ &["unix", "miri"],
-    );
-    check(
-        /*args*/ &["--check-cfg=cfg(any())"],
-        /*has_any*/ true,
-        /*has_any_any*/ false,
-        /*contains*/ &["windows", "test"],
-    );
-    check(
-        /*args*/ &["--check-cfg=cfg(feature)"],
-        /*has_any*/ false,
-        /*has_any_any*/ false,
-        /*contains*/ &["unix", "miri", "feature"],
-    );
-    check(
-        /*args*/ &[r#"--check-cfg=cfg(feature, values(none(), "", "test", "lol"))"#],
-        /*has_any*/ false,
-        /*has_any_any*/ false,
-        /*contains*/ &["feature", "feature=\"\"", "feature=\"test\"", "feature=\"lol\""],
-    );
-    check(
-        /*args*/
-        &[
+    check(CheckCfg { args: &[], contains: Contains::Only("any()=any()") });
+    check(CheckCfg {
+        args: &["--check-cfg=cfg()"],
+        contains: Contains::Some {
+            contains: &["unix", "miri"],
+            doesnt_contain: &["any()", "any()=any()"],
+        },
+    });
+    check(CheckCfg {
+        args: &["--check-cfg=cfg(any())"],
+        contains: Contains::Some {
+            contains: &["any()", "unix", r#"target_feature="crt-static""#],
+            doesnt_contain: &["any()=any()"],
+        },
+    });
+    check(CheckCfg {
+        args: &["--check-cfg=cfg(feature)"],
+        contains: Contains::Some {
+            contains: &["unix", "miri", "feature"],
+            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature="],
+        },
+    });
+    check(CheckCfg {
+        args: &[r#"--check-cfg=cfg(feature, values(none(), "", "test", "lol"))"#],
+        contains: Contains::Some {
+            contains: &["feature", "feature=\"\"", "feature=\"test\"", "feature=\"lol\""],
+            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature="],
+        },
+    });
+    check(CheckCfg {
+        args: &[
             r#"--check-cfg=cfg(feature, values(any()))"#,
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
         ],
-        /*has_any*/ false,
-        /*has_any_any*/ false,
-        /*contains*/ &["unix", "miri", "feature=any()"],
-    );
-    check(
-        /*args*/
-        &[
+        contains: Contains::Some {
+            contains: &["unix", "miri", "feature=any()"],
+            doesnt_contain: &["any()", "any()=any()", "feature", "feature=", "feature=\"tmp\""],
+        },
+    });
+    check(CheckCfg {
+        args: &[
             r#"--check-cfg=cfg(has_foo, has_bar)"#,
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
         ],
-        /*has_any*/ false,
-        /*has_any_any*/ false,
-        /*contains*/ &["has_foo", "has_bar", "feature=\"tmp\""],
-    );
+        contains: Contains::Some {
+            contains: &["has_foo", "has_bar", "feature=\"tmp\""],
+            doesnt_contain: &["any()", "any()=any()", "feature"],
+        },
+    });
 }
 
-fn check(args: &[&str], has_any: bool, has_any_any: bool, contains: &[&str]) {
+fn check(CheckCfg { args, contains }: CheckCfg) {
     let output = rustc()
         .input("lib.rs")
         .arg("-Zunstable-options")
@@ -72,18 +81,11 @@ fn check(args: &[&str], has_any: bool, has_any_any: bool, contains: &[&str]) {
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    let mut found_any = false;
-    let mut found_any_any = false;
     let mut found = HashSet::<String>::new();
-    let mut recorded = HashSet::<String>::new();
 
     for l in stdout.lines() {
         assert!(l == l.trim());
-        if l == "any()" {
-            found_any = true;
-        } else if l == "any()=any()" {
-            found_any_any = true;
-        } else if let Some((left, right)) = l.split_once('=') {
+        if let Some((left, right)) = l.split_once('=') {
             if right != "any()" && right != "" {
                 assert!(right.starts_with("\""));
                 assert!(right.ends_with("\""));
@@ -92,17 +94,37 @@ fn check(args: &[&str], has_any: bool, has_any_any: bool, contains: &[&str]) {
         } else {
             assert!(!l.contains("\""));
         }
-        assert!(recorded.insert(l.to_string()), "{}", &l);
-        if contains.contains(&l) {
-            assert!(found.insert(l.to_string()), "{}", &l);
-        }
+        assert!(found.insert(l.to_string()), "{}", &l);
     }
 
-    let should_found = HashSet::<String>::from_iter(contains.iter().map(|s| s.to_string()));
-    let diff: Vec<_> = should_found.difference(&found).collect();
-
-    assert_eq!(found_any, has_any);
-    assert_eq!(found_any_any, has_any_any);
-    assert_eq!(found_any_any, recorded.len() == 1);
-    assert!(diff.is_empty(), "{:?} != {:?} (~ {:?})", &should_found, &found, &diff);
+    match contains {
+        Contains::Some { contains, doesnt_contain } => {
+            {
+                let should_found =
+                    HashSet::<String>::from_iter(contains.iter().map(|s| s.to_string()));
+                let diff: Vec<_> = should_found.difference(&found).collect();
+                assert!(
+                    diff.is_empty(),
+                    "should found: {:?}, didn't found {:?}",
+                    &should_found,
+                    &diff
+                );
+            }
+            {
+                let should_not_find =
+                    HashSet::<String>::from_iter(doesnt_contain.iter().map(|s| s.to_string()));
+                let diff: Vec<_> = should_not_find.intersection(&found).collect();
+                assert!(
+                    diff.is_empty(),
+                    "should not find {:?}, did found {:?}",
+                    &should_not_find,
+                    &diff
+                );
+            }
+        }
+        Contains::Only(only) => {
+            assert!(found.contains(&only.to_string()), "{:?} != {:?}", &only, &found);
+            assert!(found.len() == 1, "len: {}, instead of 1", found.len());
+        }
+    }
 }
