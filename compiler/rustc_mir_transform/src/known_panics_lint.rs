@@ -102,8 +102,12 @@ impl<'tcx> Value<'tcx> {
                 }
                 (PlaceElem::Index(idx), Value::Aggregate { fields, .. }) => {
                     let idx = prop.get_const(idx.into())?.immediate()?;
-                    let idx = prop.ecx.read_target_usize(idx).ok()?;
-                    fields.get(FieldIdx::from_u32(idx.try_into().ok()?)).unwrap_or(&Value::Uninit)
+                    let idx = prop.ecx.read_target_usize(idx).ok()?.try_into().ok()?;
+                    if idx <= FieldIdx::MAX_AS_U32 {
+                        fields.get(FieldIdx::from_u32(idx)).unwrap_or(&Value::Uninit)
+                    } else {
+                        return None;
+                    }
                 }
                 (
                     PlaceElem::ConstantIndex { offset, min_length: _, from_end: false },
