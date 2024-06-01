@@ -8,7 +8,7 @@ use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalAliasGoal, NoSolution,
 };
 use rustc_trait_selection::traits::{
-    self, FulfillmentErrorCode, ObligationCause, SelectionContext,
+    self, FulfillmentError, FulfillmentErrorCode, ObligationCause, ObligationCtxt, SelectionContext,
 };
 use tracing::debug;
 
@@ -29,7 +29,8 @@ fn normalize_canonicalized_projection_ty<'tcx>(
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
-        |ocx, ParamEnvAnd { param_env, value: goal }| {
+        |ocx: &ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>>,
+         ParamEnvAnd { param_env, value: goal }| {
             debug_assert!(!ocx.infcx.next_trait_solver());
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
@@ -73,7 +74,7 @@ fn normalize_canonicalized_weak_ty<'tcx>(
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
-        |ocx, ParamEnvAnd { param_env, value: goal }| {
+        |ocx: &ObligationCtxt<'_, 'tcx>, ParamEnvAnd { param_env, value: goal }| {
             let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.args).map(
                 |(predicate, span)| {
                     traits::Obligation::new(
@@ -99,7 +100,7 @@ fn normalize_canonicalized_inherent_projection_ty<'tcx>(
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
-        |ocx, ParamEnvAnd { param_env, value: goal }| {
+        |ocx: &ObligationCtxt<'_, 'tcx>, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];

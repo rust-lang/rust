@@ -1608,7 +1608,7 @@ fn check_field_tys_sized<'tcx>(
     let infcx = tcx.infer_ctxt().ignoring_regions().build();
     let param_env = tcx.param_env(def_id);
 
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     for field_ty in &coroutine_layout.field_tys {
         ocx.register_bound(
             ObligationCause::new(

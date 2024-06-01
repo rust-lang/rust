@@ -46,7 +46,7 @@ pub use self::coherence::{add_placeholder_note, orphan_check_trait_ref, overlapp
 pub use self::coherence::{InCrate, IsFirstInputType, UncoveredTyParams};
 pub use self::coherence::{OrphanCheckErr, OrphanCheckMode, OverlapResult};
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
-pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
+pub use self::fulfill::{FulfillmentContext, OldSolverError, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;
 pub use self::object_safety::hir_ty_lowering_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
@@ -69,6 +69,28 @@ pub use self::util::{supertraits, transitive_bounds, transitive_bounds_that_defi
 pub use self::util::{with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
 
 pub use rustc_infer::traits::*;
+
+// A trait error without any information in it. You likely want to alternately use [`ObligationCtxt::new_with_diagnostics`] to get a [`FulfillmentError`].
+#[derive(Copy, Clone, Debug)]
+pub enum ScrubbedTraitError {
+    TrueError,
+    Ambiguity,
+}
+
+impl ScrubbedTraitError {
+    fn is_true_error(&self) -> bool {
+        match self {
+            ScrubbedTraitError::TrueError => true,
+            ScrubbedTraitError::Ambiguity => false,
+        }
+    }
+}
+
+impl<'tcx> FulfillmentErrorLike<'tcx> for ScrubbedTraitError {
+    fn is_true_error(&self) -> bool {
+        self.is_true_error()
+    }
+}
 
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
@@ -450,7 +472,7 @@ pub fn fully_normalize<'tcx, T>(
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     debug!(?value);
     let normalized_value = ocx.normalize(&cause, param_env, value);
     debug!(?normalized_value);

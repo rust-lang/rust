@@ -599,7 +599,7 @@ pub fn check_function_signature<'tcx>(
     let param_env = ty::ParamEnv::empty();
 
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
 

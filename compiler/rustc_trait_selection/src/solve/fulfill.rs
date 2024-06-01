@@ -15,7 +15,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 
-use crate::traits::FulfillmentError;
+use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
@@ -221,6 +221,17 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tc
             }
             NextSolverError::Overflow(obligation) => {
                 fulfillment_error_for_overflow(infcx, obligation)
+            }
+        }
+    }
+}
+
+impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError {
+    fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
+        match error {
+            NextSolverError::TrueError(_) => ScrubbedTraitError::TrueError,
+            NextSolverError::Ambiguity(_) | NextSolverError::Overflow(_) => {
+                ScrubbedTraitError::Ambiguity
             }
         }
     }

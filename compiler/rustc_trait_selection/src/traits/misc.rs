@@ -137,7 +137,7 @@ pub fn all_fields_implement_trait<'tcx>(
         for field in &variant.fields {
             // Do this per-field to get better error messages.
             let infcx = tcx.infer_ctxt().build();
-            let ocx = traits::ObligationCtxt::new(&infcx);
+            let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
             let unnormalized_ty = field.ty(tcx, args);
             if unnormalized_ty.references_error() {

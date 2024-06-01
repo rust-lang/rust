@@ -16,13 +16,13 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Binder, Const, TypeVisitableExt};
 use std::marker::PhantomData;
 
-use super::const_evaluatable;
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::wf;
 use super::EvaluationResult;
 use super::PredicateObligation;
 use super::Unimplemented;
+use super::{const_evaluatable, ScrubbedTraitError};
 use super::{FulfillmentError, FulfillmentErrorCode};
 
 use crate::traits::project::PolyProjectionObligation;
@@ -853,5 +853,19 @@ impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for FulfillmentError<'tcx
         // one item, then it's the same as the main obligation
         let root_obligation = iter.next_back().map_or_else(|| obligation.clone(), |e| e.obligation);
         FulfillmentError::new(obligation, error.error, root_obligation)
+    }
+}
+
+impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for ScrubbedTraitError {
+    fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: OldSolverError<'tcx>) -> Self {
+        match error.error {
+            FulfillmentErrorCode::Select(_)
+            | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Subtype(_, _)
+            | FulfillmentErrorCode::ConstEquate(_, _) => ScrubbedTraitError::TrueError,
+            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
+                ScrubbedTraitError::Ambiguity
+            }
+        }
     }
 }
