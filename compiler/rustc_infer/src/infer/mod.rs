@@ -1269,16 +1269,16 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 ty::IntVar(v) => {
                     match self.inner.borrow_mut().int_unification_table().probe_value(v) {
-                        ty::IntVarValue::Unknown => ty,
                         ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
                         ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
+                        ty::IntVarValue::Unknown => ty,
                     }
                 }
 
                 ty::FloatVar(v) => {
                     match self.inner.borrow_mut().float_unification_table().probe_value(v) {
-                        ty::FloatVarValue::Unknown => ty,
                         ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
+                        ty::FloatVarValue::Unknown => ty,
                     }
                 }
 
@@ -1644,7 +1644,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
-                !self.inner.borrow_mut().int_unification_table().inlined_probe_value(v).is_unknown()
+                self.inner.borrow_mut().int_unification_table().inlined_probe_value(v).is_known()
             }
 
             TyOrConstInferVar::TyFloat(v) => {
@@ -1652,7 +1652,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                !self.inner.borrow_mut().float_unification_table().probe_value(v).is_unknown()
+                self.inner.borrow_mut().float_unification_table().probe_value(v).is_known()
             }
 
             TyOrConstInferVar::Const(v) => {

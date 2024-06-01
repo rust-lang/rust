@@ -723,8 +723,15 @@ pub enum IntVarValue {
 }
 
 impl IntVarValue {
-    pub fn is_unknown(&self) -> bool {
-        matches!(self, IntVarValue::Unknown)
+    pub fn is_known(self) -> bool {
+        match self {
+            IntVarValue::IntType(_) | IntVarValue::UintType(_) => true,
+            IntVarValue::Unknown => false,
+        }
+    }
+
+    pub fn is_unknown(self) -> bool {
+        !self.is_known()
     }
 }
 
@@ -735,8 +742,15 @@ pub enum FloatVarValue {
 }
 
 impl FloatVarValue {
-    pub fn is_unknown(&self) -> bool {
-        matches!(self, FloatVarValue::Unknown)
+    pub fn is_known(self) -> bool {
+        match self {
+            FloatVarValue::Known(_) => true,
+            FloatVarValue::Unknown => false,
+        }
+    }
+
+    pub fn is_unknown(self) -> bool {
+        !self.is_known()
     }
 }
 
