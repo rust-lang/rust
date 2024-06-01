@@ -7,7 +7,6 @@ mod deprecated_semver;
 mod duplicated_attributes;
 mod empty_line_after;
 mod inline_always;
-mod maybe_misused_cfg;
 mod mismatched_target_os;
 mod mixed_attributes_style;
 mod non_minimal_cfg;
@@ -393,38 +392,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `#[cfg(features = "...")]` and suggests to replace it with
-    /// `#[cfg(feature = "...")]`.
-    ///
-    /// It also checks if `cfg(test)` was misspelled.
-    ///
-    /// ### Why is this bad?
-    /// Misspelling `feature` as `features` or `test` as `tests` can be sometimes hard to spot. It
-    /// may cause conditional compilation not work quietly.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[cfg(features = "some-feature")]
-    /// fn conditional() { }
-    /// #[cfg(tests)]
-    /// mod tests { }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// #[cfg(feature = "some-feature")]
-    /// fn conditional() { }
-    /// #[cfg(test)]
-    /// mod tests { }
-    /// ```
-    #[clippy::version = "1.69.0"]
-    pub MAYBE_MISUSED_CFG,
-    suspicious,
-    "prevent from misusing the wrong attr name"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for `#[cfg_attr(feature = "cargo-clippy", ...)]` and for
     /// `#[cfg(feature = "cargo-clippy")]` and suggests to replace it with
     /// `#[cfg_attr(clippy, ...)]` or `#[cfg(clippy)]`.
@@ -616,7 +583,6 @@ impl_lint_pass!(EarlyAttributes => [
     EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
     NON_MINIMAL_CFG,
-    MAYBE_MISUSED_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
     UNNECESSARY_CLIPPY_CFG,
 ]);
@@ -631,7 +597,6 @@ impl EarlyLintPass for EarlyAttributes {
         deprecated_cfg_attr::check_clippy(cx, attr);
         mismatched_target_os::check(cx, attr);
         non_minimal_cfg::check(cx, attr);
-        maybe_misused_cfg::check(cx, attr);
     }
 
     extract_msrv_attr!(EarlyContext);
