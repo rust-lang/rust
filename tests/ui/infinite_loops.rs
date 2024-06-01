@@ -137,7 +137,7 @@ fn can_break_both_inner_and_outer(cond: bool) {
 }
 
 fn break_wrong_loop(cond: bool) {
-    // 'inner has statement to break 'outer loop, but it was breaked early by a labeled child loop
+    // 'inner has statement to break 'outer loop, but it was broken out of early by a labeled child loop
     'outer: loop {
         loop {
             //~^ ERROR: infinite loop detected
