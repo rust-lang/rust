@@ -12,7 +12,8 @@ pub use SubregionOrigin::*;
 pub use ValuePairs::*;
 
 use crate::traits::{
-    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
+    self, FulfillmentErrorLike, ObligationCause, ObligationInspector, PredicateObligations,
+    TraitEngine,
 };
 use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;
@@ -737,10 +738,10 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
 impl<'tcx, T> InferOk<'tcx, T> {
     /// Extracts `value`, registering any obligations into `fulfill_cx`.
-    pub fn into_value_registering_obligations(
+    pub fn into_value_registering_obligations<E: FulfillmentErrorLike<'tcx>>(
         self,
         infcx: &InferCtxt<'tcx>,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
     ) -> T {
         let InferOk { value, obligations } = self;
         fulfill_cx.register_predicate_obligations(infcx, obligations);

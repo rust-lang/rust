@@ -6,7 +6,7 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::traits::ProjectionCacheKey;
+use rustc_infer::traits::{FromSolverError, FulfillmentErrorLike, ProjectionCacheKey};
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -50,7 +50,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 /// along. Once all type inference constraints have been generated, the
 /// method `select_all_or_error` can be used to report any remaining
 /// ambiguous cases as errors.
-pub struct FulfillmentContext<'tcx> {
+pub struct FulfillmentContext<'tcx, E: FulfillmentErrorLike<'tcx>> {
     /// A list of all obligations that have been registered with this
     /// fulfillment context.
     predicates: ObligationForest<PendingPredicateObligation<'tcx>>,
@@ -60,6 +60,8 @@ pub struct FulfillmentContext<'tcx> {
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+
+    _errors: PhantomData<E>,
 }
 
 #[derive(Clone, Debug)]
@@ -76,9 +78,9 @@ pub struct PendingPredicateObligation<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PendingPredicateObligation<'_>, 72);
 
-impl<'tcx> FulfillmentContext<'tcx> {
+impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> FulfillmentContext<'tcx, E> {
     /// Creates a new fulfillment context.
-    pub(super) fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentContext<'tcx> {
+    pub(super) fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentContext<'tcx, E> {
         assert!(
             !infcx.next_trait_solver(),
             "old trait solver fulfillment context created when \
@@ -87,13 +89,15 @@ impl<'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            _errors: PhantomData,
         }
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> Vec<E> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
+        let infcx = selcx.infcx;
 
         // Process pending obligations.
         let outcome: Outcome<_, _> =
@@ -102,8 +106,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
 
-        let errors: Vec<FulfillmentError<'tcx>> =
-            outcome.errors.into_iter().map(to_fulfillment_error).collect();
+        let errors: Vec<E> =
+            outcome.errors.into_iter().map(|err| E::from_solver_error(infcx, err)).collect();
 
         debug!(
             "select({} predicates remaining, {} errors) done",
@@ -115,7 +119,9 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 }
 
-impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
+impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> TraitEngine<'tcx, E>
+    for FulfillmentContext<'tcx, E>
+{
     #[inline]
     fn register_predicate_obligation(
         &mut self,
@@ -134,18 +140,15 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn collect_remaining_errors(
-        &mut self,
-        _infcx: &InferCtxt<'tcx>,
-    ) -> Vec<FulfillmentError<'tcx>> {
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         self.predicates
             .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
             .into_iter()
-            .map(to_fulfillment_error)
+            .map(|err| E::from_solver_error(infcx, err))
             .collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         let selcx = SelectionContext::new(infcx);
         self.select(selcx)
     }
@@ -840,13 +843,15 @@ fn args_infer_vars<'a, 'tcx>(
         .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
 }
 
-fn to_fulfillment_error<'tcx>(
-    error: Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>,
-) -> FulfillmentError<'tcx> {
-    let mut iter = error.backtrace.into_iter();
-    let obligation = iter.next().unwrap().obligation;
-    // The root obligation is the last item in the backtrace - if there's only
-    // one item, then it's the same as the main obligation
-    let root_obligation = iter.next_back().map_or_else(|| obligation.clone(), |e| e.obligation);
-    FulfillmentError::new(obligation, error.error, root_obligation)
+pub type OldSolverError<'tcx> = Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>;
+
+impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for FulfillmentError<'tcx> {
+    fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: OldSolverError<'tcx>) -> Self {
+        let mut iter = error.backtrace.into_iter();
+        let obligation = iter.next().unwrap().obligation;
+        // The root obligation is the last item in the backtrace - if there's only
+        // one item, then it's the same as the main obligation
+        let root_obligation = iter.next_back().map_or_else(|| obligation.clone(), |e| e.obligation);
+        FulfillmentError::new(obligation, error.error, root_obligation)
+    }
 }

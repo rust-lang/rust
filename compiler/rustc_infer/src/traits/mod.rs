@@ -23,7 +23,7 @@ pub use self::ImplSource::*;
 pub use self::SelectionError::*;
 use crate::infer::InferCtxt;
 
-pub use self::engine::TraitEngine;
+pub use self::engine::{FromSolverError, FulfillmentErrorLike, TraitEngine};
 pub use self::project::MismatchedProjectionTypes;
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
@@ -124,15 +124,7 @@ pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 pub type ObligationInspector<'tcx> =
     fn(&InferCtxt<'tcx>, &PredicateObligation<'tcx>, Result<Certainty, NoSolution>);
 
-pub struct FulfillmentError<'tcx> {
-    pub obligation: PredicateObligation<'tcx>,
-    pub code: FulfillmentErrorCode<'tcx>,
-    /// Diagnostics only: the 'root' obligation which resulted in
-    /// the failure to process `obligation`. This is the obligation
-    /// that was initially passed to `register_predicate_obligation`
-    pub root_obligation: PredicateObligation<'tcx>,
-}
-
+// TODO: Pull this down too
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
@@ -195,28 +187,6 @@ impl<'tcx, O> Obligation<'tcx, O> {
         value: impl Upcast<TyCtxt<'tcx>, P>,
     ) -> Obligation<'tcx, P> {
         Obligation::with_depth(tcx, self.cause.clone(), self.recursion_depth, self.param_env, value)
-    }
-}
-
-impl<'tcx> FulfillmentError<'tcx> {
-    pub fn new(
-        obligation: PredicateObligation<'tcx>,
-        code: FulfillmentErrorCode<'tcx>,
-        root_obligation: PredicateObligation<'tcx>,
-    ) -> FulfillmentError<'tcx> {
-        FulfillmentError { obligation, code, root_obligation }
-    }
-
-    pub fn is_true_error(&self) -> bool {
-        match self.code {
-            FulfillmentErrorCode::Select(_)
-            | FulfillmentErrorCode::Project(_)
-            | FulfillmentErrorCode::Subtype(_, _)
-            | FulfillmentErrorCode::ConstEquate(_, _) => true,
-            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
-                false
-            }
-        }
     }
 }
 

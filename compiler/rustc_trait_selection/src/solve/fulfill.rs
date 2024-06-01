@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::ControlFlow;
 
@@ -5,13 +6,16 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
-    self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
+    self, FromSolverError, FulfillmentErrorCode, FulfillmentErrorLike, MismatchedProjectionTypes,
+    Obligation, ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError,
+    TraitEngine,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
+
+use crate::traits::FulfillmentError;
 
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
@@ -28,7 +32,7 @@ use super::{Certainty, InferCtxtEvalExt};
 ///
 /// It is also likely that we want to use slightly different datastructures
 /// here as this will have to deal with far more root goals than `evaluate_all`.
-pub struct FulfillmentCtxt<'tcx> {
+pub struct FulfillmentCtxt<'tcx, E: FulfillmentErrorLike<'tcx>> {
     obligations: ObligationStorage<'tcx>,
 
     /// The snapshot in which this context was created. Using the context
@@ -36,6 +40,7 @@ pub struct FulfillmentCtxt<'tcx> {
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+    _errors: PhantomData<E>,
 }
 
 #[derive(Default)]
@@ -89,8 +94,8 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 }
 
-impl<'tcx> FulfillmentCtxt<'tcx> {
-    pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx> {
+impl<'tcx, E: FulfillmentErrorLike<'tcx>> FulfillmentCtxt<'tcx, E> {
+    pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx, E> {
         assert!(
             infcx.next_trait_solver(),
             "new trait solver fulfillment context created when \
@@ -99,6 +104,7 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
         FulfillmentCtxt {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            _errors: PhantomData,
         }
     }
 
@@ -118,7 +124,9 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
+impl<'tcx, E: FromSolverError<'tcx, NextSolverError<'tcx>>> TraitEngine<'tcx, E>
+    for FulfillmentCtxt<'tcx, E>
+{
     #[instrument(level = "trace", skip(self, infcx))]
     fn register_predicate_obligation(
         &mut self,
@@ -129,24 +137,22 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations.register(obligation);
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let mut errors: Vec<_> = self
-            .obligations
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        self.obligations
             .pending
             .drain(..)
-            .map(|obligation| fulfillment_error_for_stalled(infcx, obligation))
-            .collect();
-
-        errors.extend(self.obligations.overflowed.drain(..).map(|obligation| FulfillmentError {
-            obligation: find_best_leaf_obligation(infcx, &obligation, true),
-            code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-            root_obligation: obligation,
-        }));
-
-        errors
+            .map(|obligation| NextSolverError::Ambiguity(obligation))
+            .chain(
+                self.obligations
+                    .overflowed
+                    .drain(..)
+                    .map(|obligation| NextSolverError::Overflow(obligation)),
+            )
+            .map(|e| E::from_solver_error(infcx, e))
+            .collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
         for i in 0.. {
@@ -164,7 +170,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                 let (changed, certainty) = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
-                        errors.push(fulfillment_error_for_no_solution(infcx, obligation));
+                        errors.push(E::from_solver_error(
+                            infcx,
+                            NextSolverError::TrueError(obligation),
+                        ));
                         continue;
                     }
                 };
@@ -192,6 +201,28 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         _: &InferCtxt<'tcx>,
     ) -> Vec<PredicateObligation<'tcx>> {
         self.obligations.take_pending()
+    }
+}
+
+pub enum NextSolverError<'tcx> {
+    TrueError(PredicateObligation<'tcx>),
+    Ambiguity(PredicateObligation<'tcx>),
+    Overflow(PredicateObligation<'tcx>),
+}
+
+impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tcx> {
+    fn from_solver_error(infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
+        match error {
+            NextSolverError::TrueError(obligation) => {
+                fulfillment_error_for_no_solution(infcx, obligation)
+            }
+            NextSolverError::Ambiguity(obligation) => {
+                fulfillment_error_for_stalled(infcx, obligation)
+            }
+            NextSolverError::Overflow(obligation) => {
+                fulfillment_error_for_overflow(infcx, obligation)
+            }
+        }
     }
 }
 
@@ -276,6 +307,17 @@ fn fulfillment_error_for_stalled<'tcx>(
             root_obligation.clone()
         },
         code,
+        root_obligation,
+    }
+}
+
+fn fulfillment_error_for_overflow<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
+) -> FulfillmentError<'tcx> {
+    FulfillmentError {
+        obligation: find_best_leaf_obligation(infcx, &root_obligation, true),
+        code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
         root_obligation,
     }
 }

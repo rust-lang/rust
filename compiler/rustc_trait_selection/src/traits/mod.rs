@@ -70,6 +70,49 @@ pub use self::util::{with_replaced_escaping_bound_vars, BoundVarReplacer, Placeh
 
 pub use rustc_infer::traits::*;
 
+pub struct FulfillmentError<'tcx> {
+    pub obligation: PredicateObligation<'tcx>,
+    pub code: FulfillmentErrorCode<'tcx>,
+    /// Diagnostics only: the 'root' obligation which resulted in
+    /// the failure to process `obligation`. This is the obligation
+    /// that was initially passed to `register_predicate_obligation`
+    pub root_obligation: PredicateObligation<'tcx>,
+}
+
+impl<'tcx> FulfillmentError<'tcx> {
+    pub fn new(
+        obligation: PredicateObligation<'tcx>,
+        code: FulfillmentErrorCode<'tcx>,
+        root_obligation: PredicateObligation<'tcx>,
+    ) -> FulfillmentError<'tcx> {
+        FulfillmentError { obligation, code, root_obligation }
+    }
+
+    pub fn is_true_error(&self) -> bool {
+        match self.code {
+            FulfillmentErrorCode::Select(_)
+            | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Subtype(_, _)
+            | FulfillmentErrorCode::ConstEquate(_, _) => true,
+            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
+                false
+            }
+        }
+    }
+}
+
+impl<'tcx> FulfillmentErrorLike<'tcx> for FulfillmentError<'tcx> {
+    fn is_true_error(&self) -> bool {
+        self.is_true_error()
+    }
+}
+
+impl<'tcx> Debug for FulfillmentError<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
+    }
+}
+
 /// Whether to skip the leak check, as part of a future compatibility warning step.
 ///
 /// The "default" for skip-leak-check corresponds to the current

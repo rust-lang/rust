@@ -1,6 +1,7 @@
 use crate::solve;
 use crate::traits::query::NoSolution;
 use crate::traits::wf;
+use crate::traits::FulfillmentError;
 use crate::traits::ObligationCtxt;
 
 use rustc_infer::infer::canonical::Canonical;
@@ -266,7 +267,8 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
                         ocx.infcx.at(&ObligationCause::dummy(), param_env),
                         ty_a,
                     )
-                    .map_err(|_errs| NoSolution)?;
+                    // TODO:
+                    .map_err(|_errs: Vec<FulfillmentError<'tcx>>| NoSolution)?;
                 }
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_a, &mut components);

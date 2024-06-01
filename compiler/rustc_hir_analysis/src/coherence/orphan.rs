@@ -13,8 +13,8 @@ use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, Type
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::traits::{self, IsFirstInputType, UncoveredTyParams};
+use rustc_trait_selection::traits::{FulfillmentError, StructurallyNormalizeExt, TraitEngineExt};
 use rustc_trait_selection::traits::{OrphanCheckErr, OrphanCheckMode};
-use rustc_trait_selection::traits::{StructurallyNormalizeExt, TraitEngineExt};
 
 #[instrument(level = "debug", skip(tcx))]
 pub(crate) fn orphan_check_impl(
@@ -317,7 +317,8 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            let mut fulfill_cx = <dyn traits::TraitEngine<'_>>::new(&infcx);
+            let mut fulfill_cx =
+                <dyn traits::TraitEngine<'tcx, FulfillmentError<'tcx>>>::new(&infcx);
             infcx
                 .at(&cause, ty::ParamEnv::empty())
                 .structurally_normalize(ty, &mut *fulfill_cx)

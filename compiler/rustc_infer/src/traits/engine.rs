@@ -1,12 +1,13 @@
+use std::fmt::Debug;
+
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, Upcast};
 
-use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};
 
-pub trait TraitEngine<'tcx>: 'tcx {
+pub trait TraitEngine<'tcx, E: FulfillmentErrorLike<'tcx>>: 'tcx {
     /// Requires that `ty` must implement the trait with `def_id` in
     /// the given environment. This trait must not have any type
     /// parameters (except for `Self`).
@@ -47,12 +48,12 @@ pub trait TraitEngine<'tcx>: 'tcx {
     }
 
     #[must_use]
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
     #[must_use]
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         let errors = self.select_where_possible(infcx);
         if !errors.is_empty() {
             return errors;
@@ -70,4 +71,12 @@ pub trait TraitEngine<'tcx>: 'tcx {
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> Vec<PredicateObligation<'tcx>>;
+}
+
+pub trait FulfillmentErrorLike<'tcx>: Debug + 'tcx {
+    fn is_true_error(&self) -> bool;
+}
+
+pub trait FromSolverError<'tcx, E>: FulfillmentErrorLike<'tcx> {
+    fn from_solver_error(infcx: &InferCtxt<'tcx>, error: E) -> Self;
 }

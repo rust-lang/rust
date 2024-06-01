@@ -15,7 +15,7 @@ use crate::infer::canonical::{
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
 use crate::traits::query::NoSolution;
-use crate::traits::TraitEngine;
+use crate::traits::{FulfillmentErrorLike, TraitEngine};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::captures::Captures;
 use rustc_index::Idx;
@@ -50,11 +50,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// - Finally, if any of the obligations result in a hard error,
     ///   then `Err(NoSolution)` is returned.
     #[instrument(skip(self, inference_vars, answer, fulfill_cx), level = "trace")]
-    pub fn make_canonicalized_query_response<T>(
+    pub fn make_canonicalized_query_response<T, E: FulfillmentErrorLike<'tcx>>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
     ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -97,11 +97,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Helper for `make_canonicalized_query_response` that does
     /// everything up until the final canonicalization.
     #[instrument(skip(self, fulfill_cx), level = "debug")]
-    fn make_query_response<T>(
+    fn make_query_response<T, E: FulfillmentErrorLike<'tcx>>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -109,18 +109,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let tcx = self.tcx;
 
         // Select everything, returning errors.
-        let true_errors = fulfill_cx.select_where_possible(self);
-        debug!("true_errors = {:#?}", true_errors);
+        let errors = fulfill_cx.select_all_or_error(self);
 
-        if !true_errors.is_empty() {
-            // FIXME -- we don't indicate *why* we failed to solve
-            debug!("make_query_response: true_errors={:#?}", true_errors);
+        // True error!
+        if errors.iter().any(|e| e.is_true_error()) {
             return Err(NoSolution);
         }
-
-        // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = fulfill_cx.select_all_or_error(self);
-        debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
         debug!(?region_obligations);
@@ -135,8 +129,7 @@ impl<'tcx> InferCtxt<'tcx> {
         });
         debug!(?region_constraints);
 
-        let certainty =
-            if ambig_errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
+        let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
         let opaque_types = self.take_opaque_types_for_query_response();
 

@@ -2,12 +2,15 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 
 use super::FulfillmentContext;
-use super::TraitEngine;
+use super::{FromSolverError, TraitEngine};
 use crate::regions::InferCtxtRegionExt;
 use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
+use crate::solve::NextSolverError;
 use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::fulfill::OldSolverError;
 use crate::traits::NormalizeExt;
 use crate::traits::StructurallyNormalizeExt;
+use crate::traits::{FulfillmentError, Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -18,7 +21,6 @@ use rustc_infer::infer::canonical::{
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::RegionResolutionError;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
-use rustc_infer::traits::{FulfillmentError, Obligation, ObligationCause, PredicateObligation};
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
@@ -28,8 +30,12 @@ use rustc_middle::ty::Upcast;
 use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-#[extension(pub trait TraitEngineExt<'tcx>)]
-impl<'tcx> dyn TraitEngine<'tcx> {
+#[extension(pub trait TraitEngineExt<'tcx, E>)]
+impl<
+    'tcx,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
+> dyn TraitEngine<'tcx, E>
+{
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
         if infcx.next_trait_solver() {
             Box::new(NextFulfillmentCtxt::new(infcx))
@@ -49,12 +55,16 @@ impl<'tcx> dyn TraitEngine<'tcx> {
 /// with obligations outside of hir or mir typeck.
 pub struct ObligationCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
-    engine: RefCell<Box<dyn TraitEngine<'tcx>>>,
+    engine: RefCell<Box<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>>,
 }
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx)) }
+        // TODO:
+        Self {
+            infcx,
+            engine: RefCell::new(<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>::new(infcx)),
+        }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {

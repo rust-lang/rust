@@ -29,12 +29,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     }
 }
 
-impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
-    }
-}
-
 impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::FulfillmentErrorCode::*;

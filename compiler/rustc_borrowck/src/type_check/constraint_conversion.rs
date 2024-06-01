@@ -13,6 +13,7 @@ use rustc_span::Span;
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use rustc_trait_selection::traits::FulfillmentError;
 
 use crate::{
     constraints::OutlivesConstraint,
@@ -286,7 +287,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     ocx.infcx.at(&ObligationCause::dummy_with_span(self.span), self.param_env),
                     ty,
                 )
-                .map_err(|_| NoSolution)
+                .map_err(|_: Vec<FulfillmentError<'tcx>>| NoSolution)
             },
             "normalize type outlives obligation",
         )
