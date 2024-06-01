@@ -1,4 +1,6 @@
 #![no_std]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+
 extern crate alloc;
 
 use alloc::{borrow::Cow, boxed::Box, string::String, sync::Arc};
@@ -21,7 +23,7 @@ use core::{
 ///     * Longer than 23 bytes, but substrings of `WS` (see below). Such strings consist
 ///     solely of consecutive newlines, followed by consecutive spaces
 /// * If a string does not satisfy the aforementioned conditions, it is heap-allocated
-/// * Additionally, a `SmolStr` can be explicitely created from a `&'static str` without allocation
+/// * Additionally, a `SmolStr` can be explicitly created from a `&'static str` without allocation
 ///
 /// Unlike `String`, however, `SmolStr` is immutable. The primary use case for
 /// `SmolStr` is a good enough default storage for tokens of typical programming
