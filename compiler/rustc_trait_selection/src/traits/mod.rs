@@ -70,10 +70,17 @@ pub use self::util::{with_replaced_escaping_bound_vars, BoundVarReplacer, Placeh
 
 pub use rustc_infer::traits::*;
 
-// A trait error without any information in it. You likely want to alternately use [`ObligationCtxt::new_with_diagnostics`] to get a [`FulfillmentError`].
+/// A trait error without most of its information removed. This is the error
+/// returned by an [`ObligationCtxt`] by default, and suitable if you just
+/// want to see if a predicate holds, and don't particularly care about the
+/// error itself (except for if it's an ambiguity or true error).
+///
+/// use [`ObligationCtxt::new_with_diagnostics`] to get a [`FulfillmentError`].
 #[derive(Copy, Clone, Debug)]
 pub enum ScrubbedTraitError {
+    /// A real error. This goal definitely does not hold.
     TrueError,
+    /// An ambiguity. This goal may hold if further inference is done.
     Ambiguity,
 }
 

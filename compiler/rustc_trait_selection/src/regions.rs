@@ -1,4 +1,4 @@
-use crate::traits::FulfillmentError;
+use crate::traits::ScrubbedTraitError;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_macros::extension;
@@ -28,8 +28,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     ),
                     ty,
                 )
-                // TODO:
-                .map_err(|_: Vec<FulfillmentError<'tcx>>| NoSolution)
+                .map_err(|_: Vec<ScrubbedTraitError>| NoSolution)
             } else {
                 Ok(ty)
             }

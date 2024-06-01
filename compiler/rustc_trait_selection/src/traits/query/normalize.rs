@@ -8,8 +8,8 @@ use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::OverflowCause;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::needs_normalization;
-use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
-use crate::traits::{FulfillmentError, Normalized};
+use crate::traits::Normalized;
+use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 use crate::traits::{ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -76,8 +76,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
         };
 
         if self.infcx.next_trait_solver() {
-            // TODO:
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, FulfillmentError<'tcx>>(
+            match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError>(
                 self, value, universes,
             ) {
                 Ok(value) => return Ok(Normalized { value, obligations: vec![] }),
