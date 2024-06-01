@@ -964,7 +964,6 @@ tool_extended!((self, builder),
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
     Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
 

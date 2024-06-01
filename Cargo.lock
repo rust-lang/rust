@@ -3480,14 +3480,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-demangler"
-version = "0.0.1"
-dependencies = [
- "regex",
- "rustc-demangle",
-]
-
-[[package]]
 name = "rustbook"
 version = "0.1.0"
 dependencies = [

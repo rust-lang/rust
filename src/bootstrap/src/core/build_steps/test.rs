@@ -433,65 +433,6 @@ impl Step for Rustfmt {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustDemangler {
-    stage: u32,
-    host: TargetSelection,
-}
-
-impl Step for RustDemangler {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rust-demangler")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustDemangler { stage: run.builder.top_stage, host: run.target });
-    }
-
-    /// Runs `cargo test` for rust-demangler.
-    fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let host = self.host;
-        let compiler = builder.compiler(stage, host);
-
-        let rust_demangler = builder.ensure(tool::RustDemangler {
-            compiler,
-            target: self.host,
-            extra_features: Vec::new(),
-        });
-        let mut cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolRustc,
-            host,
-            "test",
-            "src/tools/rust-demangler",
-            SourceType::InTree,
-            &[],
-        );
-
-        let dir = testdir(builder, compiler.host);
-        t!(fs::create_dir_all(dir));
-
-        cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
-        cargo.add_rustc_lib_path(builder);
-
-        run_cargo_test(
-            cargo,
-            &[],
-            &[],
-            "rust-demangler",
-            "rust-demangler",
-            compiler,
-            host,
-            builder,
-        );
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     target: TargetSelection,
 }
