@@ -756,28 +756,6 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::ClosureArgs<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: ty::ClosureArgs<'tcx>,
-        b: ty::ClosureArgs<'tcx>,
-    ) -> RelateResult<'tcx, ty::ClosureArgs<'tcx>> {
-        let args = relate_args_invariantly(relation, a.args, b.args)?;
-        Ok(ty::ClosureArgs { args })
-    }
-}
-
-impl<'tcx> Relate<'tcx> for ty::CoroutineArgs<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: ty::CoroutineArgs<'tcx>,
-        b: ty::CoroutineArgs<'tcx>,
-    ) -> RelateResult<'tcx, ty::CoroutineArgs<'tcx>> {
-        let args = relate_args_invariantly(relation, a.args, b.args)?;
-        Ok(ty::CoroutineArgs { args })
-    }
-}
-
 impl<'tcx> Relate<'tcx> for GenericArgsRef<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,

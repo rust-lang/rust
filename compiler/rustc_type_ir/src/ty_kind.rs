@@ -7,12 +7,14 @@ use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEn
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
+pub use self::closure::*;
+use self::TyKind::*;
 use crate::inherent::*;
 use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
-use self::TyKind::*;
-
 use rustc_ast_ir::Mutability;
+
+mod closure;
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -141,7 +143,7 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr(I::PolyFnSig),
+    FnPtr(ty::Binder<I, FnSig<I>>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(I::BoundExistentialPredicates, I::Region, DynKind),
@@ -514,7 +516,7 @@ impl<I: Interner> AliasTy<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::OwnItemArgs) {
+    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
         interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
     }
