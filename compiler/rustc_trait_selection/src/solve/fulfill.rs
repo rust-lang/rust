@@ -6,16 +6,15 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
-    self, FromSolverError, FulfillmentErrorCode, FulfillmentErrorLike, MismatchedProjectionTypes,
-    Obligation, ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError,
-    TraitEngine,
+    self, FromSolverError, FulfillmentErrorLike, MismatchedProjectionTypes, Obligation,
+    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 
-use crate::traits::{FulfillmentError, ScrubbedTraitError};
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};

@@ -32,6 +32,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, Upcast};
@@ -70,7 +71,7 @@ pub use self::util::{with_replaced_escaping_bound_vars, BoundVarReplacer, Placeh
 
 pub use rustc_infer::traits::*;
 
-/// A trait error without most of its information removed. This is the error
+/// A trait error with most of its information removed. This is the error
 /// returned by an [`ObligationCtxt`] by default, and suitable if you just
 /// want to see if a predicate holds, and don't particularly care about the
 /// error itself (except for if it's an ambiguity or true error).
@@ -139,6 +140,43 @@ impl<'tcx> FulfillmentErrorLike<'tcx> for FulfillmentError<'tcx> {
 impl<'tcx> Debug for FulfillmentError<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
+    }
+}
+
+#[derive(Clone)]
+pub enum FulfillmentErrorCode<'tcx> {
+    /// Inherently impossible to fulfill; this trait is implemented if and only
+    /// if it is already implemented.
+    Cycle(Vec<PredicateObligation<'tcx>>),
+    Select(SelectionError<'tcx>),
+    Project(MismatchedProjectionTypes<'tcx>),
+    Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    ConstEquate(ExpectedFound<ty::Const<'tcx>>, TypeError<'tcx>),
+    Ambiguity {
+        /// Overflow is only `Some(suggest_recursion_limit)` when using the next generation
+        /// trait solver `-Znext-solver`. With the old solver overflow is eagerly handled by
+        /// emitting a fatal error instead.
+        overflow: Option<bool>,
+    },
+}
+
+impl<'tcx> Debug for FulfillmentErrorCode<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            FulfillmentErrorCode::Select(ref e) => write!(f, "{e:?}"),
+            FulfillmentErrorCode::Project(ref e) => write!(f, "{e:?}"),
+            FulfillmentErrorCode::Subtype(ref a, ref b) => {
+                write!(f, "CodeSubtypeError({a:?}, {b:?})")
+            }
+            FulfillmentErrorCode::ConstEquate(ref a, ref b) => {
+                write!(f, "CodeConstEquateError({a:?}, {b:?})")
+            }
+            FulfillmentErrorCode::Ambiguity { overflow: None } => write!(f, "Ambiguity"),
+            FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
+                write!(f, "Overflow({suggest_increasing_limit})")
+            }
+            FulfillmentErrorCode::Cycle(ref cycle) => write!(f, "Cycle({cycle:?})"),
+        }
     }
 }
 

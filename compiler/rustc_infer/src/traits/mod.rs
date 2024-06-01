@@ -15,8 +15,7 @@ use hir::def_id::LocalDefId;
 use rustc_hir as hir;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 
 pub use self::ImplSource::*;
@@ -123,24 +122,6 @@ pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 /// of root obligations.
 pub type ObligationInspector<'tcx> =
     fn(&InferCtxt<'tcx>, &PredicateObligation<'tcx>, Result<Certainty, NoSolution>);
-
-// TODO: Pull this down too
-#[derive(Clone)]
-pub enum FulfillmentErrorCode<'tcx> {
-    /// Inherently impossible to fulfill; this trait is implemented if and only
-    /// if it is already implemented.
-    Cycle(Vec<PredicateObligation<'tcx>>),
-    Select(SelectionError<'tcx>),
-    Project(MismatchedProjectionTypes<'tcx>),
-    Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
-    ConstEquate(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
-    Ambiguity {
-        /// Overflow is only `Some(suggest_recursion_limit)` when using the next generation
-        /// trait solver `-Znext-solver`. With the old solver overflow is eagerly handled by
-        /// emitting a fatal error instead.
-        overflow: Option<bool>,
-    },
-}
 
 impl<'tcx, O> Obligation<'tcx, O> {
     pub fn new(

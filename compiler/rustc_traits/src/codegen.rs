@@ -4,13 +4,13 @@
 // general routines.
 
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::FulfillmentErrorCode;
 use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext, Unimplemented,
+    FulfillmentErrorCode, ImplSource, Obligation, ObligationCause, ObligationCtxt,
+    SelectionContext, Unimplemented,
 };
 use tracing::debug;
 
