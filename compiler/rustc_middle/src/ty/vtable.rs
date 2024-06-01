@@ -3,6 +3,8 @@ use std::fmt;
 use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 
 #[derive(Clone, Copy, PartialEq, HashStable)]
@@ -40,11 +42,68 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub const COMMON_VTABLE_ENTRIES: &'tcx [VtblEntry<'tcx>] =
         &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+
+    pub fn supertrait_def_ids(self, trait_def_id: DefId) -> SupertraitDefIds<'tcx> {
+        SupertraitDefIds {
+            tcx: self,
+            stack: vec![trait_def_id],
+            visited: Some(trait_def_id).into_iter().collect(),
+        }
+    }
 }
 
 pub const COMMON_VTABLE_ENTRIES_DROPINPLACE: usize = 0;
 pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 1;
 pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
+
+pub struct SupertraitDefIds<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    stack: Vec<DefId>,
+    visited: FxHashSet<DefId>,
+}
+
+impl Iterator for SupertraitDefIds<'_> {
+    type Item = DefId;
+
+    fn next(&mut self) -> Option<DefId> {
+        let def_id = self.stack.pop()?;
+        let predicates = self.tcx.super_predicates_of(def_id);
+        let visited = &mut self.visited;
+        self.stack.extend(
+            predicates
+                .predicates
+                .iter()
+                .filter_map(|(pred, _)| pred.as_trait_clause())
+                .map(|trait_ref| trait_ref.def_id())
+                .filter(|&super_def_id| visited.insert(super_def_id)),
+        );
+        Some(def_id)
+    }
+}
+
+// Note that we don't have access to a self type here, this has to be purely based on the trait (and
+// supertrait) definitions. That means we can't call into the same vtable_entries code since that
+// returns a specific instantiation (e.g., with Vacant slots when bounds aren't satisfied). The goal
+// here is to do a best-effort approximation without duplicating a lot of code.
+//
+// This function is used in layout computation for e.g. &dyn Trait, so it's critical that this
+// function is an accurate approximation. We verify this when actually computing the vtable below.
+pub(crate) fn vtable_min_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+) -> usize {
+    let mut count = TyCtxt::COMMON_VTABLE_ENTRIES.len();
+    let Some(trait_ref) = trait_ref else {
+        return count;
+    };
+
+    // This includes self in supertraits.
+    for def_id in tcx.supertrait_def_ids(trait_ref.def_id()) {
+        count += tcx.own_existential_vtable_entries(def_id).len();
+    }
+
+    count
+}
 
 /// Retrieves an allocation that represents the contents of a vtable.
 /// Since this is a query, allocations are cached and not duplicated.
@@ -62,6 +121,9 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     } else {
         TyCtxt::COMMON_VTABLE_ENTRIES
     };
+
+    // This confirms that the layout computation for &dyn Trait has an accurate sizing.
+    assert!(vtable_entries.len() >= vtable_min_entries(tcx, poly_trait_ref));
 
     let layout = tcx
         .layout_of(ty::ParamEnv::reveal_all().and(ty))

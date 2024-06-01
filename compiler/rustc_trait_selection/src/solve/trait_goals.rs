@@ -1,7 +1,5 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use crate::traits::supertrait_def_ids;
-
 use super::assembly::structural_traits::AsyncCallableRelevantTypes;
 use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, GoalSource, SolverMode};
@@ -837,7 +835,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                supertrait_def_ids(self.interner(), principal_def_id)
+                self.interner()
+                    .supertrait_def_ids(principal_def_id)
                     .filter(|def_id| self.interner().trait_is_auto(*def_id))
             }))
             .collect();

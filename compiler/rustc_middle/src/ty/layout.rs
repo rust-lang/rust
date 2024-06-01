@@ -827,25 +827,14 @@ where
                         });
                     }
 
-                    let mk_dyn_vtable = || {
+                    let mk_dyn_vtable = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
+                        let min_count = ty::vtable_min_entries(tcx, principal);
                         Ty::new_imm_ref(
                             tcx,
                             tcx.lifetimes.re_static,
-                            Ty::new_array(tcx, tcx.types.usize, 3),
+                            // FIXME: properly type (e.g. usize and fn pointers) the fields.
+                            Ty::new_array(tcx, tcx.types.usize, min_count.try_into().unwrap()),
                         )
-                        /* FIXME: use actual fn pointers
-                        Warning: naively computing the number of entries in the
-                        vtable by counting the methods on the trait + methods on
-                        all parent traits does not work, because some methods can
-                        be not object safe and thus excluded from the vtable.
-                        Increase this counter if you tried to implement this but
-                        failed to do it without duplicating a lot of code from
-                        other places in the compiler: 2
-                        Ty::new_tup(tcx,&[
-                            Ty::new_array(tcx,tcx.types.usize, 3),
-                            Ty::new_array(tcx,Option<fn()>),
-                        ])
-                        */
                     };
 
                     let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
@@ -864,16 +853,16 @@ where
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
                             && Some(def.did()) == tcx.lang_items().dyn_metadata()
-                            && args.type_at(0).is_trait()
+                            && let ty::Dynamic(data, _, ty::Dyn) = args.type_at(0).kind()
                         {
-                            mk_dyn_vtable()
+                            mk_dyn_vtable(data.principal())
                         } else {
                             metadata
                         }
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
+                            ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };

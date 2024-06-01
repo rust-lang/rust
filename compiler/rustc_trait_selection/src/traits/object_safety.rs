@@ -26,6 +26,7 @@ use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_target::abi::Abi;
 use smallvec::SmallVec;
 
 use std::iter;
@@ -44,7 +45,8 @@ pub fn hir_ty_lowering_object_safety_violations(
     trait_def_id: DefId,
 ) -> Vec<ObjectSafetyViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
-    let violations = traits::supertrait_def_ids(tcx, trait_def_id)
+    let violations = tcx
+        .supertrait_def_ids(trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
         .map(ObjectSafetyViolation::SupertraitSelf)
@@ -58,7 +60,7 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     debug!("object_safety_violations: {:?}", trait_def_id);
 
     tcx.arena.alloc_from_iter(
-        traits::supertrait_def_ids(tcx, trait_def_id)
+        tcx.supertrait_def_ids(trait_def_id)
             .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id)),
     )
 }
@@ -143,6 +145,14 @@ fn object_safety_violations_for_trait(
     let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans));
+    }
+
+    if violations.is_empty() {
+        for item in tcx.associated_items(trait_def_id).in_definition_order() {
+            if let ty::AssocKind::Fn = item.kind {
+                check_receiver_correct(tcx, trait_def_id, *item);
+            }
+        }
     }
 
     debug!(
@@ -493,59 +503,8 @@ fn virtual_call_violations_for_method<'tcx>(
             };
             errors.push(MethodViolationCode::UndispatchableReceiver(span));
         } else {
-            // Do sanity check to make sure the receiver actually has the layout of a pointer.
-
-            use rustc_target::abi::Abi;
-
-            let param_env = tcx.param_env(method.def_id);
-
-            let abi_of_ty = |ty: Ty<'tcx>| -> Option<Abi> {
-                match tcx.layout_of(param_env.and(ty)) {
-                    Ok(layout) => Some(layout.abi),
-                    Err(err) => {
-                        // #78372
-                        tcx.dcx().span_delayed_bug(
-                            tcx.def_span(method.def_id),
-                            format!("error: {err}\n while computing layout for type {ty:?}"),
-                        );
-                        None
-                    }
-                }
-            };
-
-            // e.g., `Rc<()>`
-            let unit_receiver_ty =
-                receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method.def_id);
-
-            match abi_of_ty(unit_receiver_ty) {
-                Some(Abi::Scalar(..)) => (),
-                abi => {
-                    tcx.dcx().span_delayed_bug(
-                        tcx.def_span(method.def_id),
-                        format!(
-                            "receiver when `Self = ()` should have a Scalar ABI; found {abi:?}"
-                        ),
-                    );
-                }
-            }
-
-            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
-
-            // e.g., `Rc<dyn Trait>`
-            let trait_object_receiver =
-                receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method.def_id);
-
-            match abi_of_ty(trait_object_receiver) {
-                Some(Abi::ScalarPair(..)) => (),
-                abi => {
-                    tcx.dcx().span_delayed_bug(
-                        tcx.def_span(method.def_id),
-                        format!(
-                            "receiver when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
-                        ),
-                    );
-                }
-            }
+            // We confirm that the `receiver_is_dispatchable` is accurate later,
+            // see `check_receiver_correct`. It should be kept in sync with this code.
         }
     }
 
@@ -604,6 +563,55 @@ fn virtual_call_violations_for_method<'tcx>(
     }
 
     errors
+}
+
+/// This code checks that `receiver_is_dispatchable` is correctly implemented.
+///
+/// This check is outlined from the object safety check to avoid cycles with
+/// layout computation, which relies on knowing whether methods are object safe.
+pub fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
+    if !is_vtable_safe_method(tcx, trait_def_id, method) {
+        return;
+    }
+
+    let method_def_id = method.def_id;
+    let sig = tcx.fn_sig(method_def_id).instantiate_identity();
+    let param_env = tcx.param_env(method_def_id);
+    let receiver_ty = tcx.liberate_late_bound_regions(method_def_id, sig.input(0));
+
+    if receiver_ty == tcx.types.self_param {
+        // Assumed OK, may change later if unsized_locals permits `self: Self` as dispatchable.
+        return;
+    }
+
+    // e.g., `Rc<()>`
+    let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
+    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.abi) {
+        Ok(Abi::Scalar(..)) => (),
+        abi => {
+            tcx.dcx().span_delayed_bug(
+                tcx.def_span(method_def_id),
+                format!("receiver {unit_receiver_ty:?} when `Self = ()` should have a Scalar ABI; found {abi:?}"),
+            );
+        }
+    }
+
+    let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
+
+    // e.g., `Rc<dyn Trait>`
+    let trait_object_receiver =
+        receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
+    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.abi) {
+        Ok(Abi::ScalarPair(..)) => (),
+        abi => {
+            tcx.dcx().span_delayed_bug(
+                tcx.def_span(method_def_id),
+                format!(
+                    "receiver {trait_object_receiver:?} when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
+                ),
+            );
+        }
+    }
 }
 
 /// Performs a type instantiation to produce the version of `receiver_ty` when `Self = self_ty`.
