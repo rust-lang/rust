@@ -1148,9 +1148,12 @@ macro_rules! uint_impl {
         pub const fn checked_ilog(self, base: Self) -> Option<u32> {
             if self <= 0 || base <= 1 {
                 None
+            } else if self < base {
+                Some(0)
             } else {
-                let mut n = 0;
-                let mut r = 1;
+                // Since base >= self, n >= 1
+                let mut n = 1;
+                let mut r = base;
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
