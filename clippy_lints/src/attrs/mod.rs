@@ -7,7 +7,6 @@ mod deprecated_semver;
 mod duplicated_attributes;
 mod empty_line_after;
 mod inline_always;
-mod mismatched_target_os;
 mod mixed_attributes_style;
 mod non_minimal_cfg;
 mod should_panic_without_expect;
@@ -267,39 +266,6 @@ declare_clippy_lint! {
     pub DEPRECATED_CFG_ATTR,
     complexity,
     "usage of `cfg_attr(rustfmt)` instead of tool attributes"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for cfg attributes having operating systems used in target family position.
-    ///
-    /// ### Why is this bad?
-    /// The configuration option will not be recognised and the related item will not be included
-    /// by the conditional compilation engine.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[cfg(linux)]
-    /// fn conditional() { }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # mod hidden {
-    /// #[cfg(target_os = "linux")]
-    /// fn conditional() { }
-    /// # }
-    ///
-    /// // or
-    ///
-    /// #[cfg(unix)]
-    /// fn conditional() { }
-    /// ```
-    /// Check the [Rust Reference](https://doc.rust-lang.org/reference/conditional-compilation.html#target_os) for more details.
-    #[clippy::version = "1.45.0"]
-    pub MISMATCHED_TARGET_OS,
-    correctness,
-    "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"
 }
 
 declare_clippy_lint! {
@@ -579,7 +545,6 @@ pub struct EarlyAttributes {
 
 impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
-    MISMATCHED_TARGET_OS,
     EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
     NON_MINIMAL_CFG,
@@ -595,7 +560,6 @@ impl EarlyLintPass for EarlyAttributes {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         deprecated_cfg_attr::check(cx, attr, &self.msrv);
         deprecated_cfg_attr::check_clippy(cx, attr);
-        mismatched_target_os::check(cx, attr);
         non_minimal_cfg::check(cx, attr);
     }
 

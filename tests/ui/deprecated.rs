@@ -19,5 +19,6 @@
 #![warn(clippy::pub_enum_variant_names)]
 #![warn(clippy::wrong_pub_self_convention)]
 #![warn(clippy::maybe_misused_cfg)]
+#![warn(clippy::mismatched_target_os)]
 
 fn main() {}

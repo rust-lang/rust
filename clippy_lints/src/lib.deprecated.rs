@@ -71,4 +71,8 @@
         "clippy::maybe_misused_cfg",
         "this lint has been replaced by `unexpected_cfgs`",
     );
+    store.register_removed(
+        "clippy::mismatched_target_os",
+        "this lint has been replaced by `unexpected_cfgs`",
+    );
 }

@@ -103,5 +103,11 @@ error: lint `clippy::maybe_misused_cfg` has been removed: this lint has been rep
 LL | #![warn(clippy::maybe_misused_cfg)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: lint `clippy::mismatched_target_os` has been removed: this lint has been replaced by `unexpected_cfgs`
+  --> tests/ui/deprecated.rs:22:9
+   |
+LL | #![warn(clippy::mismatched_target_os)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
 
