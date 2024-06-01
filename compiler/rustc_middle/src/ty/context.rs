@@ -90,7 +90,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
-    type OwnItemArgs = &'tcx [ty::GenericArg<'tcx>];
+    type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
 
@@ -113,7 +113,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
-    type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
 
     type Pat = Pattern<'tcx>;
@@ -191,7 +190,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (rustc_type_ir::TraitRef<Self>, Self::OwnItemArgs) {
+    ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);

@@ -3,7 +3,7 @@
 use rustc_middle::mir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
-use rustc_middle::ty::{self, ScalarInt, Ty};
+use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 use tracing::{instrument, trace};
