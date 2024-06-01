@@ -862,10 +862,9 @@ impl<'db> SemanticsImpl<'db> {
                         // attribute we failed expansion for earlier, this might be a derive invocation
                         // or derive helper attribute
                         let attr = meta.parent_attr()?;
-
                         let adt = if let Some(adt) = attr.syntax().parent().and_then(ast::Adt::cast)
                         {
-                            // this might be a derive, or a derive helper on an ADT
+                            // this might be a derive on an ADT
                             let derive_call = self.with_ctx(|ctx| {
                                 // so try downmapping the token into the pseudo derive expansion
                                 // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
@@ -882,7 +881,7 @@ impl<'db> SemanticsImpl<'db> {
                                     let file_id = call_id.as_macro_file();
                                     let text_range = attr.syntax().text_range();
                                     // remove any other token in this macro input, all their mappings are the
-                                    // same as this one
+                                    // same as this
                                     tokens.retain(|t| !text_range.contains_range(t.text_range()));
                                     return process_expansion_for_token(&mut stack, file_id);
                                 }
@@ -890,21 +889,14 @@ impl<'db> SemanticsImpl<'db> {
                             }
                         } else {
                             // Otherwise this could be a derive helper on a variant or field
-                            if let Some(field) =
-                                attr.syntax().parent().and_then(ast::RecordField::cast)
-                            {
-                                field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
-                            } else if let Some(field) =
-                                attr.syntax().parent().and_then(ast::TupleField::cast)
-                            {
-                                field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
-                            } else if let Some(variant) =
-                                attr.syntax().parent().and_then(ast::Variant::cast)
-                            {
-                                variant.syntax().ancestors().nth(2).and_then(ast::Adt::cast)
-                            } else {
-                                None
-                            }
+                            attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| {
+                                match it {
+                                    ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                                    ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                                    ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                                    _ => None,
+                                }
+                            })
                         }?;
                         if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(file_id, &adt))) {
                             return None;
