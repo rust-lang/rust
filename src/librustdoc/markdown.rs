@@ -82,8 +82,6 @@ pub(crate) fn render<P: AsRef<Path>>(
             error_codes,
             edition,
             playground: &playground,
-            // For markdown files, it'll be disabled until the feature is enabled by default.
-            custom_code_classes_in_docs: false,
         }
         .into_string()
     } else {
@@ -95,8 +93,6 @@ pub(crate) fn render<P: AsRef<Path>>(
             edition,
             playground: &playground,
             heading_offset: HeadingOffset::H1,
-            // For markdown files, it'll be disabled until the feature is enabled by default.
-            custom_code_classes_in_docs: false,
         }
         .into_string()
     };
@@ -174,14 +170,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
 
     // For markdown files, custom code classes will be disabled until the feature is enabled by default.
-    find_testable_code(
-        &input_str,
-        &mut collector,
-        codes,
-        options.enable_per_target_ignores,
-        None,
-        false,
-    );
+    find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 
     crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
     Ok(())

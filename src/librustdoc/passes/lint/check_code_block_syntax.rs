@@ -20,9 +20,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item) {
     if let Some(dox) = &item.opt_doc_value() {
         let sp = item.attr_span(cx.tcx);
         let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, item.item_id.expect_def_id(), sp);
-        for code_block in
-            markdown::rust_code_blocks(dox, &extra, cx.tcx.features().custom_code_classes_in_docs)
-        {
+        for code_block in markdown::rust_code_blocks(dox, &extra) {
             check_rust_syntax(cx, item, dox, code_block);
         }
     }
