@@ -27,37 +27,37 @@ help: use `addr_of!` instead to create a raw pointer
 LL |     let xrb = addr_of!(XB);
    |               ~~~~~~~~~~~~
 
-error[E0133]: use of mutable static is unsafe and requires unsafe function or block
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/safe-extern-statics-mut.rs:11:13
    |
 LL |     let b = B;
-   |             ^ use of mutable static
+   |             ^ use of extern static
    |
-   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-error[E0133]: use of mutable static is unsafe and requires unsafe function or block
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/safe-extern-statics-mut.rs:12:15
    |
 LL |     let rb = &B;
-   |               ^ use of mutable static
+   |               ^ use of extern static
    |
-   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-error[E0133]: use of mutable static is unsafe and requires unsafe function or block
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/safe-extern-statics-mut.rs:14:14
    |
 LL |     let xb = XB;
-   |              ^^ use of mutable static
+   |              ^^ use of extern static
    |
-   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-error[E0133]: use of mutable static is unsafe and requires unsafe function or block
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/safe-extern-statics-mut.rs:15:16
    |
 LL |     let xrb = &XB;
-   |                ^^ use of mutable static
+   |                ^^ use of extern static
    |
-   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
 error: aborting due to 4 previous errors; 2 warnings emitted
 

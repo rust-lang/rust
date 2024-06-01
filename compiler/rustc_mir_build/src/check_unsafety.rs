@@ -464,12 +464,13 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if let ExprKind::StaticRef { def_id, .. } | ExprKind::ThreadLocalRef(def_id) =
                     self.thir[arg].kind
                 {
-                    if self.tcx.is_mutable_static(def_id) && allow_implicit_static_deref {
+                    // The requirements for an extern static are much more stringent
+                    if self.tcx.is_foreign_item(def_id) {
+                        self.requires_unsafe(expr.span, UseOfExternStatic);
+                    } else if self.tcx.is_mutable_static(def_id) && allow_implicit_static_deref {
                         // we're only taking the address of the implicit place expr, it's fine
                     } else if self.tcx.is_mutable_static(def_id) {
                         self.requires_unsafe(expr.span, UseOfMutableStatic);
-                    } else if self.tcx.is_foreign_item(def_id) {
-                        self.requires_unsafe(expr.span, UseOfExternStatic);
                     }
                 } else if self.thir[arg].ty.is_unsafe_ptr() {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);
