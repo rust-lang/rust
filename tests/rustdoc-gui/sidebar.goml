@@ -116,15 +116,15 @@ assert-false: ".sidebar-elems > .crate"
 go-to: "./module/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
-assert-text: (".sidebar > .location", "Module module")
+assert-text: (".sidebar .location", "Module module")
 assert-count: (".sidebar .location", 1)
 // Module page requires three headings:
 //   - Presistent crate branding (name and version)
 //   - Module name, followed by TOC for module headings
 //   - "In crate [name]" parent pointer, followed by sibling navigation
 assert-count: (".sidebar h2", 3)
-assert-text: (".sidebar > .sidebar-elems > h2", "In crate lib2")
-assert-property: (".sidebar > .sidebar-elems > h2 > a", {
+assert-text: (".sidebar > .sidebar-elems > #ModNav > h2", "In crate lib2")
+assert-property: (".sidebar > .sidebar-elems > #ModNav > h2 > a", {
     "href": "/lib2/index.html",
 }, ENDS_WITH)
 // We check that we don't have the crate list.
@@ -133,9 +133,9 @@ assert-false: ".sidebar-elems > .crate"
 go-to: "./sub_module/sub_sub_module/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
-assert-text: (".sidebar > .location", "Module sub_sub_module")
-assert-text: (".sidebar > .sidebar-elems > h2", "In lib2::module::sub_module")
-assert-property: (".sidebar > .sidebar-elems > h2 > a", {
+assert-text: (".sidebar .location", "Module sub_sub_module")
+assert-text: (".sidebar > .sidebar-elems > #ModNav > h2", "In lib2::module::sub_module")
+assert-property: (".sidebar > .sidebar-elems > #ModNav > h2 > a", {
     "href": "/module/sub_module/index.html",
 }, ENDS_WITH)
 // We check that we don't have the crate list.
@@ -179,3 +179,36 @@ assert-property: (".sidebar .sidebar-crate h2 a", {
     "offsetTop": |index_sidebar_y|,
     "offsetLeft": |index_sidebar_x|,
 })
+
+// Configuration option to show TOC in sidebar.
+set-local-storage: {"rustdoc-hide-toc": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#TOC", {"display": "none"})
+assert-css: (".sidebar .in-crate", {"display": "none"})
+set-local-storage: {"rustdoc-hide-toc": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#TOC", {"display": "block"})
+assert-css: (".sidebar .in-crate", {"display": "block"})
+
+set-local-storage: {"rustdoc-hide-modnav": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#ModNav", {"display": "none"})
+set-local-storage: {"rustdoc-hide-modnav": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#ModNav", {"display": "block"})
+
+set-local-storage: {"rustdoc-hide-toc": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#TOC", {"display": "none"})
+assert-false: ".sidebar .in-crate"
+set-local-storage: {"rustdoc-hide-toc": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#TOC", {"display": "block"})
+assert-false: ".sidebar .in-crate"
+
+set-local-storage: {"rustdoc-hide-modnav": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#ModNav", {"display": "none"})
+set-local-storage: {"rustdoc-hide-modnav": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#ModNav", {"display": "block"})
