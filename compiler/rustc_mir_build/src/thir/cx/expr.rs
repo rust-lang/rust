@@ -939,9 +939,11 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
 
-            // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
-            // a constant reference (or constant raw pointer for `static mut`) in MIR
+            // A source Rust `path::to::STATIC` is a place expr like *&ident is.
+            // In THIR, we make them exactly equivalent by inserting the implied *& or *&raw,
+            // but distinguish between &STATIC and &THREAD_LOCAL as they have different semantics
             Res::Def(DefKind::Static { .. }, id) => {
+                // this is &raw for extern static or static mut, and & for other statics
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self
                     .rvalue_scopes
