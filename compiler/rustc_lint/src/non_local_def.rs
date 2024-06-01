@@ -306,7 +306,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
     }
 }
 
-// Detecting if the impl definition is leaking outside of it's defining scope.
+// Detecting if the impl definition is leaking outside of its defining scope.
 //
 // Rule: for each impl, instantiate all local types with inference vars and
 // then assemble candidates for that goal, if there are more than 1 (non-private
