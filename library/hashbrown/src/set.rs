@@ -1571,7 +1571,7 @@ where
 impl<T, S> BitOrAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     T: Eq + Hash + Clone,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     /// Modifies this set to contain the union of `self` and `rhs`.
     ///
@@ -1605,7 +1605,7 @@ where
 impl<T, S> BitAndAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     T: Eq + Hash + Clone,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     /// Modifies this set to contain the intersection of `self` and `rhs`.
     ///
@@ -1635,7 +1635,7 @@ where
 impl<T, S> BitXorAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     T: Eq + Hash + Clone,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     /// Modifies this set to contain the symmetric difference of `self` and `rhs`.
     ///
@@ -1671,7 +1671,7 @@ where
 impl<T, S> AddAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     T: Eq + Hash + Clone,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     /// Modifies this set to contain the union of `self` and `rhs`.
     ///
@@ -1705,7 +1705,7 @@ where
 impl<T, S> SubAssign<&HashSet<T, S>> for HashSet<T, S>
 where
     T: Eq + Hash + Clone,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     /// Modifies this set to contain the difference of `self` and `rhs`.
     ///
@@ -1728,7 +1728,13 @@ where
     /// assert_eq!(i, expected.len());
     /// ```
     fn sub_assign(&mut self, rhs: &HashSet<T, S>) {
-        self.retain(|item| !rhs.contains(item));
+        if rhs.len() < self.len() {
+            for item in rhs {
+                self.remove(item);
+            }
+        } else {
+            self.retain(|item| !rhs.contains(item));
+        }
     }
 }
 
