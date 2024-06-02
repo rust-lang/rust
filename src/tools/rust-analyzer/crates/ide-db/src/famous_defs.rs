@@ -106,6 +106,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:marker:Copy")
     }
 
+    pub fn core_future_Future(&self) -> Option<Trait> {
+        self.find_trait("core:future:Future")
+    }
+
     pub fn core_macros_builtin_derive(&self) -> Option<Macro> {
         self.find_macro("core:macros:builtin:derive")
     }

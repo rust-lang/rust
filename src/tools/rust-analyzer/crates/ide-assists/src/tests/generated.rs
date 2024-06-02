@@ -346,6 +346,21 @@ pub(crate) fn frobnicate() {}
 }
 
 #[test]
+fn doctest_comment_to_doc() {
+    check_doc_test(
+        "comment_to_doc",
+        r#####"
+// Wow what $0a nice module
+// I sure hope this shows up when I hover over it
+"#####,
+        r#####"
+//! Wow what a nice module
+//! I sure hope this shows up when I hover over it
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_bool_then_to_if() {
     check_doc_test(
         "convert_bool_then_to_if",
@@ -795,6 +810,24 @@ fn main() {
 fn main() {
     let ($0_0, _1) = (1,2);
     let v = _0;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_desugar_async_into_impl_future() {
+    check_doc_test(
+        "desugar_async_into_impl_future",
+        r#####"
+//- minicore: future
+pub as$0ync fn foo() -> usize {
+    0
+}
+"#####,
+        r#####"
+pub fn foo() -> impl core::future::Future<Output = usize> {
+    0
 }
 "#####,
     )
@@ -3016,6 +3049,24 @@ use std::$0collections::HashMap;
 "#####,
         r#####"
 use std::{collections::HashMap};
+"#####,
+    )
+}
+
+#[test]
+fn doctest_sugar_impl_future_into_async() {
+    check_doc_test(
+        "sugar_impl_future_into_async",
+        r#####"
+//- minicore: future
+pub fn foo() -> impl core::future::F$0uture<Output = usize> {
+    async { 0 }
+}
+"#####,
+        r#####"
+pub async fn foo() -> usize {
+    async { 0 }
+}
 "#####,
     )
 }

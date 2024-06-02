@@ -139,7 +139,7 @@ impl SourceToDefCtx<'_, '_> {
         let _p = tracing::span!(tracing::Level::INFO, "module_to_def").entered();
         let parent_declaration = src
             .syntax()
-            .ancestors_with_macros_skip_attr_item(self.db.upcast())
+            .ancestors_with_macros(self.db.upcast())
             .find_map(|it| it.map(Either::<ast::Module, ast::BlockExpr>::cast).transpose())
             .map(|it| it.transpose());
 
@@ -366,7 +366,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
-        for container in src.ancestors_with_macros_skip_attr_item(self.db.upcast()) {
+        for container in src.ancestors_with_macros(self.db.upcast()) {
             if let Some(res) = self.container_to_def(container) {
                 return Some(res);
             }
@@ -420,7 +420,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     fn find_generic_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
-        let ancestors = src.ancestors_with_macros_skip_attr_item(self.db.upcast());
+        let ancestors = src.ancestors_with_macros(self.db.upcast());
         for InFile { file_id, value } in ancestors {
             let item = match ast::Item::cast(value) {
                 Some(it) => it,
@@ -429,6 +429,7 @@ impl SourceToDefCtx<'_, '_> {
             let res: GenericDefId = match item {
                 ast::Item::Fn(it) => self.fn_to_def(InFile::new(file_id, it))?.into(),
                 ast::Item::Struct(it) => self.struct_to_def(InFile::new(file_id, it))?.into(),
+                ast::Item::Union(it) => self.union_to_def(InFile::new(file_id, it))?.into(),
                 ast::Item::Enum(it) => self.enum_to_def(InFile::new(file_id, it))?.into(),
                 ast::Item::Trait(it) => self.trait_to_def(InFile::new(file_id, it))?.into(),
                 ast::Item::TraitAlias(it) => {
@@ -446,11 +447,18 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     fn find_pat_or_label_container(&mut self, src: InFile<&SyntaxNode>) -> Option<DefWithBodyId> {
-        let ancestors = src.ancestors_with_macros_skip_attr_item(self.db.upcast());
+        let ancestors = src.ancestors_with_macros(self.db.upcast());
         for InFile { file_id, value } in ancestors {
-            let item = match ast::Item::cast(value) {
+            let item = match ast::Item::cast(value.clone()) {
                 Some(it) => it,
-                None => continue,
+                None => {
+                    if let Some(variant) = ast::Variant::cast(value.clone()) {
+                        return self
+                            .enum_variant_to_def(InFile::new(file_id, variant))
+                            .map(Into::into);
+                    }
+                    continue;
+                }
             };
             let res: DefWithBodyId = match item {
                 ast::Item::Const(it) => self.const_to_def(InFile::new(file_id, it))?.into(),
