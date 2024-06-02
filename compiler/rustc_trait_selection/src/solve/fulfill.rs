@@ -225,7 +225,7 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tc
     }
 }
 
-impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError {
+impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError<'tcx> {
     fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
         match error {
             NextSolverError::TrueError(_) => ScrubbedTraitError::TrueError,

@@ -253,7 +253,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
             ty,
             vec![None; ty.outer_exclusive_binder().as_usize()],
         )
-        .unwrap_or_else(|_: Vec<ScrubbedTraitError>| ty.super_fold_with(self))
+        .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -262,6 +262,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
             ct,
             vec![None; ct.outer_exclusive_binder().as_usize()],
         )
-        .unwrap_or_else(|_: Vec<ScrubbedTraitError>| ct.super_fold_with(self))
+        .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
     }
 }

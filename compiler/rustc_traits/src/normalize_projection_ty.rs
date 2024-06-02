@@ -7,9 +7,7 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalAliasGoal, NoSolution,
 };
-use rustc_trait_selection::traits::{
-    self, FulfillmentError, FulfillmentErrorCode, ObligationCause, ObligationCtxt, SelectionContext,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ScrubbedTraitError, SelectionContext};
 use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -29,8 +27,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
-        |ocx: &ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>>,
-         ParamEnvAnd { param_env, value: goal }| {
+        |ocx, ParamEnvAnd { param_env, value: goal }| {
             debug_assert!(!ocx.infcx.next_trait_solver());
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
@@ -50,7 +47,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
                 // that impl vars are constrained by the signature, for example).
                 if !tcx.sess.opts.actually_rustdoc {
                     for error in &errors {
-                        if let FulfillmentErrorCode::Cycle(cycle) = &error.code {
+                        if let ScrubbedTraitError::Cycle(cycle) = &error {
                             ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
                         }
                     }
@@ -74,7 +71,7 @@ fn normalize_canonicalized_weak_ty<'tcx>(
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
-        |ocx: &ObligationCtxt<'_, 'tcx>, ParamEnvAnd { param_env, value: goal }| {
+        |ocx, ParamEnvAnd { param_env, value: goal }| {
             let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.args).map(
                 |(predicate, span)| {
                     traits::Obligation::new(
@@ -100,7 +97,7 @@ fn normalize_canonicalized_inherent_projection_ty<'tcx>(
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
-        |ocx: &ObligationCtxt<'_, 'tcx>, ParamEnvAnd { param_env, value: goal }| {
+        |ocx, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];

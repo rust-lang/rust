@@ -287,7 +287,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     ocx.infcx.at(&ObligationCause::dummy_with_span(self.span), self.param_env),
                     ty,
                 )
-                .map_err(|_: Vec<ScrubbedTraitError>| NoSolution)
+                .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
             },
             "normalize type outlives obligation",
         )

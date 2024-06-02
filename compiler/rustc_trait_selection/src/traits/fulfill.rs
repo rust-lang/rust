@@ -856,16 +856,15 @@ impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for FulfillmentError<'tcx
     }
 }
 
-impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for ScrubbedTraitError {
+impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for ScrubbedTraitError<'tcx> {
     fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: OldSolverError<'tcx>) -> Self {
         match error.error {
             FulfillmentErrorCode::Select(_)
             | FulfillmentErrorCode::Project(_)
             | FulfillmentErrorCode::Subtype(_, _)
             | FulfillmentErrorCode::ConstEquate(_, _) => ScrubbedTraitError::TrueError,
-            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
-                ScrubbedTraitError::Ambiguity
-            }
+            FulfillmentErrorCode::Ambiguity { overflow: _ } => ScrubbedTraitError::Ambiguity,
+            FulfillmentErrorCode::Cycle(cycle) => ScrubbedTraitError::Cycle(cycle),
         }
     }
 }

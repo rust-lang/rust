@@ -267,7 +267,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
                         ocx.infcx.at(&ObligationCause::dummy(), param_env),
                         ty_a,
                     )
-                    .map_err(|_errs: Vec<ScrubbedTraitError>| NoSolution)?;
+                    .map_err(|_errs: Vec<ScrubbedTraitError<'tcx>>| NoSolution)?;
                 }
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_a, &mut components);

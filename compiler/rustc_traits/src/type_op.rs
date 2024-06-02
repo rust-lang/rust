@@ -43,13 +43,10 @@ fn type_op_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Eq<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt().enter_canonical_trait_query(
-        &canonicalized,
-        |ocx: &ObligationCtxt<'_, 'tcx>, key| {
-            let (param_env, Eq { a, b }) = key.into_parts();
-            Ok(ocx.eq(&ObligationCause::dummy(), param_env, a, b)?)
-        },
-    )
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
+        let (param_env, Eq { a, b }) = key.into_parts();
+        Ok(ocx.eq(&ObligationCause::dummy(), param_env, a, b)?)
+    })
 }
 
 fn type_op_normalize<'tcx, T>(
@@ -98,13 +95,10 @@ fn type_op_subtype<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Subtype<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt().enter_canonical_trait_query(
-        &canonicalized,
-        |ocx: &ObligationCtxt<'_, 'tcx>, key| {
-            let (param_env, Subtype { sub, sup }) = key.into_parts();
-            Ok(ocx.sup(&ObligationCause::dummy(), param_env, sup, sub)?)
-        },
-    )
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
+        let (param_env, Subtype { sub, sup }) = key.into_parts();
+        Ok(ocx.sup(&ObligationCause::dummy(), param_env, sup, sub)?)
+    })
 }
 
 fn type_op_prove_predicate<'tcx>(

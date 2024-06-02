@@ -76,7 +76,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
         };
 
         if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError>(
+            match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
                 self, value, universes,
             ) {
                 Ok(value) => return Ok(Normalized { value, obligations: vec![] }),

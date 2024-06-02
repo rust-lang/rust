@@ -319,7 +319,8 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            let mut fulfill_cx = <dyn traits::TraitEngine<'tcx, ScrubbedTraitError>>::new(&infcx);
+            let mut fulfill_cx =
+                <dyn traits::TraitEngine<'tcx, ScrubbedTraitError<'tcx>>>::new(&infcx);
             infcx
                 .at(&cause, ty::ParamEnv::empty())
                 .structurally_normalize(ty, &mut *fulfill_cx)

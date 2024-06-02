@@ -77,24 +77,26 @@ pub use rustc_infer::traits::*;
 /// error itself (except for if it's an ambiguity or true error).
 ///
 /// use [`ObligationCtxt::new_with_diagnostics`] to get a [`FulfillmentError`].
-#[derive(Copy, Clone, Debug)]
-pub enum ScrubbedTraitError {
+#[derive(Clone, Debug)]
+pub enum ScrubbedTraitError<'tcx> {
     /// A real error. This goal definitely does not hold.
     TrueError,
     /// An ambiguity. This goal may hold if further inference is done.
     Ambiguity,
+    /// An old-solver-style cycle error, which will fatal.
+    Cycle(Vec<PredicateObligation<'tcx>>),
 }
 
-impl ScrubbedTraitError {
+impl<'tcx> ScrubbedTraitError<'tcx> {
     fn is_true_error(&self) -> bool {
         match self {
             ScrubbedTraitError::TrueError => true,
-            ScrubbedTraitError::Ambiguity => false,
+            ScrubbedTraitError::Ambiguity | ScrubbedTraitError::Cycle(_) => false,
         }
     }
 }
 
-impl<'tcx> FulfillmentErrorLike<'tcx> for ScrubbedTraitError {
+impl<'tcx> FulfillmentErrorLike<'tcx> for ScrubbedTraitError<'tcx> {
     fn is_true_error(&self) -> bool {
         self.is_true_error()
     }

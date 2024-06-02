@@ -28,7 +28,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     ),
                     ty,
                 )
-                .map_err(|_: Vec<ScrubbedTraitError>| NoSolution)
+                .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
             } else {
                 Ok(ty)
             }

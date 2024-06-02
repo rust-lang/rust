@@ -54,7 +54,7 @@ impl<
 
 /// Used if you want to have pleasant experience when dealing
 /// with obligations outside of hir or mir typeck.
-pub struct ObligationCtxt<'a, 'tcx, E = ScrubbedTraitError> {
+pub struct ObligationCtxt<'a, 'tcx, E = ScrubbedTraitError<'tcx>> {
     pub infcx: &'a InferCtxt<'tcx>,
     engine: RefCell<Box<dyn TraitEngine<'tcx, E>>>,
 }
@@ -65,17 +65,8 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>> {
     }
 }
 
-impl<'a, 'tcx> ObligationCtxt<'a, 'tcx, ScrubbedTraitError> {
+impl<'a, 'tcx> ObligationCtxt<'a, 'tcx, ScrubbedTraitError<'tcx>> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'tcx, _>>::new(infcx)) }
-    }
-}
-
-impl<'a, 'tcx, E> ObligationCtxt<'a, 'tcx, E>
-where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
-{
-    pub fn new_generic(infcx: &'a InferCtxt<'tcx>) -> Self {
         Self { infcx, engine: RefCell::new(<dyn TraitEngine<'tcx, _>>::new(infcx)) }
     }
 }

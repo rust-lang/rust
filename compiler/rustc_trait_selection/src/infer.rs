@@ -1,9 +1,5 @@
-use crate::solve::NextSolverError;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{
-    self, FromSolverError, Obligation, ObligationCause, ObligationCtxt, OldSolverError,
-    SelectionContext,
-};
+use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -124,21 +120,19 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// bound for the closure and in part because it is convenient to
     /// have `'tcx` be free on this function so that we can talk about
     /// `K: TypeFoldable<TyCtxt<'tcx>>`.)
-    fn enter_canonical_trait_query<K, R, E>(
+    fn enter_canonical_trait_query<K, R>(
         self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx, E>, K) -> Result<R, NoSolution>,
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
     ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where
         K: TypeFoldable<TyCtxt<'tcx>>,
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
-        E: FromSolverError<'tcx, NextSolverError<'tcx>>
-            + FromSolverError<'tcx, OldSolverError<'tcx>>,
     {
         let (infcx, key, canonical_inference_vars) =
             self.build_with_canonical(DUMMY_SP, canonical_key);
-        let ocx = ObligationCtxt::new_generic(&infcx);
+        let ocx = ObligationCtxt::new(&infcx);
         let value = operation(&ocx, key)?;
         ocx.make_canonicalized_query_response(canonical_inference_vars, value)
     }
