@@ -197,7 +197,7 @@ impl AbsPath {
     ///
     /// Panics if `path` is not absolute.
     pub fn assert(path: &Utf8Path) -> &AbsPath {
-        assert!(path.is_absolute());
+        assert!(path.is_absolute(), "{path} is not absolute");
         unsafe { &*(path as *const Utf8Path as *const AbsPath) }
     }
 
