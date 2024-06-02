@@ -186,8 +186,8 @@ macro_rules! uint_impl {
 
         /// Returns the bit pattern of `self` reinterpreted as a signed integer of the same size.
         ///
-        /// This is a bit safer than `as` because it wouldn't silently change the size if the code
-        /// is refactored.
+        /// This produces the same result as an `as` cast, but ensures that the bit-width remains
+        /// the same.
         ///
         /// # Examples
         ///
