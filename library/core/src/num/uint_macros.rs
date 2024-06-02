@@ -184,6 +184,30 @@ macro_rules! uint_impl {
             (!self).trailing_zeros()
         }
 
+        /// Returns the bit pattern of `self` reinterpreted as a signed integer of the same size.
+        ///
+        /// This is a bit safer than `as` because it wouldn't silently change the size if the code
+        /// is refactored.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(integer_sign_cast)]
+        ///
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_signed(), -1", stringify!($SignedT), ");")]
+        /// ```
+        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_signed(self) -> $SignedT {
+            self as $SignedT
+        }
+
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
