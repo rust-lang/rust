@@ -3369,6 +3369,7 @@ impl<'test> TestCx<'test> {
             cmd.env("IS_MSVC", "1")
                 .env("IS_WINDOWS", "1")
                 .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
+                .env("MSVC_LIB_PATH", format!("{}", lib.display()))
                 .env("CC", format!("'{}' {}", self.config.cc, cflags))
                 .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
         } else {
