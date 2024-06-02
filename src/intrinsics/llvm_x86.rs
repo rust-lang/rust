@@ -1416,6 +1416,36 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         }
 
+        "llvm.x86.rdtsc" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_rdtsc&ig_expand=5273
+
+            let res_place = CPlace::new_stack_slot(
+                fx,
+                fx.layout_of(Ty::new_tup(fx.tcx, &[fx.tcx.types.u32, fx.tcx.types.u32])),
+            );
+            let eax_place = res_place.place_field(fx, FieldIdx::new(0));
+            let edx_place = res_place.place_field(fx, FieldIdx::new(1));
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("rdtsc".to_string())],
+                &[
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        late: true,
+                        place: Some(eax_place),
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        late: true,
+                        place: Some(edx_place),
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::NOMEM,
+            );
+            let res = res_place.to_cvalue(fx);
+            ret.write_cvalue_transmute(fx, res);
+        }
+
         _ => {
             fx.tcx
                 .dcx()
