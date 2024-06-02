@@ -534,6 +534,11 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
 pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
     let data = db.function_data(func);
     if data.has_unsafe_kw() {
+        // Functions that are `#[rustc_deprecated_safe_2024]` are safe to call before 2024.
+        if db.attrs(func.into()).by_key("rustc_deprecated_safe_2024").exists() {
+            // FIXME: Properly check the caller span and mark it as unsafe after 2024.
+            return false;
+        }
         return true;
     }
 
