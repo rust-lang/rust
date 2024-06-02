@@ -126,7 +126,7 @@ can be tested locally, for example, with:
 
 It's recommended to conditionally compile code for this target with:
 
-```
+```text
 #[cfg(all(target_os = "wasi", target_env = "p1"))]
 ```
 

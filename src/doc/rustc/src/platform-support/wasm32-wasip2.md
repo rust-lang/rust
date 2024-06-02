@@ -58,6 +58,6 @@ This target is not tested in CI at this time. Locally it can be tested with a
 
 It's recommended to conditionally compile code for this target with:
 
-```
+```text
 #[cfg(all(target_os = "wasi", target_env = "p2"))]
 ```

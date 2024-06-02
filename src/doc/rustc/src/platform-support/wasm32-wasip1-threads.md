@@ -155,7 +155,7 @@ or another engine that supports `wasi-threads` is installed and can be found in 
 
 It's recommended to conditionally compile code for this target with:
 
-```
+```text
 #[cfg(all(target_os = "wasi", target_env = "p1", target_feature = "atomics"))]
 ```
 
