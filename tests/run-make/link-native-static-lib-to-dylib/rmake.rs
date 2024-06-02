@@ -1,3 +1,5 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/15460>.
+
 //@ ignore-cross-compile
 
 use run_make_support::{build_native_static_lib, run, rustc};
