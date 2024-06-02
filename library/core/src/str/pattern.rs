@@ -342,7 +342,7 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
 ///
 /// `(&str)::Searcher` is not a `DoubleEndedSearcher` because
 /// the pattern `"aa"` in the haystack `"aaa"` matches as either
-/// `"[aa]a"` or `"a[aa]"`, depending from which side it is searched.
+/// `"[aa]a"` or `"a[aa]"`, depending on which side it is searched.
 pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 
 /////////////////////////////////////////////////////////////////////////////
