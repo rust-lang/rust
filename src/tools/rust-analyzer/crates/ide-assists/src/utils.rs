@@ -927,12 +927,12 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
 
         match token.kind() {
             T!['('] | T!['{'] | T!['['] => {
-                // Found an opening delimeter, start a new sub token tree
+                // Found an opening delimiter, start a new sub token tree
                 tt_stack.push((Some(token.kind()), vec![]));
             }
             T![')'] | T!['}'] | T![']'] => {
                 // Closing a subtree
-                let (delimiter, tt) = tt_stack.pop().expect("unbalanced delimeters");
+                let (delimiter, tt) = tt_stack.pop().expect("unbalanced delimiters");
                 let (_, parent_tt) = tt_stack
                     .last_mut()
                     .expect("parent token tree was closed before it was completed");

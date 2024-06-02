@@ -18,7 +18,11 @@ pub(crate) fn parse_text(text: &str, edition: parser::Edition) -> (GreenNode, Ve
     (node, errors)
 }
 
-pub(crate) fn parse_text_at(text: &str, entry: parser::TopEntryPoint, edition: parser::Edition) -> (GreenNode, Vec<SyntaxError>) {
+pub(crate) fn parse_text_at(
+    text: &str,
+    entry: parser::TopEntryPoint,
+    edition: parser::Edition,
+) -> (GreenNode, Vec<SyntaxError>) {
     let _p = tracing::span!(tracing::Level::INFO, "parse_text_at").entered();
     let lexed = parser::LexedStr::new(text);
     let parser_input = lexed.to_input();
