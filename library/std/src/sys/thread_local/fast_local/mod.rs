@@ -1,7 +1,7 @@
 //! Thread local support for platforms with native TLS.
 //!
 //! To achieve the best performance, we choose from four different types for
-//! the TLS variable, depending from the method of initialization used (`const`
+//! the TLS variable, depending on the method of initialization used (`const`
 //! or lazy) and the drop requirements of the stored type:
 //!
 //! |         | `Drop`               | `!Drop`             |

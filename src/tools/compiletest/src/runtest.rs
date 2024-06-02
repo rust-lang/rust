@@ -17,10 +17,10 @@ use crate::json;
 use crate::read2::{read2_abbreviated, Truncated};
 use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
+use colored::Colorize;
 use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -1493,14 +1493,22 @@ impl<'test> TestCx<'test> {
                 unexpected.len(),
                 not_found.len()
             ));
-            println!("status: {}\ncommand: {}", proc_res.status, proc_res.cmdline);
+            println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
             if !unexpected.is_empty() {
-                println!("unexpected errors (from JSON output): {:#?}\n", unexpected);
+                println!("{}", "--- unexpected errors (from JSON output) ---".green());
+                for error in &unexpected {
+                    println!("{}", error.render_for_expected());
+                }
+                println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                println!("not found errors (from test file): {:#?}\n", not_found);
+                println!("{}", "--- not found errors (from test file) ---".red());
+                for error in &not_found {
+                    println!("{}", error.render_for_expected());
+                }
+                println!("{}", "---\n".red());
             }
-            panic!();
+            panic!("errors differ from expected");
         }
     }
 
@@ -3435,13 +3443,13 @@ impl<'test> TestCx<'test> {
         // ```
         // base_dir/
         //     rmake.exe
-        //     scratch/
+        //     rmake_out/
         // ```
-        // having the executable separate from the scratch directory allows the recipes to
-        // `remove_dir_all(scratch)` without running into permission denied issues because
-        // the executable is not under the `scratch/` directory.
+        // having the executable separate from the output artifacts directory allows the recipes to
+        // `remove_dir_all($TMPDIR)` without running into permission denied issues because
+        // the executable is not under the `rmake_out/` directory.
         //
-        // This setup diverges from legacy Makefile run-make tests.
+        // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = cwd.join(self.output_base_name());
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
