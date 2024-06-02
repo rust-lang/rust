@@ -3435,13 +3435,13 @@ impl<'test> TestCx<'test> {
         // ```
         // base_dir/
         //     rmake.exe
-        //     scratch/
+        //     rmake_out/
         // ```
-        // having the executable separate from the scratch directory allows the recipes to
-        // `remove_dir_all(scratch)` without running into permission denied issues because
-        // the executable is not under the `scratch/` directory.
+        // having the executable separate from the output artifacts directory allows the recipes to
+        // `remove_dir_all($TMPDIR)` without running into permission denied issues because
+        // the executable is not under the `rmake_out/` directory.
         //
-        // This setup diverges from legacy Makefile run-make tests.
+        // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = cwd.join(self.output_base_name());
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
