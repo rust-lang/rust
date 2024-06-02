@@ -777,8 +777,8 @@ where
 
 /// Convert a reference to a raw pointer.
 ///
-/// This is equivalent to `r as *const T`, but is a bit safer since it will never silently change
-/// type or mutability, in particular if the code is refactored.
+/// For `r: &T`, `from_ref(r)` is equivalent to `r as *const T`, but is a bit safer since it will
+/// never silently change type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
@@ -791,8 +791,8 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 
 /// Convert a mutable reference to a raw pointer.
 ///
-/// This is equivalent to `r as *mut T`, but is a bit safer since it will never silently change
-/// type or mutability, in particular if the code is refactored.
+/// For `r: &mut T`, `from_mut(r)` is equivalent to `r as *mut T`, but is a bit safer since it will
+/// never silently change type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
