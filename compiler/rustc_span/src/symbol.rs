@@ -1023,6 +1023,7 @@ symbols! {
         integral,
         into_async_iter_into_iter,
         into_future,
+        into_future_trait,
         into_iter,
         intra_doc_pointers,
         intrinsics,

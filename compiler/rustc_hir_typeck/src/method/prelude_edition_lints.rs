@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
+use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
 use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -35,6 +35,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (prelude_or_array_lint, edition) = match segment.ident.name {
             // `try_into` was added to the prelude in Rust 2021.
             sym::try_into if !span.at_least_rust_2021() => (RUST_2021_PRELUDE_COLLISIONS, "2021"),
+            sym::poll
+                if !span.at_least_rust_2024()
+                    && let Some(future) = self.tcx.lang_items().future_trait()
+                    && self
+                        .infcx
+                        .type_implements_trait(future, [self_ty], self.param_env)
+                        .may_apply() =>
+            {
+                (RUST_2024_PRELUDE_COLLISIONS, "2024")
+            }
+            sym::into_future
+                if !span.at_least_rust_2024()
+                    && let Some(into_future) = self.tcx.lang_items().into_future_trait()
+                    && self
+                        .infcx
+                        .type_implements_trait(into_future, [self_ty], self.param_env)
+                        .may_apply() =>
+            {
+                (RUST_2024_PRELUDE_COLLISIONS, "2024")
+            }
             // `into_iter` wasn't added to the prelude,
             // but `[T; N].into_iter()` doesn't resolve to IntoIterator::into_iter
             // before Rust 2021, which results in the same problem.
