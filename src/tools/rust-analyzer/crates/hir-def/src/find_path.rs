@@ -42,7 +42,14 @@ pub fn find_path(
     cfg.prefer_no_std = cfg.prefer_no_std || db.crate_supports_no_std(from.krate());
 
     find_path_inner(
-        &FindPathCtx { db, prefix: prefix_kind, cfg, ignore_local_imports, from },
+        &FindPathCtx {
+            db,
+            prefix: prefix_kind,
+            cfg,
+            ignore_local_imports,
+            from,
+            from_def_map: &from.def_map(db),
+        },
         item,
         MAX_PATH_LEN,
     )
@@ -93,15 +100,15 @@ struct FindPathCtx<'db> {
     cfg: ImportPathConfig,
     ignore_local_imports: bool,
     from: ModuleId,
+    from_def_map: &'db DefMap,
 }
 
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
 fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Option<ModPath> {
-    let def_map = ctx.from.def_map(ctx.db);
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
-        return find_path_for_module(ctx, &def_map, &mut visited_modules, module_id, max_len)
+        return find_path_for_module(ctx, &mut visited_modules, module_id, max_len)
             .map(|(item, _)| item);
     }
 
@@ -111,14 +118,15 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
     };
     if may_be_in_scope {
         // - if the item is already in scope, return the name under which it is
-        let scope_name = find_in_scope(ctx.db, &def_map, ctx.from, item, ctx.ignore_local_imports);
+        let scope_name =
+            find_in_scope(ctx.db, ctx.from_def_map, ctx.from, item, ctx.ignore_local_imports);
         if let Some(scope_name) = scope_name {
             return Some(ModPath::from_segments(ctx.prefix.path_kind(), iter::once(scope_name)));
         }
     }
 
     // - if the item is in the prelude, return the name from there
-    if let Some(value) = find_in_prelude(ctx.db, &def_map, item, ctx.from) {
+    if let Some(value) = find_in_prelude(ctx.db, ctx.from_def_map, item, ctx.from) {
         return Some(value);
     }
 
@@ -137,13 +145,12 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     let mut visited_modules = FxHashSet::default();
 
-    calculate_best_path(ctx, &def_map, &mut visited_modules, item, max_len).map(|(item, _)| item)
+    calculate_best_path(ctx, &mut visited_modules, item, max_len).map(|(item, _)| item)
 }
 
 #[tracing::instrument(skip_all)]
 fn find_path_for_module(
     ctx: &FindPathCtx<'_>,
-    def_map: &DefMap,
     visited_modules: &mut FxHashSet<ModuleId>,
     module_id: ModuleId,
     max_len: usize,
@@ -152,21 +159,21 @@ fn find_path_for_module(
         return None;
     }
 
-    let is_crate_root = module_id.as_crate_root();
-    // - if the item is the crate root, return `crate`
-    if is_crate_root == Some(ctx.from.derive_crate_root()) {
-        return Some((ModPath::from_segments(PathKind::Crate, None), Stable));
-    }
+    if let Some(crate_root) = module_id.as_crate_root() {
+        if crate_root == ctx.from.derive_crate_root() {
+            // - if the item is the crate root, return `crate`
+            return Some((ModPath::from_segments(PathKind::Crate, None), Stable));
+        }
+        // - otherwise if the item is the crate root of a dependency crate, return the name from the extern prelude
 
-    // - if the item is the crate root of a dependency crate, return the name from the extern prelude
-    if let Some(crate_root) = is_crate_root {
         let root_def_map = ctx.from.derive_crate_root().def_map(ctx.db);
         // rev here so we prefer looking at renamed extern decls first
         for (name, (def_id, _extern_crate)) in root_def_map.extern_prelude().rev() {
             if crate_root != def_id {
                 continue;
             }
-            let name_already_occupied_in_type_ns = def_map
+            let name_already_occupied_in_type_ns = ctx
+                .from_def_map
                 .with_ancestor_maps(ctx.db, ctx.from.local_id, &mut |def_map, local_id| {
                     def_map[local_id]
                         .scope
@@ -191,7 +198,7 @@ fn find_path_for_module(
     if may_be_in_scope {
         let scope_name = find_in_scope(
             ctx.db,
-            def_map,
+            ctx.from_def_map,
             ctx.from,
             ItemInNs::Types(module_id.into()),
             ctx.ignore_local_imports,
@@ -206,7 +213,7 @@ fn find_path_for_module(
     }
 
     // - if the module can be referenced as self, super or crate, do that
-    if let Some(mod_path) = is_kw_kind_relative_to_from(def_map, module_id, ctx.from) {
+    if let Some(mod_path) = is_kw_kind_relative_to_from(ctx.from_def_map, module_id, ctx.from) {
         if ctx.prefix != PrefixKind::ByCrate || mod_path.kind == PathKind::Crate {
             return Some((mod_path, Stable));
         }
@@ -214,14 +221,13 @@ fn find_path_for_module(
 
     // - if the module is in the prelude, return it by that path
     if let Some(mod_path) =
-        find_in_prelude(ctx.db, def_map, ItemInNs::Types(module_id.into()), ctx.from)
+        find_in_prelude(ctx.db, ctx.from_def_map, ItemInNs::Types(module_id.into()), ctx.from)
     {
         return Some((mod_path, Stable));
     }
-    calculate_best_path(ctx, def_map, visited_modules, ItemInNs::Types(module_id.into()), max_len)
+    calculate_best_path(ctx, visited_modules, ItemInNs::Types(module_id.into()), max_len)
 }
 
-// FIXME: Do we still need this now that we record import origins, and hence aliases?
 fn find_in_scope(
     db: &dyn DefDatabase,
     def_map: &DefMap,
@@ -246,7 +252,6 @@ fn find_in_prelude(
     from: ModuleId,
 ) -> Option<ModPath> {
     let (prelude_module, _) = local_def_map.prelude()?;
-    // Preludes in block DefMaps are ignored, only the crate DefMap is searched
     let prelude_def_map = prelude_module.def_map(db);
     let prelude_scope = &prelude_def_map[prelude_module.local_id].scope;
     let (name, vis, _declared) = prelude_scope.name_of(item)?;
@@ -304,7 +309,6 @@ fn is_kw_kind_relative_to_from(
 #[tracing::instrument(skip_all)]
 fn calculate_best_path(
     ctx: &FindPathCtx<'_>,
-    def_map: &DefMap,
     visited_modules: &mut FxHashSet<ModuleId>,
     item: ItemInNs,
     max_len: usize,
@@ -337,14 +341,14 @@ fn calculate_best_path(
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
         // FIXME: cache the `find_local_import_locations` output?
-        for (module_id, name) in find_local_import_locations(db, item, ctx.from) {
+        for (module_id, name) in find_local_import_locations(db, item, ctx.from, ctx.from_def_map) {
             if !visited_modules.insert(module_id) {
                 continue;
             }
             // we are looking for paths of length up to best_path_len, any longer will make it be
             // less optimal. The -1 is due to us pushing name onto it afterwards.
             if let Some(path) =
-                find_path_for_module(ctx, def_map, visited_modules, module_id, best_path_len - 1)
+                find_path_for_module(ctx, visited_modules, module_id, best_path_len - 1)
             {
                 process(path, name, &mut best_path_len);
             }
@@ -365,13 +369,8 @@ fn calculate_best_path(
 
                 // Determine best path for containing module and append last segment from `info`.
                 // FIXME: we should guide this to look up the path locally, or from the same crate again?
-                let path = find_path_for_module(
-                    ctx,
-                    def_map,
-                    visited_modules,
-                    info.container,
-                    best_path_len - 1,
-                );
+                let path =
+                    find_path_for_module(ctx, visited_modules, info.container, best_path_len - 1);
                 let Some((path, path_stability)) = path else {
                     continue;
                 };
@@ -461,14 +460,13 @@ fn find_local_import_locations(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
+    def_map: &DefMap,
 ) -> Vec<(ModuleId, Name)> {
     let _p = tracing::span!(tracing::Level::INFO, "find_local_import_locations").entered();
 
     // `from` can import anything below `from` with visibility of at least `from`, and anything
     // above `from` with any visibility. That means we do not need to descend into private siblings
     // of `from` (and similar).
-
-    let def_map = from.def_map(db);
 
     // Compute the initial worklist. We start with all direct child modules of `from` as well as all
     // of its (recursive) parent modules.
