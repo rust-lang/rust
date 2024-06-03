@@ -360,7 +360,7 @@ impl dyn Error {
 /// Get a string value from an error.
 ///
 /// ```rust
-/// # #![feature(error_generic_member_access)]
+/// #![feature(error_generic_member_access)]
 /// use std::error::Error;
 /// use core::error::request_value;
 ///
@@ -383,7 +383,7 @@ where
 /// Get a string reference from an error.
 ///
 /// ```rust
-/// # #![feature(error_generic_member_access)]
+/// #![feature(error_generic_member_access)]
 /// use core::error::Error;
 /// use core::error::request_ref;
 ///
