@@ -442,6 +442,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
 
+                if let Err(incorrect) = self.incorrect_args {
+                    if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        return match param.kind {
+                            GenericParamDefKind::Lifetime => {
+                                ty::Region::new_error(tcx, incorrect.reported).into()
+                            }
+                            GenericParamDefKind::Type { .. } => {
+                                Ty::new_error(tcx, incorrect.reported).into()
+                            }
+                            GenericParamDefKind::Const { .. } => ty::Const::new_error(
+                                tcx,
+                                incorrect.reported,
+                                Ty::new_error(tcx, incorrect.reported),
+                            )
+                            .into(),
+                        };
+                    }
+                }
+
                 let mut handle_ty_args = |has_default, ty: &hir::Ty<'tcx>| {
                     if has_default {
                         tcx.check_optional_stability(
