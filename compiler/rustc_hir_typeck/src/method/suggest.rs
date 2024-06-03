@@ -191,6 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_opt: Option<&'tcx hir::Expr<'tcx>>,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
+        expr_id: hir::HirId,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
@@ -216,6 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rcvr_opt,
                     rcvr_ty,
                     item_name,
+                    expr_id,
                     source,
                     args,
                     sugg_span,
@@ -549,6 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_opt: Option<&'tcx hir::Expr<'tcx>>,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
+        expr_id: hir::HirId,
         source: SelfSource<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
         sugg_span: Span,
@@ -681,7 +684,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if matches!(source, SelfSource::QPath(_)) && args.is_some() {
-            self.find_builder_fn(&mut err, rcvr_ty);
+            self.find_builder_fn(&mut err, rcvr_ty, expr_id);
         }
 
         if tcx.ty_is_opaque_future(rcvr_ty) && item_name.name == sym::poll {
@@ -1942,7 +1945,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Look at all the associated functions without receivers in the type's inherent impls
     /// to look for builders that return `Self`, `Option<Self>` or `Result<Self, _>`.
-    fn find_builder_fn(&self, err: &mut Diag<'_>, rcvr_ty: Ty<'tcx>) {
+    fn find_builder_fn(&self, err: &mut Diag<'_>, rcvr_ty: Ty<'tcx>, expr_id: hir::HirId) {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
@@ -1951,8 +1954,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut items = impls
             .iter()
             .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
-            // Only assoc fn with no receivers.
-            .filter(|item| matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter)
+            // Only assoc fn with no receivers and only if
+            // they are resolvable
+            .filter(|item| {
+                matches!(item.kind, ty::AssocKind::Fn)
+                    && !item.fn_has_self_parameter
+                    && self
+                        .probe_for_name(
+                            Mode::Path,
+                            item.ident(self.tcx),
+                            None,
+                            IsSuggestion(true),
+                            rcvr_ty,
+                            expr_id,
+                            ProbeScope::TraitsInScope,
+                        )
+                        .is_ok()
+            })
             .filter_map(|item| {
                 // Only assoc fns that return `Self`, `Option<Self>` or `Result<Self, _>`.
                 let ret_ty = self

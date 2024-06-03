@@ -832,6 +832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         ty.normalized,
                         item_name,
+                        hir_id,
                         SelfSource::QPath(qself),
                         error,
                         args,
