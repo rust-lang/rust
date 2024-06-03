@@ -41458,7 +41458,7 @@ extern "C" {
     fn vfixupimmsdz(a: f64x2, b: f64x2, c: i64x2, imm8: i32, mask: u8, sae: i32) -> f64x2;
 
     #[link_name = "llvm.x86.avx512.mask.cvtss2sd.round"]
-    fn vcvtss2sd(a: f64x2, a: f32x4, src: f64x2, mask: u8, sae: i32) -> f64x2;
+    fn vcvtss2sd(a: f64x2, b: f32x4, src: f64x2, mask: u8, sae: i32) -> f64x2;
     #[link_name = "llvm.x86.avx512.mask.cvtsd2ss.round"]
     fn vcvtsd2ss(a: f32x4, b: f64x2, src: f32x4, mask: u8, rounding: i32) -> f32x4;
 
