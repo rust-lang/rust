@@ -396,6 +396,23 @@ impl PartialEq<ModuleId> for CrateRootModuleId {
         other.block.is_none() && other.local_id == DefMap::ROOT && self.krate == other.krate
     }
 }
+impl PartialEq<CrateRootModuleId> for ModuleId {
+    fn eq(&self, other: &CrateRootModuleId) -> bool {
+        other == self
+    }
+}
+
+impl From<CrateRootModuleId> for ModuleId {
+    fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
+        ModuleId { krate, block: None, local_id: DefMap::ROOT }
+    }
+}
+
+impl From<CrateRootModuleId> for ModuleDefId {
+    fn from(value: CrateRootModuleId) -> Self {
+        ModuleDefId::ModuleId(value.into())
+    }
+}
 
 impl From<CrateId> for CrateRootModuleId {
     fn from(krate: CrateId) -> Self {
@@ -472,6 +489,7 @@ impl ModuleId {
         self.block.is_some()
     }
 
+    /// Returns the [`CrateRootModuleId`] for this module if it is the crate root module.
     pub fn as_crate_root(&self) -> Option<CrateRootModuleId> {
         if self.local_id == DefMap::ROOT && self.block.is_none() {
             Some(CrateRootModuleId { krate: self.krate })
@@ -480,30 +498,14 @@ impl ModuleId {
         }
     }
 
+    /// Returns the [`CrateRootModuleId`] for this module.
     pub fn derive_crate_root(&self) -> CrateRootModuleId {
         CrateRootModuleId { krate: self.krate }
     }
 
+    /// Whether this module represents the crate root module
     fn is_crate_root(&self) -> bool {
         self.local_id == DefMap::ROOT && self.block.is_none()
-    }
-}
-
-impl PartialEq<CrateRootModuleId> for ModuleId {
-    fn eq(&self, other: &CrateRootModuleId) -> bool {
-        other == self
-    }
-}
-
-impl From<CrateRootModuleId> for ModuleId {
-    fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
-        ModuleId { krate, block: None, local_id: DefMap::ROOT }
-    }
-}
-
-impl From<CrateRootModuleId> for ModuleDefId {
-    fn from(value: CrateRootModuleId) -> Self {
-        ModuleDefId::ModuleId(value.into())
     }
 }
 

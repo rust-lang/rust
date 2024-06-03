@@ -1942,7 +1942,7 @@ impl HirDisplay for Path {
             (_, PathKind::Plain) => {}
             (_, PathKind::Abs) => {}
             (_, PathKind::Crate) => write!(f, "crate")?,
-            (_, PathKind::Super(0)) => write!(f, "self")?,
+            (_, &PathKind::SELF) => write!(f, "self")?,
             (_, PathKind::Super(n)) => {
                 for i in 0..*n {
                     if i > 0 {
