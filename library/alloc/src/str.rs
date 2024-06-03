@@ -613,7 +613,7 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 #[cfg(not(test))]
 #[cfg(not(no_global_oom_handling))]
 fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
-    // process the input in chunks to enable auto-vectorization
+    // Process the input in chunks to enable auto-vectorization
     const USIZE_SIZE: usize = mem::size_of::<usize>();
     const MAGIC_UNROLL: usize = 2;
     const N: usize = USIZE_SIZE * MAGIC_UNROLL;
@@ -635,9 +635,10 @@ fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
             is_ascii[j] = chunk[j] <= 127;
         }
 
-        // auto-vectorization for this check is a bit fragile,
-        // sum and comparing against the chunk size gives the best result,
-        // specifically a pmovmsk instruction on x86.
+        // Auto-vectorization for this check is a bit fragile, sum and comparing against the chunk
+        // size gives the best result, specifically a pmovmsk instruction on x86.
+        // There is a codegen test in `issue-123712-str-to-lower-autovectorization.rs` which should
+        // be updated when this method is changed.
         if is_ascii.iter().map(|x| *x as u8).sum::<u8>() as usize != N {
             break;
         }
