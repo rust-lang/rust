@@ -1,5 +1,5 @@
 error[E0107]: missing generics for associated type `MapLike::VRefCont`
-  --> $DIR/issue-79422.rs:47:36
+  --> $DIR/issue-79422.rs:45:36
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
    |                                    ^^^^^^^^ expected 1 lifetime argument

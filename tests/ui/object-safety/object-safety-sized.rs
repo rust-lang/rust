@@ -10,9 +10,9 @@ trait Bar: Sized {
 }
 
 fn make_bar<T: Bar>(t: &T) -> &dyn Bar {
-    //[curr]~^ ERROR E0038
-    t
     //~^ ERROR E0038
+    //[curr]~^^ ERROR E0038
+    t
 }
 
 fn main() {}

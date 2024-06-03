@@ -68,10 +68,10 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `bar` cannot be made into an object
-  --> $DIR/test-2.rs:13:6
+  --> $DIR/test-2.rs:13:26
    |
 LL |     (Box::new(10) as Box<dyn bar>).dup();
-   |      ^^^^^^^^^^^^ `bar` cannot be made into an object
+   |                          ^^^^^^^ `bar` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/test-2.rs:4:30
@@ -86,7 +86,7 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `bar` for this new enum and using it instead:
              i32
              u32
-   = note: required for the cast from `Box<{integer}>` to `Box<dyn bar>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

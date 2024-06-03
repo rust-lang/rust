@@ -29,10 +29,10 @@ LL |     fn bar<T>(&self, t: T);
    = help: consider moving `bar` to another trait
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-generics.rs:20:5
+  --> $DIR/object-safety-generics.rs:18:31
    |
-LL |     t
-   |     ^ `Bar` cannot be made into an object
+LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
+   |                               ^^^^^^^ `Bar` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-generics.rs:10:8
@@ -42,7 +42,7 @@ LL | trait Bar {
 LL |     fn bar<T>(&self, t: T);
    |        ^^^ ...because method `bar` has generic type parameters
    = help: consider moving `bar` to another trait
-   = note: required for the cast from `&T` to `&dyn Bar`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-generics.rs:27:11
@@ -60,10 +60,10 @@ LL |     fn bar<T>(&self, t: T);
    = help: consider moving `bar` to another trait
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-generics.rs:27:5
+  --> $DIR/object-safety-generics.rs:27:11
    |
 LL |     t as &dyn Bar
-   |     ^ `Bar` cannot be made into an object
+   |           ^^^^^^^ `Bar` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-generics.rs:10:8
@@ -73,7 +73,7 @@ LL | trait Bar {
 LL |     fn bar<T>(&self, t: T);
    |        ^^^ ...because method `bar` has generic type parameters
    = help: consider moving `bar` to another trait
-   = note: required for the cast from `&T` to `&dyn Bar`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

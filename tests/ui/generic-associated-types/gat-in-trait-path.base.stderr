@@ -51,7 +51,7 @@ LL |     type A<'a> where Self: 'a;
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Foo` for this new enum and using it instead:
              Fooer<T>
              Fooy
-   = note: required for the cast from `Box<Fooer<{integer}>>` to `Box<(dyn Foo<A = &'a ()> + 'static)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

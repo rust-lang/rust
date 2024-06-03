@@ -26,11 +26,14 @@ fn car() -> dyn NotObjectSafe { //~ ERROR the trait `NotObjectSafe` cannot be ma
     B
 }
 
-fn cat() -> Box<dyn NotObjectSafe> { //~ ERROR the trait `NotObjectSafe` cannot be made into an
+fn cat() -> Box<dyn NotObjectSafe> {
+    //~^ ERROR cannot be made into an object
+    //~| ERROR cannot be made into an object
+    //~| ERROR cannot be made into an object
     if true {
-        return Box::new(A); //~ ERROR cannot be made into an object
+        return Box::new(A);
     }
-    Box::new(B) //~ ERROR cannot be made into an object
+    Box::new(B)
 }
 
 fn main() {}

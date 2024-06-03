@@ -42,7 +42,6 @@ LL | trait Trait: Sized {}
    |       |
    |       this trait cannot be made into an object...
    = help: only type `()` implements the trait, consider using it directly instead
-   = note: required for the cast from `&()` to `&(dyn Trait + 'static)`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:10:6

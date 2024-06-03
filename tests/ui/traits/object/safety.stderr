@@ -1,8 +1,8 @@
 error[E0038]: the trait `Tr` cannot be made into an object
-  --> $DIR/safety.rs:15:22
+  --> $DIR/safety.rs:15:13
    |
 LL |     let _: &dyn Tr = &St;
-   |                      ^^^ `Tr` cannot be made into an object
+   |             ^^^^^^ `Tr` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/safety.rs:4:8
@@ -12,7 +12,6 @@ LL | trait Tr {
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
    = help: only type `St` implements the trait, consider using it directly instead
-   = note: required for the cast from `&St` to `&dyn Tr`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self);
@@ -36,6 +35,7 @@ LL | trait Tr {
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
    = help: only type `St` implements the trait, consider using it directly instead
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self);

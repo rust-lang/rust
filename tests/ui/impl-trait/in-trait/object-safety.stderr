@@ -47,10 +47,10 @@ LL |     fn baz(&self) -> impl Debug;
    = help: only type `u32` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety.rs:14:13
+  --> $DIR/object-safety.rs:14:37
    |
 LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
-   |             ^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |                                     ^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety.rs:4:22
@@ -61,7 +61,7 @@ LL |     fn baz(&self) -> impl Debug;
    |                      ^^^^^^^^^^ ...because method `baz` references an `impl Trait` type in its return type
    = help: consider moving `baz` to another trait
    = help: only type `u32` implements the trait, consider using it directly instead
-   = note: required for the cast from `Box<u32>` to `Box<dyn Foo>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

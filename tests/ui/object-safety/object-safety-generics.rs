@@ -17,9 +17,9 @@ trait Quux {
 
 fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
     //[curr]~^ ERROR E0038
+    //[curr]~| ERROR E0038
+    //[object_safe_for_dispatch]~^^^ ERROR E0038
     t
-    //[object_safe_for_dispatch]~^ ERROR E0038
-    //[curr]~^^ ERROR E0038
 }
 
 fn make_bar_explicit<T:Bar>(t: &T) -> &dyn Bar {

@@ -41,10 +41,9 @@ impl<K, V: Default> MapLike<K, V> for Source {
 }
 
 fn main() {
-    let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
-    //[base]~^ ERROR the trait
-    //[extended]~^^ type mismatch
+    let m = Box::new(std::collections::BTreeMap::<u8, u8>::new()) //[extended]~ type mismatch
         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
       //~^ ERROR missing generics for associated type
       //[base]~^^ ERROR the trait
+      //[base]~| ERROR the trait
 }

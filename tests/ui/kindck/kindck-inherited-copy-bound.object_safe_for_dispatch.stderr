@@ -20,10 +20,10 @@ LL | fn take_param<T:Foo>(foo: &T) { }
    |                 ^^^ required by this bound in `take_param`
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/kindck-inherited-copy-bound.rs:28:13
+  --> $DIR/kindck-inherited-copy-bound.rs:28:20
    |
 LL |     let z = &x as &dyn Foo;
-   |             ^^ `Foo` cannot be made into an object
+   |                    ^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/kindck-inherited-copy-bound.rs:10:13
@@ -32,7 +32,6 @@ LL | trait Foo : Copy {
    |       ---   ^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for the cast from `&Box<i32>` to `&dyn Foo`
 
 error: aborting due to 2 previous errors
 
