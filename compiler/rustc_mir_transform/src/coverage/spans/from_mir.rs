@@ -1,4 +1,3 @@
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
@@ -29,7 +28,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     let mut initial_spans = vec![];
 
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
-        initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
+        bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data, &mut initial_spans);
     }
 
     // Only add the signature span if we found at least one span in the body.
@@ -135,8 +134,9 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     body_span: Span,
     bcb: BasicCoverageBlock,
     bcb_data: &'a BasicCoverageBlockData,
-) -> impl Iterator<Item = SpanFromMir> + Captures<'a> + Captures<'tcx> {
-    bcb_data.basic_blocks.iter().flat_map(move |&bb| {
+    initial_covspans: &mut Vec<SpanFromMir>,
+) {
+    for &bb in &bcb_data.basic_blocks {
         let data = &mir_body[bb];
 
         let unexpand = move |expn_span| {
@@ -146,24 +146,27 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
                 .filter(|(span, _)| !span.source_equal(body_span))
         };
 
-        let statement_spans = data.statements.iter().filter_map(move |statement| {
-            let expn_span = filtered_statement_span(statement)?;
-            let (span, visible_macro) = unexpand(expn_span)?;
+        for statement in data.statements.iter() {
+            let _: Option<()> = try {
+                let expn_span = filtered_statement_span(statement)?;
+                let (span, visible_macro) = unexpand(expn_span)?;
 
-            // A statement that looks like the assignment of a closure expression
-            // is treated as a "hole" span, to be carved out of other spans.
-            Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_like(statement)))
-        });
+                // A statement that looks like the assignment of a closure expression
+                // is treated as a "hole" span, to be carved out of other spans.
+                let covspan =
+                    SpanFromMir::new(span, visible_macro, bcb, is_closure_like(statement));
+                initial_covspans.push(covspan);
+            };
+        }
 
-        let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
+        let _: Option<()> = try {
+            let terminator = data.terminator();
             let expn_span = filtered_terminator_span(terminator)?;
             let (span, visible_macro) = unexpand(expn_span)?;
 
-            Some(SpanFromMir::new(span, visible_macro, bcb, false))
-        });
-
-        statement_spans.chain(terminator_span)
-    })
+            initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb, false));
+        };
+    }
 }
 
 fn is_closure_like(statement: &Statement<'_>) -> bool {
