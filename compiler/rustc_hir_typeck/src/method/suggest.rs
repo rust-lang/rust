@@ -16,11 +16,11 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, MultiSpan, StashKey,
 };
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::PathSegment;
+use rustc_hir::{self as hir, HirId};
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::bug;
@@ -187,37 +187,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn report_method_error(
         &self,
-        span: Span,
-        rcvr_opt: Option<&'tcx hir::Expr<'tcx>>,
+        call_id: HirId,
         rcvr_ty: Ty<'tcx>,
-        item_name: Ident,
-        expr_id: hir::HirId,
-        source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
     ) -> Option<Diag<'_>> {
+        let (span, sugg_span, source, item_name, args) = match self.tcx.hir_node(call_id) {
+            hir::Node::Expr(&hir::Expr {
+                kind: hir::ExprKind::MethodCall(segment, rcvr, args, _),
+                span,
+                ..
+            }) => {
+                (segment.ident.span, span, SelfSource::MethodCall(rcvr), segment.ident, Some(args))
+            }
+            hir::Node::Expr(&hir::Expr {
+                kind: hir::ExprKind::Path(QPath::TypeRelative(rcvr, segment)),
+                span,
+                ..
+            })
+            | hir::Node::Pat(&hir::Pat {
+                kind:
+                    hir::PatKind::Path(QPath::TypeRelative(rcvr, segment))
+                    | hir::PatKind::Struct(QPath::TypeRelative(rcvr, segment), ..)
+                    | hir::PatKind::TupleStruct(QPath::TypeRelative(rcvr, segment), ..),
+                span,
+                ..
+            }) => {
+                let args = match self.tcx.parent_hir_node(call_id) {
+                    hir::Node::Expr(&hir::Expr {
+                        kind: hir::ExprKind::Call(callee, args), ..
+                    }) if callee.hir_id == call_id => Some(args),
+                    _ => None,
+                };
+                (segment.ident.span, span, SelfSource::QPath(rcvr), segment.ident, args)
+            }
+            node => unreachable!("{node:?}"),
+        };
+
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return None;
         }
 
-        let sugg_span = if let SelfSource::MethodCall(expr) = source {
-            // Given `foo.bar(baz)`, `expr` is `bar`, but we want to point to the whole thing.
-            self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id)).span
-        } else {
-            span
-        };
-
         match error {
             MethodError::NoMatch(mut no_match_data) => {
                 return self.report_no_match_method_error(
                     span,
-                    rcvr_opt,
                     rcvr_ty,
                     item_name,
-                    expr_id,
+                    call_id,
                     source,
                     args,
                     sugg_span,
@@ -362,7 +381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_use_shadowed_binding_with_method(
         &self,
-        rcvr_opt: Option<&'tcx hir::Expr<'tcx>>,
+        self_source: SelfSource<'tcx>,
         method_name: Ident,
         ty_str_reported: &str,
         err: &mut Diag<'_>,
@@ -502,7 +521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if let Some(rcvr) = rcvr_opt
+        if let SelfSource::MethodCall(rcvr) = self_source
             && let hir::ExprKind::Path(QPath::Resolved(_, path)) = rcvr.kind
             && let hir::def::Res::Local(recv_id) = path.res
             && let Some(segment) = path.segments.first()
@@ -548,7 +567,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn report_no_match_method_error(
         &self,
         mut span: Span,
-        rcvr_opt: Option<&'tcx hir::Expr<'tcx>>,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
         expr_id: hir::HirId,
@@ -658,7 +676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if is_method {
                 self.suggest_use_shadowed_binding_with_method(
-                    rcvr_opt,
+                    source,
                     item_name,
                     &ty_str_reported,
                     &mut err,
