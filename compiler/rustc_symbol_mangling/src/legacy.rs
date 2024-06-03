@@ -269,16 +269,21 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
+        // THISPR
+        let ct_ty: Ty<'tcx> = todo!();
+
         // only print integers
-        match (ct.kind(), ct.ty().kind()) {
+        match (ct.kind(), ct_ty.kind()) {
             (ty::ConstKind::Value(ty::ValTree::Leaf(scalar)), ty::Int(_) | ty::Uint(_)) => {
                 // The `pretty_print_const` formatting depends on -Zverbose-internals
                 // flag, so we cannot reuse it here.
-                let signed = matches!(ct.ty().kind(), ty::Int(_));
+                let signed = matches!(ct_ty.kind(), ty::Int(_));
                 write!(
                     self,
                     "{:#?}",
-                    ty::ConstInt::new(scalar, signed, ct.ty().is_ptr_sized_integral())
+                    // THISPR
+                    // ct.ty().is_ptr_sized_integral()
+                    ty::ConstInt::new(scalar, signed, todo!())
                 )?;
             }
             _ => self.write_str("_")?,

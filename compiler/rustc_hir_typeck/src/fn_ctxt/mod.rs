@@ -237,12 +237,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         }
     }
 
-    fn ct_infer(
-        &self,
-        ty: Ty<'tcx>,
-        param: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> Const<'tcx> {
+    fn ct_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         // FIXME ideally this shouldn't use unwrap
         match param {
             Some(
@@ -252,7 +247,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 },
             ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
-            None => self.next_const_var(ty, span),
+            None => self.next_const_var(span),
         }
     }
 

@@ -210,17 +210,14 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::Const<'tcx> {
                     bug!("we checked that this is a valtree")
                 };
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
+                // THISPR
+                todo!();
+                // cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
                 f.write_str(&cx.into_buffer())
             });
         }
         // Fall back to something verbose.
-        write!(
-            f,
-            "{kind:?}: {ty:?}",
-            ty = &this.map(|data| data.ty()),
-            kind = &this.map(|data| data.kind())
-        )
+        write!(f, "{kind:?}", kind = &this.map(|data| data.kind()))
     }
 }
 
@@ -647,7 +644,6 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let ty = self.ty().try_fold_with(folder)?;
         let kind = match self.kind() {
             ConstKind::Param(p) => ConstKind::Param(p.try_fold_with(folder)?),
             ConstKind::Infer(i) => ConstKind::Infer(i.try_fold_with(folder)?),
@@ -660,17 +656,12 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             ConstKind::Error(e) => ConstKind::Error(e.try_fold_with(folder)?),
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
         };
-        if ty != self.ty() || kind != self.kind() {
-            Ok(folder.interner().mk_ct_from_kind(kind, ty))
-        } else {
-            Ok(self)
-        }
+        if kind != self.kind() { Ok(folder.interner().mk_ct_from_kind(kind)) } else { Ok(self) }
     }
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.ty().visit_with(visitor));
         match self.kind() {
             ConstKind::Param(p) => p.visit_with(visitor),
             ConstKind::Infer(i) => i.visit_with(visitor),

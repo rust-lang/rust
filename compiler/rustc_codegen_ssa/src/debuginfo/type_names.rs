@@ -693,7 +693,8 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        _ => match ct.ty().kind() {
+        // THISPR
+        _ => match { todo!() as Ty<'tcx> }.kind() {
             ty::Int(ity) => {
                 let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
                 let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;

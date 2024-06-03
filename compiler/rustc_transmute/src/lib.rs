@@ -144,7 +144,8 @@ mod rustc {
                 });
             };
 
-            let adt_def = c.ty().ty_adt_def()?;
+            let assume_def_id = tcx.get_lang_items(()).get(LangItem::TransmuteOpts)?;
+            let adt_def = tcx.adt_def(assume_def_id);
 
             assert_eq!(
                 tcx.require_lang_item(LangItem::TransmuteOpts, None),

@@ -459,7 +459,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
                                 // Only really excercised by generic_const_exprs
                                 DefineOpaqueTypes::Yes,
-                                ct.ty(),
+                                // THISPR
+                                todo!(),
                                 ty,
                             ) {
                                 Ok(inf_ok) => {
@@ -633,7 +634,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             match self.selcx.infcx.try_const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
-                                c.ty(),
                                 obligation.cause.span,
                             ) {
                                 Ok(val) => Ok(val),

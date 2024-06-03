@@ -104,22 +104,15 @@ pub trait Const<I: Interner<Const = Self>>:
     + TypeSuperFoldable<I>
     + Flags
 {
-    fn new_infer(interner: I, var: ty::InferConst, ty: I::Ty) -> Self;
+    fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
-    fn new_var(interner: I, var: ty::ConstVid, ty: I::Ty) -> Self;
+    fn new_var(interner: I, var: ty::ConstVid) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst, ty: I::Ty) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst) -> Self;
 
-    fn new_anon_bound(
-        interner: I,
-        debruijn: ty::DebruijnIndex,
-        var: ty::BoundVar,
-        ty: I::Ty,
-    ) -> Self;
+    fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
-    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>, ty: I::Ty) -> Self;
-
-    fn ty(self) -> I::Ty;
+    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 }
 
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {

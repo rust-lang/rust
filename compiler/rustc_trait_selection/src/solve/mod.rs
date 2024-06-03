@@ -169,7 +169,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
-                if let Some(_normalized) = self.try_const_eval_resolve(param_env, uv, ct.ty()) {
+                if let Some(_normalized) = self.try_const_eval_resolve(param_env, uv) {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 } else {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
@@ -217,7 +217,8 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             _ => {
-                self.eq(goal.param_env, ct.ty(), ty)?;
+                // THISPR
+                self.eq(goal.param_env, todo!(), ty)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }

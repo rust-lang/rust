@@ -436,7 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn lower_array_length(&self, length: &hir::ArrayLen<'tcx>) -> ty::Const<'tcx> {
         match length {
-            hir::ArrayLen::Infer(inf) => self.ct_infer(self.tcx.types.usize, None, inf.span),
+            hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
             hir::ArrayLen::Body(anon_const) => {
                 let span = self.tcx.def_span(anon_const.def_id);
                 let c = ty::Const::from_anon_const(self.tcx, anon_const.def_id);
@@ -1292,20 +1292,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &GenericParamDefKind::Const { has_default, is_host_effect },
                         GenericArg::Infer(inf),
                     ) => {
-                        let tcx = self.fcx.tcx();
-
                         if has_default && is_host_effect {
                             self.fcx.var_for_effect(param)
                         } else {
-                            self.fcx
-                                .ct_infer(
-                                    tcx.type_of(param.def_id)
-                                        .no_bound_vars()
-                                        .expect("const parameter types cannot be generic"),
-                                    Some(param),
-                                    inf.span,
-                                )
-                                .into()
+                            self.fcx.ct_infer(Some(param), inf.span).into()
                         }
                     }
                     _ => unreachable!(),

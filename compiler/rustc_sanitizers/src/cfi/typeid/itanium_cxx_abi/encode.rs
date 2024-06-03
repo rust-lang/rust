@@ -111,7 +111,8 @@ fn encode_const<'tcx>(
             // L<element-type>E as literal argument
 
             // Element type
-            s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+            // THISPR
+            s.push_str(&encode_ty(tcx, todo!(), dict, options));
         }
 
         // Literal arguments
@@ -119,12 +120,14 @@ fn encode_const<'tcx>(
             // L<element-type>[n]<element-value>E as literal argument
 
             // Element type
-            s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+            // THISPR
+            let ct_ty: Ty<'tcx> = todo!();
+            s.push_str(&encode_ty(tcx, ct_ty, dict, options));
 
             // The only allowed types of const values are bool, u8, u16, u32,
             // u64, u128, usize i8, i16, i32, i64, i128, isize, and char. The
             // bool value false is encoded as 0 and true as 1.
-            match c.ty().kind() {
+            match ct_ty.kind() {
                 ty::Int(ity) => {
                     let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
@@ -142,7 +145,7 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 _ => {
-                    bug!("encode_const: unexpected type `{:?}`", c.ty());
+                    bug!("encode_const: unexpected type `{:?}`", ct_ty);
                 }
             }
         }

@@ -1467,7 +1467,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             write!(this, "_")?;
                             Ok(())
                         },
-                        |this| this.print_type(ct.ty()),
+                        |this| this.print_type(todo!()),
                         ": ",
                     )?;
                 } else {
@@ -1512,7 +1512,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(value) => {
-                return self.pretty_print_const_valtree(value, ct.ty(), print_ty);
+                return self.pretty_print_const_valtree(value, todo!(), print_ty);
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {

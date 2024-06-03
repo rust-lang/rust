@@ -947,7 +947,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             match self.infcx.try_const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
-                                c.ty(),
                                 obligation.cause.span,
                             ) {
                                 Ok(val) => Ok(val),
@@ -1009,7 +1008,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             return Ok(EvaluatedToAmbig);
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
-                        _ => ct.ty(),
+                        // THISPR
+                        _ => todo!(),
+                        // _ => ct.ty(),
                     };
 
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(

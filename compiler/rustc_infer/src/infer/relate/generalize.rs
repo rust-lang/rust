@@ -653,7 +653,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             {
                                 variable_table.union(vid, new_var_id);
                             }
-                            Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
+                            Ok(ty::Const::new_var(self.tcx(), new_var_id))
                         }
                     }
                 }
@@ -671,11 +671,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     args,
                     args,
                 )?;
-                Ok(ty::Const::new_unevaluated(
-                    self.tcx(),
-                    ty::UnevaluatedConst { def, args },
-                    c.ty(),
-                ))
+                Ok(ty::Const::new_unevaluated(self.tcx(), ty::UnevaluatedConst { def, args }))
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {

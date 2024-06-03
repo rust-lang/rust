@@ -144,7 +144,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let references_self = match pred.skip_binder().term.unpack() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
                             ty::TermKind::Const(c) => {
-                                c.ty().walk().any(|arg| arg == dummy_self.into())
+                                // THISPR
+                                false
                             }
                         };
 

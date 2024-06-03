@@ -228,7 +228,7 @@ impl<'tcx> GenericArg<'tcx> {
                     ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
-                    ptr.cast::<WithCachedTypeInfo<ty::ConstData<'tcx>>>().as_ref(),
+                    ptr.cast::<WithCachedTypeInfo<ty::ConstKind<'tcx>>>().as_ref(),
                 ))),
                 _ => intrinsics::unreachable(),
             }
@@ -454,11 +454,11 @@ impl<'tcx> GenericArgs<'tcx> {
         def_id: DefId,
         original_args: &[GenericArg<'tcx>],
     ) -> GenericArgsRef<'tcx> {
-        ty::GenericArgs::for_item(tcx, def_id, |def, args| {
+        ty::GenericArgs::for_item(tcx, def_id, |def, _| {
             if let Some(arg) = original_args.get(def.index as usize) {
                 *arg
             } else {
-                def.to_error(tcx, args)
+                def.to_error(tcx)
             }
         })
     }

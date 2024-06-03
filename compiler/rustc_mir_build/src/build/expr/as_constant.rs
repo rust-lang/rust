@@ -50,9 +50,7 @@ pub(crate) fn as_constant_inner<'tcx>(
             let const_ = match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg })
             {
                 Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => {
-                    Const::Ty(ty::Const::new_error(tcx, guar, ty))
-                }
+                Err(LitToConstError::Reported(guar)) => Const::Ty(ty::Const::new_error(tcx, guar)),
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in `lit_to_mir_constant`")
                 }
@@ -83,7 +81,7 @@ pub(crate) fn as_constant_inner<'tcx>(
             ConstOperand { user_ty, span, const_ }
         }
         ExprKind::ConstParam { param, def_id: _ } => {
-            let const_param = ty::Const::new_param(tcx, param, expr.ty);
+            let const_param = ty::Const::new_param(tcx, param);
             let const_ = Const::Ty(const_param);
 
             ConstOperand { user_ty: None, span, const_ }

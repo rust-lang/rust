@@ -201,13 +201,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             let error_response = |ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>, reason| {
                 let guar = tcx.dcx().span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
                 let error_term = match assoc_def.item.kind {
-                    ty::AssocKind::Const => ty::Const::new_error(
-                        tcx,
-                        guar,
-                        tcx.type_of(goal.predicate.def_id())
-                            .instantiate(tcx, goal.predicate.alias.args),
-                    )
-                    .into(),
+                    ty::AssocKind::Const => ty::Const::new_error(tcx, guar).into(),
                     ty::AssocKind::Type => Ty::new_error(tcx, guar).into(),
                     // This makes no sense...
                     ty::AssocKind::Fn => span_bug!(
@@ -253,7 +247,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                         ty::EarlyBinder::bind(
                             ty::Const::new_error_with_message(
                                 tcx,
-                                tcx.type_of(assoc_def.item.def_id).instantiate_identity(),
                                 DUMMY_SP,
                                 "associated const projection is not supported yet",
                             )

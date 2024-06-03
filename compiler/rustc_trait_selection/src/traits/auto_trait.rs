@@ -765,7 +765,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 unevaluated,
                                 obligation.cause.span,
                             ) {
-                                Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, c.ty())),
+                                // THISPR
+                                Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, todo!())),
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let reported =

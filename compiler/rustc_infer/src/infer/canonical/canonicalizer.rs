@@ -462,7 +462,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 // any equated inference vars correctly!
                 let root_vid = self.infcx.unwrap().root_const_var(vid);
                 if root_vid != vid {
-                    ct = ty::Const::new_var(self.tcx, root_vid, ct.ty());
+                    ct = ty::Const::new_var(self.tcx, root_vid);
                     vid = root_vid;
                 }
 
@@ -481,7 +481,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                             ui = ty::UniverseIndex::ROOT;
                         }
                         return self.canonicalize_const_var(
-                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty()) },
+                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui) },
                             ct,
                         );
                     }
@@ -510,9 +510,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 return self.canonicalize_const_var(
-                    CanonicalVarInfo {
-                        kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty()),
-                    },
+                    CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderConst(placeholder) },
                     ct,
                 );
             }
@@ -719,9 +717,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                     CanonicalVarKind::Region(u) => {
                         CanonicalVarKind::Region(reverse_universe_map[&u])
                     }
-                    CanonicalVarKind::Const(u, t) => {
-                        CanonicalVarKind::Const(reverse_universe_map[&u], t)
-                    }
+                    CanonicalVarKind::Const(u) => CanonicalVarKind::Const(reverse_universe_map[&u]),
                     CanonicalVarKind::PlaceholderTy(placeholder) => {
                         CanonicalVarKind::PlaceholderTy(ty::Placeholder {
                             universe: reverse_universe_map[&placeholder.universe],
@@ -734,14 +730,11 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                             ..placeholder
                         })
                     }
-                    CanonicalVarKind::PlaceholderConst(placeholder, t) => {
-                        CanonicalVarKind::PlaceholderConst(
-                            ty::Placeholder {
-                                universe: reverse_universe_map[&placeholder.universe],
-                                ..placeholder
-                            },
-                            t,
-                        )
+                    CanonicalVarKind::PlaceholderConst(placeholder) => {
+                        CanonicalVarKind::PlaceholderConst(ty::Placeholder {
+                            universe: reverse_universe_map[&placeholder.universe],
+                            ..placeholder
+                        })
                     }
                 },
             })
@@ -806,6 +799,6 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             !self.infcx.is_some_and(|infcx| const_var != infcx.shallow_resolve_const(const_var))
         );
         let var = self.canonical_var(info, const_var.into());
-        ty::Const::new_bound(self.tcx, self.binder_index, var, self.fold_ty(const_var.ty()))
+        ty::Const::new_bound(self.tcx, self.binder_index, var)
     }
 }

@@ -87,7 +87,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstData, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
@@ -617,7 +617,7 @@ impl<'tcx> Term<'tcx> {
                     ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
-                    ptr.cast::<WithCachedTypeInfo<ty::ConstData<'tcx>>>().as_ref(),
+                    ptr.cast::<WithCachedTypeInfo<ty::ConstKind<'tcx>>>().as_ref(),
                 ))),
                 _ => core::intrinsics::unreachable(),
             }

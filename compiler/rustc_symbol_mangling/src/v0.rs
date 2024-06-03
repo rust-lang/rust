@@ -567,7 +567,9 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         }
 
         let start = self.out.len();
-        let ty = ct.ty();
+        // THISPR
+        let ty: Ty<'tcx> = todo!();
+        // let ty = ct.ty();
 
         match ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
@@ -626,12 +628,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         }
                     }
                     _ => {
-                        let pointee_ty = ct
-                            .ty()
-                            .builtin_deref(true)
-                            .expect("tried to dereference on non-ptr type");
+                        let pointee_ty =
+                            ty.builtin_deref(true).expect("tried to dereference on non-ptr type");
                         // FIXME(const_generics): add an assert that we only do this for valtrees.
-                        let dereferenced_const = self.tcx.mk_ct_from_kind(ct.kind(), pointee_ty);
+                        let dereferenced_const = self.tcx.mk_ct_from_kind(ct.kind());
                         dereferenced_const.print(self)?;
                     }
                 }
@@ -649,7 +649,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     Ok(())
                 };
 
-                match *ct.ty().kind() {
+                match *ty.kind() {
                     ty::Array(..) | ty::Slice(_) => {
                         self.push("A");
                         print_field_list(self)?;
@@ -698,7 +698,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 }
             }
             _ => {
-                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty(), ct);
+                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ty, ct);
             }
         }
 
