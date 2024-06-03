@@ -9,4 +9,5 @@ fn main() {
     //[edition2018]~| ERROR trait `Default` cannot be made into an object
     //[edition2018]~| ERROR trait `Default` cannot be made into an object
     //[edition2018]~| ERROR mismatched types
+    //[edition2018]~| ERROR the size for values of type `dyn Default` cannot be known at compilation time
 }
