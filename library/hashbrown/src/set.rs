@@ -1659,11 +1659,15 @@ where
     /// ```
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S>) {
         for item in rhs {
-            if self.contains(item) {
-                self.remove(item);
-            } else {
-                self.insert(item.clone());
-            }
+            let entry = self.map.raw_entry_mut().from_key(item);
+            match entry {
+                map::RawEntryMut::Occupied(e) => {
+                    e.remove();
+                }
+                map::RawEntryMut::Vacant(e) => {
+                    e.insert(item.to_owned(), ());
+                }
+            };
         }
     }
 }
