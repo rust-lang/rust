@@ -20,6 +20,25 @@ LL |     let x: u32 = <Default>::default();
    |
    = note: the trait cannot be made into an object because it requires `Self: Sized`
    = note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: `Default` is the type for the trait in editions 2015 and 2018 and is equivalent to writing `dyn Default`
+  --> $DIR/trait-missing-dyn-in-qualified-path.rs:5:19
+   |
+LL |     let x: u32 = <Default>::default();
+   |                   ^^^^^^^
+   = help: when writing `<dyn Default>::default` you are requiring `Default` be "object safe", which it isn't
+help: you might have meant to access the associated function of a specific `impl` to avoid requiring "object safety" from `Default`, either with some explicit type...
+   |
+LL |     let x: u32 = </* Type */ as Default>::default();
+   |                   +++++++++++++
+help: ...or rely on inference if the compiler has enough context to identify the desired type on its own...
+   |
+LL -     let x: u32 = <Default>::default();
+LL +     let x: u32 = Default::default();
+   |
+help: ...which is equivalent to
+   |
+LL |     let x: u32 = <_ as Default>::default();
+   |                   ++++
 
 error[E0277]: the size for values of type `dyn Default` cannot be known at compilation time
   --> $DIR/trait-missing-dyn-in-qualified-path.rs:5:19
@@ -44,10 +63,10 @@ LL |     let x: u32 = <Default>::default();
    = help: `u32` implements `Default` so you could change the expected type to `Box<dyn Default>`
 
 error[E0038]: the trait `Default` cannot be made into an object
-  --> $DIR/trait-missing-dyn-in-qualified-path.rs:5:18
+  --> $DIR/trait-missing-dyn-in-qualified-path.rs:5:19
    |
 LL |     let x: u32 = <Default>::default();
-   |                  ^^^^^^^^^^^^^^^^^^^^ `Default` cannot be made into an object
+   |                   ^^^^^^^ `Default` cannot be made into an object
    |
    = note: the trait cannot be made into an object because it requires `Self: Sized`
    = note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>

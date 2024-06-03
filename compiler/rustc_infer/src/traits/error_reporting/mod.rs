@@ -1,10 +1,12 @@
 use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
+use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
@@ -39,6 +41,23 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
+struct TraitObjectFinder<'tcx> {
+    trait_def_id: DefId,
+    result: Vec<&'tcx hir::Ty<'tcx>>,
+}
+
+impl<'v> Visitor<'v> for TraitObjectFinder<'v> {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+        if let hir::TyKind::TraitObject(traits, _, _) = ty.kind
+            && traits.iter().any(|t| t.trait_ref.trait_def_id() == Some(self.trait_def_id))
+        {
+            self.result.push(ty);
+        }
+        hir::intravisit::walk_ty(self, ty);
+    }
+}
+
+#[tracing::instrument(level = "debug", skip(tcx))]
 pub fn report_object_safety_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -51,33 +70,79 @@ pub fn report_object_safety_error<'tcx>(
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
+    let mut visitor = TraitObjectFinder { trait_def_id, result: vec![] };
+    if let Some(hir_id) = hir_id {
+        match tcx.hir_node(hir_id) {
+            hir::Node::Expr(expr) => {
+                visitor.visit_expr(&expr);
+                if visitor.result.is_empty() {
+                    match tcx.parent_hir_node(hir_id) {
+                        hir::Node::Expr(expr) if let hir::ExprKind::Cast(_, ty) = expr.kind => {
+                            // Special case for `<expr> as <ty>`, as we're given the `expr` instead
+                            // of the whole cast expression. This will let us point at `dyn Trait`
+                            // instead of `x` in `x as Box<dyn Trait>`.
+                            visitor.visit_ty(ty);
+                        }
+                        hir::Node::LetStmt(stmt) if let Some(ty) = stmt.ty => {
+                            // Special case for `let <pat>: <ty> = <expr>;`, as we're given the
+                            // `expr` instead of the whole cast expression. This will let us point
+                            // at `dyn Trait` instead of `x` in `let y: Box<dyn Trait> = x;`.
+                            visitor.visit_ty(ty);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            hir::Node::Ty(ty) => {
+                visitor.visit_ty(&ty);
+            }
+            _ => {}
+        }
+    }
+    let mut label_span = span;
+    let mut dyn_trait_spans = vec![];
+    let mut trait_spans = vec![];
+    let spans: MultiSpan = if visitor.result.is_empty() {
+        span.into()
+    } else {
+        for ty in &visitor.result {
+            let hir::TyKind::TraitObject(traits, ..) = ty.kind else { continue };
+            dyn_trait_spans.push(ty.span);
+            trait_spans.extend(
+                traits
+                    .iter()
+                    .filter(|t| t.trait_ref.trait_def_id() == Some(trait_def_id))
+                    .map(|t| t.trait_ref.path.span),
+            );
+        }
+        match (&dyn_trait_spans[..], &trait_spans[..]) {
+            ([], []) => span.into(),
+            ([only], [_]) => {
+                // There is a single `dyn Trait` for the expression or type that was stored in the
+                // `WellFormedLoc`. We point at the whole `dyn Trait`.
+                label_span = *only;
+                (*only).into()
+            }
+            (_, [.., last]) => {
+                // There are more than one trait in `dyn A + A` in the expression or type that was
+                // stored in the `WellFormedLoc` that points at the relevant trait, or there are
+                // more than one `dyn A`. We apply the primary span label to the last one of these.
+                label_span = *last;
+                trait_spans.into()
+            }
+            // Should be unreachable, as if one is empty, the other must be too.
+            _ => span.into(),
+        }
+    };
     let mut err = struct_span_code_err!(
         tcx.dcx(),
-        span,
+        spans,
         E0038,
         "the trait `{}` cannot be made into an object",
         trait_str
     );
-    err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
+    err.span_label(label_span, format!("`{trait_str}` cannot be made into an object"));
 
-    if let Some(hir_id) = hir_id
-        && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
-        && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
-    {
-        let mut hir_id = hir_id;
-        while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
-            hir_id = ty.hir_id;
-        }
-        if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
-            // Do not suggest `impl Trait` when dealing with things like super-traits.
-            err.span_suggestion_verbose(
-                ty.span.until(trait_ref.span),
-                "consider using an opaque type instead",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-        }
-    }
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
@@ -160,7 +225,106 @@ pub fn report_object_safety_error<'tcx>(
     } else {
         false
     };
+    let mut has_suggested = false;
+    if let Some(hir_id) = hir_id {
+        let node = tcx.hir_node(hir_id);
+        if let hir::Node::Ty(ty) = node
+            && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
+        {
+            let mut hir_id = hir_id;
+            while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
+                hir_id = ty.hir_id;
+            }
+            if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
+                // Do not suggest `impl Trait` when dealing with things like super-traits.
+                err.span_suggestion_verbose(
+                    ty.span.until(trait_ref.span),
+                    "consider using an opaque type instead",
+                    "impl ",
+                    Applicability::MaybeIncorrect,
+                );
+                has_suggested = true;
+            }
+        }
+        if let hir::Node::Expr(expr) = node
+            && let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, path_segment)) = expr.kind
+            && let hir::TyKind::TraitObject([trait_ref, ..], _, trait_object_syntax) = ty.kind
+        {
+            if let TraitObjectSyntax::None = trait_object_syntax
+                && !expr.span.edition().at_least_rust_2021()
+            {
+                err.span_note(
+                    trait_ref.trait_ref.path.span,
+                    format!(
+                        "`{trait_str}` is the type for the trait in editions 2015 and 2018 and is \
+                         equivalent to writing `dyn {trait_str}`",
+                    ),
+                );
+            }
+            let segment = path_segment.ident;
+            err.help(format!(
+                "when writing `<dyn {trait_str}>::{segment}` you are requiring `{trait_str}` be \
+                 \"object safe\", which it isn't",
+            ));
+            let (only, msg, sugg, appl) = if let [only] = &impls[..] {
+                // We know there's a single implementation for this trait, so we can be explicit on
+                // the type they should have used.
+                let ty = tcx.type_of(*only).instantiate_identity();
+                (
+                    true,
+                    format!(
+                        "specify the specific `impl` for type `{ty}` to avoid requiring \"object \
+                         safety\" from `{trait_str}`",
+                    ),
+                    with_no_trimmed_paths!(format!("{ty} as ")),
+                    Applicability::MachineApplicable,
+                )
+            } else {
+                (
+                    false,
+                    format!(
+                        "you might have meant to access the associated function of a specific \
+                         `impl` to avoid requiring \"object safety\" from `{trait_str}`, either \
+                         with some explicit type...",
+                    ),
+                    "/* Type */ as ".to_string(),
+                    Applicability::HasPlaceholders,
+                )
+            };
+            // `<dyn Trait>::segment()` or `<Trait>::segment()` to `<Type as Trait>::segment()`
+            let sp = ty.span.until(trait_ref.trait_ref.path.span);
+            err.span_suggestion_verbose(sp, msg, sugg, appl);
+            if !only {
+                // `<dyn Trait>::segment()` or `<Trait>::segment()` to `Trait::segment()`
+                err.multipart_suggestion_verbose(
+                    "...or rely on inference if the compiler has enough context to identify the \
+                     desired type on its own...",
+                    vec![
+                        (expr.span.until(trait_ref.trait_ref.path.span), String::new()),
+                        (
+                            path_segment
+                                .ident
+                                .span
+                                .shrink_to_lo()
+                                .with_lo(trait_ref.trait_ref.path.span.hi()),
+                            "::".to_string(),
+                        ),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+                // `<dyn Trait>::segment()` or `<Trait>::segment()` to `<_ as Trait>::segment()`
+                err.span_suggestion_verbose(
+                    ty.span.until(trait_ref.trait_ref.path.span),
+                    "...which is equivalent to",
+                    format!("_ as "),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            has_suggested = true;
+        }
+    }
     match &impls[..] {
+        _ if has_suggested => {}
         [] => {}
         _ if impls.len() > 9 => {}
         [only] if externally_visible => {

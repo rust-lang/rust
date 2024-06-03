@@ -11,7 +11,7 @@ LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn function() {}
    |        ^^^^^^^^ ...because associated function `function` has no `self` parameter
-   = help: only type `()` implements the trait, consider using it directly instead
+   = help: when writing `<dyn Trait>::function` you are requiring `Trait` be "object safe", which it isn't
 help: consider turning `function` into a method by giving it a `&self` argument
    |
 LL |     fn function(&self) {}
@@ -20,6 +20,10 @@ help: alternatively, consider constraining `function` so it does not apply to tr
    |
 LL |     fn function() where Self: Sized {}
    |                   +++++++++++++++++
+help: specify the specific `impl` for type `()` to avoid requiring "object safety" from `Trait`
+   |
+LL |     <() as Trait>::function();
+   |      ~~~~~
 
 error: aborting due to 1 previous error
 

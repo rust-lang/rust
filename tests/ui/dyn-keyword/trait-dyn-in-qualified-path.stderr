@@ -11,6 +11,20 @@ LL | trait Trait: Sized {
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
+   = help: when writing `<dyn Trait>::function` you are requiring `Trait` be "object safe", which it isn't
+help: you might have meant to access the associated function of a specific `impl` to avoid requiring "object safety" from `Trait`, either with some explicit type...
+   |
+LL |     </* Type */ as Trait>::function();
+   |      ~~~~~~~~~~~~~
+help: ...or rely on inference if the compiler has enough context to identify the desired type on its own...
+   |
+LL -     <dyn Trait>::function();
+LL +     Trait::function();
+   |
+help: ...which is equivalent to
+   |
+LL |     <_ as Trait>::function();
+   |      ~~~~
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
   --> $DIR/trait-dyn-in-qualified-path.rs:5:6
