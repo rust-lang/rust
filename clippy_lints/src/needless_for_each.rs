@@ -25,14 +25,14 @@ declare_clippy_lint! {
     /// ```no_run
     /// let v = vec![0, 1, 2];
     /// v.iter().for_each(|elem| {
-    ///     println!("{}", elem);
+    ///     println!("{elem}");
     /// })
     /// ```
     /// Use instead:
     /// ```no_run
     /// let v = vec![0, 1, 2];
-    /// for elem in v.iter() {
-    ///     println!("{}", elem);
+    /// for elem in &v {
+    ///     println!("{elem}");
     /// }
     /// ```
     ///
