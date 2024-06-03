@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![allow(clippy::nonminimal_bool)]
 #![allow(clippy::needless_borrow)]
-#![warn(clippy::hashset_insert_after_contains)]
+#![warn(clippy::set_contains_or_insert)]
 
 use std::collections::HashSet;
 
@@ -69,6 +69,12 @@ fn should_not_warn_cases() {
     if !set.contains(&value) {
         set.replace(value); //it is not insert
         println!("Just a comment");
+    }
+
+    if set.contains(&value) {
+        println!("value is already in set");
+    } else {
+        set.insert(value);
     }
 }
 

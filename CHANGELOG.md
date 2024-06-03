@@ -5401,7 +5401,6 @@ Released 2018-09-13
 [`get_first`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_first
 [`get_last_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_last_with_len
 [`get_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_unwrap
-[`hashset_insert_after_contains`]: https://rust-lang.github.io/rust-clippy/master/index.html#hashset_insert_after_contains
 [`host_endian_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#host_endian_bytes
 [`identity_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_conversion
 [`identity_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_op
@@ -5799,6 +5798,7 @@ Released 2018-09-13
 [`semicolon_outside_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_outside_block
 [`separated_literal_suffix`]: https://rust-lang.github.io/rust-clippy/master/index.html#separated_literal_suffix
 [`serde_api_misuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#serde_api_misuse
+[`set_contains_or_insert`]: https://rust-lang.github.io/rust-clippy/master/index.html#set_contains_or_insert
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse
 [`shadow_same`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_same
 [`shadow_unrelated`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_unrelated
