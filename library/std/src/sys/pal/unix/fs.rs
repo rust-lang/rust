@@ -1910,8 +1910,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             // The code below ensures that `FreeOnDrop` is never a null pointer
             unsafe {
                 // `copyfile_state_free` returns -1 if the `to` or `from` files
-                // cannot be closed. However, this is not considered this an
-                // error.
+                // cannot be closed. However, this is not considered an error.
                 libc::copyfile_state_free(self.0);
             }
         }
