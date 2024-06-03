@@ -9,6 +9,7 @@
 
 cfg_if::cfg_if! {
     if #[cfg(any(
+        all(target_os = "windows", not(target_vendor="win7")),
         target_os = "linux",
         target_os = "android",
         all(target_arch = "wasm32", target_feature = "atomics"),
