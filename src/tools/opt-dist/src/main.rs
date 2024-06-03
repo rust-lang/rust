@@ -90,6 +90,10 @@ enum EnvironmentCmd {
 
         #[clap(flatten)]
         shared: SharedArgs,
+
+        /// Arguments passed to `rustc-perf --cargo-config <value>` when running benchmarks.
+        #[arg(long)]
+        benchmark_cargo_config: Vec<String>,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -119,6 +123,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             llvm_shared,
             use_bolt,
             skipped_tests,
+            benchmark_cargo_config,
             shared,
         } => {
             let env = EnvironmentBuilder::default()
@@ -132,6 +137,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
                 .skipped_tests(skipped_tests)
+                .benchmark_cargo_config(benchmark_cargo_config)
                 .build()?;
 
             (env, shared.build_args)
