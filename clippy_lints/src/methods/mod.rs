@@ -4485,7 +4485,7 @@ impl Methods {
                 },
                 ("all", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    needless_character_iteration::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg, true);
                     if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
@@ -4506,6 +4506,7 @@ impl Methods {
                 },
                 ("any", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg, false);
                     match method_call(recv) {
                         Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
                             cx,

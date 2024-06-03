@@ -17,17 +17,17 @@ fn magic(_: char) {}
 fn main() {
     "foo".chars().all(|c| c.is_ascii());
     //~^ ERROR: checking if a string is ascii using iterators
-    "foo".chars().all(|c| !c.is_ascii());
+    "foo".chars().any(|c| !c.is_ascii());
     //~^ ERROR: checking if a string is ascii using iterators
     "foo".chars().all(|c| char::is_ascii(&c));
     //~^ ERROR: checking if a string is ascii using iterators
-    "foo".chars().all(|c| !char::is_ascii(&c));
+    "foo".chars().any(|c| !char::is_ascii(&c));
     //~^ ERROR: checking if a string is ascii using iterators
 
     let s = String::new();
     s.chars().all(|c| c.is_ascii());
     //~^ ERROR: checking if a string is ascii using iterators
-    "foo".to_string().chars().all(|c| !c.is_ascii());
+    "foo".to_string().chars().any(|c| !c.is_ascii());
     //~^ ERROR: checking if a string is ascii using iterators
 
     "foo".chars().all(|c| {
@@ -35,7 +35,7 @@ fn main() {
         let x = c;
         x.is_ascii()
     });
-    "foo".chars().all(|c| {
+    "foo".chars().any(|c| {
         //~^ ERROR: checking if a string is ascii using iterators
         let x = c;
         !x.is_ascii()
@@ -56,4 +56,10 @@ fn main() {
 
     // Should not lint!
     "foo".chars().map(|c| c).all(|c| !char::is_ascii(&c));
+
+    // Should not lint!
+    "foo".chars().all(|c| !c.is_ascii());
+
+    // Should not lint!
+    "foo".chars().any(|c| c.is_ascii());
 }

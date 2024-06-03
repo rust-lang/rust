@@ -24,10 +24,14 @@ fn handle_expr(
     span: Span,
     before_chars: Span,
     revert: bool,
+    is_all: bool,
 ) {
     match expr.kind {
         ExprKind::MethodCall(method, receiver, [], _) => {
-            if method.ident.name.as_str() == "is_ascii"
+            // If we have `!is_ascii`, then only `.any()` should warn. And if the condition is
+            // `is_ascii`, then only `.all()` should warn.
+            if revert != is_all
+                && method.ident.name.as_str() == "is_ascii"
                 && path_to_local_id(receiver, first_param)
                 && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs()
                 && *char_arg_ty.kind() == ty::Char
@@ -55,12 +59,23 @@ fn handle_expr(
                 && let Some(last_chain_binding_id) =
                     get_last_chain_binding_hir_id(first_param, block.stmts)
             {
-                handle_expr(cx, block_expr, last_chain_binding_id, span, before_chars, revert);
+                handle_expr(
+                    cx,
+                    block_expr,
+                    last_chain_binding_id,
+                    span,
+                    before_chars,
+                    revert,
+                    is_all,
+                );
             }
         },
-        ExprKind::Unary(UnOp::Not, expr) => handle_expr(cx, expr, first_param, span, before_chars, !revert),
+        ExprKind::Unary(UnOp::Not, expr) => handle_expr(cx, expr, first_param, span, before_chars, !revert, is_all),
         ExprKind::Call(fn_path, [arg]) => {
-            if let ExprKind::Path(path) = fn_path.kind
+            // If we have `!is_ascii`, then only `.any()` should warn. And if the condition is
+            // `is_ascii`, then only `.all()` should warn.
+            if revert != is_all
+                && let ExprKind::Path(path) = fn_path.kind
                 && let Some(fn_def_id) = cx.qpath_res(&path, fn_path.hir_id).opt_def_id()
                 && match_def_path(cx, fn_def_id, &["core", "char", "methods", "<impl char>", "is_ascii"])
                 && path_to_local_id(peels_expr_ref(arg), first_param)
@@ -81,7 +96,7 @@ fn handle_expr(
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>, is_all: bool) {
     if let ExprKind::Closure(&Closure { body, .. }) = closure_arg.kind
         && let body = cx.tcx.hir().body(body)
         && let Some(first_param) = body.params.first()
@@ -103,6 +118,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
             recv.span.with_hi(call_expr.span.hi()),
             recv.span.with_hi(expr_start.hi()),
             false,
+            is_all,
         );
     }
 }
