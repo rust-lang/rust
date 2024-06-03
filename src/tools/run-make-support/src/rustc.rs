@@ -190,6 +190,11 @@ impl Rustc {
         self
     }
 
+    pub fn extra_filename(&mut self, extra: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cextra-filename={extra}"));
+        self
+    }
+
     /// Specify a stdin input
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
         self.stdin = Some(input.as_ref().to_vec().into_boxed_slice());

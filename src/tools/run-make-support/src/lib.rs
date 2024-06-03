@@ -160,6 +160,50 @@ pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
+fn ar<P: AsRef<str>, P2: AsRef<str>>(obj_path: P, lib_path: P2, caller_line_number: u32) {
+    let mut ar = Command::new(env::var("AR").unwrap());
+    ar.current_dir(tmp_dir()).arg("crus").arg(lib_path.as_ref()).arg(obj_path.as_ref());
+    let output = ar.output().unwrap();
+    if !output.status.success() {
+        handle_failed_output(&ar, output, caller_line_number);
+    }
+}
+
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
+#[track_caller]
+pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
+    let caller_location = std::panic::Location::caller();
+    let caller_line_number = caller_location.line();
+
+    let obj_file = format!("{lib_name}.o");
+    let src = format!("{lib_name}.c");
+    let lib_name = if is_msvc() {
+        let lib_path = format!("lib{lib_name}.lib");
+        // First compiling `.c` to `.o`.
+        cc().arg("-c").out_exe(lib_name).input(src).run();
+        // Generating `.lib` from `.o`.
+        let mut msvc_lib = Command::new(env::var("MSVC_LIB_PATH").unwrap());
+        msvc_lib
+            .current_dir(tmp_dir())
+            .arg("-nologo")
+            .arg(&format!("-out:{}", cygpath_windows(&lib_path)))
+            .arg(&obj_file);
+        let output = msvc_lib.output().unwrap();
+        if !output.status.success() {
+            handle_failed_output(&msvc_lib, output, caller_line_number);
+        }
+        lib_path
+    } else {
+        let lib_path = format!("lib{lib_name}.a");
+        // First compiling `.c` to `.o`.
+        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
+        // Generating `.a` from `.o`.
+        ar(obj_file, &lib_path, caller_line_number);
+        lib_path
+    };
+    tmp_dir().join(lib_name)
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]
