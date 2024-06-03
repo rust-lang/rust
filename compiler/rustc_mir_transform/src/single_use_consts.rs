@@ -28,7 +28,8 @@ impl<'tcx> MirPass<'tcx> for SingleUseConsts {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut finder = SingleUseConstsFinder {
             ineligible_locals: BitSet::new_empty(body.local_decls.len()),
-            locations: IndexVec::new(),
+            locations: IndexVec::from_elem(LocationPair::new(), &body.local_decls),
+            locals_in_debug_info: BitSet::new_empty(body.local_decls.len()),
         };
 
         finder.ineligible_locals.insert_range(..=Local::from_usize(body.arg_count));
@@ -57,8 +58,10 @@ impl<'tcx> MirPass<'tcx> for SingleUseConsts {
 
             let mut replacer = LocalReplacer { tcx, local, operand: Some(operand) };
 
-            for var_debug_info in &mut body.var_debug_info {
-                replacer.visit_var_debug_info(var_debug_info);
+            if finder.locals_in_debug_info.contains(local) {
+                for var_debug_info in &mut body.var_debug_info {
+                    replacer.visit_var_debug_info(var_debug_info);
+                }
             }
 
             let Some(use_loc) = locations.use_loc else { continue };
@@ -94,6 +97,7 @@ impl LocationPair {
 struct SingleUseConstsFinder {
     ineligible_locals: BitSet<Local>,
     locations: IndexVec<Local, LocationPair>,
+    locals_in_debug_info: BitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
@@ -102,7 +106,7 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
             && let Rvalue::Use(operand) = rvalue
             && let Operand::Constant(_) = operand
         {
-            let locations = self.locations.ensure_contains_elem(local, LocationPair::new);
+            let locations = &mut self.locations[local];
             if locations.init_loc.is_some() {
                 self.ineligible_locals.insert(local);
             } else {
@@ -117,7 +121,7 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
         if let Some(place) = operand.place()
             && let Some(local) = place.as_local()
         {
-            let locations = self.locations.ensure_contains_elem(local, LocationPair::new);
+            let locations = &mut self.locations[local];
             if locations.use_loc.is_some() {
                 self.ineligible_locals.insert(local);
             } else {
@@ -138,9 +142,9 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
 
     fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
         if let VarDebugInfoContents::Place(place) = &var_debug_info.value
-            && let Some(_local) = place.as_local()
+            && let Some(local) = place.as_local()
         {
-            // It's a simple one that we can easily update
+            self.locals_in_debug_info.insert(local);
         } else {
             self.super_var_debug_info(var_debug_info);
         }
