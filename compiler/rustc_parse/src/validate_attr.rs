@@ -103,7 +103,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
     })
 }
 
-pub fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
@@ -113,7 +113,7 @@ pub fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter
     });
 }
 
-pub fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
@@ -133,7 +133,7 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
     }
 }
 
-pub fn check_builtin_attribute(
+fn check_builtin_attribute(
     psess: &ParseSess,
     attr: &Attribute,
     name: Symbol,
