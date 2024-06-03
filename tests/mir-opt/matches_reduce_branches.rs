@@ -88,7 +88,7 @@ fn match_u8_i16(i: EnumAu8) -> i16 {
 fn match_u8_i16_2(i: EnumAu8) -> i16 {
     // CHECK-LABEL: fn match_u8_i16_2(
     // CHECK: switchInt
-    mir!(
+    mir! {
         {
             let a = Discriminant(i);
             match a {
@@ -110,7 +110,7 @@ fn match_u8_i16_2(i: EnumAu8) -> i16 {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR matches_reduce_branches.match_u8_i16_failed.MatchBranchSimplification.diff
@@ -158,7 +158,7 @@ fn match_u8_u16(i: EnumBu8) -> u16 {
 fn match_u8_u16_2(i: EnumBu8) -> i16 {
     // CHECK-LABEL: fn match_u8_u16_2(
     // CHECK: switchInt
-    mir!(
+    mir! {
         {
             let a = Discriminant(i);
             match a {
@@ -187,7 +187,7 @@ fn match_u8_u16_2(i: EnumBu8) -> i16 {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 #[repr(i8)]

@@ -539,7 +539,7 @@ fn slices() {
 #[custom_mir(dialect = "analysis")]
 fn duplicate_slice() -> (bool, bool) {
     // CHECK-LABEL: fn duplicate_slice(
-    mir!(
+    mir! {
         let au: u128;
         let bu: u128;
         let cu: u128;
@@ -585,7 +585,7 @@ fn duplicate_slice() -> (bool, bool) {
             RET = (direct, indirect);
             Return()
         }
-    )
+    }
 }
 
 fn repeat() {
@@ -623,11 +623,13 @@ fn fn_pointers() {
 fn indirect_static() {
     static A: Option<u8> = None;
 
-    mir!({
-        let ptr = Static(A);
-        let out = Field::<u8>(Variant(*ptr, 1), 0);
-        Return()
-    })
+    mir! {
+        {
+            let ptr = Static(A);
+            let out = Field::<u8>(Variant(*ptr, 1), 0);
+            Return()
+        }
+    }
 }
 
 /// Verify that having constant index `u64::MAX` does not yield to an overflow in rustc.
@@ -733,7 +735,7 @@ fn borrowed<T: Copy + Freeze>(x: T) {
     // CHECK-NEXT: _0 = opaque::<T>(_1)
     // CHECK: bb2: {
     // CHECK-NEXT: _0 = opaque::<T>(_1)
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -748,7 +750,7 @@ fn borrowed<T: Copy + Freeze>(x: T) {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is not known to be `Freeze`, so shared borrows may be mutable.
@@ -763,7 +765,7 @@ fn non_freeze<T: Copy>(x: T) {
     // CHECK-NEXT: _0 = opaque::<T>(_2)
     // CHECK: bb2: {
     // CHECK-NEXT: _0 = opaque::<T>((*_3))
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -778,7 +780,7 @@ fn non_freeze<T: Copy>(x: T) {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 fn main() {

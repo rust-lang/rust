@@ -24,7 +24,7 @@ fn compare_address() -> bool {
     // CHECK-NEXT: _0 = cmp_ref(_2, _4)
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<u8>(_3)
-    mir!(
+    mir! {
         {
             let a = 5_u8;
             let r1 = &a;
@@ -40,7 +40,7 @@ fn compare_address() -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is `Freeze`, so shared borrows are immutable.
@@ -52,7 +52,7 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
     // CHECK-NEXT: _0 = opaque::<&T>(_3)
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<T>(_1)
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -64,7 +64,7 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is not known to be `Freeze`, so shared borrows may be mutable.
@@ -77,7 +77,7 @@ fn non_freeze<T: Copy>(x: T) -> bool {
     // CHECK-NEXT: _0 = opaque::<&T>(_3)
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<T>(_2)
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -89,7 +89,7 @@ fn non_freeze<T: Copy>(x: T) -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 fn main() {

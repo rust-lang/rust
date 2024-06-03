@@ -84,7 +84,7 @@ struct NonZeroUsize(usize);
 // CHECK-LABEL: fn mutate_discriminant(
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn mutate_discriminant() -> u8 {
-    mir!(
+    mir! {
         let x: Option<NonZeroUsize>;
         {
             SetDiscriminant(x, 1);
@@ -109,7 +109,7 @@ fn mutate_discriminant() -> u8 {
             RET = 2;
             Unreachable()
         }
-    )
+    }
 }
 
 // EMIT_MIR enum.multiple.DataflowConstProp.diff
