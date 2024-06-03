@@ -29,10 +29,11 @@ use rustc_macros::extension;
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
+use rustc_middle::ty::print::PrintPolyTraitRefExt;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
-    InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, TypeckResults, Upcast,
+    InferTy, IsSuggestable, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, TypeckResults, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
@@ -219,15 +220,15 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
             (_, None) => predicate_constraint(hir_generics, trait_pred.upcast(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
-                format!(": {}", trait_pred.print_modifiers_and_trait_path()),
+                format!(": {}", trait_pred.to_poly_trait_ref().print_trait_sugared()),
             ),
             (_, Some((_, [.., bounds]))) => (
                 bounds.span().shrink_to_hi(),
-                format!(" + {}", trait_pred.print_modifiers_and_trait_path()),
+                format!(" + {}", trait_pred.to_poly_trait_ref().print_trait_sugared()),
             ),
             (Some(_), Some((_, []))) => (
                 hir_generics.span.shrink_to_hi(),
-                format!(": {}", trait_pred.print_modifiers_and_trait_path()),
+                format!(": {}", trait_pred.to_poly_trait_ref().print_trait_sugared()),
             ),
         };
 

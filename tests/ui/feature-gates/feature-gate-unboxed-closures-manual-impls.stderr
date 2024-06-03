@@ -80,7 +80,7 @@ error[E0277]: expected a `FnMut()` closure, found `Foo`
 LL | impl Fn<()> for Foo {
    |                 ^^^ expected an `FnMut()` closure, found `Foo`
    |
-   = help: the trait `FnMut<()>` is not implemented for `Foo`
+   = help: the trait `FnMut()` is not implemented for `Foo`
    = note: wrap the `Foo` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
@@ -149,7 +149,7 @@ error[E0277]: expected a `FnOnce()` closure, found `Bar`
 LL | impl FnMut<()> for Bar {
    |                    ^^^ expected an `FnOnce()` closure, found `Bar`
    |
-   = help: the trait `FnOnce<()>` is not implemented for `Bar`
+   = help: the trait `FnOnce()` is not implemented for `Bar`
    = note: wrap the `Bar` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `FnMut`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL

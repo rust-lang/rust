@@ -3202,7 +3202,7 @@ define_print_and_forward_display! {
         if let ty::PredicatePolarity::Negative = self.0.polarity {
             p!("!")
         }
-        p!(print(self.0.trait_ref.print_only_trait_path()));
+        p!(print(self.0.trait_ref.print_trait_sugared()));
     }
 
     PrintClosureAsImpl<'tcx> {
