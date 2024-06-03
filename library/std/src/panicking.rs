@@ -237,7 +237,7 @@ where
 
 /// Adjusts the visual representation of panic messages by enabling or
 /// disabling color highlighting, or leaving it with a default behaviour. This
-/// function sets, unsets or remove an environment variable (RUST_COLOR_ERRORS)
+/// function sets, unsets or removes an environment variable (RUST_COLOR_ERRORS)
 /// accordingly, influencing downstream formatting functions to produce colorful
 /// error messages.
 #[unstable(feature = "panic_color_errors", issue = "none")]

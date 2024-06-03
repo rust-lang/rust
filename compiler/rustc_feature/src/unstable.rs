@@ -213,8 +213,6 @@ declare_features! (
     (internal, negative_bounds, "1.71.0", None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
-    /// Highlights the error message of pannic calls.
-    (unstable, panic_color_errors,"CURRENT_RUSTC_VERSION", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
     (internal, pattern_complexity, "1.78.0", None),
     /// Allows using pattern types.
