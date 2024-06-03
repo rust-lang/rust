@@ -239,6 +239,7 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
@@ -437,6 +438,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -444,22 +446,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if let Err(incorrect) = self.incorrect_args {
                     if incorrect.invalid_args.contains(&(param.index as usize)) {
-                        // FIXME: use `param.to_error` once `provided_kind` is supplied a list of
-                        // all previous generic args.
-                        return match param.kind {
-                            GenericParamDefKind::Lifetime => {
-                                ty::Region::new_error(tcx, incorrect.reported).into()
-                            }
-                            GenericParamDefKind::Type { .. } => {
-                                Ty::new_error(tcx, incorrect.reported).into()
-                            }
-                            GenericParamDefKind::Const { .. } => ty::Const::new_error(
-                                tcx,
-                                incorrect.reported,
-                                Ty::new_error(tcx, incorrect.reported),
-                            )
-                            .into(),
-                        };
+                        return param.to_error(tcx, preceding_args);
                     }
                 }
 

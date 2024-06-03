@@ -282,7 +282,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             GenericParamDefKind::Const { .. },
                             _,
                         ) => {
-                            args.push(ctx.provided_kind(param, arg));
+                            args.push(ctx.provided_kind(&args, param, arg));
                             args_iter.next();
                             params.next();
                         }
