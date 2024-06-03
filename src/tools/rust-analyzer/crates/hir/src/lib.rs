@@ -1884,6 +1884,14 @@ impl Function {
         Type::from_value_def(db, self.id)
     }
 
+    pub fn fn_ptr_type(self, db: &dyn HirDatabase) -> Type {
+        let resolver = self.id.resolver(db.upcast());
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let ty = TyKind::Function(callable_sig.to_fn_ptr()).intern(Interner);
+        Type::new_with_resolver_inner(db, &resolver, ty)
+    }
+
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.resolver(db.upcast());
