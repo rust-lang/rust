@@ -165,7 +165,7 @@ impl<'tcx> Cx<'tcx> {
         &'a mut self,
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
-        body: &hir::Body<'tcx>,
+        body: &'tcx hir::Body<'tcx>,
     ) -> impl Iterator<Item = Param<'tcx>> + 'a {
         let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
 

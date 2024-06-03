@@ -217,10 +217,6 @@ pub struct TypeckResults<'tcx> {
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)>,
-
-    /// Maps from `HirId`s of const blocks (the `ExprKind::ConstBlock`, not the inner expression's)
-    /// to the `DefId` of the corresponding inline const.
-    pub inline_consts: FxIndexMap<ItemLocalId, LocalDefId>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -253,7 +249,6 @@ impl<'tcx> TypeckResults<'tcx> {
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
-            inline_consts: Default::default(),
         }
     }
 
