@@ -447,7 +447,7 @@ pub fn mir_const_from_ty_const<'tcx>(
         ty::ExprCt(_) => unimplemented!(),
     };
     let stable_ty = tables.intern_ty(ty);
-    let id = tables.intern_mir_const(mir::Const::Ty(ty_const));
+    let id = tables.intern_mir_const(mir::Const::Ty(ty, ty_const));
     stable_mir::ty::MirConst::new(kind, stable_ty, id)
 }
 

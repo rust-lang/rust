@@ -7,7 +7,7 @@ use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput,
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
-    self, CanonicalUserType, CanonicalUserTypeAnnotation, TyCtxt, UserTypeAnnotationIndex,
+    self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Size;
@@ -50,7 +50,9 @@ pub(crate) fn as_constant_inner<'tcx>(
             let const_ = match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg })
             {
                 Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => Const::Ty(ty::Const::new_error(tcx, guar)),
+                Err(LitToConstError::Reported(guar)) => {
+                    Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar))
+                }
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in `lit_to_mir_constant`")
                 }
@@ -82,7 +84,7 @@ pub(crate) fn as_constant_inner<'tcx>(
         }
         ExprKind::ConstParam { param, def_id: _ } => {
             let const_param = ty::Const::new_param(tcx, param);
-            let const_ = Const::Ty(const_param);
+            let const_ = Const::Ty(expr.ty, const_param);
 
             ConstOperand { user_ty: None, span, const_ }
         }

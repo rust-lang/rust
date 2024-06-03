@@ -580,7 +580,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, span)
             .map(|val| match val {
-                Some(valtree) => mir::Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
+                Some(valtree) => mir::Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
                 None => mir::Const::Val(
                     self.tcx
                         .const_eval_global_id(param_env_reveal_all, cid, span)
@@ -659,7 +659,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         if let Some(lit_input) = lit_input {
             match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(Const::Ty(c), id, span).kind,
+                Ok(c) => return self.const_to_pat(Const::Ty(ty, c), id, span).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
                 // the unevaluated constant below.
@@ -681,8 +681,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // but something more principled, like a trait query checking whether this can be turned into a valtree.
         if let Ok(Some(valtree)) = self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, span)
         {
-            let subpattern =
-                self.const_to_pat(Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)), id, span);
+            let subpattern = self.const_to_pat(
+                Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
+                id,
+                span,
+            );
             PatKind::InlineConstant { subpattern, def: def_id }
         } else {
             // If that fails, convert it to an opaque constant pattern.
@@ -720,10 +723,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => span_bug!(expr.span, "not a literal: {:?}", expr),
         };
 
-        let lit_input =
-            LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
+        let ct_ty = self.typeck_results.expr_ty(expr);
+        let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(constant) => self.const_to_pat(Const::Ty(constant), expr.hir_id, lit.span).kind,
+            Ok(constant) => {
+                self.const_to_pat(Const::Ty(ct_ty, constant), expr.hir_id, lit.span).kind
+            }
             Err(LitToConstError::Reported(e)) => PatKind::Error(e),
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }

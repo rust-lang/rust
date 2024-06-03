@@ -150,7 +150,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     return;
                 }
 
-                let const_ = Const::from_ty_const(len, self.tcx);
+                let const_ = Const::from_ty_const(len, self.tcx.types.usize, self.tcx);
                 let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
