@@ -312,19 +312,27 @@ fn calculate_best_path(
     if max_len <= 1 {
         return None;
     }
+
     let mut best_path = None;
-    let update_best_path =
-        |best_path: &mut Option<_>, new_path: (ModPath, Stability)| match best_path {
+    let mut best_path_len = max_len;
+    let mut process = |mut path: (ModPath, Stability), name, best_path_len: &mut _| {
+        path.0.push_segment(name);
+        let new_path = match best_path.take() {
+            Some(best_path) => select_best_path(best_path, path, ctx.cfg),
+            None => path,
+        };
+        if new_path.1 == Stable {
+            *best_path_len = new_path.0.len();
+        }
+        match &mut best_path {
             Some((old_path, old_stability)) => {
                 *old_path = new_path.0;
                 *old_stability = zip_stability(*old_stability, new_path.1);
             }
-            None => *best_path = Some(new_path),
-        };
-
+            None => best_path = Some(new_path),
+        }
+    };
     let db = ctx.db;
-
-    let mut best_path_len = max_len;
     if item.krate(db) == Some(ctx.from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
@@ -335,19 +343,10 @@ fn calculate_best_path(
             }
             // we are looking for paths of length up to best_path_len, any longer will make it be
             // less optimal. The -1 is due to us pushing name onto it afterwards.
-            if let Some(mut path) =
+            if let Some(path) =
                 find_path_for_module(ctx, def_map, visited_modules, module_id, best_path_len - 1)
             {
-                path.0.push_segment(name);
-
-                let new_path = match best_path.take() {
-                    Some(best_path) => select_best_path(best_path, path, ctx.cfg),
-                    None => path,
-                };
-                if new_path.1 == Stable {
-                    best_path_len = new_path.0.len();
-                }
-                update_best_path(&mut best_path, new_path);
+                process(path, name, &mut best_path_len);
             }
         }
     } else {
@@ -373,25 +372,16 @@ fn calculate_best_path(
                     info.container,
                     best_path_len - 1,
                 );
-                let Some((mut path, path_stability)) = path else {
+                let Some((path, path_stability)) = path else {
                     continue;
                 };
                 cov_mark::hit!(partially_imported);
-                path.push_segment(info.name.clone());
-
-                let path_with_stab = (
+                let path = (
                     path,
                     zip_stability(path_stability, if info.is_unstable { Unstable } else { Stable }),
                 );
 
-                let new_path = match best_path.take() {
-                    Some(best_path) => select_best_path(best_path, path_with_stab, ctx.cfg),
-                    None => path_with_stab,
-                };
-                if new_path.1 == Stable {
-                    best_path_len = new_path.0.len();
-                }
-                update_best_path(&mut best_path, new_path);
+                process(path, info.name.clone(), &mut best_path_len);
             }
         }
     }
