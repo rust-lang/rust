@@ -27,10 +27,7 @@ pub enum RawVisibility {
 
 impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {
-        RawVisibility::Module(
-            ModPath::from_kind(PathKind::Super(0)),
-            VisibilityExplicitness::Implicit,
-        )
+        RawVisibility::Module(ModPath::from_kind(PathKind::SELF), VisibilityExplicitness::Implicit)
     }
 
     pub(crate) fn from_ast(
@@ -60,7 +57,7 @@ impl RawVisibility {
             }
             ast::VisibilityKind::PubCrate => ModPath::from_kind(PathKind::Crate),
             ast::VisibilityKind::PubSuper => ModPath::from_kind(PathKind::Super(1)),
-            ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::Super(0)),
+            ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::SELF),
             ast::VisibilityKind::Pub => return RawVisibility::Public,
         };
         RawVisibility::Module(path, VisibilityExplicitness::Explicit)

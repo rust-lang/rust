@@ -307,7 +307,7 @@ fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
         let kind = match parts.next()? {
             "" => PathKind::Abs,
             "crate" => PathKind::Crate,
-            "self" => PathKind::Super(0),
+            "self" => PathKind::SELF,
             "super" => {
                 let mut deg = 1;
                 for segment in parts.by_ref() {

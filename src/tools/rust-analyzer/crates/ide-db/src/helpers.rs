@@ -41,7 +41,7 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
     let mut is_abs = false;
     match path.kind {
         hir::PathKind::Plain => {}
-        hir::PathKind::Super(0) => segments.push(make::path_segment_self()),
+        hir::PathKind::SELF => segments.push(make::path_segment_self()),
         hir::PathKind::Super(n) => segments.extend((0..n).map(|_| make::path_segment_super())),
         hir::PathKind::DollarCrate(_) | hir::PathKind::Crate => {
             segments.push(make::path_segment_crate())
