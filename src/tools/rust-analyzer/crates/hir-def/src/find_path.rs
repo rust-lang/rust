@@ -1,6 +1,6 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::{cmp::Ordering, iter};
+use std::{cell::Cell, cmp::Ordering, iter};
 
 use hir_expand::{
     name::{known, AsName, Name},
@@ -49,6 +49,7 @@ pub fn find_path(
             ignore_local_imports,
             from,
             from_def_map: &from.def_map(db),
+            fuel: Cell::new(FIND_PATH_FUEL),
         },
         item,
         MAX_PATH_LEN,
@@ -70,6 +71,7 @@ fn zip_stability(a: Stability, b: Stability) -> Stability {
 }
 
 const MAX_PATH_LEN: usize = 15;
+const FIND_PATH_FUEL: usize = 10000;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PrefixKind {
@@ -101,6 +103,7 @@ struct FindPathCtx<'db> {
     ignore_local_imports: bool,
     from: ModuleId,
     from_def_map: &'db DefMap,
+    fuel: Cell<usize>,
 }
 
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
@@ -314,6 +317,17 @@ fn calculate_best_path(
         // the item's name itself.
         return None;
     }
+    let fuel = ctx.fuel.get();
+    if fuel == 0 {
+        // we ran out of fuel, so we stop searching here
+        tracing::warn!(
+            "ran out of fuel while searching for a path for item {item:?} of krate {:?} from krate {:?}",
+            item.krate(ctx.db),
+            ctx.from.krate()
+        );
+        return None;
+    }
+    ctx.fuel.set(fuel - 1);
 
     let mut best_path = None;
     let mut best_path_len = max_len;
