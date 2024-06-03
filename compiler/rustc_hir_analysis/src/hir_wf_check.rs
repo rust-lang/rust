@@ -25,6 +25,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     let def_id = match loc {
         WellFormedLoc::Ty(def_id) => def_id,
         WellFormedLoc::Param { function, param_idx: _ } => function,
+        WellFormedLoc::Expr(_) => return None,
     };
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
@@ -79,7 +80,9 @@ fn diagnostic_hir_wf_check<'tcx>(
             let cause = traits::ObligationCause::new(
                 ty.span,
                 self.def_id,
-                traits::ObligationCauseCode::WellFormed(None),
+                traits::ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(
+                    ty.hir_id,
+                ))),
             );
 
             ocx.register_obligation(traits::Obligation::new(
@@ -191,6 +194,7 @@ fn diagnostic_hir_wf_check<'tcx>(
                 vec![&fn_decl.inputs[param_idx as usize]]
             }
         }
+        WellFormedLoc::Expr(_) => return None,
     };
     for ty in tys {
         visitor.visit_ty(ty);

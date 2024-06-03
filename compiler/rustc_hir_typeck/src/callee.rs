@@ -122,7 +122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             output.into(),
             call_expr.span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(call_expr.hir_id))),
         );
 
         output

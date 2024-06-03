@@ -8,8 +8,10 @@ const REF_INTERIOR_MUT: &usize = {
     static FOO: Sync = AtomicUsize::new(0);
     //~^ ERROR failed to resolve: use of undeclared type `AtomicUsize`
     //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN trait objects without an explicit `dyn` are deprecated
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
+    //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
     //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
     unsafe { &*(&FOO as *const _ as *const usize) }
 };

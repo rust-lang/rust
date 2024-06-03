@@ -405,7 +405,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
         let ty = self.lowerer().lower_ty(hir_ty);
-        self.register_wf_obligation(ty.into(), hir_ty.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ty.into(),
+            hir_ty.span,
+            ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(hir_ty.hir_id))),
+        );
         LoweredTy::from_raw(self, hir_ty.span, ty)
     }
 
@@ -516,7 +520,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for arg in args.iter().filter(|arg| {
             matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
         }) {
-            self.register_wf_obligation(arg, expr.span, ObligationCauseCode::WellFormed(None));
+            self.register_wf_obligation(
+                arg,
+                expr.span,
+                ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(expr.hir_id))),
+            );
         }
     }
 
@@ -770,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 ty.raw.into(),
                 qself.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(hir_id))),
             );
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
@@ -810,7 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.register_wf_obligation(
                         ty.raw.into(),
                         qself.span,
-                        ObligationCauseCode::WellFormed(None),
+                        ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(hir_id))),
                     );
                 }
 
@@ -844,7 +852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 ty.raw.into(),
                 qself.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Expr(hir_id))),
             );
         }
 

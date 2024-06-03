@@ -1270,7 +1270,7 @@ fn check_item_type(
                 traits::ObligationCause::new(
                     ty_span,
                     wfcx.body_def_id,
-                    ObligationCauseCode::WellFormed(None),
+                    ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(item_id))),
                 ),
                 wfcx.param_env,
                 item_ty,

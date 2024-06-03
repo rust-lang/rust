@@ -870,8 +870,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                        let mut hir_id = None;
+                        if let ObligationCauseCode::WellFormed(Some(
+                            crate::traits::WellFormedLoc::Expr(id),
+                        )) = root_obligation.cause.code() {
+                            hir_id = Some(*id);
+                        }
                         let violations = self.tcx.object_safety_violations(trait_def_id);
-                        report_object_safety_error(self.tcx, span, None, trait_def_id, violations)
+                        report_object_safety_error(self.tcx, span, hir_id, trait_def_id, violations)
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
