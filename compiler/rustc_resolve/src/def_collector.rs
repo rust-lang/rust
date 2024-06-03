@@ -340,6 +340,16 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             ExprKind::Gen(_, _, _) => {
                 self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
             }
+            ExprKind::ConstBlock(ref constant) => {
+                let def = self.create_def(
+                    constant.id,
+                    kw::Empty,
+                    DefKind::InlineConst,
+                    constant.value.span,
+                );
+                self.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                return;
+            }
             _ => self.parent_def,
         };
 

@@ -485,7 +485,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         }
 
         Node::AnonConst(_) => anon_const_type_of(tcx, def_id),
-        Node::Expr(&Expr { kind: ExprKind::ConstBlock(..), .. }) => {
+
+        Node::ConstBlock(_) => {
             let args = ty::GenericArgs::identity_for_item(tcx, def_id.to_def_id());
             args.as_inline_const().ty()
         }

@@ -222,12 +222,6 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
     set.extend(tcx.hir().body_owners());
 
-    // Inline consts' bodies are created in
-    // typeck instead of during ast lowering, like all other bodies so far.
-    for def_id in tcx.hir().body_owners() {
-        set.extend(tcx.typeck(def_id).inline_consts.values())
-    }
-
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
     struct GatherCtors<'a> {
