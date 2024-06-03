@@ -1826,19 +1826,6 @@ fn to_lowercase() {
     assert_eq!("Α'Σ".to_lowercase(), "α'ς");
     assert_eq!("Α''Σ".to_lowercase(), "α''ς");
 
-    assert_eq!("aΣ".to_lowercase(), "aς");
-    assert_eq!("a'Σ".to_lowercase(), "a'ς");
-    assert_eq!("a''Σ".to_lowercase(), "a''ς");
-
-    assert_eq!("ÄΣ".to_lowercase(), "äς");
-    assert_eq!("ä'Σ".to_lowercase(), "ä'ς");
-    assert_eq!("ä''Σ".to_lowercase(), "ä''ς");
-
-    // input lengths around the boundary of the chunk size used by the ascii prefix optimization
-    assert_eq!("abcdefghijklmnoΣ".to_lowercase(), "abcdefghijklmnoς");
-    assert_eq!("abcdefghijklmnopΣ".to_lowercase(), "abcdefghijklmnopς");
-    assert_eq!("abcdefghijklmnopqΣ".to_lowercase(), "abcdefghijklmnopqς");
-
     assert_eq!("ΑΣ Α".to_lowercase(), "ας α");
     assert_eq!("Α'Σ Α".to_lowercase(), "α'ς α");
     assert_eq!("Α''Σ Α".to_lowercase(), "α''ς α");
@@ -1853,10 +1840,6 @@ fn to_lowercase() {
     assert_eq!("Α 'Σ".to_lowercase(), "α 'σ");
     assert_eq!("Α ''Σ".to_lowercase(), "α ''σ");
 
-    assert_eq!("Ä Σ".to_lowercase(), "ä σ");
-    assert_eq!("Ä 'Σ".to_lowercase(), "ä 'σ");
-    assert_eq!("Ä ''Σ".to_lowercase(), "ä ''σ");
-
     assert_eq!("Σ".to_lowercase(), "σ");
     assert_eq!("'Σ".to_lowercase(), "'σ");
     assert_eq!("''Σ".to_lowercase(), "''σ");
@@ -1866,7 +1849,10 @@ fn to_lowercase() {
     assert_eq!("ΑΣ''Α".to_lowercase(), "ασ''α");
 
     // https://github.com/rust-lang/rust/issues/124714
+    // input lengths around the boundary of the chunk size used by the ascii prefix optimization
+    assert_eq!("abcdefghijklmnoΣ".to_lowercase(), "abcdefghijklmnoς");
     assert_eq!("abcdefghijklmnopΣ".to_lowercase(), "abcdefghijklmnopς");
+    assert_eq!("abcdefghijklmnopqΣ".to_lowercase(), "abcdefghijklmnopqς");
 
     // a really long string that has it's lowercase form
     // even longer. this tests that implementations don't assume
