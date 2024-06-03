@@ -48,7 +48,7 @@ pub fn find_path(
     )
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Stability {
     Unstable,
     Stable,
@@ -322,12 +322,14 @@ fn calculate_best_path(
             None => *best_path = Some(new_path),
         };
 
-    if item.krate(ctx.db) == Some(ctx.from.krate) {
-        let mut best_path_len = max_len;
+    let db = ctx.db;
+
+    let mut best_path_len = max_len;
+    if item.krate(db) == Some(ctx.from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
         // FIXME: cache the `find_local_import_locations` output?
-        for (module_id, name) in find_local_import_locations(ctx.db, item, ctx.from) {
+        for (module_id, name) in find_local_import_locations(db, item, ctx.from) {
             if !visited_modules.insert(module_id) {
                 continue;
             }
@@ -342,7 +344,9 @@ fn calculate_best_path(
                     Some(best_path) => select_best_path(best_path, path, ctx.cfg),
                     None => path,
                 };
-                best_path_len = new_path.0.len();
+                if new_path.1 == Stable {
+                    best_path_len = new_path.0.len();
+                }
                 update_best_path(&mut best_path, new_path);
             }
         }
@@ -351,8 +355,8 @@ fn calculate_best_path(
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
 
-        for dep in &ctx.db.crate_graph()[ctx.from.krate].dependencies {
-            let import_map = ctx.db.import_map(dep.crate_id);
+        for dep in &db.crate_graph()[ctx.from.krate].dependencies {
+            let import_map = db.import_map(dep.crate_id);
             let Some(import_info_for) = import_map.import_info_for(item) else { continue };
             for info in import_info_for {
                 if info.is_doc_hidden {
@@ -367,8 +371,7 @@ fn calculate_best_path(
                     def_map,
                     visited_modules,
                     info.container,
-                    max_len - 1,
-                    // fixme shouldnt we consider the best path length here?
+                    best_path_len - 1,
                 );
                 let Some((mut path, path_stability)) = path else {
                     continue;
@@ -381,11 +384,14 @@ fn calculate_best_path(
                     zip_stability(path_stability, if info.is_unstable { Unstable } else { Stable }),
                 );
 
-                let new_path_with_stab = match best_path.take() {
+                let new_path = match best_path.take() {
                     Some(best_path) => select_best_path(best_path, path_with_stab, ctx.cfg),
                     None => path_with_stab,
                 };
-                update_best_path(&mut best_path, new_path_with_stab);
+                if new_path.1 == Stable {
+                    best_path_len = new_path.0.len();
+                }
+                update_best_path(&mut best_path, new_path);
             }
         }
     }
@@ -393,7 +399,7 @@ fn calculate_best_path(
 }
 
 /// Select the best (most relevant) path between two paths.
-/// This accounts for stability, path length whether std should be chosen over alloc/core paths as
+/// This accounts for stability, path length whether, std should be chosen over alloc/core paths as
 /// well as ignoring prelude like paths or not.
 fn select_best_path(
     old_path @ (_, old_stability): (ModPath, Stability),
