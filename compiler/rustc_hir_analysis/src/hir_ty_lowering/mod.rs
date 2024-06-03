@@ -444,6 +444,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if let Err(incorrect) = self.incorrect_args {
                     if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        // FIXME: use `param.to_error` once `provided_kind` is supplied a list of
+                        // all previous generic args.
                         return match param.kind {
                             GenericParamDefKind::Lifetime => {
                                 ty::Region::new_error(tcx, incorrect.reported).into()
@@ -531,6 +533,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if let Err(incorrect) = self.incorrect_args {
                     if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        // FIXME: use `param.to_error` once `inferred_kind` is supplied a list of
+                        // all previous generic args.
                         return match param.kind {
                             GenericParamDefKind::Lifetime => {
                                 ty::Region::new_error(tcx, incorrect.reported).into()
