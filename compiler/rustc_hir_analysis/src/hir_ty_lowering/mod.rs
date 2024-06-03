@@ -215,10 +215,9 @@ pub(crate) enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct GenericArgCountMismatch {
-    /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
-    pub reported: Option<ErrorGuaranteed>,
+    pub reported: ErrorGuaranteed,
     /// A list of spans of arguments provided that were not valid.
     pub invalid_args: Vec<Span>,
 }
@@ -404,10 +403,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self_ty.is_some(),
         );
 
-        if let Err(err) = &arg_count.correct
-            && let Some(reported) = err.reported
-        {
-            self.set_tainted_by_errors(reported);
+        if let Err(err) = &arg_count.correct {
+            self.set_tainted_by_errors(err.reported);
         }
 
         // Skip processing if type has no generic parameters.
@@ -584,13 +581,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && generics.has_self
             && !tcx.has_attr(def_id, sym::const_trait)
         {
-            let e = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+            let reported = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
                 span,
                 modifier: constness.as_str(),
             });
-            self.set_tainted_by_errors(e);
-            arg_count.correct =
-                Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
+            self.set_tainted_by_errors(reported);
+            arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
         }
         let args = lower_generic_args(
             tcx,

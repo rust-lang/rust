@@ -610,7 +610,7 @@ pub(crate) fn check_generic_arg_count(
         explicit_late_bound,
         correct: lifetimes_correct
             .and(args_correct)
-            .map_err(|reported| GenericArgCountMismatch { reported: Some(reported), invalid_args }),
+            .map_err(|reported| GenericArgCountMismatch { reported, invalid_args }),
     }
 }
 

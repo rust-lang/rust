@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
 
-        let mut infer_args_for_err = FxHashSet::default();
+        let mut infer_args_for_err = None;
 
         let mut explicit_late_bound = ExplicitLateBound::No;
         for &GenericPathSegment(def_id, index) in &generic_segments {
@@ -1136,9 +1136,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 explicit_late_bound = ExplicitLateBound::Yes;
             }
 
-            if let Err(GenericArgCountMismatch { reported: Some(e), .. }) = arg_count.correct {
-                infer_args_for_err.insert(index);
-                self.set_tainted_by_errors(e); // See issue #53251.
+            if let Err(GenericArgCountMismatch { reported, .. }) = arg_count.correct {
+                infer_args_for_err
+                    .get_or_insert_with(|| (reported, FxHashSet::default()))
+                    .1
+                    .insert(index);
+                self.set_tainted_by_errors(reported); // See issue #53251.
             }
         }
 
@@ -1232,14 +1235,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let def_id = res.def_id();
 
-        let arg_count = GenericArgCountResult {
-            explicit_late_bound,
-            correct: if infer_args_for_err.is_empty() {
-                Ok(())
-            } else {
-                Err(GenericArgCountMismatch::default())
-            },
+        let (correct, infer_args_for_err) = match infer_args_for_err {
+            Some((reported, args)) => {
+                (Err(GenericArgCountMismatch { reported, invalid_args: vec![] }), args)
+            }
+            None => (Ok(()), Default::default()),
         };
+
+        let arg_count = GenericArgCountResult { explicit_late_bound, correct };
 
         struct CtorGenericArgsCtxt<'a, 'tcx> {
             fcx: &'a FnCtxt<'a, 'tcx>,
