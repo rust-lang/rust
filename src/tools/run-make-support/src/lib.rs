@@ -12,6 +12,7 @@ pub mod rustc;
 pub mod rustdoc;
 
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -30,14 +31,28 @@ pub use run::{run, run_fail};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
+pub fn env_var(name: &str) -> String {
+    match env::var(name) {
+        Ok(v) => v,
+        Err(err) => panic!("failed to retrieve environment variable {name:?}: {err:?}"),
+    }
+}
+
+pub fn env_var_os(name: &str) -> OsString {
+    match env::var_os(name) {
+        Some(v) => v,
+        None => panic!("failed to retrieve environment variable {name:?}"),
+    }
+}
+
 /// Path of `TMPDIR` (a temporary build directory, not under `/tmp`).
 pub fn tmp_dir() -> PathBuf {
-    env::var_os("TMPDIR").unwrap().into()
+    env_var_os("TMPDIR").into()
 }
 
 /// `TARGET`
 pub fn target() -> String {
-    env::var("TARGET").unwrap()
+    env_var("TARGET")
 }
 
 /// Check if target is windows-like.
@@ -62,7 +77,7 @@ pub fn static_lib(name: &str) -> PathBuf {
 }
 
 pub fn python_command() -> Command {
-    let python_path = std::env::var("PYTHON").expect("PYTHON environment variable does not exist");
+    let python_path = env_var("PYTHON");
     Command::new(python_path)
 }
 
@@ -73,7 +88,7 @@ pub fn htmldocck() -> Command {
 }
 
 pub fn source_path() -> PathBuf {
-    std::env::var("S").expect("S variable does not exist").into()
+    env_var("S").into()
 }
 
 /// Construct the static library name based on the platform.
@@ -208,12 +223,12 @@ fn handle_failed_output(cmd: &Command, output: Output, caller_line_number: u32) 
 
 /// Set the runtime library path as needed for running the host rustc/rustdoc/etc.
 pub fn set_host_rpath(cmd: &mut Command) {
-    let ld_lib_path_envvar = env::var("LD_LIB_PATH_ENVVAR").unwrap();
+    let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
-        paths.push(PathBuf::from(env::var("TMPDIR").unwrap()));
-        paths.push(PathBuf::from(env::var("HOST_RPATH_DIR").unwrap()));
-        for p in env::split_paths(&env::var(&ld_lib_path_envvar).unwrap()) {
+        paths.push(PathBuf::from(env_var("TMPDIR")));
+        paths.push(PathBuf::from(env_var("HOST_RPATH_DIR")));
+        for p in env::split_paths(&env_var(&ld_lib_path_envvar)) {
             paths.push(p.to_path_buf());
         }
         env::join_paths(paths.iter()).unwrap()
