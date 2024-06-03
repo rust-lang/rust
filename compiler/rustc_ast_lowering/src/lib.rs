@@ -53,7 +53,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{self as hir};
+use rustc_hir::{self as hir, ConstArgKind};
 use rustc_hir::{
     ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
 };
@@ -1203,7 +1203,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     })
                                 });
                                 return GenericArg::Const(ConstArg {
-                                    value: ct,
+                                    kind: ConstArgKind::Anon(ct),
                                     is_desugared_from_effects: false,
                                 });
                             }
@@ -1214,7 +1214,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArg::Type(self.lower_ty(ty, itctx))
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(ct),
+                kind: ConstArgKind::Anon(self.lower_anon_const(ct)),
                 is_desugared_from_effects: false,
             }),
         }

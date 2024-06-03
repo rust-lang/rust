@@ -10,7 +10,7 @@ use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, ConstArgKind};
 use rustc_hir::{
     BindingMode, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
     LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term, TraitBoundModifier,
@@ -991,6 +991,12 @@ impl<'a> State<'a> {
         self.ann.nested(self, Nested::Body(constant.body))
     }
 
+    fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {
+        match &const_arg.kind {
+            ConstArgKind::Anon(anon) => self.print_anon_const(anon),
+        }
+    }
+
     fn print_call_post(&mut self, args: &[hir::Expr<'_>]) {
         self.popen();
         self.commasep_exprs(Inconsistent, args);
@@ -1679,7 +1685,7 @@ impl<'a> State<'a> {
                             GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
                             GenericArg::Lifetime(_) => {}
                             GenericArg::Type(ty) => s.print_type(ty),
-                            GenericArg::Const(ct) => s.print_anon_const(&ct.value),
+                            GenericArg::Const(ct) => s.print_const_arg(ct),
                             GenericArg::Infer(_inf) => s.word("_"),
                         }
                     });

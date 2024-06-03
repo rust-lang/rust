@@ -5,10 +5,10 @@ use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, ConstArg, ConstArgKind};
 use rustc_hir::{ExprKind, GenericArg, HirId, Node, QPath};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
@@ -466,16 +466,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn lower_const_arg(&self, hir_ct: &hir::AnonConst, param_def_id: DefId) -> ty::Const<'tcx> {
-        let did = hir_ct.def_id;
-        self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-        let ct = ty::Const::from_anon_const(self.tcx, did);
-        self.register_wf_obligation(
-            ct.into(),
-            self.tcx.hir().span(hir_ct.hir_id),
-            ObligationCauseCode::WellFormed(None),
-        );
-        ct
+    pub fn lower_const_arg(
+        &self,
+        const_arg: &ConstArg<'tcx>,
+        param_def_id: DefId,
+    ) -> ty::Const<'tcx> {
+        match &const_arg.kind {
+            ConstArgKind::Anon(anon) => {
+                let did = anon.def_id;
+                self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
+                let ct = ty::Const::from_anon_const(self.tcx, did);
+                self.register_wf_obligation(
+                    ct.into(),
+                    self.tcx.hir().span(anon.hir_id),
+                    ObligationCauseCode::WellFormed(None),
+                );
+                ct
+            }
+        }
     }
 
     // If the type given by the user has free regions, save it for later, since
@@ -1298,7 +1306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.lower_const_arg(&ct.value, param.def_id).into()
+                        self.fcx.lower_const_arg(ct, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()

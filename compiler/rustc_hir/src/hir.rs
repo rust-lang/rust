@@ -230,9 +230,28 @@ impl<'hir> PathSegment<'hir> {
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg<'hir> {
-    pub value: &'hir AnonConst,
+    pub kind: ConstArgKind<'hir>,
     /// Indicates whether this comes from a `~const` desugaring.
     pub is_desugared_from_effects: bool,
+}
+
+impl<'hir> ConstArg<'hir> {
+    pub fn span(&self) -> Span {
+        match self.kind {
+            ConstArgKind::Anon(anon) => anon.span,
+        }
+    }
+
+    pub fn hir_id(&self) -> HirId {
+        match self.kind {
+            ConstArgKind::Anon(anon) => anon.hir_id,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub enum ConstArgKind<'hir> {
+    Anon(&'hir AnonConst),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -260,7 +279,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.value.span,
+            GenericArg::Const(c) => c.span(),
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -269,7 +288,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.value.hir_id,
+            GenericArg::Const(c) => c.hir_id(),
             GenericArg::Infer(i) => i.hir_id,
         }
     }
