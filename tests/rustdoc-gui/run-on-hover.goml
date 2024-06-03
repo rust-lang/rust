@@ -17,7 +17,7 @@ define-function: (
             "visibility": "visible",
             "color": |color|,
             "background-color": |background|,
-            "font-size": "22px",
+            "font-size": "16px",
             "border-radius": "5px",
         })
         move-cursor-to: ".test-arrow"
@@ -25,7 +25,7 @@ define-function: (
             "visibility": "visible",
             "color": |hover_color|,
             "background-color": |hover_background|,
-            "font-size": "22px",
+            "font-size": "16px",
             "border-radius": "5px",
         })
     },
