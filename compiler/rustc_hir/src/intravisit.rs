@@ -347,6 +347,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_inline_const(&mut self, c: &'v ConstBlock) -> Self::Result {
         walk_inline_const(self, c)
     }
+    fn visit_const_arg(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
+        walk_const_arg(self, c)
+    }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) -> Self::Result {
         walk_expr(self, ex)
     }
@@ -723,6 +726,15 @@ pub fn walk_inline_const<'v, V: Visitor<'v>>(
 ) -> V::Result {
     try_visit!(visitor.visit_id(constant.hir_id));
     visitor.visit_nested_body(constant.body)
+}
+
+pub fn walk_const_arg<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    const_arg: &'v ConstArg<'v>,
+) -> V::Result {
+    match const_arg.kind {
+        ConstArgKind::Anon(anon) => visitor.visit_anon_const(anon),
+    }
 }
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) -> V::Result {
@@ -1216,7 +1228,7 @@ pub fn walk_generic_arg<'v, V: Visitor<'v>>(
     match generic_arg {
         GenericArg::Lifetime(lt) => visitor.visit_lifetime(lt),
         GenericArg::Type(ty) => visitor.visit_ty(ty),
-        GenericArg::Const(ct) => visitor.visit_anon_const(&ct.value),
+        GenericArg::Const(ct) => visitor.visit_const_arg(ct),
         GenericArg::Infer(inf) => visitor.visit_infer(inf),
     }
 }
