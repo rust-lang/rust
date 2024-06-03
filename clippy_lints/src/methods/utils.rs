@@ -4,7 +4,7 @@ use clippy_utils::{get_parent_expr, path_to_local_id, usage};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat};
+use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, QPath, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -174,4 +174,20 @@ impl<'cx, 'tcx> CloneOrCopyVisitor<'cx, 'tcx> {
             .iter()
             .any(|hir_id| path_to_local_id(expr, *hir_id))
     }
+}
+
+pub(super) fn get_last_chain_binding_hir_id(mut hir_id: HirId, statements: &[Stmt<'_>]) -> Option<HirId> {
+    for stmt in statements {
+        if let StmtKind::Let(local) = stmt.kind
+            && let Some(init) = local.init
+            && let ExprKind::Path(QPath::Resolved(_, path)) = init.kind
+            && let rustc_hir::def::Res::Local(local_hir_id) = path.res
+            && local_hir_id == hir_id
+        {
+            hir_id = local.pat.hir_id;
+        } else {
+            return None;
+        }
+    }
+    Some(hir_id)
 }
