@@ -200,30 +200,37 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     ) -> QueryResult<'tcx> {
         let (ct, ty) = goal.predicate;
 
-        // FIXME(BoxyUwU): Really we should not be calling `ct.ty()` for any variant
-        // other than `ConstKind::Value`. Unfortunately this would require looking in the
-        // env for any `ConstArgHasType` assumptions for parameters and placeholders. I
-        // have not yet gotten around to implementing this though.
-        //
-        // We do still stall on infer vars though as otherwise a goal like:
-        // `ConstArgHasType(?x: usize, usize)` can succeed even though it might later
-        // get unified with some const that is not of type `usize`.
-        match ct.kind() {
+        let ct_ty = match ct.kind() {
             // FIXME: Ignore effect vars because canonicalization doesn't handle them correctly
             // and if we stall on the var then we wind up creating ambiguity errors in a probe
             // for this goal which contains an effect var. Which then ends up ICEing.
-            ty::ConstKind::Infer(ty::InferConst::Var(_)) => {
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            ty::ConstKind::Infer(ty::InferConst::EffectVar(_)) => {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+            }
+            ty::ConstKind::Infer(_) => {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             }
             ty::ConstKind::Error(_) => {
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
-            _ => {
-                // THISPR
-                self.eq(goal.param_env, todo!(), ty)?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            ty::ConstKind::Unevaluated(uv) => {
+                self.interner().type_of(uv.def).instantiate(self.interner(), uv.args)
             }
-        }
+            ty::ConstKind::Expr(_) => unimplemented!(
+                "`feature(generic_const_exprs)` is not supported in the new trait solver"
+            ),
+            ty::ConstKind::Param(_) => {
+                unreachable!("`ConstKind::Param` should have been canonicalized to `Placeholder`")
+            }
+            ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
+            ty::ConstKind::Value(ty, _) => ty,
+            ty::ConstKind::Placeholder(placeholder) => {
+                placeholder.find_const_ty_from_env(goal.param_env)
+            }
+        };
+
+        self.eq(goal.param_env, ct_ty, ty)?;
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
 

@@ -616,6 +616,8 @@ pub enum SelectionError<'tcx> {
     /// We can thus not know whether the hidden type implements an auto trait, so
     /// we should not presume anything about it.
     OpaqueTypeAutoTraitLeakageUnknown(DefId),
+    /// Error for a `ConstArgHasType` goal
+    ConstArgHasWrongType { ct: ty::Const<'tcx>, ct_ty: Ty<'tcx>, expected_ty: Ty<'tcx> },
 }
 
 #[derive(Clone, Debug, TypeVisitable)]

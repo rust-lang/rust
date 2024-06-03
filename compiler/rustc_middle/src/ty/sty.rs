@@ -21,6 +21,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi;
+use rustc_type_ir::visit::TypeVisitableExt;
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
@@ -338,6 +339,27 @@ impl ParamConst {
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamConst {
         ParamConst::new(def.index, def.name)
+    }
+
+    pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
+        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+            // `ConstArgHasType` are never desugared to be higher ranked.
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::ConstArgHasType(param_ct, ty) => {
+                    assert!(!(param_ct, ty).has_escaping_bound_vars());
+
+                    match param_ct.kind() {
+                        ty::ConstKind::Param(param_ct) if param_ct.index == self.index => Some(ty),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        });
+
+        let ty = candidates.next().unwrap();
+        assert!(candidates.next().is_none());
+        ty
     }
 }
 
