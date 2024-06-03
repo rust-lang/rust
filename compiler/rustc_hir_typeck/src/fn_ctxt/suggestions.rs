@@ -79,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `break` type mismatches provide better context for tail `loop` expressions.
             return false;
         }
-        if let Some((fn_id, fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
+        if let Some((fn_id, fn_decl, can_suggest)) = self.tcx.get_fn_decl(blk_id) {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, fn_decl, expected, found, can_suggest, fn_id);
             self.suggest_missing_break_or_return_expr(

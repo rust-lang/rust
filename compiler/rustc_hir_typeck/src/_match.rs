@@ -387,7 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // check that the `if` expr without `else` is the fn body's expr
                 if expr.span == sp {
-                    return self.get_fn_decl(hir_id).map(|(_, fn_decl, _)| {
+                    return self.tcx.get_fn_decl(hir_id).map(|(_, fn_decl, _)| {
                         let (ty, span) = match fn_decl.output {
                             hir::FnRetTy::DefaultReturn(span) => ("()".to_string(), span),
                             hir::FnRetTy::Return(ty) => (ty_to_string(&self.tcx, ty), ty.span),

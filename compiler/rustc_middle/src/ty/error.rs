@@ -4,7 +4,9 @@ use crate::ty::{self, Ty, TyCtxt};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def_id::LocalDefId;
 use rustc_macros::extension;
+use rustc_span::symbol::sym;
 pub use rustc_type_ir::error::ExpectedFound;
 
 use std::borrow::Cow;
@@ -272,5 +274,83 @@ impl<'tcx> TyCtxt<'tcx> {
             Ok(_) => short,
             Err(_) => regular,
         }
+    }
+
+    /// Given a `HirId`, return the `HirId` of the enclosing function, its `FnDecl`, and whether a
+    /// suggestion can be made, `None` otherwise.
+    pub fn get_fn_decl(
+        self,
+        blk_id: hir::HirId,
+    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>, bool)> {
+        // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
+        // `while` before reaching it, as block tail returns are not available in them.
+        self.hir().get_fn_id_for_return_block(blk_id).and_then(|item_id| {
+            match self.hir_node(item_id) {
+                hir::Node::Item(&hir::Item {
+                    ident,
+                    kind: hir::ItemKind::Fn(ref sig, ..),
+                    owner_id,
+                    ..
+                }) => {
+                    // This is less than ideal, it will not suggest a return type span on any
+                    // method called `main`, regardless of whether it is actually the entry point,
+                    // but it will still present it as the reason for the expected type.
+                    Some((owner_id.def_id, sig.decl, ident.name != sym::main))
+                }
+                hir::Node::TraitItem(&hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(ref sig, ..),
+                    owner_id,
+                    ..
+                }) => Some((owner_id.def_id, sig.decl, true)),
+                // FIXME: Suggestable if this is not a trait implementation
+                hir::Node::ImplItem(&hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(ref sig, ..),
+                    owner_id,
+                    ..
+                }) => Some((owner_id.def_id, sig.decl, false)),
+                hir::Node::Expr(&hir::Expr {
+                    hir_id,
+                    kind: hir::ExprKind::Closure(&hir::Closure { def_id, kind, fn_decl, .. }),
+                    ..
+                }) => {
+                    match kind {
+                        hir::ClosureKind::CoroutineClosure(_) => {
+                            // FIXME(async_closures): Implement this.
+                            return None;
+                        }
+                        hir::ClosureKind::Closure => Some((def_id, fn_decl, true)),
+                        hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                            _,
+                            hir::CoroutineSource::Fn,
+                        )) => {
+                            let (ident, sig, owner_id) = match self.parent_hir_node(hir_id) {
+                                hir::Node::Item(&hir::Item {
+                                    ident,
+                                    kind: hir::ItemKind::Fn(ref sig, ..),
+                                    owner_id,
+                                    ..
+                                }) => (ident, sig, owner_id),
+                                hir::Node::TraitItem(&hir::TraitItem {
+                                    ident,
+                                    kind: hir::TraitItemKind::Fn(ref sig, ..),
+                                    owner_id,
+                                    ..
+                                }) => (ident, sig, owner_id),
+                                hir::Node::ImplItem(&hir::ImplItem {
+                                    ident,
+                                    kind: hir::ImplItemKind::Fn(ref sig, ..),
+                                    owner_id,
+                                    ..
+                                }) => (ident, sig, owner_id),
+                                _ => return None,
+                            };
+                            Some((owner_id.def_id, sig.decl, ident.name != sym::main))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        })
     }
 }

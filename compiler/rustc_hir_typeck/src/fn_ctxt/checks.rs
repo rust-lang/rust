@@ -1774,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // that highlight errors inline.
                     let mut sp = blk.span;
                     let mut fn_span = None;
-                    if let Some((fn_def_id, decl, _)) = self.get_fn_decl(blk.hir_id) {
+                    if let Some((fn_def_id, decl, _)) = self.tcx.get_fn_decl(blk.hir_id) {
                         let ret_sp = decl.output.span();
                         if let Some(block_sp) = self.parent_item_span(blk.hir_id) {
                             // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
