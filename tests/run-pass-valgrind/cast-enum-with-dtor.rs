@@ -2,14 +2,14 @@
 
 // check dtor calling order when casting enums.
 
+use std::mem;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
-use std::mem;
 
 enum E {
     A = 0,
     B = 1,
-    C = 2
+    C = 2,
 }
 
 static FLAG: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
@@ -19,7 +19,7 @@ impl Drop for E {
         // avoid dtor loop
         unsafe { mem::forget(mem::replace(self, E::B)) };
 
-        FLAG.store(FLAG.load(Ordering::SeqCst)+1, Ordering::SeqCst);
+        FLAG.store(FLAG.load(Ordering::SeqCst) + 1, Ordering::SeqCst);
     }
 }
 

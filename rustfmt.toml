@@ -17,7 +17,6 @@ ignore = [
     "/tests/incremental/",            # These tests are somewhat sensitive to source code layout.
     "/tests/pretty/",                 # These tests are very sensitive to source code layout.
     "/tests/run-make/translation/test.rs", # This test contains syntax errors.
-    "/tests/run-pass-valgrind/",
     "/tests/rustdoc/",
     "/tests/rustdoc-gui/",
     "/tests/rustdoc-js/",

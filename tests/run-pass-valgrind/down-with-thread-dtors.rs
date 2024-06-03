@@ -27,13 +27,17 @@ impl Drop for Bar {
 
 impl Drop for Baz {
     fn drop(&mut self) {
-        unsafe { HIT = true; }
+        unsafe {
+            HIT = true;
+        }
     }
 }
 
 fn main() {
     std::thread::spawn(|| {
         FOO.with(|_| {});
-    }).join().unwrap();
+    })
+    .join()
+    .unwrap();
     assert!(unsafe { HIT });
 }
