@@ -1,15 +1,4 @@
-//! macOS-specific raw type definitions
-
-#![stable(feature = "raw_ext", since = "1.1.0")]
-#![deprecated(
-    since = "1.8.0",
-    note = "these type aliases are no longer supported by \
-            the standard library, the `libc` crate on \
-            crates.io should be used instead for the correct \
-            definitions"
-)]
-#![allow(deprecated)]
-
+//! Apple-specific raw type definitions
 use crate::os::raw::c_long;
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -35,6 +24,7 @@ pub type pthread_t = usize;
 #[repr(C)]
 #[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
+#[allow(dead_code)]
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_dev: i32,
