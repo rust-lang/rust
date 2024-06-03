@@ -56,7 +56,6 @@ fn main() {
         "--target",
         &target,
     ])
-    .env_clear()
     .env("PATH", path)
     .env("RUSTC", rustc)
     .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes")
