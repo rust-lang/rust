@@ -1040,8 +1040,13 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     ) -> Option<ty::Const<'tcx>> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.infcx.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
-            // THISPR
-            Ok(Some(val)) => Some(ty::Const::new_value(self.interner(), val, todo!())),
+            Ok(Some(val)) => Some(ty::Const::new_value(
+                self.interner(),
+                val,
+                self.interner()
+                    .type_of(unevaluated.def)
+                    .instantiate(self.interner(), unevaluated.args),
+            )),
             Ok(None) | Err(ErrorHandled::TooGeneric(_)) => None,
             Err(ErrorHandled::Reported(e, _)) => {
                 Some(ty::Const::new_error(self.interner(), e.into()))

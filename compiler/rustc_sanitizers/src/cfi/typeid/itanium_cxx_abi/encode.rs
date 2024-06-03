@@ -116,12 +116,10 @@ fn encode_const<'tcx>(
         }
 
         // Literal arguments
-        ty::ConstKind::Value(..) => {
+        ty::ConstKind::Value(ct_ty, ..) => {
             // L<element-type>[n]<element-value>E as literal argument
 
             // Element type
-            // THISPR
-            let ct_ty: Ty<'tcx> = todo!();
             s.push_str(&encode_ty(tcx, ct_ty, dict, options));
 
             // The only allowed types of const values are bool, u8, u16, u32,

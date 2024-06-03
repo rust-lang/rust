@@ -601,9 +601,15 @@ impl<'tcx> CommonConsts<'tcx> {
         };
 
         CommonConsts {
-            unit: mk_const(ty::ConstKind::Value(ty::ValTree::zst())),
-            true_: mk_const(ty::ConstKind::Value(ty::ValTree::Leaf(ty::ScalarInt::TRUE))),
-            false_: mk_const(ty::ConstKind::Value(ty::ValTree::Leaf(ty::ScalarInt::FALSE))),
+            unit: mk_const(ty::ConstKind::Value(types.unit, ty::ValTree::zst())),
+            true_: mk_const(ty::ConstKind::Value(
+                types.bool,
+                ty::ValTree::Leaf(ty::ScalarInt::TRUE),
+            )),
+            false_: mk_const(ty::ConstKind::Value(
+                types.bool,
+                ty::ValTree::Leaf(ty::ScalarInt::FALSE),
+            )),
         }
     }
 }

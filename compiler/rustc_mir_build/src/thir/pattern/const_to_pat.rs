@@ -101,7 +101,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // level of indirection can be eliminated
 
         let have_valtree =
-            matches!(cv, mir::Const::Ty(c) if matches!(c.kind(), ty::ConstKind::Value(_)));
+            matches!(cv, mir::Const::Ty(c) if matches!(c.kind(), ty::ConstKind::Value(_, _)));
         let inlined_const_as_pat = match cv {
             mir::Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Param(_)
@@ -113,8 +113,8 @@ impl<'tcx> ConstToPat<'tcx> {
                 | ty::ConstKind::Expr(_) => {
                     span_bug!(self.span, "unexpected const in `to_pat`: {:?}", c.kind())
                 }
-                ty::ConstKind::Value(valtree) => {
-                    self.recur(valtree, cv.ty()).unwrap_or_else(|_: FallbackToOpaqueConst| {
+                ty::ConstKind::Value(ty, valtree) => {
+                    self.recur(valtree, ty).unwrap_or_else(|_: FallbackToOpaqueConst| {
                         Box::new(Pat {
                             span: self.span,
                             ty: cv.ty(),

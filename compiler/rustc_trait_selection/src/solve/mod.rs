@@ -178,7 +178,9 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
             ty::ConstKind::Infer(_) => {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-            ty::ConstKind::Placeholder(_) | ty::ConstKind::Value(_) | ty::ConstKind::Error(_) => {
+            ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Value(_, _)
+            | ty::ConstKind::Error(_) => {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             // We can freely ICE here as:

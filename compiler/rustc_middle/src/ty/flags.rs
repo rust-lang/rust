@@ -372,7 +372,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
-            ty::ConstKind::Value(_) => {}
+            ty::ConstKind::Value(ty, _) => self.add_ty(ty),
             ty::ConstKind::Expr(e) => self.add_args(e.args()),
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }

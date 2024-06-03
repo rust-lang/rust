@@ -415,7 +415,7 @@ pub fn mir_const_from_ty_const<'tcx>(
     ty: Ty<'tcx>,
 ) -> stable_mir::ty::MirConst {
     let kind = match ty_const.kind() {
-        ty::Value(val) => {
+        ty::Value(ty, val) => {
             let val = match val {
                 ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
                 ty::ValTree::Branch(branch) => {
@@ -456,7 +456,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         let kind = match self.kind() {
-            ty::Value(val) => {
+            ty::Value(ty, val) => {
                 let val = match val {
                     ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
                     ty::ValTree::Branch(branch) => {
@@ -464,9 +464,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                     }
                 };
 
-                // THISPR
-                let ty = todo!();
-                // let ty = tables.tcx.lift(c.ty()).unwrap();
+                let ty = tables.tcx.lift(ty).unwrap();
                 let const_val = tables.tcx.valtree_to_const_val((ty, val));
                 if matches!(const_val, mir::ConstValue::ZeroSized) {
                     stable_mir::ty::TyConstKind::ZSTValue(ty.stable(tables))

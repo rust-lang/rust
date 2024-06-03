@@ -249,7 +249,7 @@ impl<'tcx> Const<'tcx> {
     pub fn is_required_const(&self) -> bool {
         match self {
             Const::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(_) => false, // already a value, cannot error
+                ty::ConstKind::Value(_, _) => false, // already a value, cannot error
                 _ => true,
             },
             Const::Val(..) => false, // already a value, cannot error
@@ -261,9 +261,7 @@ impl<'tcx> Const<'tcx> {
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             Const::Ty(c) => match c.kind() {
-                // THISPR
-                // if c.ty().is_primitive()
-                ty::ConstKind::Value(valtree) if todo!() => {
+                ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
                     // A valtree of a type where leaves directly represent the scalar const value.
                     // Just checking whether it is a leaf is insufficient as e.g. references are leafs
                     // but the leaf value is the value they point to, not the reference itself!
@@ -282,9 +280,9 @@ impl<'tcx> Const<'tcx> {
         match self {
             Const::Val(ConstValue::Scalar(Scalar::Int(x)), _) => Some(x),
             Const::Ty(c) => match c.kind() {
-                // THISPR
-                // if c.ty().is_primitive()
-                ty::ConstKind::Value(valtree) if todo!() => Some(valtree.unwrap_leaf()),
+                ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
+                    Some(valtree.unwrap_leaf())
+                }
                 _ => None,
             },
             _ => None,
@@ -312,8 +310,8 @@ impl<'tcx> Const<'tcx> {
             Const::Ty(c) => {
                 // We want to consistently have a "clean" value for type system constants (i.e., no
                 // data hidden in the padding), so we always go through a valtree here.
-                let val = c.eval(tcx, param_env, span)?;
-                Ok(tcx.valtree_to_const_val((self.ty(), val)))
+                let (ty, val) = c.eval(tcx, param_env, span)?;
+                Ok(tcx.valtree_to_const_val((ty, val)))
             }
             Const::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
@@ -341,17 +339,16 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Scalar> {
-        match self {
-            // THISPR
-            // c.ty().is_primitive()
-            Const::Ty(c) if todo!() => {
-                // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
-                // are valtree leaves, and *not* on references. (References should return the
-                // pointer here, which valtrees don't represent.)
-                let val = c.eval(tcx, param_env, DUMMY_SP).ok()?;
-                Some(val.unwrap_leaf().into())
-            }
-            _ => self.eval(tcx, param_env, DUMMY_SP).ok()?.try_to_scalar(),
+        if let Const::Ty(c) = self
+            && let ty::ConstKind::Value(ty, val) = c.kind()
+            && ty.is_primitive()
+        {
+            // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
+            // are valtree leaves, and *not* on references. (References should return the
+            // pointer here, which valtrees don't represent.)
+            Some(val.unwrap_leaf().into())
+        } else {
+            self.eval(tcx, param_env, DUMMY_SP).ok()?.try_to_scalar()
         }
     }
 
@@ -446,11 +443,10 @@ impl<'tcx> Const<'tcx> {
 
     pub fn from_ty_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         match c.kind() {
-            ty::ConstKind::Value(valtree) => {
+            ty::ConstKind::Value(ty, valtree) => {
                 // Make sure that if `c` is normalized, then the return value is normalized.
-                // THISPR
-                let const_val = tcx.valtree_to_const_val((todo!(), valtree));
-                Self::Val(const_val, todo!())
+                let const_val = tcx.valtree_to_const_val((ty, valtree));
+                Self::Val(const_val, ty)
             }
             _ => Self::Ty(c),
         }
@@ -469,9 +465,7 @@ impl<'tcx> Const<'tcx> {
                 // A valtree may be a reference. Valtree references correspond to a
                 // different allocation each time they are evaluated. Valtrees for primitive
                 // types are fine though.
-                // THISPR
-                // c.ty().is_primitive()
-                ty::ConstKind::Value(_) => todo!(),
+                ty::ConstKind::Value(ty, _) => ty.is_primitive(),
                 ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
                 // This can happen if evaluation of a constant failed. The result does not matter
                 // much since compilation is doomed.

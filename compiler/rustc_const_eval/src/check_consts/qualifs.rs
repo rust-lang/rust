@@ -360,7 +360,7 @@ where
         Const::Ty(ct)
             if matches!(
                 ct.kind(),
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
+                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_, _)
             ) =>
         {
             None

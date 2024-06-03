@@ -1201,6 +1201,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .expect_const()
             .eval(tcx, ty::ParamEnv::reveal_all(), span)
             .unwrap()
+            .1
             .unwrap_branch();
         let n = idx.len() as u64;
 
