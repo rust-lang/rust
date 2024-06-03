@@ -422,6 +422,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span: Span,
             inferred_params: Vec<Span>,
             infer_args: bool,
+            incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
 
         impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for GenericArgsCtxt<'a, 'tcx> {
@@ -508,6 +509,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
+
+                if let Err(incorrect) = self.incorrect_args {
+                    if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        return match param.kind {
+                            GenericParamDefKind::Lifetime => {
+                                ty::Region::new_error(tcx, incorrect.reported).into()
+                            }
+                            GenericParamDefKind::Type { .. } => {
+                                Ty::new_error(tcx, incorrect.reported).into()
+                            }
+                            GenericParamDefKind::Const { .. } => ty::Const::new_error(
+                                tcx,
+                                incorrect.reported,
+                                Ty::new_error(tcx, incorrect.reported),
+                            )
+                            .into(),
+                        };
+                    }
+                }
                 match param.kind {
                     GenericParamDefKind::Lifetime => self
                         .lowerer
@@ -568,15 +588,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-
-        let mut args_ctx = GenericArgsCtxt {
-            lowerer: self,
-            def_id,
-            span,
-            generic_args: segment.args(),
-            inferred_params: vec![],
-            infer_args: segment.infer_args,
-        };
         if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
             && generics.has_self
             && !tcx.has_attr(def_id, sym::const_trait)
@@ -588,6 +599,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self.set_tainted_by_errors(reported);
             arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
         }
+
+        let mut args_ctx = GenericArgsCtxt {
+            lowerer: self,
+            def_id,
+            span,
+            generic_args: segment.args(),
+            inferred_params: vec![],
+            infer_args: segment.infer_args,
+            incorrect_args: &arg_count.correct,
+        };
         let args = lower_generic_args(
             tcx,
             def_id,

@@ -12,28 +12,13 @@ error[E0308]: mismatched types
 LL |         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
    |                                                                          ^^ expected `Assume`, found `()`
 
-error[E0277]: `Src` cannot be safely transmuted into `Dst`
-  --> $DIR/transmutable-ice-110969.rs:25:60
-   |
-LL |         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
-   |                                                            ^^^ `Dst` may carry safety invariants
-   |
-note: required by a bound in `is_transmutable`
-  --> $DIR/transmutable-ice-110969.rs:11:14
-   |
-LL |     pub fn is_transmutable<Src, Dst, Context, const ASSUME: std::mem::Assume>()
-   |            --------------- required by a bound in this function
-LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
-
 error[E0308]: mismatched types
   --> $DIR/transmutable-ice-110969.rs:25:29
    |
 LL |         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0107, E0277, E0308.
+Some errors have detailed explanations: E0107, E0308.
 For more information about an error, try `rustc --explain E0107`.
