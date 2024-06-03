@@ -167,6 +167,9 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);
                 }
+                ty::ConstKind::Infer(InferConst::EffectVar(evid)) => {
+                    return Err(FixupError::UnresolvedEffect(evid));
+                }
                 _ => {}
             }
             c.try_super_fold_with(self)
