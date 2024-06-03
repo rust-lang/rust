@@ -1481,29 +1481,33 @@ impl FromRawFd for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "netbsd",
-            target_os = "illumos",
-            target_os = "solaris"
-        ))]
+        #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let mut p = PathBuf::from("/proc/self/fd");
             p.push(&fd.to_string());
             readlink(&p).ok()
         }
 
-        #[cfg(target_vendor = "apple")]
+        #[cfg(any(target_vendor = "apple", target_os = "netbsd"))]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             // FIXME: The use of PATH_MAX is generally not encouraged, but it
-            // is inevitable in this case because Apple targets define `fcntl`
+            // is inevitable in this case because Apple targets and NetBSD define `fcntl`
             // with `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
             // alternatives. If a better method is invented, it should be used
             // instead.
             let mut buf = vec![0; libc::PATH_MAX as usize];
             let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
             if n == -1 {
-                return None;
+                cfg_if::cfg_if! {
+                    if #[cfg(target_os = "netbsd")] {
+                        // fallback to procfs as last resort
+                        let mut p = PathBuf::from("/proc/self/fd");
+                        p.push(&fd.to_string());
+                        return readlink(&p).ok();
+                    } else {
+                        return None;
+                    }
+                }
             }
             let l = buf.iter().position(|&c| c == 0).unwrap();
             buf.truncate(l as usize);
