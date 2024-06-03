@@ -732,8 +732,10 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v>,
 ) -> V::Result {
-    match const_arg.kind {
-        ConstArgKind::Anon(anon) => visitor.visit_anon_const(anon),
+    try_visit!(visitor.visit_id(const_arg.hir_id));
+    match &const_arg.kind {
+        ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, const_arg.hir_id, qpath.span()),
+        ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
     }
 }
 

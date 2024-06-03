@@ -471,19 +471,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         const_arg: &ConstArg<'tcx>,
         param_def_id: DefId,
     ) -> ty::Const<'tcx> {
-        match &const_arg.kind {
+        let ct = match const_arg.kind {
+            ConstArgKind::Path(qpath) => {
+                // FIXME(min_generic_const_exprs): for now only params are lowered to ConstArgKind::Path
+                ty::Const::from_param(self.tcx, qpath, const_arg.hir_id)
+            }
             ConstArgKind::Anon(anon) => {
                 let did = anon.def_id;
                 self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-                let ct = ty::Const::from_anon_const(self.tcx, did);
-                self.register_wf_obligation(
-                    ct.into(),
-                    self.tcx.hir().span(anon.hir_id),
-                    ObligationCauseCode::WellFormed(None),
-                );
-                ct
+                ty::Const::from_anon_const(self.tcx, did)
             }
-        }
+        };
+        self.register_wf_obligation(
+            ct.into(),
+            self.tcx.hir().span(const_arg.hir_id),
+            ObligationCauseCode::WellFormed(None),
+        );
+        ct
     }
 
     // If the type given by the user has free regions, save it for later, since

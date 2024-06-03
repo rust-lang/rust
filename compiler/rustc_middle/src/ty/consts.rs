@@ -3,9 +3,9 @@ use crate::mir::interpret::{ErrorHandled, LitToConstInput, Scalar};
 use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{self as hir, HirId};
 use rustc_macros::HashStable;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
@@ -200,7 +200,7 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
-        match Self::try_from_lit_or_param(tcx, ty, expr) {
+        match Self::try_from_lit(tcx, ty, expr) {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
@@ -212,12 +212,40 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    /// Lower a const param to a [`Const`].
+    ///
+    /// IMPORTANT: `qpath` must be a const param, otherwise this will panic
+    pub fn from_param(tcx: TyCtxt<'tcx>, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Self {
+        // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
+        // does not provide the parents generics to anonymous constants. We still allow generic const
+        // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
+        // ever try to instantiate the generic parameters in their bodies.
+        let hir::QPath::Resolved(_, &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. }) =
+            qpath
+        else {
+            bug!("non-param passed to Const::from_param")
+        };
+
+        match tcx.named_bound_var(hir_id) {
+            Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                // Find the name and index of the const parameter by indexing the generics of
+                // the parent item and construct a `ParamConst`.
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&def_id];
+                let name = tcx.item_name(def_id);
+                ty::Const::new_param(tcx, ty::ParamConst::new(index, name))
+            }
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index))
+            }
+            Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
+            arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", hir_id),
+        }
+    }
+
     #[instrument(skip(tcx), level = "debug")]
-    fn try_from_lit_or_param(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> Option<Self> {
+    fn try_from_lit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> Option<Self> {
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = match &expr.kind {
@@ -249,35 +277,7 @@ impl<'tcx> Const<'tcx> {
                 }
             }
         }
-
-        // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
-        // does not provide the parents generics to anonymous constants. We still allow generic const
-        // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
-        // ever try to instantiate the generic parameters in their bodies.
-        match expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. },
-            )) => {
-                match tcx.named_bound_var(expr.hir_id) {
-                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
-                        // Find the name and index of the const parameter by indexing the generics of
-                        // the parent item and construct a `ParamConst`.
-                        let item_def_id = tcx.parent(def_id);
-                        let generics = tcx.generics_of(item_def_id);
-                        let index = generics.param_def_id_to_index[&def_id];
-                        let name = tcx.item_name(def_id);
-                        Some(ty::Const::new_param(tcx, ty::ParamConst::new(index, name)))
-                    }
-                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
-                        Some(ty::Const::new_bound(tcx, debruijn, ty::BoundVar::from_u32(index)))
-                    }
-                    Some(rbv::ResolvedArg::Error(guar)) => Some(ty::Const::new_error(tcx, guar)),
-                    arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
-                }
-            }
-            _ => None,
-        }
+        None
     }
 
     #[inline]

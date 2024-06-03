@@ -230,6 +230,8 @@ impl<'hir> PathSegment<'hir> {
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg<'hir> {
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
     pub kind: ConstArgKind<'hir>,
     /// Indicates whether this comes from a `~const` desugaring.
     pub is_desugared_from_effects: bool,
@@ -238,19 +240,15 @@ pub struct ConstArg<'hir> {
 impl<'hir> ConstArg<'hir> {
     pub fn span(&self) -> Span {
         match self.kind {
+            ConstArgKind::Path(path) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
-        }
-    }
-
-    pub fn hir_id(&self) -> HirId {
-        match self.kind {
-            ConstArgKind::Anon(anon) => anon.hir_id,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub enum ConstArgKind<'hir> {
+    Path(QPath<'hir>),
     Anon(&'hir AnonConst),
 }
 
@@ -288,7 +286,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.hir_id(),
+            GenericArg::Const(c) => c.hir_id,
             GenericArg::Infer(i) => i.hir_id,
         }
     }
@@ -3978,7 +3976,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 40);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);

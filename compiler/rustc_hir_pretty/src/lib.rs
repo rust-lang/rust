@@ -993,6 +993,7 @@ impl<'a> State<'a> {
 
     fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {
         match &const_arg.kind {
+            ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
         }
     }

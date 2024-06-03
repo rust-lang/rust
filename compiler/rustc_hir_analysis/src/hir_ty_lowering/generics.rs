@@ -10,8 +10,8 @@ use rustc_errors::{
 };
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
-use rustc_hir::{self as hir, ConstArgKind};
+use rustc_hir::{self as hir};
+use rustc_hir::{ConstArgKind, GenericArg};
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
@@ -112,10 +112,7 @@ fn generic_arg_mismatch_err(
             }
         }
         (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            let ConstArgKind::Anon(anon) = cnst.kind;
-            let body = tcx.hir().body(anon.body);
-            if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
-            {
+            if let ConstArgKind::Path(hir::QPath::Resolved(_, path)) = cnst.kind {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {
                     err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                     err.help("function item types cannot be named directly");

@@ -1155,40 +1155,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ty,
                                 );
 
-                                // Construct an AnonConst where the expr is the "ty"'s path.
-
-                                let parent_def_id = self.current_hir_id_owner;
-                                let node_id = self.next_node_id();
-                                let span = self.lower_span(ty.span);
-
-                                // Add a definition for the in-band const def.
-                                let def_id = self.create_def(
-                                    parent_def_id.def_id,
-                                    node_id,
-                                    kw::Empty,
-                                    DefKind::AnonConst,
-                                    span,
+                                let qpath = self.lower_qpath(
+                                    ty.id,
+                                    &None,
+                                    path,
+                                    ParamMode::Optional,
+                                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                    None,
                                 );
-
-                                let path_expr = Expr {
-                                    id: ty.id,
-                                    kind: ExprKind::Path(None, path.clone()),
-                                    span,
-                                    attrs: AttrVec::new(),
-                                    tokens: None,
-                                };
-
-                                let ct = self.with_new_scopes(span, |this| {
-                                    self.arena.alloc(hir::AnonConst {
-                                        def_id,
-                                        hir_id: this.lower_node_id(node_id),
-                                        body: this
-                                            .lower_const_body(path_expr.span, Some(&path_expr)),
-                                        span,
-                                    })
-                                });
                                 return GenericArg::Const(ConstArg {
-                                    kind: ConstArgKind::Anon(ct),
+                                    hir_id: self.lower_node_id(ty.id),
+                                    kind: ConstArgKind::Path(qpath),
                                     is_desugared_from_effects: false,
                                 });
                             }
@@ -1198,10 +1175,39 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArg::Type(self.lower_ty(ty, itctx))
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                kind: ConstArgKind::Anon(self.lower_anon_const(ct)),
-                is_desugared_from_effects: false,
-            }),
+            ast::GenericArg::Const(ct) => GenericArg::Const(self.lower_anon_const_as_const_arg(ct)),
+        }
+    }
+
+    fn lower_anon_const_as_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
+        if let ExprKind::Path(qself, path) = &anon.value.kind {
+            let qpath = self.lower_qpath(
+                anon.id,
+                qself,
+                path,
+                ParamMode::Optional,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+            // FIXME(min_generic_const_exprs): for now we only lower params to ConstArgKind::Path
+            if let hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
+            ) = qpath
+            {
+                return ConstArg {
+                    hir_id: self.lower_node_id(anon.id),
+                    kind: ConstArgKind::Path(qpath),
+                    is_desugared_from_effects: false,
+                };
+            }
+        }
+
+        let lowered_anon = self.lower_anon_const(anon);
+        ConstArg {
+            hir_id: lowered_anon.hir_id,
+            kind: ConstArgKind::Anon(lowered_anon),
+            is_desugared_from_effects: false,
         }
     }
 

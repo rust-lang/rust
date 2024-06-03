@@ -288,6 +288,9 @@ pub(crate) fn clean_const<'tcx>(
     _cx: &mut DocContext<'tcx>,
 ) -> Constant {
     match &constant.kind {
+        ConstArgKind::Path(qpath) => {
+            Constant { kind: ConstantKind::Path { path: qpath_to_string(&qpath).into() } }
+        }
         ConstArgKind::Anon(anon) => Constant { kind: ConstantKind::Anonymous { body: anon.body } },
     }
 }

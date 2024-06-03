@@ -476,7 +476,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => match &ct.kind {
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => match ct.kind {
+                        hir::ConstArgKind::Path(qpath) => {
+                            // FIXME(min_generic_const_exprs): for now only params are lowered to ConstArgKind::Path
+                            ty::Const::from_param(tcx, qpath, ct.hir_id).into()
+                        }
                         hir::ConstArgKind::Anon(anon) => {
                             let did = anon.def_id;
                             tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
