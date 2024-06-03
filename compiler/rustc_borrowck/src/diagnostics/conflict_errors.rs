@@ -1347,7 +1347,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let ocx = ObligationCtxt::new(self.infcx);
+        let ocx = ObligationCtxt::new_with_diagnostics(self.infcx);
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
         ocx.register_bound(cause, self.param_env, ty, def_id);

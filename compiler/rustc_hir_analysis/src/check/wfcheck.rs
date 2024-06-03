@@ -37,7 +37,7 @@ use rustc_trait_selection::traits::misc::{
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
+    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
 use rustc_type_ir::TypeFlags;
 
@@ -45,13 +45,13 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
-    pub(super) ocx: ObligationCtxt<'a, 'tcx>,
+    pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
     span: Span,
     body_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
 impl<'a, 'tcx> Deref for WfCheckingCtxt<'a, 'tcx> {
-    type Target = ObligationCtxt<'a, 'tcx>;
+    type Target = ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>;
     fn deref(&self) -> &Self::Target {
         &self.ocx
     }
@@ -106,7 +106,7 @@ where
 {
     let param_env = tcx.param_env(body_def_id);
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
 

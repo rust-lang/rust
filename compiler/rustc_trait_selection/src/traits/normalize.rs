@@ -3,11 +3,13 @@ use super::error_reporting::OverflowCause;
 use super::error_reporting::TypeErrCtxtExt;
 use super::SelectionContext;
 use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
+use crate::solve::NextSolverError;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::FromSolverError;
 use rustc_infer::traits::PredicateObligation;
-use rustc_infer::traits::{FulfillmentError, Normalized, Obligation, TraitEngine};
+use rustc_infer::traits::{Normalized, Obligation, TraitEngine};
 use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder};
@@ -44,11 +46,15 @@ impl<'tcx> At<'_, 'tcx> {
     /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
     /// the old solver or have removed the old solver, remove `traits::fully_normalize` and
     /// rename this function to `At::fully_normalize`.
-    fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+    fn deeply_normalize<T, E>(
         self,
         value: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+        fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+    ) -> Result<T, Vec<E>>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+        E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+    {
         if self.infcx.next_trait_solver() {
             crate::solve::deeply_normalize(self, value)
         } else {

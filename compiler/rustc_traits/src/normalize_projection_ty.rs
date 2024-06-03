@@ -7,9 +7,7 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalAliasGoal, NoSolution,
 };
-use rustc_trait_selection::traits::{
-    self, FulfillmentErrorCode, ObligationCause, SelectionContext,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ScrubbedTraitError, SelectionContext};
 use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -49,7 +47,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
                 // that impl vars are constrained by the signature, for example).
                 if !tcx.sess.opts.actually_rustdoc {
                     for error in &errors {
-                        if let FulfillmentErrorCode::Cycle(cycle) = &error.code {
+                        if let ScrubbedTraitError::Cycle(cycle) = &error {
                             ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
                         }
                     }

@@ -15,15 +15,14 @@ use hir::def_id::LocalDefId;
 use rustc_hir as hir;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;
 use crate::infer::InferCtxt;
 
-pub use self::engine::{TraitEngine, TraitEngineExt};
+pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
 pub use self::project::MismatchedProjectionTypes;
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
@@ -124,32 +123,6 @@ pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 pub type ObligationInspector<'tcx> =
     fn(&InferCtxt<'tcx>, &PredicateObligation<'tcx>, Result<Certainty, NoSolution>);
 
-pub struct FulfillmentError<'tcx> {
-    pub obligation: PredicateObligation<'tcx>,
-    pub code: FulfillmentErrorCode<'tcx>,
-    /// Diagnostics only: the 'root' obligation which resulted in
-    /// the failure to process `obligation`. This is the obligation
-    /// that was initially passed to `register_predicate_obligation`
-    pub root_obligation: PredicateObligation<'tcx>,
-}
-
-#[derive(Clone)]
-pub enum FulfillmentErrorCode<'tcx> {
-    /// Inherently impossible to fulfill; this trait is implemented if and only
-    /// if it is already implemented.
-    Cycle(Vec<PredicateObligation<'tcx>>),
-    Select(SelectionError<'tcx>),
-    Project(MismatchedProjectionTypes<'tcx>),
-    Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
-    ConstEquate(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
-    Ambiguity {
-        /// Overflow is only `Some(suggest_recursion_limit)` when using the next generation
-        /// trait solver `-Znext-solver`. With the old solver overflow is eagerly handled by
-        /// emitting a fatal error instead.
-        overflow: Option<bool>,
-    },
-}
-
 impl<'tcx, O> Obligation<'tcx, O> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
@@ -195,28 +168,6 @@ impl<'tcx, O> Obligation<'tcx, O> {
         value: impl Upcast<TyCtxt<'tcx>, P>,
     ) -> Obligation<'tcx, P> {
         Obligation::with_depth(tcx, self.cause.clone(), self.recursion_depth, self.param_env, value)
-    }
-}
-
-impl<'tcx> FulfillmentError<'tcx> {
-    pub fn new(
-        obligation: PredicateObligation<'tcx>,
-        code: FulfillmentErrorCode<'tcx>,
-        root_obligation: PredicateObligation<'tcx>,
-    ) -> FulfillmentError<'tcx> {
-        FulfillmentError { obligation, code, root_obligation }
-    }
-
-    pub fn is_true_error(&self) -> bool {
-        match self.code {
-            FulfillmentErrorCode::Select(_)
-            | FulfillmentErrorCode::Project(_)
-            | FulfillmentErrorCode::Subtype(_, _)
-            | FulfillmentErrorCode::ConstEquate(_, _) => true,
-            FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
-                false
-            }
-        }
     }
 }
 

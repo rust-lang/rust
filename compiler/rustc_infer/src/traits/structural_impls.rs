@@ -29,33 +29,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     }
 }
 
-impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
-    }
-}
-
-impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::FulfillmentErrorCode::*;
-        match *self {
-            Select(ref e) => write!(f, "{e:?}"),
-            Project(ref e) => write!(f, "{e:?}"),
-            Subtype(ref a, ref b) => {
-                write!(f, "CodeSubtypeError({a:?}, {b:?})")
-            }
-            ConstEquate(ref a, ref b) => {
-                write!(f, "CodeConstEquateError({a:?}, {b:?})")
-            }
-            Ambiguity { overflow: None } => write!(f, "Ambiguity"),
-            Ambiguity { overflow: Some(suggest_increasing_limit) } => {
-                write!(f, "Overflow({suggest_increasing_limit})")
-            }
-            Cycle(ref cycle) => write!(f, "Cycle({cycle:?})"),
-        }
-    }
-}
-
 impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MismatchedProjectionTypes({:?})", self.err)

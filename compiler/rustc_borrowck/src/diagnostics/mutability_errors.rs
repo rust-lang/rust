@@ -6,7 +6,6 @@ use hir::{ExprKind, Param};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
-use rustc_infer::traits;
 use rustc_middle::bug;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, Upcast};
@@ -18,6 +17,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 
 use crate::diagnostics::BorrowedContentSource;

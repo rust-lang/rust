@@ -3049,7 +3049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.universe();
 
-            let ocx = ObligationCtxt::new(self);
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
             let impl_args = self.fresh_args_for_item(base_expr.span, impl_def_id);
             let impl_trait_ref =
                 self.tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(self.tcx, impl_args);

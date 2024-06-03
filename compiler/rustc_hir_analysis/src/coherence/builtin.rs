@@ -267,7 +267,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         .join(", "),
                 }));
             } else {
-                let ocx = ObligationCtxt::new(&infcx);
+                let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
                 for field in coerced_fields {
                     ocx.register_obligation(Obligation::new(
                         tcx,
@@ -480,7 +480,7 @@ pub fn coerce_unsized_info<'tcx>(
     };
 
     // Register an obligation for `A: Trait<B>`.
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation = Obligation::new(
         tcx,

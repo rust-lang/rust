@@ -11,6 +11,7 @@ use crate::solve::{deeply_normalize_for_diagnostics, inspect};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
+use crate::traits::{util, FulfillmentErrorCode};
 use crate::traits::{
     Obligation, ObligationCause, PredicateObligation, PredicateObligations, SelectionContext,
 };
@@ -19,7 +20,6 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, FulfillmentErrorCode};
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
@@ -360,7 +360,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     let infcx = selcx.infcx;
 
     if infcx.next_trait_solver() {
-        let ocx = ObligationCtxt::new(infcx);
+        let ocx = ObligationCtxt::new_with_diagnostics(infcx);
         ocx.register_obligations(obligations.iter().cloned());
         let errors_and_ambiguities = ocx.select_all_or_error();
         // We only care about the obligations that are *definitely* true errors.

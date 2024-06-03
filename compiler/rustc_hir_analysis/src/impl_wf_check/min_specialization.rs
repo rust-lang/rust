@@ -196,7 +196,7 @@ fn get_impl_args(
     impl2_node: Node,
 ) -> Result<(GenericArgsRef<'_>, GenericArgsRef<'_>), ErrorGuaranteed> {
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let param_env = tcx.param_env(impl1_def_id);
     let impl1_span = tcx.def_span(impl1_def_id);
     let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl1_def_id)?;

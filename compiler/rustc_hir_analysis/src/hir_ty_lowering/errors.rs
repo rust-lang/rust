@@ -15,7 +15,6 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::traits::FulfillmentError;
 use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -28,6 +27,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::BytePos;
 use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::traits::FulfillmentError;
 use rustc_trait_selection::traits::{
     object_safety_violations_for_assoc_item, TraitAliasExpansionInfo,
 };

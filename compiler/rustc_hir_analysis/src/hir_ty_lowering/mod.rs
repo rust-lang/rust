@@ -1298,7 +1298,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .copied()
             .filter(|&(impl_, _)| {
                 infcx.probe(|_| {
-                    let ocx = ObligationCtxt::new(infcx);
+                    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
                     let self_ty = ocx.normalize(&ObligationCause::dummy(), param_env, self_ty);
 
                     let impl_args = infcx.fresh_args_for_item(span, impl_);
