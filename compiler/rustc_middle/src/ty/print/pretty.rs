@@ -1459,23 +1459,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(());
         }
 
-        macro_rules! print_underscore {
-            () => {{
-                if print_ty {
-                    self.typed_value(
-                        |this| {
-                            write!(this, "_")?;
-                            Ok(())
-                        },
-                        |this| this.print_type(todo!()),
-                        ": ",
-                    )?;
-                } else {
-                    write!(self, "_")?;
-                }
-            }};
-        }
-
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
                 match self.tcx().def_kind(def) {
@@ -1508,7 +1491,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::InferConst::Var(ct_vid) if let Some(name) = self.const_infer_name(ct_vid) => {
                     p!(write("{}", name))
                 }
-                _ => print_underscore!(),
+                _ => write!(self, "_")?,
             },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(ty, value) => {

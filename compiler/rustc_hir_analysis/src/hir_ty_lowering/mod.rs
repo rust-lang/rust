@@ -2160,17 +2160,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 }
                                 _ => (expr, None),
                             };
-                            let c = match &expr.kind {
+                            let (c, c_ty) = match &expr.kind {
                                 hir::ExprKind::Lit(lit) => {
                                     let lit_input =
                                         LitToConstInput { lit: &lit.node, ty, neg: neg.is_some() };
-                                    match tcx.lit_to_const(lit_input) {
+                                    let ct = match tcx.lit_to_const(lit_input) {
                                         Ok(c) => c,
                                         Err(LitToConstError::Reported(err)) => {
                                             ty::Const::new_error(tcx, err)
                                         }
                                         Err(LitToConstError::TypeError) => todo!(),
-                                    }
+                                    };
+                                    (ct, ty)
                                 }
 
                                 hir::ExprKind::Path(hir::QPath::Resolved(
@@ -2188,20 +2189,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                         .type_of(def_id)
                                         .no_bound_vars()
                                         .expect("const parameter types cannot be generic");
-                                    self.lower_const_param(expr.hir_id)
+                                    let ct = self.lower_const_param(expr.hir_id);
+                                    (ct, ty)
                                 }
 
                                 _ => {
                                     let err = tcx
                                         .dcx()
                                         .emit_err(crate::errors::NonConstRange { span: expr.span });
-                                    ty::Const::new_error(tcx, err)
+                                    (ty::Const::new_error(tcx, err), Ty::new_error(tcx, err))
                                 }
                             };
-                            // THISPR
-                            self.record_ty(expr.hir_id, todo!(), expr.span);
+                            self.record_ty(expr.hir_id, c_ty, expr.span);
                             if let Some((id, span)) = neg {
-                                self.record_ty(id, todo!(), span);
+                                self.record_ty(id, c_ty, span);
                             }
                             c
                         };
