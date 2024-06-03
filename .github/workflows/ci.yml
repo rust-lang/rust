@@ -245,34 +245,6 @@ jobs:
       - name: Test (release)
         run: cross test --verbose --target=${{ matrix.target }} --release
 
-  features:
-    name: "Test cargo features (${{ matrix.simd }} × ${{ matrix.features }})"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        simd:
-          - ""
-          - "avx512"
-        features:
-          - ""
-          - "--features std"
-          - "--features all_lane_counts"
-          - "--all-features"
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Detect AVX512
-        run: echo "CPU_FEATURE=$(lscpu | grep -o avx512[a-z]* | sed s/avx/+avx/ | tr '\n' ',' )" >> $GITHUB_ENV
-      - name: Check build
-        if: ${{ matrix.simd == '' }}
-        run: RUSTFLAGS="-Dwarnings" cargo test --all-targets --no-default-features ${{ matrix.features }}
-      - name: Check AVX
-        if: ${{ matrix.simd == 'avx512' && contains(env.CPU_FEATURE, 'avx512') }}
-        run: |
-          echo "Found AVX features: $CPU_FEATURE"
-          RUSTFLAGS="-Dwarnings -Ctarget-feature=$CPU_FEATURE" cargo test --all-targets --no-default-features ${{ matrix.features }}
-
   miri:
     runs-on: ubuntu-latest
     steps:

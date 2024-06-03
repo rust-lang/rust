@@ -99,7 +99,7 @@ use crate::simd::{
 // directly constructing an instance of the type (i.e. `let vector = Simd(array)`) should be
 // avoided, as it will likely become illegal on `#[repr(simd)]` structs in the future. It also
 // causes rustc to emit illegal LLVM IR in some cases.
-#[repr(simd)]
+#[repr(simd, packed)]
 pub struct Simd<T, const N: usize>([T; N])
 where
     LaneCount<N>: SupportedLaneCount,

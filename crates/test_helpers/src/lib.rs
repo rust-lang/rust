@@ -539,32 +539,17 @@ macro_rules! test_lanes {
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
                     lanes_1 1;
                     lanes_2 2;
+                    lanes_3 3; // test one non-power-of-2 length on miri
                 );
 
                 #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 $crate::test_lanes_helper!(
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
                     lanes_4 4;
-                    lanes_8 8;
-                    lanes_16 16;
-                    lanes_32 32;
-                    lanes_64 64;
-                );
-
-                #[cfg(feature = "all_lane_counts")]
-                $crate::test_lanes_helper!(
-                    // test one non-power-of-2 length on miri
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
-                    lanes_3 3;
-                );
-
-                #[cfg(feature = "all_lane_counts")]
-                #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
-                $crate::test_lanes_helper!(
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
                     lanes_5 5;
                     lanes_6 6;
                     lanes_7 7;
+                    lanes_8 8;
                     lanes_9 9;
                     lanes_10 10;
                     lanes_11 11;
@@ -572,6 +557,7 @@ macro_rules! test_lanes {
                     lanes_13 13;
                     lanes_14 14;
                     lanes_15 15;
+                    lanes_16 16;
                     lanes_17 17;
                     lanes_18 18;
                     lanes_19 19;
@@ -587,6 +573,7 @@ macro_rules! test_lanes {
                     lanes_29 29;
                     lanes_30 30;
                     lanes_31 31;
+                    lanes_32 32;
                     lanes_33 33;
                     lanes_34 34;
                     lanes_35 35;
@@ -618,6 +605,7 @@ macro_rules! test_lanes {
                     lanes_61 61;
                     lanes_62 62;
                     lanes_63 63;
+                    lanes_64 64;
                 );
             }
         )*
@@ -639,36 +627,22 @@ macro_rules! test_lanes_panic {
                     core_simd::simd::LaneCount<$lanes>: core_simd::simd::SupportedLaneCount,
                 $body
 
+                // test some odd and even non-power-of-2 lengths on miri
                 $crate::test_lanes_helper!(
                     #[should_panic];
                     lanes_1 1;
                     lanes_2 2;
-                    lanes_4 4;
-                );
-
-                #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
-                $crate::test_lanes_helper!(
-                    #[should_panic];
-                    lanes_8 8;
-                    lanes_16 16;
-                    lanes_32 32;
-                    lanes_64 64;
-                );
-
-                #[cfg(feature = "all_lane_counts")]
-                $crate::test_lanes_helper!(
-                    // test some odd and even non-power-of-2 lengths on miri
-                    #[should_panic];
                     lanes_3 3;
+                    lanes_4 4;
                     lanes_5 5;
-                    lanes_6 6;
                 );
 
-                #[cfg(feature = "all_lane_counts")]
                 #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 $crate::test_lanes_helper!(
                     #[should_panic];
+                    lanes_6 6;
                     lanes_7 7;
+                    lanes_8 8;
                     lanes_9 9;
                     lanes_10 10;
                     lanes_11 11;
@@ -676,6 +650,7 @@ macro_rules! test_lanes_panic {
                     lanes_13 13;
                     lanes_14 14;
                     lanes_15 15;
+                    lanes_16 16;
                     lanes_17 17;
                     lanes_18 18;
                     lanes_19 19;
@@ -691,6 +666,7 @@ macro_rules! test_lanes_panic {
                     lanes_29 29;
                     lanes_30 30;
                     lanes_31 31;
+                    lanes_32 32;
                     lanes_33 33;
                     lanes_34 34;
                     lanes_35 35;
@@ -722,6 +698,7 @@ macro_rules! test_lanes_panic {
                     lanes_61 61;
                     lanes_62 62;
                     lanes_63 63;
+                    lanes_64 64;
                 );
             }
         )*
