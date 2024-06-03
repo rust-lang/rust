@@ -155,10 +155,6 @@ fn find_path_for_module(
     module_id: ModuleId,
     max_len: usize,
 ) -> Option<(ModPath, Stability)> {
-    if max_len == 0 {
-        return None;
-    }
-
     if let Some(crate_root) = module_id.as_crate_root() {
         if crate_root == ctx.from.derive_crate_root() {
             // - if the item is the crate root, return `crate`
@@ -314,6 +310,8 @@ fn calculate_best_path(
     max_len: usize,
 ) -> Option<(ModPath, Stability)> {
     if max_len <= 1 {
+        // recursive base case, we can't find a path prefix of length 0, one segment is occupied by
+        // the item's name itself.
         return None;
     }
 
@@ -341,18 +339,18 @@ fn calculate_best_path(
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
         // FIXME: cache the `find_local_import_locations` output?
-        for (module_id, name) in find_local_import_locations(db, item, ctx.from, ctx.from_def_map) {
+        find_local_import_locations(db, item, ctx.from, ctx.from_def_map, |name, module_id| {
             if !visited_modules.insert(module_id) {
-                continue;
+                return;
             }
             // we are looking for paths of length up to best_path_len, any longer will make it be
             // less optimal. The -1 is due to us pushing name onto it afterwards.
             if let Some(path) =
                 find_path_for_module(ctx, visited_modules, module_id, best_path_len - 1)
             {
-                process(path, name, &mut best_path_len);
+                process(path, name.clone(), &mut best_path_len);
             }
-        }
+        })
     } else {
         // Item was defined in some upstream crate. This means that it must be exported from one,
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
@@ -454,14 +452,14 @@ fn select_best_path(
     }
 }
 
-// FIXME: Remove allocations
 /// Finds locations in `from.krate` from which `item` can be imported by `from`.
 fn find_local_import_locations(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
     def_map: &DefMap,
-) -> Vec<(ModuleId, Name)> {
+    mut cb: impl FnMut(&Name, ModuleId),
+) {
     let _p = tracing::span!(tracing::Level::INFO, "find_local_import_locations").entered();
 
     // `from` can import anything below `from` with visibility of at least `from`, and anything
@@ -470,19 +468,17 @@ fn find_local_import_locations(
 
     // Compute the initial worklist. We start with all direct child modules of `from` as well as all
     // of its (recursive) parent modules.
-    let data = &def_map[from.local_id];
-    let mut worklist =
-        data.children.values().map(|child| def_map.module_id(*child)).collect::<Vec<_>>();
-    // FIXME: do we need to traverse out of block expressions here?
-    for ancestor in iter::successors(from.containing_module(db), |m| m.containing_module(db)) {
-        worklist.push(ancestor);
-    }
+    let mut worklist = def_map[from.local_id]
+        .children
+        .values()
+        .map(|child| def_map.module_id(*child))
+        // FIXME: do we need to traverse out of block expressions here?
+        .chain(iter::successors(from.containing_module(db), |m| m.containing_module(db)))
+        .collect::<Vec<_>>();
+    let mut seen: FxHashSet<_> = FxHashSet::default();
 
     let def_map = def_map.crate_root().def_map(db);
 
-    let mut seen: FxHashSet<_> = FxHashSet::default();
-
-    let mut locations = Vec::new();
     while let Some(module) = worklist.pop() {
         if !seen.insert(module) {
             continue; // already processed this module
@@ -523,7 +519,7 @@ fn find_local_import_locations(
                 // the item and we're a submodule of it, so can we.
                 // Also this keeps the cached data smaller.
                 if declared || is_pub_or_explicit {
-                    locations.push((module, name.clone()));
+                    cb(name, module);
                 }
             }
         }
@@ -535,8 +531,6 @@ fn find_local_import_locations(
             }
         }
     }
-
-    locations
 }
 
 #[cfg(test)]
