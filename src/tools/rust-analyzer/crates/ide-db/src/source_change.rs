@@ -338,6 +338,12 @@ impl SourceChangeBuilder {
         self.add_snippet(PlaceSnippet::Over(node.syntax().clone().into()))
     }
 
+    /// Adds a snippet to move the cursor selected over `token`
+    pub fn add_placeholder_snippet_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
+        assert!(token.parent().is_some());
+        self.add_snippet(PlaceSnippet::Over(token.into()))
+    }
+
     /// Adds a snippet to move the cursor selected over `nodes`
     ///
     /// This allows for renaming newly generated items without having to go

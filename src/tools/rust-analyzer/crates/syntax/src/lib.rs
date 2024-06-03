@@ -107,14 +107,22 @@ impl<T> Parse<T> {
 }
 
 impl<T: AstNode> Parse<T> {
+    /// Converts this parse result into a parse result for an untyped syntax tree.
     pub fn to_syntax(self) -> Parse<SyntaxNode> {
         Parse { green: self.green, errors: self.errors, _ty: PhantomData }
     }
 
+    /// Gets the parsed syntax tree as a typed ast node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the root node cannot be casted into the typed ast node
+    /// (e.g. if it's an `ERROR` node).
     pub fn tree(&self) -> T {
         T::cast(self.syntax_node()).unwrap()
     }
 
+    /// Converts from `Parse<T>` to [`Result<T, Vec<SyntaxError>>`].
     pub fn ok(self) -> Result<T, Vec<SyntaxError>> {
         match self.errors() {
             errors if !errors.is_empty() => Err(errors),
@@ -167,6 +175,29 @@ impl Parse<SourceFile> {
     }
 }
 
+impl ast::Expr {
+    /// Parses an `ast::Expr` from `text`.
+    ///
+    /// Note that if the parsed root node is not a valid expression, [`Parse::tree`] will panic.
+    /// For example:
+    /// ```rust,should_panic
+    /// # use syntax::{ast, Edition};
+    /// ast::Expr::parse("let fail = true;", Edition::CURRENT).tree();
+    /// ```
+    pub fn parse(text: &str, edition: Edition) -> Parse<ast::Expr> {
+        let _p = tracing::span!(tracing::Level::INFO, "Expr::parse").entered();
+        let (green, errors) = parsing::parse_text_at(text, parser::TopEntryPoint::Expr, edition);
+        let root = SyntaxNode::new_root(green.clone());
+
+        assert!(
+            ast::Expr::can_cast(root.kind()) || root.kind() == SyntaxKind::ERROR,
+            "{:?} isn't an expression",
+            root.kind()
+        );
+        Parse::new(green, errors)
+    }
+}
+
 /// `SourceFile` represents a parse tree for a single Rust file.
 pub use crate::ast::SourceFile;
 
@@ -177,11 +208,7 @@ impl SourceFile {
         let root = SyntaxNode::new_root(green.clone());
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        Parse {
-            green,
-            errors: if errors.is_empty() { None } else { Some(errors.into()) },
-            _ty: PhantomData,
-        }
+        Parse::new(green, errors)
     }
 }
 
@@ -290,12 +317,7 @@ impl ast::TokenTree {
         }
 
         let (green, errors) = builder.finish_raw();
-
-        Parse {
-            green,
-            errors: if errors.is_empty() { None } else { Some(errors.into()) },
-            _ty: PhantomData,
-        }
+        Parse::new(green, errors)
     }
 }
 
