@@ -16,7 +16,8 @@ pub struct ConstDebugInfo;
 
 impl<'tcx> MirPass<'tcx> for ConstDebugInfo {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+        // Disabled in favour of `SingleUseConsts`
+        sess.mir_opt_level() > 2
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

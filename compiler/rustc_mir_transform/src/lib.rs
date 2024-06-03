@@ -106,6 +106,7 @@ mod check_alignment;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
+mod single_use_consts;
 mod sroa;
 mod unreachable_enum_branching;
 mod unreachable_prop;
@@ -593,6 +594,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
+            &single_use_consts::SingleUseConsts,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
