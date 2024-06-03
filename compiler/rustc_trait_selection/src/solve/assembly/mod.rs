@@ -714,7 +714,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         };
 
         // Do not consider built-in object impls for non-object-safe types.
-        if bounds.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
+        if bounds.principal_def_id().is_some_and(|def_id| !tcx.is_object_safe(def_id)) {
             return;
         }
 

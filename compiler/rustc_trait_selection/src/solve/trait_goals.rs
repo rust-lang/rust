@@ -789,7 +789,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         let Goal { predicate: (a_ty, _), .. } = goal;
 
         // Can only unsize to an object-safe trait.
-        if b_data.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
+        if b_data.principal_def_id().is_some_and(|def_id| !tcx.is_object_safe(def_id)) {
             return Err(NoSolution);
         }
 
