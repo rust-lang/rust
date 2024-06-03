@@ -67,13 +67,18 @@ LL |     impl Test {
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:50:9
    |
-LL | fn main() {
-   | --------- move the `impl` block outside of this function `main`
-...
-LL |         impl Test {
-   |         ^^^^^----
-   |              |
-   |              `Test` is not local
+LL |       const {
+   |  ___________-
+LL | |         impl Test {
+   | |         ^^^^^----
+   | |              |
+   | |              `Test` is not local
+LL | |
+LL | |             fn hoo() {}
+...  |
+LL | |         1
+LL | |     };
+   | |_____- move the `impl` block outside of this inline constant `<unnameable>` and up 2 bodies
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>

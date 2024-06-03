@@ -177,10 +177,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
             }
         }
-        Node::Expr(&hir::Expr {
-            kind: hir::ExprKind::Closure { .. } | hir::ExprKind::ConstBlock { .. },
-            ..
-        }) => Some(tcx.typeck_root_def_id(def_id.to_def_id())),
+        Node::ConstBlock(_)
+        | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
+            Some(tcx.typeck_root_def_id(def_id.to_def_id()))
+        }
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
@@ -415,7 +415,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     // provide junk type parameter defs for const blocks.
-    if let Node::Expr(Expr { kind: ExprKind::ConstBlock(..), .. }) = node {
+    if let Node::ConstBlock(_) = node {
         own_params.push(ty::GenericParamDef {
             index: next_index(),
             name: Symbol::intern("<const_ty>"),
