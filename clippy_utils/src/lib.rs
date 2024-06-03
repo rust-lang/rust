@@ -321,6 +321,15 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
         .map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
+/// Checks if the given method call expression calls an inherent method.
+pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+        cx.tcx.trait_of_item(method_id).is_none()
+    } else {
+        false
+    }
+}
+
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
     if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
