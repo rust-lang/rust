@@ -18,7 +18,7 @@ define-function: (
             "color": |color|,
             "background-color": |background|,
             "font-size": "16px",
-            "border-radius": "5px",
+            "border-radius": "2px",
         })
         move-cursor-to: ".test-arrow"
         assert-css: (".test-arrow:hover", {
@@ -26,7 +26,7 @@ define-function: (
             "color": |hover_color|,
             "background-color": |hover_background|,
             "font-size": "16px",
-            "border-radius": "5px",
+            "border-radius": "2px",
         })
     },
 )
