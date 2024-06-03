@@ -262,7 +262,7 @@ impl SpansRefiner {
                 // a region of code, such as skipping past a hole.
                 debug!(?prev, "prev.span starts after curr.span, so curr will be dropped");
             } else {
-                self.some_curr = Some(CurrCovspan::new(curr.span, curr.bcb, curr.is_hole));
+                self.some_curr = Some(CurrCovspan::new(curr.span, curr.bcb, false));
                 return true;
             }
         }
