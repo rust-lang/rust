@@ -29,6 +29,10 @@ macro_rules! demo7 {
     ( $a:tt $b:tt $c:tt $d:tt $e:tt $f:tt $g:tt ) => { println!("seven tokens") };
 }
 
+macro_rules! demon {
+    ( $($n:tt)* ) => { println!("unknown number of tokens") };
+}
+
 fn main() {
     demo1!("");
     demo2!(# "");
@@ -57,4 +61,10 @@ fn main() {
     demo1!(###"foo"#); //~ ERROR invalid string literal
     demo1!(###"foo"##); //~ ERROR invalid string literal
     demo1!(###"foo"###); //~ ERROR invalid string literal
+
+    // More than 255 hashes
+    demon!(########################################################################################\
+        ###########################################################################################\
+        #################################################################################"foo");
+    //~^ ERROR invalid string literal
 }

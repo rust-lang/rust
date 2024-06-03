@@ -1,5 +1,5 @@
 error: prefix `Ñ` is unknown
-  --> $DIR/reserved-guarded-strings-lexing.rs:17:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:23:12
    |
 LL |     demo2!(Ñ"foo");
    |            ^ unknown prefix
@@ -11,7 +11,7 @@ LL |     demo2!(Ñ "foo");
    |             +
 
 error: prefix `Ñ` is unknown
-  --> $DIR/reserved-guarded-strings-lexing.rs:18:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:25:12
    |
 LL |     demo4!(Ñ#""#);
    |            ^ unknown prefix
@@ -23,10 +23,50 @@ LL |     demo4!(Ñ #""#);
    |             +
 
 error: identifiers cannot contain emoji: `🙃`
-  --> $DIR/reserved-guarded-strings-lexing.rs:19:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:29:12
    |
 LL |     demo3!(🙃#"");
    |            ^^
 
-error: aborting due to 3 previous errors
+warning: will be parsed as a guarded string in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:25:13
+   |
+LL |     demo4!(Ñ#""#);
+   |             ^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+note: the lint level is defined here
+  --> $DIR/reserved-guarded-strings-lexing.rs:3:9
+   |
+LL | #![warn(rust_2024_guarded_string_incompatible_syntax)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+   |
+LL |     demo4!(Ñ# ""#);
+   |              +
+
+warning: will be parsed as a guarded string in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:29:13
+   |
+LL |     demo3!(🙃#"");
+   |              ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+   |
+LL |     demo3!(🙃# "");
+   |               +
+
+warning: will be parsed as a guarded string in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:35:12
+   |
+LL | ...n!(####################################################################################################################################################################################################################################################################"foo...
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+
+error: aborting due to 3 previous errors; 3 warnings emitted
 
