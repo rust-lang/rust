@@ -1,8 +1,8 @@
 use crate::compiler_interface::with;
 use crate::mir::pretty::function_body;
 use crate::ty::{
-    AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
-    VariantIdx,
+    AdtDef, ClosureDef, CoroutineDef, GenericArgs, MirConst, Movability, Region, RigidTy, Ty,
+    TyConst, TyKind, VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
 use std::io;
@@ -524,7 +524,7 @@ pub enum Rvalue {
     /// Corresponds to source code like `[x; 32]`.
     ///
     /// [#74836]: https://github.com/rust-lang/rust/issues/74836
-    Repeat(Operand, Const),
+    Repeat(Operand, TyConst),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
@@ -718,7 +718,7 @@ pub enum VarDebugInfoContents {
 pub struct ConstOperand {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub const_: Const,
+    pub const_: MirConst,
 }
 
 // In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
@@ -833,7 +833,7 @@ type UserTypeAnnotationIndex = usize;
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: Const,
+    pub literal: MirConst,
 }
 
 /// The possible branch sites of a [TerminatorKind::SwitchInt].

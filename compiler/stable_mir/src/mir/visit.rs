@@ -36,7 +36,7 @@
 //! variant argument) that does not require visiting.
 
 use crate::mir::*;
-use crate::ty::{Const, GenericArgs, Region, Ty};
+use crate::ty::{GenericArgs, MirConst, Region, Ty, TyConst};
 use crate::{Error, Opaque, Span};
 
 pub trait MirVisitor {
@@ -112,8 +112,13 @@ pub trait MirVisitor {
         self.super_constant(constant, location)
     }
 
-    fn visit_const(&mut self, constant: &Const, location: Location) {
-        self.super_const(constant, location)
+    fn visit_mir_const(&mut self, constant: &MirConst, location: Location) {
+        self.super_mir_const(constant, location)
+    }
+
+    fn visit_ty_const(&mut self, constant: &TyConst, location: Location) {
+        let _ = location;
+        self.super_ty_const(constant)
     }
 
     fn visit_region(&mut self, region: &Region, location: Location) {
@@ -339,7 +344,7 @@ pub trait MirVisitor {
             }
             Rvalue::Repeat(op, constant) => {
                 self.visit_operand(op, location);
-                self.visit_const(constant, location);
+                self.visit_ty_const(constant, location);
             }
             Rvalue::ShallowInitBox(op, ty) => {
                 self.visit_ty(ty, location);
@@ -378,12 +383,16 @@ pub trait MirVisitor {
     fn super_constant(&mut self, constant: &Constant, location: Location) {
         let Constant { span, user_ty: _, literal } = constant;
         self.visit_span(span);
-        self.visit_const(literal, location);
+        self.visit_mir_const(literal, location);
     }
 
-    fn super_const(&mut self, constant: &Const, location: Location) {
-        let Const { kind: _, ty, id: _ } = constant;
+    fn super_mir_const(&mut self, constant: &MirConst, location: Location) {
+        let MirConst { kind: _, ty, id: _ } = constant;
         self.visit_ty(ty, location);
+    }
+
+    fn super_ty_const(&mut self, constant: &TyConst) {
+        let _ = constant;
     }
 
     fn super_region(&mut self, region: &Region) {
@@ -407,7 +416,7 @@ pub trait MirVisitor {
                 self.visit_place(place, PlaceContext::NON_USE, location);
             }
             VarDebugInfoContents::Const(constant) => {
-                self.visit_const(&constant.const_, location);
+                self.visit_mir_const(&constant.const_, location);
             }
         }
     }
