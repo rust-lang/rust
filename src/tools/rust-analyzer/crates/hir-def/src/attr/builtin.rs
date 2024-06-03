@@ -628,6 +628,10 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
+    rustc_attr!(
+        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
+        "the `#[rustc_safe_intrinsic]` marks functions as unsafe in Rust 2024",
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
