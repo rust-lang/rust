@@ -199,7 +199,7 @@ impl Node {
                 let _ = write!(out, " ({} calls)", self.count);
             }
 
-            eprintln!("{}", out);
+            eprintln!("{out}");
 
             for child in &self.children {
                 child.go(level + 1, filter)

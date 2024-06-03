@@ -450,7 +450,7 @@ impl MiniCore {
         }
 
         if !active_regions.is_empty() {
-            panic!("unclosed regions: {:?} Add an `endregion` comment", active_regions);
+            panic!("unclosed regions: {active_regions:?} Add an `endregion` comment");
         }
 
         for flag in &self.valid_flags {

@@ -2422,9 +2422,9 @@ impl Const {
                         let value_signed =
                             i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
                         if value >= 10 {
-                            return Ok(format!("{} ({:#X})", value_signed, value));
+                            return Ok(format!("{value_signed} ({value:#X})"));
                         } else {
-                            return Ok(format!("{}", value_signed));
+                            return Ok(format!("{value_signed}"));
                         }
                     }
                 }

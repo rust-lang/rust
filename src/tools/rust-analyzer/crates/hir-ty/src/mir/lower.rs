@@ -213,7 +213,7 @@ impl MirLowerError {
             | MirLowerError::LangItemNotFound(_)
             | MirLowerError::MutatingRvalue
             | MirLowerError::UnresolvedLabel
-            | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{:?}", self)?,
+            | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{self:?}")?,
         }
         Ok(())
     }

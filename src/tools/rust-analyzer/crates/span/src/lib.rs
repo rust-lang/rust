@@ -218,7 +218,7 @@ impl From<MacroFileId> for HirFileId {
     fn from(MacroFileId { macro_call_id: MacroCallId(id) }: MacroFileId) -> Self {
         _ = Self::ASSERT_MAX_FILE_ID_IS_SAME;
         let id = id.as_u32();
-        assert!(id <= Self::MAX_HIR_FILE_ID, "MacroCallId index {} is too large", id);
+        assert!(id <= Self::MAX_HIR_FILE_ID, "MacroCallId index {id} is too large");
         HirFileId(id | Self::MACRO_FILE_TAG_MASK)
     }
 }

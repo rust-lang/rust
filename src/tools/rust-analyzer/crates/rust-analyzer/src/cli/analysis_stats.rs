@@ -479,7 +479,7 @@ impl flags::AnalysisStats {
                                         .or_insert(1);
                                 } else {
                                     acc.syntax_errors += 1;
-                                    bar.println(format!("Syntax error: \n{}", err));
+                                    bar.println(format!("Syntax error: \n{err}"));
                                 }
                             }
                         }

@@ -220,8 +220,8 @@ impl Tester {
             self.pass_count += 1;
         } else {
             println!("{p:?} FAIL");
-            println!("actual   (r-a)   = {:?}", actual);
-            println!("expected (rustc) = {:?}", expected);
+            println!("actual   (r-a)   = {actual:?}");
+            println!("expected (rustc) = {expected:?}");
             self.fail_count += 1;
         }
     }

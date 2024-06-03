@@ -67,9 +67,9 @@ pub(crate) fn into_to_qualified_from(acc: &mut Assists, ctx: &AssistContext<'_>)
                 edit.replace(
                     method_call.syntax().text_range(),
                     if sc.chars().all(|c| c.is_alphanumeric() || c == ':') {
-                        format!("{}::from({})", sc, receiver)
+                        format!("{sc}::from({receiver})")
                     } else {
-                        format!("<{}>::from({})", sc, receiver)
+                        format!("<{sc}>::from({receiver})")
                     },
                 );
             },
