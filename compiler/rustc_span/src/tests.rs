@@ -61,6 +61,25 @@ fn test_trim() {
     // The resulting span's context should be that of `self`, not `other`.
     let other = span(start, end).with_ctxt(SyntaxContext::from_u32(999));
 
+    // Test cases for `trim_end`.
+
+    assert_eq!(span(well_before, before).trim_end(other), Some(span(well_before, before)));
+    assert_eq!(span(well_before, start).trim_end(other), Some(span(well_before, start)));
+    assert_eq!(span(well_before, mid).trim_end(other), Some(span(well_before, start)));
+    assert_eq!(span(well_before, end).trim_end(other), Some(span(well_before, start)));
+    assert_eq!(span(well_before, after).trim_end(other), Some(span(well_before, start)));
+
+    assert_eq!(span(start, mid).trim_end(other), None);
+    assert_eq!(span(start, end).trim_end(other), None);
+    assert_eq!(span(start, after).trim_end(other), None);
+
+    assert_eq!(span(mid, end).trim_end(other), None);
+    assert_eq!(span(mid, after).trim_end(other), None);
+
+    assert_eq!(span(end, after).trim_end(other), None);
+
+    assert_eq!(span(after, well_after).trim_end(other), None);
+
     // Test cases for `trim_start`.
 
     assert_eq!(span(after, well_after).trim_start(other), Some(span(after, well_after)));
