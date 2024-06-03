@@ -23,7 +23,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Vec<SpanFromMir> {
+) -> Vec<Vec<SpanFromMir>> {
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
     let mut initial_spans = vec![];
@@ -67,7 +67,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     // requires a lot more complexity in the span refiner, for little benefit.)
     initial_spans.dedup_by(|b, a| a.span.source_equal(b.span));
 
-    initial_spans
+    vec![initial_spans]
 }
 
 /// Macros that expand into branches (e.g. `assert!`, `trace!`) tend to generate

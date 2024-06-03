@@ -20,13 +20,16 @@ pub(super) fn extract_refined_covspans(
     basic_coverage_blocks: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let sorted_spans =
+    let sorted_span_buckets =
         from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
-    let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
-    code_mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
-        // Each span produced by the generator represents an ordinary code region.
-        mappings::CodeMapping { span, bcb }
-    }));
+    for bucket in sorted_span_buckets {
+        let refined_spans = SpansRefiner::refine_sorted_spans(bucket);
+        code_mappings.extend(refined_spans.into_iter().map(|covspan| {
+            let RefinedCovspan { span, bcb, is_hole: _ } = covspan;
+            // Each span produced by the refiner represents an ordinary code region.
+            mappings::CodeMapping { span, bcb }
+        }));
+    }
 }
 
 #[derive(Debug)]
