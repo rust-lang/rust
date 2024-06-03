@@ -1,8 +1,9 @@
-use std::env;
 use std::path::Path;
 use std::process::Command;
 
-use crate::{bin_name, cygpath_windows, handle_failed_output, is_msvc, is_windows, tmp_dir, uname};
+use crate::{
+    bin_name, cygpath_windows, env_var, handle_failed_output, is_msvc, is_windows, tmp_dir, uname,
+};
 
 /// Construct a new platform-specific C compiler invocation.
 ///
@@ -27,11 +28,11 @@ impl Cc {
     /// WARNING: This means that what flags are accepted by the underlying C compile is
     /// platform- AND compiler-specific. Consult the relevant docs for `gcc`, `clang` and `mvsc`.
     pub fn new() -> Self {
-        let compiler = env::var("CC").unwrap();
+        let compiler = env_var("CC");
 
         let mut cmd = Command::new(compiler);
 
-        let default_cflags = env::var("CC_DEFAULT_FLAGS").unwrap();
+        let default_cflags = env_var("CC_DEFAULT_FLAGS");
         for flag in default_cflags.split(char::is_whitespace) {
             cmd.arg(flag);
         }
