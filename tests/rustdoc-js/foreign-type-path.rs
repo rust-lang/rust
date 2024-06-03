@@ -2,12 +2,11 @@
 
 pub mod aaaaaaa {
 
-    extern {
+    extern "C" {
         pub type MyForeignType;
     }
 
     impl MyForeignType {
         pub fn my_method() {}
     }
-
 }

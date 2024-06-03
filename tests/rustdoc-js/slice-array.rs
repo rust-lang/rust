@@ -3,12 +3,20 @@ pub struct Q;
 pub struct R<T>(T);
 
 // returns test
-pub fn alef() -> &'static [R<P>] { loop {} }
-pub fn bet() -> R<[Q; 32]> { loop {} }
+pub fn alef() -> &'static [R<P>] {
+    loop {}
+}
+pub fn bet() -> R<[Q; 32]> {
+    loop {}
+}
 
 // in_args test
-pub fn alpha(_x: R<&'static [P]>) { loop {} }
-pub fn beta(_x: [R<Q>; 32]) { loop {} }
+pub fn alpha(_x: R<&'static [P]>) {
+    loop {}
+}
+pub fn beta(_x: [R<Q>; 32]) {
+    loop {}
+}
 
 pub trait TraitCat {}
 pub trait TraitDog {}
