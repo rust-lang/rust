@@ -88,6 +88,33 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         }
     }
 
+    fn emit_deprecated_safe_fn_call(&self, span: Span, kind: &UnsafeOpKind) -> bool {
+        match kind {
+            // Allow calls to deprecated-safe unsafe functions if the caller is
+            // from an edition before 2024.
+            &UnsafeOpKind::CallToUnsafeFunction(Some(id))
+                if !span.at_least_rust_2024()
+                    && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
+            {
+                self.tcx.emit_node_span_lint(
+                    DEPRECATED_SAFE,
+                    self.hir_context,
+                    span,
+                    CallToDeprecatedSafeFnRequiresUnsafe {
+                        span,
+                        function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
+                        sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
+                            left: span.shrink_to_lo(),
+                            right: span.shrink_to_hi(),
+                        },
+                    },
+                );
+                true
+            }
+            _ => false,
+        }
+    }
+
     fn requires_unsafe(&mut self, span: Span, kind: UnsafeOpKind) {
         let unsafe_op_in_unsafe_fn_allowed = self.unsafe_op_in_unsafe_fn_allowed();
         match self.safety_context {
@@ -101,43 +128,29 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             }
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
-                // unsafe_op_in_unsafe_fn is disallowed
-                kind.emit_unsafe_op_in_unsafe_fn_lint(
-                    self.tcx,
-                    self.hir_context,
-                    span,
-                    self.suggest_unsafe_block,
-                );
-                self.suggest_unsafe_block = false;
-            }
-            SafetyContext::Safe => match kind {
-                // Allow calls to deprecated-safe unsafe functions if the
-                // caller is from an edition before 2024.
-                UnsafeOpKind::CallToUnsafeFunction(Some(id))
-                    if !span.at_least_rust_2024()
-                        && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
-                {
-                    self.tcx.emit_node_span_lint(
-                        DEPRECATED_SAFE,
+                let deprecated_safe_fn = self.emit_deprecated_safe_fn_call(span, &kind);
+                if !deprecated_safe_fn {
+                    // unsafe_op_in_unsafe_fn is disallowed
+                    kind.emit_unsafe_op_in_unsafe_fn_lint(
+                        self.tcx,
                         self.hir_context,
                         span,
-                        CallToDeprecatedSafeFnRequiresUnsafe {
-                            span,
-                            function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
-                            sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
-                                left: span.shrink_to_lo(),
-                                right: span.shrink_to_hi(),
-                            },
-                        },
-                    )
+                        self.suggest_unsafe_block,
+                    );
+                    self.suggest_unsafe_block = false;
                 }
-                _ => kind.emit_requires_unsafe_err(
-                    self.tcx,
-                    span,
-                    self.hir_context,
-                    unsafe_op_in_unsafe_fn_allowed,
-                ),
-            },
+            }
+            SafetyContext::Safe => {
+                let deprecated_safe_fn = self.emit_deprecated_safe_fn_call(span, &kind);
+                if !deprecated_safe_fn {
+                    kind.emit_requires_unsafe_err(
+                        self.tcx,
+                        span,
+                        self.hir_context,
+                        unsafe_op_in_unsafe_fn_allowed,
+                    );
+                }
+            }
         }
     }
 
