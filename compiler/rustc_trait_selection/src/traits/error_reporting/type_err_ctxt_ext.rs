@@ -655,7 +655,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                         }
 
-                        if let ObligationCauseCode::Coercion { source, target } =
+                        if let ObligationCauseCode::Coercion { source, target, .. } =
                             *obligation.cause.code().peel_derives()
                         {
                             if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {

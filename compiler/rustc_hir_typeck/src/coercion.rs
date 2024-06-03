@@ -487,7 +487,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
         source = self.shallow_resolve(source);
         target = self.shallow_resolve(target);
-        debug!(?source, ?target);
+        debug!(?source, ?target, ?self.cause);
 
         // We don't apply any coercions incase either the source or target
         // aren't sufficiently well known but tend to instead just equate
@@ -565,11 +565,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause = ObligationCause::new(
-            self.cause.span,
-            self.body_id,
-            ObligationCauseCode::Coercion { source, target },
-        );
+        let mut cause =
+            ObligationCause::new(self.cause.span, self.body_id, self.cause.code().clone());
+        cause.map_code(|parent_code| ObligationCauseCode::Coercion { source, target, parent_code });
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -993,8 +991,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
-        let cause =
-            cause.unwrap_or_else(|| self.cause(expr.span, ObligationCauseCode::ExprAssignable));
+        let cause = cause.unwrap_or_else(|| {
+            self.cause(expr.span, ObligationCauseCode::ExprAssignable(Some(expr.hir_id)))
+        });
         let coerce = Coerce::new(self, cause, allow_two_phase);
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
@@ -1016,7 +1015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can_with_predicates({:?} -> {:?})", source, target);
 
-        let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable(None));
         // We don't ever need two-phase here since we throw out the result of the coercion
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         self.probe(|_| {
@@ -1033,7 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// how many dereference steps needed to achieve `expr_ty <: target`. If
     /// it's not possible, return `None`.
     pub fn deref_steps(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> Option<usize> {
-        let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable(None));
         // We don't ever need two-phase here since we throw out the result of the coercion
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         coerce

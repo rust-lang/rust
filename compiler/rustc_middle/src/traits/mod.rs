@@ -268,6 +268,8 @@ pub enum ObligationCauseCode<'tcx> {
     Coercion {
         source: Ty<'tcx>,
         target: Ty<'tcx>,
+        /// The obligation introduced by this argument.
+        parent_code: InternedObligationCauseCode<'tcx>,
     },
 
     /// Various cases where expressions must be `Sized` / `Copy` / etc.
@@ -355,7 +357,7 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Checking that this expression can be assigned to its target.
-    ExprAssignable,
+    ExprAssignable(Option<HirId>),
 
     /// Computing common supertype in the arms of a match expression
     MatchExpressionArm(Box<MatchExpressionArmCause<'tcx>>),
