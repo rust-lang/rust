@@ -1,8 +1,6 @@
-use crate::solve;
 use crate::traits::query::NoSolution;
 use crate::traits::wf;
 use crate::traits::ObligationCtxt;
-use crate::traits::ScrubbedTraitError;
 
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
@@ -263,11 +261,9 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
                 let mut ty_a = ocx.infcx.resolve_vars_if_possible(ty_a);
                 // Need to manually normalize in the new solver as `wf::obligations` does not.
                 if ocx.infcx.next_trait_solver() {
-                    ty_a = solve::deeply_normalize(
-                        ocx.infcx.at(&ObligationCause::dummy(), param_env),
-                        ty_a,
-                    )
-                    .map_err(|_errs: Vec<ScrubbedTraitError<'tcx>>| NoSolution)?;
+                    ty_a = ocx
+                        .deeply_normalize(&ObligationCause::dummy(), param_env, ty_a)
+                        .map_err(|_| NoSolution)?;
                 }
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_a, &mut components);

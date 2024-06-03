@@ -6,8 +6,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
-    self, FromSolverError, FulfillmentErrorLike, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
+    self, FromSolverError, MismatchedProjectionTypes, Obligation, ObligationCause,
+    ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -31,7 +31,7 @@ use super::{Certainty, InferCtxtEvalExt};
 ///
 /// It is also likely that we want to use slightly different datastructures
 /// here as this will have to deal with far more root goals than `evaluate_all`.
-pub struct FulfillmentCtxt<'tcx, E: FulfillmentErrorLike<'tcx>> {
+pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     obligations: ObligationStorage<'tcx>,
 
     /// The snapshot in which this context was created. Using the context
@@ -93,7 +93,7 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 }
 
-impl<'tcx, E: FulfillmentErrorLike<'tcx>> FulfillmentCtxt<'tcx, E> {
+impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
     pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx, E> {
         assert!(
             infcx.next_trait_solver(),
@@ -123,8 +123,9 @@ impl<'tcx, E: FulfillmentErrorLike<'tcx>> FulfillmentCtxt<'tcx, E> {
     }
 }
 
-impl<'tcx, E: FromSolverError<'tcx, NextSolverError<'tcx>>> TraitEngine<'tcx, E>
-    for FulfillmentCtxt<'tcx, E>
+impl<'tcx, E> TraitEngine<'tcx, E> for FulfillmentCtxt<'tcx, E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
     #[instrument(level = "trace", skip(self, infcx))]
     fn register_predicate_obligation(

@@ -46,14 +46,15 @@ impl<'tcx> At<'_, 'tcx> {
     /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
     /// the old solver or have removed the old solver, remove `traits::fully_normalize` and
     /// rename this function to `At::fully_normalize`.
-    fn deeply_normalize<
-        T: TypeFoldable<TyCtxt<'tcx>>,
-        E: FromSolverError<'tcx, NextSolverError<'tcx>>,
-    >(
+    fn deeply_normalize<T, E>(
         self,
         value: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<T, Vec<E>> {
+    ) -> Result<T, Vec<E>>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+        E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+    {
         if self.infcx.next_trait_solver() {
             crate::solve::deeply_normalize(self, value)
         } else {

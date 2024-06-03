@@ -71,37 +71,6 @@ pub use self::util::{with_replaced_escaping_bound_vars, BoundVarReplacer, Placeh
 
 pub use rustc_infer::traits::*;
 
-/// A trait error with most of its information removed. This is the error
-/// returned by an [`ObligationCtxt`] by default, and suitable if you just
-/// want to see if a predicate holds, and don't particularly care about the
-/// error itself (except for if it's an ambiguity or true error).
-///
-/// use [`ObligationCtxt::new_with_diagnostics`] to get a [`FulfillmentError`].
-#[derive(Clone, Debug)]
-pub enum ScrubbedTraitError<'tcx> {
-    /// A real error. This goal definitely does not hold.
-    TrueError,
-    /// An ambiguity. This goal may hold if further inference is done.
-    Ambiguity,
-    /// An old-solver-style cycle error, which will fatal.
-    Cycle(Vec<PredicateObligation<'tcx>>),
-}
-
-impl<'tcx> ScrubbedTraitError<'tcx> {
-    fn is_true_error(&self) -> bool {
-        match self {
-            ScrubbedTraitError::TrueError => true,
-            ScrubbedTraitError::Ambiguity | ScrubbedTraitError::Cycle(_) => false,
-        }
-    }
-}
-
-impl<'tcx> FulfillmentErrorLike<'tcx> for ScrubbedTraitError<'tcx> {
-    fn is_true_error(&self) -> bool {
-        self.is_true_error()
-    }
-}
-
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -130,12 +99,6 @@ impl<'tcx> FulfillmentError<'tcx> {
                 false
             }
         }
-    }
-}
-
-impl<'tcx> FulfillmentErrorLike<'tcx> for FulfillmentError<'tcx> {
-    fn is_true_error(&self) -> bool {
-        self.is_true_error()
     }
 }
 

@@ -7,7 +7,32 @@ use rustc_middle::ty::{self, Ty, Upcast};
 
 use super::{ObligationCause, PredicateObligation};
 
-pub trait TraitEngine<'tcx, E: FulfillmentErrorLike<'tcx>>: 'tcx {
+/// A trait error with most of its information removed. This is the error
+/// returned by an `ObligationCtxt` by default, and suitable if you just
+/// want to see if a predicate holds, and don't particularly care about the
+/// error itself (except for if it's an ambiguity or true error).
+///
+/// use `ObligationCtxt::new_with_diagnostics` to get a `FulfillmentError`.
+#[derive(Clone, Debug)]
+pub enum ScrubbedTraitError<'tcx> {
+    /// A real error. This goal definitely does not hold.
+    TrueError,
+    /// An ambiguity. This goal may hold if further inference is done.
+    Ambiguity,
+    /// An old-solver-style cycle error, which will fatal.
+    Cycle(Vec<PredicateObligation<'tcx>>),
+}
+
+impl<'tcx> ScrubbedTraitError<'tcx> {
+    pub fn is_true_error(&self) -> bool {
+        match self {
+            ScrubbedTraitError::TrueError => true,
+            ScrubbedTraitError::Ambiguity | ScrubbedTraitError::Cycle(_) => false,
+        }
+    }
+}
+
+pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     /// Requires that `ty` must implement the trait with `def_id` in
     /// the given environment. This trait must not have any type
     /// parameters (except for `Self`).
@@ -73,10 +98,6 @@ pub trait TraitEngine<'tcx, E: FulfillmentErrorLike<'tcx>>: 'tcx {
     ) -> Vec<PredicateObligation<'tcx>>;
 }
 
-pub trait FulfillmentErrorLike<'tcx>: Debug + 'tcx {
-    fn is_true_error(&self) -> bool;
-}
-
-pub trait FromSolverError<'tcx, E>: FulfillmentErrorLike<'tcx> {
+pub trait FromSolverError<'tcx, E>: Debug + 'tcx {
     fn from_solver_error(infcx: &InferCtxt<'tcx>, error: E) -> Self;
 }

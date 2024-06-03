@@ -21,7 +21,6 @@ use rustc_infer::infer::canonical::{
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::RegionResolutionError;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
-use rustc_infer::traits::FulfillmentErrorLike;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
@@ -32,10 +31,9 @@ use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 #[extension(pub trait TraitEngineExt<'tcx, E>)]
-impl<
-    'tcx,
+impl<'tcx, E> dyn TraitEngine<'tcx, E>
+where
     E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
-> dyn TraitEngine<'tcx, E>
 {
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
         if infcx.next_trait_solver() {
@@ -73,7 +71,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx, ScrubbedTraitError<'tcx>> {
 
 impl<'a, 'tcx, E> ObligationCtxt<'a, 'tcx, E>
 where
-    E: FulfillmentErrorLike<'tcx>,
+    E: 'tcx,
 {
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {
         self.engine.borrow_mut().register_predicate_obligation(self.infcx, obligation);
@@ -231,7 +229,20 @@ where
     ) -> Vec<RegionResolutionError<'tcx>> {
         self.infcx.resolve_regions(outlives_env)
     }
+}
 
+impl<'tcx> ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>> {
+    pub fn assumed_wf_types_and_report_errors(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: LocalDefId,
+    ) -> Result<FxIndexSet<Ty<'tcx>>, ErrorGuaranteed> {
+        self.assumed_wf_types(param_env, def_id)
+            .map_err(|errors| self.infcx.err_ctxt().report_fulfillment_errors(errors))
+    }
+}
+
+impl<'tcx> ObligationCtxt<'_, 'tcx, ScrubbedTraitError<'tcx>> {
     pub fn make_canonicalized_query_response<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
@@ -246,17 +257,6 @@ where
             answer,
             &mut **self.engine.borrow_mut(),
         )
-    }
-}
-
-impl<'tcx> ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>> {
-    pub fn assumed_wf_types_and_report_errors(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        def_id: LocalDefId,
-    ) -> Result<FxIndexSet<Ty<'tcx>>, ErrorGuaranteed> {
-        self.assumed_wf_types(param_env, def_id)
-            .map_err(|errors| self.infcx.err_ctxt().report_fulfillment_errors(errors))
     }
 }
 

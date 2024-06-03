@@ -1,5 +1,5 @@
 use rustc_infer::infer::at::At;
-use rustc_infer::traits::{FulfillmentErrorLike, TraitEngine};
+use rustc_infer::traits::TraitEngine;
 use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty};
 
@@ -7,7 +7,7 @@ use crate::traits::{NormalizeExt, Obligation};
 
 #[extension(pub trait StructurallyNormalizeExt<'tcx>)]
 impl<'tcx> At<'_, 'tcx> {
-    fn structurally_normalize<E: FulfillmentErrorLike<'tcx>>(
+    fn structurally_normalize<E: 'tcx>(
         &self,
         ty: Ty<'tcx>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,

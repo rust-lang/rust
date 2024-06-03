@@ -10,7 +10,7 @@ use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, FulfillmentErrorLike};
+use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
@@ -764,10 +764,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     Ok(&*tcx.arena.alloc(remapped_types))
 }
 
-struct ImplTraitInTraitCollector<'a, 'tcx, E>
-where
-    E: FulfillmentErrorLike<'tcx>,
-{
+struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     ocx: &'a ObligationCtxt<'a, 'tcx, E>,
     types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
     span: Span,
@@ -777,7 +774,7 @@ where
 
 impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E>
 where
-    E: FulfillmentErrorLike<'tcx>,
+    E: 'tcx,
 {
     fn new(
         ocx: &'a ObligationCtxt<'a, 'tcx, E>,
@@ -791,7 +788,7 @@ where
 
 impl<'tcx, E> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx, E>
 where
-    E: FulfillmentErrorLike<'tcx>,
+    E: 'tcx,
 {
     fn interner(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx

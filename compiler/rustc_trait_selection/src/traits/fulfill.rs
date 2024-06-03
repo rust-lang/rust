@@ -6,7 +6,7 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::traits::{FromSolverError, FulfillmentErrorLike, ProjectionCacheKey};
+use rustc_infer::traits::{FromSolverError, ProjectionCacheKey};
 use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -50,7 +50,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 /// along. Once all type inference constraints have been generated, the
 /// method `select_all_or_error` can be used to report any remaining
 /// ambiguous cases as errors.
-pub struct FulfillmentContext<'tcx, E: FulfillmentErrorLike<'tcx>> {
+pub struct FulfillmentContext<'tcx, E: 'tcx> {
     /// A list of all obligations that have been registered with this
     /// fulfillment context.
     predicates: ObligationForest<PendingPredicateObligation<'tcx>>,
@@ -78,7 +78,10 @@ pub struct PendingPredicateObligation<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PendingPredicateObligation<'_>, 72);
 
-impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> FulfillmentContext<'tcx, E> {
+impl<'tcx, E> FulfillmentContext<'tcx, E>
+where
+    E: FromSolverError<'tcx, OldSolverError<'tcx>>,
+{
     /// Creates a new fulfillment context.
     pub(super) fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentContext<'tcx, E> {
         assert!(
@@ -106,8 +109,11 @@ impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> FulfillmentContext<'t
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
 
-        let errors: Vec<E> =
-            outcome.errors.into_iter().map(|err| E::from_solver_error(infcx, err)).collect();
+        let errors: Vec<E> = outcome
+            .errors
+            .into_iter()
+            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
+            .collect();
 
         debug!(
             "select({} predicates remaining, {} errors) done",
@@ -119,8 +125,9 @@ impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> FulfillmentContext<'t
     }
 }
 
-impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> TraitEngine<'tcx, E>
-    for FulfillmentContext<'tcx, E>
+impl<'tcx, E> TraitEngine<'tcx, E> for FulfillmentContext<'tcx, E>
+where
+    E: FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
     #[inline]
     fn register_predicate_obligation(
@@ -144,7 +151,7 @@ impl<'tcx, E: FromSolverError<'tcx, OldSolverError<'tcx>>> TraitEngine<'tcx, E>
         self.predicates
             .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
             .into_iter()
-            .map(|err| E::from_solver_error(infcx, err))
+            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
             .collect()
     }
 
@@ -843,22 +850,25 @@ fn args_infer_vars<'a, 'tcx>(
         .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
 }
 
-pub type OldSolverError<'tcx> = Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>;
+#[derive(Debug)]
+pub struct OldSolverError<'tcx>(
+    Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>,
+);
 
 impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for FulfillmentError<'tcx> {
     fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: OldSolverError<'tcx>) -> Self {
-        let mut iter = error.backtrace.into_iter();
+        let mut iter = error.0.backtrace.into_iter();
         let obligation = iter.next().unwrap().obligation;
         // The root obligation is the last item in the backtrace - if there's only
         // one item, then it's the same as the main obligation
         let root_obligation = iter.next_back().map_or_else(|| obligation.clone(), |e| e.obligation);
-        FulfillmentError::new(obligation, error.error, root_obligation)
+        FulfillmentError::new(obligation, error.0.error, root_obligation)
     }
 }
 
 impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for ScrubbedTraitError<'tcx> {
     fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: OldSolverError<'tcx>) -> Self {
-        match error.error {
+        match error.0.error {
             FulfillmentErrorCode::Select(_)
             | FulfillmentErrorCode::Project(_)
             | FulfillmentErrorCode::Subtype(_, _)

@@ -15,8 +15,8 @@ use crate::infer::canonical::{
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
 use crate::traits::query::NoSolution;
-use crate::traits::{FulfillmentErrorLike, TraitEngine};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{ScrubbedTraitError, TraitEngine};
 use rustc_data_structures::captures::Captures;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
@@ -50,11 +50,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// - Finally, if any of the obligations result in a hard error,
     ///   then `Err(NoSolution)` is returned.
     #[instrument(skip(self, inference_vars, answer, fulfill_cx), level = "trace")]
-    pub fn make_canonicalized_query_response<T, E: FulfillmentErrorLike<'tcx>>(
+    pub fn make_canonicalized_query_response<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, ScrubbedTraitError<'tcx>>,
     ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -97,11 +97,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Helper for `make_canonicalized_query_response` that does
     /// everything up until the final canonicalization.
     #[instrument(skip(self, fulfill_cx), level = "debug")]
-    fn make_query_response<T, E: FulfillmentErrorLike<'tcx>>(
+    fn make_query_response<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, ScrubbedTraitError<'tcx>>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,

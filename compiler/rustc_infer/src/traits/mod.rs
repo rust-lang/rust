@@ -22,7 +22,7 @@ pub use self::ImplSource::*;
 pub use self::SelectionError::*;
 use crate::infer::InferCtxt;
 
-pub use self::engine::{FromSolverError, FulfillmentErrorLike, TraitEngine};
+pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
 pub use self::project::MismatchedProjectionTypes;
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
