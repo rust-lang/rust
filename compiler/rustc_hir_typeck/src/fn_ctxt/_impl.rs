@@ -1317,7 +1317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                args: Option<&[ty::GenericArg<'tcx>]>,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            tcx.type_of(param.def_id).instantiate(tcx, args.unwrap()).into()
+                            tcx.type_of(param.def_id).instantiate(tcx, preceding_args).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
@@ -1356,7 +1356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else if !infer_args {
                                 return tcx
                                     .const_param_default(param.def_id)
-                                    .instantiate(tcx, args.unwrap())
+                                    .instantiate(tcx, preceding_args)
                                     .into();
                             }
                         }

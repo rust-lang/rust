@@ -245,7 +245,7 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn inferred_kind(
         &mut self,
-        args: Option<&[ty::GenericArg<'tcx>]>,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         infer_args: bool,
     ) -> ty::GenericArg<'tcx>;
@@ -525,7 +525,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn inferred_kind(
                 &mut self,
-                args: Option<&[ty::GenericArg<'tcx>]>,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
@@ -533,22 +533,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if let Err(incorrect) = self.incorrect_args {
                     if incorrect.invalid_args.contains(&(param.index as usize)) {
-                        // FIXME: use `param.to_error` once `inferred_kind` is supplied a list of
-                        // all previous generic args.
-                        return match param.kind {
-                            GenericParamDefKind::Lifetime => {
-                                ty::Region::new_error(tcx, incorrect.reported).into()
-                            }
-                            GenericParamDefKind::Type { .. } => {
-                                Ty::new_error(tcx, incorrect.reported).into()
-                            }
-                            GenericParamDefKind::Const { .. } => ty::Const::new_error(
-                                tcx,
-                                incorrect.reported,
-                                Ty::new_error(tcx, incorrect.reported),
-                            )
-                            .into(),
-                        };
+                        return param.to_error(tcx, preceding_args);
                     }
                 }
                 match param.kind {
@@ -569,15 +554,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
-                            let args = args.unwrap();
-                            if args.iter().any(|arg| match arg.unpack() {
-                                GenericArgKind::Type(ty) => ty.references_error(),
-                                _ => false,
-                            }) {
+                            if let Some(prev) =
+                                preceding_args.iter().find_map(|arg| match arg.unpack() {
+                                    GenericArgKind::Type(ty) => ty.error_reported().err(),
+                                    _ => None,
+                                })
+                            {
                                 // Avoid ICE #86756 when type error recovery goes awry.
-                                return Ty::new_misc_error(tcx).into();
+                                return Ty::new_error(tcx, prev).into();
                             }
-                            tcx.at(self.span).type_of(param.def_id).instantiate(tcx, args).into()
+                            tcx.at(self.span)
+                                .type_of(param.def_id)
+                                .instantiate(tcx, preceding_args)
+                                .into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
@@ -597,7 +586,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // FIXME(effects) see if we should special case effect params here
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, args.unwrap())
+                                .instantiate(tcx, preceding_args)
                                 .into()
                         } else {
                             if infer_args {

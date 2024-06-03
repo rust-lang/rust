@@ -419,7 +419,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                _args: Option<&[ty::GenericArg<'tcx>]>,
+                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
             ) -> ty::GenericArg<'tcx> {

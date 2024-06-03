@@ -214,10 +214,11 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
             if let Some(&param) = params.peek() {
                 if param.index == 0 {
                     if let GenericParamDefKind::Type { .. } = param.kind {
+                        assert_eq!(&args[..], &[]);
                         args.push(
                             self_ty
                                 .map(|ty| ty.into())
-                                .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
+                                .unwrap_or_else(|| ctx.inferred_kind(&args, param, true)),
                         );
                         params.next();
                     }
@@ -267,7 +268,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             // Since this is a const impl, we need to insert a host arg at the end of
                             // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
                             // To work around this, we infer all arguments until we reach the host param.
-                            args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                            args.push(ctx.inferred_kind(&args, param, infer_args));
                             params.next();
                         }
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
@@ -292,7 +293,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                         ) => {
                             // We expected a lifetime argument, but got a type or const
                             // argument. That means we're inferring the lifetimes.
-                            args.push(ctx.inferred_kind(None, param, infer_args));
+                            args.push(ctx.inferred_kind(&args, param, infer_args));
                             force_infer_lt = Some((arg, param));
                             params.next();
                         }
@@ -388,7 +389,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                 (None, Some(&param)) => {
                     // If there are fewer arguments than parameters, it means
                     // we're inferring the remaining arguments.
-                    args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                    args.push(ctx.inferred_kind(&args, param, infer_args));
                     params.next();
                 }
 
