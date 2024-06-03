@@ -4,10 +4,12 @@
 #![feature(custom_mir, core_intrinsics, freeze)]
 #![allow(unused_assignments)]
 extern crate core;
-use core::marker::Freeze;
 use core::intrinsics::mir::*;
+use core::marker::Freeze;
 
-fn opaque(_: impl Sized) -> bool { true }
+fn opaque(_: impl Sized) -> bool {
+    true
+}
 
 fn cmp_ref(a: &u8, b: &u8) -> bool {
     std::ptr::eq(a as *const u8, b as *const u8)

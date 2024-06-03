@@ -330,11 +330,7 @@ fn mutable_ref() -> bool {
     let a = std::ptr::addr_of_mut!(x);
     x = 7;
     unsafe { *a = 8 };
-    if x == 7 {
-        true
-    } else {
-        false
-    }
+    if x == 7 { true } else { false }
 }
 
 /// This function has 2 TOs: 1-3-4 and 0-1-3-4-6.
@@ -461,11 +457,7 @@ fn aggregate(x: u8) -> u8 {
     const FOO: (u8, u8) = (5, 13);
 
     let (a, b) = FOO;
-    if a == 7 {
-        b
-    } else {
-        a
-    }
+    if a == 7 { b } else { a }
 }
 
 /// Verify that we can leverage the existence of an `Assume` terminator.

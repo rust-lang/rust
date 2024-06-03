@@ -7,7 +7,9 @@
 extern crate core;
 use core::intrinsics::mir::*;
 
-fn opaque(_: impl Sized) -> bool { true }
+fn opaque(_: impl Sized) -> bool {
+    true
+}
 
 struct Foo(u8);
 

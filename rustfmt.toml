@@ -10,17 +10,13 @@ ignore = [
     "/build-*/",
     "/vendor/",
 
-    # Some tests are not formatted, for multiple reasons:
-    # - some contain syntax errors that cause rustfmt to give an error
-    # - some UI tests are broken by different formatting
-    # - some require special comments in a particular position (e.g. `EMIT_MIR` comments)
+    # Some tests are not formatted, for various reasons.
     "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
-    "/tests/crashes/",                # Many tests contain syntax errors.
-    "/tests/debuginfo/",              # Tests are somewhat sensitive to source code layout.
-    "/tests/incremental/",            # Tests are somewhat sensitive to source code layout.
-    "/tests/mir-opt/",
+    "/tests/crashes/",                # Many of these tests contain syntax errors.
+    "/tests/debuginfo/",              # These tests are somewhat sensitive to source code layout.
+    "/tests/incremental/",            # These tests are somewhat sensitive to source code layout.
     "/tests/pretty/",
-    "/tests/run-make/translation/test.rs", # Contains syntax errors.
+    "/tests/run-make/translation/test.rs", # This test contains syntax errors.
     "/tests/run-make-fulldeps/",
     "/tests/run-pass-valgrind/",
     "/tests/rustdoc/",

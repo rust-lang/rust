@@ -10,7 +10,8 @@
 #![allow(warnings)]
 
 // EMIT_MIR named_lifetimes_basic.use_x.nll.0.mir
-fn use_x<'a, 'b: 'a, 'c>(w: &'a mut i32, x: &'b u32, y: &'a u32, z: &'c u32) -> bool { true }
-
-fn main() {
+fn use_x<'a, 'b: 'a, 'c>(w: &'a mut i32, x: &'b u32, y: &'a u32, z: &'c u32) -> bool {
+    true
 }
+
+fn main() {}

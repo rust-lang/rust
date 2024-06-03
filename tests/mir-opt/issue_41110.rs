@@ -3,7 +3,6 @@
 
 // check that we don't emit multiple drop flags when they are not needed.
 
-
 // EMIT_MIR issue_41110.main.ElaborateDrops.diff
 fn main() {
     let x = S.other(S.id());
@@ -21,11 +20,12 @@ pub fn test() {
 
 struct S;
 impl Drop for S {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 impl S {
-    fn id(self) -> Self { self }
+    fn id(self) -> Self {
+        self
+    }
     fn other(self, s: Self) {}
 }

@@ -787,7 +787,9 @@ fn mut_raw_then_mut_shr() -> (i32, i32) {
     let xshr = &*xref;
     // Verify that we completely replace with `x` in both cases.
     let a = *xshr;
-    unsafe { *xraw = 4; }
+    unsafe {
+        *xraw = 4;
+    }
     (a, x)
 }
 
@@ -842,8 +844,7 @@ fn debuginfo() {
 
     // `constant_index_from_end` and `subslice` should not be promoted, as their value depends
     // on the slice length.
-    if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {
-    }
+    if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {}
 
     let multiple_borrow = &&&mut T(6).0;
 }

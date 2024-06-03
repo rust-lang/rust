@@ -27,7 +27,9 @@ fn numbered(i: (u32, i32)) {
     }
 }
 
-struct S { x: f32 }
+struct S {
+    x: f32,
+}
 
 // EMIT_MIR debuginfo.structured.built.after.mir
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
