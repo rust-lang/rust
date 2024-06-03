@@ -4,10 +4,12 @@
 #![feature(custom_mir, core_intrinsics, freeze)]
 #![allow(unused_assignments)]
 extern crate core;
-use core::marker::Freeze;
 use core::intrinsics::mir::*;
+use core::marker::Freeze;
 
-fn opaque(_: impl Sized) -> bool { true }
+fn opaque(_: impl Sized) -> bool {
+    true
+}
 
 fn cmp_ref(a: &u8, b: &u8) -> bool {
     std::ptr::eq(a as *const u8, b as *const u8)
@@ -24,7 +26,7 @@ fn compare_address() -> bool {
     // CHECK-NEXT: _0 = cmp_ref(_2, _4)
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<u8>(_3)
-    mir!(
+    mir! {
         {
             let a = 5_u8;
             let r1 = &a;
@@ -40,7 +42,7 @@ fn compare_address() -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is `Freeze`, so shared borrows are immutable.
@@ -52,7 +54,7 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
     // CHECK-NEXT: _0 = opaque::<&T>(_3)
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<T>(_1)
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -64,7 +66,7 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is not known to be `Freeze`, so shared borrows may be mutable.
@@ -77,7 +79,7 @@ fn non_freeze<T: Copy>(x: T) -> bool {
     // CHECK-NEXT: _0 = opaque::<&T>(_3)
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<T>(_2)
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -89,7 +91,7 @@ fn non_freeze<T: Copy>(x: T) -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 fn main() {

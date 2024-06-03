@@ -7,9 +7,9 @@ fn norm2(x: [f32; 2]) -> f32 {
     // CHECK-NOT: Len(
     let a = x[0];
     let b = x[1];
-    a*a + b*b
+    a * a + b * b
 }
 
 fn main() {
-    assert_eq!(norm2([3.0, 4.0]), 5.0*5.0);
+    assert_eq!(norm2([3.0, 4.0]), 5.0 * 5.0);
 }

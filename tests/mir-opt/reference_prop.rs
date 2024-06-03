@@ -658,7 +658,7 @@ fn read_through_raw(x: &mut usize) -> usize {
     // CHECK-NEXT: return;
 
     use std::intrinsics::mir::*;
-    mir!(
+    mir! {
         let r1: &mut usize;
         let r2: &mut usize;
         let p1: *mut usize;
@@ -674,7 +674,7 @@ fn read_through_raw(x: &mut usize) -> usize {
             RET = *p2;
             Return()
         }
-    )
+    }
 }
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
@@ -683,7 +683,7 @@ fn multiple_storage() {
     // CHECK: _3 = (*_2);
 
     use std::intrinsics::mir::*;
-    mir!(
+    mir! {
         let x: i32;
         {
             StorageLive(x);
@@ -700,7 +700,7 @@ fn multiple_storage() {
         retblock = {
             Return()
         }
-    )
+    }
 }
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
@@ -709,7 +709,7 @@ fn dominate_storage() {
     // CHECK: _5 = (*_2);
 
     use std::intrinsics::mir::*;
-    mir!(
+    mir! {
         let x: i32;
         let r: &i32;
         let c: i32;
@@ -730,7 +730,7 @@ fn dominate_storage() {
             let d = true;
             match d { false => bb2, _ => bb0 }
         }
-    )
+    }
 }
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
@@ -739,7 +739,7 @@ fn maybe_dead(m: bool) {
     // CHECK: (*_5) = const 7_i32;
 
     use std::intrinsics::mir::*;
-    mir!(
+    mir! {
         let x: i32;
         let y: i32;
         {
@@ -774,7 +774,7 @@ fn maybe_dead(m: bool) {
         retblock = {
             Return()
         }
-    )
+    }
 }
 
 fn mut_raw_then_mut_shr() -> (i32, i32) {
@@ -787,7 +787,9 @@ fn mut_raw_then_mut_shr() -> (i32, i32) {
     let xshr = &*xref;
     // Verify that we completely replace with `x` in both cases.
     let a = *xshr;
-    unsafe { *xraw = 4; }
+    unsafe {
+        *xraw = 4;
+    }
     (a, x)
 }
 
@@ -842,8 +844,7 @@ fn debuginfo() {
 
     // `constant_index_from_end` and `subslice` should not be promoted, as their value depends
     // on the slice length.
-    if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {
-    }
+    if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {}
 
     let multiple_borrow = &&&mut T(6).0;
 }

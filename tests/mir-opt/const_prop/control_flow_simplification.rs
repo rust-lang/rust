@@ -11,7 +11,7 @@ impl<This> NeedsDrop for This {}
 
 // EMIT_MIR control_flow_simplification.hello.GVN.diff
 // EMIT_MIR control_flow_simplification.hello.PreCodegen.before.mir
-fn hello<T>(){
+fn hello<T>() {
     if <bool>::NEEDS {
         panic!()
     }

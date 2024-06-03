@@ -7,7 +7,7 @@ use core::intrinsics::mir::*;
 // EMIT_MIR enums.switch_bool.built.after.mir
 #[custom_mir(dialect = "built")]
 pub fn switch_bool(b: bool) -> u32 {
-    mir!(
+    mir! {
         {
             match b {
                 true => t,
@@ -25,13 +25,13 @@ pub fn switch_bool(b: bool) -> u32 {
             RET = 10;
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR enums.switch_option.built.after.mir
 #[custom_mir(dialect = "built")]
 pub fn switch_option(option: Option<()>) -> bool {
-    mir!(
+    mir! {
         {
             let discr = Discriminant(option);
             match discr {
@@ -50,7 +50,7 @@ pub fn switch_option(option: Option<()>) -> bool {
             RET = true;
             Return()
         }
-    )
+    }
 }
 
 #[repr(u8)]
@@ -62,7 +62,7 @@ enum Bool {
 // EMIT_MIR enums.switch_option_repr.built.after.mir
 #[custom_mir(dialect = "built")]
 fn switch_option_repr(option: Bool) -> bool {
-    mir!(
+    mir! {
         {
             let discr = Discriminant(option);
             match discr {
@@ -80,26 +80,30 @@ fn switch_option_repr(option: Bool) -> bool {
             RET = false;
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR enums.set_discr.built.after.mir
 #[custom_mir(dialect = "runtime", phase = "initial")]
 fn set_discr(option: &mut Option<()>) {
-    mir!({
-        Deinit(*option);
-        SetDiscriminant(*option, 0);
-        Return()
-    })
+    mir! {
+        {
+            Deinit(*option);
+            SetDiscriminant(*option, 0);
+            Return()
+        }
+    }
 }
 
 // EMIT_MIR enums.set_discr_repr.built.after.mir
 #[custom_mir(dialect = "runtime", phase = "initial")]
 fn set_discr_repr(b: &mut Bool) {
-    mir!({
-        SetDiscriminant(*b, 0);
-        Return()
-    })
+    mir! {
+        {
+            SetDiscriminant(*b, 0);
+            Return()
+        }
+    }
 }
 
 fn main() {

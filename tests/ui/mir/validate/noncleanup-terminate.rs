@@ -9,9 +9,9 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "built")]
 pub fn main() {
-    mir!(
+    mir! {
         {
             UnwindTerminate(ReasonAbi)
         }
-    )
+    }
 }

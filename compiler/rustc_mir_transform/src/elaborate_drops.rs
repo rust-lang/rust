@@ -34,14 +34,14 @@ use std::fmt;
 ///
 /// ```text
 // fn drop_term<T>(t: &mut T) {
-//     mir!(
+//     mir! {
 //         {
 //             Drop(*t, exit)
 //         }
 //         exit = {
 //             Return()
 //         }
-//     )
+//     }
 // }
 /// ```
 pub struct ElaborateDrops;

@@ -15,14 +15,14 @@ use core::ptr::{addr_of, addr_of_mut};
 
 #[custom_mir(dialect = "built")]
 fn multiple_storage() {
-    mir!(
+    mir! {
         let a: usize;
         {
             StorageLive(a);
             StorageLive(a);
             Return()
         }
-    )
+    }
 }
 
 fn main() {
