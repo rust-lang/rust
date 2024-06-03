@@ -29,12 +29,12 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
 use tracing::debug;
@@ -206,19 +206,19 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
 
-                    // Reachable constants will be inlined into other crates
-                    // unconditionally, so we need to make sure that their
-                    // contents are also reachable.
-                    hir::ItemKind::Const(..) => {
+                    hir::ItemKind::Const(_, _, init) => {
+                        // Only things actually ending up in the final constant need to be reachable.
+                        // Everything else is either already available as `mir_for_ctfe`, or can't be used
+                        // by codegen anyway.
                         match self.tcx.const_eval_poly_to_alloc(item.owner_id.def_id.into()) {
                             Ok(alloc) => {
                                 let alloc = self.tcx.global_alloc(alloc.alloc_id).unwrap_memory();
                                 self.propagate_from_alloc(alloc);
                             }
-                            Err(ErrorHandled::TooGeneric(span)) => span_bug!(
-                                span,
-                                "generic constants aren't implemented in reachability"
-                            ),
+                            // Reachable generic constants will be inlined into other crates
+                            // unconditionally, so we need to make sure that their
+                            // contents are also reachable.
+                            Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
                             Err(ErrorHandled::Reported(..)) => {}
                         }
                     }
