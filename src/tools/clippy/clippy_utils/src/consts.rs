@@ -6,7 +6,7 @@ use crate::{clip, is_direct_expn_of, sext, unsext};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
+use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{alloc_range, Scalar};
@@ -412,7 +412,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
-            ExprKind::ConstBlock(e) | ExprKind::DropTemps(e) => self.expr(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.lcx.tcx.hir().body(body).value), ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => {
                 self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |this, result| {
                     let result = mir_to_const(this.lcx, result)?;
@@ -490,7 +490,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// leaves the local crate.
     pub fn expr_is_empty(&mut self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(e) | ExprKind::DropTemps(e) => self.expr_is_empty(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr_is_empty(self.lcx.tcx.hir().body(body).value), ExprKind::DropTemps(e) => self.expr_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
                     .typeck_results
