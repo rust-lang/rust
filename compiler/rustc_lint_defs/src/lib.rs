@@ -707,7 +707,10 @@ pub enum BuiltinLintDiag {
     },
     MacroUseDeprecated,
     UnusedMacroUse,
-    PrivateExternCrateReexport(Ident),
+    PrivateExternCrateReexport {
+        source: Ident,
+        extern_crate_span: Span,
+    },
     UnusedLabel,
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
