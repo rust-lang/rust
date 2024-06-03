@@ -1,0 +1,17 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/inferred-type-in-qualified-path-for-with-one-impl.rs:8:5
+   |
+LL |     fn function() {}
+   |     ---------------- `Trait::function` defined here
+...
+LL |     Trait::function();
+   |     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |     <() as Trait>::function();
+   |     ++++++      +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0790`.
