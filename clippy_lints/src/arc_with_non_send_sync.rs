@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// `Arc<T>` is a thread-safe `Rc<T>` and guarantees that updates to the reference counter
     /// use atomic operations. To send an `Arc<T>` across thread boundaries and
     /// share ownership between multiple threads, `T` must be [both `Send` and `Sync`](https://doc.rust-lang.org/std/sync/struct.Arc.html#thread-safety),
-    /// so either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
+    /// so either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`.
     ///
     /// ### Example
     /// ```no_run
