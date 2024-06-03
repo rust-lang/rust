@@ -218,8 +218,8 @@ pub(crate) enum GenericArgPosition {
 #[derive(Clone, Debug)]
 pub struct GenericArgCountMismatch {
     pub reported: ErrorGuaranteed,
-    /// A list of spans of arguments provided that were not valid.
-    pub invalid_args: Vec<Span>,
+    /// A list of indices of arguments provided that were not valid.
+    pub invalid_args: Vec<usize>,
 }
 
 /// Decorates the result of a generic argument count mismatch

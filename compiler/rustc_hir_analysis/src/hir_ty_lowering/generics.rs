@@ -474,16 +474,9 @@ pub(crate) fn check_generic_arg_count(
             return Ok(());
         }
 
-        if provided_args > max_expected_args {
-            invalid_args.extend(
-                gen_args.args[max_expected_args..provided_args].iter().map(|arg| arg.span()),
-            );
-        };
+        invalid_args.extend(min_expected_args..provided_args);
 
         let gen_args_info = if provided_args > min_expected_args {
-            invalid_args.extend(
-                gen_args.args[min_expected_args..provided_args].iter().map(|arg| arg.span()),
-            );
             let num_redundant_args = provided_args - min_expected_args;
             GenericArgsInfo::ExcessLifetimes { num_redundant_args }
         } else {
@@ -538,11 +531,7 @@ pub(crate) fn check_generic_arg_count(
         let num_default_params = expected_max - expected_min;
 
         let gen_args_info = if provided > expected_max {
-            invalid_args.extend(
-                gen_args.args[args_offset + expected_max..args_offset + provided]
-                    .iter()
-                    .map(|arg| arg.span()),
-            );
+            invalid_args.extend((expected_max..provided).map(|i| i + args_offset));
             let num_redundant_args = provided - expected_max;
 
             // Provide extra note if synthetic arguments like `impl Trait` are specified.

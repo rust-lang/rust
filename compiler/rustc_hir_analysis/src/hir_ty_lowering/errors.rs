@@ -702,7 +702,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(crate) fn complain_about_missing_assoc_tys(
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
-        potential_assoc_types: Vec<Span>,
+        potential_assoc_types: Vec<usize>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
         if associated_types.values().all(|v| v.is_empty()) {
