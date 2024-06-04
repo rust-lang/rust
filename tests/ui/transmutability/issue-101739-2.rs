@@ -15,7 +15,6 @@ mod assert {
     >()
     where
         Dst: BikeshedIntrinsicFrom< //~ ERROR trait takes at most 2 generic arguments but 5 generic arguments were supplied
-        //~^ ERROR: the constant `ASSUME_ALIGNMENT` is not of type `Assume`
             Src,
             ASSUME_ALIGNMENT, //~ ERROR: mismatched types
             ASSUME_LIFETIMES,
