@@ -277,7 +277,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
 
             inspect
                 .canonical_goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::Overflow);
-            return Self::response_no_constraints(tcx, input, Certainty::overflow(true));
+            return response_no_constraints(tcx, input, Certainty::overflow(true));
         };
 
         if let Some(result) = self.lookup_global_cache(tcx, input, available_depth, inspect) {
@@ -334,9 +334,9 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
             return if let Some(result) = self.stack[stack_depth].provisional_result {
                 result
             } else if is_coinductive_cycle {
-                Self::response_no_constraints(tcx, input, Certainty::Yes)
+                response_no_constraints(tcx, input, Certainty::Yes)
             } else {
-                Self::response_no_constraints(tcx, input, Certainty::overflow(false))
+                response_no_constraints(tcx, input, Certainty::overflow(false))
             };
         } else {
             // No entry, we push this goal on the stack and try to prove it.
@@ -373,7 +373,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
                 debug!("canonical cycle overflow");
                 let current_entry = self.pop_stack();
                 debug_assert!(current_entry.has_been_used.is_empty());
-                let result = Self::response_no_constraints(tcx, input, Certainty::overflow(false));
+                let result = response_no_constraints(tcx, input, Certainty::overflow(false));
                 (current_entry, result)
             });
 
@@ -532,21 +532,21 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         if let Some(r) = stack_entry.provisional_result {
             r == result
         } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
-            Self::response_no_constraints(tcx, input, Certainty::Yes) == result
+            response_no_constraints(tcx, input, Certainty::Yes) == result
         } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
-            Self::response_no_constraints(tcx, input, Certainty::overflow(false)) == result
+            response_no_constraints(tcx, input, Certainty::overflow(false)) == result
         } else {
             false
         }
     }
+}
 
-    fn response_no_constraints(
-        tcx: TyCtxt<'tcx>,
-        goal: CanonicalInput<TyCtxt<'tcx>>,
-        certainty: Certainty,
-    ) -> QueryResult<TyCtxt<'tcx>> {
-        Ok(super::response_no_constraints_raw(tcx, goal.max_universe, goal.variables, certainty))
-    }
+fn response_no_constraints<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    goal: CanonicalInput<TyCtxt<'tcx>>,
+    certainty: Certainty,
+) -> QueryResult<TyCtxt<'tcx>> {
+    Ok(super::response_no_constraints_raw(tcx, goal.max_universe, goal.variables, certainty))
 }
 
 impl<I: Interner> SearchGraph<I> {
