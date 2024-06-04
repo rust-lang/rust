@@ -31,6 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
