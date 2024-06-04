@@ -428,6 +428,8 @@ pub use self::traits::{
     DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Product, Sum,
 };
 
+#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
+pub use self::adapters::chain;
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::adapters::zip;
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
