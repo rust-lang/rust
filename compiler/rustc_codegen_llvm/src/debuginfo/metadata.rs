@@ -95,7 +95,7 @@ const NO_GENERICS: for<'ll> fn(&CodegenCx<'ll, '_>) -> SmallVec<&'ll DIType> = |
 
 // SmallVec is used quite a bit in this module, so create a shorthand.
 // The actual number of elements is not so important.
-pub type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
+type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
 
 mod enums;
 mod type_map;
@@ -435,7 +435,7 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 ///
 /// This function will look up the debuginfo node in the TypeMap. If it can't find it, it
 /// will create the node by dispatching to the corresponding `build_*_di_node()` function.
-pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     let unique_type_id = UniqueTypeId::for_ty(cx.tcx, t);
 
     if let Some(existing_di_node) = debug_context(cx).type_map.di_node_for_unique_id(unique_type_id)
@@ -541,7 +541,7 @@ fn hex_encode(data: &[u8]) -> String {
     hex_string
 }
 
-pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
+pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
     let cache_key = Some((source_file.stable_id, source_file.src_hash));
     return debug_context(cx)
         .created_files
@@ -654,7 +654,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
     }
 }
 
-pub fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
+fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
     debug_context(cx).created_files.borrow_mut().entry(None).or_insert_with(|| unsafe {
         let file_name = "<unknown>";
         let directory = "";
@@ -832,7 +832,7 @@ fn build_param_type_di_node<'ll, 'tcx>(
     }
 }
 
-pub fn build_compile_unit_di_node<'ll, 'tcx>(
+pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
@@ -1291,7 +1291,11 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
 /// Creates debug information for the given global variable.
 ///
 /// Adds the created debuginfo nodes directly to the crate's IR.
-pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, global: &'ll Value) {
+pub(crate) fn build_global_var_di_node<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -1525,7 +1529,7 @@ fn vcall_visibility_metadata<'ll, 'tcx>(
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_di_node<'ll, 'tcx>(
+pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
     poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
@@ -1576,7 +1580,7 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
 }
 
 /// Creates an "extension" of an existing `DIScope` into another file.
-pub fn extend_scope_to_file<'ll>(
+pub(crate) fn extend_scope_to_file<'ll>(
     cx: &CodegenCx<'ll, '_>,
     scope_metadata: &'ll DIScope,
     file: &SourceFile,
@@ -1585,7 +1589,7 @@ pub fn extend_scope_to_file<'ll>(
     unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
 }
 
-pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
+fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
     const TUPLE_FIELD_NAMES: [&'static str; 16] = [
         "__0", "__1", "__2", "__3", "__4", "__5", "__6", "__7", "__8", "__9", "__10", "__11",
         "__12", "__13", "__14", "__15",

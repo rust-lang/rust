@@ -12,23 +12,23 @@ use rustc_span::Span;
 #[diag(codegen_llvm_unknown_ctarget_feature_prefix)]
 #[note]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
+    pub(crate) feature: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_ctarget_feature)]
 #[note]
 pub(crate) struct UnknownCTargetFeature<'a> {
-    pub feature: &'a str,
+    pub(crate) feature: &'a str,
     #[subdiagnostic]
-    pub rust_feature: PossibleFeature<'a>,
+    pub(crate) rust_feature: PossibleFeature<'a>,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unstable_ctarget_feature)]
 #[note]
 pub(crate) struct UnstableCTargetFeature<'a> {
-    pub feature: &'a str,
+    pub(crate) feature: &'a str,
 }
 
 #[derive(Subdiagnostic)]
@@ -42,28 +42,28 @@ pub(crate) enum PossibleFeature<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_creating_import_library)]
 pub(crate) struct ErrorCreatingImportLibrary<'a> {
-    pub lib_name: &'a str,
-    pub error: String,
+    pub(crate) lib_name: &'a str,
+    pub(crate) error: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]
 pub(crate) struct SymbolAlreadyDefined<'a> {
     #[primary_span]
-    pub span: Span,
-    pub symbol_name: &'a str,
+    pub(crate) span: Span,
+    pub(crate) symbol_name: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_minimum_alignment_not_power_of_two)]
 pub(crate) struct InvalidMinimumAlignmentNotPowerOfTwo {
-    pub align: u64,
+    pub(crate) align: u64,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_minimum_alignment_too_large)]
 pub(crate) struct InvalidMinimumAlignmentTooLarge {
-    pub align: u64,
+    pub(crate) align: u64,
 }
 
 #[derive(Diagnostic)]
@@ -73,23 +73,23 @@ pub(crate) struct SanitizerMemtagRequiresMte;
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_writing_def_file)]
 pub(crate) struct ErrorWritingDEFFile {
-    pub error: std::io::Error,
+    pub(crate) error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_calling_dlltool)]
 pub(crate) struct ErrorCallingDllTool<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub error: std::io::Error,
+    pub(crate) dlltool_path: Cow<'a, str>,
+    pub(crate) error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dlltool_fail_import_library)]
 pub(crate) struct DlltoolFailImportLibrary<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub dlltool_args: String,
-    pub stdout: Cow<'a, str>,
-    pub stderr: Cow<'a, str>,
+    pub(crate) dlltool_path: Cow<'a, str>,
+    pub(crate) dlltool_args: String,
+    pub(crate) stdout: Cow<'a, str>,
+    pub(crate) stderr: Cow<'a, str>,
 }
 
 #[derive(Diagnostic)]
@@ -97,7 +97,7 @@ pub(crate) struct DlltoolFailImportLibrary<'a> {
 #[note]
 pub(crate) struct DynamicLinkingWithLTO;
 
-pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
+pub(crate) struct ParseTargetMachineConfig<'a>(pub(crate) LlvmError<'a>);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
@@ -110,9 +110,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 }
 
 pub(crate) struct TargetFeatureDisableOrEnable<'a> {
-    pub features: &'a [&'a str],
-    pub span: Option<Span>,
-    pub missing_features: Option<MissingFeatures>,
+    pub(crate) features: &'a [&'a str],
+    pub(crate) span: Option<Span>,
+    pub(crate) missing_features: Option<MissingFeatures>,
 }
 
 #[derive(Subdiagnostic)]
@@ -148,7 +148,7 @@ pub(crate) struct LtoProcMacro;
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
-    pub llvm_err: String,
+    pub(crate) llvm_err: String,
 }
 
 #[derive(Diagnostic)]
@@ -177,7 +177,7 @@ pub enum LlvmError<'a> {
     ParseBitcode,
 }
 
-pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
+pub(crate) struct WithLlvmError<'a>(pub(crate) LlvmError<'a>, pub(crate) String);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
     fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
@@ -207,56 +207,56 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_from_llvm_optimization_diag)]
 pub(crate) struct FromLlvmOptimizationDiag<'a> {
-    pub filename: &'a str,
-    pub line: std::ffi::c_uint,
-    pub column: std::ffi::c_uint,
-    pub pass_name: &'a str,
-    pub kind: &'a str,
-    pub message: &'a str,
+    pub(crate) filename: &'a str,
+    pub(crate) line: std::ffi::c_uint,
+    pub(crate) column: std::ffi::c_uint,
+    pub(crate) pass_name: &'a str,
+    pub(crate) kind: &'a str,
+    pub(crate) message: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_from_llvm_diag)]
 pub(crate) struct FromLlvmDiag {
-    pub message: String,
+    pub(crate) message: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_write_bytecode)]
 pub(crate) struct WriteBytecode<'a> {
-    pub path: &'a Path,
-    pub err: std::io::Error,
+    pub(crate) path: &'a Path,
+    pub(crate) err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_copy_bitcode)]
 pub(crate) struct CopyBitcode {
-    pub err: std::io::Error,
+    pub(crate) err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_debuginfo_compression)]
-pub struct UnknownCompression {
-    pub algorithm: &'static str,
+pub(crate) struct UnknownCompression {
+    pub(crate) algorithm: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_mismatch_data_layout)]
-pub struct MismatchedDataLayout<'a> {
-    pub rustc_target: &'a str,
-    pub rustc_layout: &'a str,
-    pub llvm_target: &'a str,
-    pub llvm_layout: &'a str,
+pub(crate) struct MismatchedDataLayout<'a> {
+    pub(crate) rustc_target: &'a str,
+    pub(crate) rustc_layout: &'a str,
+    pub(crate) llvm_target: &'a str,
+    pub(crate) llvm_layout: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_target_feature_prefix)]
 pub(crate) struct InvalidTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
+    pub(crate) feature: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_fixed_x18_invalid_arch)]
 pub(crate) struct FixedX18InvalidArch<'a> {
-    pub arch: &'a str,
+    pub(crate) arch: &'a str,
 }

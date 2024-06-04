@@ -47,14 +47,14 @@ use std::slice;
 use std::str;
 use std::sync::Arc;
 
-pub fn llvm_err<'a>(dcx: &rustc_errors::DiagCtxt, err: LlvmError<'a>) -> FatalError {
+pub(crate) fn llvm_err<'a>(dcx: &rustc_errors::DiagCtxt, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {
         Some(llvm_err) => dcx.emit_almost_fatal(WithLlvmError(err, llvm_err)),
         None => dcx.emit_almost_fatal(err),
     }
 }
 
-pub fn write_output_file<'ll>(
+fn write_output_file<'ll>(
     dcx: &rustc_errors::DiagCtxt,
     target: &'ll llvm::TargetMachine,
     pm: &llvm::PassManager<'ll>,
@@ -99,7 +99,7 @@ pub fn write_output_file<'ll>(
     }
 }
 
-pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
+pub(crate) fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
@@ -108,7 +108,7 @@ pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err).raise())
 }
 
-pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
+pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(()).split_dwarf_path(
             tcx.sess.split_debuginfo(),
@@ -131,9 +131,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
     .unwrap_or_else(|err| llvm_err(tcx.dcx(), err).raise())
 }
 
-pub fn to_llvm_opt_settings(
-    cfg: config::OptLevel,
-) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
+fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
     use self::config::OptLevel::*;
     match cfg {
         No => (llvm::CodeGenOptLevel::None, llvm::CodeGenOptSizeNone),
@@ -180,7 +178,7 @@ pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeMod
     }
 }
 
-pub fn target_machine_factory(
+pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
     target_features: &[String],
@@ -321,7 +319,7 @@ pub(crate) fn save_temp_bitcode(
 }
 
 /// In what context is a dignostic handler being attached to a codegen unit?
-pub enum CodegenDiagnosticsStage {
+pub(crate) enum CodegenDiagnosticsStage {
     /// Prelink optimization stage.
     Opt,
     /// LTO/ThinLTO postlink optimization stage.
@@ -330,14 +328,14 @@ pub enum CodegenDiagnosticsStage {
     Codegen,
 }
 
-pub struct DiagnosticHandlers<'a> {
+pub(crate) struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a DiagCtxt),
     llcx: &'a llvm::Context,
     old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
-    pub fn new(
+    pub(crate) fn new(
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
         dcx: &'a DiagCtxt,
         llcx: &'a llvm::Context,
