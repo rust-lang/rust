@@ -210,13 +210,13 @@ LL |     let _ = cf as *const [u16];
    |
    = note: vtable kinds may not match
 
-error[E0277]: the trait bound `dyn Foo: Unsize<dyn Bar>` is not satisfied
+error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
   --> $DIR/cast-rfc0401.rs:69:13
    |
 LL |     let _ = cf as *const dyn Bar;
-   |             ^^^^^^^^^^^^^^^^^^^^ the trait `Unsize<dyn Bar>` is not implemented for `dyn Foo`
+   |             ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+   = note: vtable kinds may not match
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:53:13

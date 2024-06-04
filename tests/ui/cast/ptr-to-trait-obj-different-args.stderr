@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `dyn A: Unsize<dyn B>` is not satisfied
+error[E0606]: casting `*const dyn A` as `*const dyn B` is invalid
   --> $DIR/ptr-to-trait-obj-different-args.rs:18:27
    |
 LL |     let b: *const dyn B = a as _;
-   |                           ^^^^^^ the trait `Unsize<dyn B>` is not implemented for `dyn A`
+   |                           ^^^^^^
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+   = note: vtable kinds may not match
 
 error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
   --> $DIR/ptr-to-trait-obj-different-args.rs:21:34
@@ -48,4 +48,5 @@ LL |     x as _
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0606.
+For more information about an error, try `rustc --explain E0277`.

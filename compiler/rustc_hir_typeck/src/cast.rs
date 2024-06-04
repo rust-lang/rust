@@ -828,12 +828,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Some(PointerKind::VTable(src_tty)), Some(PointerKind::VTable(dst_tty))) => {
                 match (src_tty.principal(), dst_tty.principal()) {
                     // A<dyn Trait + Auto> -> B<dyn Trait' + Auto'>. need to make sure
-                    // - traits are the same & have the same generic arguments
+                    // - traits are the same
+                    // - traits have the same generic arguments
                     // - Auto' is a subset of Auto
-                    //
-                    // This is checked by checking `dyn Trait + Auto + 'erased: Unsize<dyn Trait' + Auto' + 'erased>`.
-                    (Some(_), Some(_)) => {
+                    (Some(src_principal), Some(dst_principal)) => {
                         let tcx = fcx.tcx;
+
+                        // Check that the traits are actually the same
+                        // (this is required as the `Unsize` check below would allow upcasting, etc)
+                        if src_principal.def_id() != dst_principal.def_id() {
+                            return Err(CastError::DifferingKinds);
+                        }
 
                         // We need to reconstruct trait object types.
                         // `m_src` and `m_dst` won't work for us here because they will potentially
