@@ -37,7 +37,7 @@
 // Const generic parameter
 // gdb-command:info functions -q function_names::const_generic_fn.*
 // gdb-check:[...]static fn function_names::const_generic_fn_bool<false>();
-// gdb-check:[...]static fn function_names::const_generic_fn_non_int<{CONST#ad91263f6d2dd96e}>();
+// gdb-check:[...]static fn function_names::const_generic_fn_non_int<{CONST#[...]}>();
 // gdb-check:[...]static fn function_names::const_generic_fn_signed_int<-7>();
 // gdb-check:[...]static fn function_names::const_generic_fn_unsigned_int<14>();
 
@@ -76,7 +76,7 @@
 // Const generic parameter
 // cdb-command:x a!function_names::const_generic_fn*
 // cdb-check:[...] a!function_names::const_generic_fn_bool<false> (void)
-// cdb-check:[...] a!function_names::const_generic_fn_non_int<CONST$ad91263f6d2dd96e> (void)
+// cdb-check:[...] a!function_names::const_generic_fn_non_int<CONST#[...]> (void)
 // cdb-check:[...] a!function_names::const_generic_fn_unsigned_int<14> (void)
 // cdb-check:[...] a!function_names::const_generic_fn_signed_int<-7> (void)
 
