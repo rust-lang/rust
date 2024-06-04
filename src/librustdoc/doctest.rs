@@ -369,29 +369,25 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
     command
 }
 
+struct RunnableDoctest {
+    full_test_code: String,
+    full_test_line_offset: usize,
+    test_opts: IndividualTestOptions,
+    global_opts: GlobalTestOptions,
+    scraped_test: ScrapedDoctest,
+}
+
 fn run_test(
-    test: &str,
-    line: usize,
+    doctest: RunnableDoctest,
     rustdoc_options: &RustdocOptions,
-    test_options: IndividualTestOptions,
-    mut lang_string: LangString,
-    no_run: bool,
-    opts: &GlobalTestOptions,
-    edition: Edition,
+    supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
-    let (test, line_offset, supports_color) = make_test(
-        test,
-        Some(&opts.crate_name),
-        lang_string.test_harness,
-        opts,
-        edition,
-        Some(&test_options.test_id),
-    );
-
+    let scraped_test = &doctest.scraped_test;
+    let langstr = &scraped_test.langstr;
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
-    let output_file = test_options.outdir.path().join(rust_out);
+    let output_file = doctest.test_opts.outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -399,27 +395,33 @@ fn run_test(
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
-    compiler.arg(&format!("@{}", opts.args_file.display()));
+    compiler.arg(&format!("@{}", doctest.global_opts.args_file.display()));
 
     if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
         compiler.arg(format!("--sysroot={}", sysroot.display()));
     }
 
-    compiler.arg("--edition").arg(&edition.to_string());
-    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &test_options.path);
-    compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
+    compiler.arg("--edition").arg(&scraped_test.edition(rustdoc_options).to_string());
+    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
+    compiler.env(
+        "UNSTABLE_RUSTDOC_TEST_LINE",
+        format!("{}", scraped_test.line as isize - doctest.full_test_line_offset as isize),
+    );
     compiler.arg("-o").arg(&output_file);
-    if lang_string.test_harness {
+    if langstr.test_harness {
         compiler.arg("--test");
     }
-    if rustdoc_options.json_unused_externs.is_enabled() && !lang_string.compile_fail {
+    if rustdoc_options.json_unused_externs.is_enabled() && !langstr.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-W").arg("unused_crate_dependencies");
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
+    if scraped_test.no_run(rustdoc_options)
+        && !langstr.compile_fail
+        && rustdoc_options.persist_doctests.is_none()
+    {
         // FIXME: why does this code check if it *shouldn't* persist doctests
         //        -- shouldn't it be the negation?
         compiler.arg("--emit=metadata");
@@ -459,7 +461,7 @@ fn run_test(
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
     {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-        stdin.write_all(test.as_bytes()).expect("could write out test sources");
+        stdin.write_all(doctest.full_test_code.as_bytes()).expect("could write out test sources");
     }
     let output = child.wait_with_output().expect("Failed to read stdout");
 
@@ -490,20 +492,26 @@ fn run_test(
     }
 
     let _bomb = Bomb(&out);
-    match (output.status.success(), lang_string.compile_fail) {
+    match (output.status.success(), langstr.compile_fail) {
         (true, true) => {
             return Err(TestFailure::UnexpectedCompilePass);
         }
         (true, false) => {}
         (false, true) => {
-            if !lang_string.error_codes.is_empty() {
+            if !langstr.error_codes.is_empty() {
                 // We used to check if the output contained "error[{}]: " but since we added the
                 // colored output, we can't anymore because of the color escape characters before
                 // the ":".
-                lang_string.error_codes.retain(|err| !out.contains(&format!("error[{err}]")));
+                let missing_codes: Vec<String> = scraped_test
+                    .langstr
+                    .error_codes
+                    .iter()
+                    .filter(|err| !out.contains(&format!("error[{err}]")))
+                    .cloned()
+                    .collect();
 
-                if !lang_string.error_codes.is_empty() {
-                    return Err(TestFailure::MissingErrorCodes(lang_string.error_codes));
+                if !missing_codes.is_empty() {
+                    return Err(TestFailure::MissingErrorCodes(missing_codes));
                 }
             }
         }
@@ -512,7 +520,7 @@ fn run_test(
         }
     }
 
-    if no_run {
+    if scraped_test.no_run(rustdoc_options) {
         return Ok(());
     }
 
@@ -544,9 +552,9 @@ fn run_test(
     match result {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
-            if lang_string.should_panic && out.status.success() {
+            if langstr.should_panic && out.status.success() {
                 return Err(TestFailure::UnexpectedRunPass);
-            } else if !lang_string.should_panic && !out.status.success() {
+            } else if !langstr.should_panic && !out.status.success() {
                 return Err(TestFailure::ExecutionFailure(out));
             }
         }
@@ -1099,19 +1107,23 @@ fn doctest_run_fn(
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
-    let no_run = scraped_test.no_run(&rustdoc_options);
     let edition = scraped_test.edition(&rustdoc_options);
-    let res = run_test(
+    let (full_test_code, full_test_line_offset, supports_color) = make_test(
         &scraped_test.text,
-        scraped_test.line,
-        &rustdoc_options,
-        test_opts,
-        scraped_test.langstr,
-        no_run,
+        Some(&global_opts.crate_name),
+        scraped_test.langstr.test_harness,
         &global_opts,
         edition,
-        report_unused_externs,
+        Some(&test_opts.test_id),
     );
+    let runnable_test = RunnableDoctest {
+        full_test_code,
+        full_test_line_offset,
+        test_opts,
+        global_opts,
+        scraped_test,
+    };
+    let res = run_test(runnable_test, &rustdoc_options, supports_color, report_unused_externs);
 
     if let Err(err) = res {
         match err {
