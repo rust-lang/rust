@@ -16,6 +16,7 @@ use rustc_type_ir::Interner;
 use super::inspect;
 use super::inspect::ProofTreeBuilder;
 use super::SolverMode;
+use crate::solve::CanonicalResponseExt;
 use crate::solve::FIXPOINT_STEP_LIMIT;
 
 rustc_index::newtype_index! {
@@ -364,7 +365,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         let ((final_entry, result), dep_node) =
             tcx.dep_graph.with_anon_task(tcx, dep_kinds::TraitSelect, || {
                 for _ in 0..FIXPOINT_STEP_LIMIT {
-                    match self.fixpoint_step_in_task(tcx, input, inspect, &mut prove_goal) {
+                    match self.fixpoint_step_in_task(input, inspect, &mut prove_goal) {
                         StepResult::Done(final_entry, result) => return (final_entry, result),
                         StepResult::HasChanged => debug!("fixpoint changed provisional results"),
                     }
@@ -473,7 +474,6 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
     /// point we are done.
     fn fixpoint_step_in_task<F>(
         &mut self,
-        tcx: TyCtxt<'tcx>,
         input: CanonicalInput<TyCtxt<'tcx>>,
         inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
         prove_goal: &mut F,
@@ -505,7 +505,7 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         );
 
         // If we did not reach a fixpoint, update the provisional result and reevaluate.
-        if self.reached_fixpoint(tcx, input, &stack_entry, result) {
+        if self.reached_fixpoint(&stack_entry, result) {
             StepResult::Done(stack_entry, result)
         } else {
             let depth = self.stack.push(StackEntry {
@@ -518,24 +518,39 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         }
     }
 
-    /// Check whether we reached a fixpoint, either because the final result
-    /// is equal to the provisional result of the previous iteration, or because
-    /// this was only the root of either coinductive or inductive cycles, and the
-    /// final result is equal to the initial response for that case.
+    /// Check whether we reached a fixpoint we're done with the current cycle head.
+    ///
+    /// This is the case if the final result is equal to the used provisional
+    /// result of the previous iteration or if the result of this iteration is
+    /// ambiguity with no constraints. We do not care about the previous provisional
+    /// result in this case.
     fn reached_fixpoint(
         &self,
-        tcx: TyCtxt<'tcx>,
-        input: CanonicalInput<TyCtxt<'tcx>>,
         stack_entry: &StackEntry<TyCtxt<'tcx>>,
         result: QueryResult<TyCtxt<'tcx>>,
     ) -> bool {
-        if let Some(r) = stack_entry.provisional_result {
+        if is_response_no_constraints(result, |c| matches!(c, Certainty::Maybe(_))) {
+            // If computing this goal results in ambiguity with no constraints,
+            // we do not rerun it. It's incredibly difficult to get a different
+            // response in the next iteration in this case. These changes would
+            // likely either be caused by incompleteness or can change the maybe
+            // cause from ambiguity to overflow. Returning ambiguity always
+            // preserves soundness and completeness even if the goal is be known
+            // to succeed or fail.
+            //
+            // This prevents exponential blowup affecting multiple major crates.
+            true
+        } else if let Some(r) = stack_entry.provisional_result {
+            // If we already have a provisional result for this cycle head from
+            // a previous iteration, simply check for a fixpoint.
             r == result
         } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
-            response_no_constraints(tcx, input, Certainty::Yes) == result
-        } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
-            response_no_constraints(tcx, input, Certainty::overflow(false)) == result
+            // If we only used this cycle head with inductive cycles, and the final
+            // response is trivially true, no need to rerun.
+            is_response_no_constraints(result, |c| c == Certainty::Yes)
         } else {
+            // No need to check exclusively inductive cycles, as these are covered by the
+            // general overflow branch above.
             false
         }
     }
@@ -547,6 +562,16 @@ fn response_no_constraints<'tcx>(
     certainty: Certainty,
 ) -> QueryResult<TyCtxt<'tcx>> {
     Ok(super::response_no_constraints_raw(tcx, goal.max_universe, goal.variables, certainty))
+}
+
+fn is_response_no_constraints<'tcx>(
+    result: QueryResult<TyCtxt<'tcx>>,
+    check_certainty: impl FnOnce(Certainty) -> bool,
+) -> bool {
+    result.is_ok_and(|response| {
+        response.has_no_inference_or_external_constraints()
+            && check_certainty(response.value.certainty)
+    })
 }
 
 impl<I: Interner> SearchGraph<I> {

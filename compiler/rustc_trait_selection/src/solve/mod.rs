@@ -77,9 +77,15 @@ enum GoalEvaluationKind {
 #[extension(trait CanonicalResponseExt)]
 impl<'tcx> Canonical<'tcx, Response<TyCtxt<'tcx>>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
-        self.value.external_constraints.region_constraints.is_empty()
-            && self.value.var_values.is_identity()
-            && self.value.external_constraints.opaque_types.is_empty()
+        let ExternalConstraintsData {
+            ref region_constraints,
+            ref opaque_types,
+            ref normalization_nested_goals,
+        } = *self.value.external_constraints;
+        self.value.var_values.is_identity()
+            && region_constraints.is_empty()
+            && opaque_types.is_empty()
+            && normalization_nested_goals.is_empty()
     }
 }
 
