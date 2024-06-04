@@ -374,26 +374,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(_) => {}
-            ty::ConstKind::Expr(e) => {
-                use ty::Expr;
-                match e {
-                    Expr::Binop(_, l, r) => {
-                        self.add_const(l);
-                        self.add_const(r);
-                    }
-                    Expr::UnOp(_, v) => self.add_const(v),
-                    Expr::FunctionCall(f, args) => {
-                        self.add_const(f);
-                        for arg in args {
-                            self.add_const(arg);
-                        }
-                    }
-                    Expr::Cast(_, c, t) => {
-                        self.add_ty(t);
-                        self.add_const(c);
-                    }
-                }
-            }
+            ty::ConstKind::Expr(e) => self.add_args(e.args()),
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }

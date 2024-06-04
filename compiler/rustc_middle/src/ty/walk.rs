@@ -222,24 +222,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Value(_)
                 | ty::ConstKind::Error(_) => {}
 
-                ty::ConstKind::Expr(expr) => match expr {
-                    ty::Expr::UnOp(_, v) => push_inner(stack, v.into()),
-                    ty::Expr::Binop(_, l, r) => {
-                        push_inner(stack, r.into());
-                        push_inner(stack, l.into())
-                    }
-                    ty::Expr::FunctionCall(func, args) => {
-                        for a in args.iter().rev() {
-                            push_inner(stack, a.into());
-                        }
-                        push_inner(stack, func.into());
-                    }
-                    ty::Expr::Cast(_, c, t) => {
-                        push_inner(stack, t.into());
-                        push_inner(stack, c.into());
-                    }
-                },
-
+                ty::ConstKind::Expr(expr) => stack.extend(expr.args().iter().rev()),
                 ty::ConstKind::Unevaluated(ct) => {
                     stack.extend(ct.args.iter().rev());
                 }

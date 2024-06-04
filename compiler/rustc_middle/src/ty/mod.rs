@@ -87,7 +87,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstData, ConstInt, ConstKind, Expr, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstData, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
