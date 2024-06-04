@@ -2,6 +2,7 @@
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
+#![deny(unreachable_pub)]
 
 use std::fmt;
 use std::num::{NonZeroUsize, ParseIntError};

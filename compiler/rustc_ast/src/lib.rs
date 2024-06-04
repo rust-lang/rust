@@ -10,6 +10,7 @@
 )]
 #![doc(rust_logo)]
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![feature(rustdoc_internals)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
