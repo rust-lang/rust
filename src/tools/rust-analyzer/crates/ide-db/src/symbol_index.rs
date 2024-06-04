@@ -53,7 +53,6 @@ pub struct Query {
     case_sensitive: bool,
     only_types: bool,
     libs: bool,
-    include_hidden: bool,
 }
 
 impl Query {
@@ -67,12 +66,7 @@ impl Query {
             mode: SearchMode::Fuzzy,
             assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
-            include_hidden: false,
         }
-    }
-
-    pub fn include_hidden(&mut self) {
-        self.include_hidden = true;
     }
 
     pub fn only_types(&mut self) {
@@ -363,6 +357,7 @@ impl Query {
         mut stream: fst::map::Union<'_>,
         mut cb: impl FnMut(&'sym FileSymbol),
     ) {
+        let ignore_underscore_prefixed = !self.query.starts_with("__");
         while let Some((_, indexed_values)) = stream.next() {
             for &IndexedValue { index, value } in indexed_values {
                 let symbol_index = &indices[index];
@@ -381,7 +376,8 @@ impl Query {
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
                         continue;
                     }
-                    if self.should_hide_query(symbol) {
+                    // Hide symbols that start with `__` unless the query starts with `__`
+                    if ignore_underscore_prefixed && symbol.name.starts_with("__") {
                         continue;
                     }
                     if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
@@ -390,11 +386,6 @@ impl Query {
                 }
             }
         }
-    }
-
-    fn should_hide_query(&self, symbol: &FileSymbol) -> bool {
-        // Hide symbols that start with `__` unless the query starts with `__`
-        !self.include_hidden && symbol.name.starts_with("__") && !self.query.starts_with("__")
     }
 
     fn matches_assoc_mode(&self, is_trait_assoc_item: bool) -> bool {

@@ -940,11 +940,12 @@ static __FOO_CALLSITE: () = ();
         // It doesn't show the hidden symbol
         let navs = analysis.symbol_search(Query::new("foo".to_owned()), !0).unwrap();
         assert_eq!(navs.len(), 2);
+        let navs = analysis.symbol_search(Query::new("_foo".to_owned()), !0).unwrap();
+        assert_eq!(navs.len(), 0);
 
-        // Unless we configure a query to show hidden symbols
-        let mut query = Query::new("foo".to_owned());
-        query.include_hidden();
+        // Unless we explicitly search for a `__` prefix
+        let query = Query::new("__foo".to_owned());
         let navs = analysis.symbol_search(query, !0).unwrap();
-        assert_eq!(navs.len(), 3);
+        assert_eq!(navs.len(), 1);
     }
 }
