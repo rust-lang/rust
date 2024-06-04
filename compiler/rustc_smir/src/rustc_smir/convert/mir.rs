@@ -6,7 +6,7 @@ use rustc_middle::mir::interpret::alloc_range;
 use rustc_middle::mir::mono::MonoItem;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
-use stable_mir::ty::{Allocation, Const, ConstantKind};
+use stable_mir::ty::{Allocation, ConstantKind, MirConst};
 use stable_mir::{opaque, Error};
 
 use crate::rustc_smir::{alloc, Stable, Tables};
@@ -724,11 +724,16 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
 }
 
 impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
-    type T = stable_mir::ty::Const;
+    type T = stable_mir::ty::MirConst;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        let id = tables.intern_mir_const(tables.tcx.lift(*self).unwrap());
         match *self {
-            mir::Const::Ty(c) => c.stable(tables),
+            mir::Const::Ty(c) => MirConst::new(
+                stable_mir::ty::ConstantKind::Ty(c.stable(tables)),
+                c.ty().stable(tables),
+                id,
+            ),
             mir::Const::Unevaluated(unev_const, ty) => {
                 let kind =
                     stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
@@ -737,21 +742,18 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                         promoted: unev_const.promoted.map(|u| u.as_u32()),
                     });
                 let ty = ty.stable(tables);
-                let id = tables.intern_const(tables.tcx.lift(*self).unwrap());
-                Const::new(kind, ty, id)
+                MirConst::new(kind, ty, id)
             }
             mir::Const::Val(mir::ConstValue::ZeroSized, ty) => {
                 let ty = ty.stable(tables);
-                let id = tables.intern_const(tables.tcx.lift(*self).unwrap());
-                Const::new(ConstantKind::ZeroSized, ty, id)
+                MirConst::new(ConstantKind::ZeroSized, ty, id)
             }
             mir::Const::Val(val, ty) => {
                 let ty = tables.tcx.lift(ty).unwrap();
                 let val = tables.tcx.lift(val).unwrap();
                 let kind = ConstantKind::Allocated(alloc::new_allocation(ty, val, tables));
                 let ty = ty.stable(tables);
-                let id = tables.intern_const(tables.tcx.lift(*self).unwrap());
-                Const::new(kind, ty, id)
+                MirConst::new(kind, ty, id)
             }
         }
     }

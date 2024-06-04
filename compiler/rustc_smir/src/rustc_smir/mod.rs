@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use stable_mir::abi::Layout;
 use stable_mir::mir::mono::InstanceDef;
-use stable_mir::ty::{ConstId, Span};
+use stable_mir::ty::{MirConstId, Span, TyConstId};
 use stable_mir::{CtorKind, ItemKind};
 use std::ops::RangeInclusive;
 use tracing::debug;
@@ -33,7 +33,8 @@ pub struct Tables<'tcx> {
     pub(crate) spans: IndexMap<rustc_span::Span, Span>,
     pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
-    pub(crate) constants: IndexMap<mir::Const<'tcx>, ConstId>,
+    pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
+    pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
     pub(crate) layouts: IndexMap<rustc_target::abi::Layout<'tcx>, Layout>,
 }
 
@@ -42,8 +43,12 @@ impl<'tcx> Tables<'tcx> {
         self.types.create_or_fetch(ty)
     }
 
-    pub(crate) fn intern_const(&mut self, constant: mir::Const<'tcx>) -> ConstId {
-        self.constants.create_or_fetch(constant)
+    pub(crate) fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> TyConstId {
+        self.ty_consts.create_or_fetch(ct)
+    }
+
+    pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> MirConstId {
+        self.mir_consts.create_or_fetch(constant)
     }
 
     pub(crate) fn has_body(&self, instance: Instance<'tcx>) -> bool {

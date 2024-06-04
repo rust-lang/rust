@@ -1,5 +1,5 @@
 use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
-use crate::ty::{Const, IndexedVal, Ty};
+use crate::ty::{IndexedVal, MirConst, Ty, TyConst};
 use crate::{with, Body, Mutability};
 use fmt::{Display, Formatter};
 use std::fmt::Debug;
@@ -46,7 +46,7 @@ pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -
             VarDebugInfoContents::Place(place) => {
                 format!("{place:?}")
             }
-            VarDebugInfoContents::Const(constant) => pretty_const(&constant.const_),
+            VarDebugInfoContents::Const(constant) => pretty_mir_const(&constant.const_),
         };
         writeln!(writer, "    debug {} => {};", info.name, content)
     })?;
@@ -310,12 +310,16 @@ fn pretty_operand(operand: &Operand) -> String {
         Operand::Move(mv) => {
             format!("move {:?}", mv)
         }
-        Operand::Constant(cnst) => pretty_const(&cnst.literal),
+        Operand::Constant(cnst) => pretty_mir_const(&cnst.literal),
     }
 }
 
-fn pretty_const(literal: &Const) -> String {
-    with(|cx| cx.const_pretty(literal))
+fn pretty_mir_const(literal: &MirConst) -> String {
+    with(|cx| cx.mir_const_pretty(literal))
+}
+
+fn pretty_ty_const(ct: &TyConst) -> String {
+    with(|cx| cx.ty_const_pretty(ct.id))
 }
 
 fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
@@ -359,7 +363,7 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, "{kind}{:?}", place)
         }
         Rvalue::Repeat(op, cnst) => {
-            write!(writer, "{} \" \" {}", &pretty_operand(op), cnst.ty())
+            write!(writer, "{} \" \" {}", &pretty_operand(op), &pretty_ty_const(cnst))
         }
         Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {
