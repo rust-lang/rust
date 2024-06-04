@@ -1557,6 +1557,8 @@ impl fmt::Debug for File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "vxworks",
+            target_os = "solaris",
+            target_os = "illumos",
             target_vendor = "apple",
         ))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
@@ -1579,6 +1581,8 @@ impl fmt::Debug for File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "vxworks",
+            target_os = "solaris",
+            target_os = "illumos",
             target_vendor = "apple",
         )))]
         fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
