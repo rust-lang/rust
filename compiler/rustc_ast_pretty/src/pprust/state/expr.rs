@@ -380,9 +380,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }
-            ast::ExprKind::ConstBlock(expr) => {
-                self.word_space("const");
-                self.print_expr(expr, FixupContext::default());
+            ast::ExprKind::ConstBlock(anon_const) => {
+                self.print_expr_anon_const(anon_const, attrs);
             }
             ast::ExprKind::Repeat(element, count) => {
                 self.print_expr_repeat(element, count);
