@@ -1,5 +1,7 @@
 use crate::bounds::Bounds;
-use crate::hir_ty_lowering::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
+use crate::hir_ty_lowering::{
+    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
@@ -321,13 +323,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, None)
+            self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, None)
+                    self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
                 } else {
-                    self.re_infer(None, span, !borrowed)
+                    self.re_infer(
+                        span,
+                        if borrowed {
+                            RegionInferReason::ObjectLifetimeDefault
+                        } else {
+                            RegionInferReason::BorrowedObjectLifetimeDefault
+                        },
+                    )
                 }
             })
         };

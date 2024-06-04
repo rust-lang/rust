@@ -1,7 +1,7 @@
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
-use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -243,12 +243,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = icx.lowerer().lower_lifetime(region_pred.lifetime, None);
+                let r1 = icx
+                    .lowerer()
+                    .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
-                        hir::GenericBound::Outlives(lt) => {
-                            (icx.lowerer().lower_lifetime(lt, None), lt.ident.span)
-                        }
+                        hir::GenericBound::Outlives(lt) => (
+                            icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
+                            lt.ident.span,
+                        ),
                         bound => {
                             span_bug!(
                                 bound.span(),

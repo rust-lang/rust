@@ -16,7 +16,7 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
 };
 use rustc_hir_analysis::hir_ty_lowering::{
     ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
-    GenericPathSegment, HirTyLowerer, IsMethodCall,
+    GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -1280,9 +1280,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.fcx.lowerer().lower_lifetime(lt, Some(param)).into()
-                    }
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => self
+                        .fcx
+                        .lowerer()
+                        .lower_lifetime(lt, RegionInferReason::Param(param))
+                        .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.fcx.lower_ty(ty).raw.into()
                     }
@@ -1324,9 +1326,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        self.fcx.re_infer(Some(param), self.span, false).into()
-                    }
+                    GenericParamDefKind::Lifetime => self
+                        .fcx
+                        .re_infer(
+                            self.span,
+                            rustc_hir_analysis::hir_ty_lowering::RegionInferReason::Param(param),
+                        )
+                        .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // If we have a default, then it doesn't matter that we're not

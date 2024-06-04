@@ -15,7 +15,7 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
@@ -222,15 +222,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.body_id
     }
 
-    fn re_infer(
-        &self,
-        def: Option<&ty::GenericParamDef>,
-        span: Span,
-        _object_lifetime_default: bool,
-    ) -> ty::Region<'tcx> {
-        let v = match def {
-            Some(def) => infer::RegionParameterDefinition(span, def.name),
-            None => infer::MiscVariable(span),
+    fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
+        let v = match reason {
+            RegionInferReason::Param(def) => infer::RegionParameterDefinition(span, def.name),
+            _ => infer::MiscVariable(span),
         };
         self.next_region_var(v)
     }

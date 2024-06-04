@@ -80,6 +80,20 @@ pub enum PredicateFilter {
     SelfAndAssociatedTypeBounds,
 }
 
+#[derive(Debug)]
+pub enum RegionInferReason<'a> {
+    /// Lifetime on a trait object behind a reference.
+    /// This allows inferring information from the reference.
+    BorrowedObjectLifetimeDefault,
+    /// A trait object's lifetime.
+    ObjectLifetimeDefault,
+    /// Generic lifetime parameter
+    Param(&'a ty::GenericParamDef),
+    RegionPredicate,
+    Reference,
+    OutlivesBound,
+}
+
 /// A context which can lower type-system entities from the [HIR][hir] to
 /// the [`rustc_middle::ty`] representation.
 ///
@@ -91,14 +105,7 @@ pub trait HirTyLowerer<'tcx> {
     fn item_def_id(&self) -> LocalDefId;
 
     /// Returns the region to use when a lifetime is omitted (and not elided).
-    ///
-    /// The `object_lifetime_default` argument states whether this lifetime is from a reference.
-    fn re_infer(
-        &self,
-        param: Option<&ty::GenericParamDef>,
-        span: Span,
-        object_lifetime_default: bool,
-    ) -> ty::Region<'tcx>;
+    fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
@@ -267,7 +274,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub fn lower_lifetime(
         &self,
         lifetime: &hir::Lifetime,
-        def: Option<&ty::GenericParamDef>,
+        reason: RegionInferReason<'_>,
     ) -> ty::Region<'tcx> {
         let tcx = self.tcx();
         let lifetime_name = |def_id| tcx.hir().name(tcx.local_def_id_to_hir_id(def_id));
@@ -301,7 +308,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             Some(rbv::ResolvedArg::Error(guar)) => ty::Region::new_error(tcx, guar),
 
-            None => self.re_infer(def, lifetime.ident.span, false),
+            None => self.re_infer(lifetime.ident.span, reason),
         }
     }
 
@@ -466,7 +473,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.lowerer.lower_lifetime(lt, Some(param)).into()
+                        self.lowerer.lower_lifetime(lt, RegionInferReason::Param(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
                         handle_ty_args(has_default, ty)
@@ -509,7 +516,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        self.lowerer.re_infer(Some(param), self.span, false).into()
+                        self.lowerer.re_infer(self.span, RegionInferReason::Param(param)).into()
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
@@ -2041,7 +2048,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
             hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
             hir::TyKind::Ref(region, mt) => {
-                let r = self.lower_lifetime(region, None);
+                let r = self.lower_lifetime(region, RegionInferReason::Reference);
                 debug!(?r);
                 let t = self.lower_ty_common(mt.ty, true, false);
                 Ty::new_ref(tcx, r, t, mt.mutbl)
@@ -2270,7 +2277,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         &lifetimes[i]
                     )
                 };
-                self.lower_lifetime(lifetime, None).into()
+                self.lower_lifetime(lifetime, RegionInferReason::Param(&param)).into()
             } else {
                 tcx.mk_param_from_def(param)
             }

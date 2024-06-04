@@ -44,7 +44,7 @@ use std::ops::Bound;
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
-use crate::hir_ty_lowering::HirTyLowerer;
+use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 pub use type_of::test_opaque_hidden_types;
 
 mod generics_of;
@@ -374,13 +374,8 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         self.item_def_id
     }
 
-    fn re_infer(
-        &self,
-        _: Option<&ty::GenericParamDef>,
-        span: Span,
-        object_lifetime_default: bool,
-    ) -> ty::Region<'tcx> {
-        if object_lifetime_default {
+    fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
+        if let RegionInferReason::BorrowedObjectLifetimeDefault = reason {
             let e = struct_span_code_err!(
                 self.tcx().dcx(),
                 span,
