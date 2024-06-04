@@ -29,6 +29,7 @@ Files: compiler/*
        x
        x.ps1
        x.py
+       .clang-format
        .editorconfig
        .git-blame-ignore-revs
        .gitattributes
