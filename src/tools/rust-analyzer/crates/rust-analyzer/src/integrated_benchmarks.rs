@@ -74,7 +74,7 @@ fn integrated_highlighting_benchmark() {
         host.apply_change(change);
     }
 
-    let _g = crate::tracing::hprof::init("*>20");
+    let _g = crate::tracing::hprof::init("*>10");
 
     {
         let _it = stdx::timeit("after change");
@@ -160,7 +160,7 @@ fn integrated_completion_benchmark() {
         analysis.completions(&config, position, None).unwrap();
     }
 
-    let _g = crate::tracing::hprof::init("*");
+    let _g = crate::tracing::hprof::init("*>10");
 
     let completion_offset = {
         let _it = stdx::timeit("change");

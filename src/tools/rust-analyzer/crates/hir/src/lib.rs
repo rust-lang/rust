@@ -2755,6 +2755,12 @@ impl Macro {
         }
     }
 
+    pub fn is_asm_or_global_asm(&self, db: &dyn HirDatabase) -> bool {
+        matches!(self.id, MacroId::Macro2Id(it) if {
+            matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltIn(m) if m.is_asm())
+        })
+    }
+
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
         matches!(self.kind(db), MacroKind::Attr)
     }
