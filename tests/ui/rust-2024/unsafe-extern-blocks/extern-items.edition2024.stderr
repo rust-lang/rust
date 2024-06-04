@@ -1,4 +1,4 @@
-error: extern blocks should be unsafe
+error: extern blocks must be unsafe
   --> $DIR/extern-items.rs:9:1
    |
 LL | / extern "C" {
@@ -7,8 +7,6 @@ LL | |     static TEST1: i32;
 LL | |     fn test1(i: i32);
 LL | | }
    | |_^
-   |
-   = note: `#[deny(missing_unsafe_on_extern)]` on by default
 
 error: aborting due to 1 previous error
 

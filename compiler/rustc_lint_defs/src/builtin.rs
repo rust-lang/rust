@@ -4858,8 +4858,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,edition2024,ignore
+    /// ```rust
     /// #![feature(unsafe_extern_blocks)]
+    /// #![warn(missing_unsafe_on_extern)]
     /// #![allow(dead_code)]
     ///
     /// extern "C" {
@@ -4883,5 +4884,8 @@ declare_lint! {
     pub MISSING_UNSAFE_ON_EXTERN,
     Allow,
     "detects missing unsafe keyword on extern declarations",
-    @edition Edition2024 => Deny;
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
+    };
 }

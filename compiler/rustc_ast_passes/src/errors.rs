@@ -495,6 +495,13 @@ pub struct UnsafeItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_missing_unsafe_on_extern)]
+pub struct MissingUnsafeOnExtern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_fieldless_union)]
 pub struct FieldlessUnion {
     #[primary_span]

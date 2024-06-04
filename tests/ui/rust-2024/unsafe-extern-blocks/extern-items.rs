@@ -7,7 +7,7 @@
 #![feature(unsafe_extern_blocks)]
 
 extern "C" {
-    //[edition2024]~^ ERROR extern blocks should be unsafe
+    //[edition2024]~^ ERROR extern blocks must be unsafe
     static TEST1: i32;
     fn test1(i: i32);
 }

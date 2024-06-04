@@ -1044,12 +1044,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     if this.features.unsafe_extern_blocks {
                         if &Safety::Default == safety {
-                            this.lint_buffer.buffer_lint(
-                                MISSING_UNSAFE_ON_EXTERN,
-                                item.id,
-                                item.span,
-                                BuiltinLintDiag::MissingUnsafeOnExtern,
-                            );
+                            if item.span.at_least_rust_2024() {
+                                this.dcx()
+                                    .emit_err(errors::MissingUnsafeOnExtern { span: item.span });
+                            } else {
+                                this.lint_buffer.buffer_lint(
+                                    MISSING_UNSAFE_ON_EXTERN,
+                                    item.id,
+                                    item.span,
+                                    BuiltinLintDiag::MissingUnsafeOnExtern {
+                                        suggestion: item.span.shrink_to_lo(),
+                                    },
+                                );
+                            }
                         }
                     } else if let &Safety::Unsafe(span) = safety {
                         this.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
