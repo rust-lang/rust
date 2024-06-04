@@ -1,9 +1,6 @@
 pub use at::DefineOpaqueTypes;
 pub use freshen::TypeFreshener;
 pub use lexical_region_resolve::RegionResolutionError;
-pub use relate::combine::CombineFields;
-pub use relate::combine::ObligationEmittingRelation;
-pub use relate::StructurallyRelateAliases;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 pub use rustc_middle::ty::IntVarValue;
 pub use BoundRegionConversionTime::*;
@@ -11,6 +8,7 @@ pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 pub use ValuePairs::*;
 
+use crate::infer::relate::{CombineFields, RelateResult};
 use crate::traits::{
     self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
 };
@@ -39,7 +37,6 @@ use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
@@ -62,7 +59,7 @@ pub mod opaque_types;
 pub mod outlives;
 mod projection;
 pub mod region_constraints;
-mod relate;
+pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
 pub mod type_variable;

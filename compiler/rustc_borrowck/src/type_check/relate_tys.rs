@@ -1,14 +1,14 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_infer::infer::relate::{ObligationEmittingRelation, StructurallyRelateAliases};
+use rustc_infer::infer::relate::{Relate, RelateResult, TypeRelation};
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::infer::{ObligationEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::traits::{Obligation, PredicateObligations};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -82,7 +82,7 @@ pub struct NllTypeRelating<'me, 'bccx, 'tcx> {
     /// - Bivariant means that it doesn't matter.
     ambient_variance: ty::Variance,
 
-    ambient_variance_info: ty::VarianceDiagInfo<'tcx>,
+    ambient_variance_info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
 }
 
 impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
@@ -296,7 +296,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         &mut self,
         sup: ty::Region<'tcx>,
         sub: ty::Region<'tcx>,
-        info: ty::VarianceDiagInfo<'tcx>,
+        info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
     ) {
         let sub = self.type_checker.borrowck_context.universal_regions.to_region_vid(sub);
         let sup = self.type_checker.borrowck_context.universal_regions.to_region_vid(sup);
@@ -314,7 +314,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
     }
 }
 
-impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
+impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.type_checker.infcx.tcx
     }
@@ -324,10 +324,10 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
     }
 
     #[instrument(skip(self, info), level = "trace", ret)]
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
         variance: ty::Variance,
-        info: ty::VarianceDiagInfo<'tcx>,
+        info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -445,7 +445,7 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<TyCtxt<'tcx>>,
     {
         // We want that
         //

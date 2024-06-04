@@ -1,7 +1,9 @@
-use crate::ty::error::TypeError;
-use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use tracing::{debug, instrument};
+
+use super::{structurally_relate_tys, Relate, RelateResult, TypeRelation};
+use crate::infer::relate;
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// instantiated with values so as to make it equal to A. Matching is
@@ -29,7 +31,7 @@ impl<'tcx> MatchAgainstFreshVars<'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
     fn tag(&self) -> &'static str {
         "MatchAgainstFreshVars"
     }
@@ -38,10 +40,10 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
         self.tcx
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
         _: ty::Variance,
-        _: ty::VarianceDiagInfo<'tcx>,
+        _: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -72,12 +74,12 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
             ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(relate::expected_found(a, b)))
+                Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
             }
 
             (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.tcx(), guar)),
 
-            _ => relate::structurally_relate_tys(self, a, b),
+            _ => structurally_relate_tys(self, a, b),
         }
     }
 
@@ -97,7 +99,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
             }
 
             (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
-                return Err(TypeError::ConstMismatch(relate::expected_found(a, b)));
+                return Err(TypeError::ConstMismatch(ExpectedFound::new(true, a, b)));
             }
 
             _ => {}
@@ -112,7 +114,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<TyCtxt<'tcx>>,
     {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }

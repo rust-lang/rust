@@ -31,6 +31,7 @@ pub mod fold;
 pub mod inherent;
 pub mod ir_print;
 pub mod lift;
+pub mod relate;
 pub mod solve;
 
 // These modules are not `pub` since they are glob-imported.
