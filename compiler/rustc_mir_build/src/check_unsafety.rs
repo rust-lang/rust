@@ -597,7 +597,7 @@ enum UnsafeOpKind {
 use UnsafeOpKind::*;
 
 impl UnsafeOpKind {
-    pub fn emit_unsafe_op_in_unsafe_fn_lint(
+    fn emit_unsafe_op_in_unsafe_fn_lint(
         &self,
         tcx: TyCtxt<'_>,
         hir_id: HirId,
@@ -737,7 +737,7 @@ impl UnsafeOpKind {
         }
     }
 
-    pub fn emit_requires_unsafe_err(
+    fn emit_requires_unsafe_err(
         &self,
         tcx: TyCtxt<'_>,
         span: Span,

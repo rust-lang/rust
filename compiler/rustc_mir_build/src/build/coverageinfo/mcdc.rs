@@ -179,18 +179,18 @@ impl MCDCState {
     }
 }
 
-pub struct MCDCInfoBuilder {
+pub(crate) struct MCDCInfoBuilder {
     branch_spans: Vec<MCDCBranchSpan>,
     decision_spans: Vec<MCDCDecisionSpan>,
     state: MCDCState,
 }
 
 impl MCDCInfoBuilder {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { branch_spans: vec![], decision_spans: vec![], state: MCDCState::new() }
     }
 
-    pub fn visit_evaluated_condition(
+    pub(crate) fn visit_evaluated_condition(
         &mut self,
         tcx: TyCtxt<'_>,
         source_info: SourceInfo,
@@ -243,7 +243,7 @@ impl MCDCInfoBuilder {
         });
     }
 
-    pub fn into_done(self) -> (Vec<MCDCDecisionSpan>, Vec<MCDCBranchSpan>) {
+    pub(crate) fn into_done(self) -> (Vec<MCDCDecisionSpan>, Vec<MCDCBranchSpan>) {
         (self.decision_spans, self.branch_spans)
     }
 }
