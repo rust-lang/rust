@@ -1,8 +1,7 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::handle_failed_output;
+use crate::{env_var, handle_failed_output};
 
 /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
 /// at `$LLVM_BIN_DIR/llvm-readobj`.
@@ -22,8 +21,7 @@ impl LlvmReadobj {
     /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
     /// at `$LLVM_BIN_DIR/llvm-readobj`.
     pub fn new() -> Self {
-        let llvm_bin_dir = env::var("LLVM_BIN_DIR")
-            .expect("`LLVM_BIN_DIR` not specified, but this is required to find `llvm-readobj`");
+        let llvm_bin_dir = env_var("LLVM_BIN_DIR");
         let llvm_bin_dir = PathBuf::from(llvm_bin_dir);
         let llvm_readobj = llvm_bin_dir.join("llvm-readobj");
         let cmd = Command::new(llvm_readobj);

@@ -2,23 +2,23 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use crate::is_windows;
+use crate::{env_var, is_windows};
 
 use super::handle_failed_output;
 
 fn run_common(name: &str) -> (Command, Output) {
     let mut bin_path = PathBuf::new();
-    bin_path.push(env::var("TMPDIR").unwrap());
+    bin_path.push(env_var("TMPDIR"));
     bin_path.push(name);
-    let ld_lib_path_envvar = env::var("LD_LIB_PATH_ENVVAR").unwrap();
+    let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     let mut cmd = Command::new(bin_path);
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
-        paths.push(PathBuf::from(env::var("TMPDIR").unwrap()));
-        for p in env::split_paths(&env::var("TARGET_RPATH_ENV").unwrap()) {
+        paths.push(PathBuf::from(env_var("TMPDIR")));
+        for p in env::split_paths(&env_var("TARGET_RPATH_ENV")) {
             paths.push(p.to_path_buf());
         }
-        for p in env::split_paths(&env::var(&ld_lib_path_envvar).unwrap()) {
+        for p in env::split_paths(&env_var(&ld_lib_path_envvar)) {
             paths.push(p.to_path_buf());
         }
         env::join_paths(paths.iter()).unwrap()
@@ -29,7 +29,7 @@ fn run_common(name: &str) -> (Command, Output) {
         for p in env::split_paths(&std::env::var("PATH").unwrap_or(String::new())) {
             paths.push(p.to_path_buf());
         }
-        paths.push(Path::new(&std::env::var("TARGET_RPATH_DIR").unwrap()).to_path_buf());
+        paths.push(Path::new(&env_var("TARGET_RPATH_DIR")).to_path_buf());
         cmd.env("PATH", env::join_paths(paths.iter()).unwrap());
     }
 

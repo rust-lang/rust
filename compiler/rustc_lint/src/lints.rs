@@ -2650,14 +2650,6 @@ pub struct LegacyDeriveHelpers {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_proc_macro_back_compat)]
-#[note]
-pub struct ProcMacroBackCompat {
-    pub crate_name: String,
-    pub fixed_version: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_or_patterns_back_compat)]
 pub struct OrPatternsBackCompat {
     #[suggestion(code = "{suggestion}", applicability = "machine-applicable")]

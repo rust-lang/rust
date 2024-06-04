@@ -1438,13 +1438,9 @@ impl clean::FnDecl {
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
+
+        let last_input_index = self.inputs.values.len().checked_sub(1);
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if i > 0 {
-                match line_wrapping_indent {
-                    None => write!(f, ", ")?,
-                    Some(n) => write!(f, ",\n{}", Indent(n + 4))?,
-                };
-            }
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -1477,18 +1473,25 @@ impl clean::FnDecl {
                 write!(f, "{}: ", input.name)?;
                 input.type_.print(cx).fmt(f)?;
             }
+            match (line_wrapping_indent, last_input_index) {
+                (_, None) => (),
+                (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
+                (None, Some(_)) => (),
+                (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
+                (Some(_), Some(_)) => write!(f, ",\n")?,
+            }
         }
 
         if self.c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
-                Some(n) => write!(f, "\n{}...", Indent(n + 4))?,
+                Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
             };
         }
 
         match line_wrapping_indent {
             None => write!(f, ")")?,
-            Some(n) => write!(f, "\n{})", Indent(n))?,
+            Some(n) => write!(f, "{})", Indent(n))?,
         };
 
         self.print_output(cx).fmt(f)

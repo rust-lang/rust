@@ -29,34 +29,26 @@ union Data<T, F> {
 /// # Examples
 ///
 /// Initialize static variables with `LazyLock`.
-///
 /// ```
-/// use std::collections::HashMap;
-///
 /// use std::sync::LazyLock;
 ///
-/// static HASHMAP: LazyLock<HashMap<i32, String>> = LazyLock::new(|| {
-///     println!("initializing");
-///     let mut m = HashMap::new();
-///     m.insert(13, "Spica".to_string());
-///     m.insert(74, "Hoyten".to_string());
-///     m
+/// // n.b. static items do not call [`Drop`] on program termination, so this won't be deallocated.
+/// // this is fine, as the OS can deallocate the terminated program faster than we can free memory
+/// // but tools like valgrind might report "memory leaks" as it isn't obvious this is intentional.
+/// static DEEP_THOUGHT: LazyLock<String> = LazyLock::new(|| {
+/// # mod another_crate {
+/// #     pub fn great_question() -> String { "42".to_string() }
+/// # }
+///     // M3 Ultra takes about 16 million years in --release config
+///     another_crate::great_question()
 /// });
 ///
-/// fn main() {
-///     println!("ready");
-///     std::thread::spawn(|| {
-///         println!("{:?}", HASHMAP.get(&13));
-///     }).join().unwrap();
-///     println!("{:?}", HASHMAP.get(&74));
-///
-///     // Prints:
-///     //   ready
-///     //   initializing
-///     //   Some("Spica")
-///     //   Some("Hoyten")
-/// }
+/// // The `String` is built, stored in the `LazyLock`, and returned as `&String`.
+/// let _ = &*DEEP_THOUGHT;
+/// // The `String` is retrieved from the `LazyLock` and returned as `&String`.
+/// let _ = &*DEEP_THOUGHT;
 /// ```
+///
 /// Initialize fields with `LazyLock`.
 /// ```
 /// use std::sync::LazyLock;
