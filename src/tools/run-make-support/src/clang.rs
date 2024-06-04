@@ -1,8 +1,7 @@
-use std::env;
 use std::path::Path;
 use std::process::Command;
 
-use crate::{bin_name, handle_failed_output, tmp_dir};
+use crate::{bin_name, env_var, handle_failed_output, tmp_dir};
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
 pub fn clang() -> Clang {
@@ -20,8 +19,7 @@ crate::impl_common_helpers!(Clang);
 impl Clang {
     /// Construct a new `clang` invocation. `clang` is not always available for all targets.
     pub fn new() -> Self {
-        let clang =
-            env::var("CLANG").expect("`CLANG` not specified, but this is required to find `clang`");
+        let clang = env_var("CLANG");
         let cmd = Command::new(clang);
         Self { cmd }
     }
