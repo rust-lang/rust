@@ -1705,7 +1705,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
         unsafe {
             self.current = unlinked_node.as_ref().next;
             self.list.unlink_node(unlinked_node);
-            let unlinked_node = Box::from_raw(unlinked_node.as_ptr());
+            let unlinked_node = Box::from_raw_in(unlinked_node.as_ptr(), &self.list.alloc);
             Some(unlinked_node.element)
         }
     }
@@ -1946,7 +1946,7 @@ where
                 if (self.pred)(&mut node.as_mut().element) {
                     // `unlink_node` is okay with aliasing `element` references.
                     self.list.unlink_node(node);
-                    return Some(Box::from_raw(node.as_ptr()).element);
+                    return Some(Box::from_raw_in(node.as_ptr(), &self.list.alloc).element);
                 }
             }
         }
