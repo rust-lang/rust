@@ -8,6 +8,7 @@ use std::{
 };
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_shrink_to_unwind() {
     // This tests that `shrink_to` leaves the deque in a consistent state when
     // the call to `RawVec::shrink_to_fit` unwinds. The code is adapted from #123369
