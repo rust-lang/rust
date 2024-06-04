@@ -504,22 +504,8 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
             self.stack.next_index(),
         );
 
-        // Check whether we reached a fixpoint, either because the final result
-        // is equal to the provisional result of the previous iteration, or because
-        // this was only the root of either coinductive or inductive cycles, and the
-        // final result is equal to the initial response for that case.
-        let reached_fixpoint = if let Some(r) = stack_entry.provisional_result {
-            r == result
-        } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
-            Self::response_no_constraints(tcx, input, Certainty::Yes) == result
-        } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
-            Self::response_no_constraints(tcx, input, Certainty::overflow(false)) == result
-        } else {
-            false
-        };
-
         // If we did not reach a fixpoint, update the provisional result and reevaluate.
-        if reached_fixpoint {
+        if self.reached_fixpoint(tcx, input, &stack_entry, result) {
             StepResult::Done(stack_entry, result)
         } else {
             let depth = self.stack.push(StackEntry {
@@ -529,6 +515,28 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
             });
             debug_assert_eq!(self.provisional_cache[&input].stack_depth, Some(depth));
             StepResult::HasChanged
+        }
+    }
+
+    /// Check whether we reached a fixpoint, either because the final result
+    /// is equal to the provisional result of the previous iteration, or because
+    /// this was only the root of either coinductive or inductive cycles, and the
+    /// final result is equal to the initial response for that case.
+    fn reached_fixpoint(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        input: CanonicalInput<TyCtxt<'tcx>>,
+        stack_entry: &StackEntry<TyCtxt<'tcx>>,
+        result: QueryResult<TyCtxt<'tcx>>,
+    ) -> bool {
+        if let Some(r) = stack_entry.provisional_result {
+            r == result
+        } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
+            Self::response_no_constraints(tcx, input, Certainty::Yes) == result
+        } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
+            Self::response_no_constraints(tcx, input, Certainty::overflow(false)) == result
+        } else {
+            false
         }
     }
 
