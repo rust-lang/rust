@@ -47,8 +47,8 @@ fn main() {
     #[expect(unused_variables)]
     let unused = "Everyone ignores me";
 
-    #[expect(unused_variables)]
-    let used = "I'm useful";
+    #[expect(unused_variables)] // `unused_variables` lint is not emitted
+    let used = "I'm useful";    // the expectation is therefore unfulfilled
     println!("The `used` value is equal to: {:?}", used);
 }
 ```
@@ -65,8 +65,8 @@ warning: this lint expectation is unfulfilled
   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
 ```
 
-This level can only be defined via the `#[expect]` attribute and not via the
-console. Lints with the special 'force-warn' lint will still be emitted as usual.
+This level can only be defined via the `#[expect]` attribute, there is no equivalent
+flag. Lints with the special 'force-warn' level will still be emitted as usual.
 
 ## warn
 

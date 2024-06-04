@@ -608,7 +608,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unfulfilled_lint_expectations` lint warns if a lint expectation is
+    /// The `unfulfilled_lint_expectations` lint detects when a lint expectation is
     /// unfulfilled.
     ///
     /// ### Example
