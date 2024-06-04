@@ -1562,6 +1562,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
             Some(suggestion) => suggestion,
         };
+
+        let mut did_label_def_span = false;
+
         if let Some(def_span) = suggestion.res.opt_def_id().map(|def_id| self.def_span(def_id)) {
             if span.overlaps(def_span) {
                 // Don't suggest typo suggestion for itself like in the following:
@@ -1595,31 +1598,38 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     errors::DefinedHere::SingleItem { span, candidate_descr, candidate }
                 }
             };
+            did_label_def_span = true;
             err.subdiagnostic(self.tcx.dcx(), label);
         }
 
-        let (span, sugg, post) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
+        let (span, msg, sugg) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             && let Some(span) = suggestion.span
             && let Some(candidate) = suggestion.candidate.as_str().strip_prefix('_')
             && snippet == candidate
         {
+            let candidate = suggestion.candidate;
             // When the suggested binding change would be from `x` to `_x`, suggest changing the
             // original binding definition instead. (#60164)
-            let post = format!(", consider renaming `{}` into `{snippet}`", suggestion.candidate);
-            (span, snippet, post)
-        } else {
-            (span, suggestion.candidate.to_ident_string(), String::new())
-        };
-        let msg = match suggestion.target {
-            SuggestionTarget::SimilarlyNamed => format!(
-                "{} {} with a similar name exists{post}",
-                suggestion.res.article(),
-                suggestion.res.descr()
-            ),
-            SuggestionTarget::SingleItem => {
-                format!("maybe you meant this {}", suggestion.res.descr())
+            let msg = format!(
+                "the leading underscore in `{candidate}` marks it as unused, consider renaming it to `{snippet}`"
+            );
+            if !did_label_def_span {
+                err.span_label(span, format!("`{candidate}` defined here"));
             }
+            (span, msg, snippet)
+        } else {
+            let msg = match suggestion.target {
+                SuggestionTarget::SimilarlyNamed => format!(
+                    "{} {} with a similar name exists",
+                    suggestion.res.article(),
+                    suggestion.res.descr()
+                ),
+                SuggestionTarget::SingleItem => {
+                    format!("maybe you meant this {}", suggestion.res.descr())
+                }
+            };
+            (span, msg, suggestion.candidate.to_ident_string())
         };
         err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
         true

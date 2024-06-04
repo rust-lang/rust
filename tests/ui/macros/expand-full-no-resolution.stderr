@@ -7,7 +7,7 @@ LL |         macro_rules! _a {
 LL |     format_args!(a!());
    |                  ^
    |
-help: a macro with a similar name exists, consider renaming `_a` into `a`
+help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
    |
 LL |         macro_rules! a {
    |                      ~
@@ -21,7 +21,7 @@ LL |         macro_rules! _a {
 LL |     env!(a!());
    |          ^
    |
-help: a macro with a similar name exists, consider renaming `_a` into `a`
+help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
    |
 LL |         macro_rules! a {
    |                      ~
