@@ -20,7 +20,7 @@ ignore = [
     "/tests/rustdoc/",                # Some have syntax errors, some are whitespace-sensitive.
     "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
     "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
-    "/tests/ui/",
+    "/tests/ui/",                     # Some have syntax errors, some are whitespace-sensitive.
     "/tests/ui-fulldeps/",
 
     # Do not format submodules.
