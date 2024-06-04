@@ -8,6 +8,10 @@ hir_analysis_assoc_item_constraints_not_allowed_here =
     associated item constraints are not allowed here
     .label = associated item constraint not allowed here
 
+hir_analysis_assoc_item_is_private = {$kind} `{$name}` is private
+    .label = private {$kind}
+    .defined_here_label = the {$kind} is defined here
+
 hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$ty_param_name}`
 
 hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identically_named ->
