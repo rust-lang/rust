@@ -657,10 +657,12 @@ const fn const_fn<const CONST_PARAM: ()>(const {}: const fn()) where (): const C
         &raw const ();
         const
     );
+    ().assoc_const_method();
 }
 trait ConstTrait {
     const ASSOC_CONST: () = ();
     const fn assoc_const_fn() {}
+    const fn assoc_const_method(self) {}
 }
 impl const ConstTrait for () {
     const ASSOC_CONST: () = ();
@@ -1070,16 +1072,15 @@ fn test_block_mod_items() {
 macro_rules! foo {
     ($foo:ident) => {
         mod y {
-            struct $foo;
+            pub struct $foo;
         }
     };
 }
 fn main() {
     foo!(Foo);
     mod module {
-        // FIXME: IDE layer has this unresolved
         foo!(Bar);
-        fn func() {
+        fn func(_: y::Bar) {
             mod inner {
                 struct Innerest<const C: usize> { field: [(); {C}] }
             }

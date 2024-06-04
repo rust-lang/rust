@@ -160,7 +160,7 @@ fn integrated_completion_benchmark() {
         analysis.completions(&config, position, None).unwrap();
     }
 
-    let _g = crate::tracing::hprof::init("*");
+    let _g = crate::tracing::hprof::init("*>10");
 
     let completion_offset = {
         let _it = stdx::timeit("change");

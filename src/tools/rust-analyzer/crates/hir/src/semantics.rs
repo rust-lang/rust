@@ -1317,9 +1317,15 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<Macro> {
-        let sa = self.analyze(macro_call.syntax())?;
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
-        sa.resolve_macro_call(self.db, macro_call)
+        self.with_ctx(|ctx| {
+            ctx.macro_call_to_macro_call(macro_call)
+                .and_then(|call| macro_call_to_macro_id(ctx, call))
+                .map(Into::into)
+        })
+        .or_else(|| {
+            self.analyze(macro_call.value.syntax())?.resolve_macro_call(self.db, macro_call)
+        })
     }
 
     pub fn is_proc_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
@@ -1339,12 +1345,17 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
-        let sa = match self.analyze(macro_call.syntax()) {
-            Some(it) => it,
-            None => return false,
-        };
+        let Some(mac) = self.resolve_macro_call(macro_call) else { return false };
+        if mac.is_asm_or_global_asm(self.db) {
+            return true;
+        }
+
+        let Some(sa) = self.analyze(macro_call.syntax()) else { return false };
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
-        sa.is_unsafe_macro_call(self.db, macro_call)
+        match macro_call.map(|it| it.syntax().parent().and_then(ast::MacroExpr::cast)).transpose() {
+            Some(it) => sa.is_unsafe_macro_call_expr(self.db, it.as_ref()),
+            None => false,
+        }
     }
 
     pub fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<Macro> {

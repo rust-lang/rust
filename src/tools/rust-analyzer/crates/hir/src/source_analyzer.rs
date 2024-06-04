@@ -842,32 +842,13 @@ impl SourceAnalyzer {
         infer.variant_resolution_for_expr(expr_id)
     }
 
-    pub(crate) fn is_unsafe_macro_call(
+    pub(crate) fn is_unsafe_macro_call_expr(
         &self,
         db: &dyn HirDatabase,
-        macro_call: InFile<&ast::MacroCall>,
+        macro_expr: InFile<&ast::MacroExpr>,
     ) -> bool {
-        // check for asm/global_asm
-        if let Some(mac) = self.resolve_macro_call(db, macro_call) {
-            let ex = match mac.id {
-                hir_def::MacroId::Macro2Id(it) => it.lookup(db.upcast()).expander,
-                hir_def::MacroId::MacroRulesId(it) => it.lookup(db.upcast()).expander,
-                _ => hir_def::MacroExpander::Declarative,
-            };
-            if matches!(ex, hir_def::MacroExpander::BuiltIn(ex) if ex.is_asm()) {
-                return true;
-            }
-        }
-        let macro_expr = match macro_call
-            .map(|it| it.syntax().parent().and_then(ast::MacroExpr::cast))
-            .transpose()
-        {
-            Some(it) => it,
-            None => return false,
-        };
-
         if let (Some((def, body, sm)), Some(infer)) = (&self.def, &self.infer) {
-            if let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr.as_ref()) {
+            if let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr) {
                 let mut is_unsafe = false;
                 unsafe_expressions(
                     db,
