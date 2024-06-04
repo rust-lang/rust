@@ -1820,10 +1820,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         struct FindUselessClone<'tcx> {
             tcx: TyCtxt<'tcx>,
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
-            pub clones: Vec<&'tcx hir::Expr<'tcx>>,
+            clones: Vec<&'tcx hir::Expr<'tcx>>,
         }
         impl<'tcx> FindUselessClone<'tcx> {
-            pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+            fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
                 Self { tcx, typeck_results: tcx.typeck(def_id), clones: vec![] }
             }
         }
@@ -1845,7 +1845,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let body = hir.body(body_id).value;
         expr_finder.visit_expr(body);
 
-        pub struct Holds<'tcx> {
+        struct Holds<'tcx> {
             ty: Ty<'tcx>,
             holds: bool,
         }

@@ -38,12 +38,12 @@ pub type PoloniusOutput = Output<RustcFacts>;
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
-    pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    pub polonius_input: Option<Box<AllFacts>>,
-    pub polonius_output: Option<Rc<PoloniusOutput>>,
-    pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
-    pub nll_errors: RegionErrors<'tcx>,
+    pub(crate) regioncx: RegionInferenceContext<'tcx>,
+    pub(crate) opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    pub(crate) polonius_input: Option<Box<AllFacts>>,
+    pub(crate) polonius_output: Option<Rc<PoloniusOutput>>,
+    pub(crate) opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
+    pub(crate) nll_errors: RegionErrors<'tcx>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
