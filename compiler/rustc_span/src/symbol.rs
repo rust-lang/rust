@@ -2213,6 +2213,7 @@ impl fmt::Display for IdentPrinter {
 pub struct MacroRulesNormalizedIdent(Ident);
 
 impl MacroRulesNormalizedIdent {
+    #[inline]
     pub fn new(ident: Ident) -> Self {
         Self(ident.normalize_to_macro_rules())
     }
