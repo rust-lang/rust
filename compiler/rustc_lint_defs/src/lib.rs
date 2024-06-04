@@ -618,10 +618,6 @@ pub enum BuiltinLintDiag {
         is_foreign: bool,
     },
     LegacyDeriveHelpers(Span),
-    ProcMacroBackCompat {
-        crate_name: String,
-        fixed_version: String,
-    },
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     TrailingMacro(bool, Ident),

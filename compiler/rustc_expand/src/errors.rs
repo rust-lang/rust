@@ -440,3 +440,13 @@ pub(crate) struct EmptyDelegationList {
     #[primary_span]
     pub span: Span,
 }
+
+// This used to be the `proc_macro_back_compat` lint (#83125). It was later
+// turned into a hard error.
+#[derive(Diagnostic)]
+#[diag(expand_proc_macro_back_compat)]
+#[note]
+pub struct ProcMacroBackCompat {
+    pub crate_name: String,
+    pub fixed_version: String,
+}
