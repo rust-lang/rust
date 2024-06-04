@@ -1617,17 +1617,9 @@ fn macro_call_to_macro_id(
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
     let loc = db.lookup_intern_macro_call(macro_call_id);
-    match loc.def.kind {
-        hir_expand::MacroDefKind::Declarative(it)
-        | hir_expand::MacroDefKind::BuiltIn(_, it)
-        | hir_expand::MacroDefKind::BuiltInAttr(_, it)
-        | hir_expand::MacroDefKind::BuiltInDerive(_, it)
-        | hir_expand::MacroDefKind::BuiltInEager(_, it) => {
-            ctx.macro_to_def(InFile::new(it.file_id, it.to_node(db)))
-        }
-        hir_expand::MacroDefKind::ProcMacro(_, _, it) => {
-            ctx.proc_macro_to_def(InFile::new(it.file_id, it.to_node(db)))
-        }
+    match loc.def.ast_id() {
+        Either::Left(it) => ctx.macro_to_def(InFile::new(it.file_id, it.to_node(db))),
+        Either::Right(it) => ctx.proc_macro_to_def(InFile::new(it.file_id, it.to_node(db))),
     }
 }
 

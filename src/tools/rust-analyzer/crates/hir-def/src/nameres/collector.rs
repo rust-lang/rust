@@ -10,7 +10,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
     attrs::{Attr, AttrId},
-    builtin_attr_macro::{find_builtin_attr, BuiltinAttrExpander},
+    builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
@@ -270,6 +270,7 @@ struct DefCollector<'a> {
     ///
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
+    // FIXME: There has to be a better way to do this
     skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
 }
 
@@ -1255,17 +1256,23 @@ impl DefCollector<'_> {
                         _ => return Resolved::No,
                     };
 
-                    let call_id =
-                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
-                    if let MacroDefId {
-                        kind:
-                            MacroDefKind::BuiltInAttr(
-                                BuiltinAttrExpander::Derive | BuiltinAttrExpander::DeriveConst,
-                                _,
-                            ),
-                        ..
-                    } = def
-                    {
+                    // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
+                    // due to duplicating functions into macro expansions
+                    if matches!(
+                        def.kind,
+                        MacroDefKind::BuiltInAttr(_, expander)
+                        if expander.is_test() || expander.is_bench()
+                    ) {
+                        return recollect_without(self);
+                    }
+
+                    let call_id = || {
+                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def)
+                    };
+                    if matches!(def,
+                        MacroDefId { kind: MacroDefKind::BuiltInAttr(_, exp), .. }
+                        if exp.is_derive()
+                    ) {
                         // Resolved to `#[derive]`, we don't actually expand this attribute like
                         // normal (as that would just be an identity expansion with extra output)
                         // Instead we treat derive attributes special and apply them separately.
@@ -1290,6 +1297,7 @@ impl DefCollector<'_> {
 
                         match attr.parse_path_comma_token_tree(self.db.upcast()) {
                             Some(derive_macros) => {
+                                let call_id = call_id();
                                 let mut len = 0;
                                 for (idx, (path, call_site)) in derive_macros.enumerate() {
                                     let ast_id = AstIdWithPath::new(file_id, ast_id.value, path);
@@ -1312,13 +1320,6 @@ impl DefCollector<'_> {
                                 // This is just a trick to be able to resolve the input to derives
                                 // as proper paths in `Semantics`.
                                 // Check the comment in [`builtin_attr_macro`].
-                                let call_id = attr_macro_as_call_id(
-                                    self.db,
-                                    file_ast_id,
-                                    attr,
-                                    self.def_map.krate,
-                                    def,
-                                );
                                 self.def_map.modules[directive.module_id]
                                     .scope
                                     .init_derive_attribute(ast_id, attr.id, call_id, len + 1);
@@ -1336,17 +1337,8 @@ impl DefCollector<'_> {
                         return recollect_without(self);
                     }
 
-                    // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
-                    // due to duplicating functions into macro expansions
-                    if matches!(
-                        def.kind,
-                        MacroDefKind::BuiltInAttr(expander, _)
-                        if expander.is_test() || expander.is_bench()
-                    ) {
-                        return recollect_without(self);
-                    }
-
-                    if let MacroDefKind::ProcMacro(exp, ..) = def.kind {
+                    let call_id = call_id();
+                    if let MacroDefKind::ProcMacro(_, exp, _) = def.kind {
                         // If proc attribute macro expansion is disabled, skip expanding it here
                         if !self.db.expand_proc_attr_macros() {
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
