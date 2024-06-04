@@ -1060,9 +1060,6 @@ fn promote_candidates<'tcx>(
     }
 
     let mut promotions = IndexVec::new();
-    // FIXME: buggy things, there shouldn't be more than 42 promoted items by PromoteTemps.
-    // cannot check body.source.promoted,maybe stealed
-    // let already = 0;
 
     let mut extra_statements = vec![];
     // Visit candidates in reverse, in case they're nested.
@@ -1119,6 +1116,31 @@ fn promote_candidates<'tcx>(
     extra_statements.sort_by_key(|&(loc, _)| cmp::Reverse(loc));
     for (loc, statement) in extra_statements {
         body[loc.block].statements.insert(loc.statement_index, statement);
+    }
+
+    // Eliminate assignments to, and drops of promoted temps.
+    let is_promoted_out = |index: Local| temps[index] == TempState::PromotedOut;
+    for block in body.basic_blocks_mut() {
+        block.statements.retain(|statement| match &statement.kind {
+            StatementKind::Assign(box (
+                place,
+                Rvalue::Use(Operand::Constant(box ConstOperand {
+                    const_: Const::Val(_, ty), ..
+                })),
+            )) => {
+                if ty.is_unit()
+                    && let Some(index) = place.as_local()
+                {
+                    !is_promoted_out(index)
+                } else {
+                    true
+                }
+            }
+            StatementKind::StorageLive(index) | StatementKind::StorageDead(index) => {
+                !is_promoted_out(*index)
+            }
+            _ => true,
+        });
     }
 
     promotions
