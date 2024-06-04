@@ -18,29 +18,29 @@ macro_rules! __make_provider {
         impl $name {
             #[doc(hidden)]
             #[allow(dead_code)]
-            pub const MUST_USE_MAKE_PROVIDER_MACRO: () = ();
+            const MUST_USE_MAKE_PROVIDER_MACRO: () = ();
         }
     };
 }
 #[doc(inline)]
-pub use __make_provider as make_provider;
+use __make_provider as make_provider;
 #[macro_use]
 #[path = "macros/fallback_likelysubtags_v1.data.rs"]
 mod fallback_likelysubtags_v1;
 #[doc(inline)]
-pub use __impl_fallback_likelysubtags_v1 as impl_fallback_likelysubtags_v1;
+use __impl_fallback_likelysubtags_v1 as impl_fallback_likelysubtags_v1;
 #[macro_use]
 #[path = "macros/fallback_parents_v1.data.rs"]
 mod fallback_parents_v1;
 #[doc(inline)]
-pub use __impl_fallback_parents_v1 as impl_fallback_parents_v1;
+use __impl_fallback_parents_v1 as impl_fallback_parents_v1;
 #[macro_use]
 #[path = "macros/fallback_supplement_co_v1.data.rs"]
 mod fallback_supplement_co_v1;
 #[doc(inline)]
-pub use __impl_fallback_supplement_co_v1 as impl_fallback_supplement_co_v1;
+use __impl_fallback_supplement_co_v1 as impl_fallback_supplement_co_v1;
 #[macro_use]
 #[path = "macros/list_and_v1.data.rs"]
 mod list_and_v1;
 #[doc(inline)]
-pub use __impl_list_and_v1 as impl_list_and_v1;
+use __impl_list_and_v1 as impl_list_and_v1;
