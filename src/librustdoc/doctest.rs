@@ -960,6 +960,16 @@ struct ScrapedDoctest {
     text: String,
 }
 
+impl ScrapedDoctest {
+    fn edition(&self, opts: &RustdocOptions) -> Edition {
+        self.langstr.edition.unwrap_or(opts.edition)
+    }
+
+    fn no_run(&self, opts: &RustdocOptions) -> bool {
+        self.langstr.no_run || opts.no_run
+    }
+}
+
 pub(crate) trait DoctestVisitor {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine);
     fn visit_header(&mut self, _name: &str, _level: u32) {}
@@ -1009,10 +1019,8 @@ impl CreateRunnableDoctests {
         let name = self.generate_name(&test.filename, test.line, &test.logical_path);
         let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
-        let edition = test.langstr.edition.unwrap_or(self.rustdoc_options.edition);
         let target_str = self.rustdoc_options.target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
-        let no_run = test.langstr.no_run || self.rustdoc_options.no_run;
         if !test.langstr.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
@@ -1073,7 +1081,7 @@ impl CreateRunnableDoctests {
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
                 compile_fail: test.langstr.compile_fail,
-                no_run,
+                no_run: test.no_run(&rustdoc_options),
                 test_type: test::TestType::DocTest,
             },
             testfn: test::DynTestFn(Box::new(move || {
@@ -1081,9 +1089,7 @@ impl CreateRunnableDoctests {
                     RunnableDoctest {
                         crate_name,
                         rustdoc_test_options,
-                        no_run,
                         opts,
-                        edition,
                         path,
                         scraped_test: test,
                     },
@@ -1099,9 +1105,7 @@ impl CreateRunnableDoctests {
 struct RunnableDoctest {
     crate_name: String,
     rustdoc_test_options: IndividualTestOptions,
-    no_run: bool,
     opts: GlobalTestOptions,
-    edition: Edition,
     path: PathBuf,
     scraped_test: ScrapedDoctest,
 }
@@ -1114,6 +1118,8 @@ fn doctest_run_fn(
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
+    let no_run = runnable_test.scraped_test.no_run(&rustdoc_options);
+    let edition = runnable_test.scraped_test.edition(&rustdoc_options);
     let res = run_test(
         &runnable_test.scraped_test.text,
         &runnable_test.crate_name,
@@ -1121,9 +1127,9 @@ fn doctest_run_fn(
         &rustdoc_options,
         runnable_test.rustdoc_test_options,
         runnable_test.scraped_test.langstr,
-        runnable_test.no_run,
+        no_run,
         &runnable_test.opts,
-        runnable_test.edition,
+        edition,
         runnable_test.path,
         report_unused_externs,
     );
