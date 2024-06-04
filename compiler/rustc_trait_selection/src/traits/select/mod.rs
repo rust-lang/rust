@@ -2417,13 +2417,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                // We can resolve the `impl Trait` to its concrete type,
-                // which enforces a DAG between the functions requiring
-                // the auto trait bounds in question.
-                match self.tcx().type_of_opaque(def_id) {
-                    Ok(ty) => t.rebind(vec![ty.instantiate(self.tcx(), args)]),
-                    Err(_) => {
-                        return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
+                if self.infcx.can_define_opaque_ty(def_id) {
+                    // We cannot possibly resolve this opaque type, because we are currently computing its hidden type.
+                    return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
+                } else {
+                    // We can resolve the `impl Trait` to its concrete type,
+                    // which enforces a DAG between the functions requiring
+                    // the auto trait bounds in question.
+                    match self.tcx().type_of_opaque(def_id) {
+                        Ok(ty) => t.rebind(vec![ty.instantiate(self.tcx(), args)]),
+                        Err(_) => {
+                            return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
+                        }
                     }
                 }
             }
