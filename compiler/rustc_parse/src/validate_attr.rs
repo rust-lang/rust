@@ -25,15 +25,21 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     match attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
-            check_builtin_attribute(psess, attr, *name, *template)
+            match parse_meta(psess, attr) {
+                Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, *name, *template),
+                Err(err) => {
+                    err.emit();
+                }
+            }
         }
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
-            parse_meta(psess, attr)
-                .map_err(|err| {
+            match parse_meta(psess, attr) {
+                Ok(_) => {}
+                Err(err) => {
                     err.emit();
-                })
-                .ok();
+                }
+            }
         }
         _ => {}
     }
@@ -130,20 +136,6 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
         MetaItemKind::List(..) => template.list.is_some(),
         MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
         MetaItemKind::NameValue(..) => false,
-    }
-}
-
-fn check_builtin_attribute(
-    psess: &ParseSess,
-    attr: &Attribute,
-    name: Symbol,
-    template: AttributeTemplate,
-) {
-    match parse_meta(psess, attr) {
-        Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, name, template),
-        Err(err) => {
-            err.emit();
-        }
     }
 }
 
