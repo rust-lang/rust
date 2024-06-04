@@ -8,6 +8,7 @@ type Bar = impl Sized;
 fn foo() -> Bar
 where
     Bar: Send,
+    //~^ ERROR: type annotations needed
 {
     [0; 1 + 2]
 }

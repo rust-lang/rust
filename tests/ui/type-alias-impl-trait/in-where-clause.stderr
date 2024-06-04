@@ -25,6 +25,15 @@ LL | type Bar = impl Sized;
    |            ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 1 previous error
+error[E0283]: type annotations needed: cannot satisfy `Bar: Send`
+  --> $DIR/in-where-clause.rs:10:10
+   |
+LL |     Bar: Send,
+   |          ^^^^
+   |
+   = note: cannot satisfy `Bar: Send`
 
-For more information about this error, try `rustc --explain E0391`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0391.
+For more information about an error, try `rustc --explain E0283`.
