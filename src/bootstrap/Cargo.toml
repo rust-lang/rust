@@ -7,6 +7,7 @@ default-run = "bootstrap"
 
 [features]
 build-metrics = ["sysinfo"]
+bootstrap-self-test = [] # enabled in the bootstrap unit tests
 
 [lib]
 path = "src/lib.rs"
