@@ -3,7 +3,6 @@
 
 //@ revisions: next old
 //@[next] compile-flags: -Znext-solver
-//@[old]check-pass
 
 #![feature(freeze)]
 
@@ -18,7 +17,7 @@ impl<T: Freeze> Trait<u32> for T {}
 impl<T> Trait<i32> for T {}
 fn foo() -> impl Sized {
     if false { is_trait(foo()) } else { Default::default() }
-    //[next]~^ ERROR: type annotations needed
+    //~^ ERROR: type annotations needed
 }
 
 fn main() {}

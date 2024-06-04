@@ -1,17 +1,3 @@
-error: cannot check whether the hidden type of opaque type satisfies auto traits
-  --> $DIR/unsized_coercion3.rs:15:32
-   |
-LL |         let y: Box<dyn Send> = x;
-   |                                ^
-   |
-   = note: fetching the hidden types of an opaque inside of the defining scope is not supported. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
-note: opaque type is declared here
-  --> $DIR/unsized_coercion3.rs:11:19
-   |
-LL | fn hello() -> Box<impl Trait + ?Sized> {
-   |                   ^^^^^^^^^^^^^^^^^^^
-   = note: required for the cast from `Box<impl Trait + ?Sized>` to `Box<dyn Send>`
-
 error[E0277]: the size for values of type `impl Trait + ?Sized` cannot be known at compilation time
   --> $DIR/unsized_coercion3.rs:15:32
    |
@@ -21,6 +7,6 @@ LL |         let y: Box<dyn Send> = x;
    = help: the trait `Sized` is not implemented for `impl Trait + ?Sized`
    = note: required for the cast from `Box<impl Trait + ?Sized>` to `Box<dyn Send>`
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.
