@@ -21,43 +21,35 @@ impl<T> Storage<T> {
         Storage { state: Cell::new(State::Initial), val: UnsafeCell::new(val) }
     }
 
-    /// Get a reference to the TLS value. If the TLS variable has been destroyed,
-    /// `None` is returned.
+    /// Get a pointer to the TLS value. If the TLS variable has been destroyed,
+    /// a null pointer is returned.
+    ///
+    /// The resulting pointer may not be used after thread destruction has
+    /// occurred.
     ///
     /// # Safety
-    /// * The `self` reference must remain valid until the TLS destructor has been
-    ///   run.
-    /// * The returned reference may only be used until thread destruction occurs
-    ///   and may not be used after reentrant initialization has occurred.
-    ///
-    // FIXME(#110897): return NonNull instead of lying about the lifetime.
+    /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
-    pub unsafe fn get(&self) -> Option<&'static T> {
+    pub unsafe fn get(&self) -> *const T {
         match self.state.get() {
-            // SAFETY: as the state is not `Destroyed`, the value cannot have
-            // been destroyed yet. The reference fulfills the terms outlined
-            // above.
-            State::Alive => unsafe { Some(&*self.val.get()) },
-            State::Destroyed => None,
+            State::Alive => self.val.get(),
+            State::Destroyed => ptr::null(),
             State::Initial => unsafe { self.initialize() },
         }
     }
 
     #[cold]
-    unsafe fn initialize(&self) -> Option<&'static T> {
+    unsafe fn initialize(&self) -> *const T {
         // Register the destructor
 
         // SAFETY:
-        // * the destructor will be called at thread destruction.
-        // * the caller guarantees that `self` will be valid until that time.
+        // The caller guarantees that `self` will be valid until thread destruction.
         unsafe {
             register_dtor(ptr::from_ref(self).cast_mut().cast(), destroy::<T>);
         }
+
         self.state.set(State::Alive);
-        // SAFETY: as the state is not `Destroyed`, the value cannot have
-        // been destroyed yet. The reference fulfills the terms outlined
-        // above.
-        unsafe { Some(&*self.val.get()) }
+        self.val.get()
     }
 }
 

@@ -52,32 +52,26 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         const __INIT: $t = $init;
 
-        #[inline]
-        #[deny(unsafe_op_in_unsafe_fn)]
-        unsafe fn __getit(
-            _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-        ) -> $crate::option::Option<&'static $t> {
-            use $crate::thread::local_impl::EagerStorage;
-            use $crate::mem::needs_drop;
-            use $crate::ptr::addr_of;
-
-            if needs_drop::<$t>() {
-                #[thread_local]
-                static VAL: EagerStorage<$t> = EagerStorage::new(__INIT);
-                unsafe {
-                    VAL.get()
-                }
-            } else {
-                #[thread_local]
-                static VAL: $t = __INIT;
-                unsafe {
-                    $crate::option::Option::Some(&*addr_of!(VAL))
-                }
-            }
-        }
-
         unsafe {
-            $crate::thread::LocalKey::new(__getit)
+            use $crate::mem::needs_drop;
+            use $crate::thread::LocalKey;
+            use $crate::thread::local_impl::EagerStorage;
+
+            LocalKey::new(const {
+                if needs_drop::<$t>() {
+                    |_| {
+                        #[thread_local]
+                        static VAL: EagerStorage<$t> = EagerStorage::new(__INIT);
+                        VAL.get()
+                    }
+                } else {
+                    |_| {
+                        #[thread_local]
+                        static VAL: $t = __INIT;
+                        &VAL
+                    }
+                }
+            })
         }
     }},
 
@@ -88,31 +82,26 @@ pub macro thread_local_inner {
             $init
         }
 
-        #[inline]
-        #[deny(unsafe_op_in_unsafe_fn)]
-        unsafe fn __getit(
-            init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-        ) -> $crate::option::Option<&'static $t> {
-            use $crate::thread::local_impl::LazyStorage;
-            use $crate::mem::needs_drop;
-
-            if needs_drop::<$t>() {
-                #[thread_local]
-                static VAL: LazyStorage<$t, ()> = LazyStorage::new();
-                unsafe {
-                    VAL.get_or_init(init, __init)
-                }
-            } else {
-                #[thread_local]
-                static VAL: LazyStorage<$t, !> = LazyStorage::new();
-                unsafe {
-                    VAL.get_or_init(init, __init)
-                }
-            }
-        }
-
         unsafe {
-            $crate::thread::LocalKey::new(__getit)
+            use $crate::mem::needs_drop;
+            use $crate::thread::LocalKey;
+            use $crate::thread::local_impl::LazyStorage;
+
+            LocalKey::new(const {
+                if needs_drop::<$t>() {
+                    |init| {
+                        #[thread_local]
+                        static VAL: LazyStorage<$t, ()> = LazyStorage::new();
+                        VAL.get_or_init(init, __init)
+                    }
+                } else {
+                    |init| {
+                        #[thread_local]
+                        static VAL: LazyStorage<$t, !> = LazyStorage::new();
+                        VAL.get_or_init(init, __init)
+                    }
+                }
+            })
         }
     }},
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
