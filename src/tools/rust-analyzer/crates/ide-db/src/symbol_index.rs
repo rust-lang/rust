@@ -192,7 +192,8 @@ impl<DB> std::ops::Deref for Snap<DB> {
 // Note that filtering does not currently work in VSCode due to the editor never
 // sending the special symbols to the language server. Instead, you can configure
 // the filtering via the `rust-analyzer.workspace.symbol.search.scope` and
-// `rust-analyzer.workspace.symbol.search.kind` settings.
+// `rust-analyzer.workspace.symbol.search.kind` settings. Symbols prefixed
+// with `__` are hidden from the search results unless configured otherwise.
 //
 // |===
 // | Editor  | Shortcut
@@ -356,6 +357,7 @@ impl Query {
         mut stream: fst::map::Union<'_>,
         mut cb: impl FnMut(&'sym FileSymbol),
     ) {
+        let ignore_underscore_prefixed = !self.query.starts_with("__");
         while let Some((_, indexed_values)) = stream.next() {
             for &IndexedValue { index, value } in indexed_values {
                 let symbol_index = &indices[index];
@@ -372,6 +374,10 @@ impl Query {
                                 | hir::ModuleDef::Trait(..)
                         );
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
+                        continue;
+                    }
+                    // Hide symbols that start with `__` unless the query starts with `__`
+                    if ignore_underscore_prefixed && symbol.name.starts_with("__") {
                         continue;
                     }
                     if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
