@@ -21,6 +21,7 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
+#![deny(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(internal_features)]
 #![allow(clippy::mut_from_ref)] // Arena allocators are one of the places where this pattern is fine.
