@@ -15,7 +15,7 @@ impl<T> Trait<Y> for T {}
 
 fn main() {
     let a: *const dyn A = &();
-    let b: *const dyn B = a as _; //~ error: the trait bound `dyn A: Unsize<dyn B>` is not satisfied
+    let b: *const dyn B = a as _; //~ error: casting `*const dyn A` as `*const dyn B` is invalid
 
     let x: *const dyn Trait<X> = &();
     let y: *const dyn Trait<Y> = x as _; //~ error: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
