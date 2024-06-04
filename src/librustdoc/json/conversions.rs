@@ -183,7 +183,7 @@ impl FromWithTcx<clean::Constant> for Constant {
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
         let is_literal = constant.is_literal(tcx);
-        Constant { type_: (*constant.type_).into_tcx(tcx), expr, value, is_literal }
+        Constant { expr, value, is_literal }
     }
 }
 
@@ -321,7 +321,10 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         ForeignTypeItem => ItemEnum::ForeignType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
-        ConstantItem(c) => ItemEnum::Constant(c.into_tcx(tcx)),
+        // FIXME(generic_const_items): Add support for generic free consts
+        ConstantItem(_generics, t, c) => {
+            ItemEnum::Constant { type_: (*t).into_tcx(tcx), const_: c.into_tcx(tcx) }
+        }
         MacroItem(m) => ItemEnum::Macro(m.source),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_tcx(tcx)),
         PrimitiveItem(p) => {
