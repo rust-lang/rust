@@ -22,11 +22,11 @@ error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id normal
 LL |         self
    |         ^^^^ cannot satisfy `<T as Default>::Id normalizes-to T`
 
-error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
+error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id normalizes-to Option<NonZero<u8>>`
   --> $DIR/specialization-transmute.rs:28:13
    |
 LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id normalizes-to Option<NonZero<u8>>`
    |
 note: required by a bound in `transmute`
   --> $DIR/specialization-transmute.rs:21:25
