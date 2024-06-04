@@ -19,7 +19,7 @@ ignore = [
     "/tests/run-make/translation/test.rs", # This test contains syntax errors.
     "/tests/rustdoc/",                # Some have syntax errors, some are whitespace-sensitive.
     "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
-    "/tests/rustdoc-ui/",
+    "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
     "/tests/ui/",
     "/tests/ui-fulldeps/",
 
