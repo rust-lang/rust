@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `dyn A: Unsize<dyn B>` is not satisfied
-  --> $DIR/ptr-to-trait-obj-different-args.rs:19:27
+  --> $DIR/ptr-to-trait-obj-different-args.rs:18:27
    |
 LL |     let b: *const dyn B = a as _;
    |                           ^^^^^^ the trait `Unsize<dyn B>` is not implemented for `dyn A`
@@ -7,7 +7,7 @@ LL |     let b: *const dyn B = a as _;
    = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
 
 error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
-  --> $DIR/ptr-to-trait-obj-different-args.rs:22:34
+  --> $DIR/ptr-to-trait-obj-different-args.rs:21:34
    |
 LL |     let y: *const dyn Trait<Y> = x as _;
    |                                  ^^^^^^ the trait `Unsize<dyn Trait<Y>>` is not implemented for `dyn Trait<X>`
@@ -15,7 +15,7 @@ LL |     let y: *const dyn Trait<Y> = x as _;
    = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
 
 error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<T>>` is not satisfied
-  --> $DIR/ptr-to-trait-obj-different-args.rs:28:34
+  --> $DIR/ptr-to-trait-obj-different-args.rs:27:34
    |
 LL |     let _: *const dyn Trait<T> = x as _;
    |                                  ^^^^^^ the trait `Unsize<dyn Trait<T>>` is not implemented for `dyn Trait<X>`
@@ -27,7 +27,7 @@ LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) where dyn Tra
    |                                                               ++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `dyn Trait<T>: Unsize<dyn Trait<X>>` is not satisfied
-  --> $DIR/ptr-to-trait-obj-different-args.rs:29:34
+  --> $DIR/ptr-to-trait-obj-different-args.rs:28:34
    |
 LL |     let _: *const dyn Trait<X> = t as _;
    |                                  ^^^^^^ the trait `Unsize<dyn Trait<X>>` is not implemented for `dyn Trait<T>`
@@ -39,7 +39,7 @@ LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) where dyn Tra
    |                                                               ++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `dyn Assocked<Assoc = u8>: Unsize<dyn Assocked<Assoc = u32>>` is not satisfied
-  --> $DIR/ptr-to-trait-obj-different-args.rs:37:5
+  --> $DIR/ptr-to-trait-obj-different-args.rs:36:5
    |
 LL |     x as _
    |     ^^^^^^ the trait `Unsize<dyn Assocked<Assoc = u32>>` is not implemented for `dyn Assocked<Assoc = u8>`
