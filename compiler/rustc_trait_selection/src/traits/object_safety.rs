@@ -13,7 +13,7 @@ use super::elaborate;
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use rustc_errors::{FatalError, MultiSpan};
+use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
@@ -23,7 +23,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_middle::ty::{TypeVisitableExt, Upcast};
-use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::abi::Abi;
@@ -65,45 +64,14 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     )
 }
 
-fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
-    let violations = tcx.object_safety_violations(trait_def_id);
-
-    if violations.is_empty() {
-        return true;
-    }
-
-    // If the trait contains any other violations, then let the error reporting path
-    // report it instead of emitting a warning here.
-    if violations.iter().all(|violation| {
-        matches!(
-            violation,
-            ObjectSafetyViolation::Method(_, MethodViolationCode::WhereClauseReferencesSelf, _)
-        )
-    }) {
-        for violation in violations {
-            if let ObjectSafetyViolation::Method(
-                _,
-                MethodViolationCode::WhereClauseReferencesSelf,
-                span,
-            ) = violation
-            {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
-            }
-        }
-        return true;
-    }
-
-    false
+fn is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    tcx.object_safety_violations(trait_def_id).is_empty()
 }
 
 /// We say a method is *vtable safe* if it can be invoked on a trait
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
-///
-/// [`MethodViolationCode::WhereClauseReferencesSelf`] is considered object safe due to backwards
-/// compatibility, see <https://github.com/rust-lang/rust/issues/51443> and
-/// [`WHERE_CLAUSES_OBJECT_SAFETY`].
 pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
@@ -112,9 +80,7 @@ pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::A
         return false;
     }
 
-    virtual_call_violations_for_method(tcx, trait_def_id, method)
-        .iter()
-        .all(|v| matches!(v, MethodViolationCode::WhereClauseReferencesSelf))
+    virtual_call_violations_for_method(tcx, trait_def_id, method).is_empty()
 }
 
 fn object_safety_violations_for_trait(
@@ -161,47 +127,6 @@ fn object_safety_violations_for_trait(
     );
 
     violations
-}
-
-/// Lint object-unsafe trait.
-fn lint_object_unsafe_trait(
-    tcx: TyCtxt<'_>,
-    span: Span,
-    trait_def_id: DefId,
-    violation: &ObjectSafetyViolation,
-) {
-    // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
-    // It's also hard to get a use site span, so we use the method definition span.
-    tcx.node_span_lint(WHERE_CLAUSES_OBJECT_SAFETY, hir::CRATE_HIR_ID, span, |err| {
-        err.primary_message(format!(
-            "the trait `{}` cannot be made into an object",
-            tcx.def_path_str(trait_def_id)
-        ));
-        let node = tcx.hir().get_if_local(trait_def_id);
-        let mut spans = MultiSpan::from_span(span);
-        if let Some(hir::Node::Item(item)) = node {
-            spans.push_span_label(item.ident.span, "this trait cannot be made into an object...");
-            spans.push_span_label(span, format!("...because {}", violation.error_msg()));
-        } else {
-            spans.push_span_label(
-                span,
-                format!(
-                    "the trait cannot be made into an object because {}",
-                    violation.error_msg()
-                ),
-            );
-        };
-        err.span_note(
-            spans,
-            "for a trait to be \"object safe\" it needs to allow building a vtable to allow the \
-                call to be resolvable dynamically; for more information visit \
-                <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
-        );
-        if node.is_some() {
-            // Only provide the help if its a local trait, otherwise it's not
-            violation.solution().add_to(err);
-        }
-    });
 }
 
 fn sized_trait_bound_spans<'tcx>(
@@ -929,7 +854,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         object_safety_violations,
-        check_is_object_safe,
+        is_object_safe,
         generics_require_sized_self,
         ..*providers
     };

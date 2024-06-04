@@ -136,7 +136,6 @@ declare_lint_pass! {
         USELESS_DEPRECATED,
         WARNINGS,
         WASM_C_ABI,
-        WHERE_CLAUSES_OBJECT_SAFETY,
         WRITES_THROUGH_IMMUTABLE_POINTER,
         // tidy-alphabetical-end
     ]
@@ -2091,47 +2090,6 @@ declare_lint! {
     pub UNUSED_LABELS,
     Warn,
     "detects labels that are never used"
-}
-
-declare_lint! {
-    /// The `where_clauses_object_safety` lint detects for [object safety] of
-    /// [where clauses].
-    ///
-    /// [object safety]: https://doc.rust-lang.org/reference/items/traits.html#object-safety
-    /// [where clauses]: https://doc.rust-lang.org/reference/items/generics.html#where-clauses
-    ///
-    /// ### Example
-    ///
-    /// ```rust,no_run
-    /// trait Trait {}
-    ///
-    /// trait X { fn foo(&self) where Self: Trait; }
-    ///
-    /// impl X for () { fn foo(&self) {} }
-    ///
-    /// impl Trait for dyn X {}
-    ///
-    /// // Segfault at opt-level 0, SIGILL otherwise.
-    /// pub fn main() { <dyn X as X>::foo(&()); }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler previously allowed these object-unsafe bounds, which was
-    /// incorrect. This is a [future-incompatible] lint to transition this to
-    /// a hard error in the future. See [issue #51443] for more details.
-    ///
-    /// [issue #51443]: https://github.com/rust-lang/rust/issues/51443
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub WHERE_CLAUSES_OBJECT_SAFETY,
-    Warn,
-    "checks the object safety of where clauses",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-    };
 }
 
 declare_lint! {

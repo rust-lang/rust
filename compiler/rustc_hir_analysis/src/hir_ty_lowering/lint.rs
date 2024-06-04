@@ -182,7 +182,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // For recursive traits, don't downgrade the error. (#119652)
                             is_downgradable = false;
                         }
-                        tcx.check_is_object_safe(id)
+                        tcx.is_object_safe(id)
                     }
                     _ => false,
                 })

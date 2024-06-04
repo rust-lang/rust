@@ -832,7 +832,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         let traits = tcx.traits(LOCAL_CRATE);
 
         for &tr in traits {
-            if !tcx.check_is_object_safe(tr) {
+            if !tcx.is_object_safe(tr) {
                 continue;
             }
 

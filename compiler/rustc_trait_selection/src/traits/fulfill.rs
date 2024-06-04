@@ -421,7 +421,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                    if !self.selcx.tcx().check_is_object_safe(trait_def_id) {
+                    if !self.selcx.tcx().is_object_safe(trait_def_id) {
                         ProcessResult::Error(FulfillmentErrorCode::Select(Unimplemented))
                     } else {
                         ProcessResult::Changed(vec![])

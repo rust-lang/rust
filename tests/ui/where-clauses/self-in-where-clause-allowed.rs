@@ -1,7 +1,6 @@
 //@ check-fail
 
 #![feature(auto_traits)]
-#![deny(where_clauses_object_safety)]
 
 auto trait AutoTrait {}
 
