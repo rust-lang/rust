@@ -2,6 +2,7 @@
 
 // EMIT_MIR const_array_locals.main.PromoteArraysOpt.diff
 // CHECK-LABEL: fn main() -> () {
+#[rustfmt::skip]
 pub fn main() {
     // CHECK: let [[array_lit:_.*]]: [i32; 32];
     // CHECK: let mut [[moved_array:_.*]]: [u16; 32];
