@@ -9,11 +9,10 @@ use std::{
 };
 
 use build_helper::ci::CiEnv;
-use build_helper::stage0_parser::VersionMetadata;
 use xz2::bufread::XzDecoder;
 
+use crate::utils::helpers::hex_encode;
 use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
-use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
 use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -405,9 +404,17 @@ impl Config {
         cargo_clippy
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
+        None
+    }
+
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
     /// reuse target directories or artifacts
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
+        use build_helper::stage0_parser::VersionMetadata;
+
         let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
 
@@ -487,6 +494,10 @@ impl Config {
         );
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn download_beta_toolchain(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn download_beta_toolchain(&self) {
         self.verbose(|| println!("downloading stage0 beta artifacts"));
 
@@ -665,7 +676,13 @@ download-rustc = false
         self.unpack(&tarball, &bin_root, prefix);
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_ci_llvm(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
+        use crate::core::build_steps::llvm::detect_llvm_sha;
+
         if !self.llvm_from_ci {
             return;
         }
@@ -707,6 +724,7 @@ download-rustc = false
         }
     }
 
+    #[cfg(not(feature = "bootstrap-self-test"))]
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 

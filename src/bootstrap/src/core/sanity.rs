@@ -8,13 +8,15 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use walkdir::WalkDir;
+
+#[cfg(not(feature = "bootstrap-self-test"))]
+use std::collections::HashSet;
 
 use crate::builder::Kind;
 use crate::core::config::Target;
@@ -31,6 +33,7 @@ pub struct Finder {
 // it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
+#[cfg(not(feature = "bootstrap-self-test"))]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
 ];
@@ -167,6 +170,7 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
+    #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> =
         output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]))
             .lines()
@@ -193,11 +197,11 @@ than building it.
             continue;
         }
 
-        let target_str = target.to_string();
-
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if !["A-A", "B-B", "C-C"].contains(&target_str.as_str()) {
+        #[cfg(not(feature = "bootstrap-self-test"))]
+        {
             let mut has_target = false;
+            let target_str = target.to_string();
 
             let missing_targets_hashset: HashSet<_> =
                 STAGE0_MISSING_TARGETS.iter().map(|t| t.to_string()).collect();
@@ -226,7 +230,7 @@ than building it.
                     target_filename.push(".json");
 
                     // Recursively traverse through nested directories.
-                    let walker = WalkDir::new(custom_target_path).into_iter();
+                    let walker = walkdir::WalkDir::new(custom_target_path).into_iter();
                     for entry in walker.filter_map(|e| e.ok()) {
                         has_target |= entry.file_name() == target_filename;
                     }

@@ -3053,6 +3053,7 @@ impl Step for Bootstrap {
 
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
+            .args(["--features", "bootstrap-self-test"])
             .current_dir(builder.src.join("src/bootstrap"))
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))

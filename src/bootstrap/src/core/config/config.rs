@@ -22,8 +22,6 @@ use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{exe, output, t};
 use build_helper::exit;
-use build_helper::util::fail;
-use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -2382,8 +2380,14 @@ impl Config {
         }
     }
 
-    // check rustc/cargo version is same or lower with 1 apart from the building one
+    #[cfg(feature = "bootstrap-self-test")]
+    pub fn check_stage0_version(&self, _program_path: &Path, _component_name: &'static str) {}
+
+    /// check rustc/cargo version is same or lower with 1 apart from the building one
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub fn check_stage0_version(&self, program_path: &Path, component_name: &'static str) {
+        use build_helper::util::fail;
+
         if self.dry_run() {
             return;
         }
@@ -2400,11 +2404,12 @@ impl Config {
         }
 
         let stage0_version =
-            Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
+            semver::Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
                 .unwrap();
-        let source_version =
-            Version::parse(fs::read_to_string(self.src.join("src/version")).unwrap().trim())
-                .unwrap();
+        let source_version = semver::Version::parse(
+            fs::read_to_string(self.src.join("src/version")).unwrap().trim(),
+        )
+        .unwrap();
         if !(source_version == stage0_version
             || (source_version.major == stage0_version.major
                 && (source_version.minor == stage0_version.minor
