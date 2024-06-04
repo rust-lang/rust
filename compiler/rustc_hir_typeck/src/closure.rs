@@ -485,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Since this is a return parameter type it is safe to unwrap.
-        let ret_param_ty = projection.skip_binder().term.ty().unwrap();
+        let ret_param_ty = projection.skip_binder().term.expect_type();
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
         debug!(?ret_param_ty);
 
@@ -956,7 +956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let output_ty = self.resolve_vars_if_possible(predicate.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         // This is a projection on a Fn trait so will always be a type.
-        Some(output_ty.ty().unwrap())
+        Some(output_ty.expect_type())
     }
 
     /// Converts the types that the user supplied, in case that doing

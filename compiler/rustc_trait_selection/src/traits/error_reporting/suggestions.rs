@@ -1112,7 +1112,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 {
                                     Some((
                                         DefIdOrName::DefId(def_id),
-                                        pred.kind().rebind(proj.term.ty().unwrap()),
+                                        pred.kind().rebind(proj.term.expect_type()),
                                         pred.kind().rebind(args.as_slice()),
                                     ))
                                 } else {
@@ -1129,7 +1129,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             {
                                 Some((
                                     DefIdOrName::Name("trait object"),
-                                    pred.rebind(proj.term.ty().unwrap()),
+                                    pred.rebind(proj.term.expect_type()),
                                     pred.rebind(args.as_slice()),
                                 ))
                             } else {
@@ -1157,7 +1157,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             {
                                 Some((
                                     name,
-                                    pred.kind().rebind(proj.term.ty().unwrap()),
+                                    pred.kind().rebind(proj.term.expect_type()),
                                     pred.kind().rebind(args.as_slice()),
                                 ))
                             } else {
@@ -3840,7 +3840,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     })
                 } else if let Some(where_pred) = where_pred.as_projection_clause()
                     && let Some(failed_pred) = failed_pred.as_projection_clause()
-                    && let Some(found) = failed_pred.skip_binder().term.ty()
+                    && let Some(found) = failed_pred.skip_binder().term.as_type()
                 {
                     type_diffs = vec![Sorts(ty::error::ExpectedFound {
                         expected: where_pred

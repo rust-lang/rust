@@ -263,7 +263,7 @@ fn push_debuginfo_type_name<'tcx>(
                         let ExistentialProjection { def_id: item_def_id, term, .. } =
                             tcx.instantiate_bound_regions_with_erased(bound);
                         // FIXME(associated_const_equality): allow for consts here
-                        (item_def_id, term.ty().unwrap())
+                        (item_def_id, term.expect_type())
                     })
                     .collect();
 
