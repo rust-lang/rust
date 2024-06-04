@@ -24,6 +24,13 @@ fn test_os_string_clear() {
 }
 
 #[test]
+fn test_os_string_leak() {
+    let os_string = OsString::from("have a cake");
+    let leaked = os_string.leak();
+    assert_eq!(leaked.as_encoded_bytes(), b"have a cake");
+}
+
+#[test]
 fn test_os_string_capacity() {
     let os_string = OsString::with_capacity(0);
     assert_eq!(0, os_string.capacity());
