@@ -37,7 +37,7 @@ for the generic parameters.  In our example of `MyStruct<u32>`, we would end up 
 ### **`AdtDef` and `DefId`**
 
 For every type defined in the source code, there is a unique `DefId` (see [this
-chapter](hir.md#identifiers-in-the-hir)). This includes ADTs and generics. In the `MyStruct<T>`
+chapter](../hir.md#identifiers-in-the-hir)). This includes ADTs and generics. In the `MyStruct<T>`
 definition we gave above, there are two `DefId`s: one for `MyStruct` and one for `T`.  Notice that
 the code above does not generate a new `DefId` for `u32` because it is not defined in that code (it
 is only referenced).
@@ -111,7 +111,7 @@ fn deal_with_generic_arg<'tcx>(generic_arg: GenericArg<'tcx>) -> GenericArg<'tcx
 
 [list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.List.html
 [`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GenericArg.html
-[`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.GenericArgKind.html
+[`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgKind.html
 [`GenericArgs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
 
 So pulling it all together:
