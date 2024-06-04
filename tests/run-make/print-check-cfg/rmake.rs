@@ -49,6 +49,20 @@ fn main() {
         },
     });
     check(CheckCfg {
+        args: &["--check-cfg=cfg(feature, values())"],
+        contains: Contains::Some {
+            contains: &["feature="],
+            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature"],
+        },
+    });
+    check(CheckCfg {
+        args: &["--check-cfg=cfg(feature, values())", "--check-cfg=cfg(feature, values(none()))"],
+        contains: Contains::Some {
+            contains: &["feature"],
+            doesnt_contain: &["any()", "any()=any()", "feature=none()", "feature="],
+        },
+    });
+    check(CheckCfg {
         args: &[
             r#"--check-cfg=cfg(feature, values(any()))"#,
             r#"--check-cfg=cfg(feature, values("tmp"))"#,
