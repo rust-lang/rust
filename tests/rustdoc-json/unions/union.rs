@@ -7,7 +7,6 @@ pub union Union {
     float: f32,
 }
 
-
 // @has "$.index[*][?(@.name=='make_int_union')].inner.function.decl.output.resolved_path"
 // @is "$.index[*][?(@.name=='make_int_union')].inner.function.decl.output.resolved_path.id" $Union
 pub fn make_int_union(int: i32) -> Union {

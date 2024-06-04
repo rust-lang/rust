@@ -12,4 +12,8 @@ pub struct Wrapper<T_>(std::marker::PhantomData<T_>);
 // @is "$.index[*][?(@.name=='foo')].inner.function.generics.where_predicates[0].bound_predicate.generic_params[0].kind" '{ "lifetime": { "outlives": [] } }'
 // @is "$.index[*][?(@.name=='foo')].inner.function.generics.where_predicates[0].bound_predicate.generic_params[1].name" \"T\"
 // @is "$.index[*][?(@.name=='foo')].inner.function.generics.where_predicates[0].bound_predicate.generic_params[1].kind" '{ "type": { "bounds": [], "default": null, "synthetic": false } }'
-pub fn foo() where for<'a, T> &'a Wrapper<T>: Trait {}
+pub fn foo()
+where
+    for<'a, T> &'a Wrapper<T>: Trait,
+{
+}
