@@ -405,6 +405,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
+        let _p = tracing::span!(tracing::Level::INFO, "find_container").entered();
         let def =
             self.ancestors_with_macros(src, |this, container| this.container_to_def(container));
         if let Some(def) = def {

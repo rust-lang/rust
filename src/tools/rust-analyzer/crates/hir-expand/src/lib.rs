@@ -411,7 +411,7 @@ impl MacroFileIdExt for MacroFileId {
     fn is_attr_macro(&self, db: &dyn ExpandDatabase) -> bool {
         matches!(
             db.lookup_intern_macro_call(self.macro_call_id).def.kind,
-            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, ProcMacroKind::Attr, _)
+            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr)
         )
     }
 
@@ -721,7 +721,7 @@ impl ExpansionInfo {
     pub fn is_attr(&self) -> bool {
         matches!(
             self.loc.def.kind,
-            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, ProcMacroKind::Attr, _)
+            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr)
         )
     }
 
@@ -809,6 +809,7 @@ impl ExpansionInfo {
     }
 
     pub fn new(db: &dyn ExpandDatabase, macro_file: MacroFileId) -> ExpansionInfo {
+        let _p = tracing::span!(tracing::Level::INFO, "ExpansionInfo::new").entered();
         let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
         let arg_tt = loc.kind.arg(db);
