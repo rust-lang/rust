@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 //
 // issue: <https://github.com/rust-lang/rust/issues/120217>
 

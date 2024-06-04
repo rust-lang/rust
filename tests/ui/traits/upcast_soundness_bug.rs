@@ -1,5 +1,5 @@
 #![feature(trait_upcasting)]
-// check-fail
+//@ check-fail
 //
 // issue: <https://github.com/rust-lang/rust/pull/120222>
 //! This would segfault at runtime.
