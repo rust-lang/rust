@@ -587,6 +587,7 @@ pub enum FixupError {
     UnresolvedFloatTy(FloatVid),
     UnresolvedTy(TyVid),
     UnresolvedConst(ConstVid),
+    UnresolvedEffect(EffectVid),
 }
 
 /// See the `region_obligations` field for more information.
@@ -614,6 +615,7 @@ impl fmt::Display for FixupError {
             ),
             UnresolvedTy(_) => write!(f, "unconstrained type"),
             UnresolvedConst(_) => write!(f, "unconstrained const value"),
+            UnresolvedEffect(_) => write!(f, "unconstrained effect value"),
         }
     }
 }
