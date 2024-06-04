@@ -441,7 +441,9 @@ fn fn_sig_suggestion<'tcx>(
         output = if let ty::Alias(_, alias_ty) = *output.kind() {
             tcx.explicit_item_super_predicates(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
-                .find_map(|(bound, _)| bound.as_projection_clause()?.no_bound_vars()?.term.ty())
+                .find_map(|(bound, _)| {
+                    bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
+                })
                 .unwrap_or_else(|| {
                     span_bug!(
                         ident.span,

@@ -58,7 +58,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             // FIXME(associated_const_equality): All users of normalize_canonicalized_projection_ty
             // expected a type, but there is the possibility it could've been a const now.
             // Maybe change it to a Term later?
-            Ok(NormalizationResult { normalized_ty: answer.ty().unwrap() })
+            Ok(NormalizationResult { normalized_ty: answer.expect_type() })
         },
     )
 }
