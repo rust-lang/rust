@@ -642,7 +642,7 @@ impl<'a> AssocItemCollector<'a> {
                             continue 'attrs;
                         }
                         let loc = self.db.lookup_intern_macro_call(call_id);
-                        if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                        if let MacroDefKind::ProcMacro(_, exp, _) = loc.def.kind {
                             // If there's no expander for the proc macro (e.g. the
                             // proc macro is ignored, or building the proc macro
                             // crate failed), skip expansion like we would if it was

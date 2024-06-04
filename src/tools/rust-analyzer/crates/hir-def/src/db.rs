@@ -294,10 +294,10 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
         let in_file = InFile::new(file_id, m);
         match expander {
             MacroExpander::Declarative => MacroDefKind::Declarative(in_file),
-            MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(it, in_file),
-            MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(it, in_file),
-            MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(it, in_file),
-            MacroExpander::BuiltInEager(it) => MacroDefKind::BuiltInEager(it, in_file),
+            MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(in_file, it),
+            MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(in_file, it),
+            MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(in_file, it),
+            MacroExpander::BuiltInEager(it) => MacroDefKind::BuiltInEager(in_file, it),
         }
     };
 
@@ -338,9 +338,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             MacroDefId {
                 krate: loc.container.krate,
                 kind: MacroDefKind::ProcMacro(
+                    InFile::new(loc.id.file_id(), makro.ast_id),
                     loc.expander,
                     loc.kind,
-                    InFile::new(loc.id.file_id(), makro.ast_id),
                 ),
                 local_inner: false,
                 allow_internal_unsafe: false,

@@ -36,11 +36,6 @@ pub fn find_builtin_attr_idx(name: &str) -> Option<usize> {
         .copied()
 }
 
-// impl AttributeTemplate {
-//     const DEFAULT: AttributeTemplate =
-//         AttributeTemplate { word: false, list: None, name_value_str: None };
-// }
-
 /// A convenience macro for constructing attribute templates.
 /// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.

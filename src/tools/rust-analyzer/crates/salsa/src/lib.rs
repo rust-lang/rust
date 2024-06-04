@@ -513,6 +513,10 @@ where
     {
         self.storage.purge();
     }
+
+    pub fn storage(&self) -> &<Q as Query>::Storage {
+        self.storage
+    }
 }
 
 /// Return value from [the `query_mut` method] on `Database`.

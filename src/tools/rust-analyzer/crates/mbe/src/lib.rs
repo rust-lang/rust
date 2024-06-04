@@ -317,6 +317,12 @@ pub struct ValueResult<T, E> {
     pub err: Option<E>,
 }
 
+impl<T: Default, E> Default for ValueResult<T, E> {
+    fn default() -> Self {
+        Self { value: Default::default(), err: Default::default() }
+    }
+}
+
 impl<T, E> ValueResult<T, E> {
     pub fn new(value: T, err: E) -> Self {
         Self { value, err: Some(err) }
