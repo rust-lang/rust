@@ -172,12 +172,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        use rustc_session::config::Lto;
+        use rustc_session::config::{InstrumentCoverage, Lto};
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => {
                 sess.dcx().warn("LTO is not supported. You may get a linker error.")
             }
+        }
+
+        if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
+            sess.dcx()
+                .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
 
         let mut config = self.config.borrow_mut();
