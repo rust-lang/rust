@@ -1086,13 +1086,11 @@ impl CreateRunnableDoctests {
             },
             testfn: test::DynTestFn(Box::new(move || {
                 doctest_run_fn(
-                    RunnableDoctest {
-                        crate_name,
-                        rustdoc_test_options,
-                        opts,
-                        path,
-                        scraped_test: test,
-                    },
+                    crate_name,
+                    rustdoc_test_options,
+                    opts,
+                    path,
+                    test,
                     rustdoc_options,
                     unused_externs,
                 )
@@ -1101,36 +1099,31 @@ impl CreateRunnableDoctests {
     }
 }
 
-/// A doctest that is ready to run.
-struct RunnableDoctest {
+fn doctest_run_fn(
     crate_name: String,
-    rustdoc_test_options: IndividualTestOptions,
-    opts: GlobalTestOptions,
+    test_opts: IndividualTestOptions,
+    global_opts: GlobalTestOptions,
     path: PathBuf,
     scraped_test: ScrapedDoctest,
-}
-
-fn doctest_run_fn(
-    runnable_test: RunnableDoctest,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
-    let no_run = runnable_test.scraped_test.no_run(&rustdoc_options);
-    let edition = runnable_test.scraped_test.edition(&rustdoc_options);
+    let no_run = scraped_test.no_run(&rustdoc_options);
+    let edition = scraped_test.edition(&rustdoc_options);
     let res = run_test(
-        &runnable_test.scraped_test.text,
-        &runnable_test.crate_name,
-        runnable_test.scraped_test.line,
+        &scraped_test.text,
+        &crate_name,
+        scraped_test.line,
         &rustdoc_options,
-        runnable_test.rustdoc_test_options,
-        runnable_test.scraped_test.langstr,
+        test_opts,
+        scraped_test.langstr,
         no_run,
-        &runnable_test.opts,
+        &global_opts,
         edition,
-        runnable_test.path,
+        path,
         report_unused_externs,
     );
 
