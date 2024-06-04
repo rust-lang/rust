@@ -1,4 +1,5 @@
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(box_patterns)]
