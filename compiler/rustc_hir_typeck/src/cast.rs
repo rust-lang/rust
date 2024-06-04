@@ -840,8 +840,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // contain wrappers, which we do not care about.
                         //
                         // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
-                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(src_tty, tcx.lifetimes.re_erased, ty::Dyn));
-                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(dst_tty, tcx.lifetimes.re_erased, ty::Dyn));
+                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                            src_tty,
+                            tcx.lifetimes.re_erased,
+                            ty::Dyn,
+                        ));
+                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                            dst_tty,
+                            tcx.lifetimes.re_erased,
+                            ty::Dyn,
+                        ));
 
                         // `dyn Src: Unsize<dyn Dst>`
                         let cause = fcx.misc(self.span);
@@ -853,7 +861,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 tcx,
                                 tcx.require_lang_item(LangItem::Unsize, Some(self.span)),
                                 [src_obj, dst_obj],
-                            )
+                            ),
                         );
 
                         fcx.register_predicate(obligation);
@@ -866,9 +874,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     }
 
                     // dyn Auto -> dyn Auto'? ok.
-                    (None, None)
-                    // dyn Trait -> dyn Auto? ok.
-                    | (Some(_), None)=> Ok(CastKind::PtrPtrCast),
+                    (None, None) => Ok(CastKind::PtrPtrCast),
+
+                    // dyn Trait -> dyn Auto? should be ok, but we used to not allow it.
+                    // FIXME: allow this
+                    (Some(_), None) => Err(CastError::DifferingKinds),
 
                     // dyn Auto -> dyn Trait? not ok.
                     (None, Some(_)) => Err(CastError::DifferingKinds),
