@@ -6,10 +6,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "thumbv5te-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("Thumb-mode Bare ARMv5TE".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(false),
         },
         pointer_width: 32,
         arch: "arm".into(),

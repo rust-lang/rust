@@ -20,10 +20,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "s390x-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("S390x Linux (kernel 3.2, musl 1.2.3)".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(false),
         },
         pointer_width: 64,
         data_layout: "E-m:e-i1:8:16-i8:8:16-i64:64-f128:64-v128:64-a:8:16-n32:64".into(),
