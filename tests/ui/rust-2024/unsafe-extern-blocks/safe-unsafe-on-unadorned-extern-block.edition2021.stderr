@@ -1,13 +1,14 @@
 error: items in unadorned `extern` blocks cannot have safety qualifiers
-  --> $DIR/safe-unsafe-on-unadorned-extern-block.rs:2:5
+  --> $DIR/safe-unsafe-on-unadorned-extern-block.rs:10:5
    |
 LL | extern "C" {
    | ---------- help: add unsafe to this `extern` block
+LL |
 LL |     safe static TEST1: i32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: items in unadorned `extern` blocks cannot have safety qualifiers
-  --> $DIR/safe-unsafe-on-unadorned-extern-block.rs:4:5
+  --> $DIR/safe-unsafe-on-unadorned-extern-block.rs:12:5
    |
 LL | extern "C" {
    | ---------- help: add unsafe to this `extern` block
