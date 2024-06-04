@@ -67,6 +67,11 @@ rm -r tests/run-make/issue-109934-lto-debuginfo
 rm -r tests/run-make/no-builtins-lto
 rm -r tests/run-make/reachable-extern-fn-available-lto
 
+# coverage instrumentation
+rm tests/ui/consts/precise-drop-with-coverage.rs
+rm tests/ui/issues/issue-85461.rs
+rm -r tests/ui/instrument-coverage/
+
 # optimization tests
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
