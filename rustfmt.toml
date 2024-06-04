@@ -21,7 +21,7 @@ ignore = [
     "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
     "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
     "/tests/ui/",                     # Some have syntax errors, some are whitespace-sensitive.
-    "/tests/ui-fulldeps/",
+    "/tests/ui-fulldeps/",            # Some are whitespace-sensitive (e.g. `// ~ERROR` comments).
 
     # Do not format submodules.
     # FIXME: sync submodule list with tidy/bootstrap/etc
