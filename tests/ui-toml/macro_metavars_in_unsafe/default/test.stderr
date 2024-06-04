@@ -1,12 +1,3 @@
-error: the feature `lint_reasons` has been stable since 1.81.0-dev and no longer requires an attribute to enable
-  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:2:24
-   |
-LL | #![feature(decl_macro, lint_reasons)]
-   |                        ^^^^^^^^^^^^
-   |
-   = note: `-D stable-features` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(stable_features)]`
-
 error: this macro expands metavariables in an unsafe block
   --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:19:9
    |
@@ -192,5 +183,5 @@ LL | |         }
    = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
    = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
 
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 
