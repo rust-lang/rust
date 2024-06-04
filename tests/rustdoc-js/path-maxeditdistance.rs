@@ -1,3 +1,3 @@
-#![crate_name="abracadabra"]
+#![crate_name = "abracadabra"]
 
 pub struct HocusPocusPrestidigitation;

@@ -16,12 +16,19 @@ pub trait Trait<T> {
     fn handle(value: T) -> Self;
 }
 
-impl<T, U> Trait<U> for T where T: From<U> {
-    fn handle(_: U) -> Self { unimplemented!() }
+impl<T, U> Trait<U> for T
+where
+    T: From<U>,
+{
+    fn handle(_: U) -> Self {
+        unimplemented!()
+    }
 }
 
 impl<'a, R> Trait<&'a mut Events<R>> for Other {
-    fn handle(_: &'a mut Events<R>) -> Self { unimplemented!() }
+    fn handle(_: &'a mut Events<R>) -> Self {
+        unimplemented!()
+    }
 }
 
 fn this_compiles<'a, R>(value: &'a mut Events<R>) {

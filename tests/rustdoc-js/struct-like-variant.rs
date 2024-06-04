@@ -3,6 +3,6 @@
 pub enum Enum {
     Bar {
         /// This is a name.
-        name: String
-    }
+        name: String,
+    },
 }

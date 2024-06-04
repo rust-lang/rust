@@ -15,18 +15,13 @@ ignore = [
     "/tests/crashes/",                # Many of these tests contain syntax errors.
     "/tests/debuginfo/",              # These tests are somewhat sensitive to source code layout.
     "/tests/incremental/",            # These tests are somewhat sensitive to source code layout.
-    "/tests/pretty/",
+    "/tests/pretty/",                 # These tests are very sensitive to source code layout.
     "/tests/run-make/translation/test.rs", # This test contains syntax errors.
-    "/tests/run-make-fulldeps/",
-    "/tests/run-pass-valgrind/",
-    "/tests/rustdoc/",
-    "/tests/rustdoc-gui/",
-    "/tests/rustdoc-js/",
-    "/tests/rustdoc-json/",
-    "/tests/rustdoc-js-std/",
-    "/tests/rustdoc-ui/",
-    "/tests/ui/",
-    "/tests/ui-fulldeps/",
+    "/tests/rustdoc/",                # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
+    "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/ui/",                     # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/ui-fulldeps/",            # Some are whitespace-sensitive (e.g. `// ~ERROR` comments).
 
     # Do not format submodules.
     # FIXME: sync submodule list with tidy/bootstrap/etc
