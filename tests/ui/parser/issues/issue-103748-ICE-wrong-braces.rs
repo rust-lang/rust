@@ -5,3 +5,4 @@ struct Apple((Apple, Option(Banana ? Citron)));
 //~| ERROR expected one of `)` or `,`, found `Citron`
 //~| ERROR cannot find type `Citron` in this scope [E0412]
 //~| ERROR parenthesized type parameters may only be used with a `Fn` trait [E0214]
+//~| ERROR `Apple` has infinite size
