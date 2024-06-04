@@ -894,6 +894,7 @@ impl<'hir> Map<'hir> {
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.body(constant.body).value.span,
+            Node::ConstArg(const_arg) => const_arg.span(),
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
@@ -1164,6 +1165,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Node::AnonConst(_) => node_str("const"),
         Node::ConstBlock(_) => node_str("const"),
+        Node::ConstArg(_) => node_str("const"),
         Node::Expr(_) => node_str("expr"),
         Node::ExprField(_) => node_str("expr field"),
         Node::Stmt(_) => node_str("stmt"),

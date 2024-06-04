@@ -189,9 +189,10 @@ impl<'tcx> Const<'tcx> {
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
         let body_id = match tcx.hir_node_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
+            node => span_bug!(
                 tcx.def_span(def.to_def_id()),
-                "from_anon_const can only process anonymous constants"
+                "from_anon_const can only process anonymous constants, not {:?}",
+                node,
             ),
         };
 

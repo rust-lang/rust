@@ -1164,7 +1164,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     None,
                                 );
                                 return GenericArg::Const(ConstArg {
-                                    hir_id: self.lower_node_id(ty.id),
+                                    hir_id: self.next_id(),
                                     kind: ConstArgKind::Path(qpath),
                                     is_desugared_from_effects: false,
                                 });
@@ -1197,7 +1197,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 None,
             );
             return ConstArg {
-                hir_id: self.lower_node_id(anon.id),
+                hir_id: self.next_id(),
                 kind: ConstArgKind::Path(qpath),
                 is_desugared_from_effects: false,
             };
@@ -1205,7 +1205,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let lowered_anon = self.lower_anon_const(anon);
         ConstArg {
-            hir_id: lowered_anon.hir_id,
+            hir_id: self.next_id(),
             kind: ConstArgKind::Anon(lowered_anon),
             is_desugared_from_effects: false,
         }
