@@ -5,7 +5,7 @@ use crate::mem::MaybeUninit;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 
-/// A synchronization primitive which can be written to only once.
+/// A synchronization primitive which can nominally be written to only once.
 ///
 /// This type is a thread-safe [`OnceCell`], and can be used in statics.
 ///
