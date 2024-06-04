@@ -112,31 +112,37 @@ use syntax::{
 
 use crate::{db::HirDatabase, InFile};
 
-pub(super) type SourceToDefCache = FxHashMap<(ChildContainer, HirFileId), DynMap>;
+#[derive(Default)]
+pub(super) struct SourceToDefCache {
+    pub(super) dynmap_cache: FxHashMap<(ChildContainer, HirFileId), DynMap>,
+    pub(super) expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
+    pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
+}
 
-pub(super) struct SourceToDefCtx<'a, 'dyn_cache> {
-    pub(super) db: &'a dyn HirDatabase,
-    pub(super) dynmap_cache: &'dyn_cache mut SourceToDefCache,
-    pub(super) expansion_info_cache: &'a mut FxHashMap<MacroFileId, ExpansionInfo>,
+pub(super) struct SourceToDefCtx<'db, 'cache> {
+    pub(super) db: &'db dyn HirDatabase,
+    pub(super) cache: &'cache mut SourceToDefCache,
 }
 
 impl SourceToDefCtx<'_, '_> {
-    pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
+    pub(super) fn file_to_def(&mut self, file: FileId) -> &SmallVec<[ModuleId; 1]> {
         let _p = tracing::span!(tracing::Level::INFO, "SourceToDefCtx::file_to_def").entered();
-        let mut mods = SmallVec::new();
-        for &crate_id in self.db.relevant_crates(file).iter() {
-            // Note: `mod` declarations in block modules cannot be supported here
-            let crate_def_map = self.db.crate_def_map(crate_id);
-            mods.extend(
-                crate_def_map
-                    .modules_for_file(file)
-                    .map(|local_id| crate_def_map.module_id(local_id)),
-            )
-        }
-        if mods.is_empty() {
-            // FIXME: detached file
-        }
-        mods
+        self.cache.file_to_def_cache.entry(file).or_insert_with(|| {
+            let mut mods = SmallVec::new();
+            for &crate_id in self.db.relevant_crates(file).iter() {
+                // Note: `mod` declarations in block modules cannot be supported here
+                let crate_def_map = self.db.crate_def_map(crate_id);
+                mods.extend(
+                    crate_def_map
+                        .modules_for_file(file)
+                        .map(|local_id| crate_def_map.module_id(local_id)),
+                )
+            }
+            if mods.is_empty() {
+                // FIXME: detached file
+            }
+            mods
+        })
     }
 
     pub(super) fn module_to_def(&mut self, src: InFile<&ast::Module>) -> Option<ModuleId> {
@@ -166,7 +172,7 @@ impl SourceToDefCtx<'_, '_> {
         Some(def_map.module_id(child_id))
     }
 
-    pub(super) fn source_file_to_def(&self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
+    pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
         let _p = tracing::span!(tracing::Level::INFO, "source_file_to_def").entered();
         let file_id = src.file_id.original_file(self.db.upcast());
         self.file_to_def(file_id).first().copied()
@@ -325,7 +331,8 @@ impl SourceToDefCtx<'_, '_> {
 
     fn cache_for(&mut self, container: ChildContainer, file_id: HirFileId) -> &DynMap {
         let db = self.db;
-        self.dynmap_cache
+        self.cache
+            .dynmap_cache
             .entry((container, file_id))
             .or_insert_with(|| container.child_by_source(db, file_id))
     }
@@ -421,6 +428,7 @@ impl SourceToDefCtx<'_, '_> {
                 let macro_file = node.file_id.macro_file()?;
 
                 let expansion_info = this
+                    .cache
                     .expansion_info_cache
                     .entry(macro_file)
                     .or_insert_with(|| macro_file.expansion_info(this.db.upcast()));

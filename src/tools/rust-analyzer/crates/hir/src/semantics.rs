@@ -129,7 +129,7 @@ pub struct Semantics<'db, DB> {
 
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
-    s2d_cache: RefCell<(SourceToDefCache, FxHashMap<MacroFileId, hir_expand::ExpansionInfo>)>,
+    s2d_cache: RefCell<SourceToDefCache>,
     /// Rootnode to HirFileId cache
     root_to_file_cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
     /// MacroCall to its expansion's MacroFileId cache
@@ -719,7 +719,8 @@ impl<'db> SemanticsImpl<'db> {
             let macro_file = invoc.as_macro_file();
             let expansion_info = {
                 self.with_ctx(|ctx| {
-                    ctx.expansion_info_cache
+                    ctx.cache
+                        .expansion_info_cache
                         .entry(macro_file)
                         .or_insert_with(|| {
                             let exp_info = macro_file.expansion_info(self.db.upcast());
@@ -806,7 +807,8 @@ impl<'db> SemanticsImpl<'db> {
         let process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
             let InMacroFile { file_id, value: mapped_tokens } = self.with_ctx(|ctx| {
                 Some(
-                    ctx.expansion_info_cache
+                    ctx.cache
+                        .expansion_info_cache
                         .entry(macro_file)
                         .or_insert_with(|| {
                             let exp_info = macro_file.expansion_info(self.db.upcast());
@@ -1086,6 +1088,7 @@ impl<'db> SemanticsImpl<'db> {
 
                     self.with_ctx(|ctx| {
                         let expansion_info = ctx
+                            .cache
                             .expansion_info_cache
                             .entry(macro_file)
                             .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
@@ -1364,8 +1367,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn with_ctx<F: FnOnce(&mut SourceToDefCtx<'_, '_>) -> T, T>(&self, f: F) -> T {
-        let (dynmap_cache, expansion_info_cache) = &mut *self.s2d_cache.borrow_mut();
-        let mut ctx = SourceToDefCtx { db: self.db, dynmap_cache, expansion_info_cache };
+        let mut ctx = SourceToDefCtx { db: self.db, cache: &mut self.s2d_cache.borrow_mut() };
         f(&mut ctx)
     }
 
@@ -1375,7 +1377,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
-        self.with_ctx(|ctx| ctx.file_to_def(file)).into_iter().map(Module::from)
+        self.with_ctx(|ctx| ctx.file_to_def(file).to_owned()).into_iter().map(Module::from)
     }
 
     pub fn scope(&self, node: &SyntaxNode) -> Option<SemanticsScope<'db>> {
@@ -1653,6 +1655,7 @@ fn macro_call_to_macro_id(
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
                     let expansion_info = ctx
+                        .cache
                         .expansion_info_cache
                         .entry(macro_file)
                         .or_insert_with(|| macro_file.expansion_info(ctx.db.upcast()));
@@ -1668,6 +1671,7 @@ fn macro_call_to_macro_id(
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
                     let expansion_info = ctx
+                        .cache
                         .expansion_info_cache
                         .entry(macro_file)
                         .or_insert_with(|| macro_file.expansion_info(ctx.db.upcast()));
