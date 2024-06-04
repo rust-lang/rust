@@ -14,14 +14,12 @@ impl<T, S> Trait<T> for i32 {
 // Should not not trigger suggestion here...
 impl<T, S> Trait<T, S> for () {}
 //~^ ERROR trait takes 1 generic argument but 2 generic arguments were supplied
-//~| ERROR `S` is not constrained
 
 //... but should do so in all of the below cases except the last one
 fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
 //~^ ERROR trait takes 1 generic argument but 2 generic arguments were supplied
 //~| ERROR trait takes 1 generic argument but 2 generic arguments were supplied
 //~| ERROR trait takes 1 generic argument but 2 generic arguments were supplied
-//~| ERROR type annotations needed
     3
 }
 

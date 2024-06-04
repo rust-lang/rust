@@ -1077,7 +1077,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         }
 
                         p!(")");
-                        if let Some(ty) = return_ty.skip_binder().ty() {
+                        if let Some(ty) = return_ty.skip_binder().as_type() {
                             if !ty.is_unit() {
                                 p!(" -> ", print(return_ty));
                             }
@@ -1144,7 +1144,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     for (assoc_item_def_id, term) in assoc_items {
                         // Skip printing `<{coroutine@} as Coroutine<_>>::Return` from async blocks,
                         // unless we can find out what coroutine return type it comes from.
-                        let term = if let Some(ty) = term.skip_binder().ty()
+                        let term = if let Some(ty) = term.skip_binder().as_type()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()
                             && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
                             && assoc.trait_container(tcx) == tcx.lang_items().coroutine_trait()
@@ -1322,7 +1322,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             p!(pretty_fn_sig(
                                 tys,
                                 false,
-                                proj.skip_binder().term.ty().expect("Return type was a const")
+                                proj.skip_binder().term.as_type().expect("Return type was a const")
                             ));
                             resugared = true;
                         }

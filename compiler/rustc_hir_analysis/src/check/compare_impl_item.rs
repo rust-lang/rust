@@ -2281,7 +2281,7 @@ fn try_report_async_mismatch<'tcx>(
             && let Some(proj) = proj.no_bound_vars()
             && infcx.can_eq(
                 error.root_obligation.param_env,
-                proj.term.ty().unwrap(),
+                proj.term.expect_type(),
                 impl_sig.output(),
             )
         {

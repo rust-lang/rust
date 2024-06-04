@@ -214,10 +214,11 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
             if let Some(&param) = params.peek() {
                 if param.index == 0 {
                     if let GenericParamDefKind::Type { .. } = param.kind {
+                        assert_eq!(&args[..], &[]);
                         args.push(
                             self_ty
                                 .map(|ty| ty.into())
-                                .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
+                                .unwrap_or_else(|| ctx.inferred_kind(&args, param, true)),
                         );
                         params.next();
                     }
@@ -267,7 +268,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             // Since this is a const impl, we need to insert a host arg at the end of
                             // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
                             // To work around this, we infer all arguments until we reach the host param.
-                            args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                            args.push(ctx.inferred_kind(&args, param, infer_args));
                             params.next();
                         }
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
@@ -281,7 +282,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             GenericParamDefKind::Const { .. },
                             _,
                         ) => {
-                            args.push(ctx.provided_kind(param, arg));
+                            args.push(ctx.provided_kind(&args, param, arg));
                             args_iter.next();
                             params.next();
                         }
@@ -292,7 +293,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                         ) => {
                             // We expected a lifetime argument, but got a type or const
                             // argument. That means we're inferring the lifetimes.
-                            args.push(ctx.inferred_kind(None, param, infer_args));
+                            args.push(ctx.inferred_kind(&args, param, infer_args));
                             force_infer_lt = Some((arg, param));
                             params.next();
                         }
@@ -388,7 +389,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                 (None, Some(&param)) => {
                     // If there are fewer arguments than parameters, it means
                     // we're inferring the remaining arguments.
-                    args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                    args.push(ctx.inferred_kind(&args, param, infer_args));
                     params.next();
                 }
 
@@ -474,16 +475,9 @@ pub(crate) fn check_generic_arg_count(
             return Ok(());
         }
 
-        if provided_args > max_expected_args {
-            invalid_args.extend(
-                gen_args.args[max_expected_args..provided_args].iter().map(|arg| arg.span()),
-            );
-        };
+        invalid_args.extend(min_expected_args..provided_args);
 
         let gen_args_info = if provided_args > min_expected_args {
-            invalid_args.extend(
-                gen_args.args[min_expected_args..provided_args].iter().map(|arg| arg.span()),
-            );
             let num_redundant_args = provided_args - min_expected_args;
             GenericArgsInfo::ExcessLifetimes { num_redundant_args }
         } else {
@@ -538,11 +532,7 @@ pub(crate) fn check_generic_arg_count(
         let num_default_params = expected_max - expected_min;
 
         let gen_args_info = if provided > expected_max {
-            invalid_args.extend(
-                gen_args.args[args_offset + expected_max..args_offset + provided]
-                    .iter()
-                    .map(|arg| arg.span()),
-            );
+            invalid_args.extend((expected_max..provided).map(|i| i + args_offset));
             let num_redundant_args = provided - expected_max;
 
             // Provide extra note if synthetic arguments like `impl Trait` are specified.
@@ -610,7 +600,7 @@ pub(crate) fn check_generic_arg_count(
         explicit_late_bound,
         correct: lifetimes_correct
             .and(args_correct)
-            .map_err(|reported| GenericArgCountMismatch { reported: Some(reported), invalid_args }),
+            .map_err(|reported| GenericArgCountMismatch { reported, invalid_args }),
     }
 }
 

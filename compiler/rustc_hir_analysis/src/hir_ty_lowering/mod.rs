@@ -215,12 +215,11 @@ pub(crate) enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct GenericArgCountMismatch {
-    /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
-    pub reported: Option<ErrorGuaranteed>,
-    /// A list of spans of arguments provided that were not valid.
-    pub invalid_args: Vec<Span>,
+    pub reported: ErrorGuaranteed,
+    /// A list of indices of arguments provided that were not valid.
+    pub invalid_args: Vec<usize>,
 }
 
 /// Decorates the result of a generic argument count mismatch
@@ -240,13 +239,14 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
 
     fn inferred_kind(
         &mut self,
-        args: Option<&[ty::GenericArg<'tcx>]>,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         infer_args: bool,
     ) -> ty::GenericArg<'tcx>;
@@ -404,10 +404,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self_ty.is_some(),
         );
 
-        if let Err(err) = &arg_count.correct
-            && let Some(reported) = err.reported
-        {
-            self.set_tainted_by_errors(reported);
+        if let Err(err) = &arg_count.correct {
+            self.set_tainted_by_errors(err.reported);
         }
 
         // Skip processing if type has no generic parameters.
@@ -425,6 +423,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span: Span,
             inferred_params: Vec<Span>,
             infer_args: bool,
+            incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
 
         impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for GenericArgsCtxt<'a, 'tcx> {
@@ -439,10 +438,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
+
+                if let Err(incorrect) = self.incorrect_args {
+                    if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        return param.to_error(tcx, preceding_args);
+                    }
+                }
 
                 let mut handle_ty_args = |has_default, ty: &hir::Ty<'tcx>| {
                     if has_default {
@@ -506,11 +512,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn inferred_kind(
                 &mut self,
-                args: Option<&[ty::GenericArg<'tcx>]>,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
+
+                if let Err(incorrect) = self.incorrect_args {
+                    if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        return param.to_error(tcx, preceding_args);
+                    }
+                }
                 match param.kind {
                     GenericParamDefKind::Lifetime => self
                         .lowerer
@@ -529,15 +541,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
-                            let args = args.unwrap();
-                            if args.iter().any(|arg| match arg.unpack() {
-                                GenericArgKind::Type(ty) => ty.references_error(),
-                                _ => false,
-                            }) {
+                            if let Some(prev) =
+                                preceding_args.iter().find_map(|arg| match arg.unpack() {
+                                    GenericArgKind::Type(ty) => ty.error_reported().err(),
+                                    _ => None,
+                                })
+                            {
                                 // Avoid ICE #86756 when type error recovery goes awry.
-                                return Ty::new_misc_error(tcx).into();
+                                return Ty::new_error(tcx, prev).into();
                             }
-                            tcx.at(self.span).type_of(param.def_id).instantiate(tcx, args).into()
+                            tcx.at(self.span)
+                                .type_of(param.def_id)
+                                .instantiate(tcx, preceding_args)
+                                .into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
@@ -557,7 +573,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // FIXME(effects) see if we should special case effect params here
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, args.unwrap())
+                                .instantiate(tcx, preceding_args)
                                 .into()
                         } else {
                             if infer_args {
@@ -571,6 +587,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
+        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
+            && generics.has_self
+            && !tcx.has_attr(def_id, sym::const_trait)
+        {
+            let reported = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+                span,
+                modifier: constness.as_str(),
+            });
+            self.set_tainted_by_errors(reported);
+            arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
+        }
 
         let mut args_ctx = GenericArgsCtxt {
             lowerer: self,
@@ -579,19 +606,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             generic_args: segment.args(),
             inferred_params: vec![],
             infer_args: segment.infer_args,
+            incorrect_args: &arg_count.correct,
         };
-        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self
-            && !tcx.has_attr(def_id, sym::const_trait)
-        {
-            let e = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
-                span,
-                modifier: constness.as_str(),
-            });
-            self.set_tainted_by_errors(e);
-            arg_count.correct =
-                Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
-        }
         let args = lower_generic_args(
             tcx,
             def_id,

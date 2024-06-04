@@ -42,7 +42,7 @@ fn is_arg_ty_unified_in_fn<'tcx>(
     cx.tcx.predicates_of(fn_id).predicates.iter().any(|(clause, _)| {
         clause
             .as_projection_clause()
-            .and_then(|p| p.map_bound(|p| p.term.ty()).transpose())
+            .and_then(|p| p.map_bound(|p| p.term.as_type()).transpose())
             .is_some_and(|ty| ty.skip_binder() == arg_ty_in_args)
     }) || fn_sig
         .inputs()

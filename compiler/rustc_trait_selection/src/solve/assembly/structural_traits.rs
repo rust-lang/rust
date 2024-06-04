@@ -726,7 +726,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
                     )
                     .expect("expected to be able to unify goal projection with dyn's projection"),
             );
-            proj.term.ty().unwrap()
+            proj.term.expect_type()
         } else {
             ty.super_fold_with(self)
         }

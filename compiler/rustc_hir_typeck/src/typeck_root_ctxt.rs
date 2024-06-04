@@ -160,7 +160,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
             // we need to make it into one.
-            if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
+            if let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid()) {
                 debug!("infer_var_info: {:?}.output = true", vid);
                 infer_var_info.entry(vid).or_default().output = true;
             }
