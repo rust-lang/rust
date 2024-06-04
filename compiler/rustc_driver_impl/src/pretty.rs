@@ -3,7 +3,6 @@
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_errors::FatalError;
-use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
@@ -70,11 +69,7 @@ struct HirIdentifiedAnn<'tcx> {
 
 impl<'tcx> pprust_hir::PpAnn for HirIdentifiedAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        pprust_hir::PpAnn::nested(
-            &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>),
-            state,
-            nested,
-        )
+        self.tcx.nested(state, nested)
     }
 
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -152,8 +147,7 @@ impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.maybe_typeck_results.set(Some(self.tcx.typeck_body(id)));
         }
-        let pp_ann = &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>);
-        pprust_hir::PpAnn::nested(pp_ann, state, nested);
+        self.tcx.nested(state, nested);
         self.maybe_typeck_results.set(old_maybe_typeck_results);
     }
 
