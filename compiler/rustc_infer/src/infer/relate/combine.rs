@@ -26,7 +26,7 @@ use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_middle::ty::{IntType, UintType};
@@ -68,40 +68,38 @@ impl<'tcx> InferCtxt<'tcx> {
         match (a.kind(), b.kind()) {
             // Relate integral variables to other types
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
-                self.inner
-                    .borrow_mut()
-                    .int_unification_table()
-                    .unify_var_var(a_id, b_id)
-                    .map_err(|e| int_unification_error(true, e))?;
+                self.inner.borrow_mut().int_unification_table().union(a_id, b_id);
                 Ok(a)
             }
             (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
-                self.unify_integral_variable(true, v_id, IntType(v))
+                self.unify_integral_variable(v_id, IntType(v));
+                Ok(b)
             }
             (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
-                self.unify_integral_variable(false, v_id, IntType(v))
+                self.unify_integral_variable(v_id, IntType(v));
+                Ok(a)
             }
             (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
-                self.unify_integral_variable(true, v_id, UintType(v))
+                self.unify_integral_variable(v_id, UintType(v));
+                Ok(b)
             }
             (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
-                self.unify_integral_variable(false, v_id, UintType(v))
+                self.unify_integral_variable(v_id, UintType(v));
+                Ok(a)
             }
 
             // Relate floating-point variables to other types
             (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
-                self.inner
-                    .borrow_mut()
-                    .float_unification_table()
-                    .unify_var_var(a_id, b_id)
-                    .map_err(|e| float_unification_error(true, e))?;
+                self.inner.borrow_mut().float_unification_table().union(a_id, b_id);
                 Ok(a)
             }
             (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
-                self.unify_float_variable(true, v_id, v)
+                self.unify_float_variable(v_id, ty::FloatVarValue::Known(v));
+                Ok(b)
             }
             (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
-                self.unify_float_variable(false, v_id, v)
+                self.unify_float_variable(v_id, ty::FloatVarValue::Known(v));
+                Ok(a)
             }
 
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
@@ -244,35 +242,14 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    fn unify_integral_variable(
-        &self,
-        vid_is_expected: bool,
-        vid: ty::IntVid,
-        val: ty::IntVarValue,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        self.inner
-            .borrow_mut()
-            .int_unification_table()
-            .unify_var_value(vid, Some(val))
-            .map_err(|e| int_unification_error(vid_is_expected, e))?;
-        match val {
-            IntType(v) => Ok(Ty::new_int(self.tcx, v)),
-            UintType(v) => Ok(Ty::new_uint(self.tcx, v)),
-        }
+    #[inline(always)]
+    fn unify_integral_variable(&self, vid: ty::IntVid, val: ty::IntVarValue) {
+        self.inner.borrow_mut().int_unification_table().union_value(vid, val);
     }
 
-    fn unify_float_variable(
-        &self,
-        vid_is_expected: bool,
-        vid: ty::FloatVid,
-        val: ty::FloatTy,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        self.inner
-            .borrow_mut()
-            .float_unification_table()
-            .unify_var_value(vid, Some(ty::FloatVarValue(val)))
-            .map_err(|e| float_unification_error(vid_is_expected, e))?;
-        Ok(Ty::new_float(self.tcx, val))
+    #[inline(always)]
+    fn unify_float_variable(&self, vid: ty::FloatVid, val: ty::FloatVarValue) {
+        self.inner.borrow_mut().float_unification_table().union_value(vid, val);
     }
 
     fn unify_effect_variable(&self, vid: ty::EffectVid, val: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -349,20 +326,4 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
     fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
-}
-
-fn int_unification_error<'tcx>(
-    a_is_expected: bool,
-    v: (ty::IntVarValue, ty::IntVarValue),
-) -> TypeError<'tcx> {
-    let (a, b) = v;
-    TypeError::IntMismatch(ExpectedFound::new(a_is_expected, a, b))
-}
-
-fn float_unification_error<'tcx>(
-    a_is_expected: bool,
-    v: (ty::FloatVarValue, ty::FloatVarValue),
-) -> TypeError<'tcx> {
-    let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
-    TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
 }

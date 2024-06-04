@@ -33,7 +33,6 @@
 use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
-use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitableExt};
 use std::collections::hash_map::Entry;
@@ -204,22 +203,27 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
 
             ty::IntVar(v) => {
                 let mut inner = self.infcx.inner.borrow_mut();
-                let input = inner
-                    .int_unification_table()
-                    .probe_value(v)
-                    .map(|v| v.to_type(self.infcx.tcx))
-                    .ok_or_else(|| ty::IntVar(inner.int_unification_table().find(v)));
+                let value = inner.int_unification_table().probe_value(v);
+                let input = match value {
+                    ty::IntVarValue::IntType(ty) => Ok(Ty::new_int(self.infcx.tcx, ty)),
+                    ty::IntVarValue::UintType(ty) => Ok(Ty::new_uint(self.infcx.tcx, ty)),
+                    ty::IntVarValue::Unknown => {
+                        Err(ty::IntVar(inner.int_unification_table().find(v)))
+                    }
+                };
                 drop(inner);
                 Some(self.freshen_ty(input, |n| Ty::new_fresh_int(self.infcx.tcx, n)))
             }
 
             ty::FloatVar(v) => {
                 let mut inner = self.infcx.inner.borrow_mut();
-                let input = inner
-                    .float_unification_table()
-                    .probe_value(v)
-                    .map(|v| v.to_type(self.infcx.tcx))
-                    .ok_or_else(|| ty::FloatVar(inner.float_unification_table().find(v)));
+                let value = inner.float_unification_table().probe_value(v);
+                let input = match value {
+                    ty::FloatVarValue::Known(ty) => Ok(Ty::new_float(self.infcx.tcx, ty)),
+                    ty::FloatVarValue::Unknown => {
+                        Err(ty::FloatVar(inner.float_unification_table().find(v)))
+                    }
+                };
                 drop(inner);
                 Some(self.freshen_ty(input, |n| Ty::new_fresh_float(self.infcx.tcx, n)))
             }
