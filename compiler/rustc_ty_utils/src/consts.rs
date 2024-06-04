@@ -149,7 +149,7 @@ fn recurse_build<'tcx>(
             for &id in args.iter() {
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
-            ty::Const::new_expr(tcx, Expr::new_call(tcx, fun_ty, fun, new_args.into_iter()))
+            ty::Const::new_expr(tcx, Expr::new_call(tcx, fun_ty, fun, new_args))
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {
             let lhs_ty = body.exprs[lhs].ty;

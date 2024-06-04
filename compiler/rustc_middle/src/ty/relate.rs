@@ -652,9 +652,11 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
-            let a_ty = tcx.type_of(au.def).instantiate(tcx, au.args);
-            let b_ty = tcx.type_of(bu.def).instantiate(tcx, bu.args);
-            assert_eq!(a_ty, b_ty);
+            if cfg!(debug_assertions) {
+                let a_ty = tcx.type_of(au.def).instantiate(tcx, au.args);
+                let b_ty = tcx.type_of(bu.def).instantiate(tcx, bu.args);
+                assert_eq!(a_ty, b_ty);
+            }
 
             let args = relation.relate_with_variance(
                 ty::Variance::Invariant,
