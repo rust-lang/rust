@@ -1431,7 +1431,7 @@ impl clean::FnDecl {
         cx: &Context<'_>,
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
-        
+
         write!(f, "(")?;
         if let Some(n) = line_wrapping_indent
             && !self.inputs.values.is_empty()
@@ -1483,7 +1483,7 @@ impl clean::FnDecl {
 
         if self.c_variadic {
             match line_wrapping_indent {
-                None => write!(f, "...")?,
+                None => write!(f, ", ...")?,
                 Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
             };
         }
