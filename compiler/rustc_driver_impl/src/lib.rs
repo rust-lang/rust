@@ -814,13 +814,17 @@ fn print_crate_info(
                     match expected_values {
                         ExpectedValues::Any => check_cfgs.push(format!("{name}=any()")),
                         ExpectedValues::Some(values) => {
-                            check_cfgs.extend(values.iter().map(|value| {
-                                if let Some(value) = value {
-                                    format!("{name}=\"{value}\"")
-                                } else {
-                                    name.to_string()
-                                }
-                            }))
+                            if !values.is_empty() {
+                                check_cfgs.extend(values.iter().map(|value| {
+                                    if let Some(value) = value {
+                                        format!("{name}=\"{value}\"")
+                                    } else {
+                                        name.to_string()
+                                    }
+                                }))
+                            } else {
+                                check_cfgs.push(format!("{name}="))
+                            }
                         }
                     }
                 }
