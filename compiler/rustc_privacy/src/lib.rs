@@ -1307,7 +1307,19 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn ty(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity());
+        let ty = self.tcx.type_of(self.item_def_id).instantiate_identity();
+
+        // If `in_assoc_ty`, attempt to normalize `ty`.
+        // Ideally, we would normalize in all circumstances, but doing so
+        // currently causes some unexpected type errors.
+        let maybe_normalized_ty = if self.in_assoc_ty {
+            let param_env = self.tcx.param_env(self.item_def_id);
+            self.tcx.try_normalize_erasing_regions(param_env, ty).ok()
+        } else {
+            None
+        };
+
+        self.visit(maybe_normalized_ty.unwrap_or(ty));
         self
     }
 
