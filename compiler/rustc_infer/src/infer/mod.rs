@@ -424,8 +424,8 @@ pub enum ValuePairs<'tcx> {
 impl<'tcx> ValuePairs<'tcx> {
     pub fn ty(&self) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
         if let ValuePairs::Terms(ExpectedFound { expected, found }) = self
-            && let Some(expected) = expected.ty()
-            && let Some(found) = found.ty()
+            && let Some(expected) = expected.as_type()
+            && let Some(found) = found.as_type()
         {
             Some((expected, found))
         } else {
