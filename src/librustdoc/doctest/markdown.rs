@@ -73,7 +73,7 @@ impl DoctestVisitor for MdCollector {
     }
 }
 
-/// Runs any tests/code examples in the markdown file `input`.
+/// Runs any tests/code examples in the markdown file `options.input`.
 pub(crate) fn test(options: Options) -> Result<(), String> {
     use rustc_session::config::Input;
     let input_str = match &options.input {
@@ -83,13 +83,20 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         Input::Str { name: _, input } => input.clone(),
     };
 
-    let mut opts = GlobalTestOptions::default();
-    opts.no_crate_inject = true;
-
+    // Obviously not a real crate name, but close enough for purposes of doctests.
+    let crate_name = options.input.filestem().to_string();
     let temp_dir =
         tempdir().map_err(|error| format!("failed to create temporary directory: {error:?}"))?;
-    let file_path = temp_dir.path().join("rustdoc-cfgs");
-    generate_args_file(&file_path, &options)?;
+    let args_file = temp_dir.path().join("rustdoc-cfgs");
+    generate_args_file(&args_file, &options)?;
+
+    let opts = GlobalTestOptions {
+        crate_name,
+        no_crate_inject: true,
+        insert_indent_space: false,
+        attrs: vec![],
+        args_file,
+    };
 
     let mut md_collector = MdCollector {
         tests: vec![],
@@ -111,12 +118,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         None,
     );
 
-    let mut collector = CreateRunnableDoctests::new(
-        options.input.filestem().to_string(),
-        options.clone(),
-        opts,
-        file_path,
-    );
+    let mut collector = CreateRunnableDoctests::new(options.clone(), opts);
     md_collector.tests.into_iter().for_each(|t| collector.add_test(t));
     crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
     Ok(())

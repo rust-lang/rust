@@ -40,8 +40,10 @@ use crate::lint::init_lints;
 use self::rust::HirCollector;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct GlobalTestOptions {
+    /// Name of the crate (for regular `rustdoc`) or Markdown file (for `rustdoc foo.md`).
+    pub(crate) crate_name: String,
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     pub(crate) no_crate_inject: bool,
     /// Whether inserting extra indent spaces in code block,
@@ -49,6 +51,8 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) insert_indent_space: bool,
     /// Additional crate-level attributes to add to doctests.
     pub(crate) attrs: Vec<String>,
+    /// Path to file containing arguments for the invocation of rustc.
+    pub(crate) args_file: PathBuf,
 }
 
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
@@ -167,24 +171,19 @@ pub(crate) fn run(
         Ok(temp_dir) => temp_dir,
         Err(error) => return crate::wrap_return(dcx, Err(error)),
     };
-    let file_path = temp_dir.path().join("rustdoc-cfgs");
-    crate::wrap_return(dcx, generate_args_file(&file_path, &options))?;
+    let args_path = temp_dir.path().join("rustdoc-cfgs");
+    crate::wrap_return(dcx, generate_args_file(&args_path, &options))?;
 
     let (tests, unused_extern_reports, compiling_test_count) =
         interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
                 let collector = queries.global_ctxt()?.enter(|tcx| {
+                    let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
                     let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
-
-                    let opts = scrape_test_config(crate_attrs);
+                    let opts = scrape_test_config(crate_name, crate_attrs, args_path);
                     let enable_per_target_ignores = options.enable_per_target_ignores;
-                    let mut collector = CreateRunnableDoctests::new(
-                        tcx.crate_name(LOCAL_CRATE).to_string(),
-                        options,
-                        opts,
-                        file_path,
-                    );
 
+                    let mut collector = CreateRunnableDoctests::new(options, opts);
                     let hir_collector = HirCollector::new(
                         &compiler.sess,
                         tcx.hir(),
@@ -264,11 +263,20 @@ pub(crate) fn run_tests(
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
+fn scrape_test_config(
+    crate_name: String,
+    attrs: &[ast::Attribute],
+    args_file: PathBuf,
+) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
 
-    let mut opts =
-        GlobalTestOptions { no_crate_inject: false, attrs: Vec::new(), insert_indent_space: false };
+    let mut opts = GlobalTestOptions {
+        crate_name,
+        no_crate_inject: false,
+        attrs: Vec::new(),
+        insert_indent_space: false,
+        args_file,
+    };
 
     let test_attrs: Vec<_> = attrs
         .iter()
@@ -363,7 +371,6 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
 
 fn run_test(
     test: &str,
-    crate_name: &str,
     line: usize,
     rustdoc_options: &RustdocOptions,
     test_options: IndividualTestOptions,
@@ -371,12 +378,11 @@ fn run_test(
     no_run: bool,
     opts: &GlobalTestOptions,
     edition: Edition,
-    path: PathBuf,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) = make_test(
         test,
-        Some(crate_name),
+        Some(&opts.crate_name),
         lang_string.test_harness,
         opts,
         edition,
@@ -393,14 +399,14 @@ fn run_test(
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
-    compiler.arg(&format!("@{}", test_options.arg_file.display()));
+    compiler.arg(&format!("@{}", opts.args_file.display()));
 
     if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
         compiler.arg(format!("--sysroot={}", sysroot.display()));
     }
 
     compiler.arg("--edition").arg(&edition.to_string());
-    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
+    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &test_options.path);
     compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
     compiler.arg("-o").arg(&output_file);
     if lang_string.test_harness {
@@ -926,13 +932,13 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
 }
 
 pub(crate) struct IndividualTestOptions {
-    arg_file: PathBuf,
     outdir: DirState,
     test_id: String,
+    path: PathBuf,
 }
 
 impl IndividualTestOptions {
-    fn new(options: &RustdocOptions, arg_file: &Path, test_id: String) -> Self {
+    fn new(options: &RustdocOptions, test_id: String, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
             path.push(&test_id);
@@ -947,7 +953,7 @@ impl IndividualTestOptions {
             DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
         };
 
-        Self { arg_file: arg_file.into(), outdir, test_id }
+        Self { outdir, test_id, path: test_path }
     }
 }
 
@@ -979,30 +985,24 @@ pub(crate) struct CreateRunnableDoctests {
     pub(crate) tests: Vec<test::TestDescAndFn>,
 
     rustdoc_options: Arc<RustdocOptions>,
-    crate_name: String,
     opts: GlobalTestOptions,
     visited_tests: FxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
     compiling_test_count: AtomicUsize,
-    arg_file: PathBuf,
 }
 
 impl CreateRunnableDoctests {
     pub(crate) fn new(
-        crate_name: String,
         rustdoc_options: RustdocOptions,
         opts: GlobalTestOptions,
-        arg_file: PathBuf,
     ) -> CreateRunnableDoctests {
         CreateRunnableDoctests {
             tests: Vec::new(),
             rustdoc_options: Arc::new(rustdoc_options),
-            crate_name,
             opts,
             visited_tests: FxHashMap::default(),
             unused_extern_reports: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
-            arg_file,
         }
     }
 
@@ -1017,7 +1017,6 @@ impl CreateRunnableDoctests {
 
     fn add_test(&mut self, test: ScrapedDoctest) {
         let name = self.generate_name(&test.filename, test.line, &test.logical_path);
-        let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
         let target_str = self.rustdoc_options.target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
@@ -1060,8 +1059,7 @@ impl CreateRunnableDoctests {
         );
 
         let rustdoc_options = self.rustdoc_options.clone();
-        let rustdoc_test_options =
-            IndividualTestOptions::new(&self.rustdoc_options, &self.arg_file, test_id);
+        let rustdoc_test_options = IndividualTestOptions::new(&self.rustdoc_options, test_id, path);
 
         debug!("creating test {name}: {}", test.text);
         self.tests.push(test::TestDescAndFn {
@@ -1085,25 +1083,15 @@ impl CreateRunnableDoctests {
                 test_type: test::TestType::DocTest,
             },
             testfn: test::DynTestFn(Box::new(move || {
-                doctest_run_fn(
-                    crate_name,
-                    rustdoc_test_options,
-                    opts,
-                    path,
-                    test,
-                    rustdoc_options,
-                    unused_externs,
-                )
+                doctest_run_fn(rustdoc_test_options, opts, test, rustdoc_options, unused_externs)
             })),
         });
     }
 }
 
 fn doctest_run_fn(
-    crate_name: String,
     test_opts: IndividualTestOptions,
     global_opts: GlobalTestOptions,
-    path: PathBuf,
     scraped_test: ScrapedDoctest,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
@@ -1115,7 +1103,6 @@ fn doctest_run_fn(
     let edition = scraped_test.edition(&rustdoc_options);
     let res = run_test(
         &scraped_test.text,
-        &crate_name,
         scraped_test.line,
         &rustdoc_options,
         test_opts,
@@ -1123,7 +1110,6 @@ fn doctest_run_fn(
         no_run,
         &global_opts,
         edition,
-        path,
         report_unused_externs,
     );
 

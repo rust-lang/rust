@@ -39,6 +39,7 @@ use std::collections::VecDeque;
 use std::fmt::Write;
 use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
+use std::path::PathBuf;
 use std::str::{self, CharIndices};
 use std::sync::OnceLock;
 
@@ -287,8 +288,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .collect::<String>();
             let krate = krate.as_ref().map(|s| s.as_str());
 
-            let mut opts: GlobalTestOptions = Default::default();
-            opts.insert_indent_space = true;
+            // FIXME: separate out the code to make a code block into runnable code
+            //        from the complicated doctest logic
+            let opts = GlobalTestOptions {
+                crate_name: krate.map(String::from).unwrap_or_default(),
+                no_crate_inject: false,
+                insert_indent_space: true,
+                attrs: vec![],
+                args_file: PathBuf::new(),
+            };
             let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
