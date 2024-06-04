@@ -1439,7 +1439,7 @@ impl clean::FnDecl {
             write!(f, "\n{}", Indent(n + 4))?;
         }
 
-        let last_input_index = self.inputs.values.len() - 1;
+        let last_input_index = self.inputs.values.len().checked_sub(1);
         for (i, input) in self.inputs.values.iter().enumerate() {
             if let Some(selfty) = input.to_self() {
                 match selfty {
@@ -1473,11 +1473,12 @@ impl clean::FnDecl {
                 write!(f, "{}: ", input.name)?;
                 input.type_.print(cx).fmt(f)?;
             }
-            match line_wrapping_indent {
-                None if i == last_input_index => (),
-                None => write!(f, ", ")?,
-                Some(_n) if i == last_input_index => write!(f, ",\n")?,
-                Some(n) => write!(f, ",\n{}", Indent(n + 4))?,
+            match (line_wrapping_indent, last_input_index) {
+                (_, None) => (),
+                (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
+                (None, Some(_)) => (),
+                (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
+                (Some(_), Some(_)) => write!(f, ",\n")?,
             }
         }
 
