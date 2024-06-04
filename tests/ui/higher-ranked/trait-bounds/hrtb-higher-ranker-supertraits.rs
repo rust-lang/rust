@@ -12,8 +12,7 @@ trait Bar<'ccx>: for<'tcx> Foo<'tcx> {
 fn want_foo_for_some_tcx<'x, F: Foo<'x>>(f: &'x F) {
     want_foo_for_some_tcx(f);
     want_foo_for_any_tcx(f);
-    //~^ ERROR lifetime may not live long enough
-    //~| ERROR implementation of `Foo` is not general enough
+    //~^ ERROR  the trait bound `for<'tcx> F: Foo<'tcx>` is not satisfied
 }
 
 fn want_foo_for_any_tcx<F: for<'tcx> Foo<'tcx>>(f: &F) {
@@ -27,8 +26,7 @@ fn want_bar_for_some_ccx<'x, B: Bar<'x>>(b: &B) {
 
     want_bar_for_some_ccx(b);
     want_bar_for_any_ccx(b);
-    //~^ ERROR lifetime may not live long enough
-    //~| ERROR implementation of `Bar` is not general enough
+    //~^ ERROR the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
 }
 
 fn want_bar_for_any_ccx<B: for<'ccx> Bar<'ccx>>(b: &B) {

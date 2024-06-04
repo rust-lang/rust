@@ -27,7 +27,6 @@ fn function1<T: Trait<'static>>() {
     // We prefer env candidates over impl candidatescausing this to succeed.
     trait_bound::<T>();
     //[next]~^ ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
-    //[current]~^^ ERROR implementation of `Trait` is not general enough
 }
 
 fn function2<T: Trait<'static, Assoc = usize>>() {
@@ -39,8 +38,7 @@ fn function2<T: Trait<'static, Assoc = usize>>() {
     projection_bound::<T>();
     //[next]~^ ERROR type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
     //[next]~| ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
-    //[current]~^^^ ERROR implementation of `Trait` is not general enough
-    //[current]~| ERROR mismatched types
+    //[current]~^^^ ERROR mismatched types
 }
 
 fn function3<T: Trait<'static, Assoc = usize>>() {

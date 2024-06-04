@@ -15,7 +15,7 @@ LL | fn function1<T: Trait<'static> + for<'a> Trait<'a>>() {
    |                                +++++++++++++++++++
 
 error[E0277]: the trait bound `for<'a> T: Trait<'a>` is not satisfied
-  --> $DIR/candidate-from-env-universe-err-project.rs:39:24
+  --> $DIR/candidate-from-env-universe-err-project.rs:38:24
    |
 LL |     projection_bound::<T>();
    |                        ^ the trait `for<'a> Trait<'a>` is not implemented for `T`
@@ -31,7 +31,7 @@ LL | fn function2<T: Trait<'static, Assoc = usize> + for<'a> Trait<'a>>() {
    |                                               +++++++++++++++++++
 
 error[E0271]: type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
-  --> $DIR/candidate-from-env-universe-err-project.rs:39:24
+  --> $DIR/candidate-from-env-universe-err-project.rs:38:24
    |
 LL |     projection_bound::<T>();
    |                        ^ type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
@@ -48,13 +48,13 @@ LL | fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
    |                                          ^^^^^^^^^^^^^ required by this bound in `projection_bound`
 
 error: higher-ranked subtype error
-  --> $DIR/candidate-from-env-universe-err-project.rs:55:30
+  --> $DIR/candidate-from-env-universe-err-project.rs:53:30
    |
 LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/candidate-from-env-universe-err-project.rs:55:30
+  --> $DIR/candidate-from-env-universe-err-project.rs:53:30
    |
 LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

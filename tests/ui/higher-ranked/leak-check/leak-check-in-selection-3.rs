@@ -16,7 +16,7 @@ fn direct() {
     // The `Box<u16>` impls fails the leak check,
     // meaning that we apply the `Box<u32>` impl.
     impls_leak::<Box<_>>();
-    //~^ ERROR type annotations needed
+    //[next]~^ ERROR type annotations needed
 }
 
 trait IndirectLeak<'a> {}
