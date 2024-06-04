@@ -1180,7 +1180,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_anon_const_as_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
-        if let ExprKind::Path(qself, path) = &anon.value.kind {
+        if let ExprKind::Path(qself, path) = &anon.value.kind
+            && let Some(res) = self
+                .resolver
+                .get_partial_res(anon.id)
+                .and_then(|partial_res| partial_res.full_res())
+            // FIXME(min_generic_const_exprs): for now we only lower params to ConstArgKind::Path
+            && let Res::Def(DefKind::ConstParam, _) = res
+        {
             let qpath = self.lower_qpath(
                 anon.id,
                 qself,
@@ -1189,18 +1196,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
-            // FIXME(min_generic_const_exprs): for now we only lower params to ConstArgKind::Path
-            if let hir::QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-            ) = qpath
-            {
-                return ConstArg {
-                    hir_id: self.lower_node_id(anon.id),
-                    kind: ConstArgKind::Path(qpath),
-                    is_desugared_from_effects: false,
-                };
-            }
+            return ConstArg {
+                hir_id: self.lower_node_id(anon.id),
+                kind: ConstArgKind::Path(qpath),
+                is_desugared_from_effects: false,
+            };
         }
 
         let lowered_anon = self.lower_anon_const(anon);
