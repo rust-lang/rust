@@ -8,6 +8,7 @@ static F: fn() = aux::F;
 static G: fn() = aux::G;
 static H: &(dyn Fn() + Sync) = aux::H;
 static I: fn() = aux::I;
+static K: fn() -> fn() = aux::K;
 
 fn v() -> *const u32 {
     V
@@ -19,4 +20,5 @@ fn main() {
     G();
     H();
     I();
+    K()();
 }

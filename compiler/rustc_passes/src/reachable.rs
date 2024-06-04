@@ -157,6 +157,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
+            Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => true,
             _ => false,
         }
     }
