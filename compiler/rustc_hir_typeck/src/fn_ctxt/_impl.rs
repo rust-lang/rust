@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
 
-        let mut infer_args_for_err = FxHashSet::default();
+        let mut infer_args_for_err = None;
 
         let mut explicit_late_bound = ExplicitLateBound::No;
         for &GenericPathSegment(def_id, index) in &generic_segments {
@@ -1136,9 +1136,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 explicit_late_bound = ExplicitLateBound::Yes;
             }
 
-            if let Err(GenericArgCountMismatch { reported: Some(e), .. }) = arg_count.correct {
-                infer_args_for_err.insert(index);
-                self.set_tainted_by_errors(e); // See issue #53251.
+            if let Err(GenericArgCountMismatch { reported, .. }) = arg_count.correct {
+                infer_args_for_err
+                    .get_or_insert_with(|| (reported, FxHashSet::default()))
+                    .1
+                    .insert(index);
+                self.set_tainted_by_errors(reported); // See issue #53251.
             }
         }
 
@@ -1232,14 +1235,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let def_id = res.def_id();
 
-        let arg_count = GenericArgCountResult {
-            explicit_late_bound,
-            correct: if infer_args_for_err.is_empty() {
-                Ok(())
-            } else {
-                Err(GenericArgCountMismatch::default())
-            },
+        let (correct, infer_args_for_err) = match infer_args_for_err {
+            Some((reported, args)) => {
+                (Err(GenericArgCountMismatch { reported, invalid_args: vec![] }), args)
+            }
+            None => (Ok(()), Default::default()),
         };
+
+        let arg_count = GenericArgCountResult { explicit_late_bound, correct };
 
         struct CtorGenericArgsCtxt<'a, 'tcx> {
             fcx: &'a FnCtxt<'a, 'tcx>,
@@ -1272,6 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
+                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -1314,7 +1318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                args: Option<&[ty::GenericArg<'tcx>]>,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
@@ -1328,7 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            tcx.type_of(param.def_id).instantiate(tcx, args.unwrap()).into()
+                            tcx.type_of(param.def_id).instantiate(tcx, preceding_args).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
@@ -1353,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else if !infer_args {
                                 return tcx
                                     .const_param_default(param.def_id)
-                                    .instantiate(tcx, args.unwrap())
+                                    .instantiate(tcx, preceding_args)
                                     .into();
                             }
                         }
