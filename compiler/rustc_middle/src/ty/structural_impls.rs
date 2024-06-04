@@ -147,14 +147,27 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::consts::Expr<'tcx> {
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        match this.data {
-            ty::Expr::Binop(op, lhs, rhs) => {
-                write!(f, "({op:?}: {:?}, {:?})", &this.wrap(lhs), &this.wrap(rhs))
+        match this.data.kind {
+            ty::ExprKind::Binop(op) => {
+                let (lhs_ty, rhs_ty, lhs, rhs) = this.data.binop_args();
+                write!(
+                    f,
+                    "({op:?}: ({:?}: {:?}), ({:?}: {:?}))",
+                    &this.wrap(lhs),
+                    &this.wrap(lhs_ty),
+                    &this.wrap(rhs),
+                    &this.wrap(rhs_ty),
+                )
             }
-            ty::Expr::UnOp(op, rhs) => write!(f, "({op:?}: {:?})", &this.wrap(rhs)),
-            ty::Expr::FunctionCall(func, args) => {
-                write!(f, "{:?}(", &this.wrap(func))?;
-                for arg in args.as_slice().iter().rev().skip(1).rev() {
+            ty::ExprKind::UnOp(op) => {
+                let (rhs_ty, rhs) = this.data.unop_args();
+                write!(f, "({op:?}: ({:?}: {:?}))", &this.wrap(rhs), &this.wrap(rhs_ty))
+            }
+            ty::ExprKind::FunctionCall => {
+                let (func_ty, func, args) = this.data.call_args();
+                let args = args.collect::<Vec<_>>();
+                write!(f, "({:?}: {:?})(", &this.wrap(func), &this.wrap(func_ty))?;
+                for arg in args.iter().rev().skip(1).rev() {
                     write!(f, "{:?}, ", &this.wrap(arg))?;
                 }
                 if let Some(arg) = args.last() {
@@ -163,8 +176,15 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::consts::Expr<'tcx> {
 
                 write!(f, ")")
             }
-            ty::Expr::Cast(cast_kind, lhs, rhs) => {
-                write!(f, "({cast_kind:?}: {:?}, {:?})", &this.wrap(lhs), &this.wrap(rhs))
+            ty::ExprKind::Cast(kind) => {
+                let (value_ty, value, to_ty) = this.data.cast_args();
+                write!(
+                    f,
+                    "({kind:?}: ({:?}: {:?}), {:?})",
+                    &this.wrap(value),
+                    &this.wrap(value_ty),
+                    &this.wrap(to_ty)
+                )
             }
         }
     }
