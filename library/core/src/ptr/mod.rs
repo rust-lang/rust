@@ -779,6 +779,15 @@ where
 ///
 /// For `r: &T`, `from_ref(r)` is equivalent to `r as *const T`, but is a bit safer since it will
 /// never silently change type or mutability, in particular if the code is refactored.
+///
+/// The caller must ensure that the pointee outlives the pointer this function returns, or else it
+/// will end up pointing to garbage.
+///
+/// The caller must also ensure that the memory the pointer (non-transitively) points to is never
+/// written to (except inside an `UnsafeCell`) using this pointer or any pointer derived from it. If
+/// you need to mutate the pointee, use [`from_mut`]`. Specifically, to turn a mutable reference `m:
+/// &mut T` into `*const T`, prefer `from_mut(m).cast_const()` to obtain a pointer that can later be
+/// used for mutation.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
@@ -790,6 +799,9 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 }
 
 /// Convert a mutable reference to a raw pointer.
+///
+/// The caller must ensure that the pointee outlives the pointer this function returns, or else it
+/// will end up pointing to garbage.
 ///
 /// For `r: &mut T`, `from_mut(r)` is equivalent to `r as *mut T`, but is a bit safer since it will
 /// never silently change type or mutability, in particular if the code is refactored.
