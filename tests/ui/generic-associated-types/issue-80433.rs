@@ -22,8 +22,7 @@ fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
   //~^ ERROR missing generics for associated type
 {
     for n in 0i16..100 {
-        *dst.test_mut() = n.into(); //~ ERROR: cannot borrow
-        //~^ ERROR: borrowed data escapes outside of function
+        *dst.test_mut() = n.into();
     }
 }
 

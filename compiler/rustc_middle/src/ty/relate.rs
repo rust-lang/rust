@@ -6,8 +6,8 @@
 
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::{
-    self, ExistentialPredicate, ExistentialPredicateStableCmpExt as _, Expr, GenericArg,
-    GenericArgKind, GenericArgsRef, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable,
+    self, ExistentialPredicate, ExistentialPredicateStableCmpExt as _, GenericArg, GenericArgKind,
+    GenericArgsRef, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -665,46 +665,18 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 a.ty(),
             ));
         }
-        // Before calling relate on exprs, it is necessary to ensure that the nested consts
-        // have identical types.
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
-            let r = relation;
-
-            // FIXME(generic_const_exprs): is it possible to relate two consts which are not identical
-            // exprs? Should we care about that?
-            // FIXME(generic_const_exprs): relating the `ty()`s is a little weird since it is supposed to
-            // ICE If they mismatch. Unfortunately `ConstKind::Expr` is a little special and can be thought
-            // of as being generic over the argument types, however this is implicit so these types don't get
-            // related when we relate the args of the item this const arg is for.
-            let expr = match (ae, be) {
-                (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br)) if a_op == b_op => {
-                    r.relate(al.ty(), bl.ty())?;
-                    r.relate(ar.ty(), br.ty())?;
-                    Expr::Binop(a_op, r.consts(al, bl)?, r.consts(ar, br)?)
-                }
-                (Expr::UnOp(a_op, av), Expr::UnOp(b_op, bv)) if a_op == b_op => {
-                    r.relate(av.ty(), bv.ty())?;
-                    Expr::UnOp(a_op, r.consts(av, bv)?)
-                }
-                (Expr::Cast(ak, av, at), Expr::Cast(bk, bv, bt)) if ak == bk => {
-                    r.relate(av.ty(), bv.ty())?;
-                    Expr::Cast(ak, r.consts(av, bv)?, r.tys(at, bt)?)
-                }
-                (Expr::FunctionCall(af, aa), Expr::FunctionCall(bf, ba))
-                    if aa.len() == ba.len() =>
-                {
-                    r.relate(af.ty(), bf.ty())?;
-                    let func = r.consts(af, bf)?;
-                    let mut related_args = Vec::with_capacity(aa.len());
-                    for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {
-                        related_args.push(r.consts(a_arg, b_arg)?);
-                    }
-                    let related_args = tcx.mk_const_list(&related_args);
-                    Expr::FunctionCall(func, related_args)
-                }
+            match (ae.kind, be.kind) {
+                (ty::ExprKind::Binop(a_binop), ty::ExprKind::Binop(b_binop))
+                    if a_binop == b_binop => {}
+                (ty::ExprKind::UnOp(a_unop), ty::ExprKind::UnOp(b_unop)) if a_unop == b_unop => {}
+                (ty::ExprKind::FunctionCall, ty::ExprKind::FunctionCall) => {}
+                (ty::ExprKind::Cast(a_kind), ty::ExprKind::Cast(b_kind)) if a_kind == b_kind => {}
                 _ => return Err(TypeError::ConstMismatch(expected_found(a, b))),
-            };
-            return Ok(ty::Const::new_expr(tcx, expr, a.ty()));
+            }
+
+            let args = relation.relate(ae.args(), be.args())?;
+            return Ok(ty::Const::new_expr(tcx, ty::Expr::new(ae.kind, args), a.ty()));
         }
         _ => false,
     };

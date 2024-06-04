@@ -5,17 +5,17 @@
 
 // Prefer importing stable_mir over internal rustc constructs to make this file more readable.
 use crate::rustc_smir::Tables;
-use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy, TyCtxt};
+use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy, TyCtxt};
 use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Safety, UnOp};
 use stable_mir::ty::{
-    Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const,
-    DynKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
-    GenericArgKind, GenericArgs, IndexedVal, IntTy, Movability, Pattern, Region, RigidTy, Span,
-    TermKind, TraitRef, Ty, UintTy, VariantDef, VariantIdx,
+    Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, DynKind,
+    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
+    GenericArgKind, GenericArgs, IndexedVal, IntTy, MirConst, Movability, Pattern, Region, RigidTy,
+    Span, TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
 use stable_mir::{CrateItem, CrateNum, DefId};
 
@@ -55,7 +55,7 @@ impl RustcInternal for GenericArgKind {
         let arg: rustc_ty::GenericArg<'tcx> = match self {
             GenericArgKind::Lifetime(reg) => reg.internal(tables, tcx).into(),
             GenericArgKind::Type(ty) => ty.internal(tables, tcx).into(),
-            GenericArgKind::Const(cnst) => ty_const(cnst, tables, tcx).into(),
+            GenericArgKind::Const(cnst) => cnst.internal(tables, tcx).into(),
         };
         tcx.lift(arg).unwrap()
     }
@@ -76,13 +76,20 @@ impl RustcInternal for Ty {
     }
 }
 
+impl RustcInternal for TyConst {
+    type T<'tcx> = InternalConst<'tcx>;
+    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        tcx.lift(tables.ty_consts[self.id]).unwrap()
+    }
+}
+
 impl RustcInternal for Pattern {
     type T<'tcx> = rustc_ty::Pattern<'tcx>;
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         tcx.mk_pat(match self {
             Pattern::Range { start, end, include_end } => rustc_ty::PatternKind::Range {
-                start: start.as_ref().map(|c| ty_const(c, tables, tcx)),
-                end: end.as_ref().map(|c| ty_const(c, tables, tcx)),
+                start: start.as_ref().map(|c| c.internal(tables, tcx)),
+                end: end.as_ref().map(|c| c.internal(tables, tcx)),
                 include_end: *include_end,
             },
         })
@@ -101,7 +108,7 @@ impl RustcInternal for RigidTy {
             RigidTy::Float(float_ty) => rustc_ty::TyKind::Float(float_ty.internal(tables, tcx)),
             RigidTy::Never => rustc_ty::TyKind::Never,
             RigidTy::Array(ty, cnst) => {
-                rustc_ty::TyKind::Array(ty.internal(tables, tcx), ty_const(cnst, tables, tcx))
+                rustc_ty::TyKind::Array(ty.internal(tables, tcx), cnst.internal(tables, tcx))
             }
             RigidTy::Pat(ty, pat) => {
                 rustc_ty::TyKind::Pat(ty.internal(tables, tcx), pat.internal(tables, tcx))
@@ -239,23 +246,10 @@ impl RustcInternal for VariantDef {
     }
 }
 
-fn ty_const<'tcx>(
-    constant: &Const,
-    tables: &mut Tables<'_>,
-    tcx: TyCtxt<'tcx>,
-) -> rustc_ty::Const<'tcx> {
-    match constant.internal(tables, tcx) {
-        rustc_middle::mir::Const::Ty(c) => c,
-        cnst => {
-            panic!("Trying to convert constant `{constant:?}` to type constant, but found {cnst:?}")
-        }
-    }
-}
-
-impl RustcInternal for Const {
+impl RustcInternal for MirConst {
     type T<'tcx> = rustc_middle::mir::Const<'tcx>;
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
-        let constant = tables.constants[self.id];
+        let constant = tables.mir_consts[self.id];
         match constant {
             rustc_middle::mir::Const::Ty(ty) => rustc_middle::mir::Const::Ty(tcx.lift(ty).unwrap()),
             rustc_middle::mir::Const::Unevaluated(uneval, ty) => {
@@ -392,7 +386,7 @@ impl RustcInternal for TermKind {
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         match self {
             TermKind::Type(ty) => ty.internal(tables, tcx).into(),
-            TermKind::Const(const_) => ty_const(const_, tables, tcx).into(),
+            TermKind::Const(cnst) => cnst.internal(tables, tcx).into(),
         }
     }
 }

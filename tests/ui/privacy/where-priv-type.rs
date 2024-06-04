@@ -74,6 +74,7 @@ where
 {
     type AssocTy = Const<{ my_const_fn(U) }>;
     //~^ ERROR private type
+    //~| ERROR private type
     fn assoc_fn() -> Self::AssocTy {
         Const
     }
