@@ -52,7 +52,7 @@ error[E0599]: no function or associated item named `bitor` found for trait objec
 LL |     let g = BitXor::bitor;
    |                     ^^^^^ function or associated item not found in `dyn BitXor<_>`
    |
-help: there is a method `bitxor` with a similar name, but with different arguments
+help: there is a method `bitxor` with a similar name
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error: aborting due to 4 previous errors; 2 warnings emitted
