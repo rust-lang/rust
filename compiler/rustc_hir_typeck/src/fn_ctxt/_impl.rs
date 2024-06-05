@@ -1066,7 +1066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
-                            // can `T::assoc`. It this came from an
+                            // can `T::assoc`. If this came from an
                             // inherent impl, we need to record the
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
@@ -1410,11 +1410,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    self.dcx().span_delayed_bug(
+                    self.dcx().span_bug(
                         span,
                         format!(
-                        "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
-                    ),
+                            "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
+                        ),
                     );
                 }
             }
