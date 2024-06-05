@@ -310,7 +310,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
 fn dep_symbol_lookup_fn(
     sess: &Session,
     crate_info: CrateInfo,
-) -> Box<dyn Fn(&str) -> Option<*const u8>> {
+) -> Box<dyn Fn(&str) -> Option<*const u8> + Send> {
     use rustc_middle::middle::dependency_format::Linkage;
 
     let mut dylib_paths = Vec::new();

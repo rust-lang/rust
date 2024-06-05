@@ -395,6 +395,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 // FIXME Don't force the size to a multiple of <abi_align> bytes once Cranelift gets
                 // a way to specify stack slot alignment.
                 size: (size + abi_align - 1) / abi_align * abi_align,
+                align_shift: 4,
             });
             Pointer::stack_slot(stack_slot)
         } else {
@@ -405,6 +406,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 // FIXME Don't force the size to a multiple of <abi_align> bytes once Cranelift gets
                 // a way to specify stack slot alignment.
                 size: (size + align) / abi_align * abi_align,
+                align_shift: 4,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
             let misalign_offset = self.bcx.ins().urem_imm(base_ptr, i64::from(align));
