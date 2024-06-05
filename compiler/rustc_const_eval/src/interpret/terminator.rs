@@ -294,17 +294,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Unwrap types that are guaranteed a null-pointer-optimization
     fn unfold_npo(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        // Check if this is `Option` wrapping some type.
-        let inner = match layout.ty.kind() {
-            ty::Adt(def, args) if self.tcx.is_diagnostic_item(sym::Option, def.did()) => {
-                args[0].as_type().unwrap()
-            }
-            _ => {
-                // Not an `Option`.
-                return Ok(layout);
-            }
+        // Check if this is `Option` wrapping some type or if this is `Result` wrapping a 1-ZST and
+        // another type.
+        let ty::Adt(def, args) = layout.ty.kind() else {
+            // Not an ADT, so definitely no NPO.
+            return Ok(layout);
         };
-        let inner = self.layout_of(inner)?;
+        let inner = if self.tcx.is_diagnostic_item(sym::Option, def.did()) {
+            // The wrapped type is the only arg.
+            self.layout_of(args[0].as_type().unwrap())?
+        } else if self.tcx.is_diagnostic_item(sym::Result, def.did()) {
+            // We want to extract which (if any) of the args is not a 1-ZST.
+            let lhs = self.layout_of(args[0].as_type().unwrap())?;
+            let rhs = self.layout_of(args[1].as_type().unwrap())?;
+            if lhs.is_1zst() {
+                rhs
+            } else if rhs.is_1zst() {
+                lhs
+            } else {
+                return Ok(layout); // no NPO
+            }
+        } else {
+            return Ok(layout); // no NPO
+        };
+
         // Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
         let is_npo = |def: AdtDef<'tcx>| {
