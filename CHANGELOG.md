@@ -16,9 +16,9 @@ Current stable, released 2024-06-13
 
 ### New Lints
 
-* Added [`legacy_numeric_constants`] to 
+* Added [`legacy_numeric_constants`] to `style`
   [#12312](https://github.com/rust-lang/rust-clippy/pull/12312)
-* Added [`missing_transmute_annotations`] to 
+* Added [`missing_transmute_annotations`] to `suspicious`
   [#12239](https://github.com/rust-lang/rust-clippy/pull/12239)
 * Added [`integer_division_remainder_used`] to `restriction`
   [#12451](https://github.com/rust-lang/rust-clippy/pull/12451)
@@ -37,14 +37,12 @@ Current stable, released 2024-06-13
   [#12601](https://github.com/rust-lang/rust-clippy/pull/12601)
 * Moved [`manual_clamp`] to `complexity` (From `nursery` now warn-by-default)
   [#12543](https://github.com/rust-lang/rust-clippy/pull/12543)
-* Moved [`mixed_attributes_style`] to `style` (From `suspicious`)
-  [#12572](https://github.com/rust-lang/rust-clippy/pull/12572)
 * Moved [`readonly_write_lock`] to `perf` (From `nursery` now warn-by-default)
   [#12479](https://github.com/rust-lang/rust-clippy/pull/12479)
 
 ### Enhancements
 
-* [`module_name_repetition`]: Added the [`allowed-prefixes`] configuration to allow common prefixes.
+* [`module_name_repetitions`]: Added the [`allowed-prefixes`] configuration to allow common prefixes.
   [#12573](https://github.com/rust-lang/rust-clippy/pull/12573)
 * [`cast_sign_loss`], [`cast_possible_truncation`], [`cast_lossless`]: Are now allowed in macros
   [#12631](https://github.com/rust-lang/rust-clippy/pull/12631)
@@ -52,7 +50,7 @@ Current stable, released 2024-06-13
   [#12543](https://github.com/rust-lang/rust-clippy/pull/12543)
 * [`assigning_clones`]: Now considers the [`msrv`] configuration
   [#12511](https://github.com/rust-lang/rust-clippy/pull/12511)
-* [`needless_return`], [`useless_let_if_seq`], [`mut_mut`]: [`read_zero_byte_vec`], [`unused_io_amount`],
+* [`needless_return`], [`useless_let_if_seq`], [`mut_mut`], [`read_zero_byte_vec`], [`unused_io_amount`],
   [`unused_peekable`]: Now respects `#[allow]` attributes on the affected statement instead
   [#12446](https://github.com/rust-lang/rust-clippy/pull/12446)
 
@@ -65,8 +63,6 @@ Current stable, released 2024-06-13
 
 ### ICE Fixes
 
-* [`ptr_as_ptr`]: No longer crashes when the result of a function is casted
-  [#12617](https://github.com/rust-lang/rust-clippy/pull/12617)
 * [`needless_return`]: No longer crashes on non-ascii characters
   [#12493](https://github.com/rust-lang/rust-clippy/pull/12493)
 
