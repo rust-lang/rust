@@ -1,0 +1,128 @@
+error: expected one of `::`, `;`, `as`, or `{`, found `<`
+  --> $DIR/free-fn-to-free-fn.rs:25:33
+   |
+LL |             reuse to_reuse::foo2<u32>;
+   |                                 ^ expected one of `::`, `;`, `as`, or `{`
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/free-fn-to-free-fn.rs:65:39
+   |
+LL |             fn bar<'a: 'a>(_: &'a i32) {
+   |                    -- lifetime parameter from outer item
+LL |                 reuse to_reuse::foo::<'a, _>;
+   |                                    -  ^^ use of generic parameter from outer item
+   |                                    |
+   |                                    help: consider introducing lifetime `'a` here: `'a,`
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/free-fn-to-free-fn.rs:69:35
+   |
+LL |             reuse to_reuse::foo::<'a, _>;
+   |                                -  ^^ undeclared lifetime
+   |                                |
+   |                                help: consider introducing lifetime `'a` here: `'a,`
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/free-fn-to-free-fn.rs:29:36
+   |
+LL |             reuse to_reuse::foo2::<T>;
+   |                                    ^ not found in this scope
+
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/free-fn-to-free-fn.rs:16:29
+   |
+LL |             reuse to_reuse::foo::<_>;
+   |                             ^^^   - supplied 1 generic argument
+   |                             |
+   |                             expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `T`, `U`
+  --> $DIR/free-fn-to-free-fn.rs:10:16
+   |
+LL |         pub fn foo<T, U>(x: T, y: U) -> (T, U) { (x, y) }
+   |                ^^^ -  -
+help: add missing generic argument
+   |
+LL |             reuse to_reuse::foo::<_, _>;
+   |                                    +++
+
+error[E0277]: the trait bound `u32: infer_types::Trait` is not satisfied
+  --> $DIR/free-fn-to-free-fn.rs:21:29
+   |
+LL |             reuse to_reuse::foo2::<u32>;
+   |                             ^^^^ the trait `infer_types::Trait` is not implemented for `u32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/free-fn-to-free-fn.rs:5:5
+   |
+LL |     trait Trait {}
+   |     ^^^^^^^^^^^
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/free-fn-to-free-fn.rs:43:35
+   |
+LL |             reuse to_reuse::foo::<'_>;
+   |                                   ^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/free-fn-to-free-fn.rs:37:26
+   |
+LL |         pub fn foo<T>(x: &T) -> &T { x }
+   |                          ^
+
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/free-fn-to-free-fn.rs:16:29
+   |
+LL |             reuse to_reuse::foo::<_>;
+   |                             ^^^   - supplied 1 generic argument
+   |                             |
+   |                             expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `T`, `U`
+  --> $DIR/free-fn-to-free-fn.rs:10:16
+   |
+LL |         pub fn foo<T, U>(x: T, y: U) -> (T, U) { (x, y) }
+   |                ^^^ -  -
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing generic argument
+   |
+LL |             reuse to_reuse::foo::<_, _>;
+   |                                    +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/free-fn-to-free-fn.rs:43:35
+   |
+LL |             reuse to_reuse::foo::<'_>;
+   |                                   ^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/free-fn-to-free-fn.rs:37:26
+   |
+LL |         pub fn foo<T>(x: &T) -> &T { x }
+   |                          ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/free-fn-to-free-fn.rs:60:29
+   |
+LL |         let x = 1;
+   |             - binding `x` declared here
+...
+LL |             assert_eq!(*foo(&x), 1);
+   |                         ----^^-
+   |                         |   |
+   |                         |   borrowed value does not live long enough
+   |                         argument requires that `x` is borrowed for `'static`
+...
+LL |     }
+   |     - `x` dropped here while still borrowed
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0107, E0261, E0277, E0401, E0412, E0597, E0794.
+For more information about an error, try `rustc --explain E0107`.

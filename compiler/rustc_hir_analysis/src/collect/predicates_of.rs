@@ -111,6 +111,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         None => {}
     }
 
+    if tcx.hir().opt_delegation_sig_id(def_id).is_some()
+        && let Some(predicates) = tcx.lower_delegation_ty(def_id).predicates
+    {
+        return predicates;
+    }
+
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
 

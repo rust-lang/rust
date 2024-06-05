@@ -1,0 +1,79 @@
+error[E0107]: missing generics for trait `Trait`
+  --> $DIR/free-fn-to-trait-methods.rs:21:23
+   |
+LL |         reuse <u16 as Trait>::foo;
+   |                       ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `T`
+  --> $DIR/free-fn-to-trait-methods.rs:6:7
+   |
+LL | trait Trait<T: Marker> {
+   |       ^^^^^ -
+help: add missing generic argument
+   |
+LL |         reuse <u16 as Trait<T>>::foo;
+   |                            +++
+
+error[E0277]: the trait bound `u16: Marker` is not satisfied
+  --> $DIR/free-fn-to-trait-methods.rs:26:27
+   |
+LL |         reuse Trait::<_>::bar::<u16>;
+   |                           ^^^ the trait `Marker` is not implemented for `u16`
+   |
+   = help: the trait `Marker` is implemented for `u8`
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `u16: Marker` is not satisfied
+  --> $DIR/free-fn-to-trait-methods.rs:30:35
+   |
+LL |         reuse <u8 as Trait<u16>>::bar;
+   |                                   ^^^ the trait `Marker` is not implemented for `u16`
+   |
+   = help: the trait `Marker` is implemented for `u8`
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `u16: Trait<_>` is not satisfied
+  --> $DIR/free-fn-to-trait-methods.rs:17:24
+   |
+LL |         foo(&2, "str", 1);
+   |         ---            ^ the trait `Trait<_>` is not implemented for `u16`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = help: the trait `Trait<_>` is implemented for `u8`
+   = help: for that trait implementation, expected `u8`, found `u16`
+note: required by a bound in `main::foo`
+  --> $DIR/free-fn-to-trait-methods.rs:16:34
+   |
+LL |         reuse <u16 as Trait<_>>::foo;
+   |                                  ^^^ required by this bound in `foo`
+
+error[E0107]: missing generics for trait `Trait`
+  --> $DIR/free-fn-to-trait-methods.rs:21:23
+   |
+LL |         reuse <u16 as Trait>::foo;
+   |                       ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `T`
+  --> $DIR/free-fn-to-trait-methods.rs:6:7
+   |
+LL | trait Trait<T: Marker> {
+   |       ^^^^^ -
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing generic argument
+   |
+LL |         reuse <u16 as Trait<T>>::foo;
+   |                            +++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.
