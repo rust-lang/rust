@@ -511,15 +511,53 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     /// lives longer than the [`ProcThreadAttributeListBuilder`] as well as
     /// the validity of the size parameter.
     ///
-    /// # Incorrect Usage
-    /// ```compile_fail
-    /// let parent = Command::new("cmd").spawn()?;
+    /// # Example
+    /// ```
+    /// use std::mem;
+    /// use std::os::windows::raw::HANDLE;
     ///
-    /// const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
-    /// let attribute_list = ProcThreadAttributeList::build()
-    ///     // INCORRECT USAGE: the parent handle gets drop immediate rendering the pointer is invalid.
-    ///     .raw_attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parent.as_raw_handle() as *const _)
-    ///     .finish();
+    /// #[repr(C)]
+    /// pub struct COORD {
+    ///     pub X: i16,
+    ///     pub Y: i16,
+    /// }
+    ///
+    /// extern "system" {
+    ///     fn CreatePipe(hreadpipe: HANDLE, hwritepipe: HANDLE, lppipeattributes: *const c_void, nsize: u32) -> i32;
+    ///     fn CreatePseudoConsole(size: COORD, hinput: isize, houtput: isize, dwflags: u32, phpc: HANDLE) -> i32;
+    ///     fn CloseHandle(hobject: isize) -> i32;
+    /// }
+    ///
+    /// let (mut input_read_side, mut output_write_side) = unsafe { (zeroed(), zeroed()) };
+    /// let (mut output_read_side, mut input_write_side) = unsafe { (zeroed(), zeroed()) };
+    ///
+    /// unsafe {
+    ///     CreatePipe(&mut input_read_side, &mut input_write_side, None, 0);
+    ///     CreatePipe(&mut output_read_side, &mut output_write_side, None, 0);
+    /// }
+    ///
+    /// let size = COORD { X: 60, Y: 40 };
+    /// let h_pc = unsafe { CreatePseudoConsole(size, input_read_side, output_write_side, 0) };
+    ///
+    /// unsafe { CloseHandle(input_read_side) };
+    /// unsafe { CloseHandle(output_write_side) };
+    ///
+    /// const PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE: u32 = 131094u32;
+    ///
+    /// let attribute_list = unsafe {
+    ///     ProcThreadAttributeList::build()
+    ///         .raw_attribute(
+    ///             PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+    ///             h_pc.cast::<HANDLE>,
+    ///             mem::size_of::<HANDLE>()
+    ///         )
+    ///         .finish()
+    /// };
+    ///
+    /// let child = Command::new("cmd").spawn_with_attributes(attribute_list)?;
+    /// #
+    /// # child.kill()?;
+    /// # Ok::<(), std::io::Error>(())
     /// ```
     pub unsafe fn raw_attribute<T>(
         mut self,
