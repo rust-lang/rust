@@ -599,6 +599,12 @@ class RustBuild(object):
                 print('Choosing a pool size of', pool_size, 'for the unpacking of the tarballs')
             p = Pool(pool_size)
             try:
+                # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
+                # remove this once the issue is closed.
+                bootstrap_out = self.bootstrap_out()
+                if os.path.exists(bootstrap_out):
+                    shutil.rmtree(bootstrap_out)
+
                 p.map(unpack_component, tarballs_download_info)
             finally:
                 p.close()
@@ -864,6 +870,16 @@ class RustBuild(object):
             return line[start + 1:end]
         return None
 
+    def bootstrap_out(self):
+        """Return the path of the bootstrap build artifacts
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap")
+        True
+        """
+        return os.path.join(self.build_dir, "bootstrap")
+
     def bootstrap_binary(self):
         """Return the path of the bootstrap binary
 
@@ -873,7 +889,7 @@ class RustBuild(object):
         ... "debug", "bootstrap")
         True
         """
-        return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
+        return os.path.join(self.bootstrap_out(), "debug", "bootstrap")
 
     def build_bootstrap(self):
         """Build bootstrap"""
