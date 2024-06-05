@@ -1268,6 +1268,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+    const RUST_SRC_BASE: &str = "{{rust-src-base}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
@@ -1280,6 +1281,15 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(BUILD_BASE) {
         value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    }
+
+    if value.contains(RUST_SRC_BASE) {
+        let src_base = config
+            .sysroot_base
+            .join("lib/rustlib/src/rust")
+            .read_link()
+            .expect("lib/rustlib/src/rust in target is a symlink to checkout root");
+        value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
     }
 
     value
