@@ -333,4 +333,12 @@ fn main() {
         f(&y); // Don't lint
         f("".to_owned()); // Lint
     }
+    {
+        fn takes_writer<T: std::io::Write>(_: T) {}
+
+        fn f(mut buffer: &mut Vec<u8>) {
+            takes_writer(&mut buffer); // Don't lint, would make buffer unavailable later
+            buffer.extend(b"\n");
+        }
+    }
 }

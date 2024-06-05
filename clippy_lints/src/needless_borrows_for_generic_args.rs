@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::mir::PossibleBorrowerMap;
+use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{expr_use_ctxt, peel_n_hir_expr_refs, DefinedTy, ExprUseNode};
@@ -11,6 +11,7 @@ use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
     self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
@@ -105,6 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             }
             && let count = needless_borrow_count(
                 cx,
+                &mut self.possible_borrowers,
                 fn_id,
                 cx.typeck_results().node_args(hir_id),
                 i,
@@ -153,9 +155,14 @@ fn path_has_args(p: &QPath<'_>) -> bool {
 /// The following constraints will be checked:
 /// * The borrowed expression meets all the generic type's constraints.
 /// * The generic type appears only once in the functions signature.
-/// * The borrowed value is Copy itself OR not a variable (created by a function call)
+/// * The borrowed value is:
+///   - `Copy` itself, or
+///   - the only use of a mutable reference, or
+///   - not a variable (created by a function call)
+#[expect(clippy::too_many_arguments)]
 fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
+    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     fn_id: DefId,
     callee_args: ty::GenericArgsRef<'tcx>,
     arg_index: usize,
@@ -230,9 +237,9 @@ fn needless_borrow_count<'tcx>(
 
         let referent_ty = cx.typeck_results().expr_ty(referent);
 
-        if (!is_copy(cx, referent_ty) && !referent_ty.is_ref())
-            && let ExprKind::AddrOf(_, _, inner) = reference.kind
-            && !matches!(inner.kind, ExprKind::Call(..) | ExprKind::MethodCall(..))
+        if !(is_copy(cx, referent_ty)
+            || referent_ty.is_ref() && referent_used_exactly_once(cx, possible_borrowers, reference)
+            || matches!(referent.kind, ExprKind::Call(..) | ExprKind::MethodCall(..)))
         {
             return false;
         }
@@ -330,6 +337,37 @@ fn is_mixed_projection_predicate<'tcx>(
                 },
             }
         }
+    } else {
+        false
+    }
+}
+
+fn referent_used_exactly_once<'tcx>(
+    cx: &LateContext<'tcx>,
+    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
+    reference: &Expr<'tcx>,
+) -> bool {
+    if let Some(mir) = enclosing_mir(cx.tcx, reference.hir_id)
+        && let Some(local) = expr_local(cx.tcx, reference)
+        && let [location] = *local_assignments(mir, local).as_slice()
+        && let block_data = &mir.basic_blocks[location.block]
+        && let Some(statement) = block_data.statements.get(location.statement_index)
+        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
+        && !place.is_indirect_first_projection()
+    {
+        let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
+        if possible_borrowers
+            .last()
+            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
+        {
+            possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
+        }
+        let possible_borrower = &mut possible_borrowers.last_mut().unwrap().1;
+        // If `only_borrowers` were used here, the `copyable_iterator::warn` test would fail. The reason is
+        // that `PossibleBorrowerVisitor::visit_terminator` considers `place.local` a possible borrower of
+        // itself. See the comment in that method for an explanation as to why.
+        possible_borrower.bounded_borrowers(&[local], &[local, place.local], place.local, location)
+            && used_exactly_once(mir, place.local).unwrap_or(false)
     } else {
         false
     }
