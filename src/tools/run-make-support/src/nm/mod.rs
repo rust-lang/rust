@@ -3,8 +3,8 @@ use object::{Object, ObjectSection};
 use std::path::Path;
 
 #[derive(Debug)]
-pub struct Nm {
-    file: Option<object::File>,
+pub struct Nm<'a> {
+    file: Option<object::File<'a>>,
 }
 
 pub fn nm() -> Nm {
@@ -32,7 +32,9 @@ impl Nm {
         let object_file = self.file;
         let mut symbols_str = String::new();
         for section in object_file.sections() {
-            if let Ok(ObjectSection::SymbolTable(st)) = section.parse::<object::SymbolTable>() {
+            if let Ok(object::read::elf::SymbolTable(st)) =
+                section.parse::<object::read::elf::SymbolTable<'_, '_>>()
+            {
                 for symbol in st.symbols() {
                     symbols_str.push_str(&format!(
                         "{:016x} {:?} {}\n",
