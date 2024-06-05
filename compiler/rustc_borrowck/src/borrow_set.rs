@@ -126,7 +126,7 @@ impl<'tcx> BorrowSet<'tcx> {
     ) -> Self {
         let mut visitor = GatherBorrows {
             tcx,
-            body: body,
+            body,
             location_map: Default::default(),
             activation_map: Default::default(),
             local_map: Default::default(),

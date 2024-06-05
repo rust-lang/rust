@@ -12,9 +12,7 @@ use rustc_mir_dataflow::ResultsCursor;
 use std::rc::Rc;
 
 use crate::{
-    constraints::OutlivesConstraintSet,
-    facts::{AllFacts, AllFactsExt},
-    region_infer::values::LivenessValues,
+    constraints::OutlivesConstraintSet, region_infer::values::LivenessValues,
     universal_regions::UniversalRegions,
 };
 
@@ -38,7 +36,6 @@ pub(super) fn generate<'mir, 'tcx>(
     elements: &Rc<DenseLocationMap>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    use_polonius: bool,
 ) {
     debug!("liveness::generate");
 
@@ -49,11 +46,8 @@ pub(super) fn generate<'mir, 'tcx>(
     );
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
-    let facts_enabled = use_polonius || AllFacts::enabled(typeck.tcx());
 
-    if facts_enabled {
-        polonius::populate_access_facts(typeck, body, move_data);
-    };
+    polonius::populate_access_facts(typeck, body, move_data);
 
     trace::trace(
         typeck,

@@ -43,9 +43,9 @@ impl<'mir, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'mir, 'tcx> {
     }
 
     fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
-        state.borrows.clone_from(&self.borrows.entry_set_for_block(block));
-        state.uninits.clone_from(&self.uninits.entry_set_for_block(block));
-        state.ever_inits.clone_from(&self.ever_inits.entry_set_for_block(block));
+        state.borrows.clone_from(self.borrows.entry_set_for_block(block));
+        state.uninits.clone_from(self.uninits.entry_set_for_block(block));
+        state.ever_inits.clone_from(self.ever_inits.entry_set_for_block(block));
     }
 
     fn reconstruct_before_statement_effect(

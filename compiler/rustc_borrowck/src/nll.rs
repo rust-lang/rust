@@ -114,7 +114,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
-            polonius_input,
         );
 
     // Create the region inference context, taking ownership of the

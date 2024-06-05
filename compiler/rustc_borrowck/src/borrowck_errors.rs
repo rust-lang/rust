@@ -213,7 +213,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             via(msg_old),
         );
 
-        if msg_new == "" {
+        if msg_new.is_empty() {
             // If `msg_new` is empty, then this isn't a borrow of a union field.
             err.span_label(span, format!("{kind_new} borrow occurs here"));
             err.span_label(old_span, format!("{kind_old} borrow occurs here"));
