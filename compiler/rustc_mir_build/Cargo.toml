@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-either = "1"
 itertools = "0.12"
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
@@ -24,6 +23,5 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
