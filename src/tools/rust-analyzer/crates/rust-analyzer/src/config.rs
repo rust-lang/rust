@@ -2634,9 +2634,8 @@ fn schema(fields: &[SchemaField]) -> serde_json::Value {
         .iter()
         .map(|(field, ty, doc, default)| {
             let name = field.replace('_', ".");
-            let category = name.find('.').map(|end| {
-                String::from(&name[..end])
-            }).unwrap_or("general".into());
+            let category =
+                name.find('.').map(|end| String::from(&name[..end])).unwrap_or("general".into());
             let name = format!("rust-analyzer.{name}");
             let props = field_props(field, ty, doc, default);
             serde_json::json!({
@@ -3080,9 +3079,9 @@ mod tests {
         let package_json_path = project_root().join("editors/code/package.json");
         let mut package_json = fs::read_to_string(&package_json_path).unwrap();
 
-        let start_marker = 
+        let start_marker =
             "            {\n                \"title\": \"$generated-start\"\n            },\n";
-        let end_marker = 
+        let end_marker =
             "            {\n                \"title\": \"$generated-end\"\n            }\n";
 
         let start = package_json.find(start_marker).unwrap() + start_marker.len();
