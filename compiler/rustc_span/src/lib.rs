@@ -682,6 +682,13 @@ impl Span {
         if span.hi > other.hi { Some(span.with_lo(cmp::max(span.lo, other.hi))) } else { None }
     }
 
+    /// Returns `Some(span)`, where the end is trimmed by the start of `other`.
+    pub fn trim_end(self, other: Span) -> Option<Span> {
+        let span = self.data();
+        let other = other.data();
+        if span.lo < other.lo { Some(span.with_hi(cmp::min(span.hi, other.lo))) } else { None }
+    }
+
     /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {

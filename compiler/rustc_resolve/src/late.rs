@@ -9,7 +9,7 @@
 use crate::{errors, path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{BindingKey, Used};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
-use crate::{ResolutionError, Resolver, Segment, UseError};
+use crate::{ResolutionError, Resolver, Segment, TyCtxt, UseError};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
@@ -628,6 +628,9 @@ struct DiagMetadata<'ast> {
     /// Used to detect possible new binding written without `let` and to provide structured suggestion.
     in_assignment: Option<&'ast Expr>,
     is_assign_rhs: bool,
+
+    /// If we are setting an associated type in trait impl, is it a non-GAT type?
+    in_non_gat_assoc_type: Option<bool>,
 
     /// Used to detect possible `.` -> `..` typo when calling methods.
     in_range: Option<(&'ast Expr, &'ast Expr)>,
@@ -1703,10 +1706,35 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 break;
                             }
                         }
-                        self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
-                            span: lifetime.ident.span,
-                            suggestion,
-                        });
+
+                        // are we trying to use an anonymous lifetime
+                        // on a non GAT associated trait type?
+                        if !self.in_func_body
+                            && let Some((module, _)) = &self.current_trait_ref
+                            && let Some(ty) = &self.diag_metadata.current_self_type
+                            && Some(true) == self.diag_metadata.in_non_gat_assoc_type
+                            && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _) = module.kind
+                        {
+                            if def_id_matches_path(
+                                self.r.tcx,
+                                trait_id,
+                                &["core", "iter", "traits", "iterator", "Iterator"],
+                            ) {
+                                self.r.dcx().emit_err(errors::LendingIteratorReportError {
+                                    lifetime: lifetime.ident.span,
+                                    ty: ty.span(),
+                                });
+                            } else {
+                                self.r.dcx().emit_err(errors::AnonymousLivetimeNonGatReportError {
+                                    lifetime: lifetime.ident.span,
+                                });
+                            }
+                        } else {
+                            self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
+                                span: lifetime.ident.span,
+                                suggestion,
+                            });
+                        }
                     } else {
                         self.r.dcx().emit_err(errors::ExplicitAnonymousLivetimeReportError {
                             span: lifetime.ident.span,
@@ -3058,6 +3086,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 );
             }
             AssocItemKind::Type(box TyAlias { generics, .. }) => {
+                self.diag_metadata.in_non_gat_assoc_type = Some(generics.params.is_empty());
                 debug!("resolve_implementation AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
@@ -3086,6 +3115,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         });
                     },
                 );
+                self.diag_metadata.in_non_gat_assoc_type = None;
             }
             AssocItemKind::Delegation(box delegation) => {
                 debug!("resolve_implementation AssocItemKind::Delegation");
@@ -4828,4 +4858,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             );
         }
     }
+}
+
+/// Check if definition matches a path
+fn def_id_matches_path(tcx: TyCtxt<'_>, mut def_id: DefId, expected_path: &[&str]) -> bool {
+    let mut path = expected_path.iter().rev();
+    while let (Some(parent), Some(next_step)) = (tcx.opt_parent(def_id), path.next()) {
+        if !tcx.opt_item_name(def_id).map_or(false, |n| n.as_str() == *next_step) {
+            return false;
+        }
+        def_id = parent;
+    }
+    return true;
 }
