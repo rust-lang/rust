@@ -1190,9 +1190,8 @@ pub trait IsTerminal: crate::sealed::Sealed {
     ///
     /// - If you run this example by piping some text to it, e.g. `echo "foo" | path/to/executable`
     ///   it will print: `Hello foo`.
-    /// - If you instead run the example interactively by running the executable directly, it will
-    ///   panic with the message "Expected input to be piped to the process".
-    ///
+    /// - If you instead run the example interactively by running `path/to/executable` directly, it will
+    ///   prompt for input.
     ///
     /// [changes]: io#platform-specific-behavior
     /// [`Stdin`]: crate::io::Stdin
