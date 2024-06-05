@@ -860,7 +860,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
         let def = self.source.source.def_id();
-        let (mut rvalue, promoted_op) = {
+        let (mut rvalue, _promoted_op) = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;
@@ -937,7 +937,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // Now that we did promotion, we know whether we'll want to add this to `required_consts`.
         if self.add_to_required {
-            self.source.required_consts.push(promoted_op);
+            // self.source.required_consts.push(promoted_op);
         }
 
         self.promoted
@@ -958,7 +958,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
     fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
         if constant.const_.is_required_const() {
-            self.promoted.required_consts.push(*constant);
+            // self.promoted.required_consts.push(*constant);
         }
 
         // Skipping `super_constant` as the visitor is otherwise only looking for locals.

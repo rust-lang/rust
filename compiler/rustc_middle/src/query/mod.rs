@@ -571,6 +571,21 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Cross-crate cache of `required_and_mentioned_items`. Do not call directly.
+    query required_and_mentioned_items_of_item(key: DefId) -> &'tcx mir::RequiredAndMentionedItems<'tcx> {
+        desc { |tcx| "computing required and mentioned items for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        arena_cache
+        separate_provide_extern
+    }
+
+    /// Internal implementation detail of `required_and_mentioned_items`. Do not call directly.
+    query required_and_mentioned_items_of_shim(key: ty::InstanceDef<'tcx>) -> &'tcx mir::RequiredAndMentionedItems<'tcx> {
+        desc { |tcx| "computing required and mentioned items for `{}`", tcx.def_path_str(key.def_id()) }
+        cache_on_disk_if { true }
+        arena_cache
+    }
+
     /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
     /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
     /// have had a chance to potentially remove some of them.

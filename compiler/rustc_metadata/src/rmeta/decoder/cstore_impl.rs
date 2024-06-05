@@ -223,6 +223,15 @@ provide! { tcx, def_id, other, cdata,
     object_lifetime_default => { table }
     thir_abstract_const => { table }
     optimized_mir => { table }
+    required_and_mentioned_items_of_item => {
+        cdata
+            .root
+            .tables
+            .required_and_mentioned_items_of_item
+            .get(cdata, def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .unwrap_or_default()
+    }
     mir_for_ctfe => { table }
     closure_saved_names_of_captured_variables => { table }
     mir_coroutine_witnesses => { table }

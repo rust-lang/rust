@@ -1,12 +1,12 @@
 //@revisions: noopt opt
-//@build-pass
+//@build-fail
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
-//! This passes without optimizations, so it can (and should) also pass with optimizations.
 
 struct Fail<T>(T);
 impl<T> Fail<T> {
     const C: () = panic!();
+    //~^ ERROR: evaluation of `Fail::<i32>::C` failed
 }
 
 // This function is not actually called, but is mentioned implicitly as destructor in dead code in a
@@ -23,7 +23,7 @@ fn called<T>(x: T) {
         let v = Fail(x);
         std::mem::forget(v);
         // Now the destructor never gets "mentioned" so this build should *not* fail.
-        // IOW, this demonstrates that we are using a post-drop-elab notion of "mentioned".
+        // IOW, this demonstrates that we are not using a post-drop-elab notion of "mentioned".
     }
 }
 

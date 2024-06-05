@@ -659,6 +659,31 @@ LL |     dbg!(i32::CONSTANT);
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+note: erroneous constant encountered
+  --> $DIR/uninhabited-const-issue-61744.rs:18:10
+   |
+LL |     dbg!(i32::CONSTANT);
+   |          ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/uninhabited-const-issue-61744.rs:18:5
+   |
+LL |     dbg!(i32::CONSTANT);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/uninhabited-const-issue-61744.rs:18:5
+   |
+LL |     dbg!(i32::CONSTANT);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.
