@@ -72,6 +72,15 @@ impl<'tcx> MirPass<'tcx> for PromoteArraysOpt<'tcx> {
             return;
         }
 
+        // Ignore static/const items. Already processed by PromoteTemps
+        if let Some(ctx) = tcx.hir().body_const_context(body.source.def_id()) {
+            use hir::ConstContext::*;
+            match ctx {
+                Static(_) | Const {inline: _ } => return,
+                _ => {}
+            }
+        }
+
         let ccx = ConstCx::new(tcx, body);
         let (mut temps, all_candidates, already_promoted) = collect_temps_and_candidates(&ccx);
 
