@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// let x: Option<Vec<String>> = Some(Vec::new());
     /// let y: Vec<String> = x.unwrap_or_default();
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub MANUAL_UNWRAP_OR_DEFAULT,
     suspicious,
     "check if a `match` or `if let` can be simplified with `unwrap_or_default`"

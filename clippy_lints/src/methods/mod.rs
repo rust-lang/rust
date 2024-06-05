@@ -4085,7 +4085,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// println!("the string is empty");
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub CONST_IS_EMPTY,
     suspicious,
     "is_empty() called on strings known at compile time"

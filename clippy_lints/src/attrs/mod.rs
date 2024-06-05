@@ -463,7 +463,7 @@ declare_clippy_lint! {
     /// #[allow(dead_code)]
     /// fn foo() {}
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub DUPLICATED_ATTRIBUTES,
     suspicious,
     "duplicated attribute"
