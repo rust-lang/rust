@@ -224,7 +224,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                             .iter()
                             .copied()
                             .filter_map(AssocItemConstraint::ct)
-                            .position(|ct| ct.hir_id == hir_id)
+                            .position(|ct| ct.anon_const_hir_id() == hir_id)
                             .map(|idx| (idx, seg))
                     })
             }) else {

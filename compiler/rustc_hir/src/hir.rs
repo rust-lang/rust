@@ -242,7 +242,7 @@ impl<'hir> ConstArg<'hir> {
         }
     }
 
-    pub fn hir_id(&self) -> HirId {
+    pub fn anon_const_hir_id(&self) -> HirId {
         match self.kind {
             ConstArgKind::Anon(anon) => anon.hir_id,
         }
@@ -288,7 +288,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.hir_id(),
+            GenericArg::Const(c) => c.anon_const_hir_id(), // FIXME
             GenericArg::Infer(i) => i.hir_id,
         }
     }
@@ -2453,7 +2453,7 @@ impl<'hir> AssocItemConstraint<'hir> {
     }
 
     /// Obtain the const on the RHS of an assoc const equality constraint if applicable.
-    pub fn ct(self) -> Option<&'hir AnonConst> {
+    pub fn ct(self) -> Option<&'hir ConstArg<'hir>> {
         match self.kind {
             AssocItemConstraintKind::Equality { term: Term::Const(ct) } => Some(ct),
             _ => None,
@@ -2464,7 +2464,7 @@ impl<'hir> AssocItemConstraint<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum Term<'hir> {
     Ty(&'hir Ty<'hir>),
-    Const(&'hir AnonConst),
+    Const(&'hir ConstArg<'hir>),
 }
 
 impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
@@ -2473,8 +2473,8 @@ impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
     }
 }
 
-impl<'hir> From<&'hir AnonConst> for Term<'hir> {
-    fn from(c: &'hir AnonConst) -> Self {
+impl<'hir> From<&'hir ConstArg<'hir>> for Term<'hir> {
+    fn from(c: &'hir ConstArg<'hir>) -> Self {
         Term::Const(c)
     }
 }

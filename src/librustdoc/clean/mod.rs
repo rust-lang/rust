@@ -433,7 +433,7 @@ fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Te
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => Term::Constant(clean_middle_const(
-            ty::Binder::dummy(ty::Const::from_anon_const(cx.tcx, c.def_id)),
+            ty::Binder::dummy(ty::Const::from_const_arg(cx.tcx, c, ty::FeedConstTy::No)),
             cx,
         )),
     }

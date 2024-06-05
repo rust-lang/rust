@@ -1290,7 +1290,7 @@ pub fn walk_assoc_item_constraint<'v, V: Visitor<'v>>(
     match constraint.kind {
         AssocItemConstraintKind::Equality { ref term } => match term {
             Term::Ty(ref ty) => try_visit!(visitor.visit_ty(ty)),
-            Term::Const(ref c) => try_visit!(visitor.visit_anon_const(c)),
+            Term::Const(ref c) => try_visit!(visitor.visit_const_arg(c)),
         },
         AssocItemConstraintKind::Bound { bounds } => {
             walk_list!(visitor, visit_param_bound, bounds)

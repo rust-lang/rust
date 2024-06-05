@@ -911,7 +911,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        ty::Const::from_anon_const(tcx, ct.def_id).into()
+                                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No)
+                                            .into()
                                     }
                                 };
                                 // FIXME(#97583): This isn't syntactically well-formed!
