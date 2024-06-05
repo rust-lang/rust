@@ -335,18 +335,6 @@ impl TokenType {
     }
 }
 
-/// Used by [`Parser::expect_any_with_type`].
-#[derive(Copy, Clone, Debug)]
-enum TokenExpectType {
-    /// Unencountered tokens are inserted into [`Parser::expected_tokens`].
-    /// See [`Parser::check`].
-    Expect,
-
-    /// Unencountered tokens are not inserted into [`Parser::expected_tokens`].
-    /// See [`Parser::check_noexpect`].
-    NoExpect,
-}
-
 /// A sequence separator.
 #[derive(Debug)]
 struct SeqSep {
@@ -807,11 +795,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Checks if the next token is contained within `kets`, and returns `true` if so.
-    fn expect_any_with_type(&mut self, kets: &[&TokenKind], expect: TokenExpectType) -> bool {
-        kets.iter().any(|k| match expect {
-            TokenExpectType::Expect => self.check(k),
-            TokenExpectType::NoExpect => self.check_noexpect(k),
-        })
+    fn expect_any_with_type(
+        &mut self,
+        kets_expected: &[&TokenKind],
+        kets_not_expected: &[&TokenKind],
+    ) -> bool {
+        kets_expected.iter().any(|k| self.check(k))
+            || kets_not_expected.iter().any(|k| self.check_noexpect(k))
     }
 
     /// Parses a sequence until the specified delimiters. The function
@@ -819,9 +809,9 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_before_tokens<T>(
         &mut self,
-        kets: &[&TokenKind],
+        kets_expected: &[&TokenKind],
+        kets_not_expected: &[&TokenKind],
         sep: SeqSep,
-        expect: TokenExpectType,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         let mut first = true;
@@ -829,7 +819,7 @@ impl<'a> Parser<'a> {
         let mut trailing = Trailing::No;
         let mut v = ThinVec::new();
 
-        while !self.expect_any_with_type(kets, expect) {
+        while !self.expect_any_with_type(kets_expected, kets_not_expected) {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
                 break;
             }
@@ -927,7 +917,8 @@ impl<'a> Parser<'a> {
                                     if self.token == token::Colon {
                                         // we will try to recover in `maybe_recover_struct_lit_bad_delims`
                                         return Err(expect_err);
-                                    } else if let [token::CloseDelim(Delimiter::Parenthesis)] = kets
+                                    } else if let [token::CloseDelim(Delimiter::Parenthesis)] =
+                                        kets_expected
                                     {
                                         return Err(expect_err);
                                     } else {
@@ -940,7 +931,9 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && self.expect_any_with_type(kets, expect) {
+            if sep.trailing_sep_allowed
+                && self.expect_any_with_type(kets_expected, kets_not_expected)
+            {
                 trailing = Trailing::Yes;
                 break;
             }
@@ -1020,7 +1013,7 @@ impl<'a> Parser<'a> {
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
-        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
+        self.parse_seq_to_before_tokens(&[ket], &[], sep, f)
     }
 
     /// Parses a sequence, including only the closing delimiter. The function

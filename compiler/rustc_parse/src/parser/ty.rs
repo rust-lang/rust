@@ -9,7 +9,7 @@ use crate::errors::{
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, FnRetTy, GenericBound,
@@ -694,9 +694,14 @@ impl<'a> Parser<'a> {
         &mut self,
     ) -> PResult<'a, (ThinVec<PreciseCapturingArg>, Span)> {
         let lo = self.token.span;
-        let (args, _) = self.parse_unspanned_seq(
-            &TokenKind::Lt,
-            &TokenKind::Gt,
+        self.expect_lt()?;
+        let (args, _, _) = self.parse_seq_to_before_tokens(
+            &[&TokenKind::Gt],
+            &[
+                &TokenKind::Ge,
+                &TokenKind::BinOp(BinOpToken::Shr),
+                &TokenKind::BinOpEq(BinOpToken::Shr),
+            ],
             SeqSep::trailing_allowed(token::Comma),
             |self_| {
                 if self_.check_keyword(kw::SelfUpper) {
@@ -717,6 +722,7 @@ impl<'a> Parser<'a> {
                 }
             },
         )?;
+        self.expect_gt()?;
         Ok((args, lo.to(self.prev_token.span)))
     }
 

@@ -4,6 +4,5 @@
 
 fn hello() -> impl use<'a {}> Sized {}
 //~^ ERROR expected one of `,` or `>`, found `{`
-//~| ERROR expected item, found `>`
 
 fn main() {}

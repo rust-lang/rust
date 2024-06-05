@@ -4,7 +4,7 @@ use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
-    SemiColonMode, SeqSep, TokenExpectType, TokenType, Trailing, TrailingToken,
+    SemiColonMode, SeqSep, TokenType, Trailing, TrailingToken,
 };
 
 use crate::errors;
@@ -2456,9 +2456,9 @@ impl<'a> Parser<'a> {
             self.expect(&token::BinOp(token::Or))?;
             let args = self
                 .parse_seq_to_before_tokens(
-                    &[&token::BinOp(token::Or), &token::OrOr],
+                    &[&token::BinOp(token::Or)],
+                    &[&token::OrOr],
                     SeqSep::trailing_allowed(token::Comma),
-                    TokenExpectType::NoExpect,
                     |p| p.parse_fn_block_param(),
                 )?
                 .0;

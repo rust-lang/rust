@@ -1,6 +1,6 @@
 fn a() {
     [0; [|_: _ &_| ()].len()]
-    //~^ ERROR expected `,`, found `&`
+    //~^ ERROR expected one of `,` or `|`, found `&`
     //~| ERROR type annotations needed
 }
 
@@ -11,7 +11,7 @@ fn b() {
 
 fn c() {
     [0; [|&_: _ &_| {}; 0 ].len()]
-    //~^ ERROR expected `,`, found `&`
+    //~^ ERROR expected one of `,` or `|`, found `&`
     //~| ERROR type annotations needed
 }
 
