@@ -1,0 +1,50 @@
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:20:5: 20:24>::{synthetic#0}`
+  --> $DIR/unsupported.rs:21:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:21:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:20:5: 20:24>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:20:5: 20:24>` is well-formed
+  --> $DIR/unsupported.rs:20:5
+   |
+LL |     impl ToReuse for u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:23:5: 23:25>::{synthetic#0}`
+  --> $DIR/unsupported.rs:24:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:24:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:23:5: 23:25>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:23:5: 23:25>` is well-formed
+  --> $DIR/unsupported.rs:23:5
+   |
+LL |     impl ToReuse for u16 {
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: recursive delegation is not supported yet
+  --> $DIR/unsupported.rs:37:22
+   |
+LL |         pub reuse to_reuse2::foo;
+   |                              --- callee defined here
+...
+LL |     reuse to_reuse1::foo;
+   |                      ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

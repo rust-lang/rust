@@ -1,9 +1,14 @@
-error[E0282]: type annotations needed
-  --> $DIR/free-fn-to-free-fn.rs:15:7
+error[E0284]: type annotations needed
+  --> $DIR/free-fn-to-free-fn.rs:15:17
    |
 LL | reuse to_reuse::consts;
-   |       ^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `consts`
+   |                 ^^^^^^ cannot infer the value of the const parameter `N` declared on the function `consts`
    |
+note: required by a const generic parameter in `to_reuse::consts`
+  --> $DIR/free-fn-to-free-fn.rs:5:19
+   |
+LL |     pub fn consts<const N: i32>() -> i32 {
+   |                   ^^^^^^^^^^^^ required by this const generic parameter in `consts`
 help: consider specifying the generic argument
    |
 LL | reuse to_reuse::consts::<N>;
@@ -45,5 +50,5 @@ LL |         struct S;
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0282, E0794.
+Some errors have detailed explanations: E0277, E0284, E0794.
 For more information about an error, try `rustc --explain E0277`.

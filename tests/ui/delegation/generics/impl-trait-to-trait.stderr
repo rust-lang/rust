@@ -1,0 +1,44 @@
+error[E0277]: the trait bound `S: Trait0` is not satisfied
+  --> $DIR/impl-trait-to-trait.rs:12:19
+   |
+LL |             Self: Trait0,
+   |                   ^^^^^^ the trait `Trait0` is not implemented for `S`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-trait-to-trait.rs:5:5
+   |
+LL |     trait Trait0 {}
+   |     ^^^^^^^^^^^^
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `F: Trait0` is not satisfied
+  --> $DIR/impl-trait-to-trait.rs:24:32
+   |
+LL |         reuse Trait1::<T>::foo { &self.0 }
+   |                            --- ^^-------^^
+   |                            |   | |
+   |                            |   | this tail expression is of type `&F`
+   |                            |   the trait `Trait0` is not implemented for `F`
+   |                            required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-trait-to-trait.rs:5:5
+   |
+LL |     trait Trait0 {}
+   |     ^^^^^^^^^^^^
+note: required by a bound in `Trait1::foo`
+  --> $DIR/impl-trait-to-trait.rs:12:19
+   |
+LL |         fn foo<U>(&self)
+   |            --- required by a bound in this associated function
+...
+LL |             Self: Trait0,
+   |                   ^^^^^^ required by this bound in `Trait1::foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
