@@ -37,8 +37,9 @@ pub(crate) fn offset(
                 .ok_or_else(|| format_err!("Invalid wide col offset"))?
         }
     };
-    let text_size =
-        line_index.index.offset(line_col).ok_or_else(|| format_err!("Invalid offset"))?;
+    let text_size = line_index.index.offset(line_col).ok_or_else(|| {
+        format_err!("Invalid offset {line_col:?} (line index length: {:?})", line_index.index.len())
+    })?;
     Ok(text_size)
 }
 
