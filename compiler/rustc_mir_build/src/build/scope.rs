@@ -84,7 +84,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
@@ -1195,15 +1195,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand {
-            Operand::Copy(_) | Operand::Constant(_) => None,
-            Operand::Move(place) => place.as_local(),
-        });
+        let locals_moved: FxHashSet<Local> = operands
+            .iter()
+            .flat_map(|operand| match operand {
+                Operand::Copy(_) | Operand::Constant(_) => None,
+                Operand::Move(place) => place.as_local(),
+            })
+            .collect();
 
-        for local in locals_moved {
-            // Unschedule drops from the scope.
-            scope.drops.retain(|drop| drop.local != local || drop.kind != DropKind::Value);
-        }
+        // Unschedule drops from the scope.
+        scope
+            .drops
+            .retain(|drop| drop.kind != DropKind::Value || !locals_moved.contains(&drop.local));
         scope.invalidate_cache();
     }
 
