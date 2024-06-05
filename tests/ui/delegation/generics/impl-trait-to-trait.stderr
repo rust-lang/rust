@@ -1,0 +1,56 @@
+error[E0277]: the trait bound `bounds::S: Trait0` is not satisfied
+  --> $DIR/impl-trait-to-trait.rs:13:19
+   |
+LL |             Self: Trait0,
+   |                   ^^^^^^ the trait `Trait0` is not implemented for `bounds::S`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-trait-to-trait.rs:6:5
+   |
+LL |     trait Trait0 {}
+   |     ^^^^^^^^^^^^
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `bounds::F: Trait0` is not satisfied
+  --> $DIR/impl-trait-to-trait.rs:25:32
+   |
+LL |         reuse Trait1::<T>::foo { &self.0 }
+   |               ---------------- ^^-------^^
+   |               |                | |
+   |               |                | this tail expression is of type `&F`
+   |               |                the trait `Trait0` is not implemented for `bounds::F`
+   |               required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-trait-to-trait.rs:6:5
+   |
+LL |     trait Trait0 {}
+   |     ^^^^^^^^^^^^
+note: required by a bound in `Trait1::foo`
+  --> $DIR/impl-trait-to-trait.rs:13:19
+   |
+LL |         fn foo<U>(&self)
+   |            --- required by a bound in this associated function
+...
+LL |             Self: Trait0,
+   |                   ^^^^^^ required by this bound in `Trait1::foo`
+
+error[E0282]: type annotations needed
+  --> $DIR/impl-trait-to-trait.rs:41:15
+   |
+LL |         reuse Trait::foo { &self.0 }
+   |               ^^^^^^^^^^ cannot infer the value of the const parameter `N1` declared on the trait `Trait`
+   |
+help: consider specifying the generic argument
+   |
+LL |         reuse Trait::<N1>::foo { &self.0 }
+   |                    ++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0282.
+For more information about an error, try `rustc --explain E0277`.

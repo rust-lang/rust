@@ -1,0 +1,77 @@
+error: early bound generics are only supported for trait implementations and free functions
+  --> $DIR/unsupported.rs:12:23
+   |
+LL |         fn bar(&self) {}
+   |         ------------- callee defined here
+...
+LL |         reuse Trait0::bar;
+   |                       ^^^
+
+error: early bound generics are only supported for trait implementations and free functions
+  --> $DIR/unsupported.rs:17:23
+   |
+LL |         fn foo(&self) {}
+   |         ------------- callee defined here
+...
+LL |         reuse Trait1::foo;
+   |                       ^^^
+
+error: early bound generics are only supported for trait implementations and free functions
+  --> $DIR/unsupported.rs:23:23
+   |
+LL |         fn foo(&self) {}
+   |         ------------- callee defined here
+...
+LL |         reuse Trait1::foo;
+   |                       ^^^
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:43:5: 43:24>::{synthetic#0}`
+  --> $DIR/unsupported.rs:44:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:44:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:43:5: 43:24>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:43:5: 43:24>` is well-formed
+  --> $DIR/unsupported.rs:43:5
+   |
+LL |     impl ToReuse for u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:46:5: 46:25>::{synthetic#0}`
+  --> $DIR/unsupported.rs:47:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:47:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:46:5: 46:25>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:46:5: 46:25>` is well-formed
+  --> $DIR/unsupported.rs:46:5
+   |
+LL |     impl ToReuse for u16 {
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: recursive delegation is not supported yet
+  --> $DIR/unsupported.rs:60:22
+   |
+LL |         pub reuse to_reuse2::foo;
+   |                              --- callee defined here
+...
+LL |     reuse to_reuse1::foo;
+   |                      ^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0391`.
