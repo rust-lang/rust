@@ -799,6 +799,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-none",
     "ignore-nto",
     "ignore-nvptx64",
+    "ignore-nvptx64-nvidia-cuda",
     "ignore-openbsd",
     "ignore-pass",
     "ignore-remote",
