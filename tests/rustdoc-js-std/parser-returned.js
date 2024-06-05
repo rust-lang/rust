@@ -3,15 +3,15 @@ const PARSED = [
         query: "-> F<P>",
         elems: [],
         foundElems: 1,
-        original: "-> F<P>",
+        userQuery: "-> F<P>",
         returned: [{
-            name: "f",
+            name: "F",
             fullPath: ["f"],
             pathWithoutLast: [],
             pathLast: "f",
             generics: [
                 {
-                    name: "p",
+                    name: "P",
                     fullPath: ["p"],
                     pathWithoutLast: [],
                     pathLast: "p",
@@ -20,30 +20,27 @@ const PARSED = [
             ],
             typeFilter: -1,
         }],
-        userQuery: "-> f<p>",
         error: null,
     },
     {
         query: "-> P",
         elems: [],
         foundElems: 1,
-        original: "-> P",
+        userQuery: "-> P",
         returned: [{
-            name: "p",
+            name: "P",
             fullPath: ["p"],
             pathWithoutLast: [],
             pathLast: "p",
             generics: [],
             typeFilter: -1,
         }],
-        userQuery: "-> p",
         error: null,
     },
     {
         query: "->,a",
         elems: [],
         foundElems: 1,
-        original: "->,a",
         returned: [{
             name: "a",
             fullPath: ["a"],
@@ -66,7 +63,6 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 2,
-        original: "aaaaa->a",
         returned: [{
             name: "a",
             fullPath: ["a"],
@@ -82,7 +78,6 @@ const PARSED = [
         query: "-> !",
         elems: [],
         foundElems: 1,
-        original: "-> !",
         returned: [{
             name: "never",
             fullPath: ["never"],
