@@ -414,7 +414,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
-                        let trait_predicate = self.apply_do_not_recommend(trait_predicate, &mut obligation);
 
                         // Let's use the root obligation as the main message, when we care about the
                         // most general case ("X doesn't implement Pattern<'_>") over the case that
@@ -996,12 +995,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err.emit()
     }
 
-    fn apply_do_not_recommend(
-        &self,
-        mut trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
-        obligation: &'_ mut PredicateObligation<'tcx>,
-    ) -> ty::Binder<'tcx, ty::TraitPredicate<'tcx>> {
+    fn apply_do_not_recommend(&self, obligation: &mut PredicateObligation<'tcx>) -> bool {
         let mut base_cause = obligation.cause.code().clone();
+        let mut applied_do_not_recommend = false;
         loop {
             if let ObligationCauseCode::ImplDerived(ref c) = base_cause {
                 if self.tcx.has_attrs_with_path(
@@ -1011,7 +1007,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let code = (*c.derived.parent_code).clone();
                     obligation.cause.map_code(|_| code);
                     obligation.predicate = c.derived.parent_trait_pred.upcast(self.tcx);
-                    trait_predicate = c.derived.parent_trait_pred.clone();
+                    applied_do_not_recommend = true;
                 }
             }
             if let Some((parent_cause, _parent_pred)) = base_cause.parent() {
@@ -1021,7 +1017,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        trait_predicate
+        applied_do_not_recommend
     }
 
     fn emit_specialized_closure_kind_error(
@@ -1521,6 +1517,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
+        let mut error = FulfillmentError {
+            obligation: error.obligation.clone(),
+            code: error.code.clone(),
+            root_obligation: error.root_obligation.clone(),
+        };
+        if matches!(
+            error.code,
+            FulfillmentErrorCode::Select(crate::traits::SelectionError::Unimplemented)
+                | FulfillmentErrorCode::Project(_)
+        ) && self.apply_do_not_recommend(&mut error.obligation)
+        {
+            error.code = FulfillmentErrorCode::Select(SelectionError::Unimplemented);
+        }
+
         match error.code {
             FulfillmentErrorCode::Select(ref selection_error) => self.report_selection_error(
                 error.obligation.clone(),
@@ -2451,11 +2461,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let Some(ty::GenericArgKind::Type(_)) = arg.map(|arg| arg.unpack())
-                    && let Some(body_id) =
-                        self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
+                    && let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-                    expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
+                    expr_finder.visit_expr(&body.value);
 
                     if let Some(hir::Expr {
                         kind:
@@ -2684,6 +2693,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     )
                     .with_span_label(span, format!("cannot satisfy `{predicate}`"))
                 }
+            }
+
+            // Given some `ConstArgHasType(?x, usize)`, we should not emit an error such as
+            // "type annotations needed: cannot satisfy the constant `_` has type `usize`"
+            // Instead we should emit a normal error suggesting the user to turbofish the
+            // const parameter that is currently being inferred. Unfortunately we cannot
+            // nicely emit such an error so we delay an ICE incase nobody else reports it
+            // for us.
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                return self.tcx.sess.dcx().span_delayed_bug(
+                    span,
+                    format!(
+                        "`ambiguous ConstArgHasType({:?}, {:?}) unaccompanied by inference error`",
+                        ct, ty
+                    ),
+                );
             }
             _ => {
                 if let Some(e) = self.tainted_by_errors() {

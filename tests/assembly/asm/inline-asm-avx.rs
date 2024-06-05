@@ -5,8 +5,8 @@
 
 #![feature(portable_simd)]
 
-use std::simd::Simd;
 use std::arch::asm;
+use std::simd::Simd;
 
 #[target_feature(enable = "avx")]
 #[no_mangle]

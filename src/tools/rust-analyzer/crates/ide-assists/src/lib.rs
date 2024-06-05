@@ -116,6 +116,7 @@ mod handlers {
     mod change_visibility;
     mod convert_bool_then;
     mod convert_comment_block;
+    mod convert_comment_from_or_to_doc;
     mod convert_from_to_tryfrom;
     mod convert_integer_literal;
     mod convert_into_to_from;
@@ -209,6 +210,7 @@ mod handlers {
     mod sort_items;
     mod split_import;
     mod term_search;
+    mod toggle_async_sugar;
     mod toggle_ignore;
     mod unmerge_match_arm;
     mod unmerge_use;
@@ -238,7 +240,10 @@ mod handlers {
             change_visibility::change_visibility,
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
+            toggle_async_sugar::desugar_async_into_impl_future,
+            toggle_async_sugar::sugar_impl_future_into_async,
             convert_comment_block::convert_comment_block,
+            convert_comment_from_or_to_doc::convert_comment_from_or_to_doc,
             convert_from_to_tryfrom::convert_from_to_tryfrom,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,

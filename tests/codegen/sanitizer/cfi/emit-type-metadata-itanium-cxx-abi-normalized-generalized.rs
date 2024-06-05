@@ -3,7 +3,7 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers -Zsanitizer-cfi-generalize-pointers
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}foo

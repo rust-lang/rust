@@ -1,9 +1,13 @@
-#[cfg(before)] extern crate a;
+#[cfg(before)]
+extern crate a;
+#[cfg(after)]
+extern crate a;
 extern crate b;
 extern crate c;
-#[cfg(after)] extern crate a;
 
-fn t(a: &'static usize) -> usize { a as *const _ as usize }
+fn t(a: &'static usize) -> usize {
+    a as *const _ as usize
+}
 
 fn main() {
     assert_eq!(t(a::token()), t(b::a_token()));

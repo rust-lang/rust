@@ -325,10 +325,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &'hir TypeBinding<'hir>) {
-        self.insert(type_binding.span, type_binding.hir_id, Node::TypeBinding(type_binding));
-        self.with_parent(type_binding.hir_id, |this| {
-            intravisit::walk_assoc_type_binding(this, type_binding)
+    fn visit_assoc_item_constraint(&mut self, constraint: &'hir AssocItemConstraint<'hir>) {
+        self.insert(constraint.span, constraint.hir_id, Node::AssocItemConstraint(constraint));
+        self.with_parent(constraint.hir_id, |this| {
+            intravisit::walk_assoc_item_constraint(this, constraint)
         })
     }
 

@@ -3,33 +3,33 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers -Copt-level=0
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 extern crate core;
 
-pub fn foo0(_: bool) { }
+pub fn foo0(_: bool) {}
 // CHECK: define{{.*}}foo0{{.*}}!type ![[TYPE0:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo1(_: bool, _: bool) { }
+pub fn foo1(_: bool, _: bool) {}
 // CHECK: define{{.*}}foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo2(_: bool, _: bool, _: bool) { }
+pub fn foo2(_: bool, _: bool, _: bool) {}
 // CHECK: define{{.*}}foo2{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo3(_: char) { }
+pub fn foo3(_: char) {}
 // CHECK: define{{.*}}foo3{{.*}}!type ![[TYPE3:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo4(_: char, _: char) { }
+pub fn foo4(_: char, _: char) {}
 // CHECK: define{{.*}}foo4{{.*}}!type ![[TYPE4:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo5(_: char, _: char, _: char) { }
+pub fn foo5(_: char, _: char, _: char) {}
 // CHECK: define{{.*}}foo5{{.*}}!type ![[TYPE5:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo6(_: isize) { }
+pub fn foo6(_: isize) {}
 // CHECK: define{{.*}}foo6{{.*}}!type ![[TYPE6:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo7(_: isize, _: isize) { }
+pub fn foo7(_: isize, _: isize) {}
 // CHECK: define{{.*}}foo7{{.*}}!type ![[TYPE7:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo8(_: isize, _: isize, _: isize) { }
+pub fn foo8(_: isize, _: isize, _: isize) {}
 // CHECK: define{{.*}}foo8{{.*}}!type ![[TYPE8:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo9(_: (), _: usize) { }
+pub fn foo9(_: (), _: usize) {}
 // CHECK: define{{.*}}foo9{{.*}}!type ![[TYPE9:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo10(_: (), _: usize, _: usize) { }
+pub fn foo10(_: (), _: usize, _: usize) {}
 // CHECK: define{{.*}}foo10{{.*}}!type ![[TYPE10:[0-9]+]] !type !{{[0-9]+}}
-pub fn foo11(_: (), _: usize, _: usize, _: usize) { }
+pub fn foo11(_: (), _: usize, _: usize, _: usize) {}
 // CHECK: define{{.*}}foo11{{.*}}!type ![[TYPE11:[0-9]+]] !type !{{[0-9]+}}
 
 // CHECK: ![[TYPE0]] = !{i64 0, !"_ZTSFvu2u8E.normalized"}

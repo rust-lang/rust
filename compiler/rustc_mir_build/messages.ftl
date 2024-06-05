@@ -28,6 +28,12 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .value_borrowed_label = value borrowed here after move
     .suggestion = borrow this binding in the pattern to avoid moving the value
 
+mir_build_call_to_deprecated_safe_fn_requires_unsafe =
+    call to deprecated safe function `{$function}` is unsafe and requires unsafe block
+    .note = consult the function's documentation for information on how to avoid undefined behavior
+    .label = call to unsafe function
+    .suggestion = you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
+
 mir_build_call_to_fn_with_requires_unsafe =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block
     .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
@@ -97,7 +103,7 @@ mir_build_deref_raw_pointer_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .note = raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
     .label = dereference of raw pointer
 
-mir_build_exceeds_mcdc_condition_num_limit =  Conditions number of the decision ({$conditions_num}) exceeds limit ({$max_conditions_num}). MCDC analysis will not count this expression.
+mir_build_exceeds_mcdc_condition_limit = Number of conditions in decision ({$num_conditions}) exceeds limit ({$max_conditions}). MC/DC analysis will not count this expression.
 
 mir_build_extern_static_requires_unsafe =
     use of extern static is unsafe and requires unsafe block

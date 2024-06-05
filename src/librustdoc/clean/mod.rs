@@ -231,10 +231,10 @@ fn clean_generic_bound<'tcx>(
     })
 }
 
-pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
+pub(crate) fn clean_trait_ref_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-    bindings: ThinVec<TypeBinding>,
+    constraints: ThinVec<AssocItemConstraint>,
 ) -> Path {
     let kind = cx.tcx.def_kind(trait_ref.def_id()).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
@@ -245,7 +245,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
         cx,
         trait_ref.def_id(),
         true,
-        bindings,
+        constraints,
         trait_ref.map_bound(|tr| tr.args),
     );
 
@@ -254,14 +254,14 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     path
 }
 
-fn clean_poly_trait_ref_with_bindings<'tcx>(
+fn clean_poly_trait_ref_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    bindings: ThinVec<TypeBinding>,
+    constraints: ThinVec<AssocItemConstraint>,
 ) -> GenericBound {
     GenericBound::TraitBound(
         PolyTrait {
-            trait_: clean_trait_ref_with_bindings(cx, poly_trait_ref, bindings),
+            trait_: clean_trait_ref_with_constraints(cx, poly_trait_ref, constraints),
             generic_params: clean_bound_vars(poly_trait_ref.bound_vars()),
         },
         hir::TraitBoundModifier::None,
@@ -395,7 +395,7 @@ fn clean_poly_trait_predicate<'tcx>(
     let poly_trait_ref = pred.map_bound(|pred| pred.trait_ref);
     Some(WherePredicate::BoundPredicate {
         ty: clean_middle_ty(poly_trait_ref.self_ty(), cx, None, None),
-        bounds: vec![clean_poly_trait_ref_with_bindings(cx, poly_trait_ref, ThinVec::new())],
+        bounds: vec![clean_poly_trait_ref_with_constraints(cx, poly_trait_ref, ThinVec::new())],
         bound_params: Vec::new(),
     })
 }
@@ -481,8 +481,11 @@ fn clean_projection<'tcx>(
         return clean_middle_opaque_bounds(cx, bounds);
     }
 
-    let trait_ =
-        clean_trait_ref_with_bindings(cx, ty.map_bound(|ty| ty.trait_ref(cx.tcx)), ThinVec::new());
+    let trait_ = clean_trait_ref_with_constraints(
+        cx,
+        ty.map_bound(|ty| ty.trait_ref(cx.tcx)),
+        ThinVec::new(),
+    );
     let self_type = clean_middle_ty(ty.map_bound(|ty| ty.self_ty()), cx, None, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
@@ -522,7 +525,7 @@ fn projection_to_path_segment<'tcx>(
                 def_id,
             )
             .into(),
-            bindings: Default::default(),
+            constraints: Default::default(),
         },
     }
 }
@@ -1453,8 +1456,8 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                             _ => return true,
                         }
                         match &assoc.args {
-                            GenericArgs::AngleBracketed { args, bindings } => {
-                                if !bindings.is_empty()
+                            GenericArgs::AngleBracketed { args, constraints } => {
+                                if !constraints.is_empty()
                                     || generics
                                         .params
                                         .iter()
@@ -2135,7 +2138,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
             let bindings = obj
                 .projection_bounds()
-                .map(|pb| TypeBinding {
+                .map(|pb| AssocItemConstraint {
                     assoc: projection_to_path_segment(
                         pb.map_bound(|pb| {
                             pb
@@ -2149,7 +2152,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                         }),
                         cx,
                     ),
-                    kind: TypeBindingKind::Equality {
+                    kind: AssocItemConstraintKind::Equality {
                         term: clean_middle_term(pb.map_bound(|pb| pb.term), cx),
                     },
                 })
@@ -2198,7 +2201,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                             def_id,
                         )
                         .into(),
-                        bindings: Default::default(),
+                        constraints: Default::default(),
                     },
                 },
                 should_show_cast: false,
@@ -2304,14 +2307,14 @@ fn clean_middle_opaque_bounds<'tcx>(
                 .filter_map(|bound| {
                     if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
                         if proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder() {
-                            Some(TypeBinding {
+                            Some(AssocItemConstraint {
                                 assoc: projection_to_path_segment(
                                     // FIXME: This needs to be made resilient for `AliasTerm`s that
                                     // are associated consts.
                                     bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
                                     cx,
                                 ),
-                                kind: TypeBindingKind::Equality {
+                                kind: AssocItemConstraintKind::Equality {
                                     term: clean_middle_term(bound.kind().rebind(proj.term), cx),
                                 },
                             })
@@ -2324,7 +2327,7 @@ fn clean_middle_opaque_bounds<'tcx>(
                 })
                 .collect();
 
-            Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, bindings))
+            Some(clean_poly_trait_ref_with_constraints(cx, trait_ref, bindings))
         })
         .collect::<Vec<_>>();
 
@@ -2505,11 +2508,12 @@ fn clean_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> GenericArgs {
     // FIXME(return_type_notation): Fix RTN parens rendering
-    if generic_args.parenthesized == hir::GenericArgsParentheses::ParenSugar {
-        let output = clean_ty(generic_args.bindings[0].ty(), cx);
-        let output = if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
-        let inputs =
-            generic_args.inputs().iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
+    if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
+        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
+        let output = match output.kind {
+            hir::TyKind::Tup(&[]) => None,
+            _ => Some(Box::new(clean_ty(output, cx))),
+        };
         GenericArgs::Parenthesized { inputs, output }
     } else {
         let args = generic_args
@@ -2536,9 +2540,12 @@ fn clean_generic_args<'tcx>(
             })
             .collect::<Vec<_>>()
             .into();
-        let bindings =
-            generic_args.bindings.iter().map(|x| clean_type_binding(x, cx)).collect::<ThinVec<_>>();
-        GenericArgs::AngleBracketed { args, bindings }
+        let constraints = generic_args
+            .constraints
+            .iter()
+            .map(|c| clean_assoc_item_constraint(c, cx))
+            .collect::<ThinVec<_>>();
+        GenericArgs::AngleBracketed { args, constraints }
     }
 }
 
@@ -3107,20 +3114,20 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     })
 }
 
-fn clean_type_binding<'tcx>(
-    type_binding: &hir::TypeBinding<'tcx>,
+fn clean_assoc_item_constraint<'tcx>(
+    constraint: &hir::AssocItemConstraint<'tcx>,
     cx: &mut DocContext<'tcx>,
-) -> TypeBinding {
-    TypeBinding {
+) -> AssocItemConstraint {
+    AssocItemConstraint {
         assoc: PathSegment {
-            name: type_binding.ident.name,
-            args: clean_generic_args(type_binding.gen_args, cx),
+            name: constraint.ident.name,
+            args: clean_generic_args(constraint.gen_args, cx),
         },
-        kind: match type_binding.kind {
-            hir::TypeBindingKind::Equality { ref term } => {
-                TypeBindingKind::Equality { term: clean_hir_term(term, cx) }
+        kind: match constraint.kind {
+            hir::AssocItemConstraintKind::Equality { ref term } => {
+                AssocItemConstraintKind::Equality { term: clean_hir_term(term, cx) }
             }
-            hir::TypeBindingKind::Constraint { bounds } => TypeBindingKind::Constraint {
+            hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {
                 bounds: bounds.iter().filter_map(|b| clean_generic_bound(b, cx)).collect(),
             },
         },

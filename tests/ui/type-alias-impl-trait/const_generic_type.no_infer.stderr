@@ -1,0 +1,19 @@
+error[E0283]: type annotations needed
+  --> $DIR/const_generic_type.rs:7:1
+   |
+LL | async fn test<const N: crate::Bar>() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `_: std::fmt::Display`
+
+error: `Bar` is forbidden as the type of a const generic parameter
+  --> $DIR/const_generic_type.rs:7:24
+   |
+LL | async fn test<const N: crate::Bar>() {
+   |                        ^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

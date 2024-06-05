@@ -10,7 +10,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        AdtDef, CoroutineArgs, Ty, VariantDef,
+        AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef,
     },
 };
 use rustc_span::Symbol;

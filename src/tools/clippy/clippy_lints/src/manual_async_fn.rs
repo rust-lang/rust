@@ -4,8 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
-    FnRetTy, GenericArg, GenericBound, ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind,
-    TypeBindingKind,
+    FnRetTy, GenericArg, GenericBound, ImplItem, Item, ItemKind, LifetimeName, Node, TraitRef, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -138,10 +137,9 @@ fn future_trait_ref<'tcx>(
 fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'tcx>> {
     if let Some(segment) = trait_ref.path.segments.last()
         && let Some(args) = segment.args
-        && args.bindings.len() == 1
-        && let binding = &args.bindings[0]
-        && binding.ident.name == sym::Output
-        && let TypeBindingKind::Equality { term: Term::Ty(output) } = binding.kind
+        && let [constraint] = args.constraints
+        && constraint.ident.name == sym::Output
+        && let Some(output) = constraint.ty()
     {
         return Some(output);
     }

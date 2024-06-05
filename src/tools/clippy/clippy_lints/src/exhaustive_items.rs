@@ -10,10 +10,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns on any exported `enum`s that are not tagged `#[non_exhaustive]`
     ///
-    /// ### Why is this bad?
-    /// Exhaustive enums are typically fine, but a project which does
-    /// not wish to make a stability commitment around exported enums may wish to
-    /// disable them by default.
+    /// ### Why restrict this?
+    /// Making an `enum` exhaustive is a stability commitment: adding a variant is a breaking change.
+    /// A project may wish to ensure that there are no exhaustive enums or that every exhaustive
+    /// `enum` is explicitly `#[allow]`ed.
     ///
     /// ### Example
     /// ```no_run
@@ -40,10 +40,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns on any exported `struct`s that are not tagged `#[non_exhaustive]`
     ///
-    /// ### Why is this bad?
-    /// Exhaustive structs are typically fine, but a project which does
-    /// not wish to make a stability commitment around exported structs may wish to
-    /// disable them by default.
+    /// ### Why restrict this?
+    /// Making a `struct` exhaustive is a stability commitment: adding a field is a breaking change.
+    /// A project may wish to ensure that there are no exhaustive structs or that every exhaustive
+    /// `struct` is explicitly `#[allow]`ed.
     ///
     /// ### Example
     /// ```no_run

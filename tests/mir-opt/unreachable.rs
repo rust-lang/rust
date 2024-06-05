@@ -35,7 +35,7 @@ fn if_let() {
             _y = 42;
         }
 
-        match _x { }
+        match _x {}
     }
 }
 
@@ -56,7 +56,7 @@ fn as_match() {
     // CHECK: return;
     match empty() {
         None => {}
-        Some(_x) => match _x {}
+        Some(_x) => match _x {},
     }
 }
 

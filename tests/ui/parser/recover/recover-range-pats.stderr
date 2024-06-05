@@ -316,9 +316,6 @@ LL |     if let X.. .0 = 0 {}
    |            |   |
    |            |   expected `u8`, found floating-point number
    |            this is of type `u8`
-   |
-   = note: expected type `u8`
-              found type `{float}`
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:31:12
@@ -353,9 +350,6 @@ LL |     if let X..=.0 = 0 {}
    |            |   |
    |            |   expected `u8`, found floating-point number
    |            this is of type `u8`
-   |
-   = note: expected type `u8`
-              found type `{float}`
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:52:12
@@ -390,9 +384,6 @@ LL |     if let X... .0 = 0 {}
    |            |    |
    |            |    expected `u8`, found floating-point number
    |            this is of type `u8`
-   |
-   = note: expected type `u8`
-              found type `{float}`
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:71:12

@@ -4,7 +4,7 @@
 use core::panic::PanicInfo;
 
 #[no_mangle]
-pub extern fn foo() {
+pub extern "C" fn foo() {
     panic!()
 }
 

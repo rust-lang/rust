@@ -387,7 +387,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             }
         }
 
-        // Returns whether further errors should be suppressed because either a lint has been emitted or the type should be ignored.
+        // Returns whether further errors should be suppressed because either a lint has been
+        // emitted or the type should be ignored.
         fn check_must_use_def(
             cx: &LateContext<'_>,
             def_id: DefId,
@@ -677,7 +678,8 @@ trait UnusedDelimLint {
             return true;
         }
 
-        // Check if LHS needs parens to prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`.
+        // Check if LHS needs parens to prevent false-positives in cases like
+        // `fn x() -> u8 { ({ 0 } + 1) }`.
         //
         // FIXME: https://github.com/rust-lang/rust/issues/119426
         // The syntax tree in this code is from after macro expansion, so the
@@ -722,7 +724,8 @@ trait UnusedDelimLint {
             }
         }
 
-        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return) {}`.
+        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return)
+        // {}`.
         if !followed_by_block {
             return false;
         }

@@ -2,9 +2,10 @@ use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
-    ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
-    PathSegment, Primitive, PrimitiveType, Term, Type, TypeBinding, TypeBindingKind,
+    clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline,
+    AssocItemConstraint, AssocItemConstraintKind, Crate, ExternalCrate, Generic, GenericArg,
+    GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
+    PrimitiveType, Term, Type,
 };
 use crate::core::DocContext;
 use crate::html::format::visibility_to_src_with_space;
@@ -200,11 +201,11 @@ fn can_elide_generic_arg<'tcx>(
     actual.skip_binder() == default.skip_binder()
 }
 
-fn clean_middle_generic_args_with_bindings<'tcx>(
+fn clean_middle_generic_args_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: ThinVec<TypeBinding>,
+    constraints: ThinVec<AssocItemConstraint>,
     ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
     let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
@@ -219,17 +220,19 @@ fn clean_middle_generic_args_with_bindings<'tcx>(
             // The trait's first substitution is the one after self, if there is one.
             match ty.skip_binder().kind() {
                 ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None, None)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
+                _ => return GenericArgs::AngleBracketed { args: args.into(), constraints },
             };
-        let output = bindings.into_iter().next().and_then(|binding| match binding.kind {
-            TypeBindingKind::Equality { term: Term::Type(ty) } if ty != Type::Tuple(Vec::new()) => {
+        let output = constraints.into_iter().next().and_then(|binding| match binding.kind {
+            AssocItemConstraintKind::Equality { term: Term::Type(ty) }
+                if ty != Type::Tuple(Vec::new()) =>
+            {
                 Some(Box::new(ty))
             }
             _ => None,
         });
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args: args.into(), bindings }
+        GenericArgs::AngleBracketed { args: args.into(), constraints }
     }
 }
 
@@ -237,7 +240,7 @@ pub(super) fn clean_middle_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: ThinVec<TypeBinding>,
+    constraints: ThinVec<AssocItemConstraint>,
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
@@ -246,7 +249,7 @@ pub(super) fn clean_middle_path<'tcx>(
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
             name,
-            args: clean_middle_generic_args_with_bindings(cx, did, has_self, bindings, args),
+            args: clean_middle_generic_args_with_constraints(cx, did, has_self, constraints, args),
         }],
     }
 }
@@ -342,7 +345,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
             let s = if let Some(def) = def.as_local() {
-                rendered_const(cx.tcx, cx.tcx.hir().body_owned_by(def))
+                rendered_const(cx.tcx, &cx.tcx.hir().body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
             };

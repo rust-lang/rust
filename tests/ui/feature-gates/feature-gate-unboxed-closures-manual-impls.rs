@@ -16,7 +16,7 @@ impl Fn<()> for Foo {
 }
 struct Foo1;
 impl FnOnce() for Foo1 {
-    //~^ ERROR associated type bindings are not allowed here
+    //~^ ERROR associated item constraints are not allowed here
     //~| ERROR manual implementations of `FnOnce` are experimental
     //~| ERROR not all trait items implemented
     extern "rust-call" fn call_once(self, args: ()) -> () {}

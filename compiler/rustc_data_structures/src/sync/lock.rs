@@ -69,7 +69,7 @@ mod maybe_sync {
             match self.mode {
                 Mode::NoSync => {
                     let cell = unsafe { &self.lock.mode_union.no_sync };
-                    debug_assert_eq!(cell.get(), true);
+                    debug_assert!(cell.get());
                     cell.set(false);
                 }
                 // SAFETY (unlock): We know that the lock is locked as this type is a proof of that.

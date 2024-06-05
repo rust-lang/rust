@@ -37,6 +37,7 @@ declare_lint_pass! {
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
+        DEPRECATED_SAFE,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
@@ -135,7 +136,6 @@ declare_lint_pass! {
         USELESS_DEPRECATED,
         WARNINGS,
         WASM_C_ABI,
-        WHERE_CLAUSES_OBJECT_SAFETY,
         WRITES_THROUGH_IMMUTABLE_POINTER,
         // tidy-alphabetical-end
     ]
@@ -2090,47 +2090,6 @@ declare_lint! {
     pub UNUSED_LABELS,
     Warn,
     "detects labels that are never used"
-}
-
-declare_lint! {
-    /// The `where_clauses_object_safety` lint detects for [object safety] of
-    /// [where clauses].
-    ///
-    /// [object safety]: https://doc.rust-lang.org/reference/items/traits.html#object-safety
-    /// [where clauses]: https://doc.rust-lang.org/reference/items/generics.html#where-clauses
-    ///
-    /// ### Example
-    ///
-    /// ```rust,no_run
-    /// trait Trait {}
-    ///
-    /// trait X { fn foo(&self) where Self: Trait; }
-    ///
-    /// impl X for () { fn foo(&self) {} }
-    ///
-    /// impl Trait for dyn X {}
-    ///
-    /// // Segfault at opt-level 0, SIGILL otherwise.
-    /// pub fn main() { <dyn X as X>::foo(&()); }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler previously allowed these object-unsafe bounds, which was
-    /// incorrect. This is a [future-incompatible] lint to transition this to
-    /// a hard error in the future. See [issue #51443] for more details.
-    ///
-    /// [issue #51443]: https://github.com/rust-lang/rust/issues/51443
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub WHERE_CLAUSES_OBJECT_SAFETY,
-    Warn,
-    "checks the object safety of where clauses",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-    };
 }
 
 declare_lint! {
@@ -4842,5 +4801,53 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124559 <https://github.com/rust-lang/rust/issues/124559>",
+    };
+}
+
+declare_lint! {
+    /// The `deprecated_safe` lint detects unsafe functions being used as safe
+    /// functions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(deprecated_safe)]
+    /// // edition 2021
+    /// use std::env;
+    /// fn enable_backtrace() {
+    ///     env::set_var("RUST_BACKTRACE", "1");
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust [editions] allow the language to evolve without breaking backward
+    /// compatibility. This lint catches code that uses `unsafe` functions that
+    /// were declared as safe (non-`unsafe`) in earlier editions. If you switch
+    /// the compiler to a new edition without updating the code, then it
+    /// will fail to compile if you are using a function previously marked as
+    /// safe.
+    ///
+    /// You can audit the code to see if it suffices the preconditions of the
+    /// `unsafe` code, and if it does, you can wrap it in an `unsafe` block. If
+    /// you can't fulfill the preconditions, you probably need to switch to a
+    /// different way of doing what you want to achieve.
+    ///
+    /// This lint can automatically wrap the calls in `unsafe` blocks, but this
+    /// obviously cannot verify that the preconditions of the `unsafe`
+    /// functions are fulfilled, so that is still up to the user.
+    ///
+    /// The lint is currently "allow" by default, but that might change in the
+    /// future.
+    ///
+    /// [editions]: https://doc.rust-lang.org/edition-guide/
+    pub DEPRECATED_SAFE,
+    Allow,
+    "detects unsafe functions being used as safe functions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
     };
 }

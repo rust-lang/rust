@@ -818,7 +818,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_block(self, b);
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         let body_id = body.id();
         let owner_id = self.tcx.hir().body_owner_def_id(body_id);
 
@@ -896,7 +896,7 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
+    let scope_tree = if let Some(body) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
@@ -907,9 +907,8 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
             fixup_scopes: vec![],
         };
 
-        let body = tcx.hir().body(body_id);
         visitor.scope_tree.root_body = Some(body.value.hir_id);
-        visitor.visit_body(body);
+        visitor.visit_body(&body);
         visitor.scope_tree
     } else {
         ScopeTree::default()

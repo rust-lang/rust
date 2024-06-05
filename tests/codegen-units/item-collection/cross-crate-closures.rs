@@ -14,7 +14,6 @@ extern crate cgu_extern_closures;
 //~ MONO_ITEM fn cross_crate_closures::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-
     //~ MONO_ITEM fn cgu_extern_closures::inlined_fn[0]
     //~ MONO_ITEM fn cgu_extern_closures::inlined_fn[0]::{{closure}}[0]
     let _ = cgu_extern_closures::inlined_fn(1, 2);

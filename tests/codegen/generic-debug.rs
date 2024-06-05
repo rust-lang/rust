@@ -13,6 +13,6 @@
 
 pub struct Generic<Type>(Type);
 
-fn main () {
+fn main() {
     let generic = Generic(10);
 }

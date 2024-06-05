@@ -252,7 +252,7 @@ impl<S: Encoder> Encodable<S> for () {
 }
 
 impl<D: Decoder> Decodable<D> for () {
-    fn decode(_: &mut D) -> () {}
+    fn decode(_: &mut D) {}
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {

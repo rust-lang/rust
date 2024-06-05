@@ -161,6 +161,11 @@ async unsafe fn surface_drop_in_place<T: Drop + ?Sized>(ptr: *mut T) {
 /// wrapped future completes by returning `Poll::Ready(())` on poll. This
 /// is useful for constructing async destructors to guarantee this
 /// "fuse" property
+//
+// FIXME: Consider optimizing combinators to not have to use fuse in majority
+// of cases, perhaps by adding `#[(rustc_)idempotent(_future)]` attribute for
+// async functions and blocks with the unit return type. However current layout
+// optimizations currently encode `None` case into the async block's discriminant.
 struct Fuse<T> {
     inner: Option<T>,
 }
@@ -249,6 +254,14 @@ async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T
         drop(matched);
         other.await
     }
+}
+
+#[cfg(not(bootstrap))]
+#[lang = "async_drop_deferred_drop_in_place"]
+async unsafe fn deferred_drop_in_place<T>(to_drop: *mut T) {
+    // SAFETY: same safety requirements as with drop_in_place (implied by
+    // function's name)
+    unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
 /// Used for noop async destructors. We don't use [`core::future::Ready`]

@@ -8,7 +8,11 @@
 
 #[derive(Copy, Clone)]
 #[repr(u32)]
-enum E { A, B, C }
+enum E {
+    A,
+    B,
+    C,
+}
 
 #[derive(Copy, Clone)]
 enum Empty {}
@@ -39,7 +43,5 @@ fn main() {
 
     // A non-UTF-8 string slice. Regression test for #75763 and #78520.
     struct Str<const S: &'static str>;
-    let _non_utf8_str: Str::<{
-        unsafe { std::mem::transmute::<&[u8], &str>(&[0xC0, 0xC1, 0xF5]) }
-    }>;
+    let _non_utf8_str: Str<{ unsafe { std::mem::transmute::<&[u8], &str>(&[0xC0, 0xC1, 0xF5]) } }>;
 }

@@ -1,8 +1,8 @@
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-expr-path.rs:14:26
    |
-LL |     let x: isize = Foo::<A=usize>::bar();
-   |                          ^^^^^^^ associated type not allowed here
+LL |     let x: isize = Foo::<A = usize>::bar();
+   |                          ^^^^^^^^^ associated item constraint not allowed here
 
 error: aborting due to 1 previous error
 

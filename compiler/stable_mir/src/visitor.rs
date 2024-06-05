@@ -1,10 +1,10 @@
 use std::ops::ControlFlow;
 
-use crate::Opaque;
+use crate::{ty::TyConst, Opaque};
 
 use super::ty::{
-    Allocation, Binder, Const, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
-    Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
+    Allocation, Binder, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
+    MirConst, Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
 
 pub trait Visitor: Sized {
@@ -12,7 +12,7 @@ pub trait Visitor: Sized {
     fn visit_ty(&mut self, ty: &Ty) -> ControlFlow<Self::Break> {
         ty.super_visit(self)
     }
-    fn visit_const(&mut self, c: &Const) -> ControlFlow<Self::Break> {
+    fn visit_const(&mut self, c: &TyConst) -> ControlFlow<Self::Break> {
         c.super_visit(self)
     }
     fn visit_reg(&mut self, reg: &Region) -> ControlFlow<Self::Break> {
@@ -42,12 +42,32 @@ impl Visitable for Ty {
     }
 }
 
-impl Visitable for Const {
+impl Visitable for TyConst {
     fn visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         visitor.visit_const(self)
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
+        match &self.kind {
+            crate::ty::TyConstKind::Param(_) => {}
+            crate::ty::TyConstKind::Bound(_, _) => {}
+            crate::ty::TyConstKind::Unevaluated(_, args) => args.visit(visitor)?,
+            crate::ty::TyConstKind::Value(ty, alloc) => {
+                alloc.visit(visitor)?;
+                ty.visit(visitor)?;
+            }
+            crate::ty::TyConstKind::ZSTValue(ty) => ty.visit(visitor)?,
+        }
+        ControlFlow::Continue(())
+    }
+}
+
+impl Visitable for MirConst {
+    fn visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
+        self.super_visit(visitor)
+    }
+    fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match &self.kind() {
+            super::ty::ConstantKind::Ty(ct) => ct.visit(visitor)?,
             super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor)?,
             super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor)?,
             super::ty::ConstantKind::Param(_) | super::ty::ConstantKind::ZeroSized => {}

@@ -4,12 +4,12 @@ use std::process::{Command, Output};
 
 use crate::is_windows;
 
-use super::{bin_name, handle_failed_output};
+use super::handle_failed_output;
 
 fn run_common(name: &str) -> (Command, Output) {
     let mut bin_path = PathBuf::new();
     bin_path.push(env::var("TMPDIR").unwrap());
-    bin_path.push(&bin_name(name));
+    bin_path.push(name);
     let ld_lib_path_envvar = env::var("LD_LIB_PATH_ENVVAR").unwrap();
     let mut cmd = Command::new(bin_path);
     cmd.env(&ld_lib_path_envvar, {

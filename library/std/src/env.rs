@@ -318,22 +318,25 @@ impl Error for VarError {
 ///
 /// # Safety
 ///
-/// Even though this function is currently not marked as `unsafe`, it needs to
-/// be because invoking it can cause undefined behaviour. The function will be
-/// marked `unsafe` in a future version of Rust. This is tracked in
-/// [rust#27970](https://github.com/rust-lang/rust/issues/27970).
-///
 /// This function is safe to call in a single-threaded program.
 ///
-/// In multi-threaded programs, you must ensure that are no other threads
-/// concurrently writing or *reading*(!) from the environment through functions
-/// other than the ones in this module. You are responsible for figuring out
-/// how to achieve this, but we strongly suggest not using `set_var` or
-/// `remove_var` in multi-threaded programs at all.
+/// This function is also always safe to call on Windows, in single-threaded
+/// and multi-threaded programs.
 ///
-/// Most C libraries, including libc itself do not advertise which functions
-/// read from the environment. Even functions from the Rust standard library do
-/// that, e.g. for DNS lookups from [`std::net::ToSocketAddrs`].
+/// In multi-threaded programs on other operating systems, we strongly suggest
+/// not using `set_var` or `remove_var` at all. The exact requirement is: you
+/// must ensure that there are no other threads concurrently writing or
+/// *reading*(!) the environment through functions or global variables other
+/// than the ones in this module. The problem is that these operating systems
+/// do not provide a thread-safe way to read the environment, and most C
+/// libraries, including libc itself, do not advertise which functions read
+/// from the environment. Even functions from the Rust standard library may
+/// read the environment without going through this module, e.g. for DNS
+/// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
+/// which functions may read from the environment in future versions of a
+/// library. All this makes it not practically possible for you to guarantee
+/// that no other thread will read the environment, so the only safe option is
+/// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
@@ -353,15 +356,26 @@ impl Error for VarError {
 /// use std::env;
 ///
 /// let key = "KEY";
-/// env::set_var(key, "VALUE");
+/// unsafe {
+///     env::set_var(key, "VALUE");
+/// }
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
+#[cfg(not(bootstrap))]
+#[rustc_deprecated_safe_2024]
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
+pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     _set_var(key.as_ref(), value.as_ref())
 }
 
-fn _set_var(key: &OsStr, value: &OsStr) {
+#[cfg(bootstrap)]
+#[allow(missing_docs)]
+#[stable(feature = "env", since = "1.0.0")]
+pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
+    unsafe { _set_var(key.as_ref(), value.as_ref()) }
+}
+
+unsafe fn _set_var(key: &OsStr, value: &OsStr) {
     os_imp::setenv(key, value).unwrap_or_else(|e| {
         panic!("failed to set environment variable `{key:?}` to `{value:?}`: {e}")
     })
@@ -371,22 +385,25 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 ///
 /// # Safety
 ///
-/// Even though this function is currently not marked as `unsafe`, it needs to
-/// be because invoking it can cause undefined behaviour. The function will be
-/// marked `unsafe` in a future version of Rust. This is tracked in
-/// [rust#27970](https://github.com/rust-lang/rust/issues/27970).
-///
 /// This function is safe to call in a single-threaded program.
 ///
-/// In multi-threaded programs, you must ensure that are no other threads
-/// concurrently writing or *reading*(!) from the environment through functions
-/// other than the ones in this module. You are responsible for figuring out
-/// how to achieve this, but we strongly suggest not using `set_var` or
-/// `remove_var` in multi-threaded programs at all.
+/// This function is also always safe to call on Windows, in single-threaded
+/// and multi-threaded programs.
 ///
-/// Most C libraries, including libc itself do not advertise which functions
-/// read from the environment. Even functions from the Rust standard library do
-/// that, e.g. for DNS lookups from [`std::net::ToSocketAddrs`].
+/// In multi-threaded programs on other operating systems, we strongly suggest
+/// not using `set_var` or `remove_var` at all. The exact requirement is: you
+/// must ensure that there are no other threads concurrently writing or
+/// *reading*(!) the environment through functions or global variables other
+/// than the ones in this module. The problem is that these operating systems
+/// do not provide a thread-safe way to read the environment, and most C
+/// libraries, including libc itself, do not advertise which functions read
+/// from the environment. Even functions from the Rust standard library may
+/// read the environment without going through this module, e.g. for DNS
+/// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
+/// which functions may read from the environment in future versions of a
+/// library. All this makes it not practically possible for you to guarantee
+/// that no other thread will read the environment, so the only safe option is
+/// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
@@ -403,22 +420,35 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::env;
 ///
 /// let key = "KEY";
-/// env::set_var(key, "VALUE");
+/// unsafe {
+///     env::set_var(key, "VALUE");
+/// }
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 ///
-/// env::remove_var(key);
+/// unsafe {
+///     env::remove_var(key);
+/// }
 /// assert!(env::var(key).is_err());
 /// ```
+#[cfg(not(bootstrap))]
+#[rustc_deprecated_safe_2024]
 #[stable(feature = "env", since = "1.0.0")]
-pub fn remove_var<K: AsRef<OsStr>>(key: K) {
+pub unsafe fn remove_var<K: AsRef<OsStr>>(key: K) {
     _remove_var(key.as_ref())
 }
 
-fn _remove_var(key: &OsStr) {
+#[cfg(bootstrap)]
+#[allow(missing_docs)]
+#[stable(feature = "env", since = "1.0.0")]
+pub fn remove_var<K: AsRef<OsStr>>(key: K) {
+    unsafe { _remove_var(key.as_ref()) }
+}
+
+unsafe fn _remove_var(key: &OsStr) {
     os_imp::unsetenv(key)
         .unwrap_or_else(|e| panic!("failed to remove environment variable `{key:?}`: {e}"))
 }

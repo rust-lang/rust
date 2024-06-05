@@ -10,13 +10,16 @@ declare_clippy_lint! {
     /// It lints if an exported function, method, trait method with default impl,
     /// or trait method impl is not `#[inline]`.
     ///
-    /// ### Why is this bad?
-    /// In general, it is not. Functions can be inlined across
-    /// crates when that's profitable as long as any form of LTO is used. When LTO is disabled,
-    /// functions that are not `#[inline]` cannot be inlined across crates. Certain types of crates
-    /// might intend for most of the methods in their public API to be able to be inlined across
-    /// crates even when LTO is disabled. For these types of crates, enabling this lint might make
-    /// sense. It allows the crate to require all exported methods to be `#[inline]` by default, and
+    /// ### Why restrict this?
+    /// When a function is not marked `#[inline]`, it is not
+    /// [a “small” candidate for automatic inlining][small], and LTO is not in use, then it is not
+    /// possible for the function to be inlined into the code of any crate other than the one in
+    /// which it is defined.  Depending on the role of the function and the relationship of the crates,
+    /// this could significantly reduce performance.
+    ///
+    /// Certain types of crates might intend for most of the methods in their public API to be able
+    /// to be inlined across crates even when LTO is disabled.
+    /// This lint allows those crates to require all exported methods to be `#[inline]` by default, and
     /// then opt out for specific methods where this might not make sense.
     ///
     /// ### Example
@@ -51,6 +54,8 @@ declare_clippy_lint! {
     ///    fn def_bar() {} // missing #[inline]
     /// }
     /// ```
+    ///
+    /// [small]: https://github.com/rust-lang/rust/pull/116505
     #[clippy::version = "pre 1.29.0"]
     pub MISSING_INLINE_IN_PUBLIC_ITEMS,
     restriction,

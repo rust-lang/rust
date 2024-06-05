@@ -27,8 +27,9 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
-    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
-    OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
+    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
+    Dynamic, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType,
+    UserTypeAnnotationIndex,
 };
 use rustc_middle::ty::{GenericArgsRef, UserArgs};
 use rustc_middle::{bug, span_bug};
@@ -188,15 +189,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     checker.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
     checker.check_signature_annotation(body);
 
-    liveness::generate(
-        &mut checker,
-        body,
-        elements,
-        flow_inits,
-        move_data,
-        location_table,
-        use_polonius,
-    );
+    liveness::generate(&mut checker, body, elements, flow_inits, move_data, use_polonius);
 
     translate_outlives_facts(&mut checker);
     let opaque_type_values = infcx.take_opaque_types();

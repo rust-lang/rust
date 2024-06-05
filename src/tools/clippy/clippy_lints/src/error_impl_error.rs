@@ -12,7 +12,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for types named `Error` that implement `Error`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// It can become confusing when a codebase has 20 types all named `Error`, requiring either
     /// aliasing them in the `use` statement or qualifying them like `my_module::Error`. This
     /// hinders comprehension, as it requires you to memorize every variation of importing `Error`

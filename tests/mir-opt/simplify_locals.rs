@@ -1,13 +1,12 @@
 // skip-filecheck
 //@ test-mir-pass: SimplifyLocals-before-const-prop
 
-
 #![feature(thread_local)]
 
 #[derive(Copy, Clone)]
 enum E {
-     A,
-     B,
+    A,
+    B,
 }
 
 // EMIT_MIR simplify_locals.c.SimplifyLocals-before-const-prop.diff
@@ -26,7 +25,7 @@ fn d1() {
 // EMIT_MIR simplify_locals.d2.SimplifyLocals-before-const-prop.diff
 fn d2() {
     // Unused set discriminant
-    {(10, E::A)}.1 = E::B;
+    { (10, E::A) }.1 = E::B;
 }
 
 // EMIT_MIR simplify_locals.r.SimplifyLocals-before-const-prop.diff
@@ -37,7 +36,8 @@ fn r() {
     let _ = &mut a;
 }
 
-#[thread_local] static mut X: u32 = 0;
+#[thread_local]
+static mut X: u32 = 0;
 
 // EMIT_MIR simplify_locals.t1.SimplifyLocals-before-const-prop.diff
 fn t1() {

@@ -153,24 +153,20 @@ impl<FileId: Copy, N: AstNode> InFileWrapper<FileId, N> {
 // region:specific impls
 
 impl InFile<&SyntaxNode> {
-    /// Skips the attributed item that caused the macro invocation we are climbing up
-    pub fn ancestors_with_macros_skip_attr_item(
+    /// Traverse up macro calls and skips the macro invocation node
+    pub fn ancestors_with_macros(
         self,
         db: &dyn db::ExpandDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
         let succ = move |node: &InFile<SyntaxNode>| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
-            None => {
-                let macro_file_id = node.file_id.macro_file()?;
-                let parent_node = macro_file_id.call_node(db);
-                if macro_file_id.is_attr_macro(db) {
-                    // macro call was an attributed item, skip it
-                    // FIXME: does this fail if this is a direct expansion of another macro?
-                    parent_node.map(|node| node.parent()).transpose()
-                } else {
-                    Some(parent_node)
-                }
-            }
+            None => db
+                .lookup_intern_macro_call(node.file_id.macro_file()?.macro_call_id)
+                .to_node_item(db)
+                .syntax()
+                .cloned()
+                .map(|node| node.parent())
+                .transpose(),
         };
         iter::successors(succ(&self.cloned()), succ)
     }

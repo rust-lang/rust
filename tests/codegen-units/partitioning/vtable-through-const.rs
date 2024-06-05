@@ -28,19 +28,23 @@ mod mod1 {
     }
 
     impl<T> Trait1Gen<T> for NeedsDrop {
-        fn do_something(&self, x: T) -> T { x }
-        fn do_something_else(&self, x: T) -> T { x }
+        fn do_something(&self, x: T) -> T {
+            x
+        }
+        fn do_something_else(&self, x: T) -> T {
+            x
+        }
     }
 
     //~ MONO_ITEM fn mod1::id::<i64> @@ vtable_through_const-mod1.volatile[Internal]
-    fn id<T>(x: T) -> T { x }
+    fn id<T>(x: T) -> T {
+        x
+    }
 
     // These are referenced, so they produce mono-items (see start())
     pub const TRAIT1_REF: &'static Trait1 = &NeedsDrop as &Trait1;
     pub const TRAIT1_GEN_REF: &'static Trait1Gen<u8> = &NeedsDrop as &Trait1Gen<u8>;
     pub const ID_CHAR: fn(char) -> char = id::<char>;
-
-
 
     pub trait Trait2 {
         fn do_something(&self) {}
@@ -57,8 +61,12 @@ mod mod1 {
     }
 
     impl<T> Trait2Gen<T> for NeedsDrop {
-        fn do_something(&self, x: T) -> T { x }
-        fn do_something_else(&self, x: T) -> T { x }
+        fn do_something(&self, x: T) -> T {
+            x
+        }
+        fn do_something_else(&self, x: T) -> T {
+            x
+        }
     }
 
     // These are not referenced, so they do not produce mono-items

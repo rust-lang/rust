@@ -13,13 +13,13 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write, Read};
+use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
     if !cfg!(windows) {
-        return
+        return;
     }
 
     let tmpdir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
@@ -31,16 +31,16 @@ fn main() {
                 let file = file.to_str().unwrap();
                 fs::copy(&file[1..], &ok).unwrap();
             }
-            None => { File::create(&not_ok).unwrap(); }
+            None => {
+                File::create(&not_ok).unwrap();
+            }
         }
-        return
+        return;
     }
 
     let rustc = env::var_os("RUSTC").unwrap_or("rustc".into());
     let me = env::current_exe().unwrap();
-    let bat = me.parent()
-        .unwrap()
-        .join("foo.bat");
+    let bat = me.parent().unwrap().join("foo.bat");
     let bat_linker = format!("linker={}", bat.display());
     for i in (1..).map(|i| i * 10) {
         println!("attempt: {}", i);
@@ -61,8 +61,10 @@ fn main() {
         drop(fs::remove_file(&not_ok));
         let status = Command::new(&rustc)
             .arg(&file)
-            .arg("-C").arg(&bat_linker)
-            .arg("--out-dir").arg(&tmpdir)
+            .arg("-C")
+            .arg(&bat_linker)
+            .arg("--out-dir")
+            .arg(&tmpdir)
             .env("YOU_ARE_A_LINKER", "1")
             .env("MY_LINKER", &me)
             .status()
@@ -74,7 +76,7 @@ fn main() {
 
         if !ok.exists() {
             assert!(not_ok.exists());
-            continue
+            continue;
         }
 
         let mut contents = Vec::new();
@@ -96,6 +98,6 @@ fn main() {
             assert!(contents.windows(exp.len()).any(|w| w == &exp[..]));
         }
 
-        break
+        break;
     }
 }

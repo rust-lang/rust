@@ -865,6 +865,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
         self.handle_term(ct, ty::Const::outer_exclusive_binder, |tcx, guar| {
             ty::Const::new_error(tcx, guar, ct.ty())
         })
+        .super_fold_with(self)
     }
 
     fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {

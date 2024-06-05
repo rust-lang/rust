@@ -4,7 +4,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
 use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Float, Int, Pointer};
 use rustc_target::abi::{Scalar, Size, Variants};

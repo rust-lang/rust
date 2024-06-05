@@ -7,10 +7,12 @@ use std::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime")]
 pub unsafe fn deref_meta(p: *const *const [i32]) -> usize {
-    mir!({
-        RET = PtrMetadata(*p); //~ ERROR: Undefined Behavior: using uninitialized data
-        Return()
-    })
+    mir! {
+        {
+            RET = PtrMetadata(*p); //~ ERROR: Undefined Behavior: using uninitialized data
+            Return()
+        }
+    }
 }
 
 fn main() {

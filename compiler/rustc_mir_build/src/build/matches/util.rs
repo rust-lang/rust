@@ -456,7 +456,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
 }
 
 #[must_use]
-pub fn ref_pat_borrow_kind(ref_mutability: Mutability) -> BorrowKind {
+pub(crate) fn ref_pat_borrow_kind(ref_mutability: Mutability) -> BorrowKind {
     match ref_mutability {
         Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         Mutability::Not => BorrowKind::Shared,

@@ -1,12 +1,17 @@
+use std::ops::ControlFlow;
+
 use crate::FxHashSet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{get_attr, is_lint_allowed};
+use itertools::Itertools;
+use rustc_ast::Mutability;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{GenericArgKind, Ty};
+use rustc_middle::ty::{GenericArgKind, Region, RegionKind, Ty, TyCtxt, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 
 use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
@@ -22,43 +27,34 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, scrutinee, source) {
-        for found in suggestions {
-            span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
-                set_diagnostic(diag, cx, expr, found);
-                let s = Span::new(expr.span.hi(), expr.span.hi(), expr.span.ctxt(), None);
-                diag.span_label(s, "temporary lives until here");
-                for span in has_significant_drop_in_arms(cx, arms) {
-                    diag.span_label(span, "another value with significant `Drop` created here");
-                }
-                diag.note("this might lead to deadlocks or other unexpected behavior");
-            });
-        }
+    let (suggestions, message) = has_significant_drop_in_scrutinee(cx, scrutinee, source);
+    for found in suggestions {
+        span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
+            set_diagnostic(diag, cx, expr, found);
+            let s = Span::new(expr.span.hi(), expr.span.hi(), expr.span.ctxt(), None);
+            diag.span_label(s, "temporary lives until here");
+            for span in has_significant_drop_in_arms(cx, arms) {
+                diag.span_label(span, "another value with significant `Drop` created here");
+            }
+            diag.note("this might lead to deadlocks or other unexpected behavior");
+        });
     }
 }
 
 fn set_diagnostic<'tcx>(diag: &mut Diag<'_, ()>, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
-    if found.lint_suggestion == LintSuggestion::MoveAndClone {
-        // If our suggestion is to move and clone, then we want to leave it to the user to
-        // decide how to address this lint, since it may be that cloning is inappropriate.
-        // Therefore, we won't to emit a suggestion.
-        return;
-    }
-
     let original = snippet(cx, found.found_span, "..");
     let trailing_indent = " ".repeat(indent_of(cx, found.found_span).unwrap_or(0));
 
-    let replacement = if found.lint_suggestion == LintSuggestion::MoveAndDerefToCopy {
-        format!("let value = *{original};\n{trailing_indent}")
-    } else if found.is_unit_return_val {
-        // If the return value of the expression to be moved is unit, then we don't need to
-        // capture the result in a temporary -- we can just replace it completely with `()`.
-        format!("{original};\n{trailing_indent}")
-    } else {
-        format!("let value = {original};\n{trailing_indent}")
+    let replacement = {
+        let (def_part, deref_part) = if found.is_unit_return_val {
+            ("", String::new())
+        } else {
+            ("let value = ", "*".repeat(found.peel_ref_times))
+        };
+        format!("{def_part}{deref_part}{original};\n{trailing_indent}")
     };
 
-    let suggestion_message = if found.lint_suggestion == LintSuggestion::MoveOnly {
+    let suggestion_message = if found.peel_ref_times == 0 {
         "try moving the temporary above the match"
     } else {
         "try moving the temporary above the match and create a copy"
@@ -66,8 +62,11 @@ fn set_diagnostic<'tcx>(diag: &mut Diag<'_, ()>, cx: &LateContext<'tcx>, expr: &
 
     let scrutinee_replacement = if found.is_unit_return_val {
         "()".to_owned()
-    } else {
+    } else if found.peel_ref_times == 0 {
         "value".to_owned()
+    } else {
+        let ref_part = "&".repeat(found.peel_ref_times);
+        format!("({ref_part}value)")
     };
 
     diag.multipart_suggestion(
@@ -86,20 +85,18 @@ fn has_significant_drop_in_scrutinee<'tcx>(
     cx: &LateContext<'tcx>,
     scrutinee: &'tcx Expr<'tcx>,
     source: MatchSource,
-) -> Option<(Vec<FoundSigDrop>, &'static str)> {
+) -> (Vec<FoundSigDrop>, &'static str) {
     let mut helper = SigDropHelper::new(cx);
     let scrutinee = match (source, &scrutinee.kind) {
         (MatchSource::ForLoopDesugar, ExprKind::Call(_, [e])) => e,
         _ => scrutinee,
     };
-    helper.find_sig_drop(scrutinee).map(|drops| {
-        let message = if source == MatchSource::Normal {
-            "temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression"
-        } else {
-            "temporary with significant `Drop` in `for` loop condition will live until the end of the `for` expression"
-        };
-        (drops, message)
-    })
+    let message = if source == MatchSource::Normal {
+        "temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression"
+    } else {
+        "temporary with significant `Drop` in `for` loop condition will live until the end of the `for` expression"
+    };
+    (helper.find_sig_drop(scrutinee), message)
 }
 
 struct SigDropChecker<'a, 'tcx> {
@@ -172,205 +169,248 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+enum SigDropHolder {
+    /// No values with significant drop present in this expression.
+    ///
+    /// Expressions that we've emited lints do not count.
+    None,
+    /// Some field in this expression references to values with significant drop.
+    ///
+    /// Example: `(1, &data.lock().field)`.
+    PackedRef,
+    /// The value of this expression references to values with significant drop.
+    ///
+    /// Example: `data.lock().field`.
+    DirectRef,
+    /// This expression should be moved out to avoid significant drop in scrutinee.
+    Moved,
+}
+
+impl Default for SigDropHolder {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 struct SigDropHelper<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    is_chain_end: bool,
-    has_significant_drop: bool,
-    current_sig_drop: Option<FoundSigDrop>,
-    sig_drop_spans: Option<Vec<FoundSigDrop>>,
-    special_handling_for_binary_op: bool,
+    parent_expr: Option<&'tcx Expr<'tcx>>,
+    sig_drop_holder: SigDropHolder,
+    sig_drop_spans: Vec<FoundSigDrop>,
     sig_drop_checker: SigDropChecker<'a, 'tcx>,
 }
 
-#[expect(clippy::enum_variant_names)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum LintSuggestion {
-    MoveOnly,
-    MoveAndDerefToCopy,
-    MoveAndClone,
-}
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct FoundSigDrop {
     found_span: Span,
     is_unit_return_val: bool,
-    lint_suggestion: LintSuggestion,
+    peel_ref_times: usize,
 }
 
 impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> SigDropHelper<'a, 'tcx> {
         SigDropHelper {
             cx,
-            is_chain_end: true,
-            has_significant_drop: false,
-            current_sig_drop: None,
-            sig_drop_spans: None,
-            special_handling_for_binary_op: false,
+            parent_expr: None,
+            sig_drop_holder: SigDropHolder::None,
+            sig_drop_spans: Vec::new(),
             sig_drop_checker: SigDropChecker::new(cx),
         }
     }
 
-    fn find_sig_drop(&mut self, match_expr: &'tcx Expr<'_>) -> Option<Vec<FoundSigDrop>> {
+    fn find_sig_drop(&mut self, match_expr: &'tcx Expr<'_>) -> Vec<FoundSigDrop> {
         self.visit_expr(match_expr);
 
-        // If sig drop spans is empty but we found a significant drop, it means that we didn't find
-        // a type that was trivially copyable as we moved up the chain after finding a significant
-        // drop, so move the entire scrutinee.
-        if self.has_significant_drop && self.sig_drop_spans.is_none() {
-            self.try_setting_current_suggestion(match_expr, true);
-            self.move_current_suggestion();
-        }
-
-        self.sig_drop_spans.take()
+        core::mem::take(&mut self.sig_drop_spans)
     }
 
-    fn replace_current_sig_drop(
-        &mut self,
-        found_span: Span,
-        is_unit_return_val: bool,
-        lint_suggestion: LintSuggestion,
-    ) {
-        self.current_sig_drop.replace(FoundSigDrop {
+    fn replace_current_sig_drop(&mut self, found_span: Span, is_unit_return_val: bool, peel_ref_times: usize) {
+        self.sig_drop_spans.clear();
+        self.sig_drop_spans.push(FoundSigDrop {
             found_span,
             is_unit_return_val,
-            lint_suggestion,
+            peel_ref_times,
         });
     }
 
-    /// This will try to set the current suggestion (so it can be moved into the suggestions vec
-    /// later). If `allow_move_and_clone` is false, the suggestion *won't* be set -- this gives us
-    /// an opportunity to look for another type in the chain that will be trivially copyable.
-    /// However, if we are at the end of the chain, we want to accept whatever is there. (The
-    /// suggestion won't actually be output, but the diagnostic message will be output, so the user
-    /// can determine the best way to handle the lint.)
-    fn try_setting_current_suggestion(&mut self, expr: &'tcx Expr<'_>, allow_move_and_clone: bool) {
-        if self.current_sig_drop.is_some() {
-            return;
+    fn try_move_sig_drop(&mut self, expr: &'tcx Expr<'_>, parent_expr: &'tcx Expr<'_>) {
+        if self.sig_drop_holder == SigDropHolder::Moved {
+            self.sig_drop_holder = SigDropHolder::None;
         }
-        let ty = self.cx.typeck_results().expr_ty(expr);
-        if ty.is_ref() {
-            // We checked that the type was ref, so builtin_deref will return Some,
-            // but let's avoid any chance of an ICE.
-            if let Some(ty) = ty.builtin_deref(true) {
-                if ty.is_trivially_pure_clone_copy() {
-                    self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndDerefToCopy);
-                } else if allow_move_and_clone {
-                    self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndClone);
-                }
+
+        if self.sig_drop_holder == SigDropHolder::DirectRef {
+            self.sig_drop_holder = SigDropHolder::PackedRef;
+            self.try_move_sig_drop_direct_ref(expr, parent_expr);
+        } else if self.sig_drop_checker.is_sig_drop_expr(expr) {
+            // The values with significant drop can be moved to some other functions. For example, consider
+            // `drop(data.lock())`. We use `SigDropHolder::None` here to avoid emitting lints in such scenarios.
+            self.sig_drop_holder = SigDropHolder::None;
+            self.try_move_sig_drop_direct_ref(expr, parent_expr);
+        }
+
+        if self.sig_drop_holder != SigDropHolder::None {
+            let parent_ty = self.cx.typeck_results().expr_ty(parent_expr);
+            if !ty_has_erased_regions(parent_ty) && !parent_expr.is_syntactic_place_expr() {
+                self.replace_current_sig_drop(parent_expr.span, parent_ty.is_unit(), 0);
+                self.sig_drop_holder = SigDropHolder::Moved;
             }
-        } else if ty.is_trivially_pure_clone_copy() {
-            self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveOnly);
-        } else if allow_move_and_clone {
-            self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndClone);
+
+            let (peel_ref_ty, peel_ref_times) = ty_peel_refs(parent_ty);
+            if !ty_has_erased_regions(peel_ref_ty) && is_copy(self.cx, peel_ref_ty) {
+                self.replace_current_sig_drop(parent_expr.span, peel_ref_ty.is_unit(), peel_ref_times);
+                self.sig_drop_holder = SigDropHolder::Moved;
+            }
         }
     }
 
-    fn move_current_suggestion(&mut self) {
-        if let Some(current) = self.current_sig_drop.take() {
-            self.sig_drop_spans.get_or_insert_with(Vec::new).push(current);
+    fn try_move_sig_drop_direct_ref(&mut self, expr: &'tcx Expr<'_>, parent_expr: &'tcx Expr<'_>) {
+        let arg_idx = match parent_expr.kind {
+            ExprKind::MethodCall(_, receiver, exprs, _) => std::iter::once(receiver)
+                .chain(exprs.iter())
+                .find_position(|ex| ex.hir_id == expr.hir_id)
+                .map(|(idx, _)| idx),
+            ExprKind::Call(_, exprs) => exprs
+                .iter()
+                .find_position(|ex| ex.hir_id == expr.hir_id)
+                .map(|(idx, _)| idx),
+            ExprKind::Binary(_, lhs, rhs) | ExprKind::AssignOp(_, lhs, rhs) => [lhs, rhs]
+                .iter()
+                .find_position(|ex| ex.hir_id == expr.hir_id)
+                .map(|(idx, _)| idx),
+            ExprKind::Unary(_, ex) => (ex.hir_id == expr.hir_id).then_some(0),
+            _ => {
+                // Here we assume that all other expressions create or propagate the reference to the value with
+                // significant drop.
+                self.sig_drop_holder = SigDropHolder::DirectRef;
+                return;
+            },
+        };
+        let Some(arg_idx) = arg_idx else {
+            return;
+        };
+
+        let fn_sig = if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
+            self.cx.tcx.fn_sig(def_id).instantiate_identity()
+        } else {
+            return;
+        };
+
+        let input_re = if let Some(input_ty) = fn_sig.skip_binder().inputs().get(arg_idx)
+            && let rustc_middle::ty::Ref(input_re, _, _) = input_ty.kind()
+        {
+            input_re
+        } else {
+            return;
+        };
+
+        // Late bound lifetime parameters are not related to any constraints, so we can track them in a very
+        // simple manner. For other lifetime parameters, we give up and update the state to `PackedRef`.
+        let RegionKind::ReBound(_, input_re_bound) = input_re.kind() else {
+            self.sig_drop_holder = SigDropHolder::PackedRef;
+            return;
+        };
+        let contains_input_re = |re_bound| {
+            if re_bound == input_re_bound {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        };
+
+        let output_ty = fn_sig.skip_binder().output();
+        if let rustc_middle::ty::Ref(output_re, peel_ref_ty, _) = output_ty.kind()
+            && input_re == output_re
+            && for_each_top_level_late_bound_region(*peel_ref_ty, contains_input_re).is_continue()
+        {
+            // We're lucky! The output type is still a direct reference to the value with significant drop.
+            self.sig_drop_holder = SigDropHolder::DirectRef;
+        } else if for_each_top_level_late_bound_region(output_ty, contains_input_re).is_continue() {
+            // The lifetime to the value with significant drop goes away. So we can emit a lint that suggests to
+            // move the expression out.
+            self.replace_current_sig_drop(parent_expr.span, output_ty.is_unit(), 0);
+            self.sig_drop_holder = SigDropHolder::Moved;
+        } else {
+            // TODO: The lifetime is still there but it's for a inner type. For instance, consider
+            // `Some(&mutex.lock().field)`, which has a type of `Option<&u32>`. How to address this scenario?
+            self.sig_drop_holder = SigDropHolder::PackedRef;
+        }
+    }
+}
+
+fn ty_peel_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
+    let mut n = 0;
+    while let rustc_middle::ty::Ref(_, new_ty, Mutability::Not) = ty.kind() {
+        ty = *new_ty;
+        n += 1;
+    }
+    (ty, n)
+}
+
+fn ty_has_erased_regions(ty: Ty<'_>) -> bool {
+    struct V;
+
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for V {
+        type Result = ControlFlow<()>;
+
+        fn visit_region(&mut self, region: Region<'tcx>) -> Self::Result {
+            if region.is_erased() {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
         }
     }
 
-    fn visit_exprs_for_binary_ops(
-        &mut self,
-        left: &'tcx Expr<'_>,
-        right: &'tcx Expr<'_>,
-        is_unit_return_val: bool,
-        span: Span,
-    ) {
-        self.special_handling_for_binary_op = true;
-        self.visit_expr(left);
-        self.visit_expr(right);
-
-        // If either side had a significant drop, suggest moving the entire scrutinee to avoid
-        // unnecessary copies and to simplify cases where both sides have significant drops.
-        if self.has_significant_drop {
-            self.replace_current_sig_drop(span, is_unit_return_val, LintSuggestion::MoveOnly);
-        }
-
-        self.special_handling_for_binary_op = false;
-    }
+    ty.visit_with(&mut V).is_break()
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
-        if !self.is_chain_end && self.sig_drop_checker.is_sig_drop_expr(ex) {
-            self.has_significant_drop = true;
+        // We've emited a lint on some neighborhood expression. That lint will suggest to move out the
+        // _parent_ expression (not the expression itself). Since we decide to move out the parent
+        // expression, it is pointless to continue to process the current expression.
+        if self.sig_drop_holder == SigDropHolder::Moved {
             return;
         }
-        self.is_chain_end = false;
+
+        // These states are of neighborhood expressions. We save and clear them here, and we'll later merge
+        // the states of the current expression with them at the end of the method.
+        let sig_drop_holder_before = core::mem::take(&mut self.sig_drop_holder);
+        let sig_drop_spans_before = core::mem::take(&mut self.sig_drop_spans);
+        let parent_expr_before = self.parent_expr.replace(ex);
 
         match ex.kind {
-            ExprKind::MethodCall(_, expr, ..) => {
-                self.visit_expr(expr);
-            }
-            ExprKind::Binary(_, left, right) => {
-                self.visit_exprs_for_binary_ops(left, right, false, ex.span);
-            }
-            ExprKind::Assign(left, right, _) | ExprKind::AssignOp(_, left, right) => {
-                self.visit_exprs_for_binary_ops(left, right, true, ex.span);
-            }
-            ExprKind::Tup(exprs) => {
-                for expr in exprs {
-                    self.visit_expr(expr);
-                    if self.has_significant_drop {
-                        // We may have not have set current_sig_drop if all the suggestions were
-                        // MoveAndClone, so add this tuple item's full expression in that case.
-                        if self.current_sig_drop.is_none() {
-                            self.try_setting_current_suggestion(expr, true);
-                        }
+            // Skip blocks because values in blocks will be dropped as usual.
+            ExprKind::Block(..) => (),
+            _ => walk_expr(self, ex),
+        }
 
-                        // Now we are guaranteed to have something, so add it to the final vec.
-                        self.move_current_suggestion();
-                    }
-                    // Reset `has_significant_drop` after each tuple expression so we can look for
-                    // additional cases.
-                    self.has_significant_drop = false;
-                }
-                if self.sig_drop_spans.is_some() {
-                    self.has_significant_drop = true;
-                }
-            }
-            ExprKind::Array(..) |
-            ExprKind::Call(..) |
-            ExprKind::Unary(..) |
-            ExprKind::If(..) |
-            ExprKind::Match(..) |
-            ExprKind::Field(..) |
-            ExprKind::Index(..) |
-            ExprKind::Ret(..) |
-            ExprKind::Become(..) |
-            ExprKind::Repeat(..) |
-            ExprKind::Yield(..) => walk_expr(self, ex),
-            ExprKind::AddrOf(_, _, _) |
-            ExprKind::Block(_, _) |
-            ExprKind::Break(_, _) |
-            ExprKind::Cast(_, _) |
-            // Don't want to check the closure itself, only invocation, which is covered by MethodCall
-            ExprKind::Closure { .. } |
-            ExprKind::ConstBlock(_) |
-            ExprKind::Continue(_) |
-            ExprKind::DropTemps(_) |
-            ExprKind::Err(_) |
-            ExprKind::InlineAsm(_) |
-            ExprKind::OffsetOf(_, _) |
-            ExprKind::Let(_) |
-            ExprKind::Lit(_) |
-            ExprKind::Loop(_, _, _, _) |
-            ExprKind::Path(_) |
-            ExprKind::Struct(_, _, _) |
-            ExprKind::Type(_, _) => {
-                return;
+        if let Some(parent_ex) = parent_expr_before {
+            match parent_ex.kind {
+                ExprKind::Assign(lhs, _, _) | ExprKind::AssignOp(_, lhs, _)
+                    if lhs.hir_id == ex.hir_id && self.sig_drop_holder == SigDropHolder::Moved =>
+                {
+                    // Never move out only the assignee. Instead, we should always move out the whole assigment.
+                    self.replace_current_sig_drop(parent_ex.span, true, 0);
+                },
+                _ => {
+                    self.try_move_sig_drop(ex, parent_ex);
+                },
             }
         }
 
-        // Once a significant temporary has been found, we need to go back up at least 1 level to
-        // find the span to extract for replacement, so the temporary gets dropped. However, for
-        // binary ops, we want to move the whole scrutinee so we avoid unnecessary copies and to
-        // simplify cases where both sides have significant drops.
-        if self.has_significant_drop && !self.special_handling_for_binary_op {
-            self.try_setting_current_suggestion(ex, false);
+        self.sig_drop_holder = std::cmp::max(self.sig_drop_holder, sig_drop_holder_before);
+
+        // We do not need those old spans in neighborhood expressions if we emit a lint that suggests to
+        // move out the _parent_ expression (i.e., `self.sig_drop_holder == SigDropHolder::Moved`).
+        if self.sig_drop_holder != SigDropHolder::Moved {
+            let mut sig_drop_spans = sig_drop_spans_before;
+            sig_drop_spans.append(&mut self.sig_drop_spans);
+            self.sig_drop_spans = sig_drop_spans;
         }
+
+        self.parent_expr = parent_expr_before;
     }
 }
 

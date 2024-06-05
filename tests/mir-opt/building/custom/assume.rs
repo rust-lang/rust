@@ -7,34 +7,34 @@ use core::intrinsics::mir::*;
 // EMIT_MIR assume.assume_local.built.after.mir
 #[custom_mir(dialect = "built")]
 fn assume_local(x: bool) {
-    mir!(
+    mir! {
         {
             Assume(x);
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR assume.assume_place.built.after.mir
 #[custom_mir(dialect = "built")]
 fn assume_place(p: (bool, u8)) {
-    mir!(
+    mir! {
         {
             Assume(p.0);
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR assume.assume_constant.built.after.mir
 #[custom_mir(dialect = "built")]
 fn assume_constant() {
-    mir!(
+    mir! {
         {
             Assume(true);
             Return()
         }
-    )
+    }
 }
 
 fn main() {

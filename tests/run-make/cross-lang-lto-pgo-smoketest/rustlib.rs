@@ -1,4 +1,4 @@
-#![crate_type="staticlib"]
+#![crate_type = "staticlib"]
 
 #[no_mangle]
 pub extern "C" fn rust_always_inlined() -> u32 {

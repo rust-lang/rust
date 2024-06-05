@@ -18,11 +18,11 @@ use rustc_span::Span;
 use tracing::debug;
 
 declare_tool_lint! {
-    /// The `default_hash_type` lint detects use of [`std::collections::HashMap`]/[`std::collections::HashSet`],
-    /// suggesting the use of `FxHashMap`/`FxHashSet`.
+    /// The `default_hash_type` lint detects use of [`std::collections::HashMap`] and
+    /// [`std::collections::HashSet`], suggesting the use of `FxHashMap`/`FxHashSet`.
     ///
-    /// This can help as `FxHasher` can perform better than the default hasher. DOS protection is not
-    /// required as input is assumed to be trusted.
+    /// This can help as `FxHasher` can perform better than the default hasher. DOS protection is
+    /// not required as input is assumed to be trusted.
     pub rustc::DEFAULT_HASH_TYPES,
     Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants",
@@ -35,7 +35,7 @@ impl LateLintPass<'_> for DefaultHashTypes {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, hir_id: HirId) {
         let Res::Def(rustc_hir::def::DefKind::Struct, def_id) = path.res else { return };
         if matches!(cx.tcx.hir_node(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
-            // don't lint imports, only actual usages
+            // Don't lint imports, only actual usages.
             return;
         }
         let preferred = match cx.tcx.get_diagnostic_name(def_id) {
@@ -75,8 +75,8 @@ declare_tool_lint! {
     /// potential query instability, such as iterating over a `HashMap`.
     ///
     /// Due to the [incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html) model,
-    /// queries must return deterministic, stable results. `HashMap` iteration order can change between compilations,
-    /// and will introduce instability if query results expose the order.
+    /// queries must return deterministic, stable results. `HashMap` iteration order can change
+    /// between compilations, and will introduce instability if query results expose the order.
     pub rustc::POTENTIAL_QUERY_INSTABILITY,
     Allow,
     "require explicit opt-in when using potentially unstable methods or functions",

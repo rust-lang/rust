@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
     ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatKind, PathSegment, PrimTy, QPath,
-    TraitItemRef, TyKind, TypeBindingKind,
+    TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -253,7 +253,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
-            for supertrait in rustc_trait_selection::traits::supertrait_def_ids(cx.tcx, traitt) {
+            for supertrait in cx.tcx.supertrait_def_ids(traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }
@@ -307,17 +307,12 @@ fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&
         && let [GenericBound::Trait(trait_ref, _)] = &opaque.bounds
         && let Some(segment) = trait_ref.trait_ref.path.segments.last()
         && let Some(generic_args) = segment.args
-        && generic_args.bindings.len() == 1
-        && let TypeBindingKind::Equality {
-            term:
-                rustc_hir::Term::Ty(rustc_hir::Ty {
-                    kind: TyKind::Path(QPath::Resolved(_, path)),
-                    ..
-                }),
-        } = &generic_args.bindings[0].kind
-        && path.segments.len() == 1
+        && let [constraint] = generic_args.constraints
+        && let Some(ty) = constraint.ty()
+        && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+        && let [segment] = path.segments
     {
-        return Some(&path.segments[0]);
+        return Some(segment);
     }
 
     None

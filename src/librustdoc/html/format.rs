@@ -420,8 +420,8 @@ impl clean::GenericArgs {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             match self {
-                clean::GenericArgs::AngleBracketed { args, bindings } => {
-                    if !args.is_empty() || !bindings.is_empty() {
+                clean::GenericArgs::AngleBracketed { args, constraints } => {
+                    if !args.is_empty() || !constraints.is_empty() {
                         if f.alternate() {
                             f.write_str("<")?;
                         } else {
@@ -439,15 +439,15 @@ impl clean::GenericArgs {
                                 write!(f, "{}", arg.print(cx))?;
                             }
                         }
-                        for binding in bindings.iter() {
+                        for constraint in constraints.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
                             comma = true;
                             if f.alternate() {
-                                write!(f, "{:#}", binding.print(cx))?;
+                                write!(f, "{:#}", constraint.print(cx))?;
                             } else {
-                                write!(f, "{}", binding.print(cx))?;
+                                write!(f, "{}", constraint.print(cx))?;
                             }
                         }
                         if f.alternate() {
@@ -1706,7 +1706,7 @@ impl clean::ImportSource {
     }
 }
 
-impl clean::TypeBinding {
+impl clean::AssocItemConstraint {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
@@ -1715,11 +1715,11 @@ impl clean::TypeBinding {
             f.write_str(self.assoc.name.as_str())?;
             self.assoc.args.print(cx).fmt(f)?;
             match self.kind {
-                clean::TypeBindingKind::Equality { ref term } => {
+                clean::AssocItemConstraintKind::Equality { ref term } => {
                     f.write_str(" = ")?;
                     term.print(cx).fmt(f)?;
                 }
-                clean::TypeBindingKind::Constraint { ref bounds } => {
+                clean::AssocItemConstraintKind::Bound { ref bounds } => {
                     if !bounds.is_empty() {
                         f.write_str(": ")?;
                         print_generic_bounds(bounds, cx).fmt(f)?;

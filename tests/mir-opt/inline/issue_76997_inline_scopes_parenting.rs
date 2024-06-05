@@ -13,6 +13,9 @@ fn main() {
     // CHECK-NEXT: }
     // CHECK-NEXT: }
     // CHECK-NEXT: }
-    let f = |x| { let y = x; y };
+    let f = |x| {
+        let y = x;
+        y
+    };
     f(())
 }

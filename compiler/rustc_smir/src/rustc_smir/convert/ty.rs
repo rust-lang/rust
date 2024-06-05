@@ -3,8 +3,7 @@
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use stable_mir::ty::{
-    AdtKind, Const, ConstantKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy,
-    TyKind, UintTy,
+    AdtKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy, TyKind, UintTy,
 };
 
 use crate::rustc_smir::{alloc, Stable, Tables};
@@ -410,8 +409,50 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
     }
 }
 
+pub fn mir_const_from_ty_const<'tcx>(
+    tables: &mut Tables<'tcx>,
+    ty_const: ty::Const<'tcx>,
+    ty: Ty<'tcx>,
+) -> stable_mir::ty::MirConst {
+    let kind = match ty_const.kind() {
+        ty::Value(val) => {
+            let val = match val {
+                ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
+                ty::ValTree::Branch(branch) => {
+                    ty::ValTree::Branch(tables.tcx.lift(branch).unwrap())
+                }
+            };
+            let ty = tables.tcx.lift(ty).unwrap();
+            let const_val = tables.tcx.valtree_to_const_val((ty, val));
+            if matches!(const_val, mir::ConstValue::ZeroSized) {
+                stable_mir::ty::ConstantKind::ZeroSized
+            } else {
+                stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
+                    ty, const_val, tables,
+                ))
+            }
+        }
+        ty::ParamCt(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
+        ty::ErrorCt(_) => unreachable!(),
+        ty::InferCt(_) => unreachable!(),
+        ty::BoundCt(_, _) => unimplemented!(),
+        ty::PlaceholderCt(_) => unimplemented!(),
+        ty::Unevaluated(uv) => {
+            stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
+                def: tables.const_def(uv.def),
+                args: uv.args.stable(tables),
+                promoted: None,
+            })
+        }
+        ty::ExprCt(_) => unimplemented!(),
+    };
+    let stable_ty = tables.intern_ty(ty);
+    let id = tables.intern_mir_const(mir::Const::Ty(ty_const));
+    stable_mir::ty::MirConst::new(kind, stable_ty, id)
+}
+
 impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
-    type T = stable_mir::ty::Const;
+    type T = stable_mir::ty::TyConst;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         let kind = match self.kind() {
@@ -425,30 +466,27 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 let ty = tables.tcx.lift(self.ty()).unwrap();
                 let const_val = tables.tcx.valtree_to_const_val((ty, val));
                 if matches!(const_val, mir::ConstValue::ZeroSized) {
-                    ConstantKind::ZeroSized
+                    stable_mir::ty::TyConstKind::ZSTValue(ty.stable(tables))
                 } else {
-                    stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
-                        ty, const_val, tables,
-                    ))
+                    stable_mir::ty::TyConstKind::Value(
+                        ty.stable(tables),
+                        alloc::new_allocation(ty, const_val, tables),
+                    )
                 }
             }
-            ty::ParamCt(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
+            ty::ParamCt(param) => stable_mir::ty::TyConstKind::Param(param.stable(tables)),
+            ty::Unevaluated(uv) => stable_mir::ty::TyConstKind::Unevaluated(
+                tables.const_def(uv.def),
+                uv.args.stable(tables),
+            ),
             ty::ErrorCt(_) => unreachable!(),
             ty::InferCt(_) => unreachable!(),
             ty::BoundCt(_, _) => unimplemented!(),
             ty::PlaceholderCt(_) => unimplemented!(),
-            ty::Unevaluated(uv) => {
-                stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
-                    def: tables.const_def(uv.def),
-                    args: uv.args.stable(tables),
-                    promoted: None,
-                })
-            }
             ty::ExprCt(_) => unimplemented!(),
         };
-        let ty = self.ty().stable(tables);
-        let id = tables.intern_const(mir::Const::Ty(tables.tcx.lift(*self).unwrap()));
-        Const::new(kind, ty, id)
+        let id = tables.intern_ty_const(tables.tcx.lift(*self).unwrap());
+        stable_mir::ty::TyConst::new(kind, id)
     }
 }
 

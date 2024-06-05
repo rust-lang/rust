@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::NormalizeExt;
 use super::{ObligationCause, PredicateObligation, SelectionContext};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -162,43 +162,6 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Iterator over def-IDs of supertraits
-///////////////////////////////////////////////////////////////////////////
-
-pub struct SupertraitDefIds<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    stack: Vec<DefId>,
-    visited: FxHashSet<DefId>,
-}
-
-pub fn supertrait_def_ids(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SupertraitDefIds<'_> {
-    SupertraitDefIds {
-        tcx,
-        stack: vec![trait_def_id],
-        visited: Some(trait_def_id).into_iter().collect(),
-    }
-}
-
-impl Iterator for SupertraitDefIds<'_> {
-    type Item = DefId;
-
-    fn next(&mut self) -> Option<DefId> {
-        let def_id = self.stack.pop()?;
-        let predicates = self.tcx.super_predicates_of(def_id);
-        let visited = &mut self.visited;
-        self.stack.extend(
-            predicates
-                .predicates
-                .iter()
-                .filter_map(|(pred, _)| pred.as_trait_clause())
-                .map(|trait_ref| trait_ref.def_id())
-                .filter(|&super_def_id| visited.insert(super_def_id)),
-        );
-        Some(def_id)
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
@@ -295,7 +258,7 @@ pub fn coroutine_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, sig.resume_ty]);
@@ -306,7 +269,7 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty]);
@@ -317,7 +280,7 @@ pub fn iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, iterator_def_id, [self_ty]);
@@ -328,7 +291,7 @@ pub fn async_iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     async_iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, async_iterator_def_id, [self_ty]);

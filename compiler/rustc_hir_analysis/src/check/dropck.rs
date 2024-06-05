@@ -123,7 +123,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     adt_to_impl_args: GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let infcx = tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     // Take the param-env of the adt and instantiate the args that show up in
     // the implementation's self type. This gives us the assumptions that the

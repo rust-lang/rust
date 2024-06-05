@@ -20,7 +20,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
     self, clean_bound_vars, clean_generics, clean_impl_item, clean_middle_assoc_item,
-    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_bindings,
+    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_constraints,
     clean_ty, clean_ty_alias_inner_type, clean_ty_generics, clean_variant_def, utils, Attributes,
     AttributesExt, ImplKind, ItemId, Type,
 };
@@ -566,7 +566,7 @@ pub(crate) fn build_impl(
     };
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait
-        .map(|t| clean_trait_ref_with_bindings(cx, ty::Binder::dummy(t), ThinVec::new()));
+        .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
@@ -688,7 +688,7 @@ fn build_module_items(
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Default::default(),
-                                        bindings: ThinVec::new(),
+                                        constraints: ThinVec::new(),
                                     },
                                 }],
                             },

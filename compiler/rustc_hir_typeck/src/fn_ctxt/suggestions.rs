@@ -22,7 +22,6 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
@@ -36,6 +35,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -848,19 +848,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
                     && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
                         trait_ref.trait_ref.path.segments.last()
-                    && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
-                    && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } =
-                        ty_binding.kind
+                    && let [constraint] = generic_args.constraints
+                    && let Some(ty) = constraint.ty()
                 {
                     // Check if async function's return type was omitted.
                     // Don't emit suggestions if the found type is `impl Future<...>`.
                     debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
-                        if term.span.is_empty() {
+                        if ty.span.is_empty() {
                             err.subdiagnostic(
                                 self.dcx(),
                                 errors::AddReturnTypeSuggestion::Add {
-                                    span: term.span,
+                                    span: ty.span,
                                     found: found.to_string(),
                                 },
                             );
@@ -868,10 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             err.subdiagnostic(
                                 self.dcx(),
-                                errors::ExpectedReturnTypeLabel::Other {
-                                    span: term.span,
-                                    expected,
-                                },
+                                errors::ExpectedReturnTypeLabel::Other { span: ty.span, expected },
                             );
                         }
                     }
@@ -1973,8 +1969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             *expr
         } else {
             let body_def_id = hir.enclosing_body_owner(expr.hir_id);
-            let body_id = hir.body_owned_by(body_def_id);
-            let body = hir.body(body_id);
+            let body = hir.body_owned_by(body_def_id);
 
             // Get tail expr of the body
             match body.value.kind {

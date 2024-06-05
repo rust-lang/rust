@@ -1,5 +1,5 @@
-#![crate_name="interesting"]
-#![crate_type="rlib"]
+#![crate_name = "interesting"]
+#![crate_type = "rlib"]
 
 extern crate opaque;
 
@@ -22,7 +22,6 @@ pub fn function_called_42_times(c: char) {
         // This branch is taken 12 times
         opaque::f1();
     } else {
-
         if c == 'b' {
             // This branch is taken 28 times
             opaque::f2();

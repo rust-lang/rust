@@ -48,7 +48,7 @@ pub(super) struct MCDCDecision {
     pub(super) span: Span,
     pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
     pub(super) bitmap_idx: u32,
-    pub(super) conditions_num: u16,
+    pub(super) num_conditions: u16,
     pub(super) decision_depth: u16,
 }
 
@@ -268,13 +268,13 @@ pub(super) fn extract_mcdc_mappings(
             // the bitmap, rounded up to a whole number of bytes.
             // The decision's "bitmap index" points to its first byte in the bitmap.
             let bitmap_idx = *mcdc_bitmap_bytes;
-            *mcdc_bitmap_bytes += (1_u32 << decision.conditions_num).div_ceil(8);
+            *mcdc_bitmap_bytes += (1_u32 << decision.num_conditions).div_ceil(8);
 
             Some(MCDCDecision {
                 span,
                 end_bcbs,
                 bitmap_idx,
-                conditions_num: decision.conditions_num as u16,
+                num_conditions: decision.num_conditions as u16,
                 decision_depth: decision.decision_depth,
             })
         },

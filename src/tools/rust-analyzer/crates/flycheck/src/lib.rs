@@ -163,6 +163,9 @@ pub enum Message {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic { id: usize, workspace_root: AbsPathBuf, diagnostic: Diagnostic },
 
+    /// Request clearing all previous diagnostics
+    ClearDiagnostics { id: usize },
+
     /// Request check progress notification to client
     Progress {
         /// Flycheck instance ID
@@ -180,6 +183,9 @@ impl fmt::Debug for Message {
                 .field("workspace_root", workspace_root)
                 .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
                 .finish(),
+            Message::ClearDiagnostics { id } => {
+                f.debug_struct("ClearDiagnostics").field("id", id).finish()
+            }
             Message::Progress { id, progress } => {
                 f.debug_struct("Progress").field("id", id).field("progress", progress).finish()
             }
@@ -220,11 +226,20 @@ struct FlycheckActor {
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
+
+    status: FlycheckStatus,
 }
 
 enum Event {
     RequestStateChange(StateChange),
     CheckEvent(Option<CargoCheckMessage>),
+}
+
+#[derive(PartialEq)]
+enum FlycheckStatus {
+    Started,
+    DiagnosticSent,
+    Finished,
 }
 
 const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
@@ -248,6 +263,7 @@ impl FlycheckActor {
             manifest_path,
             command_handle: None,
             command_receiver: None,
+            status: FlycheckStatus::Finished,
         }
     }
 
@@ -298,12 +314,14 @@ impl FlycheckActor {
                             self.command_handle = Some(command_handle);
                             self.command_receiver = Some(receiver);
                             self.report_progress(Progress::DidStart);
+                            self.status = FlycheckStatus::Started;
                         }
                         Err(error) => {
                             self.report_progress(Progress::DidFailToRestart(format!(
                                 "Failed to run the following command: {} error={}",
                                 formatted_command, error
                             )));
+                            self.status = FlycheckStatus::Finished;
                         }
                     }
                 }
@@ -323,7 +341,11 @@ impl FlycheckActor {
                             error
                         );
                     }
+                    if self.status == FlycheckStatus::Started {
+                        self.send(Message::ClearDiagnostics { id: self.id });
+                    }
                     self.report_progress(Progress::DidFinish(res));
+                    self.status = FlycheckStatus::Finished;
                 }
                 Event::CheckEvent(Some(message)) => match message {
                     CargoCheckMessage::CompilerArtifact(msg) => {
@@ -341,11 +363,15 @@ impl FlycheckActor {
                             message = msg.message,
                             "diagnostic received"
                         );
+                        if self.status == FlycheckStatus::Started {
+                            self.send(Message::ClearDiagnostics { id: self.id });
+                        }
                         self.send(Message::AddDiagnostic {
                             id: self.id,
                             workspace_root: self.root.clone(),
                             diagnostic: msg,
                         });
+                        self.status = FlycheckStatus::DiagnosticSent;
                     }
                 },
             }
@@ -362,6 +388,7 @@ impl FlycheckActor {
             );
             command_handle.cancel();
             self.report_progress(Progress::DidCancel);
+            self.status = FlycheckStatus::Finished;
         }
     }
 

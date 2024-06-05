@@ -4,7 +4,7 @@
 // @has "$.index[*][?(@.name=='Ux')].inner.union"
 pub union Ux {
     a: u32,
-    b: u64
+    b: u64,
 }
 
 // @is "$.index[*][?(@.name=='Num')].visibility" \"public\"

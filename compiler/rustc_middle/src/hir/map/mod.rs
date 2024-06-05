@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
@@ -254,13 +256,26 @@ impl<'hir> Map<'hir> {
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        self.tcx.hir_node_by_def_id(id).body_id()
+    pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<Cow<'hir, Body<'hir>>> {
+        Some(match self.tcx.def_kind(id) {
+            // Inline consts do not have bodies of their own, so create one to make the follow-up logic simpler.
+            DefKind::InlineConst => {
+                let e = self.expect_expr(self.tcx.local_def_id_to_hir_id(id));
+                Cow::Owned(Body {
+                    params: &[],
+                    value: match e.kind {
+                        ExprKind::ConstBlock(body) => body,
+                        _ => span_bug!(e.span, "InlineConst was not a ConstBlock: {e:#?}"),
+                    },
+                })
+            }
+            _ => Cow::Borrowed(self.body(self.tcx.hir_node_by_def_id(id).body_id()?)),
+        })
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
     #[track_caller]
-    pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
+    pub fn body_owned_by(self, id: LocalDefId) -> Cow<'hir, Body<'hir>> {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
             let hir_id = self.tcx.local_def_id_to_hir_id(id);
             span_bug!(
@@ -910,7 +925,7 @@ impl<'hir> Map<'hir> {
                     .with_hi(seg.args.map_or_else(|| ident_span.hi(), |args| args.span_ext.hi()))
             }
             Node::Ty(ty) => ty.span,
-            Node::TypeBinding(tb) => tb.span,
+            Node::AssocItemConstraint(constraint) => constraint.span,
             Node::TraitRef(tr) => tr.path.span,
             Node::Pat(pat) => pat.span,
             Node::PatField(field) => field.span,
@@ -1175,7 +1190,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::Stmt(_) => node_str("stmt"),
         Node::PathSegment(_) => node_str("path segment"),
         Node::Ty(_) => node_str("type"),
-        Node::TypeBinding(_) => node_str("type binding"),
+        Node::AssocItemConstraint(_) => node_str("assoc item constraint"),
         Node::TraitRef(_) => node_str("trait ref"),
         Node::Pat(_) => node_str("pat"),
         Node::PatField(_) => node_str("pattern field"),

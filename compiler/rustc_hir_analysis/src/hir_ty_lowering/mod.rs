@@ -22,7 +22,7 @@ mod object_safety;
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
-use crate::hir_ty_lowering::errors::{prohibit_assoc_item_binding, GenericsArgsErrExtend};
+use crate::hir_ty_lowering::errors::{prohibit_assoc_item_constraint, GenericsArgsErrExtend};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
@@ -215,12 +215,11 @@ pub(crate) enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct GenericArgCountMismatch {
-    /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
-    pub reported: Option<ErrorGuaranteed>,
-    /// A list of spans of arguments provided that were not valid.
-    pub invalid_args: Vec<Span>,
+    pub reported: ErrorGuaranteed,
+    /// A list of indices of arguments provided that were not valid.
+    pub invalid_args: Vec<usize>,
 }
 
 /// Decorates the result of a generic argument count mismatch
@@ -240,13 +239,14 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
 
     fn inferred_kind(
         &mut self,
-        args: Option<&[ty::GenericArg<'tcx>]>,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         infer_args: bool,
     ) -> ty::GenericArg<'tcx>;
@@ -324,8 +324,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None,
             ty::BoundConstness::NotConst,
         );
-        if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b, Some((def_id, item_segment, span)));
+        if let Some(c) = item_segment.args().constraints.first() {
+            prohibit_assoc_item_constraint(self.tcx(), c, Some((def_id, item_segment, span)));
         }
         args
     }
@@ -335,7 +335,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// If this is a trait reference, you also need to pass the self type `self_ty`.
     /// The lowering process may involve applying defaulted type parameters.
     ///
-    /// Associated item bindings are not handled here!
+    /// Associated item constraints are not handled here! They are either lowered via
+    /// `lower_assoc_item_constraint` or rejected via `prohibit_assoc_item_constraint`.
     ///
     /// ### Example
     ///
@@ -349,7 +350,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///    which will have been resolved to a `def_id`
     /// 3. The `generic_args` contains info on the `<...>` contents. The `usize` type
     ///    parameters are returned in the `GenericArgsRef`
-    /// 4. Associated type bindings like `Output = u32` are contained in `generic_args.bindings`.
+    /// 4. Associated item constraints like `Output = u32` are contained in `generic_args.constraints`.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
     ///
@@ -403,16 +404,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self_ty.is_some(),
         );
 
-        if let Err(err) = &arg_count.correct
-            && let Some(reported) = err.reported
-        {
-            self.set_tainted_by_errors(reported);
+        if let Err(err) = &arg_count.correct {
+            self.set_tainted_by_errors(err.reported);
         }
 
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
-        // here and so associated type bindings will be handled regardless of whether there are any
-        // non-`Self` generic parameters.
+        // here and so associated item constraints will be handled regardless of whether there are
+        // any non-`Self` generic parameters.
         if generics.is_own_empty() {
             return (tcx.mk_args(parent_args), arg_count);
         }
@@ -424,6 +423,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span: Span,
             inferred_params: Vec<Span>,
             infer_args: bool,
+            incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
 
         impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for GenericArgsCtxt<'a, 'tcx> {
@@ -438,10 +438,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
+
+                if let Err(incorrect) = self.incorrect_args {
+                    if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        return param.to_error(tcx, preceding_args);
+                    }
+                }
 
                 let mut handle_ty_args = |has_default, ty: &hir::Ty<'tcx>| {
                     if has_default {
@@ -505,11 +512,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn inferred_kind(
                 &mut self,
-                args: Option<&[ty::GenericArg<'tcx>]>,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.lowerer.tcx();
+
+                if let Err(incorrect) = self.incorrect_args {
+                    if incorrect.invalid_args.contains(&(param.index as usize)) {
+                        return param.to_error(tcx, preceding_args);
+                    }
+                }
                 match param.kind {
                     GenericParamDefKind::Lifetime => self
                         .lowerer
@@ -528,15 +541,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
-                            let args = args.unwrap();
-                            if args.iter().any(|arg| match arg.unpack() {
-                                GenericArgKind::Type(ty) => ty.references_error(),
-                                _ => false,
-                            }) {
+                            if let Some(prev) =
+                                preceding_args.iter().find_map(|arg| match arg.unpack() {
+                                    GenericArgKind::Type(ty) => ty.error_reported().err(),
+                                    _ => None,
+                                })
+                            {
                                 // Avoid ICE #86756 when type error recovery goes awry.
-                                return Ty::new_misc_error(tcx).into();
+                                return Ty::new_error(tcx, prev).into();
                             }
-                            tcx.at(self.span).type_of(param.def_id).instantiate(tcx, args).into()
+                            tcx.at(self.span)
+                                .type_of(param.def_id)
+                                .instantiate(tcx, preceding_args)
+                                .into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
@@ -556,7 +573,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // FIXME(effects) see if we should special case effect params here
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, args.unwrap())
+                                .instantiate(tcx, preceding_args)
                                 .into()
                         } else {
                             if infer_args {
@@ -570,6 +587,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
+        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
+            && generics.has_self
+            && !tcx.has_attr(def_id, sym::const_trait)
+        {
+            let reported = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+                span,
+                modifier: constness.as_str(),
+            });
+            self.set_tainted_by_errors(reported);
+            arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
+        }
 
         let mut args_ctx = GenericArgsCtxt {
             lowerer: self,
@@ -578,19 +606,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             generic_args: segment.args(),
             inferred_params: vec![],
             infer_args: segment.infer_args,
+            incorrect_args: &arg_count.correct,
         };
-        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self
-            && !tcx.has_attr(def_id, sym::const_trait)
-        {
-            let e = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
-                span,
-                modifier: constness.as_str(),
-            });
-            self.set_tainted_by_errors(e);
-            arg_count.correct =
-                Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
-        }
         let args = lower_generic_args(
             tcx,
             def_id,
@@ -621,8 +638,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None,
             ty::BoundConstness::NotConst,
         );
-        if let Some(b) = item_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b, Some((item_def_id, item_segment, span)));
+        if let Some(c) = item_segment.args().constraints.first() {
+            prohibit_assoc_item_constraint(self.tcx(), c, Some((item_def_id, item_segment, span)));
         }
         args
     }
@@ -654,13 +671,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// *Polymorphic* in the sense that it may bind late-bound vars.
     ///
-    /// This may generate auxiliary bounds if the trait reference contains associated item bindings.
+    /// This may generate auxiliary bounds iff the trait reference contains associated item constraints.
     ///
     /// ### Example
     ///
     /// Given the trait ref `Iterator<Item = u32>` and the self type `Ty`, this will add the
     ///
-    /// 1. *trait predicate* `<Ty as Iterator>` (known as `Foo: Iterator` in surface syntax) and the
+    /// 1. *trait predicate* `<Ty as Iterator>` (known as `Ty: Iterator` in the surface syntax) and the
     /// 2. *projection predicate* `<Ty as Iterator>::Item = u32`
     ///
     /// to `bounds`.
@@ -714,27 +731,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?poly_trait_ref);
         bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
-        let mut dup_bindings = FxIndexMap::default();
-        for binding in trait_segment.args().bindings {
-            // Don't register additional associated type bounds for negative bounds,
-            // since we should have emitten an error for them earlier, and they will
-            // not be well-formed!
+        let mut dup_constraints = FxIndexMap::default();
+        for constraint in trait_segment.args().constraints {
+            // Don't register any associated item constraints for negative bounds,
+            // since we should have emitted an error for them earlier, and they
+            // would not be well-formed!
             if polarity != ty::PredicatePolarity::Positive {
                 assert!(
                     self.tcx().dcx().has_errors().is_some(),
-                    "negative trait bounds should not have bindings",
+                    "negative trait bounds should not have assoc item constraints",
                 );
                 continue;
             }
 
             // Specify type to assert that error was already reported in `Err` case.
-            let _: Result<_, ErrorGuaranteed> = self.lower_assoc_item_binding(
+            let _: Result<_, ErrorGuaranteed> = self.lower_assoc_item_constraint(
                 trait_ref.hir_ref_id,
                 poly_trait_ref,
-                binding,
+                constraint,
                 bounds,
-                &mut dup_bindings,
-                binding.span,
+                &mut dup_constraints,
+                constraint.span,
                 only_self_bounds,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
@@ -766,8 +783,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
             constness,
         );
-        if let Some(b) = trait_segment.args().bindings.first() {
-            prohibit_assoc_item_binding(self.tcx(), b, Some((trait_def_id, trait_segment, span)));
+        if let Some(c) = trait_segment.args().constraints.first() {
+            prohibit_assoc_item_constraint(
+                self.tcx(),
+                c,
+                Some((trait_def_id, trait_segment, span)),
+            );
         }
         ty::TraitRef::new(self.tcx(), trait_def_id, generic_args)
     }
@@ -849,7 +870,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// This fails if there is no such bound in the list of candidates or if there are multiple
     /// candidates in which case it reports ambiguity.
-    #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, binding), ret)]
+    #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, constraint), ret)]
     fn probe_single_bound_for_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
@@ -858,7 +879,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_kind: ty::AssocKind,
         assoc_name: Ident,
         span: Span,
-        binding: Option<&hir::TypeBinding<'tcx>>,
+        constraint: Option<&hir::AssocItemConstraint<'tcx>>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -877,7 +898,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_kind,
                 assoc_name,
                 span,
-                binding,
+                constraint,
             );
             self.set_tainted_by_errors(reported);
             return Err(reported);
@@ -897,8 +918,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             });
             // Provide a more specific error code index entry for equality bindings.
             err.code(
-                if let Some(binding) = binding
-                    && let hir::TypeBindingKind::Equality { .. } = binding.kind
+                if let Some(constraint) = constraint
+                    && let hir::AssocItemConstraintKind::Equality { .. } = constraint.kind
                 {
                     E0222
                 } else {
@@ -906,7 +927,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 },
             );
 
-            // FIXME(#97583): Resugar equality bounds to type/const bindings.
+            // FIXME(#97583): Print associated item bindings properly (i.e., not as equality predicates!).
             // FIXME: Turn this into a structured, translateable & more actionable suggestion.
             let mut where_bounds = vec![];
             for bound in [bound, bound2].into_iter().chain(matching_candidates) {
@@ -921,9 +942,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         bound_span,
                         format!("ambiguous `{assoc_name}` from `{}`", bound.print_trait_sugared(),),
                     );
-                    if let Some(binding) = binding {
-                        match binding.kind {
-                            hir::TypeBindingKind::Equality { term } => {
+                    if let Some(constraint) = constraint {
+                        match constraint.kind {
+                            hir::AssocItemConstraintKind::Equality { term } => {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
@@ -937,7 +958,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 ));
                             }
                             // FIXME: Provide a suggestion.
-                            hir::TypeBindingKind::Constraint { bounds: _ } => {}
+                            hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
                         }
                     } else {
                         err.span_suggestion_verbose(
@@ -1293,7 +1314,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .copied()
             .filter(|&(impl_, _)| {
                 infcx.probe(|_| {
-                    let ocx = ObligationCtxt::new(infcx);
+                    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
                     let self_ty = ocx.normalize(&ObligationCause::dummy(), param_env, self_ty);
 
                     let impl_args = infcx.fresh_args_for_item(span, impl_);
@@ -1540,8 +1561,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
-            if let Some(b) = segment.args().bindings.first() {
-                return Err(prohibit_assoc_item_binding(self.tcx(), b, None));
+            if let Some(c) = segment.args().constraints.first() {
+                return Err(prohibit_assoc_item_constraint(self.tcx(), c, None));
             }
         }
 

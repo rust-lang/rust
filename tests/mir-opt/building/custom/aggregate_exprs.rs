@@ -7,18 +7,18 @@ use core::intrinsics::mir::*;
 // EMIT_MIR aggregate_exprs.tuple.built.after.mir
 #[custom_mir(dialect = "built")]
 fn tuple() -> (i32, bool) {
-    mir!(
+    mir! {
         {
             RET = (1, true);
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR aggregate_exprs.array.built.after.mir
 #[custom_mir(dialect = "built")]
 fn array() -> [i32; 2] {
-    mir!(
+    mir! {
         let x: [i32; 2];
         let one: i32;
         {
@@ -28,7 +28,7 @@ fn array() -> [i32; 2] {
             RET = Move(x);
             Return()
         }
-    )
+    }
 }
 
 struct Foo {
@@ -48,7 +48,7 @@ union Onion {
 // EMIT_MIR aggregate_exprs.adt.built.after.mir
 #[custom_mir(dialect = "built")]
 fn adt() -> Onion {
-    mir!(
+    mir! {
         let one: i32;
         let x: Foo;
         let y: Bar;
@@ -62,7 +62,7 @@ fn adt() -> Onion {
             RET = Onion { neon: Field(Variant(y, 0), 1) };
             Return()
         }
-    )
+    }
 }
 
 fn main() {

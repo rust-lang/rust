@@ -13,10 +13,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::HirId;
 use rustc_hir::Node;
+use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use tracing::instrument;
 
 pub(crate) fn thir_body(
@@ -24,22 +24,7 @@ pub(crate) fn thir_body(
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
-    let body;
-    let body = match tcx.def_kind(owner_def) {
-        // Inline consts do not have bodies of their own, so create one to make the follow-up logic simpler.
-        DefKind::InlineConst => {
-            let e = hir.expect_expr(tcx.local_def_id_to_hir_id(owner_def));
-            body = hir::Body {
-                params: &[],
-                value: match e.kind {
-                    hir::ExprKind::ConstBlock(body) => body,
-                    _ => span_bug!(e.span, "InlineConst was not a ConstBlock: {e:#?}"),
-                },
-            };
-            &body
-        }
-        _ => hir.body(hir.body_owned_by(owner_def)),
-    };
+    let body = hir.body_owned_by(owner_def);
     let mut cx = Cx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
@@ -49,7 +34,7 @@ pub(crate) fn thir_body(
     let owner_id = tcx.local_def_id_to_hir_id(owner_def);
     if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
-        let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
+        let explicit_params = cx.explicit_params(owner_id, fn_decl, &body);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
 
         // The resume argument may be missing, in that case we need to provide it here.

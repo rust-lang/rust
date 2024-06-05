@@ -16,7 +16,9 @@ impl Trait for Struct {
     const AssociatedConst: i32 = 12;
 
     #[doc(alias = "ImplTraitFunction")]
-    fn function() -> Self::Target { 0 }
+    fn function() -> Self::Target {
+        0
+    }
 }
 
 #[doc(alias = "EnumItem")]
@@ -71,5 +73,5 @@ impl Union {
 #[doc(alias = "MacroItem")]
 #[macro_export]
 macro_rules! Macro {
-    () => {}
+    () => {};
 }

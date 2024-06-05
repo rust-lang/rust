@@ -1560,7 +1560,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         let destructor_def_id = tcx.associated_item_def_ids(trait_def_id)[0];
         assert_eq!(destructor_def_id, item_def_id);
 
-        (self_ty.async_destructor_ty(tcx, obligation.param_env).into(), Vec::new())
+        (self_ty.async_destructor_ty(tcx).into(), Vec::new())
     } else if lang_items.pointee_trait() == Some(trait_def_id) {
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, item_def_id);

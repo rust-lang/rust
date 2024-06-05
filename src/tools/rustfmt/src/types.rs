@@ -140,7 +140,7 @@ pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
-    Binding(&'a ast::AssocConstraint),
+    Binding(&'a ast::AssocItemConstraint),
 }
 
 impl<'a> SegmentParam<'a> {
@@ -175,9 +175,9 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
-impl Rewrite for ast::AssocConstraint {
+impl Rewrite for ast::AssocItemConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        use ast::AssocConstraintKind::{Bound, Equality};
+        use ast::AssocItemConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
@@ -205,14 +205,14 @@ impl Rewrite for ast::AssocConstraint {
     }
 }
 
-impl Rewrite for ast::AssocConstraintKind {
+impl Rewrite for ast::AssocItemConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::AssocConstraintKind::Equality { term } => match term {
+            ast::AssocItemConstraintKind::Equality { term } => match term {
                 Term::Ty(ty) => ty.rewrite(context, shape),
                 Term::Const(c) => c.rewrite(context, shape),
             },
-            ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
+            ast::AssocItemConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
 }

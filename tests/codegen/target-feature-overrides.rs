@@ -9,7 +9,6 @@
 #![crate_type = "lib"]
 #![no_core]
 
-
 #[lang = "sized"]
 trait Sized {}
 #[lang = "copy"]
@@ -23,19 +22,19 @@ extern "C" {
 #[target_feature(enable = "avx")]
 #[no_mangle]
 pub unsafe fn apple() -> u32 {
-// CHECK-LABEL: @apple()
-// CHECK-SAME: [[APPLEATTRS:#[0-9]+]] {
-// CHECK: {{.*}}call{{.*}}@peach
+    // CHECK-LABEL: @apple()
+    // CHECK-SAME: [[APPLEATTRS:#[0-9]+]] {
+    // CHECK: {{.*}}call{{.*}}@peach
     peach()
 }
 
 // target features same as global
 #[no_mangle]
 pub unsafe fn banana() -> u32 {
-// CHECK-LABEL: @banana()
-// CHECK-SAME: [[BANANAATTRS:#[0-9]+]] {
-// COMPAT: {{.*}}call{{.*}}@peach
-// INCOMPAT: {{.*}}call{{.*}}@apple
+    // CHECK-LABEL: @banana()
+    // CHECK-SAME: [[BANANAATTRS:#[0-9]+]] {
+    // COMPAT: {{.*}}call{{.*}}@peach
+    // INCOMPAT: {{.*}}call{{.*}}@apple
     apple() // Compatible for inline in COMPAT revision and can't be inlined in INCOMPAT
 }
 

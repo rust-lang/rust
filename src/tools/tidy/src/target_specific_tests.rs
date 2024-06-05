@@ -90,6 +90,9 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             if let Some(llvm_components) = llvm_components {
                 for component in llvm_components {
+                    // Ensure the given component even exists.
+                    // This is somewhat redundant with COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS,
+                    // but helps detect such problems earlier (PR CI rather than bors CI).
                     if !KNOWN_LLVM_COMPONENTS.contains(component) {
                         eprintln!(
                             "{}: revision {} specifies unknown LLVM component `{}`",

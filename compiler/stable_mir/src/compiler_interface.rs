@@ -11,10 +11,10 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::MachineInfo;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, ForeignDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
-    ImplDef, ImplTrait, IntrinsicDef, LineInfo, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, Ty,
-    TyKind, UintTy, VariantDef,
+    ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl,
+    TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
 };
 use crate::{
     mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
@@ -109,19 +109,21 @@ pub trait Context {
     fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef>;
 
     /// Evaluate constant as a target usize.
-    fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error>;
+    fn eval_target_usize(&self, cnst: &MirConst) -> Result<u64, Error>;
+    fn eval_target_usize_ty(&self, cnst: &TyConst) -> Result<u64, Error>;
 
     /// Create a new zero-sized constant.
-    fn try_new_const_zst(&self, ty: Ty) -> Result<Const, Error>;
+    fn try_new_const_zst(&self, ty: Ty) -> Result<MirConst, Error>;
 
     /// Create a new constant that represents the given string value.
-    fn new_const_str(&self, value: &str) -> Const;
+    fn new_const_str(&self, value: &str) -> MirConst;
 
     /// Create a new constant that represents the given boolean value.
-    fn new_const_bool(&self, value: bool) -> Const;
+    fn new_const_bool(&self, value: bool) -> MirConst;
 
     /// Create a new constant that represents the given value.
-    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<Const, Error>;
+    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<MirConst, Error>;
+    fn try_new_ty_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<TyConst, Error>;
 
     /// Create a new type from the given kind.
     fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
@@ -136,10 +138,12 @@ pub trait Context {
     fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty;
 
     /// Returns literal value of a const as a string.
-    fn const_pretty(&self, cnst: &Const) -> String;
+    fn mir_const_pretty(&self, cnst: &MirConst) -> String;
 
     /// `Span` of an item
     fn span_of_an_item(&self, def_id: DefId) -> Span;
+
+    fn ty_const_pretty(&self, ct: TyConstId) -> String;
 
     /// Obtain the representation of a type.
     fn ty_pretty(&self, ty: Ty) -> String;

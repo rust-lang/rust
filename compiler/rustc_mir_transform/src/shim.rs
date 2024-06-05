@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
@@ -634,7 +634,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         dest: Place<'tcx>,
         src: Place<'tcx>,
         coroutine_def_id: DefId,
-        args: CoroutineArgs<'tcx>,
+        args: CoroutineArgs<TyCtxt<'tcx>>,
     ) {
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
         let unwind = self.block(vec![], TerminatorKind::UnwindResume, true);

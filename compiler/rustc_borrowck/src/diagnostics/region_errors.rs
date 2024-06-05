@@ -1183,8 +1183,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diag<'_>) {
         let map = self.infcx.tcx.hir();
-        let body_id = map.body_owned_by(self.mir_def_id());
-        let expr = &map.body(body_id).value.peel_blocks();
+        let body = map.body_owned_by(self.mir_def_id());
+        let expr = &body.value.peel_blocks();
         let mut closure_span = None::<rustc_span::Span>;
         match expr.kind {
             hir::ExprKind::MethodCall(.., args, _) => {

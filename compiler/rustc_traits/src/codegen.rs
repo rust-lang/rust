@@ -4,13 +4,13 @@
 // general routines.
 
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::FulfillmentErrorCode;
 use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext, Unimplemented,
+    ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
+    Unimplemented,
 };
 use tracing::debug;
 
@@ -50,6 +50,7 @@ pub fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
+    // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
     let ocx = ObligationCtxt::new(&infcx);
     let impl_source = selection.map(|obligation| {
         ocx.register_obligation(obligation);
@@ -64,7 +65,7 @@ pub fn codegen_select_candidate<'tcx>(
         // Cycle errors are the only post-monomorphization errors possible; emit them now so
         // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
         for err in errors {
-            if let FulfillmentErrorCode::Cycle(cycle) = err.code {
+            if let ScrubbedTraitError::Cycle(cycle) = err {
                 infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
             }
         }

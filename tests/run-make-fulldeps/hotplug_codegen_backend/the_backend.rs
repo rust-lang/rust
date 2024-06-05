@@ -27,7 +27,9 @@ use std::any::Any;
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
-    fn locale_resource(&self) -> &'static str { "" }
+    fn locale_resource(&self) -> &'static str {
+        ""
+    }
 
     fn codegen_crate<'a, 'tcx>(
         &self,
@@ -62,7 +64,10 @@ impl CodegenBackend for TheBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        use rustc_session::{config::{CrateType, OutFileName}, output::out_filename};
+        use rustc_session::{
+            config::{CrateType, OutFileName},
+            output::out_filename,
+        };
         use std::io::Write;
         let crate_name = codegen_results.crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {

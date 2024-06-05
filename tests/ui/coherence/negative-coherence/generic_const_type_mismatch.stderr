@@ -1,3 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `[(); _]`
+  --> $DIR/generic_const_type_mismatch.rs:9:1
+   |
+LL | impl<const N: u8> Trait for [(); N] {}
+   | ----------------------------------- first implementation here
+LL |
+LL | impl<const N: i8> Trait for [(); N] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); _]`
+
 error[E0308]: mismatched types
   --> $DIR/generic_const_type_mismatch.rs:7:34
    |
@@ -10,6 +19,7 @@ error[E0308]: mismatched types
 LL | impl<const N: i8> Trait for [(); N] {}
    |                                  ^ expected `usize`, found `i8`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0119, E0308.
+For more information about an error, try `rustc --explain E0119`.

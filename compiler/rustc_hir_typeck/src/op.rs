@@ -928,7 +928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (obligation, _) =
                     self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
                 // FIXME: This should potentially just add the obligation to the `FnCtxt`
-                let ocx = ObligationCtxt::new(&self.infcx);
+                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
                 ocx.register_obligation(obligation);
                 Err(ocx.select_all_or_error())
             }

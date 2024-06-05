@@ -804,10 +804,6 @@ impl GlobalState {
     fn handle_flycheck_msg(&mut self, message: flycheck::Message) {
         match message {
             flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
-                if !self.diagnostics_received {
-                    self.diagnostics.clear_check(id);
-                    self.diagnostics_received = true;
-                }
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(),
@@ -833,12 +829,11 @@ impl GlobalState {
                 }
             }
 
+            flycheck::Message::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
+
             flycheck::Message::Progress { id, progress } => {
                 let (state, message) = match progress {
-                    flycheck::Progress::DidStart => {
-                        self.diagnostics_received = false;
-                        (Progress::Begin, None)
-                    }
+                    flycheck::Progress::DidStart => (Progress::Begin, None),
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
@@ -852,9 +847,6 @@ impl GlobalState {
                     flycheck::Progress::DidFinish(result) => {
                         self.last_flycheck_error =
                             result.err().map(|err| format!("cargo check failed to start: {err}"));
-                        if !self.diagnostics_received {
-                            self.diagnostics.clear_check(id);
-                        }
                         (Progress::End, None)
                     }
                 };

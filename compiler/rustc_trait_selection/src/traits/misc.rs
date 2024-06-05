@@ -1,13 +1,13 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::regions::InferCtxtRegionExt;
-use crate::traits::{self, ObligationCause};
+use crate::traits::{self, FulfillmentError, ObligationCause};
 
 use hir::LangItem;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
 
 use super::outlives_bounds::InferCtxtExt;
@@ -137,7 +137,7 @@ pub fn all_fields_implement_trait<'tcx>(
         for field in &variant.fields {
             // Do this per-field to get better error messages.
             let infcx = tcx.infer_ctxt().build();
-            let ocx = traits::ObligationCtxt::new(&infcx);
+            let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
             let unnormalized_ty = field.ty(tcx, args);
             if unnormalized_ty.references_error() {

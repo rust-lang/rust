@@ -21,14 +21,10 @@ trait Copy {}
 
 pub unsafe fn we_escape_dollar_signs() {
     // CHECK: call void asm sideeffect alignstack inteldialect "banana$$:"
-    asm!(
-        r"banana$:",
-    )
+    asm!(r"banana$:",)
 }
 
 pub unsafe fn we_escape_escapes_too() {
     // CHECK: call void asm sideeffect alignstack inteldialect "banana\{{(\\|5C)}}36:"
-    asm!(
-        r"banana\36:",
-    )
+    asm!(r"banana\36:",)
 }

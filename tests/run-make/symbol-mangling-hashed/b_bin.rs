@@ -1,5 +1,5 @@
-extern crate a_rlib;
 extern crate a_dylib;
+extern crate a_rlib;
 extern crate b_dylib;
 
 fn main() {

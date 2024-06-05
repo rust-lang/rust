@@ -6,5 +6,5 @@ fn main() {
     assert_eq!(
         Command::new("hopefullydoesntexist").arg("bar").spawn().unwrap_err().kind(),
         ErrorKind::NotFound
-    )
+    );
 }

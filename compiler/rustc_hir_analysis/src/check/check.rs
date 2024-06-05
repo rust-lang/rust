@@ -342,7 +342,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let param_env = tcx.param_env(defining_use_anchor);
 
     let infcx = tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).build();
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match *origin {
         hir::OpaqueTyOrigin::FnReturn(parent)
@@ -1727,7 +1727,7 @@ pub(super) fn check_coroutine_obligations(
         .with_opaque_type_inference(def_id)
         .build();
 
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, *predicate));
     }

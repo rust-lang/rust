@@ -6,8 +6,6 @@
 //@[avr] only-avr
 //@[msp] only-msp430
 
-
-fn main() {
-}
+fn main() {}
 
 // CHECK: define i16 @main(i16, i8**)

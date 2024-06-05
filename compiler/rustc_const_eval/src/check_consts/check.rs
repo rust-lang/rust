@@ -735,7 +735,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // which path expressions are getting called on and which path expressions are only used
                 // as function pointers. This is required for correctness.
                 let infcx = tcx.infer_ctxt().build();
-                let ocx = ObligationCtxt::new(&infcx);
+                let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
                 let predicates = tcx.predicates_of(callee).instantiate(tcx, fn_args);
                 let cause = ObligationCause::new(

@@ -489,7 +489,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 .in_definition_order()
                 .filter(|item| item.kind == AssocKind::Type)
                 .filter(|item| {
-                    !self.gen_args.bindings.iter().any(|binding| binding.ident.name == item.name)
+                    !self
+                        .gen_args
+                        .constraints
+                        .iter()
+                        .any(|constraint| constraint.ident.name == item.name)
                 })
                 .map(|item| item.name.to_ident_string())
                 .collect()
@@ -679,11 +683,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     (last_lt.span().shrink_to_hi(), false)
                 };
                 let has_non_lt_args = self.num_provided_type_or_const_args() != 0;
-                let has_bindings = !self.gen_args.bindings.is_empty();
+                let has_constraints = !self.gen_args.constraints.is_empty();
 
                 let sugg_prefix = if is_first { "" } else { ", " };
                 let sugg_suffix =
-                    if is_first && (has_non_lt_args || has_bindings) { ", " } else { "" };
+                    if is_first && (has_non_lt_args || has_constraints) { ", " } else { "" };
 
                 let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);
@@ -741,7 +745,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
                 let sugg_prefix = if is_first { "" } else { ", " };
                 let sugg_suffix =
-                    if is_first && !self.gen_args.bindings.is_empty() { ", " } else { "" };
+                    if is_first && !self.gen_args.constraints.is_empty() { ", " } else { "" };
 
                 let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);

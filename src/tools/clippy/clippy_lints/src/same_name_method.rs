@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// It lints if a struct has two methods with the same name:
     /// one from a trait, another not from trait.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Confusing.
     ///
     /// ### Example

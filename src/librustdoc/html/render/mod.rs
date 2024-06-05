@@ -506,7 +506,6 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
-            custom_code_classes_in_docs: false,
         }
         .into_string()
     )
@@ -540,7 +539,6 @@ fn render_markdown<'a, 'cx: 'a>(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |f| {
-        let custom_code_classes_in_docs = cx.tcx().features().custom_code_classes_in_docs;
         write!(
             f,
             "<div class=\"docblock\">{}</div>",
@@ -552,7 +550,6 @@ fn render_markdown<'a, 'cx: 'a>(
                 edition: cx.shared.edition(),
                 playground: &cx.shared.playground,
                 heading_offset,
-                custom_code_classes_in_docs,
             }
             .into_string()
         )
@@ -1885,7 +1882,6 @@ fn render_impl(
                      </div>",
                 );
             }
-            let custom_code_classes_in_docs = cx.tcx().features().custom_code_classes_in_docs;
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
@@ -1897,7 +1893,6 @@ fn render_impl(
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
                     heading_offset: HeadingOffset::H4,
-                    custom_code_classes_in_docs,
                 }
                 .into_string()
             );

@@ -7,13 +7,17 @@ pub fn pinky(input: &usize, manage: usize) {
 pub struct Thumb;
 
 impl Thumb {
-    pub fn up(&self, finger: Thumb) { unimplemented!() }
+    pub fn up(&self, finger: Thumb) {
+        unimplemented!()
+    }
 }
 
 pub enum Index {}
 
 impl Index {
-    pub fn point(self, data: &Index) { unimplemented!() }
+    pub fn point(self, data: &Index) {
+        unimplemented!()
+    }
 }
 
 pub union Ring {
@@ -22,11 +26,15 @@ pub union Ring {
 }
 
 impl Ring {
-    pub fn wear(&mut self, extra: &Ring) { unimplemented!() }
+    pub fn wear(&mut self, extra: &Ring) {
+        unimplemented!()
+    }
 }
 
 extern "C" {
     pub type Middle;
 }
 
-pub fn show(left: &&mut Middle, right: &mut &Middle) { unimplemented!() }
+pub fn show(left: &&mut Middle, right: &mut &Middle) {
+    unimplemented!()
+}

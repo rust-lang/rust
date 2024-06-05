@@ -1045,7 +1045,7 @@ impl<'a> PrintState<'a> for State<'a> {
                 self.word("<");
                 self.commasep(Inconsistent, &data.args, |s, arg| match arg {
                     ast::AngleBracketedArg::Arg(a) => s.print_generic_arg(a),
-                    ast::AngleBracketedArg::Constraint(c) => s.print_assoc_constraint(c),
+                    ast::AngleBracketedArg::Constraint(c) => s.print_assoc_item_constraint(c),
                 });
                 self.word(">")
             }
@@ -1097,21 +1097,21 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocConstraint) {
+    pub fn print_assoc_item_constraint(&mut self, constraint: &ast::AssocItemConstraint) {
         self.print_ident(constraint.ident);
         if let Some(args) = constraint.gen_args.as_ref() {
             self.print_generic_args(args, false)
         }
         self.space();
         match &constraint.kind {
-            ast::AssocConstraintKind::Equality { term } => {
+            ast::AssocItemConstraintKind::Equality { term } => {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
                     Term::Const(c) => self.print_expr_anon_const(c, &[]),
                 }
             }
-            ast::AssocConstraintKind::Bound { bounds } => {
+            ast::AssocItemConstraintKind::Bound { bounds } => {
                 if !bounds.is_empty() {
                     self.word_nbsp(":");
                     self.print_type_bounds(bounds);
