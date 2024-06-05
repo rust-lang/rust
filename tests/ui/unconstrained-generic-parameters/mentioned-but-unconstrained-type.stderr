@@ -1,0 +1,46 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-type.rs:11:6
+   |
+LL | impl<T> Foo1 for u32 where T: Clone {}
+   |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the implemented trait, in the self type, or in an equality with an associated type
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-type.rs:14:6
+   |
+LL | impl<T, U> Foo1 for String where T: Iterator<Item = U> {}
+   |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the implemented trait, in the self type, or in an equality with an associated type
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-type.rs:14:9
+   |
+LL | impl<T, U> Foo1 for String where T: Iterator<Item = U> {}
+   |         ^ unconstrained type parameter
+   |
+   = note: to constrain `U`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: `U` is bound to an associated type, but the reference to the associated type itself uses unconstrained generic parameters
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-type.rs:18:9
+   |
+LL | impl<T, U> Foo2 for T where T: Foo2<Bar = U> { type Bar = U; }
+   |         ^ unconstrained type parameter
+   |
+   = note: to constrain `U`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: `U` is bound to an associated type, but the associated type is circularly defined in this impl
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-type.rs:21:9
+   |
+LL | impl<T, U> Foo3 for T where T: Foo3<Bar = Option<U>> { type Bar = Option<U>; }
+   |         ^ unconstrained type parameter
+   |
+   = note: to constrain `U`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: `U` is bound to an associated type, but the associated type is circularly defined in this impl
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

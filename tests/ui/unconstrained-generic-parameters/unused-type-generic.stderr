@@ -1,0 +1,19 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unused-type-generic.rs:3:6
+   |
+LL | impl<T> Foo {}
+   |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the self type, or in an equality with an associated type
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unused-type-generic.rs:6:6
+   |
+LL | impl<T> Default for Foo {
+   |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the implemented trait, in the self type, or in an equality with an associated type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

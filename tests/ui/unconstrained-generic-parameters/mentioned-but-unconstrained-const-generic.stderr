@@ -1,0 +1,43 @@
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-const-generic.rs:7:6
+   |
+LL | impl<const N: usize> Foo1 for u32 where [u32; N]: Clone {}
+   |      ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: to constrain `N`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-const-generic.rs:10:6
+   |
+LL | impl<T, const N: usize> Foo1 for String where T: Iterator<Item = [u32; N]> {}
+   |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the implemented trait, in the self type, or in an equality with an associated type
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-const-generic.rs:10:9
+   |
+LL | impl<T, const N: usize> Foo1 for String where T: Iterator<Item = [u32; N]> {}
+   |         ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: to constrain `N`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: `N` is bound to an associated type, but the reference to the associated type itself uses unconstrained generic parameters
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/mentioned-but-unconstrained-const-generic.rs:14:9
+   |
+LL | impl<T, const N: usize> Foo2 for T where T: Foo2<Bar = [u32; N]> { type Bar = [u32; N]; }
+   |         ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: to constrain `N`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: `N` is bound to an associated type, but the associated type is circularly defined in this impl
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0207`.
