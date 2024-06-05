@@ -1226,6 +1226,25 @@ impl PathBuf {
         self
     }
 
+    /// Consumes and leaks the `PathBuf`, returning a mutable reference to the contents,
+    /// `&'a mut Path`.
+    ///
+    /// The caller has free choice over the returned lifetime, including 'static.
+    /// Indeed, this function is ideally used for data that lives for the remainder of
+    /// the program’s life, as dropping the returned reference will cause a memory leak.
+    ///
+    /// It does not reallocate or shrink the `PathBuf`, so the leaked allocation may include
+    /// unused capacity that is not part of the returned slice. If you want to discard excess
+    /// capacity, call [`into_boxed_path`], and then [`Box::leak`] instead.
+    /// However, keep in mind that trimming the capacity may result in a reallocation and copy.
+    ///
+    /// [`into_boxed_path`]: Self::into_boxed_path
+    #[unstable(feature = "os_string_pathbuf_leak", issue = "125965")]
+    #[inline]
+    pub fn leak<'a>(self) -> &'a mut Path {
+        Path::from_inner_mut(self.inner.leak())
+    }
+
     /// Extends `self` with `path`.
     ///
     /// If `path` is absolute, it replaces the current path.
