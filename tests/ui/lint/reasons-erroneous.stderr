@@ -17,10 +17,10 @@ LL | #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides thei
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
 
 error[E0452]: malformed lint attribute input
-  --> $DIR/reasons-erroneous.rs:12:23
+  --> $DIR/reasons-erroneous.rs:12:22
    |
-LL | #![warn(box_pointers, blerp = "or in league with robbers have reversed the signposts")]
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
+LL | #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
 
 error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:15:36

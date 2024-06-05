@@ -49,7 +49,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "bindings_with_variant_name",
         description: r##"detects pattern bindings with the same name as one of the matched variants"##,
     },
-    Lint { label: "box_pointers", description: r##"use of owned (Box type) heap memory"## },
     Lint {
         label: "break_with_label_and_loop",
         description: r##"`break` expression with label and unlabeled loop as value expression"##,

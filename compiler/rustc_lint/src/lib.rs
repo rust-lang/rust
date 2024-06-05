@@ -187,7 +187,6 @@ late_lint_methods!(
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
-            BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
             InvalidReferenceCasting: InvalidReferenceCasting,
@@ -550,6 +549,10 @@ fn register_builtins(store: &mut LintStore) {
         "pointer_structural_match",
         "converted into hard error, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "box_pointers",
+        "it does not detect other kinds of allocations, and existed only for historical reasons",
     );
 }
 
