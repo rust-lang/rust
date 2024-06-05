@@ -2634,13 +2634,13 @@ fn schema(fields: &[SchemaField]) -> serde_json::Value {
         .iter()
         .map(|(field, ty, doc, default)| {
             let name = field.replace('_', ".");
-            let catagory = name.find('.').map(|end| {
+            let category = name.find('.').map(|end| {
                 String::from(&name[..end])
             }).unwrap_or("general".into());
             let name = format!("rust-analyzer.{name}");
             let props = field_props(field, ty, doc, default);
             serde_json::json!({
-                "title": catagory,
+                "title": category,
                 "properties": {
                     name: props
                 }
