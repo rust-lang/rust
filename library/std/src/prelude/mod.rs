@@ -36,6 +36,10 @@
 //!   operations for both destructors and overloading `()`.
 //! * <code>[std::mem]::[drop]</code>, a convenience function for explicitly
 //!   dropping a value.
+//! * <code>[std::mem]::{[size_of], [size_of_val]}</code>, to get the size of
+//!   a type or value.
+//! * <code>[std::mem]::{[align_of], [align_of_val]}</code>, to get the
+//!   alignment of a type or value.
 //! * <code>[std::boxed]::[Box]</code>, a way to allocate values on the heap.
 //! * <code>[std::borrow]::[ToOwned]</code>, the conversion trait that defines
 //!   [`to_owned`], the generic method for creating an owned type from a

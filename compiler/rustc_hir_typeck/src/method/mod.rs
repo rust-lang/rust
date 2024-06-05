@@ -7,7 +7,6 @@ mod prelude_edition_lints;
 pub mod probe;
 mod suggest;
 
-pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
 use crate::FnCtxt;

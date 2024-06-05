@@ -415,7 +415,7 @@ use crate::intrinsics;
 use crate::marker::FnPtr;
 use crate::ub_checks;
 
-use crate::mem::{self, align_of, size_of, MaybeUninit};
+use crate::mem::{self, MaybeUninit};
 
 mod alignment;
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]

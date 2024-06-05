@@ -1,6 +1,6 @@
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
-use crate::method::{self, MethodCallee, SelfSource};
+use crate::method::{self, MethodCallee};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 use rustc_data_structures::fx::FxHashSet;
@@ -735,7 +735,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx QPath<'tcx>,
         hir_id: HirId,
         span: Span,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
@@ -828,14 +827,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if item_name.name != kw::Empty {
                     if let Some(e) = self.report_method_error(
-                        span,
-                        None,
-                        ty.normalized,
-                        item_name,
                         hir_id,
-                        SelfSource::QPath(qself),
+                        ty.normalized,
                         error,
-                        args,
                         Expectation::NoExpectation,
                         trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
                     ) {

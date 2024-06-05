@@ -69,6 +69,12 @@ impl Rustc {
         self
     }
 
+    /// Add a suffix in each output filename.
+    pub fn extra_filename(&mut self, suffix: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cextra-filename={suffix}"));
+        self
+    }
+
     /// Specify type(s) of output files to generate.
     pub fn emit(&mut self, kinds: &str) -> &mut Self {
         self.cmd.arg(format!("--emit={kinds}"));

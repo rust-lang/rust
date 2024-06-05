@@ -216,6 +216,7 @@ impl Span {
 
     // Returns either syntactic context, if it can be retrieved without taking the interner lock,
     // or an index into the interner if it cannot.
+    #[inline]
     fn inline_ctxt(self) -> Result<SyntaxContext, usize> {
         Ok(if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
             if self.len_with_tag_or_marker & PARENT_TAG == 0 {

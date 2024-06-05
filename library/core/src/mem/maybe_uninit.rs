@@ -120,12 +120,8 @@ use crate::slice;
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let data = {
-///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-///     // safe because the type we are claiming to have initialized here is a
-///     // bunch of `MaybeUninit`s, which do not require initialization.
-///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = unsafe {
-///         MaybeUninit::uninit().assume_init()
-///     };
+///     // Create an uninitialized array of `MaybeUninit`.
+///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = [const { MaybeUninit::uninit() }; 1000];
 ///
 ///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
 ///     // we have a memory leak, but there is no memory safety issue.
@@ -147,10 +143,8 @@ use crate::slice;
 /// ```
 /// use std::mem::MaybeUninit;
 ///
-/// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-/// // safe because the type we are claiming to have initialized here is a
-/// // bunch of `MaybeUninit`s, which do not require initialization.
-/// let mut data: [MaybeUninit<String>; 1000] = unsafe { MaybeUninit::uninit().assume_init() };
+/// // Create an uninitialized array of `MaybeUninit`.
+/// let mut data: [MaybeUninit<String>; 1000] = [const { MaybeUninit::uninit() }; 1000];
 /// // Count the number of elements we have assigned.
 /// let mut data_len: usize = 0;
 ///
@@ -348,8 +342,7 @@ impl<T> MaybeUninit<T> {
     #[must_use]
     #[inline(always)]
     pub const fn uninit_array<const N: usize>() -> [Self; N] {
-        // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
-        unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
+        [const { MaybeUninit::uninit() }; N]
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being

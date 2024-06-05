@@ -70,7 +70,6 @@ run-make/inaccessible-temp-dir/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
-run-make/incr-prev-body-beyond-eof/Makefile
 run-make/incremental-debugger-visualizer/Makefile
 run-make/incremental-session-fail/Makefile
 run-make/inline-always-many-cgu/Makefile
@@ -202,7 +201,6 @@ run-make/remap-path-prefix-dwarf/Makefile
 run-make/remap-path-prefix/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
-run-make/resolve-rename/Makefile
 run-make/return-non-c-like-enum-from-c/Makefile
 run-make/return-non-c-like-enum/Makefile
 run-make/rlib-chain/Makefile
@@ -232,7 +230,6 @@ run-make/static-pie/Makefile
 run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile
-run-make/suspicious-library/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
 run-make/symbols-include-type-name/Makefile

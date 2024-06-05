@@ -3,6 +3,12 @@ pub static F: fn() = f;
 pub static G: fn() = G0;
 pub static H: &(dyn Fn() + Sync) = &h;
 pub static I: fn() = Helper(j).mk();
+pub static K: fn() -> fn() = {
+    #[inline(never)]
+    fn k() {}
+    #[inline(always)]
+    || -> fn() { k }
+};
 
 static X: u32 = 42;
 static G0: fn() = g;
