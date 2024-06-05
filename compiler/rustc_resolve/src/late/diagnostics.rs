@@ -829,7 +829,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         auto-traits; structs and enums can't be bound in that way",
                 );
                 if bounds.iter().all(|bound| match bound {
-                    ast::GenericBound::Outlives(_) => true,
+                    ast::GenericBound::Outlives(_) | ast::GenericBound::Use(..) => true,
                     ast::GenericBound::Trait(tr, _) => tr.span == base_error.span,
                 }) {
                     let mut sugg = vec![];
@@ -3210,7 +3210,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 .inputs
                                 .iter()
                                 .filter_map(|param| match &param.ty.kind {
-                                    TyKind::ImplTrait(_, bounds, _) => Some(bounds),
+                                    TyKind::ImplTrait(_, bounds) => Some(bounds),
                                     _ => None,
                                 })
                                 .flat_map(|bounds| bounds.into_iter())

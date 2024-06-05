@@ -13,6 +13,6 @@ impl Trait<'_> for () {
     type Item = Vec<()>;
 }
 
-fn hello() -> impl for<'a> Trait<'a, Item = impl use<> IntoIterator> {}
+fn hello() -> impl for<'a> Trait<'a, Item = impl IntoIterator + use<>> {}
 
 fn main() {}

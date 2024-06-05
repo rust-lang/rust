@@ -10,36 +10,36 @@ LL | #![feature(precise_capturing)]
 warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
   --> $DIR/redundant.rs:7:19
    |
-LL | fn hello<'a>() -> impl use<'a> Sized {}
-   |                   ^^^^^-------^^^^^^
-   |                        |
-   |                        help: remove the `use<...>` syntax
+LL | fn hello<'a>() -> impl Sized + use<'a> {}
+   |                   ^^^^^^^^^^^^^-------
+   |                                |
+   |                                help: remove the `use<...>` syntax
    |
    = note: `#[warn(impl_trait_redundant_captures)]` on by default
 
 warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
   --> $DIR/redundant.rs:12:27
    |
-LL |     fn inherent(&self) -> impl use<'_> Sized {}
-   |                           ^^^^^-------^^^^^^
-   |                                |
-   |                                help: remove the `use<...>` syntax
+LL |     fn inherent(&self) -> impl Sized + use<'_> {}
+   |                           ^^^^^^^^^^^^^-------
+   |                                        |
+   |                                        help: remove the `use<...>` syntax
 
 warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
   --> $DIR/redundant.rs:17:22
    |
-LL |     fn in_trait() -> impl use<'a, Self> Sized;
-   |                      ^^^^^-------------^^^^^^
-   |                           |
-   |                           help: remove the `use<...>` syntax
+LL |     fn in_trait() -> impl Sized + use<'a, Self>;
+   |                      ^^^^^^^^^^^^^-------------
+   |                                   |
+   |                                   help: remove the `use<...>` syntax
 
 warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
   --> $DIR/redundant.rs:21:22
    |
-LL |     fn in_trait() -> impl use<'a> Sized {}
-   |                      ^^^^^-------^^^^^^
-   |                           |
-   |                           help: remove the `use<...>` syntax
+LL |     fn in_trait() -> impl Sized + use<'a> {}
+   |                      ^^^^^^^^^^^^^-------
+   |                                   |
+   |                                   help: remove the `use<...>` syntax
 
 warning: 5 warnings emitted
 

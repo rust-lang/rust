@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
                             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
                         }
                         (TyKind::TraitObject(bounds, _), kw::Impl) => {
-                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, None)
+                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
                         }
                         _ => return Err(err),
                     };
@@ -670,24 +670,12 @@ impl<'a> Parser<'a> {
             })
         }
 
-        // parse precise captures, if any. This is `use<'lt, 'lt, P, P>`; a list of
-        // lifetimes and ident params (including SelfUpper). These are validated later
-        // for order, duplication, and whether they actually reference params.
-        let precise_capturing = if self.eat_keyword(kw::Use) {
-            let use_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::precise_capturing, use_span);
-            let (args, args_span) = self.parse_precise_capturing_args()?;
-            Some(P((args, use_span.to(args_span))))
-        } else {
-            None
-        };
-
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
 
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
 
-        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds, precise_capturing))
+        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
 
     fn parse_precise_capturing_args(
@@ -834,6 +822,7 @@ impl<'a> Parser<'a> {
             || self.check(&token::OpenDelim(Delimiter::Parenthesis))
             || self.check_keyword(kw::Const)
             || self.check_keyword(kw::Async)
+            || self.check_keyword(kw::Use)
     }
 
     /// Parses a bound according to the grammar:
@@ -850,6 +839,14 @@ impl<'a> Parser<'a> {
         let bound = if self.token.is_lifetime() {
             self.error_lt_bound_with_modifiers(modifiers);
             self.parse_generic_lt_bound(lo, inner_lo, has_parens)?
+        } else if self.eat_keyword(kw::Use) {
+            // parse precise captures, if any. This is `use<'lt, 'lt, P, P>`; a list of
+            // lifetimes and ident params (including SelfUpper). These are validated later
+            // for order, duplication, and whether they actually reference params.
+            let use_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::precise_capturing, use_span);
+            let (args, args_span) = self.parse_precise_capturing_args()?;
+            GenericBound::Use(args, use_span.to(args_span))
         } else {
             self.parse_generic_ty_bound(lo, has_parens, modifiers, &leading_token)?
         };
@@ -1009,7 +1006,7 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         )
                     }
-                    TyKind::ImplTrait(_, bounds, None)
+                    TyKind::ImplTrait(_, bounds)
                         if let [GenericBound::Trait(tr, ..), ..] = bounds.as_slice() =>
                     {
                         (

@@ -10,8 +10,8 @@ LL | #![feature(precise_capturing)]
 error: `impl Trait` must mention all type parameters in scope in `use<...>`
   --> $DIR/forgot-to-capture-type.rs:4:23
    |
-LL | fn type_param<T>() -> impl use<> Sized {}
-   |               -       ^^^^^^^^^^^^^^^^
+LL | fn type_param<T>() -> impl Sized + use<> {}
+   |               -       ^^^^^^^^^^^^^^^^^^
    |               |
    |               type parameter is implicitly captured by this `impl Trait`
    |
@@ -22,8 +22,8 @@ error: `impl Trait` must mention the `Self` type of the trait in `use<...>`
    |
 LL | trait Foo {
    | --------- `Self` type parameter is implicitly captured by this `impl Trait`
-LL |     fn bar() -> impl use<> Sized;
-   |                 ^^^^^^^^^^^^^^^^
+LL |     fn bar() -> impl Sized + use<>;
+   |                 ^^^^^^^^^^^^^^^^^^
    |
    = note: currently, all type parameters are required to be mentioned in the precise captures list
 

@@ -10,8 +10,8 @@ LL | #![feature(precise_capturing)]
 error: `impl Trait` must mention all const parameters in scope in `use<...>`
   --> $DIR/forgot-to-capture-const.rs:4:34
    |
-LL | fn constant<const C: usize>() -> impl use<> Sized {}
-   |             --------------       ^^^^^^^^^^^^^^^^
+LL | fn constant<const C: usize>() -> impl Sized + use<> {}
+   |             --------------       ^^^^^^^^^^^^^^^^^^
    |             |
    |             const parameter is implicitly captured by this `impl Trait`
    |
