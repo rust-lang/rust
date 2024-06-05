@@ -1487,12 +1487,6 @@ impl Step for RunMake {
     }
 }
 
-host_test!(RunMakeFullDeps {
-    path: "tests/run-make-fulldeps",
-    mode: "run-make",
-    suite: "run-make-fulldeps"
-});
-
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
 /// Coverage tests are a bit more complicated than other test suites, because
