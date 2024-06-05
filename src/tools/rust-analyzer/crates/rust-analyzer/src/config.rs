@@ -718,9 +718,15 @@ impl Config {
         let mut should_update = false;
 
         if let Some(change) = change.user_config_change {
-            if let Ok(change) = toml::from_str(&change) {
+            if let Ok(table) = toml::from_str(&change) {
+                validate_toml_table(
+                    GlobalLocalConfigInput::FIELDS,
+                    &table,
+                    &mut String::new(),
+                    &mut toml_errors,
+                );
                 config.user_config =
-                    Some(GlobalLocalConfigInput::from_toml(change, &mut toml_errors));
+                    Some(GlobalLocalConfigInput::from_toml(table, &mut toml_errors));
                 should_update = true;
             }
         }
@@ -748,21 +754,39 @@ impl Config {
         }
 
         if let Some(change) = change.root_ratoml_change {
-            if let Ok(change) = toml::from_str(&change) {
-                config.root_ratoml =
-                    Some(GlobalLocalConfigInput::from_toml(change, &mut toml_errors));
-                should_update = true;
+            match toml::from_str(&change) {
+                Ok(table) => {
+                    validate_toml_table(
+                        GlobalLocalConfigInput::FIELDS,
+                        &table,
+                        &mut String::new(),
+                        &mut toml_errors,
+                    );
+                    config.root_ratoml =
+                        Some(GlobalLocalConfigInput::from_toml(table, &mut toml_errors));
+                    should_update = true;
+                }
+                Err(e) => toml_errors.push(("invalid toml file".to_owned(), e)),
             }
         }
 
         if let Some(change) = change.ratoml_file_change {
             for (source_root_id, (_, text)) in change {
                 if let Some(text) = text {
-                    if let Ok(change) = toml::from_str(&text) {
-                        config.ratoml_files.insert(
-                            source_root_id,
-                            LocalConfigInput::from_toml(&change, &mut toml_errors),
-                        );
+                    match toml::from_str(&text) {
+                        Ok(table) => {
+                            validate_toml_table(
+                                &[LocalConfigInput::FIELDS],
+                                &table,
+                                &mut String::new(),
+                                &mut toml_errors,
+                            );
+                            config.ratoml_files.insert(
+                                source_root_id,
+                                LocalConfigInput::from_toml(&table, &mut toml_errors),
+                            );
+                        }
+                        Err(e) => toml_errors.push(("invalid toml file".to_owned(), e)),
                     }
                 }
             }
@@ -792,7 +816,7 @@ impl Config {
                 scope,
             ) {
                 Some(snippet) => config.snippets.push(snippet),
-                None => error_sink.0.push(ConfigErrorInner::JsonError(
+                None => error_sink.0.push(ConfigErrorInner::Json(
                     format!("snippet {name} is invalid"),
                     <serde_json::Error as serde::de::Error>::custom(
                         "snippet path is invalid or triggers are missing",
@@ -801,8 +825,11 @@ impl Config {
             }
         }
 
+        error_sink.0.extend(json_errors.into_iter().map(|(a, b)| ConfigErrorInner::Json(a, b)));
+        error_sink.0.extend(toml_errors.into_iter().map(|(a, b)| ConfigErrorInner::Toml(a, b)));
+
         if config.check_command().is_empty() {
-            error_sink.0.push(ConfigErrorInner::JsonError(
+            error_sink.0.push(ConfigErrorInner::Json(
                 "/check/command".to_owned(),
                 serde_json::Error::custom("expected a non-empty string"),
             ));
@@ -836,14 +863,9 @@ impl ConfigChange {
         vfs_path: VfsPath,
         content: Option<String>,
     ) -> Option<(VfsPath, Option<String>)> {
-        if let Some(changes) = self.ratoml_file_change.as_mut() {
-            changes.insert(source_root, (vfs_path, content))
-        } else {
-            let mut map = FxHashMap::default();
-            map.insert(source_root, (vfs_path, content));
-            self.ratoml_file_change = Some(map);
-            None
-        }
+        self.ratoml_file_change
+            .get_or_insert_with(Default::default)
+            .insert(source_root, (vfs_path, content))
     }
 
     pub fn change_user_config(&mut self, content: Option<String>) {
@@ -1058,7 +1080,7 @@ pub struct ClientCommandsConfig {
 
 #[derive(Debug)]
 pub enum ConfigErrorInner {
-    JsonError(String, serde_json::Error),
+    Json(String, serde_json::Error),
     Toml(String, toml::de::Error),
 }
 
@@ -1074,7 +1096,7 @@ impl ConfigError {
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let errors = self.0.iter().format_with("\n", |inner, f| match inner {
-            ConfigErrorInner::JsonError(key, e) => {
+            ConfigErrorInner::Json(key, e) => {
                 f(key)?;
                 f(&": ")?;
                 f(e)
@@ -2607,6 +2629,8 @@ macro_rules! _config_data {
 
         #[allow(unused, clippy::ptr_arg)]
         impl $input {
+            const FIELDS: &'static [&'static str] = &[$(stringify!($field)),*];
+
             fn from_json(json: &mut serde_json::Value, error_sink: &mut Vec<(String, serde_json::Error)>) -> Self {
                 Self {$(
                     $field: get_field(
@@ -2645,8 +2669,7 @@ macro_rules! _config_data {
         mod $modname {
             #[test]
             fn fields_are_sorted() {
-                let field_names: &'static [&'static str] = &[$(stringify!($field)),*];
-                field_names.windows(2).for_each(|w| assert!(w[0] <= w[1], "{} <= {} does not hold", w[0], w[1]));
+                super::$input::FIELDS.windows(2).for_each(|w| assert!(w[0] <= w[1], "{} <= {} does not hold", w[0], w[1]));
             }
         }
     };
@@ -2711,6 +2734,8 @@ struct GlobalLocalConfigInput {
 }
 
 impl GlobalLocalConfigInput {
+    const FIELDS: &'static [&'static [&'static str]] =
+        &[GlobalConfigInput::FIELDS, LocalConfigInput::FIELDS];
     fn from_toml(
         toml: toml::Table,
         error_sink: &mut Vec<(String, toml::de::Error)>,
@@ -3148,6 +3173,35 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
     map.into()
 }
 
+fn validate_toml_table(
+    known_ptrs: &[&[&'static str]],
+    toml: &toml::Table,
+    ptr: &mut String,
+    error_sink: &mut Vec<(String, toml::de::Error)>,
+) {
+    let verify = |ptr: &String| known_ptrs.iter().any(|ptrs| ptrs.contains(&ptr.as_str()));
+
+    let l = ptr.len();
+    for (k, v) in toml {
+        if !ptr.is_empty() {
+            ptr.push('_');
+        }
+        ptr.push_str(k);
+
+        match v {
+            // This is a table config, any entry in it is therefor valid
+            toml::Value::Table(_) if verify(ptr) => (),
+            toml::Value::Table(table) => validate_toml_table(known_ptrs, table, ptr, error_sink),
+            _ if !verify(ptr) => {
+                error_sink.push((ptr.clone(), toml::de::Error::custom("unexpected field")))
+            }
+            _ => (),
+        }
+
+        ptr.truncate(l);
+    }
+}
+
 #[cfg(test)]
 fn manual(fields: &[SchemaField]) -> String {
     fields.iter().fold(String::new(), |mut acc, (field, _ty, doc, default)| {
@@ -3386,5 +3440,61 @@ mod tests {
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
         );
+    }
+
+    #[test]
+    fn toml_unknown_key() {
+        let config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            None,
+            None,
+        );
+
+        let mut change = ConfigChange::default();
+
+        change.change_root_ratoml(Some(
+            toml::toml! {
+                [cargo.cfgs]
+                these = "these"
+                should = "should"
+                be = "be"
+                valid = "valid"
+
+                [invalid.config]
+                err = "error"
+
+                [cargo]
+                target = "ok"
+
+                // FIXME: This should be an error
+                [cargo.sysroot]
+                non-table = "expected"
+            }
+            .to_string(),
+        ));
+
+        let (_, e, _) = config.apply_change(change);
+        expect_test::expect![[r#"
+            ConfigError(
+                [
+                    Toml(
+                        "invalid_config_err",
+                        Error {
+                            inner: Error {
+                                inner: TomlError {
+                                    message: "unexpected field",
+                                    raw: None,
+                                    keys: [],
+                                    span: None,
+                                },
+                            },
+                        },
+                    ),
+                ],
+            )
+        "#]]
+        .assert_debug_eq(&e);
     }
 }
