@@ -476,18 +476,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => match ct.kind {
-                        hir::ConstArgKind::Path(qpath) => {
-                            // FIXME(min_generic_const_exprs): for now only params are lowered to ConstArgKind::Path
-                            ty::Const::from_param(tcx, qpath, ct.hir_id).into()
-                        }
-                        hir::ConstArgKind::Anon(anon) => {
-                            let did = anon.def_id;
-                            tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
-                            ty::Const::from_anon_const(tcx, did).into()
-                        }
-                    },
-                    (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
+                        ty::Const::from_const_arg(tcx, ct, param.def_id).into()
+                    }
+                    (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => span_bug!(
@@ -914,12 +906,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut where_bounds = vec![];
             for bound in [bound, bound2].into_iter().chain(matching_candidates) {
                 let bound_id = bound.def_id();
-                let bound_span = tcx
+                let assoc_item = tcx
                     .associated_items(bound_id)
-                    .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id)
-                    .and_then(|item| tcx.hir().span_if_local(item.def_id));
+                    .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id);
+                let bound_span = assoc_item.and_then(|item| tcx.hir().span_if_local(item.def_id));
 
-                if let Some(bound_span) = bound_span {
+                if let Some(assoc_item) = assoc_item
+                    && let Some(bound_span) = bound_span
+                {
                     err.span_label(
                         bound_span,
                         format!("ambiguous `{assoc_name}` from `{}`", bound.print_trait_sugared(),),
@@ -930,7 +924,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        ty::Const::from_anon_const(tcx, ct.def_id).into()
+                                        ty::Const::from_const_arg(tcx, ct, assoc_item.def_id).into()
                                     }
                                 };
                                 // FIXME(#97583): This isn't syntactically well-formed!

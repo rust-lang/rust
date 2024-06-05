@@ -268,7 +268,7 @@ impl InferArg {
 pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
-    Const(ConstArg<'hir>),
+    Const(&'hir ConstArg<'hir>),
     Infer(InferArg),
 }
 
@@ -2451,7 +2451,7 @@ impl<'hir> AssocItemConstraint<'hir> {
     }
 
     /// Obtain the const on the RHS of an assoc const equality constraint if applicable.
-    pub fn ct(self) -> Option<&'hir AnonConst> {
+    pub fn ct(self) -> Option<&'hir ConstArg<'hir>> {
         match self.kind {
             AssocItemConstraintKind::Equality { term: Term::Const(ct) } => Some(ct),
             _ => None,
@@ -2462,7 +2462,7 @@ impl<'hir> AssocItemConstraint<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum Term<'hir> {
     Ty(&'hir Ty<'hir>),
-    Const(&'hir AnonConst),
+    Const(&'hir ConstArg<'hir>),
 }
 
 impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
@@ -2471,8 +2471,8 @@ impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
     }
 }
 
-impl<'hir> From<&'hir AnonConst> for Term<'hir> {
-    fn from(c: &'hir AnonConst) -> Self {
+impl<'hir> From<&'hir ConstArg<'hir>> for Term<'hir> {
+    fn from(c: &'hir ConstArg<'hir>) -> Self {
         Term::Const(c)
     }
 }
@@ -3978,7 +3978,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 40);
+    static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);

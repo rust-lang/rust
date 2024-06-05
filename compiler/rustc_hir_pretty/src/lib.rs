@@ -1728,7 +1728,7 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
-                    Term::Const(ref c) => self.print_anon_const(c),
+                    Term::Const(ref c) => self.print_const_arg(c),
                 }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => {

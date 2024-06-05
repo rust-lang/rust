@@ -4,7 +4,7 @@ use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisita
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::HashStable;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
@@ -183,6 +183,39 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
+    /// Convert a [`hir::ConstArg`] to a [`ty::Const`](Self).
+    ///
+    /// `param_def_id` is the [`DefId`] of the declared param that this [`ConstArg`] is being
+    /// supplied to. We need this in case this `ConstArg` is a [`ConstArgKind::Anon`]
+    /// so we can tell the [`AnonConst`] what type it should be.
+    pub fn from_const_arg(
+        tcx: TyCtxt<'tcx>,
+        const_arg: &'tcx hir::ConstArg<'tcx>,
+        param_def_id: DefId,
+    ) -> Self {
+        if let hir::ConstArgKind::Anon(anon) = &const_arg.kind {
+            tcx.feed_anon_const_type(anon.def_id, tcx.type_of(param_def_id));
+        }
+        Self::from_const_arg_without_feeding(tcx, const_arg)
+    }
+
+    /// Convert a [`hir::ConstArg`] to a [`ty::Const`](Self), without feeding it its expected type.
+    ///
+    /// This distinction is only relevant for [`hir::ConstArgKind::Anon`];
+    /// see [`Self::from_const_arg_without_feeding`].
+    pub fn from_const_arg_without_feeding(
+        tcx: TyCtxt<'tcx>,
+        const_arg: &'tcx hir::ConstArg<'tcx>,
+    ) -> Self {
+        match const_arg.kind {
+            hir::ConstArgKind::Path(qpath) => {
+                // FIXME(min_generic_const_exprs): for now only params are lowered to ConstArgKind::Path
+                Self::from_param(tcx, qpath, const_arg.hir_id)
+            }
+            hir::ConstArgKind::Anon(anon) => Self::from_anon_const(tcx, anon.def_id),
+        }
+    }
+
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug")]
@@ -216,7 +249,7 @@ impl<'tcx> Const<'tcx> {
     /// Lower a const param to a [`Const`].
     ///
     /// IMPORTANT: `qpath` must be a const param, otherwise this will panic
-    pub fn from_param(tcx: TyCtxt<'tcx>, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Self {
+    fn from_param(tcx: TyCtxt<'tcx>, qpath: hir::QPath<'tcx>, hir_id: HirId) -> Self {
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
         // does not provide the parents generics to anonymous constants. We still allow generic const
         // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
@@ -278,6 +311,21 @@ impl<'tcx> Const<'tcx> {
                 }
             }
         }
+
+        // FIXME: this shouldn't panic, it's just temporary code
+        match expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
+            )) => {
+                span_bug!(
+                    expr.span,
+                    "try_from_lit: received const param which shouldn't be possible"
+                )
+            }
+            _ => {}
+        }
+
         None
     }
 

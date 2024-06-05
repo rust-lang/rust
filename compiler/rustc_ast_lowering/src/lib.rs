@@ -1049,7 +1049,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     Term::Ty(ty) => self.lower_ty(ty, itctx).into(),
-                    Term::Const(c) => self.lower_anon_const(c).into(),
+                    Term::Const(c) => self.lower_anon_const_as_const_arg(c).into(),
                 };
                 hir::AssocItemConstraintKind::Equality { term }
             }
@@ -1163,11 +1163,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                                     None,
                                 );
-                                return GenericArg::Const(ConstArg {
+                                let const_arg = ConstArg {
                                     hir_id: self.next_id(),
                                     kind: ConstArgKind::Path(qpath),
                                     is_desugared_from_effects: false,
-                                });
+                                };
+                                return GenericArg::Const(self.arena.alloc(const_arg));
                             }
                         }
                     }
@@ -1179,7 +1180,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_anon_const_as_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
+    fn lower_anon_const_as_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {
+        self.arena.alloc(self.lower_anon_const_as_const_arg_direct(anon))
+    }
+
+    fn lower_anon_const_as_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
         if let ExprKind::Path(qself, path) = &anon.value.kind
             && let Some(res) = self
                 .resolver

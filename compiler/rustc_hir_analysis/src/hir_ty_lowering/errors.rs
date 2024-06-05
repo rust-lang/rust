@@ -340,7 +340,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let span = match term {
                 hir::Term::Ty(ty) => ty.span,
-                hir::Term::Const(ct) => tcx.def_span(ct.def_id),
+                hir::Term::Const(ct) => ct.span(),
             };
             (span, Some(ident.span), assoc_item.kind, assoc_kind)
         } else {
