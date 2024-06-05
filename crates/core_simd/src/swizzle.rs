@@ -312,7 +312,9 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::Simd;
     /// let a = Simd::from_array([0, 4, 1, 5]);
     /// let b = Simd::from_array([2, 6, 3, 7]);
     /// let (x, y) = a.deinterleave(b);
@@ -382,5 +384,181 @@ where
             };
         }
         Resize::<N>::concat_swizzle(self, Simd::splat(value))
+    }
+
+    /// Extract a vector from another vector.
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::u32x4;
+    /// let x = u32x4::from_array([0, 1, 2, 3]);
+    /// assert_eq!(x.extract::<1, 2>().to_array(), [1, 2]);
+    /// ```
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn extract<const START: usize, const LEN: usize>(self) -> Simd<T, LEN>
+    where
+        LaneCount<LEN>: SupportedLaneCount,
+    {
+        struct Extract<const N: usize, const START: usize>;
+        impl<const N: usize, const START: usize, const LEN: usize> Swizzle<LEN> for Extract<N, START> {
+            const INDEX: [usize; LEN] = const {
+                assert!(START + LEN <= N, "index out of bounds");
+                let mut index = [0; LEN];
+                let mut i = 0;
+                while i < LEN {
+                    index[i] = START + i;
+                    i += 1;
+                }
+                index
+            };
+        }
+        Extract::<N, START>::swizzle(self)
+    }
+}
+
+impl<T, const N: usize> Mask<T, N>
+where
+    T: MaskElement,
+    LaneCount<N>: SupportedLaneCount,
+{
+    /// Reverse the order of the elements in the mask.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn reverse(self) -> Self {
+        // Safety: swizzles are safe for masks
+        unsafe { Self::from_int_unchecked(self.to_int().reverse()) }
+    }
+
+    /// Rotates the mask such that the first `OFFSET` elements of the slice move to the end
+    /// while the last `self.len() - OFFSET` elements move to the front. After calling `rotate_elements_left`,
+    /// the element previously at index `OFFSET` will become the first element in the slice.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn rotate_elements_left<const OFFSET: usize>(self) -> Self {
+        // Safety: swizzles are safe for masks
+        unsafe { Self::from_int_unchecked(self.to_int().rotate_elements_left::<OFFSET>()) }
+    }
+
+    /// Rotates the mask such that the first `self.len() - OFFSET` elements of the mask move to
+    /// the end while the last `OFFSET` elements move to the front. After calling `rotate_elements_right`,
+    /// the element previously at index `self.len() - OFFSET` will become the first element in the slice.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn rotate_elements_right<const OFFSET: usize>(self) -> Self {
+        // Safety: swizzles are safe for masks
+        unsafe { Self::from_int_unchecked(self.to_int().rotate_elements_right::<OFFSET>()) }
+    }
+
+    /// Interleave two masks.
+    ///
+    /// The resulting masks contain elements taken alternatively from `self` and `other`, first
+    /// filling the first result, and then the second.
+    ///
+    /// The reverse of this operation is [`Mask::deinterleave`].
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::mask32x4;
+    /// let a = mask32x4::from_array([false, true, false, true]);
+    /// let b = mask32x4::from_array([false, false, true, true]);
+    /// let (x, y) = a.interleave(b);
+    /// assert_eq!(x.to_array(), [false, false, true, false]);
+    /// assert_eq!(y.to_array(), [false, true, true, true]);
+    /// ```
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn interleave(self, other: Self) -> (Self, Self) {
+        let (lo, hi) = self.to_int().interleave(other.to_int());
+        // Safety: swizzles are safe for masks
+        unsafe { (Self::from_int_unchecked(lo), Self::from_int_unchecked(hi)) }
+    }
+
+    /// Deinterleave two masks.
+    ///
+    /// The first result takes every other element of `self` and then `other`, starting with
+    /// the first element.
+    ///
+    /// The second result takes every other element of `self` and then `other`, starting with
+    /// the second element.
+    ///
+    /// The reverse of this operation is [`Mask::interleave`].
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::mask32x4;
+    /// let a = mask32x4::from_array([false, true, false, true]);
+    /// let b = mask32x4::from_array([false, false, true, true]);
+    /// let (x, y) = a.deinterleave(b);
+    /// assert_eq!(x.to_array(), [false, false, false, true]);
+    /// assert_eq!(y.to_array(), [true, true, false, true]);
+    /// ```
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn deinterleave(self, other: Self) -> (Self, Self) {
+        let (even, odd) = self.to_int().deinterleave(other.to_int());
+        // Safety: swizzles are safe for masks
+        unsafe {
+            (
+                Self::from_int_unchecked(even),
+                Self::from_int_unchecked(odd),
+            )
+        }
+    }
+
+    /// Resize a mask.
+    ///
+    /// If `M` > `N`, extends the length of a mask, setting the new elements to `value`.
+    /// If `M` < `N`, truncates the mask to the first `M` elements.
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::mask32x4;
+    /// let x = mask32x4::from_array([false, true, true, false]);
+    /// assert_eq!(x.resize::<8>(true).to_array(), [false, true, true, false, true, true, true, true]);
+    /// assert_eq!(x.resize::<2>(true).to_array(), [false, true]);
+    /// ```
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn resize<const M: usize>(self, value: bool) -> Mask<T, M>
+    where
+        LaneCount<M>: SupportedLaneCount,
+    {
+        // Safety: swizzles are safe for masks
+        unsafe {
+            Mask::<T, M>::from_int_unchecked(self.to_int().resize::<M>(if value {
+                T::TRUE
+            } else {
+                T::FALSE
+            }))
+        }
+    }
+
+    /// Extract a vector from another vector.
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::mask32x4;
+    /// let x = mask32x4::from_array([false, true, true, false]);
+    /// assert_eq!(x.extract::<1, 2>().to_array(), [true, true]);
+    /// ```
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
+    pub fn extract<const START: usize, const LEN: usize>(self) -> Mask<T, LEN>
+    where
+        LaneCount<LEN>: SupportedLaneCount,
+    {
+        // Safety: swizzles are safe for masks
+        unsafe { Mask::<T, LEN>::from_int_unchecked(self.to_int().extract::<START, LEN>()) }
     }
 }

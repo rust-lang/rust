@@ -442,6 +442,9 @@ where
     ///
     /// When the element is disabled, that memory location is not accessed and the corresponding
     /// value from `or` is passed through.
+    ///
+    /// # Safety
+    /// Enabled loads must not exceed the length of `slice`.
     #[must_use]
     #[inline]
     pub unsafe fn load_select_unchecked(
@@ -459,6 +462,9 @@ where
     ///
     /// When the element is disabled, that memory location is not accessed and the corresponding
     /// value from `or` is passed through.
+    ///
+    /// # Safety
+    /// Enabled `ptr` elements must be safe to read as if by `std::ptr::read`.
     #[must_use]
     #[inline]
     pub unsafe fn load_select_ptr(
@@ -1214,6 +1220,7 @@ fn lane_indices<const N: usize>() -> Simd<usize, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    #![allow(clippy::needless_range_loop)]
     let mut index = [0; N];
     for i in 0..N {
         index[i] = i;
