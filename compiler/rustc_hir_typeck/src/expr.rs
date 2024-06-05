@@ -1439,9 +1439,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
-            && let hir::ArrayLen::Body(&hir::AnonConst { hir_id, .. }) = length
+            && let hir::ArrayLen::Body(ct) = length
         {
-            let span = self.tcx.hir().span(hir_id);
+            let span = ct.span();
             self.dcx().try_steal_modify_and_emit_err(
                 span,
                 StashKey::UnderscoreForArrayLengths,

@@ -2342,10 +2342,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         "using `_` for array lengths is unstable",
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    hir::ArrayLen::Body(self.lower_anon_const_to_anon_const(c))
+                    hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c))
                 }
             }
-            _ => hir::ArrayLen::Body(self.lower_anon_const_to_anon_const(c)),
+            _ => hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c)),
         }
     }
 

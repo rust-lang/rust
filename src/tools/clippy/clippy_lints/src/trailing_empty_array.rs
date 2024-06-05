@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::has_repr_attr;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Const;
+use rustc_middle::ty::{Const, FeedConstTy};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -53,14 +53,14 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
     }
 }
 
-fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
+fn is_struct_with_trailing_zero_sized_array<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
     if let ItemKind::Struct(data, _) = &item.kind
         // First check if last field is an array
         && let Some(last_field) = data.fields().last()
         && let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind
 
         // Then check if that array is zero-sized
-        && let length = Const::from_anon_const(cx.tcx, length.def_id)
+        && let length = Const::from_const_arg(cx.tcx, length, FeedConstTy::No)
         && let length = length.try_eval_target_usize(cx.tcx, cx.param_env)
         && let Some(length) = length
     {

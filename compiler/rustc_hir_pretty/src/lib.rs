@@ -983,7 +983,7 @@ impl<'a> State<'a> {
     fn print_array_length(&mut self, len: &hir::ArrayLen<'_>) {
         match len {
             hir::ArrayLen::Infer(..) => self.word("_"),
-            hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
+            hir::ArrayLen::Body(ct) => self.print_const_arg(ct),
         }
     }
 

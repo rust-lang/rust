@@ -242,6 +242,11 @@ impl<'hir> ConstArg<'hir> {
         }
     }
 
+    // FIXME: convert to field, where ConstArg has its own HirId
+    pub fn hir_id(&self) -> HirId {
+        self.anon_const_hir_id()
+    }
+
     pub fn anon_const_hir_id(&self) -> HirId {
         match self.kind {
             ConstArgKind::Anon(anon) => anon.hir_id,
@@ -288,7 +293,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.anon_const_hir_id(), // FIXME
+            GenericArg::Const(c) => c.hir_id(),
             GenericArg::Infer(i) => i.hir_id,
         }
     }
@@ -1617,15 +1622,14 @@ pub type Lit = Spanned<LitKind>;
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ArrayLen<'hir> {
     Infer(InferArg),
-    Body(&'hir AnonConst),
+    Body(&'hir ConstArg<'hir>),
 }
 
 impl ArrayLen<'_> {
     pub fn hir_id(&self) -> HirId {
         match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(AnonConst { hir_id, .. }) => {
-                *hir_id
-            }
+            ArrayLen::Infer(InferArg { hir_id, .. }) => *hir_id,
+            ArrayLen::Body(ct) => ct.hir_id(),
         }
     }
 }
