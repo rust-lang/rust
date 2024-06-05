@@ -473,8 +473,8 @@ where
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn interleave(self, other: Self) -> (Self, Self) {
-        // Safety: swizzles are safe for masks
         let (lo, hi) = self.to_int().interleave(other.to_int());
+        // Safety: swizzles are safe for masks
         unsafe { (Self::from_int_unchecked(lo), Self::from_int_unchecked(hi)) }
     }
 
@@ -502,8 +502,8 @@ where
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn deinterleave(self, other: Self) -> (Self, Self) {
-        // Safety: swizzles are safe for masks
         let (even, odd) = self.to_int().deinterleave(other.to_int());
+        // Safety: swizzles are safe for masks
         unsafe {
             (
                 Self::from_int_unchecked(even),
