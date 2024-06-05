@@ -258,7 +258,7 @@ impl Command {
         &mut self,
         default: Stdio,
         needs_stdin: bool,
-        proc_thread_attribute_list: Option<&mut ProcThreadAttributeList<'_>>,
+        proc_thread_attribute_list: Option<&ProcThreadAttributeList<'_>>,
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
@@ -341,7 +341,10 @@ impl Command {
 
             si_ex = c::STARTUPINFOEXW {
                 StartupInfo: si,
-                lpAttributeList: proc_thread_attribute_list.as_mut_ptr().cast::<c_void>(),
+                // SAFETY: Casting this `*const` pointer to a `*mut` pointer is "safe"
+                // here because windows does not internally mutate the attribute list.
+                // Ideally this should be reflected in the interface of the `windows-sys` crate.
+                lpAttributeList: proc_thread_attribute_list.as_ptr().cast::<c_void>().cast_mut(),
             };
             si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
         } else {

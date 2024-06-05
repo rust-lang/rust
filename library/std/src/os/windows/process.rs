@@ -338,7 +338,7 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
     fn spawn_with_attributes(
         &mut self,
-        attribute_list: &mut ProcThreadAttributeList<'_>,
+        attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child>;
 }
 
@@ -370,7 +370,7 @@ impl CommandExt for process::Command {
 
     fn spawn_with_attributes(
         &mut self,
-        attribute_list: &mut ProcThreadAttributeList<'_>,
+        attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child> {
         self.as_inner_mut()
             .spawn_with_attributes(sys::process::Stdio::Inherit, true, Some(attribute_list))
@@ -432,10 +432,10 @@ impl<'a> ProcThreadAttributeList<'a> {
         ProcThreadAttributeListBuilder::new()
     }
 
-    /// Returns a mutable pointer to the attribute list.
+    /// Returns a pointer to the underling attribute list.
     #[doc(hidden)]
-    pub fn as_mut_ptr(&mut self) -> *mut MaybeUninit<u8> {
-        self.attribute_list.as_mut_ptr()
+    pub fn as_ptr(&self) -> *const MaybeUninit<u8> {
+        self.attribute_list.as_ptr()
     }
 }
 
