@@ -158,7 +158,7 @@ LL | fn test11(x: &usize) -> &_ {
    |                         -^
    |                         ||
    |                         |not allowed in type signatures
-   |                         help: replace with the correct return type: `&'static &'static usize`
+   |                         help: replace with the correct return type: `&&usize`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:53:52
