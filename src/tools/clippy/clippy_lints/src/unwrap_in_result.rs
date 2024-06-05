@@ -13,8 +13,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for functions of type `Result` that contain `expect()` or `unwrap()`
     ///
-    /// ### Why is this bad?
-    /// These functions promote recoverable errors to non-recoverable errors which may be undesirable in code bases which wish to avoid panics.
+    /// ### Why restrict this?
+    /// These functions promote recoverable errors to non-recoverable errors,
+    /// which may be undesirable in code bases which wish to avoid panics,
+    /// or be a bug in the specific function.
     ///
     /// ### Known problems
     /// This can cause false positives in functions that handle both recoverable and non recoverable errors.

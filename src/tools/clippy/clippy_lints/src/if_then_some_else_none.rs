@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for if-else that could be written using either `bool::then` or `bool::then_some`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Looks a little redundant. Using `bool::then` is more concise and incurs no loss of clarity.
     /// For simple calculations and known values, use `bool::then_some`, which is eagerly evaluated
     /// in comparison to `bool::then`.

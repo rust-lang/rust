@@ -2321,7 +2321,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let param_env = ty::ParamEnv::empty();
 
         let infcx = tcx.infer_ctxt().build();
-        let ocx = ObligationCtxt::new(&infcx);
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
         let span = tcx.def_span(def_id);
         let fresh_args = infcx.fresh_args_for_item(span, def_id.to_def_id());

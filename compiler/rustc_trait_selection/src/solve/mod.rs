@@ -40,7 +40,7 @@ mod search_graph;
 mod trait_goals;
 
 pub use eval_ctxt::{EvalCtxt, GenerateProofTree, InferCtxtEvalExt, InferCtxtSelectExt};
-pub use fulfill::FulfillmentCtxt;
+pub use fulfill::{FulfillmentCtxt, NextSolverError};
 pub(crate) use normalize::deeply_normalize_for_diagnostics;
 pub use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
 
@@ -133,7 +133,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 
     fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
-        if self.interner().check_is_object_safe(trait_def_id) {
+        if self.interner().is_object_safe(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
@@ -197,8 +197,30 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         goal: Goal<'tcx, (ty::Const<'tcx>, Ty<'tcx>)>,
     ) -> QueryResult<'tcx> {
         let (ct, ty) = goal.predicate;
-        self.eq(goal.param_env, ct.ty(), ty)?;
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+
+        // FIXME(BoxyUwU): Really we should not be calling `ct.ty()` for any variant
+        // other than `ConstKind::Value`. Unfortunately this would require looking in the
+        // env for any `ConstArgHasType` assumptions for parameters and placeholders. I
+        // have not yet gotten around to implementing this though.
+        //
+        // We do still stall on infer vars though as otherwise a goal like:
+        // `ConstArgHasType(?x: usize, usize)` can succeed even though it might later
+        // get unified with some const that is not of type `usize`.
+        match ct.kind() {
+            // FIXME: Ignore effect vars because canonicalization doesn't handle them correctly
+            // and if we stall on the var then we wind up creating ambiguity errors in a probe
+            // for this goal which contains an effect var. Which then ends up ICEing.
+            ty::ConstKind::Infer(ty::InferConst::Var(_)) => {
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            ty::ConstKind::Error(_) => {
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            _ => {
+                self.eq(goal.param_env, ct.ty(), ty)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+        }
     }
 }
 

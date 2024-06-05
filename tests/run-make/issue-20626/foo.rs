@@ -1,4 +1,6 @@
-fn identity(a: &u32) -> &u32 { a }
+fn identity(a: &u32) -> &u32 {
+    a
+}
 
 fn print_foo(f: &fn(&u32) -> &u32, x: &u32) {
     print!("{}", (*f)(x));

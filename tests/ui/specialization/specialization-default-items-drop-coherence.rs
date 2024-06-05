@@ -15,7 +15,7 @@ trait Default {
 }
 
 impl<T> Default for T {
-    default type Id = T; //[next]~ ERROR type annotations needed
+    default type Id = T;
 }
 
 trait Overlap {

@@ -12,7 +12,6 @@ pub fn f_unit() {
     f_dispatch(());
 }
 
-
 // EMIT_MIR intrinsics.f_u64.PreCodegen.after.mir
 pub fn f_u64() {
     f_dispatch(0u64);
@@ -28,8 +27,7 @@ pub fn f_dispatch<T>(t: T) {
 }
 
 #[inline(never)]
-pub fn f_zst<T>(_t: T) {
-}
+pub fn f_zst<T>(_t: T) {}
 
 #[inline(never)]
 pub fn f_non_zst<T>(_t: T) {}

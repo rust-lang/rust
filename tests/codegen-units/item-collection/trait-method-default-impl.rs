@@ -4,8 +4,10 @@
 #![feature(start)]
 
 trait SomeTrait {
-    fn foo(&self) { }
-    fn bar<T>(&self, x: T) -> T { x }
+    fn foo(&self) {}
+    fn bar<T>(&self, x: T) -> T {
+        x
+    }
 }
 
 impl SomeTrait for i8 {
@@ -17,7 +19,7 @@ impl SomeTrait for i8 {
 }
 
 trait SomeGenericTrait<T1> {
-    fn foo(&self) { }
+    fn foo(&self) {}
     fn bar<T2>(&self, x: T1, y: T2) {}
 }
 

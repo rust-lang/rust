@@ -6,6 +6,7 @@ use syn::spanned::Spanned;
 use syn::{
     braced, parse_macro_input, Attribute, Generics, ImplItem, Pat, PatIdent, Path, Signature,
     Token, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro, TraitItemType, Type, Visibility,
+    WhereClause,
 };
 
 pub(crate) fn extension(
@@ -13,7 +14,7 @@ pub(crate) fn extension(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let ExtensionAttr { vis, trait_ } = parse_macro_input!(attr as ExtensionAttr);
-    let Impl { attrs, generics, self_ty, items } = parse_macro_input!(input as Impl);
+    let Impl { attrs, generics, self_ty, items, wc } = parse_macro_input!(input as Impl);
     let headers: Vec<_> = items
         .iter()
         .map(|item| match item {
@@ -59,7 +60,7 @@ pub(crate) fn extension(
             #(#headers)*
         }
 
-        impl #generics #trait_ for #self_ty {
+        impl #generics #trait_ for #self_ty #wc {
             #(#items)*
         }
     }
@@ -133,6 +134,7 @@ struct Impl {
     generics: Generics,
     self_ty: Type,
     items: Vec<ImplItem>,
+    wc: Option<WhereClause>,
 }
 
 impl Parse for Impl {
@@ -141,6 +143,7 @@ impl Parse for Impl {
         let _: Token![impl] = input.parse()?;
         let generics = input.parse()?;
         let self_ty = input.parse()?;
+        let wc = input.parse()?;
 
         let content;
         let _brace_token = braced!(content in input);
@@ -149,6 +152,6 @@ impl Parse for Impl {
             items.push(content.parse()?);
         }
 
-        Ok(Impl { attrs, generics, self_ty, items })
+        Ok(Impl { attrs, generics, self_ty, items, wc })
     }
 }

@@ -8,12 +8,12 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="freeze"]
-trait Freeze { }
-#[lang="copy"]
-trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 #[repr(C)]
 pub struct Align8 {
@@ -23,7 +23,7 @@ pub struct Align8 {
 
 #[repr(transparent)]
 pub struct Transparent8 {
-    a: Align8
+    a: Align8,
 }
 
 #[repr(C)]
@@ -45,7 +45,7 @@ pub struct Align16 {
 
 #[repr(transparent)]
 pub struct Transparent16 {
-    a: Align16
+    a: Align16,
 }
 
 #[repr(C)]
@@ -69,7 +69,7 @@ pub struct Align32 {
 
 #[repr(transparent)]
 pub struct Transparent32 {
-    a: Align32
+    a: Align32,
 }
 
 #[repr(C)]
@@ -83,9 +83,15 @@ extern "C" {
 }
 
 pub unsafe fn main(
-    a1: Align8, a2: Transparent8, a3: Wrapped8,
-    b1: Align16, b2: Transparent16, b3: Wrapped16,
-    c1: Align32, c2: Transparent32, c3: Wrapped32,
+    a1: Align8,
+    a2: Transparent8,
+    a3: Wrapped8,
+    b1: Align16,
+    b2: Transparent16,
+    b3: Wrapped16,
+    c1: Align32,
+    c2: Transparent32,
+    c3: Wrapped32,
 ) {
     test_8(a1, a2, a3);
     test_16(b1, b2, b3);

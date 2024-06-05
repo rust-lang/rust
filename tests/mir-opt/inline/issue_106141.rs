@@ -19,11 +19,7 @@ fn inner() -> usize {
     // CHECK: = {{.*}}[_0];
     let buffer = &[true];
     let index = index();
-    if buffer[index] {
-        index
-    } else {
-        0
-    }
+    if buffer[index] { index } else { 0 }
 }
 
 fn main() {

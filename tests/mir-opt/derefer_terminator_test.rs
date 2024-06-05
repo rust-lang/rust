@@ -7,7 +7,9 @@ fn main() {
     let b = foo();
     let d = foo();
     match ****(&&&&b) {
-        true => {let x = 5;},
+        true => {
+            let x = 5;
+        }
         false => {}
     }
     let y = 42;

@@ -91,7 +91,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
+    pub(crate) fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
         for param in params.iter() {
             let (var, span) = {
                 let pat = param.pat.as_ref().unwrap();
@@ -149,7 +149,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     ///
     /// This allows us to easily parse the basic blocks declarations, local declarations, and
     /// basic block definitions in order.
-    pub fn parse_body(&mut self, expr_id: ExprId) -> PResult<()> {
+    pub(crate) fn parse_body(&mut self, expr_id: ExprId) -> PResult<()> {
         let body = parse_by_kind!(self, expr_id, _, "whole body",
             ExprKind::Block { block } => self.thir[*block].expr.unwrap(),
         );

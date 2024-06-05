@@ -76,7 +76,7 @@ extern "vectorcall" {
 }
 
 #[link(name = "extern", kind = "raw-dylib")]
-extern {
+extern "C" {
     fn print_extern_variable_undecorated();
     fn print_extern_variable_noprefix();
     fn print_extern_variable_decorated();

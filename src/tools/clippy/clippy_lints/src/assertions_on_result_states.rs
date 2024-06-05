@@ -16,23 +16,33 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `assert!(r.is_ok())` or `assert!(r.is_err())` calls.
     ///
-    /// ### Why is this bad?
-    /// An assertion failure cannot output an useful message of the error.
+    /// ### Why restrict this?
+    /// This form of assertion does not show any of the information present in the `Result`
+    /// other than which variant it isn’t.
     ///
     /// ### Known problems
     /// The suggested replacement decreases the readability of code and log output.
     ///
     /// ### Example
-    /// ```rust,ignore
+    /// ```rust,no_run
     /// # let r = Ok::<_, ()>(());
     /// assert!(r.is_ok());
-    /// # let r = Err::<_, ()>(());
+    /// # let r = Err::<(), _>(());
     /// assert!(r.is_err());
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```rust,no_run
+    /// # let r = Ok::<_, ()>(());
+    /// r.unwrap();
+    /// # let r = Err::<(), _>(());
+    /// r.unwrap_err();
     /// ```
     #[clippy::version = "1.64.0"]
     pub ASSERTIONS_ON_RESULT_STATES,
     restriction,
-    "`assert!(r.is_ok())`/`assert!(r.is_err())` gives worse error message than directly calling `r.unwrap()`/`r.unwrap_err()`"
+    "`assert!(r.is_ok())` or `assert!(r.is_err())` gives worse panic messages than directly calling `r.unwrap()` or `r.unwrap_err()`"
 }
 
 declare_lint_pass!(AssertionsOnResultStates => [ASSERTIONS_ON_RESULT_STATES]);

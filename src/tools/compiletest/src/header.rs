@@ -1436,7 +1436,7 @@ pub fn make_test_description<R: Read>(
             if config.target == "wasm32-unknown-unknown" {
                 if config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS) {
                     decision!(IgnoreDecision::Ignore {
-                        reason: "ignored when checking the run results on WASM".into(),
+                        reason: "ignored on WASM as the run results cannot be checked there".into(),
                     });
                 }
             }
@@ -1577,8 +1577,11 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
             .split_whitespace()
             .find(|needed_component| !components.contains(needed_component))
         {
-            if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
-                panic!("missing LLVM component: {}", missing_component);
+            if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
+                panic!(
+                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set",
+                    missing_component
+                );
             }
             return IgnoreDecision::Ignore {
                 reason: format!("ignored when the {missing_component} LLVM component is missing"),

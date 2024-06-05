@@ -4,14 +4,13 @@
 //@ incremental
 //@ compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Copt-level=0
 
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 //@ aux-build:shared_generics_aux.rs
 extern crate shared_generics_aux;
 
 //~ MONO_ITEM fn foo
 pub fn foo() {
-
     //~ MONO_ITEM fn shared_generics_aux::generic_fn::<u16> @@ shared_generics_aux-in-shared_generics.volatile[External]
     let _ = shared_generics_aux::generic_fn(0u16, 1u16);
 

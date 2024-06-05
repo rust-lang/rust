@@ -20,7 +20,7 @@
 //!
 //! #[custom_mir(dialect = "built")]
 //! pub fn simple(x: i32) -> i32 {
-//!     mir!(
+//!     mir! {
 //!         let temp2: i32;
 //!
 //!         {
@@ -33,7 +33,7 @@
 //!             RET = temp2;
 //!             Return()
 //!         }
-//!     )
+//!     }
 //! }
 //! ```
 //!
@@ -71,7 +71,7 @@
 //!
 //! #[custom_mir(dialect = "built")]
 //! pub fn choose_load(a: &i32, b: &i32, c: bool) -> i32 {
-//!     mir!(
+//!     mir! {
 //!         {
 //!             match c {
 //!                 true => t,
@@ -93,20 +93,22 @@
 //!             RET = *temp;
 //!             Return()
 //!         }
-//!     )
+//!     }
 //! }
 //!
 //! #[custom_mir(dialect = "built")]
 //! fn unwrap_unchecked<T>(opt: Option<T>) -> T {
-//!     mir!({
-//!         RET = Move(Field(Variant(opt, 1), 0));
-//!         Return()
-//!     })
+//!     mir! {
+//!         {
+//!             RET = Move(Field(Variant(opt, 1), 0));
+//!             Return()
+//!         }
+//!     }
 //! }
 //!
 //! #[custom_mir(dialect = "runtime", phase = "optimized")]
 //! fn push_and_pop<T>(v: &mut Vec<T>, value: T) {
-//!     mir!(
+//!     mir! {
 //!         let _unused;
 //!         let popped;
 //!
@@ -125,19 +127,19 @@
 //!         ret = {
 //!             Return()
 //!         }
-//!     )
+//!     }
 //! }
 //!
 //! #[custom_mir(dialect = "runtime", phase = "optimized")]
 //! fn annotated_return_type() -> (i32, bool) {
-//!     mir!(
+//!     mir! {
 //!         type RET = (i32, bool);
 //!         {
 //!             RET.0 = 1;
 //!             RET.1 = true;
 //!             Return()
 //!         }
-//!     )
+//!     }
 //! }
 //! ```
 //!
@@ -152,7 +154,7 @@
 //!
 //! #[custom_mir(dialect = "built")]
 //! fn borrow_error(should_init: bool) -> i32 {
-//!     mir!(
+//!     mir! {
 //!         let temp: i32;
 //!
 //!         {
@@ -171,7 +173,7 @@
 //!             RET = temp;
 //!             Return()
 //!         }
-//!     )
+//!     }
 //! }
 //! ```
 //!
@@ -179,7 +181,7 @@
 //! error[E0381]: used binding is possibly-uninitialized
 //!   --> test.rs:24:13
 //!    |
-//! 8  | /     mir!(
+//! 8  | /     mir! {
 //! 9  | |         let temp: i32;
 //! 10 | |
 //! 11 | |         {
@@ -191,7 +193,7 @@
 //!    | |             ^^^^^^^^^^ value used here but it is possibly-uninitialized
 //! 25 | |             Return()
 //! 26 | |         }
-//! 27 | |     )
+//! 27 | |     }
 //!    | |_____- binding declared here but left uninitialized
 //!
 //! error: aborting due to 1 previous error
@@ -407,18 +409,22 @@ define!(
     ///
     /// #[custom_mir(dialect = "built")]
     /// fn unwrap_deref(opt: Option<&i32>) -> i32 {
-    ///     mir!({
-    ///         RET = *Field::<&i32>(Variant(opt, 1), 0);
-    ///         Return()
-    ///     })
+    ///     mir! {
+    ///         {
+    ///             RET = *Field::<&i32>(Variant(opt, 1), 0);
+    ///             Return()
+    ///         }
+    ///     }
     /// }
     ///
     /// #[custom_mir(dialect = "built")]
     /// fn set(opt: &mut Option<i32>) {
-    ///     mir!({
-    ///         place!(Field(Variant(*opt, 1), 0)) = 5;
-    ///         Return()
-    ///     })
+    ///     mir! {
+    ///         {
+    ///             place!(Field(Variant(*opt, 1), 0)) = 5;
+    ///             Return()
+    ///         }
+    ///     }
     /// }
     /// ```
     fn Field<F>(place: (), field: u32) -> F
@@ -455,7 +461,7 @@ define!(
 /// your MIR into something that is easier to parse in the compiler.
 #[rustc_macro_transparency = "transparent"]
 pub macro mir {
-    (
+    {
         $(type RET = $ret_ty:ty ;)?
         $(let $local_decl:ident $(: $local_decl_ty:ty)? ;)*
         $(debug $dbg_name:ident => $dbg_data:expr ;)*
@@ -469,7 +475,7 @@ pub macro mir {
                 $($block:tt)*
             }
         )*
-    ) => {{
+    } => {{
         // First, we declare all basic blocks.
         __internal_declare_basic_blocks!($(
             $block_name $(($block_cleanup))?

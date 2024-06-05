@@ -367,7 +367,7 @@ pub fn transform_instance<'tcx>(
             let trait_method = tcx.associated_item(method_id);
             let trait_id = trait_ref.skip_binder().def_id;
             if traits::is_vtable_safe_method(tcx, trait_id, trait_method)
-                && tcx.object_safety_violations(trait_id).is_empty()
+                && tcx.is_object_safe(trait_id)
             {
                 // Trait methods will have a Self polymorphic parameter, where the concreteized
                 // implementatation will not. We need to walk back to the more general trait method

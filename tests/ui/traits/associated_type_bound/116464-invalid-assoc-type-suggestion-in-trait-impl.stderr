@@ -16,14 +16,8 @@ note: trait defined here, with 1 generic parameter: `T`
 LL | pub trait Trait<T> {
    |           ^^^^^ -
 
-error[E0207]: the type parameter `S` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:15:9
-   |
-LL | impl<T, S> Trait<T, S> for () {}
-   |         ^ unconstrained type parameter
-
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:20:12
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:19:12
    |
 LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
    |            ^^^^^ expected 1 generic argument
@@ -39,7 +33,7 @@ LL | fn func<T: Trait<u32, Assoc = String>>(t: T) -> impl Trait<(), i32> {
    |                       +++++++
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:20:46
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:19:46
    |
 LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
    |                                              ^^^^^ expected 1 generic argument
@@ -55,7 +49,7 @@ LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
    |                                                        +++++++
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:20:46
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:19:46
    |
 LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
    |                                              ^^^^^ expected 1 generic argument
@@ -71,14 +65,8 @@ help: replace the generic bound with the associated type
 LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
    |                                                        +++++++
 
-error[E0282]: type annotations needed
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:20:41
-   |
-LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
-   |                                         ^^^^^^^^^^^^^^^^^^^ cannot infer type
-
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:28:18
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:26:18
    |
 LL | struct Struct<T: Trait<u32, String>> {
    |                  ^^^^^ expected 1 generic argument
@@ -94,7 +82,7 @@ LL | struct Struct<T: Trait<u32, Assoc = String>> {
    |                             +++++++
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:33:23
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:31:23
    |
 LL | trait AnotherTrait<T: Trait<T, i32>> {}
    |                       ^^^^^ expected 1 generic argument
@@ -110,7 +98,7 @@ LL | trait AnotherTrait<T: Trait<T, Assoc = i32>> {}
    |                                +++++++
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:36:9
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:34:9
    |
 LL | impl<T: Trait<u32, String>> Struct<T> {}
    |         ^^^^^ expected 1 generic argument
@@ -126,7 +114,7 @@ LL | impl<T: Trait<u32, Assoc = String>> Struct<T> {}
    |                    +++++++
 
 error[E0107]: struct takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:42:58
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:40:58
    |
 LL | impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
    |                                                          ^^^^^^    - help: remove this generic argument
@@ -134,12 +122,12 @@ LL | impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
    |                                                          expected 1 generic argument
    |
 note: struct defined here, with 1 generic parameter: `T`
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:28:8
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:26:8
    |
 LL | struct Struct<T: Trait<u32, String>> {
    |        ^^^^^^ -
 
-error: aborting due to 11 previous errors
+error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0107, E0207, E0282.
+Some errors have detailed explanations: E0107, E0207.
 For more information about an error, try `rustc --explain E0107`.

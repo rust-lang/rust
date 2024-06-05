@@ -1390,7 +1390,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             let mut result = ProbeResult::Match;
             let cause = &self.misc(self.span);
-            let ocx = ObligationCtxt::new(self);
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
 
             let mut trait_predicate = None;
             let (mut xform_self_ty, mut xform_ret_ty);

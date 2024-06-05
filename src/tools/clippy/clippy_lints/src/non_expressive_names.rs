@@ -98,6 +98,10 @@ struct SimilarNamesLocalVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
     fn check_single_char_names(&self) {
+        if self.single_char_names.last().map(Vec::len) == Some(0) {
+            return;
+        }
+
         let num_single_char_names = self.single_char_names.iter().flatten().count();
         let threshold = self.lint.single_char_binding_names_threshold;
         if num_single_char_names as u64 > threshold {

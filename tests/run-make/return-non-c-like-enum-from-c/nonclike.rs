@@ -4,7 +4,7 @@ pub enum TT {
     BB,
 }
 
-#[repr(C,u8)]
+#[repr(C, u8)]
 pub enum T {
     A(u64),
     B,

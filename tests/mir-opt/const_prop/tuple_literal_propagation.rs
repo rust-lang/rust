@@ -10,4 +10,4 @@ fn main() {
 }
 
 #[inline(never)]
-fn consume(_: (u32, u32)) { }
+fn consume(_: (u32, u32)) {}

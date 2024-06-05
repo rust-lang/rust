@@ -36,7 +36,6 @@ impl Foo for D {
     }
 }
 
-
 fn main() {
     let x = *(Box::new(A) as Box<dyn Foo>);
     assert_eq!(x.foo(), format!("hello"));

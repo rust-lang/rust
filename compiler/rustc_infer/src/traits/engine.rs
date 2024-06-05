@@ -1,13 +1,38 @@
+use std::fmt::Debug;
+
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 use rustc_hir::def_id::DefId;
-use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty, Upcast};
 
-use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};
 
-pub trait TraitEngine<'tcx>: 'tcx {
+/// A trait error with most of its information removed. This is the error
+/// returned by an `ObligationCtxt` by default, and suitable if you just
+/// want to see if a predicate holds, and don't particularly care about the
+/// error itself (except for if it's an ambiguity or true error).
+///
+/// use `ObligationCtxt::new_with_diagnostics` to get a `FulfillmentError`.
+#[derive(Clone, Debug)]
+pub enum ScrubbedTraitError<'tcx> {
+    /// A real error. This goal definitely does not hold.
+    TrueError,
+    /// An ambiguity. This goal may hold if further inference is done.
+    Ambiguity,
+    /// An old-solver-style cycle error, which will fatal.
+    Cycle(Vec<PredicateObligation<'tcx>>),
+}
+
+impl<'tcx> ScrubbedTraitError<'tcx> {
+    pub fn is_true_error(&self) -> bool {
+        match self {
+            ScrubbedTraitError::TrueError => true,
+            ScrubbedTraitError::Ambiguity | ScrubbedTraitError::Cycle(_) => false,
+        }
+    }
+}
+
+pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     /// Requires that `ty` must implement the trait with `def_id` in
     /// the given environment. This trait must not have any type
     /// parameters (except for `Self`).
@@ -37,10 +62,30 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
-    #[must_use]
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
+    fn register_predicate_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        obligations: Vec<PredicateObligation<'tcx>>,
+    ) {
+        for obligation in obligations {
+            self.register_predicate_obligation(infcx, obligation);
+        }
+    }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
+    #[must_use]
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
+
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
+
+    #[must_use]
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        let errors = self.select_where_possible(infcx);
+        if !errors.is_empty() {
+            return errors;
+        }
+
+        self.collect_remaining_errors(infcx)
+    }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
 
@@ -53,25 +98,6 @@ pub trait TraitEngine<'tcx>: 'tcx {
     ) -> Vec<PredicateObligation<'tcx>>;
 }
 
-#[extension(pub trait TraitEngineExt<'tcx>)]
-impl<'tcx, T: ?Sized + TraitEngine<'tcx>> T {
-    fn register_predicate_obligations(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
-    ) {
-        for obligation in obligations {
-            self.register_predicate_obligation(infcx, obligation);
-        }
-    }
-
-    #[must_use]
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let errors = self.select_where_possible(infcx);
-        if !errors.is_empty() {
-            return errors;
-        }
-
-        self.collect_remaining_errors(infcx)
-    }
+pub trait FromSolverError<'tcx, E>: Debug + 'tcx {
+    fn from_solver_error(infcx: &InferCtxt<'tcx>, error: E) -> Self;
 }

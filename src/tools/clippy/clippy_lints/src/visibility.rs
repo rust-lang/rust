@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `pub(<loc>)` with `in`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Consistency. Use it or don't, just be consistent about it.
     ///
     /// Also see the `pub_without_shorthand` lint for an alternative.
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// Note: As you cannot write a module's path in `pub(<loc>)`, this will only trigger on
     /// `pub(super)` and the like.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Consistency. Use it or don't, just be consistent about it.
     ///
     /// Also see the `pub_with_shorthand` lint for an alternative.

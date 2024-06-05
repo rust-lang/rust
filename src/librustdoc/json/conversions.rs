@@ -153,9 +153,9 @@ impl FromWithTcx<clean::GenericArgs> for GenericArgs {
     fn from_tcx(args: clean::GenericArgs, tcx: TyCtxt<'_>) -> Self {
         use clean::GenericArgs::*;
         match args {
-            AngleBracketed { args, bindings } => GenericArgs::AngleBracketed {
+            AngleBracketed { args, constraints } => GenericArgs::AngleBracketed {
                 args: args.into_vec().into_tcx(tcx),
-                bindings: bindings.into_tcx(tcx),
+                bindings: constraints.into_tcx(tcx),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
                 inputs: inputs.into_vec().into_tcx(tcx),
@@ -187,22 +187,22 @@ impl FromWithTcx<clean::Constant> for Constant {
     }
 }
 
-impl FromWithTcx<clean::TypeBinding> for TypeBinding {
-    fn from_tcx(binding: clean::TypeBinding, tcx: TyCtxt<'_>) -> Self {
+impl FromWithTcx<clean::AssocItemConstraint> for TypeBinding {
+    fn from_tcx(constraint: clean::AssocItemConstraint, tcx: TyCtxt<'_>) -> Self {
         TypeBinding {
-            name: binding.assoc.name.to_string(),
-            args: binding.assoc.args.into_tcx(tcx),
-            binding: binding.kind.into_tcx(tcx),
+            name: constraint.assoc.name.to_string(),
+            args: constraint.assoc.args.into_tcx(tcx),
+            binding: constraint.kind.into_tcx(tcx),
         }
     }
 }
 
-impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
-    fn from_tcx(kind: clean::TypeBindingKind, tcx: TyCtxt<'_>) -> Self {
-        use clean::TypeBindingKind::*;
+impl FromWithTcx<clean::AssocItemConstraintKind> for TypeBindingKind {
+    fn from_tcx(kind: clean::AssocItemConstraintKind, tcx: TyCtxt<'_>) -> Self {
+        use clean::AssocItemConstraintKind::*;
         match kind {
             Equality { term } => TypeBindingKind::Equality(term.into_tcx(tcx)),
-            Constraint { bounds } => TypeBindingKind::Constraint(bounds.into_tcx(tcx)),
+            Bound { bounds } => TypeBindingKind::Constraint(bounds.into_tcx(tcx)),
         }
     }
 }
@@ -820,7 +820,10 @@ impl FromWithTcx<clean::Static> for Static {
         Static {
             type_: stat.type_.into_tcx(tcx),
             mutable: stat.mutability == ast::Mutability::Mut,
-            expr: stat.expr.map(|e| rendered_const(tcx, e)).unwrap_or_default(),
+            expr: stat
+                .expr
+                .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
+                .unwrap_or_default(),
         }
     }
 }

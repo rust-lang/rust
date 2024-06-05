@@ -10,7 +10,7 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn f() -> u32 {
-    mir!(
+    mir! {
         let a: u32;
         {
             Call(a = g(), ReturnTo(bb1), UnwindCleanup(bb2))
@@ -23,7 +23,7 @@ pub fn f() -> u32 {
             RET = a;
             UnwindResume()
         }
-    )
+    }
 }
 
 #[inline(never)]

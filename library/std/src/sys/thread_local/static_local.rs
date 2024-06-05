@@ -13,19 +13,14 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         const __INIT: $t = $init;
 
-        #[inline]
-        #[deny(unsafe_op_in_unsafe_fn)]
-        unsafe fn __getit(
-            _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-        ) -> $crate::option::Option<&'static $t> {
+        unsafe {
+            use $crate::thread::LocalKey;
             use $crate::thread::local_impl::EagerStorage;
 
-            static VAL: EagerStorage<$t> = EagerStorage { value: __INIT };
-            $crate::option::Option::Some(&VAL.value)
-        }
-
-        unsafe {
-            $crate::thread::LocalKey::new(__getit)
+            LocalKey::new(|_| {
+                static VAL: EagerStorage<$t> = EagerStorage { value: __INIT };
+                &VAL.value
+            })
         }
     }},
 
@@ -34,19 +29,14 @@ pub macro thread_local_inner {
         #[inline]
         fn __init() -> $t { $init }
 
-        #[inline]
-        #[deny(unsafe_op_in_unsafe_fn)]
-        unsafe fn __getit(
-            init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-        ) -> $crate::option::Option<&'static $t> {
+        unsafe {
+            use $crate::thread::LocalKey;
             use $crate::thread::local_impl::LazyStorage;
 
-            static VAL: LazyStorage<$t> = LazyStorage::new();
-            unsafe { $crate::option::Option::Some(VAL.get(init, __init)) }
-        }
-
-        unsafe {
-            $crate::thread::LocalKey::new(__getit)
+            LocalKey::new(|init| {
+                static VAL: LazyStorage<$t> = LazyStorage::new();
+                VAL.get(init, __init)
+            })
         }
     }},
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
@@ -73,16 +63,13 @@ impl<T> LazyStorage<T> {
         LazyStorage { value: UnsafeCell::new(None) }
     }
 
-    /// Gets a reference to the contained value, initializing it if necessary.
+    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// provided parameters.
     ///
-    /// # Safety
-    /// The returned reference may not be used after reentrant initialization has occurred.
+    /// The resulting pointer may not be used after reentrant inialialization
+    /// has occurred.
     #[inline]
-    pub unsafe fn get(
-        &'static self,
-        i: Option<&mut Option<T>>,
-        f: impl FnOnce() -> T,
-    ) -> &'static T {
+    pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let value = unsafe { &*self.value.get() };
         match value {
             Some(v) => v,
@@ -91,11 +78,7 @@ impl<T> LazyStorage<T> {
     }
 
     #[cold]
-    unsafe fn initialize(
-        &'static self,
-        i: Option<&mut Option<T>>,
-        f: impl FnOnce() -> T,
-    ) -> &'static T {
+    fn initialize(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let value = i.and_then(Option::take).unwrap_or_else(f);
         // Destroy the old value, after updating the TLS variable as the
         // destructor might reference it.

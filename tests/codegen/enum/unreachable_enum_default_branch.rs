@@ -22,8 +22,7 @@ const C: Int = Int(153);
 // CHECK-NEXT:    ret i1 [[SPEC_SELECT]]
 #[no_mangle]
 pub fn implicit_match(x: Int) -> bool {
-    (x >= A && x <= B)
-        || x == C
+    (x >= A && x <= B) || x == C
 }
 
 // The code is from https://github.com/rust-lang/rust/issues/110097.
@@ -35,9 +34,5 @@ pub fn implicit_match(x: Int) -> bool {
 // CHECK-NEXT: ret
 #[no_mangle]
 pub fn if_let(val: Result<i32, ()>) -> Result<i32, ()> {
-    if let Ok(x) = val {
-        Ok(x)
-    } else {
-        Err(())
-    }
+    if let Ok(x) = val { Ok(x) } else { Err(()) }
 }

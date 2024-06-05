@@ -363,5 +363,11 @@ help: try
 LL |     /// `foo()`
    |         ~~~~~~~
 
-error: aborting due to 33 previous errors
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+  --> tests/ui/doc/doc-fixable.rs:244:5
+   |
+LL | /// https://github.com/rust-lang/rust-clippy/pull/12836
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<https://github.com/rust-lang/rust-clippy/pull/12836>`
+
+error: aborting due to 34 previous errors
 

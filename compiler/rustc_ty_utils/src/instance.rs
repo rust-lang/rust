@@ -4,6 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
+use rustc_middle::ty::util::AsyncDropGlueMorphology;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
@@ -59,7 +60,7 @@ fn resolve_instance<'tcx>(
         } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
             let ty = args.type_at(0);
 
-            if !ty.is_async_destructor_noop(tcx, param_env) {
+            if ty.async_drop_glue_morphology(tcx) != AsyncDropGlueMorphology::Noop {
                 match *ty.kind() {
                     ty::Closure(..)
                     | ty::CoroutineClosure(..)

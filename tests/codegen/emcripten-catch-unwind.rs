@@ -9,18 +9,23 @@
 #![no_std]
 #![no_core]
 
-#[lang="sized"] trait Sized { }
-#[lang="freeze"] trait Freeze { }
-#[lang="copy"] trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 #[rustc_intrinsic]
-fn size_of<T>() -> usize { loop {} }
+fn size_of<T>() -> usize {
+    loop {}
+}
 
 extern "rust-intrinsic" {
     fn catch_unwind(
         try_fn: fn(_: *mut u8),
         data: *mut u8,
-        catch_fn: fn(_: *mut u8, _: *mut u8)
+        catch_fn: fn(_: *mut u8, _: *mut u8),
     ) -> i32;
 }
 
@@ -36,7 +41,7 @@ pub fn ptr_size() -> usize {
 pub unsafe fn test_catch_unwind(
     try_fn: fn(_: *mut u8),
     data: *mut u8,
-    catch_fn: fn(_: *mut u8, _: *mut u8)
+    catch_fn: fn(_: *mut u8, _: *mut u8),
 ) -> i32 {
     // CHECK: start:
     // CHECK: [[ALLOCA:%.*]] = alloca

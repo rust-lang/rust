@@ -220,9 +220,10 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     .position(|arg| arg.hir_id() == hir_id)
                     .map(|index| (index, seg))
                     .or_else(|| {
-                        args.bindings
+                        args.constraints
                             .iter()
-                            .filter_map(TypeBinding::opt_const)
+                            .copied()
+                            .filter_map(AssocItemConstraint::ct)
                             .position(|ct| ct.hir_id == hir_id)
                             .map(|idx| (idx, seg))
                     })
@@ -501,7 +502,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     };
-    if let Err(e) = icx.check_tainted_by_errors() {
+    if let Err(e) = icx.check_tainted_by_errors()
+        && !output.references_error()
+    {
         ty::EarlyBinder::bind(Ty::new_error(tcx, e))
     } else {
         ty::EarlyBinder::bind(output)

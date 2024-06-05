@@ -103,7 +103,6 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
 
     let mut layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
-        .with_indent_lines(true)
         .with_ansi(color_logs)
         .with_targets(true)
         .with_verbose_exit(verbose_entry_exit)

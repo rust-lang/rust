@@ -2,11 +2,9 @@ run-make/allocator-shim-circular-deps/Makefile
 run-make/allow-non-lint-warnings-cmdline/Makefile
 run-make/archive-duplicate-names/Makefile
 run-make/atomic-lock-free/Makefile
-run-make/bare-outfile/Makefile
 run-make/branch-protection-check-IBT/Makefile
 run-make/c-dynamic-dylib/Makefile
 run-make/c-dynamic-rlib/Makefile
-run-make/c-link-to-rust-dylib/Makefile
 run-make/c-static-dylib/Makefile
 run-make/c-static-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
@@ -14,7 +12,6 @@ run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
 run-make/cdylib-fewer-symbols/Makefile
-run-make/cdylib/Makefile
 run-make/codegen-options-parsing/Makefile
 run-make/comment-section/Makefile
 run-make/compiler-lookup-paths-2/Makefile
@@ -38,12 +35,10 @@ run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
 run-make/duplicate-output-flavors/Makefile
 run-make/dylib-chain/Makefile
-run-make/emit-named-files/Makefile
 run-make/emit-path-unhashed/Makefile
 run-make/emit-shared-files/Makefile
 run-make/emit-stack-sizes/Makefile
 run-make/emit-to-stdout/Makefile
-run-make/emit/Makefile
 run-make/env-dep-info/Makefile
 run-make/error-found-staticlib-instead-crate/Makefile
 run-make/error-writing-dependencies/Makefile
@@ -150,7 +145,6 @@ run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
-run-make/mixing-formats/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
 run-make/multiple-emits/Makefile

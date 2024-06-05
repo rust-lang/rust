@@ -20,7 +20,5 @@ extern crate extern_decl;
 
 #[no_mangle]
 pub fn access_extern() -> u8 {
-    unsafe {
-        extern_decl::extern_fn() + extern_decl::extern_static
-    }
+    unsafe { extern_decl::extern_fn() + extern_decl::extern_static }
 }

@@ -24,14 +24,17 @@
 #![no_std]
 #![no_core]
 
-#[lang="sized"] trait Sized { }
-#[lang="freeze"] trait Freeze { }
-#[lang="copy"] trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 #[repr(i8)]
 pub enum Type {
     Type1 = 0,
-    Type2 = 1
+    Type2 = 1,
 }
 
 // To accommodate rust#97800, one might consider writing the below as:
@@ -49,7 +52,6 @@ pub enum Type {
 // arm-SAME:                    signext
 // riscv-SAME:                  signext
 // CHECK-SAME: i8 @test()
-
 
 #[no_mangle]
 pub extern "C" fn test() -> Type {

@@ -200,7 +200,7 @@ Test Attributes:
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
     let opts = optgroups();
-    let binary = args.get(0).map(|c| &**c).unwrap_or("...");
+    let binary = args.first().map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
         Ok(m) => m,

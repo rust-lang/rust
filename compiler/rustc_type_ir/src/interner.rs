@@ -29,9 +29,7 @@ pub trait Interner:
     type AdtDef: Copy + Debug + Hash + Eq;
 
     type GenericArgs: GenericArgs<Self>;
-    /// The slice of args for a specific item. For a GAT like `type Foo<'a>`, it will be `['a]`,
-    /// not including the args from the parent item (trait or impl).
-    type OwnItemArgs: Copy + Debug + Hash + Eq;
+    type GenericArgsSlice: Copy + Debug + Hash + Eq + Deref<Target = [Self::GenericArg]>;
     type GenericArg: Copy
         + DebugWithInfcx<Self>
         + Hash
@@ -69,7 +67,6 @@ pub trait Interner:
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
     type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
     type Safety: Safety<Self>;
@@ -112,7 +109,7 @@ pub trait Interner:
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (ty::TraitRef<Self>, Self::OwnItemArgs);
+    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
     fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs;

@@ -87,7 +87,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstData, ConstInt, ConstKind, Expr, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstData, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
@@ -113,10 +113,8 @@ pub use self::region::{
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
-    ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts, CoroutineClosureArgs,
-    CoroutineClosureArgsParts, CoroutineClosureSignature, EarlyBinder, FnSig, GenSig,
-    InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PolyFnSig, TyKind, TypeAndMut,
-    UpvarArgs, VarianceDiagInfo,
+    CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs, InlineConstArgsParts, ParamConst,
+    ParamTy, PolyFnSig, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -626,12 +624,20 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    pub fn ty(&self) -> Option<Ty<'tcx>> {
+    pub fn as_type(&self) -> Option<Ty<'tcx>> {
         if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
     }
 
-    pub fn ct(&self) -> Option<Const<'tcx>> {
+    pub fn expect_type(&self) -> Ty<'tcx> {
+        self.as_type().expect("expected a type, but found a const")
+    }
+
+    pub fn as_const(&self) -> Option<Const<'tcx>> {
         if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
+    }
+
+    pub fn expect_const(&self) -> Const<'tcx> {
+        self.as_const().expect("expected a const, but found a type")
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {
@@ -1170,6 +1176,15 @@ pub struct Destructor {
     pub did: DefId,
     /// The constness of the destructor method
     pub constness: hir::Constness,
+}
+
+// FIXME: consider combining this definition with regular `Destructor`
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub struct AsyncDestructor {
+    /// The `DefId` of the async destructor future constructor
+    pub ctor: DefId,
+    /// The `DefId` of the async destructor future type
+    pub future: DefId,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]

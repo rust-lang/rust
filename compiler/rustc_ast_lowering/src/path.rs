@@ -281,7 +281,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             (
                 GenericArgsCtor {
                     args: Default::default(),
-                    bindings: &[],
+                    constraints: &[],
                     parenthesized: hir::GenericArgsParentheses::No,
                     span: path_span.shrink_to_hi(),
                 },
@@ -390,13 +390,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 AngleBracketedArg::Constraint(_) => None,
             })
             .collect();
-        let bindings = self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
-            AngleBracketedArg::Constraint(c) => Some(self.lower_assoc_ty_constraint(c, itctx)),
-            AngleBracketedArg::Arg(_) => None,
-        }));
+        let constraints =
+            self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
+                AngleBracketedArg::Constraint(c) => {
+                    Some(self.lower_assoc_item_constraint(c, itctx))
+                }
+                AngleBracketedArg::Arg(_) => None,
+            }));
         let ctor = GenericArgsCtor {
             args,
-            bindings,
+            constraints,
             parenthesized: hir::GenericArgsParentheses::No,
             span: data.span,
         };
@@ -454,12 +457,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 Some(bound_modifier_allowed_features),
             );
         }
-        let binding = self.assoc_ty_binding(sym::Output, output_span, output_ty);
+        let constraint = self.assoc_ty_binding(sym::Output, output_span, output_ty);
 
         (
             GenericArgsCtor {
                 args,
-                bindings: arena_vec![self; binding],
+                constraints: arena_vec![self; constraint],
                 parenthesized: hir::GenericArgsParentheses::ParenSugar,
                 span: data.inputs_span,
             },
@@ -467,24 +470,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    /// An associated type binding `$assoc_ty_name = $ty`.
+    /// An associated type binding (i.e., associated type equality constraint).
     pub(crate) fn assoc_ty_binding(
         &mut self,
         assoc_ty_name: rustc_span::Symbol,
         span: Span,
         ty: &'hir hir::Ty<'hir>,
-    ) -> hir::TypeBinding<'hir> {
+    ) -> hir::AssocItemConstraint<'hir> {
         let ident = Ident::with_dummy_span(assoc_ty_name);
-        let kind = hir::TypeBindingKind::Equality { term: ty.into() };
+        let kind = hir::AssocItemConstraintKind::Equality { term: ty.into() };
         let args = arena_vec![self;];
-        let bindings = arena_vec![self;];
+        let constraints = arena_vec![self;];
         let gen_args = self.arena.alloc(hir::GenericArgs {
             args,
-            bindings,
+            constraints,
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
-        hir::TypeBinding {
+        hir::AssocItemConstraint {
             hir_id: self.next_id(),
             gen_args,
             span: self.lower_span(span),

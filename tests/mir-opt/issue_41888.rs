@@ -15,11 +15,13 @@ fn main() {
     }
 }
 
-fn cond() -> bool { false }
+fn cond() -> bool {
+    false
+}
 
 struct K;
 
 enum E {
     F(K),
-    G(Box<E>)
+    G(Box<E>),
 }

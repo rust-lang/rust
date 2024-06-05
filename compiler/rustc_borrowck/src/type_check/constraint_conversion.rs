@@ -10,9 +10,9 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
-use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use rustc_trait_selection::traits::ScrubbedTraitError;
 
 use crate::{
     constraints::OutlivesConstraint,
@@ -282,11 +282,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let result = CustomTypeOp::new(
             |ocx| {
-                deeply_normalize(
-                    ocx.infcx.at(&ObligationCause::dummy_with_span(self.span), self.param_env),
+                ocx.deeply_normalize(
+                    &ObligationCause::dummy_with_span(self.span),
+                    self.param_env,
                     ty,
                 )
-                .map_err(|_| NoSolution)
+                .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
             },
             "normalize type outlives obligation",
         )

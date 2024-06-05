@@ -299,7 +299,7 @@ pub trait Visitor<'v>: Sized {
         walk_item(self, i)
     }
 
-    fn visit_body(&mut self, b: &'v Body<'v>) -> Self::Result {
+    fn visit_body(&mut self, b: &Body<'v>) -> Self::Result {
         walk_body(self, b)
     }
 
@@ -453,8 +453,11 @@ pub trait Visitor<'v>: Sized {
     fn visit_generic_args(&mut self, generic_args: &'v GenericArgs<'v>) -> Self::Result {
         walk_generic_args(self, generic_args)
     }
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) -> Self::Result {
-        walk_assoc_type_binding(self, type_binding)
+    fn visit_assoc_item_constraint(
+        &mut self,
+        constraint: &'v AssocItemConstraint<'v>,
+    ) -> Self::Result {
+        walk_assoc_item_constraint(self, constraint)
     }
     fn visit_attribute(&mut self, _attr: &'v Attribute) -> Self::Result {
         Self::Result::output()
@@ -578,7 +581,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
     V::Result::output()
 }
 
-pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body<'v>) -> V::Result {
+pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &Body<'v>) -> V::Result {
     walk_list!(visitor, visit_param, body.params);
     visitor.visit_expr(body.value)
 }
@@ -1248,23 +1251,25 @@ pub fn walk_generic_args<'v, V: Visitor<'v>>(
     generic_args: &'v GenericArgs<'v>,
 ) -> V::Result {
     walk_list!(visitor, visit_generic_arg, generic_args.args);
-    walk_list!(visitor, visit_assoc_type_binding, generic_args.bindings);
+    walk_list!(visitor, visit_assoc_item_constraint, generic_args.constraints);
     V::Result::output()
 }
 
-pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
+pub fn walk_assoc_item_constraint<'v, V: Visitor<'v>>(
     visitor: &mut V,
-    type_binding: &'v TypeBinding<'v>,
+    constraint: &'v AssocItemConstraint<'v>,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(type_binding.hir_id));
-    try_visit!(visitor.visit_ident(type_binding.ident));
-    try_visit!(visitor.visit_generic_args(type_binding.gen_args));
-    match type_binding.kind {
-        TypeBindingKind::Equality { ref term } => match term {
+    try_visit!(visitor.visit_id(constraint.hir_id));
+    try_visit!(visitor.visit_ident(constraint.ident));
+    try_visit!(visitor.visit_generic_args(constraint.gen_args));
+    match constraint.kind {
+        AssocItemConstraintKind::Equality { ref term } => match term {
             Term::Ty(ref ty) => try_visit!(visitor.visit_ty(ty)),
             Term::Const(ref c) => try_visit!(visitor.visit_anon_const(c)),
         },
-        TypeBindingKind::Constraint { bounds } => walk_list!(visitor, visit_param_bound, bounds),
+        AssocItemConstraintKind::Bound { bounds } => {
+            walk_list!(visitor, visit_param_bound, bounds)
+        }
     }
     V::Result::output()
 }

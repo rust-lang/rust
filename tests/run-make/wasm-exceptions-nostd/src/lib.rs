@@ -1,9 +1,7 @@
 #![no_std]
 #![crate_type = "cdylib"]
-
 // Allow a few unstable features because we create a panic
 // runtime for native wasm exceptions from scratch
-
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
@@ -39,20 +37,24 @@ pub extern "C" fn start() -> usize {
     let data = 0x1234usize as *mut u8; // Something to recognize
 
     unsafe {
-        core::intrinsics::catch_unwind(|data: *mut u8| {
-            let _log_on_drop = LogOnDrop;
+        core::intrinsics::catch_unwind(
+            |data: *mut u8| {
+                let _log_on_drop = LogOnDrop;
 
-            logging::log_str(&alloc::format!("`r#try` called with ptr {:?}", data));
-            let x = [12];
-            let _ = x[4]; // should panic
+                logging::log_str(&alloc::format!("`r#try` called with ptr {:?}", data));
+                let x = [12];
+                let _ = x[4]; // should panic
 
-            logging::log_str("This line should not be visible! :(");
-        }, data, |data, exception| {
-            let exception = *Box::from_raw(exception as *mut String);
-            logging::log_str("Caught something!");
-            logging::log_str(&alloc::format!("  data     : {:?}", data));
-            logging::log_str(&alloc::format!("  exception: {:?}", exception));
-        });
+                logging::log_str("This line should not be visible! :(");
+            },
+            data,
+            |data, exception| {
+                let exception = *Box::from_raw(exception as *mut String);
+                logging::log_str("Caught something!");
+                logging::log_str(&alloc::format!("  data     : {:?}", data));
+                logging::log_str(&alloc::format!("  exception: {:?}", exception));
+            },
+        );
     }
 
     logging::log_str("This program terminates correctly.");

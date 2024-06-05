@@ -15,7 +15,6 @@ impl Drop for StructWithDtor {
 //~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-
     //~ MONO_ITEM fn std::ptr::drop_in_place::<[StructWithDtor; 2]> - shim(Some([StructWithDtor; 2])) @@ drop_in_place_intrinsic-cgu.0[Internal]
     let x = [StructWithDtor(0), StructWithDtor(1)];
 

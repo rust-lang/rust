@@ -10,12 +10,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::build::Builder;
-use crate::errors::MCDCExceedsConditionNumLimit;
+use crate::errors::MCDCExceedsConditionLimit;
 
 /// The MCDC bitmap scales exponentially (2^n) based on the number of conditions seen,
 /// So llvm sets a maximum value prevents the bitmap footprint from growing too large without the user's knowledge.
 /// This limit may be relaxed if the [upstream change](https://github.com/llvm/llvm-project/pull/82448) is merged.
-const MAX_CONDITIONS_NUM_IN_DECISION: usize = 6;
+const MAX_CONDITIONS_IN_DECISION: usize = 6;
 
 #[derive(Default)]
 struct MCDCDecisionCtx {
@@ -100,7 +100,7 @@ impl MCDCState {
             }
             None => decision_ctx.processing_decision.insert(MCDCDecisionSpan {
                 span,
-                conditions_num: 0,
+                num_conditions: 0,
                 end_markers: vec![],
                 decision_depth,
             }),
@@ -108,14 +108,14 @@ impl MCDCState {
 
         let parent_condition = decision_ctx.decision_stack.pop_back().unwrap_or_default();
         let lhs_id = if parent_condition.condition_id == ConditionId::NONE {
-            decision.conditions_num += 1;
-            ConditionId::from(decision.conditions_num)
+            decision.num_conditions += 1;
+            ConditionId::from(decision.num_conditions)
         } else {
             parent_condition.condition_id
         };
 
-        decision.conditions_num += 1;
-        let rhs_condition_id = ConditionId::from(decision.conditions_num);
+        decision.num_conditions += 1;
+        let rhs_condition_id = ConditionId::from(decision.num_conditions);
 
         let (lhs, rhs) = match op {
             LogicalOp::And => {
@@ -179,18 +179,18 @@ impl MCDCState {
     }
 }
 
-pub struct MCDCInfoBuilder {
+pub(crate) struct MCDCInfoBuilder {
     branch_spans: Vec<MCDCBranchSpan>,
     decision_spans: Vec<MCDCDecisionSpan>,
     state: MCDCState,
 }
 
 impl MCDCInfoBuilder {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { branch_spans: vec![], decision_spans: vec![], state: MCDCState::new() }
     }
 
-    pub fn visit_evaluated_condition(
+    pub(crate) fn visit_evaluated_condition(
         &mut self,
         tcx: TyCtxt<'_>,
         source_info: SourceInfo,
@@ -208,17 +208,17 @@ impl MCDCInfoBuilder {
         // is empty, i.e. when all the conditions of the decision were instrumented,
         // and the decision is "complete".
         if let Some(decision) = decision_result {
-            match decision.conditions_num {
+            match decision.num_conditions {
                 0 => {
                     unreachable!("Decision with no condition is not expected");
                 }
-                1..=MAX_CONDITIONS_NUM_IN_DECISION => {
+                1..=MAX_CONDITIONS_IN_DECISION => {
                     self.decision_spans.push(decision);
                 }
                 _ => {
                     // Do not generate mcdc mappings and statements for decisions with too many conditions.
                     // Therefore, first erase the condition info of the (N-1) previous branch spans.
-                    let rebase_idx = self.branch_spans.len() - (decision.conditions_num - 1);
+                    let rebase_idx = self.branch_spans.len() - (decision.num_conditions - 1);
                     for branch in &mut self.branch_spans[rebase_idx..] {
                         branch.condition_info = None;
                     }
@@ -226,10 +226,10 @@ impl MCDCInfoBuilder {
                     // Then, erase this last branch span's info too, for a total of N.
                     condition_info = None;
 
-                    tcx.dcx().emit_warn(MCDCExceedsConditionNumLimit {
+                    tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
                         span: decision.span,
-                        conditions_num: decision.conditions_num,
-                        max_conditions_num: MAX_CONDITIONS_NUM_IN_DECISION,
+                        num_conditions: decision.num_conditions,
+                        max_conditions: MAX_CONDITIONS_IN_DECISION,
                     });
                 }
             }
@@ -243,7 +243,7 @@ impl MCDCInfoBuilder {
         });
     }
 
-    pub fn into_done(self) -> (Vec<MCDCDecisionSpan>, Vec<MCDCBranchSpan>) {
+    pub(crate) fn into_done(self) -> (Vec<MCDCDecisionSpan>, Vec<MCDCBranchSpan>) {
         (self.decision_spans, self.branch_spans)
     }
 }

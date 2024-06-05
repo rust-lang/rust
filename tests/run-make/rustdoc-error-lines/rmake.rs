@@ -11,10 +11,10 @@ fn main() {
     let should_contain = &[
         "input.rs - foo (line 5)",
         "input.rs:7:15",
-        "input.rs - bar (line 15)",
-        "input.rs:17:15",
-        "input.rs - bar (line 24)",
-        "input.rs:26:15",
+        "input.rs - bar (line 13)",
+        "input.rs:15:15",
+        "input.rs - bar (line 22)",
+        "input.rs:24:15",
     ];
     for text in should_contain {
         assert!(output.contains(text), "output doesn't contains {:?}", text);

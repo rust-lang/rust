@@ -148,17 +148,24 @@ fn recurse_build<'tcx>(
             for &id in args.iter() {
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
-            let new_args = tcx.mk_const_list(&new_args);
-            ty::Const::new_expr(tcx, Expr::FunctionCall(fun, new_args), node.ty)
+            ty::Const::new_expr(
+                tcx,
+                Expr::new_call(tcx, fun.ty(), fun, new_args.into_iter()),
+                node.ty,
+            )
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {
             let lhs = recurse_build(tcx, body, lhs, root_span)?;
             let rhs = recurse_build(tcx, body, rhs, root_span)?;
-            ty::Const::new_expr(tcx, Expr::Binop(op, lhs, rhs), node.ty)
+            ty::Const::new_expr(
+                tcx,
+                Expr::new_binop(tcx, op, lhs.ty(), rhs.ty(), lhs, rhs),
+                node.ty,
+            )
         }
         &ExprKind::Unary { op, arg } if check_unop(op) => {
             let arg = recurse_build(tcx, body, arg, root_span)?;
-            ty::Const::new_expr(tcx, Expr::UnOp(op, arg), node.ty)
+            ty::Const::new_expr(tcx, Expr::new_unop(tcx, op, arg.ty(), arg), node.ty)
         }
         // This is necessary so that the following compiles:
         //
@@ -178,12 +185,22 @@ fn recurse_build<'tcx>(
         // "coercion cast" i.e. using a coercion or is a no-op.
         // This is important so that `N as usize as usize` doesn't unify with `N as usize`. (untested)
         &ExprKind::Use { source } => {
-            let arg = recurse_build(tcx, body, source, root_span)?;
-            ty::Const::new_expr(tcx, Expr::Cast(CastKind::Use, arg, node.ty), node.ty)
+            let value_ty = body.exprs[source].ty;
+            let value = recurse_build(tcx, body, source, root_span)?;
+            ty::Const::new_expr(
+                tcx,
+                Expr::new_cast(tcx, CastKind::Use, value_ty, value, node.ty),
+                node.ty,
+            )
         }
         &ExprKind::Cast { source } => {
-            let arg = recurse_build(tcx, body, source, root_span)?;
-            ty::Const::new_expr(tcx, Expr::Cast(CastKind::As, arg, node.ty), node.ty)
+            let value_ty = body.exprs[source].ty;
+            let value = recurse_build(tcx, body, source, root_span)?;
+            ty::Const::new_expr(
+                tcx,
+                Expr::new_cast(tcx, CastKind::As, value_ty, value, node.ty),
+                node.ty,
+            )
         }
         ExprKind::Borrow { arg, .. } => {
             let arg_node = &body.exprs[*arg];

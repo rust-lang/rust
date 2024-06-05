@@ -18,7 +18,7 @@ tracing.workspace = true
 rustc-hash.workspace = true
 serde_json.workspace = true
 serde.workspace = true
-command-group.workspace = true
+process-wrap.workspace = true
 
 # local deps
 paths.workspace = true

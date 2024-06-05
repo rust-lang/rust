@@ -6,9 +6,7 @@
 /// #![feature(bool_to_option)]
 /// let x: char = 1;
 /// ```
-pub fn foo() {
-
-}
+pub fn foo() {}
 
 /// Add some text around the test...
 ///

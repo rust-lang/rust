@@ -14,7 +14,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::traits::{self, IsFirstInputType, UncoveredTyParams};
 use rustc_trait_selection::traits::{OrphanCheckErr, OrphanCheckMode};
-use rustc_trait_selection::traits::{StructurallyNormalizeExt, TraitEngineExt};
 
 #[instrument(level = "debug", skip(tcx))]
 pub(crate) fn orphan_check_impl(
@@ -317,12 +316,12 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            let mut fulfill_cx = <dyn traits::TraitEngine<'_>>::new(&infcx);
-            infcx
-                .at(&cause, ty::ParamEnv::empty())
-                .structurally_normalize(ty, &mut *fulfill_cx)
-                .map(|ty| infcx.resolve_vars_if_possible(ty))
-                .unwrap_or(ty)
+            ocx.structurally_normalize(
+                &cause,
+                ty::ParamEnv::empty(),
+                infcx.resolve_vars_if_possible(ty),
+            )
+            .unwrap_or(ty)
         } else {
             ty
         };

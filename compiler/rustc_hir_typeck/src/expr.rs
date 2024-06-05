@@ -909,8 +909,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the first place.
             assert_ne!(encl_item_id.def_id, encl_body_owner_id);
 
-            let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
-            let encl_body = self.tcx.hir().body(encl_body_id);
+            let encl_body = self.tcx.hir().body_owned_by(encl_body_owner_id);
 
             err.encl_body_span = Some(encl_body.value.span);
             err.encl_fn_span = Some(*encl_fn_span);
@@ -1348,6 +1347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(rcvr),
                         rcvr_t,
                         segment.ident,
+                        expr.hir_id,
                         SelfSource::MethodCall(rcvr),
                         error,
                         Some(args),
@@ -3049,7 +3049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.universe();
 
-            let ocx = ObligationCtxt::new(self);
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
             let impl_args = self.fresh_args_for_item(base_expr.span, impl_def_id);
             let impl_trait_ref =
                 self.tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(self.tcx, impl_args);

@@ -16,7 +16,7 @@ pub struct OverruledAttribute<'a> {
     #[subdiagnostic]
     pub sub: OverruledAttributeSub,
 }
-//
+
 pub enum OverruledAttributeSub {
     DefaultSource { id: String },
     NodeSource { span: Span, reason: Option<Symbol> },

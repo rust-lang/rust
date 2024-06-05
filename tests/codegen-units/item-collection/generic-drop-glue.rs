@@ -21,7 +21,7 @@ struct StructNoDrop<T1, T2> {
 
 enum EnumWithDrop<T1, T2> {
     A(T1),
-    B(T2)
+    B(T2),
 }
 
 impl<T1, T2> Drop for EnumWithDrop<T1, T2> {
@@ -30,9 +30,8 @@ impl<T1, T2> Drop for EnumWithDrop<T1, T2> {
 
 enum EnumNoDrop<T1, T2> {
     A(T1),
-    B(T2)
+    B(T2),
 }
-
 
 struct NonGenericNoDrop(#[allow(dead_code)] i32);
 
@@ -67,24 +66,24 @@ fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn <EnumWithDrop<i32, i64> as std::ops::Drop>::drop
     let _ = match EnumWithDrop::A::<i32, i64>(0) {
         EnumWithDrop::A(x) => x,
-        EnumWithDrop::B(x) => x as i32
+        EnumWithDrop::B(x) => x as i32,
     };
 
     //~ MONO_ITEM fn std::ptr::drop_in_place::<EnumWithDrop<f64, f32>> - shim(Some(EnumWithDrop<f64, f32>)) @@ generic_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn <EnumWithDrop<f64, f32> as std::ops::Drop>::drop
     let _ = match EnumWithDrop::B::<f64, f32>(1.0) {
         EnumWithDrop::A(x) => x,
-        EnumWithDrop::B(x) => x as f64
+        EnumWithDrop::B(x) => x as f64,
     };
 
     let _ = match EnumNoDrop::A::<i32, i64>(0) {
         EnumNoDrop::A(x) => x,
-        EnumNoDrop::B(x) => x as i32
+        EnumNoDrop::B(x) => x as i32,
     };
 
     let _ = match EnumNoDrop::B::<f64, f32>(1.0) {
         EnumNoDrop::A(x) => x,
-        EnumNoDrop::B(x) => x as f64
+        EnumNoDrop::B(x) => x as f64,
     };
 
     0

@@ -9,5 +9,5 @@ mod foo {
     pub struct AnotherOne;
 }
 
-pub use foo::AnotherOne;
 pub use fmt::Subscriber as FmtSubscriber;
+pub use foo::AnotherOne;

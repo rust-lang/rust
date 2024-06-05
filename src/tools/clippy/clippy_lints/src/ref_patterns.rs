@@ -6,9 +6,11 @@ use rustc_session::declare_lint_pass;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usages of the `ref` keyword.
-    /// ### Why is this bad?
+    ///
+    /// ### Why restrict this?
     /// The `ref` keyword can be confusing for people unfamiliar with it, and often
     /// it is more concise to use `&` instead.
+    ///
     /// ### Example
     /// ```no_run
     /// let opt = Some(5);

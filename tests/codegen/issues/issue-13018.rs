@@ -6,6 +6,6 @@
 use std::rc::Rc;
 
 pub fn foo(t: &Rc<Vec<usize>>) {
-// CHECK-NOT: __rust_dealloc
+    // CHECK-NOT: __rust_dealloc
     drop(t.clone());
 }

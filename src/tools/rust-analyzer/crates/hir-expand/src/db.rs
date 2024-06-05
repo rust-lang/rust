@@ -298,7 +298,7 @@ pub fn expand_speculative(
             // prefer tokens of the same kind and text
             // Note the inversion of the score here, as we want to prefer the first token in case
             // of all tokens having the same score
-            (t.kind() != token_to_map.kind()) as u8 + (t.text() != token_to_map.text()) as u8
+            (t.kind() != token_to_map.kind()) as u8 + 2 * ((t.text() != token_to_map.text()) as u8)
         })?;
     Some((node.syntax_node(), token))
 }

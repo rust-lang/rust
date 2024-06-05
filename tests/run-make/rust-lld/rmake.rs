@@ -21,8 +21,9 @@ fn main() {
         .input("main.rs")
         .run();
     assert!(
-        find_lld_version_in_logs(output),
-        "the LLD version string should be present in the output logs"
+        find_lld_version_in_logs(&output),
+        "the LLD version string should be present in the output logs:\n{}",
+        std::str::from_utf8(&output.stderr).unwrap()
     );
 
     // It should not be used when we explictly opt-out of lld.
@@ -33,8 +34,9 @@ fn main() {
         .input("main.rs")
         .run();
     assert!(
-        !find_lld_version_in_logs(output),
-        "the LLD version string should not be present in the output logs"
+        !find_lld_version_in_logs(&output),
+        "the LLD version string should not be present in the output logs:\n{}",
+        std::str::from_utf8(&output.stderr).unwrap()
     );
 
     // While we're here, also check that the last linker feature flag "wins" when passed multiple
@@ -50,13 +52,14 @@ fn main() {
         .input("main.rs")
         .run();
     assert!(
-        find_lld_version_in_logs(output),
-        "the LLD version string should be present in the output logs"
+        find_lld_version_in_logs(&output),
+        "the LLD version string should be present in the output logs:\n{}",
+        std::str::from_utf8(&output.stderr).unwrap()
     );
 }
 
-fn find_lld_version_in_logs(output: Output) -> bool {
+fn find_lld_version_in_logs(output: &Output) -> bool {
     let lld_version_re = Regex::new(r"^LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
     let stderr = std::str::from_utf8(&output.stderr).unwrap();
-    stderr.lines().any(|line| lld_version_re.is_match(line))
+    stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }

@@ -38,10 +38,10 @@ declare_lint_pass!(MultipleSupertraitUpcastable => [MULTIPLE_SUPERTRAIT_UPCASTAB
 impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let def_id = item.owner_id.to_def_id();
-        // NOTE(nbdd0121): use `object_safety_violations` instead of `check_is_object_safe` because
+        // NOTE(nbdd0121): use `object_safety_violations` instead of `is_object_safe` because
         // the latter will report `where_clause_object_safety` lint.
         if let hir::ItemKind::Trait(_, _, _, _, _) = item.kind
-            && cx.tcx.object_safety_violations(def_id).is_empty()
+            && cx.tcx.is_object_safe(def_id)
         {
             let direct_super_traits_iter = cx
                 .tcx

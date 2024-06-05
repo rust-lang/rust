@@ -11,8 +11,7 @@ declare_clippy_lint! {
     /// Suggests moving the semicolon after a block to the inside of the block, after its last
     /// expression.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine
     /// and this lint suggests inside the block.
     /// Take a look at `semicolon_outside_block` for the other alternative.
@@ -40,8 +39,7 @@ declare_clippy_lint! {
     ///
     /// Suggests moving the semicolon from a block's final expression outside of the block.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine
     /// and this lint suggests outside the block.
     /// Take a look at `semicolon_inside_block` for the other alternative.

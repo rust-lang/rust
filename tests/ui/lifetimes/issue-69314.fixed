@@ -11,7 +11,7 @@ impl A {
     }
     async fn f() {
         let mut buf = [0; 512];
-        let m2 = &buf[..]; //~ ERROR `buf` does not live long enough
+        let m2 = &buf[..];
         let m = Self::g(m2).await;
         Self::f2(m).await;
     }

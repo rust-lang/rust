@@ -1,3 +1,5 @@
 extern crate foo;
 
-fn main() { foo::foo() }
+fn main() {
+    foo::foo()
+}

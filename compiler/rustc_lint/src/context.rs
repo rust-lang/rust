@@ -94,7 +94,8 @@ enum TargetLint {
 
     /// A lint name that should give no warnings and have no effect.
     ///
-    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers
+    /// them as tool lints.
     Ignored,
 }
 
@@ -126,12 +127,16 @@ pub enum CheckLintNameResult<'a> {
     Renamed(String),
     /// The lint has been removed due to the given reason.
     Removed(String),
-    /// The lint is from a tool. If the Option is None, then either
-    /// the lint does not exist in the tool or the code was not
-    /// compiled with the tool and therefore the lint was never
-    /// added to the `LintStore`. Otherwise the `LintId` will be
-    /// returned as if it where a rustc lint.
-    Tool(Result<&'a [LintId], (Option<&'a [LintId]>, String)>),
+
+    /// The lint is from a tool. The `LintId` will be returned as if it were a
+    /// rustc lint. The `Option<String>` indicates if the lint has been
+    /// renamed.
+    Tool(&'a [LintId], Option<String>),
+
+    /// The lint is from a tool. Either the lint does not exist in the tool or
+    /// the code was not compiled with the tool and therefore the lint was
+    /// never added to the `LintStore`.
+    MissingTool,
 }
 
 impl LintStore {
@@ -384,14 +389,14 @@ impl LintStore {
                         } else {
                             // 2. The tool isn't currently running, so no lints will be registered.
                             // To avoid giving a false positive, ignore all unknown lints.
-                            CheckLintNameResult::Tool(Err((None, String::new())))
+                            CheckLintNameResult::MissingTool
                         };
                     }
                     Some(LintGroup { lint_ids, .. }) => {
-                        return CheckLintNameResult::Tool(Ok(lint_ids));
+                        return CheckLintNameResult::Tool(lint_ids, None);
                     }
                 },
-                Some(Id(id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
+                Some(Id(id)) => return CheckLintNameResult::Tool(slice::from_ref(id), None),
                 // If the lint was registered as removed or renamed by the lint tool, we don't need
                 // to treat tool_lints and rustc lints different and can use the code below.
                 _ => {}
@@ -411,7 +416,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Ok(lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(lint_ids, Some((*name).to_string()))
                         };
                     }
                     CheckLintNameResult::Ok(lint_ids)
@@ -472,18 +477,17 @@ impl LintStore {
                     // Reaching this would be weird, but let's cover this case anyway
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
-                        return if *silent {
-                            CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
+                        if *silent {
+                            CheckLintNameResult::Tool(lint_ids, Some(complete_name))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
-                        };
+                            CheckLintNameResult::Tool(lint_ids, Some((*name).to_string()))
+                        }
+                    } else {
+                        CheckLintNameResult::Tool(lint_ids, Some(complete_name))
                     }
-                    CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                 }
             },
-            Some(Id(id)) => {
-                CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
-            }
+            Some(Id(id)) => CheckLintNameResult::Tool(slice::from_ref(id), Some(complete_name)),
             Some(other) => {
                 debug!("got renamed lint {:?}", other);
                 CheckLintNameResult::NoLint(None)

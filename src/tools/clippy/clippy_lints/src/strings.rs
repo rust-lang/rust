@@ -45,10 +45,10 @@ declare_clippy_lint! {
     /// `String`, but only if [`string_add_assign`](#string_add_assign) does *not*
     /// match.
     ///
-    /// ### Why is this bad?
-    /// It's not bad in and of itself. However, this particular
+    /// ### Why restrict this?
+    /// This particular
     /// `Add` implementation is asymmetric (the other operand need not be `String`,
-    /// but `x` does), while addition as mathematically defined is symmetric, also
+    /// but `x` does), while addition as mathematically defined is symmetric, and
     /// the `String::push_str(_)` function is a perfectly good replacement.
     /// Therefore, some dislike it and wish not to have it in their code.
     ///
@@ -123,7 +123,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for slice operations on strings
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// UTF-8 characters span multiple bytes, and it is easy to inadvertently confuse character
     /// counts and string indices. This may lead to panics, and should warrant some test cases
     /// containing wide UTF-8 characters. This lint is most useful in code that should avoid
@@ -364,10 +364,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// This lint checks for `.to_string()` method calls on values of type `&str`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `to_string` method is also used on other types to convert them to a string.
-    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be better
-    /// expressed with `.to_owned()`.
+    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be
+    /// more specifically expressed with `.to_owned()`.
     ///
     /// ### Example
     /// ```no_run
@@ -415,9 +415,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// This lint checks for `.to_string()` method calls on values of type `String`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `to_string` method is also used on other types to convert them to a string.
-    /// When called on a `String` it only clones the `String`, which can be better expressed with `.clone()`.
+    /// When called on a `String` it only clones the `String`, which can be more specifically
+    /// expressed with `.clone()`.
     ///
     /// ### Example
     /// ```no_run

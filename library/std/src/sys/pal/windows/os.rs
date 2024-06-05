@@ -302,16 +302,16 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     .ok()
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = to_u16s(k)?;
     let v = to_u16s(v)?;
 
-    cvt(unsafe { c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr()) }).map(drop)
+    cvt(c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())).map(drop)
 }
 
-pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     let v = to_u16s(n)?;
-    cvt(unsafe { c::SetEnvironmentVariableW(v.as_ptr(), ptr::null()) }).map(drop)
+    cvt(c::SetEnvironmentVariableW(v.as_ptr(), ptr::null())).map(drop)
 }
 
 pub fn temp_dir() -> PathBuf {

@@ -207,10 +207,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
 
         // First, check that we're actually in the tail of a function.
-        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else {
+        let Some(body) = hir.maybe_body_owned_by(self.body_id) else {
             return;
         };
-        let body = hir.body(body_id);
         let hir::ExprKind::Block(block, _) = body.value.kind else {
             return;
         };

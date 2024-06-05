@@ -187,9 +187,6 @@ pub struct Config {
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
-    /// The rust-demangler executable.
-    pub rust_demangler_path: Option<PathBuf>,
-
     /// The coverage-dump executable.
     pub coverage_dump_path: Option<PathBuf>,
 

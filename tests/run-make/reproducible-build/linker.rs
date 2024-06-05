@@ -1,7 +1,7 @@
 use std::env;
-use std::path::Path;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::path::Path;
 
 fn main() {
     let mut dst = env::current_exe().unwrap();
@@ -19,7 +19,7 @@ fn main() {
         if !path.is_file() {
             out.push_str(&arg);
             out.push_str("\n");
-            continue
+            continue;
         }
 
         let mut contents = Vec::new();

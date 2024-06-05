@@ -1,4 +1,6 @@
-#![crate_name="crateA"]
+#![crate_name = "crateA"]
 
 // Base crate
-pub fn func<T>() { println!("hello"); }
+pub fn func<T>() {
+    println!("hello");
+}

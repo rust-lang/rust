@@ -17,7 +17,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     ) -> QueryResult<'tcx> {
         let tcx = self.interner();
         let opaque_ty = goal.predicate.alias;
-        let expected = goal.predicate.term.ty().expect("no such thing as an opaque const");
+        let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
         match (goal.param_env.reveal(), self.solver_mode()) {
             (Reveal::UserFacing, SolverMode::Normal) => {

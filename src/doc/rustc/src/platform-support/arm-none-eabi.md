@@ -1,6 +1,15 @@
 # `{arm,thumb}*-none-eabi(hf)?`
 
-## Tier 2 Target List
+## Common Target Details
+
+This documentation covers details that apply to a range of bare-metal targets
+for 32-bit Arm CPUs. The `arm-none-eabi` flavor of the GNU compiler toolchain is
+often used to assist compilation to these targets.
+
+Details that apply only to only a specific target in this group are covered in
+their own document.
+
+### Tier 2 Target List
 
 - Arm A-Profile Architectures
   - `armv7a-none-eabi`
@@ -16,7 +25,7 @@
 - *Legacy* Arm Architectures
   - None
 
-## Tier 3 Target List
+### Tier 3 Target List
 
 - Arm A-Profile Architectures
   - `armv7a-none-eabihf`
@@ -28,24 +37,21 @@
   - [`armv4t-none-eabi` and `thumbv4t-none-eabi`](armv4t-none-eabi.md)
   - [`armv5te-none-eabi` and `thumbv5te-none-eabi`](armv5te-none-eabi.md)
 
-## Common Target Details
-
-This documentation covers details that apply to a range of bare-metal targets
-for 32-bit Arm CPUs. In addition, target specific details may be covered in
-their own document.
+## Instruction Sets
 
 There are two 32-bit instruction set architectures (ISAs) defined by Arm:
 
 - The [*A32 ISA*][a32-isa], with fixed-width 32-bit instructions. Previously
-  known as the *Arm* ISA, this originated with the original ARM1 of 1985 and has
+  known as the *Arm* ISA, this originated with the original Arm1 of 1985 and has
   been updated by various revisions to the architecture specifications ever
   since.
 - The [*T32 ISA*][t32-isa], with a mix of 16-bit and 32-bit width instructions.
   Note that this term includes both the original 16-bit width *Thumb* ISA
   introduced with the Armv4T architecture in 1994, and the later 16/32-bit sized
-  *Thumb-2* ISA introduced with the Armv6T2 architecture in 2003. Again, these
-  ISAs have been revised by subsequent revisions to the relevant Arm
-  architecture specifications.
+  *Thumb-2* ISA introduced with the Armv6T2 architecture in 2003.
+
+Again, these ISAs have been revised by subsequent revisions to the relevant Arm
+architecture specifications.
 
 There is also a 64-bit ISA with fixed-width 32-bit instructions called the *A64
 ISA*, but targets which implement that instruction set generally start with

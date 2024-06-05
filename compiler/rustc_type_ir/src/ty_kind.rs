@@ -1,18 +1,20 @@
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
+pub use self::closure::*;
+use self::TyKind::*;
 use crate::inherent::*;
 use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
-use self::TyKind::*;
-
 use rustc_ast_ir::Mutability;
+
+mod closure;
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -141,7 +143,7 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr(I::PolyFnSig),
+    FnPtr(ty::Binder<I, FnSig<I>>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(I::BoundExistentialPredicates, I::Region, DynKind),
@@ -514,7 +516,7 @@ impl<I: Interner> AliasTy<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::OwnItemArgs) {
+    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Projection);
         interner.trait_ref_and_own_args_for_alias(self.def_id, self.args)
     }
@@ -715,14 +717,44 @@ impl FloatTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum IntVarValue {
+    Unknown,
     IntType(IntTy),
     UintType(UintTy),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct FloatVarValue(pub FloatTy);
+impl IntVarValue {
+    pub fn is_known(self) -> bool {
+        match self {
+            IntVarValue::IntType(_) | IntVarValue::UintType(_) => true,
+            IntVarValue::Unknown => false,
+        }
+    }
+
+    pub fn is_unknown(self) -> bool {
+        !self.is_known()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FloatVarValue {
+    Unknown,
+    Known(FloatTy),
+}
+
+impl FloatVarValue {
+    pub fn is_known(self) -> bool {
+        match self {
+            FloatVarValue::Known(_) => true,
+            FloatVarValue::Unknown => false,
+        }
+    }
+
+    pub fn is_unknown(self) -> bool {
+        !self.is_known()
+    }
+}
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
@@ -807,11 +839,28 @@ impl UnifyKey for TyVid {
 }
 
 #[cfg(feature = "nightly")]
-impl EqUnifyValue for IntVarValue {}
+impl UnifyValue for IntVarValue {
+    type Error = NoError;
+
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
+        match (*value1, *value2) {
+            (IntVarValue::Unknown, IntVarValue::Unknown) => Ok(IntVarValue::Unknown),
+            (
+                IntVarValue::Unknown,
+                known @ (IntVarValue::UintType(_) | IntVarValue::IntType(_)),
+            )
+            | (
+                known @ (IntVarValue::UintType(_) | IntVarValue::IntType(_)),
+                IntVarValue::Unknown,
+            ) => Ok(known),
+            _ => panic!("differing ints should have been resolved first"),
+        }
+    }
+}
 
 #[cfg(feature = "nightly")]
 impl UnifyKey for IntVid {
-    type Value = Option<IntVarValue>;
+    type Value = IntVarValue;
     #[inline] // make this function eligible for inlining - it is quite hot.
     fn index(&self) -> u32 {
         self.as_u32()
@@ -826,11 +875,26 @@ impl UnifyKey for IntVid {
 }
 
 #[cfg(feature = "nightly")]
-impl EqUnifyValue for FloatVarValue {}
+impl UnifyValue for FloatVarValue {
+    type Error = NoError;
+
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
+        match (*value1, *value2) {
+            (FloatVarValue::Unknown, FloatVarValue::Unknown) => Ok(FloatVarValue::Unknown),
+            (FloatVarValue::Unknown, FloatVarValue::Known(known))
+            | (FloatVarValue::Known(known), FloatVarValue::Unknown) => {
+                Ok(FloatVarValue::Known(known))
+            }
+            (FloatVarValue::Known(_), FloatVarValue::Known(_)) => {
+                panic!("differing floats should have been resolved first")
+            }
+        }
+    }
+}
 
 #[cfg(feature = "nightly")]
 impl UnifyKey for FloatVid {
-    type Value = Option<FloatVarValue>;
+    type Value = FloatVarValue;
     #[inline]
     fn index(&self) -> u32 {
         self.as_u32()
@@ -855,21 +919,6 @@ impl<CTX> HashStable<CTX> for InferTy {
             }
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
-    }
-}
-
-impl fmt::Debug for IntVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            IntVarValue::IntType(ref v) => v.fmt(f),
-            IntVarValue::UintType(ref v) => v.fmt(f),
-        }
-    }
-}
-
-impl fmt::Debug for FloatVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 

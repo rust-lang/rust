@@ -278,4 +278,16 @@ fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = todo$0!(); }"#,
             r#"fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = (a, (a, b)); }"#,
         )
     }
+
+    #[test]
+    fn test_tuple_struct_with_generics() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+struct Foo<T>(T);
+fn f() { let a = 1; let b: Foo<i32> = todo$0!(); }"#,
+            r#"struct Foo<T>(T);
+fn f() { let a = 1; let b: Foo<i32> = Foo(a); }"#,
+        )
+    }
 }

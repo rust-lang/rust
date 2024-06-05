@@ -68,11 +68,11 @@ impl_lint_pass!(NonLocalDefinitions => [NON_LOCAL_DEFINITIONS]);
 // instead check_mod is called after every body has been handled.
 
 impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
-    fn check_body(&mut self, _cx: &LateContext<'tcx>, _body: &'tcx Body<'tcx>) {
+    fn check_body(&mut self, _cx: &LateContext<'tcx>, _body: &Body<'tcx>) {
         self.body_depth += 1;
     }
 
-    fn check_body_post(&mut self, _cx: &LateContext<'tcx>, _body: &'tcx Body<'tcx>) {
+    fn check_body_post(&mut self, _cx: &LateContext<'tcx>, _body: &Body<'tcx>) {
         self.body_depth -= 1;
     }
 
@@ -306,7 +306,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
     }
 }
 
-// Detecting if the impl definition is leaking outside of it's defining scope.
+// Detecting if the impl definition is leaking outside of its defining scope.
 //
 // Rule: for each impl, instantiate all local types with inference vars and
 // then assemble candidates for that goal, if there are more than 1 (non-private

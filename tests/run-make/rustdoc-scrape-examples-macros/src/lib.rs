@@ -8,5 +8,7 @@ pub fn f() {}
 
 #[macro_export]
 macro_rules! a_rules_macro {
-  ($e:expr) => { ($e, foobar::f()); }
+    ($e:expr) => {
+        ($e, foobar::f());
+    };
 }

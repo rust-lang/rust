@@ -76,7 +76,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 StmtKind::Empty => {}
                 StmtKind::MacCall(..) => panic!("shouldn't exist here"),
             }
-            ast_stmts = &ast_stmts[1..];
+            ast_stmts = tail;
         }
         (self.arena.alloc_from_iter(stmts), expr)
     }

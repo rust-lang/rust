@@ -8,7 +8,7 @@ use std::intrinsics::mir::*;
 #[derive(Copy, Clone)]
 enum E {
     V1(i32),
-    V2(i32)
+    V2(i32),
 }
 
 // EMIT_MIR enum.simple.DataflowConstProp.diff
@@ -23,7 +23,10 @@ fn simple() {
     // CHECK: switchInt(const 0_isize) -> [0: [[target_bb:bb.*]], 1: bb2, otherwise: bb1];
     // CHECK: [[target_bb]]: {
     // CHECK:     [[x]] = const 0_i32;
-    let x = match e { E::V1(x1) => x1, E::V2(x2) => x2 };
+    let x = match e {
+        E::V1(x1) => x1,
+        E::V2(x2) => x2,
+    };
 }
 
 // EMIT_MIR enum.constant.DataflowConstProp.diff
@@ -39,7 +42,10 @@ fn constant() {
     // CHECK: switchInt(const 0_isize) -> [0: [[target_bb:bb.*]], 1: bb2, otherwise: bb1];
     // CHECK: [[target_bb]]: {
     // CHECK:     [[x]] = const 0_i32;
-    let x = match e { E::V1(x1) => x1, E::V2(x2) => x2 };
+    let x = match e {
+        E::V1(x1) => x1,
+        E::V2(x2) => x2,
+    };
 }
 
 // EMIT_MIR enum.statics.DataflowConstProp.diff
@@ -58,7 +64,10 @@ fn statics() {
     // CHECK: switchInt(const 0_isize) -> [0: [[target_bb:bb.*]], 1: bb2, otherwise: bb1];
     // CHECK: [[target_bb]]: {
     // CHECK:     [[x1]] = const 0_i32;
-    let x1 = match e1 { E::V1(x11) => x11, E::V2(x12) => x12 };
+    let x1 = match e1 {
+        E::V1(x11) => x11,
+        E::V2(x12) => x12,
+    };
 
     static RC: &E = &E::V2(4);
 
@@ -72,7 +81,10 @@ fn statics() {
     // One is `_9 = &(*_12) and another is `_9 = _11`. It is different from what we can
     // get by printing MIR directly. It is better to check if there are any bugs in the
     // MIR passes around this stage.
-    let x2 = match e2 { E::V1(x21) => x21, E::V2(x22) => x22 };
+    let x2 = match e2 {
+        E::V1(x21) => x21,
+        E::V2(x22) => x22,
+    };
 }
 
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -84,7 +96,7 @@ struct NonZeroUsize(usize);
 // CHECK-LABEL: fn mutate_discriminant(
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn mutate_discriminant() -> u8 {
-    mir!(
+    mir! {
         let x: Option<NonZeroUsize>;
         {
             SetDiscriminant(x, 1);
@@ -109,7 +121,7 @@ fn mutate_discriminant() -> u8 {
             RET = 2;
             Unreachable()
         }
-    )
+    }
 }
 
 // EMIT_MIR enum.multiple.DataflowConstProp.diff
@@ -132,7 +144,10 @@ fn multiple(x: bool, i: u8) {
     // CHECK: [[x2]] = const 0_u8;
     // CHECK: [[some:_.*]] = (({{_.*}} as Some).0: u8)
     // CHECK: [[x2]] = [[some]];
-    let x2 = match e { Some(i) => i, None => 0 };
+    let x2 = match e {
+        Some(i) => i,
+        None => 0,
+    };
 
     // Therefore, `x2` should be `Top` here, and no replacement shall happen.
 

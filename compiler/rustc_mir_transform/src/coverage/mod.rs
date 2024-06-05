@@ -195,9 +195,9 @@ fn create_mappings<'tcx>(
     ));
 
     mappings.extend(mcdc_decisions.iter().filter_map(
-        |&mappings::MCDCDecision { span, bitmap_idx, conditions_num, .. }| {
+        |&mappings::MCDCDecision { span, bitmap_idx, num_conditions, .. }| {
             let code_region = region_for_span(span)?;
-            let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, conditions_num });
+            let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, num_conditions });
             Some(Mapping { kind, code_region })
         },
     ));
@@ -269,7 +269,7 @@ fn inject_mcdc_statements<'tcx>(
         span: _,
         ref end_bcbs,
         bitmap_idx,
-        conditions_num: _,
+        num_conditions: _,
         decision_depth,
     } in &extracted_mappings.mcdc_decisions
     {

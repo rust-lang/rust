@@ -5,7 +5,9 @@
 #![crate_type = "lib"]
 
 #[no_mangle]
-pub fn extern_fn() -> u8 { unsafe { extern_static } }
+pub fn extern_fn() -> u8 {
+    unsafe { extern_static }
+}
 
 #[no_mangle]
 pub static mut extern_static: u8 = 71;

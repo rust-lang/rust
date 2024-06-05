@@ -11,7 +11,7 @@
 //@[MSAN-1-LTO] compile-flags: -Zsanitizer-memory-track-origins=1 -C lto=fat
 //@[MSAN-2-LTO] compile-flags: -Zsanitizer-memory-track-origins -C lto=fat
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 // MSAN-0-NOT: @__msan_track_origins
 // MSAN-1:     @__msan_track_origins = weak_odr {{.*}}constant i32 1

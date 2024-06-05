@@ -675,9 +675,9 @@ declare_clippy_lint! {
     /// Checks for infinite loops in a function where the return type is not `!`
     /// and lint accordingly.
     ///
-    /// ### Why is this bad?
-    /// A loop should be gently exited somewhere, or at least mark its parent function as
-    /// never return (`!`).
+    /// ### Why restrict this?
+    /// Making the return type `!` serves as documentation that the function does not return.
+    /// If the function is not intended to loop infinitely, then this lint may detect a bug.
     ///
     /// ### Example
     /// ```no_run,ignore

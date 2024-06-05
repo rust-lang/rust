@@ -87,9 +87,9 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
     })
 }
 
-/// # Type constructor tactic
+/// # Data constructor tactic
 ///
-/// Attempts different type constructors for enums and structs in scope
+/// Attempts different data constructors for enums and structs in scope
 ///
 /// Updates lookup by new types reached and returns iterator that yields
 /// elements that unify with `goal`.
@@ -99,7 +99,7 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
 /// * `should_continue` - Function that indicates when to stop iterating
-pub(super) fn type_constructor<'a, DB: HirDatabase>(
+pub(super) fn data_constructor<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
@@ -308,7 +308,9 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                         // Early exit if some param cannot be filled from lookup
                         let param_exprs: Vec<Vec<Expr>> = fields
                             .into_iter()
-                            .map(|field| lookup.find(db, &field.ty(db)))
+                            .map(|field| {
+                                lookup.find(db, &field.ty_with_args(db, generics.iter().cloned()))
+                            })
                             .collect::<Option<_>>()?;
 
                         // Note that we need special case for 0 param constructors because of multi cartesian

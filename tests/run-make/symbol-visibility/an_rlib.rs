@@ -1,4 +1,4 @@
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 pub fn public_rust_function_from_rlib() {}
 

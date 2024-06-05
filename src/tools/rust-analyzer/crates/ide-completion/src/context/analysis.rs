@@ -3,8 +3,9 @@ use std::iter;
 
 use hir::{Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
+use itertools::Either;
 use syntax::{
-    algo::{find_node_at_offset, non_trivia_sibling},
+    algo::{ancestors_at_offset, find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasArgList, HasGenericParams, HasLoopBody, HasName, NameOrNameRef},
     match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
     SyntaxToken, TextRange, TextSize, T,
@@ -119,20 +120,45 @@ fn expand(
         }
 
         // No attributes have been expanded, so look for macro_call! token trees or derive token trees
-        let orig_tt = match find_node_at_offset::<ast::TokenTree>(&original_file, offset) {
+        let orig_tt = match ancestors_at_offset(&original_file, offset)
+            .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
+            .last()
+        {
             Some(it) => it,
             None => break 'expansion,
         };
-        let spec_tt = match find_node_at_offset::<ast::TokenTree>(&speculative_file, offset) {
+        let spec_tt = match ancestors_at_offset(&speculative_file, offset)
+            .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
+            .last()
+        {
             Some(it) => it,
             None => break 'expansion,
         };
 
-        // Expand pseudo-derive expansion
-        if let (Some(orig_attr), Some(spec_attr)) = (
-            orig_tt.syntax().parent().and_then(ast::Meta::cast).and_then(|it| it.parent_attr()),
-            spec_tt.syntax().parent().and_then(ast::Meta::cast).and_then(|it| it.parent_attr()),
-        ) {
+        let (tts, attrs) = match (orig_tt, spec_tt) {
+            (Either::Left(orig_tt), Either::Left(spec_tt)) => {
+                let attrs = orig_tt
+                    .syntax()
+                    .parent()
+                    .and_then(ast::Meta::cast)
+                    .and_then(|it| it.parent_attr())
+                    .zip(
+                        spec_tt
+                            .syntax()
+                            .parent()
+                            .and_then(ast::Meta::cast)
+                            .and_then(|it| it.parent_attr()),
+                    );
+                (Some((orig_tt, spec_tt)), attrs)
+            }
+            (Either::Right(orig_path), Either::Right(spec_path)) => {
+                (None, orig_path.parent_attr().zip(spec_path.parent_attr()))
+            }
+            _ => break 'expansion,
+        };
+
+        // Expand pseudo-derive expansion aka `derive(Debug$0)`
+        if let Some((orig_attr, spec_attr)) = attrs {
             if let (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) = (
                 sema.expand_derive_as_pseudo_attr_macro(&orig_attr),
                 sema.speculative_expand_derive_as_pseudo_attr_macro(
@@ -147,15 +173,54 @@ fn expand(
                     fake_mapped_token.text_range().start(),
                     orig_attr,
                 ));
+                break 'expansion;
+            }
+
+            if let Some(spec_adt) =
+                spec_attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| match it {
+                    ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                    ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                    ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                    _ => None,
+                })
+            {
+                // might be the path of derive helper or a token tree inside of one
+                if let Some(helpers) = sema.derive_helper(&orig_attr) {
+                    for (_mac, file) in helpers {
+                        if let Some((fake_expansion, fake_mapped_token)) = sema
+                            .speculative_expand_raw(
+                                file,
+                                spec_adt.syntax(),
+                                fake_ident_token.clone(),
+                            )
+                        {
+                            // we are inside a derive helper token tree, treat this as being inside
+                            // the derive expansion
+                            let actual_expansion = sema.parse_or_expand(file.into());
+                            let new_offset = fake_mapped_token.text_range().start();
+                            if new_offset + relative_offset > actual_expansion.text_range().end() {
+                                // offset outside of bounds from the original expansion,
+                                // stop here to prevent problems from happening
+                                break 'expansion;
+                            }
+                            original_file = actual_expansion;
+                            speculative_file = fake_expansion;
+                            fake_ident_token = fake_mapped_token;
+                            offset = new_offset;
+                            continue 'expansion;
+                        }
+                    }
+                }
             }
             // at this point we won't have any more successful expansions, so stop
             break 'expansion;
         }
 
         // Expand fn-like macro calls
+        let Some((orig_tt, spec_tt)) = tts else { break 'expansion };
         if let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
-            orig_tt.syntax().ancestors().find_map(ast::MacroCall::cast),
-            spec_tt.syntax().ancestors().find_map(ast::MacroCall::cast),
+            orig_tt.syntax().parent().and_then(ast::MacroCall::cast),
+            spec_tt.syntax().parent().and_then(ast::MacroCall::cast),
         ) {
             let mac_call_path0 = actual_macro_call.path().as_ref().map(|s| s.syntax().text());
             let mac_call_path1 =
@@ -201,6 +266,7 @@ fn expand(
         // none of our states have changed so stop the loop
         break 'expansion;
     }
+
     ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx }
 }
 

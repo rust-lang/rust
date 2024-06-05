@@ -2,9 +2,10 @@
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::sty::{ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, Lift, List, Ty, TyCtxt};
+use crate::ty::{
+    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
+};
 
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::walk_visitable_list;
@@ -55,6 +56,64 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
         original_args: &[ty::GenericArg<'tcx>],
     ) -> ty::GenericArgsRef<'tcx> {
         ty::GenericArgs::extend_with_error(tcx, def_id, original_args)
+    }
+
+    fn split_closure_args(self) -> ty::ClosureArgsParts<TyCtxt<'tcx>> {
+        match self[..] {
+            [ref parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
+                ty::ClosureArgsParts {
+                    parent_args,
+                    closure_kind_ty: closure_kind_ty.expect_ty(),
+                    closure_sig_as_fn_ptr_ty: closure_sig_as_fn_ptr_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                }
+            }
+            _ => bug!("closure args missing synthetics"),
+        }
+    }
+
+    fn split_coroutine_closure_args(self) -> ty::CoroutineClosureArgsParts<TyCtxt<'tcx>> {
+        match self[..] {
+            [
+                ref parent_args @ ..,
+                closure_kind_ty,
+                signature_parts_ty,
+                tupled_upvars_ty,
+                coroutine_captures_by_ref_ty,
+                coroutine_witness_ty,
+            ] => ty::CoroutineClosureArgsParts {
+                parent_args,
+                closure_kind_ty: closure_kind_ty.expect_ty(),
+                signature_parts_ty: signature_parts_ty.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                coroutine_captures_by_ref_ty: coroutine_captures_by_ref_ty.expect_ty(),
+                coroutine_witness_ty: coroutine_witness_ty.expect_ty(),
+            },
+            _ => bug!("closure args missing synthetics"),
+        }
+    }
+
+    fn split_coroutine_args(self) -> ty::CoroutineArgsParts<TyCtxt<'tcx>> {
+        match self[..] {
+            [
+                ref parent_args @ ..,
+                kind_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                witness,
+                tupled_upvars_ty,
+            ] => ty::CoroutineArgsParts {
+                parent_args,
+                kind_ty: kind_ty.expect_ty(),
+                resume_ty: resume_ty.expect_ty(),
+                yield_ty: yield_ty.expect_ty(),
+                return_ty: return_ty.expect_ty(),
+                witness: witness.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+            },
+            _ => bug!("coroutine args missing synthetics"),
+        }
     }
 }
 
@@ -295,7 +354,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Closure args have a particular structure controlled by the
     /// compiler that encodes information like the signature and closure kind;
     /// see `ty::ClosureArgs` struct for more comments.
-    pub fn as_closure(&'tcx self) -> ClosureArgs<'tcx> {
+    pub fn as_closure(&'tcx self) -> ClosureArgs<TyCtxt<'tcx>> {
         ClosureArgs { args: self }
     }
 
@@ -303,7 +362,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Coroutine-closure args have a particular structure controlled by the
     /// compiler that encodes information like the signature and closure kind;
     /// see `ty::CoroutineClosureArgs` struct for more comments.
-    pub fn as_coroutine_closure(&'tcx self) -> CoroutineClosureArgs<'tcx> {
+    pub fn as_coroutine_closure(&'tcx self) -> CoroutineClosureArgs<TyCtxt<'tcx>> {
         CoroutineClosureArgs { args: self }
     }
 
@@ -311,7 +370,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Coroutine args have a particular structure controlled by the
     /// compiler that encodes information like the signature and coroutine kind;
     /// see `ty::CoroutineArgs` struct for more comments.
-    pub fn as_coroutine(&'tcx self) -> CoroutineArgs<'tcx> {
+    pub fn as_coroutine(&'tcx self) -> CoroutineArgs<TyCtxt<'tcx>> {
         CoroutineArgs { args: self }
     }
 

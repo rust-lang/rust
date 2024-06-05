@@ -112,6 +112,7 @@ pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
     *providers = Providers {
         adt_destructor,
+        adt_async_destructor,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
@@ -122,6 +123,10 @@ pub fn provide(providers: &mut Providers) {
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
     tcx.calculate_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+}
+
+fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
+    tcx.calculate_async_dtor(def_id.to_def_id(), dropck::check_drop_impl)
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -436,7 +441,9 @@ fn fn_sig_suggestion<'tcx>(
         output = if let ty::Alias(_, alias_ty) = *output.kind() {
             tcx.explicit_item_super_predicates(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
-                .find_map(|(bound, _)| bound.as_projection_clause()?.no_bound_vars()?.term.ty())
+                .find_map(|(bound, _)| {
+                    bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
+                })
                 .unwrap_or_else(|| {
                     span_bug!(
                         ident.span,
@@ -594,7 +601,7 @@ pub fn check_function_signature<'tcx>(
     let param_env = ty::ParamEnv::empty();
 
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
 

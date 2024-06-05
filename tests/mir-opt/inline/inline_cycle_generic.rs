@@ -26,7 +26,6 @@ impl Call for A {
     }
 }
 
-
 impl<T: Call> Call for B<T> {
     #[inline]
     fn call() {

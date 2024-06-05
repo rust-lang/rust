@@ -257,7 +257,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `.unwrap()` or `.unwrap_err()` calls on `Result`s and `.unwrap()` call on `Option`s.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// It is better to handle the `None` or `Err` case,
     /// or at least call `.expect(_)` with a more helpful message. Still, for a lot of
     /// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
@@ -333,7 +333,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `.expect()` or `.expect_err()` calls on `Result`s and `.expect()` call on `Option`s.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Usually it is better to handle the `None` or `Err` case.
     /// Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why
     /// this lint is `Allow` by default.
@@ -1029,8 +1029,8 @@ declare_clippy_lint! {
     /// (`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified
     /// function syntax instead (e.g., `Rc::clone(foo)`).
     ///
-    /// ### Why is this bad?
-    /// Calling '.clone()' on an Rc, Arc, or Weak
+    /// ### Why restrict this?
+    /// Calling `.clone()` on an `Rc`, `Arc`, or `Weak`
     /// can obscure the fact that only the pointer is being cloned, not the underlying
     /// data.
     ///
@@ -1051,7 +1051,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub CLONE_ON_REF_PTR,
     restriction,
-    "using 'clone' on a ref-counted pointer"
+    "using `clone` on a ref-counted pointer"
 }
 
 declare_clippy_lint! {
@@ -1359,7 +1359,7 @@ declare_clippy_lint! {
     /// Checks for usage of `.get().unwrap()` (or
     /// `.get_mut().unwrap`) on a standard library type which implements `Index`
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Using the Index trait (`[]`) is more clear and more
     /// concise.
     ///
@@ -1743,7 +1743,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `FileType::is_file()`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// When people testing a file type with `FileType::is_file`
     /// they are testing whether a path is something they can get bytes from. But
     /// `is_file` doesn't cover special file types in unix-like systems, and doesn't cover
@@ -2688,8 +2688,9 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for instances of `map_err(|_| Some::Enum)`
     ///
-    /// ### Why is this bad?
-    /// This `map_err` throws away the original error rather than allowing the enum to contain and report the cause of the error
+    /// ### Why restrict this?
+    /// This `map_err` throws away the original error rather than allowing the enum to
+    /// contain and report the cause of the error.
     ///
     /// ### Example
     /// Before:
@@ -3145,7 +3146,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of File::read_to_end and File::read_to_string.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
     /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
     ///

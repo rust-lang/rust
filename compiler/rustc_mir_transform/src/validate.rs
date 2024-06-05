@@ -8,7 +8,10 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{
+    self, CoroutineArgsExt, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
@@ -1132,9 +1135,76 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     // FIXME: Add Checks for these
-                    CastKind::PointerWithExposedProvenance
-                    | CastKind::PointerExposeProvenance
-                    | CastKind::PointerCoercion(_) => {}
+                    CastKind::PointerWithExposedProvenance | CastKind::PointerExposeProvenance => {}
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                        // FIXME: check signature compatibility.
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a fn item, not {:?}",
+                            ty::FnDef(..)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a fn pointer, not {:?}",
+                            ty::FnPtr(..)
+                        );
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                        // FIXME: check safety and signature compatibility.
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a fn pointer, not {:?}",
+                            ty::FnPtr(..)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a fn pointer, not {:?}",
+                            ty::FnPtr(..)
+                        );
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..)) => {
+                        // FIXME: check safety, captures, and signature compatibility.
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a closure, not {:?}",
+                            ty::Closure(..)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a fn pointer, not {:?}",
+                            ty::FnPtr(..)
+                        );
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
+                        // FIXME: check same pointee?
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a raw mut pointer, not {:?}",
+                            ty::RawPtr(_, Mutability::Mut)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a raw const pointer, not {:?}",
+                            ty::RawPtr(_, Mutability::Not)
+                        );
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
+                        // FIXME: Check pointee types
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a raw pointer, not {:?}",
+                            ty::RawPtr(..)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a raw pointer, not {:?}",
+                            ty::RawPtr(..)
+                        );
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                        // This is used for all `CoerceUnsized` types,
+                        // not just pointers/references, so is hard to check.
+                    }
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();
                         let target_valid = target_type.is_numeric() || target_type.is_char();
@@ -1145,10 +1215,29 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
-                        if !(op_ty.is_any_ptr() && target_type.is_unsafe_ptr()) {
-                            self.fail(location, "Can't cast {op_ty} into 'Ptr'");
-                        }
+                    CastKind::FnPtrToPtr => {
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a fn pointer, not {:?}",
+                            ty::FnPtr(..)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a raw pointer, not {:?}",
+                            ty::RawPtr(..)
+                        );
+                    }
+                    CastKind::PtrToPtr => {
+                        check_kinds!(
+                            op_ty,
+                            "CastKind::{kind:?} input must be a raw pointer, not {:?}",
+                            ty::RawPtr(..)
+                        );
+                        check_kinds!(
+                            target_type,
+                            "CastKind::{kind:?} output must be a raw pointer, not {:?}",
+                            ty::RawPtr(..)
+                        );
                     }
                     CastKind::FloatToFloat | CastKind::FloatToInt => {
                         if !op_ty.is_floating_point() || !target_type.is_numeric() {

@@ -12,12 +12,11 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
+#[lang = "sized"]
+trait Sized {}
 
 // A basic test function.
-pub fn test() {
-}
+pub fn test() {}
 
 // BTI: !"branch-target-enforcement", i32 1
 // BTI: !"sign-return-address", i32 0

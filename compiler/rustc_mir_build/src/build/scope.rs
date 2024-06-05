@@ -97,7 +97,7 @@ use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
 
 #[derive(Debug)]
-pub struct Scopes<'tcx> {
+pub(crate) struct Scopes<'tcx> {
     scopes: Vec<Scope>,
 
     /// The current set of breakable scopes. See module comment for more details.

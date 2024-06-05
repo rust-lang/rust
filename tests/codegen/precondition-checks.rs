@@ -21,7 +21,5 @@ use std::ptr::NonNull;
 #[no_mangle]
 pub unsafe fn nonnull_new(ptr: *mut u8) -> NonNull<u8> {
     // CHECK: ; call core::ptr::non_null::NonNull<T>::new_unchecked
-    unsafe {
-        NonNull::new_unchecked(ptr)
-    }
+    unsafe { NonNull::new_unchecked(ptr) }
 }

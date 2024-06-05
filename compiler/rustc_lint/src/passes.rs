@@ -7,8 +7,8 @@ use rustc_session::lint::LintPass;
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
-            fn check_body(a: &'tcx rustc_hir::Body<'tcx>);
-            fn check_body_post(a: &'tcx rustc_hir::Body<'tcx>);
+            fn check_body(a: &rustc_hir::Body<'tcx>);
+            fn check_body_post(a: &rustc_hir::Body<'tcx>);
             fn check_crate();
             fn check_crate_post();
             fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_hir::HirId);
@@ -237,5 +237,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub type EarlyLintPassObject = Box<dyn EarlyLintPass + 'static>;
-pub type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + 'tcx>;
+pub(crate) type EarlyLintPassObject = Box<dyn EarlyLintPass + 'static>;
+pub(crate) type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + 'tcx>;

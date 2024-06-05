@@ -39,7 +39,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-pub fn as_constant_inner<'tcx>(
+pub(crate) fn as_constant_inner<'tcx>(
     expr: &Expr<'tcx>,
     push_cuta: impl FnMut(&Box<CanonicalUserType<'tcx>>) -> Option<UserTypeAnnotationIndex>,
     tcx: TyCtxt<'tcx>,
