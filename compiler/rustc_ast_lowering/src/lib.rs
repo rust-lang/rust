@@ -1531,10 +1531,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
         let captured_lifetimes_to_duplicate = if let Some(args) =
-            bounds.iter().find_map(|bound| match bound {
-                ast::GenericBound::Use(a, _) => Some(a),
-                _ => None,
-            }) {
+            // We only look for one `use<...>` syntax since we syntactially reject more than one.
+            bounds.iter().find_map(
+                |bound| match bound {
+                    ast::GenericBound::Use(a, _) => Some(a),
+                    _ => None,
+                },
+            ) {
             // We'll actually validate these later on; all we need is the list of
             // lifetimes to duplicate during this portion of lowering.
             args.iter()

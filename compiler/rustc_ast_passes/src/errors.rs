@@ -852,3 +852,12 @@ pub struct PreciseCapturingNotAllowedHere {
     pub span: Span,
     pub loc: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_precise_capturing_duplicated)]
+pub struct DuplicatePreciseCapturing {
+    #[primary_span]
+    pub bound1: Span,
+    #[label]
+    pub bound2: Span,
+}

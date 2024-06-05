@@ -193,8 +193,24 @@ impl<'a> AstValidator<'a> {
     // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
         match &t.kind {
-            TyKind::ImplTrait(..) => {
-                self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
+            TyKind::ImplTrait(_, bounds) => {
+                self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t));
+
+                // FIXME(precise_capturing): If we were to allow `use` in other positions
+                // (e.g. GATs), then we must validate those as well. However, we don't have
+                // a good way of doing this with the current `Visitor` structure.
+                let mut use_bounds = bounds
+                    .iter()
+                    .filter_map(|bound| match bound {
+                        GenericBound::Use(_, span) => Some(span),
+                        _ => None,
+                    })
+                    .copied();
+                if let Some(bound1) = use_bounds.next()
+                    && let Some(bound2) = use_bounds.next()
+                {
+                    self.dcx().emit_err(errors::DuplicatePreciseCapturing { bound1, bound2 });
+                }
             }
             TyKind::TraitObject(..) => self
                 .with_tilde_const(Some(DisallowTildeConstContext::TraitObject), |this| {

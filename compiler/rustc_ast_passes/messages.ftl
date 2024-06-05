@@ -14,8 +14,6 @@ ast_passes_assoc_type_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
 
-ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
-
 ast_passes_at_least_one_trait = at least one trait must be specified
 
 ast_passes_auto_generic = auto traits cannot have generic parameters
@@ -216,6 +214,11 @@ ast_passes_pattern_in_fn_pointer = patterns aren't allowed in function pointer t
 
 ast_passes_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function
+
+ast_passes_precise_capturing_duplicated = duplicate `use<...>` precise capturing syntax
+    .label = second `use<...>` here
+
+ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
 
 ast_passes_show_span = {$msg}
 
