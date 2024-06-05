@@ -227,7 +227,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_array_length(&mut self, left: ArrayLen<'_>, right: ArrayLen<'_>) -> bool {
         match (left, right) {
             (ArrayLen::Infer(..), ArrayLen::Infer(..)) => true,
-            (ArrayLen::Body(l_ct), ArrayLen::Body(r_ct)) => self.eq_body(l_ct.body, r_ct.body),
+            (ArrayLen::Body(l_ct), ArrayLen::Body(r_ct)) => self.eq_const_arg(l_ct, r_ct),
             (_, _) => false,
         }
     }
@@ -1129,7 +1129,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_array_length(&mut self, length: ArrayLen<'_>) {
         match length {
             ArrayLen::Infer(..) => {},
-            ArrayLen::Body(anon_const) => self.hash_body(anon_const.body),
+            ArrayLen::Body(ct) => self.hash_const_arg(ct),
         }
     }
 
