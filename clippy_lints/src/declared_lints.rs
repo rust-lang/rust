@@ -530,6 +530,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::needless_for_each::NEEDLESS_FOR_EACH_INFO,
     crate::needless_if::NEEDLESS_IF_INFO,
     crate::needless_late_init::NEEDLESS_LATE_INIT_INFO,
+    crate::needless_maybe_sized::NEEDLESS_MAYBE_SIZED_INFO,
     crate::needless_parens_on_range_literals::NEEDLESS_PARENS_ON_RANGE_LITERALS_INFO,
     crate::needless_pass_by_ref_mut::NEEDLESS_PASS_BY_REF_MUT_INFO,
     crate::needless_pass_by_value::NEEDLESS_PASS_BY_VALUE_INFO,
