@@ -115,6 +115,11 @@ fn enforce_impl_params_are_constrained(
         })
         .collect();
 
+    let impl_kind = match impl_trait_ref {
+        Some(_) => ImplKind::ImplTrait,
+        None => ImplKind::InherentImpl,
+    };
+
     let mut res = Ok(());
     for param in &impl_generics.own_params {
         match param.kind {
@@ -127,6 +132,7 @@ fn enforce_impl_params_are_constrained(
                         tcx.def_span(param.def_id),
                         "type",
                         param_ty.name,
+                        impl_kind,
                     ));
                 }
             }
@@ -140,6 +146,7 @@ fn enforce_impl_params_are_constrained(
                         tcx.def_span(param.def_id),
                         "lifetime",
                         param.name,
+                        impl_kind,
                     ));
                 }
             }
@@ -151,6 +158,7 @@ fn enforce_impl_params_are_constrained(
                         tcx.def_span(param.def_id),
                         "const",
                         param_ct.name,
+                        impl_kind,
                     ));
                 }
             }
@@ -178,11 +186,18 @@ fn enforce_impl_params_are_constrained(
     // used elsewhere are not projected back out.
 }
 
+#[derive(Copy, Clone)]
+enum ImplKind {
+    ImplTrait,
+    InherentImpl,
+}
+
 fn report_unused_parameter(
     tcx: TyCtxt<'_>,
     span: Span,
     kind: &str,
     name: Symbol,
+    impl_kind: ImplKind,
 ) -> ErrorGuaranteed {
     let mut err = struct_span_code_err!(
         tcx.dcx(),
@@ -194,6 +209,22 @@ fn report_unused_parameter(
         name
     );
     err.span_label(span, format!("unconstrained {kind} parameter"));
+
+    match impl_kind {
+        ImplKind::ImplTrait => {
+            err.note(format!(
+                "to constrain `{name}`, use it in the implemented trait, in the self type, \
+                or in an equality with an associated type"
+            ));
+        }
+        ImplKind::InherentImpl => {
+            err.note(format!(
+                "to constrain `{name}`, use it in the self type, \
+                or in an equality with an associated type"
+            ));
+        }
+    }
+
     if kind == "const" {
         err.note(
             "expressions using a const parameter must map each value to a distinct output value",
