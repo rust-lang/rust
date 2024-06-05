@@ -251,6 +251,11 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => (),
             }
         }
+
+        if self.cx.typeck_results().expr_ty(e).is_never() {
+            return Err("contains never type".to_owned());
+        }
+
         for (n, expr) in self.terminals.iter().enumerate() {
             if eq_expr_value(self.cx, e, expr) {
                 #[expect(clippy::cast_possible_truncation)]
