@@ -88,12 +88,12 @@ fn enforce_impl_params_are_constrained(
 
     impl_trait_ref.error_reported()?;
 
-    let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
+    let mut constrained_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
         tcx,
         impl_predicates,
         impl_trait_ref,
-        &mut input_parameters,
+        &mut constrained_parameters,
     );
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
@@ -122,11 +122,12 @@ fn enforce_impl_params_are_constrained(
 
     let mut res = Ok(());
     for param in &impl_generics.own_params {
+        let cgp_param = cgp::Parameter(param.index);
         match param.kind {
             // Disallow ANY unconstrained type parameters.
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
-                if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
+                if !constrained_parameters.contains(&cgp_param) {
                     res = Err(report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
@@ -137,9 +138,8 @@ fn enforce_impl_params_are_constrained(
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
-                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
-                if lifetimes_in_associated_types.contains(&param_lt) && // (*)
-                    !input_parameters.contains(&param_lt)
+                if lifetimes_in_associated_types.contains(&cgp_param) && // (*)
+                    !constrained_parameters.contains(&cgp_param)
                 {
                     res = Err(report_unused_parameter(
                         tcx,
@@ -152,7 +152,7 @@ fn enforce_impl_params_are_constrained(
             }
             ty::GenericParamDefKind::Const { .. } => {
                 let param_ct = ty::ParamConst::for_def(param);
-                if !input_parameters.contains(&cgp::Parameter::from(param_ct)) {
+                if !constrained_parameters.contains(&cgp_param) {
                     res = Err(report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
