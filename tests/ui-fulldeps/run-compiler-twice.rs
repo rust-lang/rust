@@ -1,3 +1,13 @@
+//@ edition: 2021
+//@ run-pass
+//@ run-flags: {{sysroot-base}} {{target-linker}}
+//@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
+
+// Regression test for <https://github.com/rust-lang/rust/issues/19371>.
+//
+// This test ensures that `compile_input` can be called twice in one task
+// without causing a panic.
+
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
@@ -5,11 +15,11 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use std::path::{Path, PathBuf};
+
 use rustc_interface::interface;
 use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes};
 use rustc_span::FileName;
-
-use std::path::PathBuf;
 
 fn main() {
     let src = r#"
@@ -18,28 +28,28 @@ fn main() {
 
     let args: Vec<String> = std::env::args().collect();
 
-    if args.len() < 4 {
-        panic!("expected rustc path");
+    if args.len() < 2 {
+        panic!("expected sysroot (and optional linker)");
     }
 
-    let tmpdir = PathBuf::from(&args[1]);
+    let sysroot = PathBuf::from(&args[1]);
+    let linker = args.get(2).map(PathBuf::from);
 
-    let mut sysroot = PathBuf::from(&args[3]);
-    sysroot.pop();
-    sysroot.pop();
+    // compiletest sets the current dir to `output_base_dir` when running.
+    let tmpdir = std::env::current_dir().unwrap().join("tmp");
+    std::fs::create_dir_all(&tmpdir).unwrap();
 
-    compile(src.to_string(), tmpdir.join("out"), sysroot.clone());
-
-    compile(src.to_string(), tmpdir.join("out"), sysroot.clone());
+    compile(src.to_string(), tmpdir.join("out"), sysroot.clone(), linker.as_deref());
+    compile(src.to_string(), tmpdir.join("out"), sysroot.clone(), linker.as_deref());
 }
 
-fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
+fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path>) {
     let mut opts = Options::default();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.maybe_sysroot = Some(sysroot);
 
-    if let Ok(linker) = std::env::var("RUSTC_LINKER") {
-        opts.cg.linker = Some(linker.into());
+    if let Some(linker) = linker {
+        opts.cg.linker = Some(linker.to_owned());
     }
 
     let name = FileName::anon_source_code(&code);
