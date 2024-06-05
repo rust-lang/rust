@@ -12,6 +12,7 @@ use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
     YieldExprOutsideOfCoroutine,
 };
+use crate::expr_use_visitor::TypeInformationCtxt;
 use crate::fatally_break_rust;
 use crate::type_error_struct;
 use crate::CoroutineTypes;
@@ -1329,7 +1330,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let rcvr_t = self.check_expr(rcvr);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolve_type(rcvr.span, rcvr_t);
+        let rcvr_t = if let ExprKind::Index(_, index, _) = rcvr.kind
+            && self.typeck_results().expr_ty(index).is_ty_var()
+        {
+            self.structurally_resolve_type(index.span, rcvr_t)
+        } else {
+            self.structurally_resolve_type(rcvr.span, rcvr_t)
+        };
 
         let method = match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args)
         {
