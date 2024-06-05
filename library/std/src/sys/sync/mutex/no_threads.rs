@@ -16,6 +16,7 @@ impl Mutex {
     }
 
     #[inline]
+    #[track_caller]
     pub fn lock(&self) {
         assert_eq!(self.locked.replace(true), false, "cannot recursively acquire mutex");
     }
