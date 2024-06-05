@@ -18,6 +18,8 @@ error[E0207]: the type parameter `T1` is not constrained by the impl trait, self
    |
 LL | impl <T, T1> Foo for T {
    |          ^^ unconstrained type parameter
+   |
+   = note: to constrain `T1`, use it in the implemented trait, in the self type, or in an equality with an associated type
 
 error: aborting due to 3 previous errors
 

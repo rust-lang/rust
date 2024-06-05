@@ -3,6 +3,8 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T> X for () {
    |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the implemented trait, in the self type, or in an equality with an associated type
 
 error[E0282]: type annotations needed
   --> $DIR/issue-87340.rs:11:23

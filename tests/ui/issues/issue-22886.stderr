@@ -3,6 +3,8 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> Iterator for Newtype {
    |      ^^ unconstrained lifetime parameter
+   |
+   = note: to constrain `'a`, use it in the implemented trait, in the self type, or in an equality with an associated type
 
 error: aborting due to 1 previous error
 

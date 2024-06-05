@@ -3,12 +3,16 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T> MyType {
    |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the self type, or in an equality with an associated type
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/impl-unused-tps-inherent.rs:17:8
    |
 LL | impl<T,U> MyType1<T> {
    |        ^ unconstrained type parameter
+   |
+   = note: to constrain `U`, use it in the self type, or in an equality with an associated type
 
 error: aborting due to 2 previous errors
 

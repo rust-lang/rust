@@ -3,6 +3,8 @@ error[E0207]: the type parameter `Unconstrained` is not constrained by the impl 
    |
 LL | impl<'a, Unconstrained> X for [(); 0] {}
    |          ^^^^^^^^^^^^^ unconstrained type parameter
+   |
+   = note: to constrain `Unconstrained`, use it in the implemented trait, in the self type, or in an equality with an associated type
 
 error: specialization impl does not specialize any associated items
   --> $DIR/ice-const-not-fully-resolved-113045.rs:11:1

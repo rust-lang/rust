@@ -3,6 +3,9 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<'b, T, U> AsRef2 for Foo<T>
    |             ^ unconstrained type parameter
+   |
+   = note: to constrain `U`, use it in the implemented trait, in the self type, or in an equality with an associated type
+   = note: `U` is bound to an associated type, but the reference to the associated type itself uses unconstrained generic parameters
 
 error[E0309]: the parameter type `U` may not live long enough
   --> $DIR/issue-87735.rs:34:21

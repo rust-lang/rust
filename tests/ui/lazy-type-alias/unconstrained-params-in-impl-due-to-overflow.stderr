@@ -3,6 +3,8 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T> Loop<T> {}
    |      ^ unconstrained type parameter
+   |
+   = note: to constrain `T`, use it in the self type, or in an equality with an associated type
 
 error[E0275]: overflow normalizing the type alias `Loop<T>`
   --> $DIR/unconstrained-params-in-impl-due-to-overflow.rs:6:16

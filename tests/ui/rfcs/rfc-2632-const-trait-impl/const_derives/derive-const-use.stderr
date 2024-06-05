@@ -19,6 +19,7 @@ error[E0207]: the const parameter `host` is not constrained by the impl trait, s
 LL | impl const Default for A {
    |      ^^^^^ unconstrained const parameter
    |
+   = note: to constrain `host`, use it in the implemented trait, in the self type, or in an equality with an associated type
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
@@ -34,6 +35,7 @@ LL | #[derive_const(Default, PartialEq)]
 
 error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
    |
+   = note: to constrain `host`, use it in the implemented trait, in the self type, or in an equality with an associated type
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
