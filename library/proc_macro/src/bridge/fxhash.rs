@@ -7,7 +7,6 @@
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::hash::Hasher;
-use std::mem::size_of;
 use std::ops::BitXor;
 
 /// Type alias for a hashmap using the `fx` hash algorithm.

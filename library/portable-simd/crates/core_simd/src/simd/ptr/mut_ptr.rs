@@ -93,7 +93,7 @@ where
     fn cast<U>(self) -> Self::CastPtr<U> {
         // SimdElement currently requires zero-sized metadata, so this should never fail.
         // If this ever changes, `simd_cast_ptr` should produce a post-mono error.
-        use core::{mem::size_of, ptr::Pointee};
+        use core::ptr::Pointee;
         assert_eq!(size_of::<<T as Pointee>::Metadata>(), 0);
         assert_eq!(size_of::<<U as Pointee>::Metadata>(), 0);
 
