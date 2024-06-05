@@ -552,8 +552,8 @@
                     }
                 }
             },
-            { 
-                "title": "$generated-start" 
+            {
+                "title": "$generated-start"
             },
             {
                 "title": "assist",
@@ -2554,8 +2554,8 @@
                     }
                 }
             },
-            { 
-                "title": "$generated-end" 
+            {
+                "title": "$generated-end"
             }
         ],
         "configurationDefaults": {
