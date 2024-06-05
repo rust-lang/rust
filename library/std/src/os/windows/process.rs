@@ -415,9 +415,9 @@ impl ExitCodeExt for process::ExitCode {
     }
 }
 
-/// A wrapper around windows [`ProcessThreadAttributeList`][1].
+/// A wrapper around windows [`ProcThreadAttributeList`][1].
 ///
-/// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#remarks>
+/// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-initializeprocthreadattributelist>
 #[derive(Debug)]
 #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
 pub struct ProcThreadAttributeList<'a> {
@@ -444,7 +444,7 @@ impl<'a> Drop for ProcThreadAttributeList<'a> {
     /// Deletes the attribute list.
     ///
     /// This method calls [`DeleteProcThreadAttributeList`][1] to delete the
-    /// attribute list.
+    /// underlying attribute list.
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
     fn drop(&mut self) {
