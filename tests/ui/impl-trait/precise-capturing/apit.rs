@@ -2,6 +2,6 @@
 //~^ WARN the feature `precise_capturing` is incomplete
 
 fn hello(_: impl Sized + use<>) {}
-//~^ ERROR `use<...>` precise capturing syntax not allowed on argument-position `impl Trait`
+//~^ ERROR `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
 
 fn main() {}
