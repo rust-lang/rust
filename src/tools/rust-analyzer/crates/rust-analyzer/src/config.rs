@@ -3,7 +3,7 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-use std::{fmt, iter, ops::Not};
+use std::{fmt, iter, ops::Not, sync::OnceLock};
 
 use cfg::{CfgAtom, CfgDiff};
 use dirs::config_dir;
@@ -664,10 +664,10 @@ pub struct Config {
     snippets: Vec<Snippet>,
     visual_studio_code_version: Option<Version>,
 
-    default_config: DefaultConfigData,
+    default_config: &'static DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
     /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
-    client_config: FullConfigInput,
+    client_config: (FullConfigInput, ConfigErrors),
 
     /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
     /// If not specified by init of a `Config` object this value defaults to :
@@ -681,16 +681,16 @@ pub struct Config {
 
     /// FIXME @alibektas : Change this to sth better.
     /// Config node whose values apply to **every** Rust project.
-    user_config: Option<GlobalLocalConfigInput>,
+    user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
     /// A special file for this session whose path is set to `self.root_path.join("rust-analyzer.toml")`
     root_ratoml_path: VfsPath,
 
     /// This file can be used to make global changes while having only a workspace-wide scope.
-    root_ratoml: Option<GlobalLocalConfigInput>,
+    root_ratoml: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
     /// For every `SourceRoot` there can be at most one RATOML file.
-    ratoml_files: FxHashMap<SourceRootId, LocalConfigInput>,
+    ratoml_files: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
@@ -706,27 +706,30 @@ impl Config {
     // FIXME @alibektas : Server's health uses error sink but in other places it is not used atm.
     /// Changes made to client and global configurations will partially not be reflected even after `.apply_change()` was called.
     /// The return tuple's bool component signals whether the `GlobalState` should call its `update_configuration()` method.
-    fn apply_change_with_sink(
-        &self,
-        change: ConfigChange,
-        error_sink: &mut ConfigError,
-    ) -> (Config, bool) {
+    fn apply_change_with_sink(&self, change: ConfigChange) -> (Config, bool) {
         let mut config = self.clone();
-        let mut toml_errors = vec![];
-        let mut json_errors = vec![];
 
         let mut should_update = false;
 
         if let Some(change) = change.user_config_change {
             if let Ok(table) = toml::from_str(&change) {
+                let mut toml_errors = vec![];
                 validate_toml_table(
                     GlobalLocalConfigInput::FIELDS,
                     &table,
                     &mut String::new(),
                     &mut toml_errors,
                 );
-                config.user_config =
-                    Some(GlobalLocalConfigInput::from_toml(table, &mut toml_errors));
+                config.user_config = Some((
+                    GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
+                    ConfigErrors(
+                        toml_errors
+                            .into_iter()
+                            .map(|(a, b)| ConfigErrorInner::Toml { config_key: a, error: b })
+                            .map(Arc::new)
+                            .collect(),
+                    ),
+                ));
                 should_update = true;
             }
         }
@@ -734,6 +737,7 @@ impl Config {
         if let Some(mut json) = change.client_config_change {
             tracing::info!("updating config from JSON: {:#}", json);
             if !(json.is_null() || json.as_object().map_or(false, |it| it.is_empty())) {
+                let mut json_errors = vec![];
                 let detached_files = get_field::<Vec<Utf8PathBuf>>(
                     &mut json,
                     &mut json_errors,
@@ -747,32 +751,56 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
-                config.client_config = FullConfigInput::from_json(json, &mut json_errors);
+                config.client_config = (
+                    FullConfigInput::from_json(json, &mut json_errors),
+                    ConfigErrors(
+                        json_errors
+                            .into_iter()
+                            .map(|(a, b)| ConfigErrorInner::Json { config_key: a, error: b })
+                            .map(Arc::new)
+                            .collect(),
+                    ),
+                );
                 config.detached_files = detached_files;
             }
             should_update = true;
         }
 
         if let Some(change) = change.root_ratoml_change {
+            tracing::info!("updating root ra-toml config: {:#}", change);
+            #[allow(clippy::single_match)]
             match toml::from_str(&change) {
                 Ok(table) => {
+                    let mut toml_errors = vec![];
                     validate_toml_table(
                         GlobalLocalConfigInput::FIELDS,
                         &table,
                         &mut String::new(),
                         &mut toml_errors,
                     );
-                    config.root_ratoml =
-                        Some(GlobalLocalConfigInput::from_toml(table, &mut toml_errors));
+                    config.root_ratoml = Some((
+                        GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
+                        ConfigErrors(
+                            toml_errors
+                                .into_iter()
+                                .map(|(a, b)| ConfigErrorInner::Toml { config_key: a, error: b })
+                                .map(Arc::new)
+                                .collect(),
+                        ),
+                    ));
                     should_update = true;
                 }
-                Err(e) => toml_errors.push(("invalid toml file".to_owned(), e)),
+                // FIXME
+                Err(_) => (),
             }
         }
 
         if let Some(change) = change.ratoml_file_change {
             for (source_root_id, (_, text)) in change {
                 if let Some(text) = text {
+                    let mut toml_errors = vec![];
+                    tracing::info!("updating ra-toml config: {:#}", text);
+                    #[allow(clippy::single_match)]
                     match toml::from_str(&text) {
                         Ok(table) => {
                             validate_toml_table(
@@ -783,10 +811,23 @@ impl Config {
                             );
                             config.ratoml_files.insert(
                                 source_root_id,
-                                LocalConfigInput::from_toml(&table, &mut toml_errors),
+                                (
+                                    LocalConfigInput::from_toml(&table, &mut toml_errors),
+                                    ConfigErrors(
+                                        toml_errors
+                                            .into_iter()
+                                            .map(|(a, b)| ConfigErrorInner::Toml {
+                                                config_key: a,
+                                                error: b,
+                                            })
+                                            .map(Arc::new)
+                                            .collect(),
+                                    ),
+                                ),
                             );
                         }
-                        Err(e) => toml_errors.push(("invalid toml file".to_owned(), e)),
+                        // FIXME
+                        Err(_) => (),
                     }
                 }
             }
@@ -807,6 +848,7 @@ impl Config {
                 SnippetScopeDef::Type => SnippetScope::Type,
                 SnippetScopeDef::Item => SnippetScope::Item,
             };
+            #[allow(clippy::single_match)]
             match Snippet::new(
                 &def.prefix,
                 &def.postfix,
@@ -816,33 +858,44 @@ impl Config {
                 scope,
             ) {
                 Some(snippet) => config.snippets.push(snippet),
-                None => error_sink.0.push(ConfigErrorInner::Json(
-                    format!("snippet {name} is invalid"),
-                    <serde_json::Error as serde::de::Error>::custom(
-                        "snippet path is invalid or triggers are missing",
-                    ),
-                )),
+                // FIXME
+                // None => error_sink.0.push(ConfigErrorInner::Json {
+                //     config_key: "".to_owned(),
+                //     error: <serde_json::Error as serde::de::Error>::custom(format!(
+                //         "snippet {name} is invalid or triggers are missing",
+                //     )),
+                // }),
+                None => (),
             }
         }
 
-        error_sink.0.extend(json_errors.into_iter().map(|(a, b)| ConfigErrorInner::Json(a, b)));
-        error_sink.0.extend(toml_errors.into_iter().map(|(a, b)| ConfigErrorInner::Toml(a, b)));
-
-        if config.check_command().is_empty() {
-            error_sink.0.push(ConfigErrorInner::Json(
-                "/check/command".to_owned(),
-                serde_json::Error::custom("expected a non-empty string"),
-            ));
-        }
+        // FIXME: bring this back
+        // if config.check_command().is_empty() {
+        //     error_sink.0.push(ConfigErrorInner::Json {
+        //         config_key: "/check/command".to_owned(),
+        //         error: serde_json::Error::custom("expected a non-empty string"),
+        //     });
+        // }
         (config, should_update)
     }
 
     /// Given `change` this generates a new `Config`, thereby collecting errors of type `ConfigError`.
     /// If there are changes that have global/client level effect, the last component of the return type
     /// will be set to `true`, which should be used by the `GlobalState` to update itself.
-    pub fn apply_change(&self, change: ConfigChange) -> (Config, ConfigError, bool) {
-        let mut e = ConfigError(vec![]);
-        let (config, should_update) = self.apply_change_with_sink(change, &mut e);
+    pub fn apply_change(&self, change: ConfigChange) -> (Config, ConfigErrors, bool) {
+        let (config, should_update) = self.apply_change_with_sink(change);
+        let e = ConfigErrors(
+            config
+                .client_config
+                .1
+                 .0
+                .iter()
+                .chain(config.root_ratoml.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
+                .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
+                .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
+                .cloned()
+                .collect(),
+        );
         (config, e, should_update)
     }
 }
@@ -1080,28 +1133,28 @@ pub struct ClientCommandsConfig {
 
 #[derive(Debug)]
 pub enum ConfigErrorInner {
-    Json(String, serde_json::Error),
-    Toml(String, toml::de::Error),
+    Json { config_key: String, error: serde_json::Error },
+    Toml { config_key: String, error: toml::de::Error },
 }
 
-#[derive(Debug, Default)]
-pub struct ConfigError(Vec<ConfigErrorInner>);
+#[derive(Clone, Debug)]
+pub struct ConfigErrors(Vec<Arc<ConfigErrorInner>>);
 
-impl ConfigError {
+impl ConfigErrors {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
-impl fmt::Display for ConfigError {
+impl fmt::Display for ConfigErrors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let errors = self.0.iter().format_with("\n", |inner, f| match inner {
-            ConfigErrorInner::Json(key, e) => {
+        let errors = self.0.iter().format_with("\n", |inner, f| match &**inner {
+            ConfigErrorInner::Json { config_key: key, error: e } => {
                 f(key)?;
                 f(&": ")?;
                 f(e)
             }
-            ConfigErrorInner::Toml(key, e) => {
+            ConfigErrorInner::Toml { config_key: key, error: e } => {
                 f(key)?;
                 f(&": ")?;
                 f(e)
@@ -1111,7 +1164,7 @@ impl fmt::Display for ConfigError {
     }
 }
 
-impl std::error::Error for ConfigError {}
+impl std::error::Error for ConfigErrors {}
 
 impl Config {
     pub fn new(
@@ -1121,6 +1174,7 @@ impl Config {
         visual_studio_code_version: Option<Version>,
         user_config_path: Option<Utf8PathBuf>,
     ) -> Self {
+        static DEFAULT_CONFIG_DATA: OnceLock<&'static DefaultConfigData> = OnceLock::new();
         let user_config_path = if let Some(user_config_path) = user_config_path {
             user_config_path.join("rust-analyzer").join("rust-analyzer.toml")
         } else {
@@ -1149,10 +1203,11 @@ impl Config {
             snippets: Default::default(),
             workspace_roots,
             visual_studio_code_version,
-            client_config: FullConfigInput::default(),
+            client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
             user_config: None,
             ratoml_files: FxHashMap::default(),
-            default_config: DefaultConfigData::default(),
+            default_config: DEFAULT_CONFIG_DATA
+                .get_or_init(|| Box::leak(Box::new(DefaultConfigData::default()))),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config_path,
             root_ratoml: None,
@@ -2497,24 +2552,24 @@ macro_rules! _impl_for_config_data {
                     let mut par: Option<SourceRootId> = source_root;
                     while let Some(source_root_id) = par {
                         par = self.source_root_parent_map.get(&source_root_id).copied();
-                        if let Some(config) = self.ratoml_files.get(&source_root_id) {
+                        if let Some((config, _)) = self.ratoml_files.get(&source_root_id) {
                             if let Some(value) = config.$field.as_ref() {
                                 return value;
                             }
                         }
                     }
 
-                    if let Some(root_path_ratoml) = self.root_ratoml.as_ref() {
+                    if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
                         if let Some(v) = root_path_ratoml.local.$field.as_ref() {
                             return &v;
                         }
                     }
 
-                    if let Some(v) = self.client_config.local.$field.as_ref() {
+                    if let Some(v) = self.client_config.0.local.$field.as_ref() {
                         return &v;
                     }
 
-                    if let Some(user_config) = self.user_config.as_ref() {
+                    if let Some((user_config, _)) = self.user_config.as_ref() {
                         if let Some(v) = user_config.local.$field.as_ref() {
                             return &v;
                         }
@@ -2536,17 +2591,17 @@ macro_rules! _impl_for_config_data {
                 #[allow(non_snake_case)]
                 $vis fn $field(&self) -> &$ty {
 
-                    if let Some(root_path_ratoml) = self.root_ratoml.as_ref() {
+                    if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
                         if let Some(v) = root_path_ratoml.global.$field.as_ref() {
                             return &v;
                         }
                     }
 
-                    if let Some(v) = self.client_config.global.$field.as_ref() {
+                    if let Some(v) = self.client_config.0.global.$field.as_ref() {
                         return &v;
                     }
 
-                    if let Some(user_config) = self.user_config.as_ref() {
+                    if let Some((user_config, _)) = self.user_config.as_ref() {
                         if let Some(v) = user_config.global.$field.as_ref() {
                             return &v;
                         }
@@ -2567,7 +2622,7 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self) -> &$ty {
-                    if let Some(v) = self.client_config.client.$field.as_ref() {
+                    if let Some(v) = self.client_config.0.client.$field.as_ref() {
                         return &v;
                     }
 
@@ -2747,38 +2802,6 @@ impl GlobalLocalConfigInput {
     }
 }
 
-fn get_field_toml<T: DeserializeOwned>(
-    val: &toml::Table,
-    error_sink: &mut Vec<(String, toml::de::Error)>,
-    field: &'static str,
-    alias: Option<&'static str>,
-) -> Option<T> {
-    alias
-        .into_iter()
-        .chain(iter::once(field))
-        .filter_map(move |field| {
-            let subkeys = field.split('_');
-            let mut v = val;
-            for subkey in subkeys {
-                let val = v.get(subkey)?;
-                if let Some(map) = val.as_table() {
-                    v = map;
-                } else {
-                    return Some(toml::Value::try_into(val.clone()).map_err(|e| (e, v)));
-                }
-            }
-            None
-        })
-        .find(Result::is_ok)
-        .and_then(|res| match res {
-            Ok(it) => Some(it),
-            Err((e, pointer)) => {
-                error_sink.push((pointer.to_string(), e));
-                None
-            }
-        })
-}
-
 fn get_field<T: DeserializeOwned>(
     json: &mut serde_json::Value,
     error_sink: &mut Vec<(String, serde_json::Error)>,
@@ -2805,6 +2828,60 @@ fn get_field<T: DeserializeOwned>(
                 None
             }
         })
+}
+
+fn get_field_toml<T: DeserializeOwned>(
+    toml: &toml::Table,
+    error_sink: &mut Vec<(String, toml::de::Error)>,
+    field: &'static str,
+    alias: Option<&'static str>,
+) -> Option<T> {
+    // XXX: check alias first, to work around the VS Code where it pre-fills the
+    // defaults instead of sending an empty object.
+    alias
+        .into_iter()
+        .chain(iter::once(field))
+        .filter_map(move |field| {
+            let mut pointer = field.replace('_', "/");
+            pointer.insert(0, '/');
+            toml_pointer(toml, &pointer)
+                .map(|it| <_>::deserialize(it.clone()).map_err(|e| (e, pointer)))
+        })
+        .find(Result::is_ok)
+        .and_then(|res| match res {
+            Ok(it) => Some(it),
+            Err((e, pointer)) => {
+                tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
+                error_sink.push((pointer, e));
+                None
+            }
+        })
+}
+
+fn toml_pointer<'a>(toml: &'a toml::Table, pointer: &str) -> Option<&'a toml::Value> {
+    fn parse_index(s: &str) -> Option<usize> {
+        if s.starts_with('+') || (s.starts_with('0') && s.len() != 1) {
+            return None;
+        }
+        s.parse().ok()
+    }
+
+    if pointer.is_empty() {
+        return None;
+    }
+    if !pointer.starts_with('/') {
+        return None;
+    }
+    let mut parts = pointer.split('/').skip(1);
+    let first = parts.next()?;
+    let init = toml.get(first)?;
+    parts.map(|x| x.replace("~1", "/").replace("~0", "~")).try_fold(init, |target, token| {
+        match target {
+            toml::Value::Table(table) => table.get(&token),
+            toml::Value::Array(list) => parse_index(&token).and_then(move |x| list.get(x)),
+            _ => None,
+        }
+    })
 }
 
 type SchemaField = (&'static str, &'static str, &'static [&'static str], String);
@@ -3192,9 +3269,8 @@ fn validate_toml_table(
             // This is a table config, any entry in it is therefor valid
             toml::Value::Table(_) if verify(ptr) => (),
             toml::Value::Table(table) => validate_toml_table(known_ptrs, table, ptr, error_sink),
-            _ if !verify(ptr) => {
-                error_sink.push((ptr.clone(), toml::de::Error::custom("unexpected field")))
-            }
+            _ if !verify(ptr) => error_sink
+                .push((ptr.replace('_', "/"), toml::de::Error::custom("unexpected field"))),
             _ => (),
         }
 
@@ -3475,13 +3551,13 @@ mod tests {
             .to_string(),
         ));
 
-        let (_, e, _) = config.apply_change(change);
+        let (config, e, _) = config.apply_change(change);
         expect_test::expect![[r#"
-            ConfigError(
+            ConfigErrors(
                 [
-                    Toml(
-                        "invalid_config_err",
-                        Error {
+                    Toml {
+                        config_key: "invalid/config/err",
+                        error: Error {
                             inner: Error {
                                 inner: TomlError {
                                     message: "unexpected field",
@@ -3491,7 +3567,41 @@ mod tests {
                                 },
                             },
                         },
-                    ),
+                    },
+                ],
+            )
+        "#]]
+        .assert_debug_eq(&e);
+        let mut change = ConfigChange::default();
+
+        change.change_user_config(Some(
+            toml::toml! {
+                [cargo.cfgs]
+                these = "these"
+                should = "should"
+                be = "be"
+                valid = "valid"
+            }
+            .to_string(),
+        ));
+
+        let (_, e, _) = config.apply_change(change);
+        expect_test::expect![[r#"
+            ConfigErrors(
+                [
+                    Toml {
+                        config_key: "invalid/config/err",
+                        error: Error {
+                            inner: Error {
+                                inner: TomlError {
+                                    message: "unexpected field",
+                                    raw: None,
+                                    keys: [],
+                                    span: None,
+                                },
+                            },
+                        },
+                    },
                 ],
             )
         "#]]

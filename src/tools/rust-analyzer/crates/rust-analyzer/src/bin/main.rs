@@ -17,7 +17,7 @@ use anyhow::Context;
 use lsp_server::Connection;
 use rust_analyzer::{
     cli::flags,
-    config::{Config, ConfigChange, ConfigError},
+    config::{Config, ConfigChange, ConfigErrors},
     from_json,
 };
 use semver::Version;
@@ -229,7 +229,7 @@ fn run_server() -> anyhow::Result<()> {
         let mut change = ConfigChange::default();
         change.change_client_config(json);
 
-        let error_sink: ConfigError;
+        let error_sink: ConfigErrors;
         (config, error_sink, _) = config.apply_change(change);
 
         if !error_sink.is_empty() {

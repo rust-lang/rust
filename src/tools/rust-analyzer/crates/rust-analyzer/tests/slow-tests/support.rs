@@ -10,7 +10,7 @@ use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
 use paths::{Utf8Path, Utf8PathBuf};
 use rust_analyzer::{
-    config::{Config, ConfigChange, ConfigError},
+    config::{Config, ConfigChange, ConfigErrors},
     lsp, main_loop,
 };
 use serde::Serialize;
@@ -207,7 +207,7 @@ impl Project<'_> {
 
         change.change_client_config(self.config);
 
-        let error_sink: ConfigError;
+        let error_sink: ConfigErrors;
         (config, error_sink, _) = config.apply_change(change);
         assert!(error_sink.is_empty(), "{error_sink:?}");
 

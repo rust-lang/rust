@@ -3,7 +3,7 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::time::Instant;
+use std::{ops::Not as _, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
@@ -28,7 +28,7 @@ use triomphe::Arc;
 use vfs::{AnchoredPathBuf, Vfs, VfsPath};
 
 use crate::{
-    config::{Config, ConfigChange, ConfigError},
+    config::{Config, ConfigChange, ConfigErrors},
     diagnostics::{CheckFixes, DiagnosticCollection},
     line_index::{LineEndings, LineIndex},
     lsp::{
@@ -68,7 +68,7 @@ pub(crate) struct GlobalState {
     pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
 
     pub(crate) config: Arc<Config>,
-    pub(crate) config_errors: Option<ConfigError>,
+    pub(crate) config_errors: Option<ConfigErrors>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: MemDocs,
@@ -405,7 +405,8 @@ impl GlobalState {
                 change
             };
 
-            let (config, _, should_update) = self.config.apply_change(config_change);
+            let (config, e, should_update) = self.config.apply_change(config_change);
+            self.config_errors = e.is_empty().not().then_some(e);
 
             if should_update {
                 self.update_configuration(config);

@@ -13,7 +13,7 @@
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
 // FIXME: This is a mess that needs some untangling work
-use std::{iter, mem};
+use std::{iter, mem, ops::Not as _};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros};
@@ -605,7 +605,8 @@ impl GlobalState {
         let mut config_change = ConfigChange::default();
         config_change.change_source_root_parent_map(self.local_roots_parent_map.clone());
 
-        let (config, _, _) = self.config.apply_change(config_change);
+        let (config, e, _) = self.config.apply_change(config_change);
+        self.config_errors = e.is_empty().not().then_some(e);
 
         self.config = Arc::new(config);
 
