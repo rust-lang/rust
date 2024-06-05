@@ -1615,13 +1615,13 @@ pub type Lit = Spanned<LitKind>;
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ArrayLen<'hir> {
     Infer(InferArg),
-    Body(&'hir AnonConst),
+    Body(&'hir ConstArg<'hir>),
 }
 
 impl ArrayLen<'_> {
     pub fn hir_id(&self) -> HirId {
         match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(AnonConst { hir_id, .. }) => {
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(ConstArg { hir_id, .. }) => {
                 *hir_id
             }
         }

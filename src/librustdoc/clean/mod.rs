@@ -1825,7 +1825,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Array(ty, ref length) => {
             let length = match length {
                 hir::ArrayLen::Infer(..) => "_".to_string(),
-                hir::ArrayLen::Body(anon_const) => {
+                hir::ArrayLen::Body(const_arg) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
                     // but do allow `ConstKind::Param`.
@@ -1833,9 +1833,18 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // `const_eval_poly` tries to first substitute generic parameters which
                     // results in an ICE while manually constructing the constant and using `eval`
                     // does nothing for `ConstKind::Param`.
-                    let ct = ty::Const::from_anon_const(cx.tcx, anon_const.def_id);
-                    let param_env = cx.tcx.param_env(anon_const.def_id);
-                    print_const(cx, ct.normalize(cx.tcx, param_env))
+                    let ct = ty::Const::from_const_arg_without_feeding(cx.tcx, const_arg);
+                    let ct = if let hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) =
+                        const_arg.kind
+                    {
+                        // Only anon consts can implicitly capture params.
+                        // FIXME: is this correct behavior?
+                        let param_env = cx.tcx.param_env(*def_id);
+                        ct.normalize(cx.tcx, param_env)
+                    } else {
+                        ct
+                    };
+                    print_const(cx, ct)
                 }
             };
 

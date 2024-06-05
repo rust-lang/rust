@@ -711,7 +711,7 @@ pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen<'v>
     match len {
         // FIXME: Use `visit_infer` here.
         ArrayLen::Infer(InferArg { hir_id, span: _ }) => visitor.visit_id(*hir_id),
-        ArrayLen::Body(c) => visitor.visit_anon_const(c),
+        ArrayLen::Body(c) => visitor.visit_const_arg(c),
     }
 }
 

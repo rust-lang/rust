@@ -2164,7 +2164,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = match length {
                     hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
                     hir::ArrayLen::Body(constant) => {
-                        ty::Const::from_anon_const(tcx, constant.def_id)
+                        ty::Const::from_const_arg_without_feeding(tcx, constant)
                     }
                 };
 
