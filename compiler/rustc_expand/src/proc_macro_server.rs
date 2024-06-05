@@ -13,7 +13,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
-use rustc_parse::parse_stream_from_source_str;
+use rustc_parse::parser::Parser;
+use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
@@ -466,7 +467,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
         let name = FileName::proc_macro_source_code(s);
-        let mut parser = rustc_parse::new_parser_from_source_str(self.psess(), name, s.to_owned());
+        let mut parser =
+            unwrap_or_emit_fatal(new_parser_from_source_str(self.psess(), name, s.to_owned()));
 
         let first_span = parser.token.span.data();
         let minus_present = parser.eat(&token::BinOp(token::Minus));
@@ -538,12 +540,12 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse_stream_from_source_str(
+        unwrap_or_emit_fatal(source_str_to_stream(
+            self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
-            self.psess(),
             Some(self.call_site),
-        )
+        ))
     }
 
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
@@ -553,11 +555,7 @@ impl server::TokenStream for Rustc<'_, '_> {
     fn expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         // Parse the expression from our tokenstream.
         let expr: PResult<'_, _> = try {
-            let mut p = rustc_parse::stream_to_parser(
-                self.psess(),
-                stream.clone(),
-                Some("proc_macro expand expr"),
-            );
+            let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
             let expr = p.parse_expr()?;
             if p.token != token::Eof {
                 p.unexpected()?;

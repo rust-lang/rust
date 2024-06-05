@@ -9,7 +9,7 @@ use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_parse::maybe_new_parser_from_source_str;
+use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
@@ -638,7 +638,7 @@ pub(crate) fn make_test(
             let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
 
-            let mut parser = match maybe_new_parser_from_source_str(&psess, filename, source) {
+            let mut parser = match new_parser_from_source_str(&psess, filename, source) {
                 Ok(p) => p,
                 Err(errs) => {
                     errs.into_iter().for_each(|err| err.cancel());
@@ -818,16 +818,15 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let psess = ParseSess::with_dcx(dcx, sm);
-            let mut parser =
-                match maybe_new_parser_from_source_str(&psess, filename, source.to_owned()) {
-                    Ok(p) => p,
-                    Err(errs) => {
-                        errs.into_iter().for_each(|err| err.cancel());
-                        // If there is an unclosed delimiter, an error will be returned by the
-                        // tokentrees.
-                        return false;
-                    }
-                };
+            let mut parser = match new_parser_from_source_str(&psess, filename, source.to_owned()) {
+                Ok(p) => p,
+                Err(errs) => {
+                    errs.into_iter().for_each(|err| err.cancel());
+                    // If there is an unclosed delimiter, an error will be returned by the
+                    // tokentrees.
+                    return false;
+                }
+            };
             // If a parsing error happened, it's very likely that the attribute is incomplete.
             if let Err(e) = parser.parse_attribute(InnerAttrPolicy::Permitted) {
                 e.cancel();

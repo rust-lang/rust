@@ -1,5 +1,7 @@
 use crate::parser::ForceCollect;
-use crate::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
+use crate::{
+    new_parser_from_source_str, parser::Parser, source_str_to_stream, unwrap_or_emit_fatal,
+};
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
@@ -29,7 +31,11 @@ fn psess() -> ParseSess {
 
 /// Map string to parser (via tts).
 fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
-    new_parser_from_source_str(psess, PathBuf::from("bogofile").into(), source_str)
+    unwrap_or_emit_fatal(new_parser_from_source_str(
+        psess,
+        PathBuf::from("bogofile").into(),
+        source_str,
+    ))
 }
 
 fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
@@ -82,11 +88,12 @@ where
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let psess = psess();
-    source_file_to_stream(
+    unwrap_or_emit_fatal(source_str_to_stream(
         &psess,
-        psess.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
+        PathBuf::from("bogofile").into(),
+        source_str,
         None,
-    )
+    ))
 }
 
 /// Parses a string, returns a crate.
@@ -1068,7 +1075,8 @@ fn parse_item_from_source_str(
     source: String,
     psess: &ParseSess,
 ) -> PResult<'_, Option<P<ast::Item>>> {
-    new_parser_from_source_str(psess, name, source).parse_item(ForceCollect::No)
+    unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source))
+        .parse_item(ForceCollect::No)
 }
 
 // Produces a `rustc_span::span`.
@@ -1349,7 +1357,7 @@ fn ttdelim_span() {
         source: String,
         psess: &ParseSess,
     ) -> PResult<'_, P<ast::Expr>> {
-        new_parser_from_source_str(psess, name, source).parse_expr()
+        unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source)).parse_expr()
     }
 
     create_default_session_globals_then(|| {

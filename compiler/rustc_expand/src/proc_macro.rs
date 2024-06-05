@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
-use rustc_parse::parser::ForceCollect;
+use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::Span;
@@ -154,8 +154,7 @@ impl MultiItemModifier for DeriveProcMacro {
         };
 
         let error_count_before = ecx.dcx().err_count();
-        let mut parser =
-            rustc_parse::stream_to_parser(&ecx.sess.psess, stream, Some("proc-macro derive"));
+        let mut parser = Parser::new(&ecx.sess.psess, stream, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {
