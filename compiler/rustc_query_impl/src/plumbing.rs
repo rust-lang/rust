@@ -173,7 +173,7 @@ impl QueryContext for QueryCtxt<'_> {
         });
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[tracing::instrument(level = "trace", skip(self, side_effects))]
     fn apply_side_effects(self, side_effects: QuerySideEffects) {
         let dcx = self.dep_context().sess().dcx();
         let QuerySideEffects { diagnostics, definitions } = side_effects;
@@ -182,8 +182,9 @@ impl QueryContext for QueryCtxt<'_> {
             dcx.emit_diagnostic(diagnostic);
         }
 
-        for DefIdInfo { parent, data } in definitions {
-            self.tcx.untracked().definitions.write().create_def(parent, data);
+        for DefIdInfo { parent, data, hash } in definitions {
+            let (_def_id, h) = self.tcx.untracked().definitions.write().create_def(parent, data);
+            debug_assert_eq!(h, hash);
         }
     }
 }

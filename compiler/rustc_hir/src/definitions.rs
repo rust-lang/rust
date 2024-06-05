@@ -344,7 +344,11 @@ impl Definitions {
     }
 
     /// Adds a definition with a parent definition.
-    pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
+    pub fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        data: DefPathData,
+    ) -> (LocalDefId, DefPathHash) {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -373,7 +377,7 @@ impl Definitions {
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
+        (LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }, def_path_hash)
     }
 
     #[inline(always)]

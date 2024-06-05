@@ -909,7 +909,7 @@ impl<D: Deps> DepGraphData<D> {
         Some(dep_node_index)
     }
 
-    /// Atomically emits some loaded diagnostics.
+    /// Atomically emits some loaded side effects.
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
@@ -925,7 +925,7 @@ impl<D: Deps> DepGraphData<D> {
             // We were the first to insert the node in the set so this thread
             // must process side effects
 
-            // Promote the previous diagnostics to the current session.
+            // Promote the previous side effects to the current session.
             qcx.store_side_effects(dep_node_index, side_effects.clone());
 
             qcx.apply_side_effects(side_effects);

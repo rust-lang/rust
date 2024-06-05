@@ -15,6 +15,7 @@ use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::DiagInner;
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefPathHash;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -85,6 +86,7 @@ pub struct QuerySideEffects {
 pub struct DefIdInfo {
     pub parent: LocalDefId,
     pub data: rustc_hir::definitions::DefPathData,
+    pub hash: DefPathHash,
 }
 
 impl QuerySideEffects {
