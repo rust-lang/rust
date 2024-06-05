@@ -202,7 +202,7 @@ impl HasSource for TypeOrConstParam {
     type Ast = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
-        Some(child_source.map(|it| it[self.id.local_id].clone()))
+        child_source.map(|it| it.get(self.id.local_id).cloned()).transpose()
     }
 }
 
@@ -210,7 +210,7 @@ impl HasSource for LifetimeParam {
     type Ast = ast::LifetimeParam;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
-        Some(child_source.map(|it| it[self.id.local_id].clone()))
+        child_source.map(|it| it.get(self.id.local_id).cloned()).transpose()
     }
 }
 
