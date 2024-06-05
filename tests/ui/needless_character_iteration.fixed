@@ -48,4 +48,10 @@ fn main() {
 
     // Should not lint!
     "foo".chars().map(|c| c).all(|c| !char::is_ascii(&c));
+
+    // Should not lint!
+    "foo".chars().all(|c| !c.is_ascii());
+
+    // Should not lint!
+    "foo".chars().any(|c| c.is_ascii());
 }
