@@ -1,3 +1,5 @@
+//@ edition: 2021
+
 #![feature(rustc_private)]
 #![deny(warnings)]
 
@@ -78,11 +80,11 @@ impl CodegenBackend for TheBackend {
             match output_name {
                 OutFileName::Real(ref path) => {
                     let mut out_file = ::std::fs::File::create(path).unwrap();
-                    write!(out_file, "This has been \"compiled\" successfully.").unwrap();
+                    writeln!(out_file, "This has been 'compiled' successfully.").unwrap();
                 }
                 OutFileName::Stdout => {
                     let mut stdout = std::io::stdout();
-                    write!(stdout, "This has been \"compiled\" successfully.").unwrap();
+                    writeln!(stdout, "This has been 'compiled' successfully.").unwrap();
                 }
             }
         }

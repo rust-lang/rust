@@ -107,6 +107,9 @@ pub struct TestProps {
     // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
     // to build and pass with the `--extern` flag.
     pub aux_crates: Vec<(String, String)>,
+    /// Similar to `aux_builds`, but also passes the resulting dylib path to
+    /// `-Zcodegen-backend`.
+    pub aux_codegen_backend: Option<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
@@ -231,6 +234,7 @@ mod directives {
     pub const AUX_BIN: &'static str = "aux-bin";
     pub const AUX_BUILD: &'static str = "aux-build";
     pub const AUX_CRATE: &'static str = "aux-crate";
+    pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
     pub const EXEC_ENV: &'static str = "exec-env";
     pub const RUSTC_ENV: &'static str = "rustc-env";
     pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
@@ -267,6 +271,7 @@ impl TestProps {
             aux_builds: vec![],
             aux_bins: vec![],
             aux_crates: vec![],
+            aux_codegen_backend: None,
             revisions: vec![],
             rustc_env: vec![
                 ("RUSTC_ICE".to_string(), "0".to_string()),
@@ -446,6 +451,9 @@ impl TestProps {
                         &mut self.aux_crates,
                         Config::parse_aux_crate,
                     );
+                    if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
+                        self.aux_codegen_backend = Some(r.trim().to_owned());
+                    }
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
@@ -722,6 +730,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "assembly-output",
     "aux-bin",
     "aux-build",
+    "aux-codegen-backend",
     "aux-crate",
     "build-aux-docs",
     "build-fail",
