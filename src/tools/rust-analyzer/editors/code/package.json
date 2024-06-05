@@ -552,7 +552,9 @@
                     }
                 }
             },
-            { "title": "$generated-start" },
+            { 
+                "title": "$generated-start" 
+            },
             {
                 "title": "assist",
                 "properties": {
@@ -2552,7 +2554,9 @@
                     }
                 }
             },
-            { "title": "$generated-end" }
+            { 
+                "title": "$generated-end" 
+            }
         ],
         "configurationDefaults": {
             "explorer.fileNesting.patterns": {
