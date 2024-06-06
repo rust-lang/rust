@@ -10,18 +10,23 @@
       let _7: [i32; 32];
       let _8: ();
       let mut _9: [u16; 32];
-+     let mut _13: &[i32; 32];
+      let mut _11: [f32; 8];
++     let mut _15: &[i32; 32];
       scope 1 {
           debug _arr => _1;
           let _2: [[i32; 12]; 2];
-+         let mut _12: &[[i32; 12]; 2];
++         let mut _14: &[[i32; 12]; 2];
           scope 2 {
               debug _foo => _2;
               let _5: [i32; 32];
-              let mut _10: &[i32; 32];
+              let mut _12: &[i32; 32];
               scope 3 {
                   debug _darr => _5;
-+                 let mut _11: &[u16; 32];
+                  let _10: F32x8;
++                 let mut _13: &[u16; 32];
+                  scope 4 {
+                      debug _f => _10;
+                  }
               }
           }
       }
@@ -29,8 +34,8 @@
       bb0: {
 -         StorageLive(_1);
 -         _1 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32, const 251_i32, const 191_i32, const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32, const 193_i32, const 164_i32, const 194_i32, const 197_i32, const 6_i32, const 243_i32, const 218_i32, const 171_i32, const 87_i32, const 247_i32, const 104_i32, const 159_i32, const 22_i32, const 157_i32, const 105_i32, const 31_i32, const 96_i32, const 173_i32, const 50_i32, const 1_i32];
-+         _13 = const main::promoted[3];
-+         _1 = (*_13);
++         _15 = const main::promoted[3];
++         _1 = (*_15);
           FakeRead(ForLet(None), _1);
 -         StorageLive(_2);
 -         StorageLive(_3);
@@ -40,28 +45,35 @@
 -         _2 = [move _3, move _4];
 -         StorageDead(_4);
 -         StorageDead(_3);
-+         _12 = const main::promoted[2];
-+         _2 = (*_12);
++         _14 = const main::promoted[2];
++         _2 = (*_14);
           FakeRead(ForLet(None), _2);
           StorageLive(_5);
           StorageLive(_6);
-          _10 = const main::promoted[0];
-          _6 = &(*_10);
+          _12 = const main::promoted[0];
+          _6 = &(*_12);
           _5 = (*_6);
           FakeRead(ForLet(None), _5);
           StorageDead(_6);
           StorageLive(_8);
 -         StorageLive(_9);
 -         _9 = [const 255_u16, const 105_u16, const 15_u16, const 39_u16, const 62_u16, const 251_u16, const 191_u16, const 178_u16, const 9_u16, const 4_u16, const 56_u16, const 221_u16, const 193_u16, const 164_u16, const 194_u16, const 197_u16, const 6_u16, const 243_u16, const 218_u16, const 171_u16, const 87_u16, const 247_u16, const 104_u16, const 159_u16, const 22_u16, const 157_u16, const 105_u16, const 31_u16, const 96_u16, const 173_u16, const 50_u16, const 1_u16];
-+         _11 = const main::promoted[1];
-+         _9 = (*_11);
++         _13 = const main::promoted[1];
++         _9 = (*_13);
           _8 = consume(move _9) -> [return: bb1, unwind: bb2];
       }
   
       bb1: {
 -         StorageDead(_9);
           StorageDead(_8);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = [const 1f32, const 1f32, const 1f32, const 1f32, const 1f32, const 1f32, const 1f32, const 1f32];
+          _10 = F32x8(move _11);
+          StorageDead(_11);
+          FakeRead(ForLet(None), _10);
           _0 = const ();
+          StorageDead(_10);
           StorageDead(_5);
 -         StorageDead(_2);
 -         StorageDead(_1);
