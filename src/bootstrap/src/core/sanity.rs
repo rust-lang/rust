@@ -16,10 +16,13 @@ use std::path::PathBuf;
 use std::process::Command;
 
 #[cfg(not(feature = "bootstrap-self-test"))]
+use crate::builder::Builder;
+#[cfg(not(feature = "bootstrap-self-test"))]
+use crate::core::build_steps::tool;
+#[cfg(not(feature = "bootstrap-self-test"))]
 use std::collections::HashSet;
 
-use crate::builder::{Builder, Kind};
-use crate::core::build_steps::tool;
+use crate::builder::Kind;
 use crate::core::config::Target;
 use crate::utils::helpers::output;
 use crate::Build;
@@ -41,6 +44,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
 /// from CI (with`llvm.download-ci-llvm` option).
+#[cfg(not(feature = "bootstrap-self-test"))]
 const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
@@ -108,6 +112,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
+    #[cfg(not(feature = "bootstrap-self-test"))]
     if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });

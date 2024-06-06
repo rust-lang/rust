@@ -810,10 +810,10 @@ pub struct LibcxxVersionTool {
     pub target: TargetSelection,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum LibcxxVersion {
     Gnu(usize),
-    #[allow(dead_code)]
     Llvm(usize),
 }
 
