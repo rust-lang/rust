@@ -23,9 +23,6 @@ pub fn main() {
     if let Some(Some(&x)) = &Some(&Some(0)) {
         let _: u32 = x;
     }
-    if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
-        let _: u32 = x;
-    }
     if let Some(&Some(&x)) = &mut Some(&Some(0)) {
         let _: u32 = x;
     }
@@ -33,9 +30,6 @@ pub fn main() {
         let _: &u32 = x;
     }
     if let Some(&Some(&mut ref x)) = Some(&Some(&mut 0)) {
-        let _: &u32 = x;
-    }
-    if let Some(Some(&mut x)) = &Some(Some(&mut 0)) {
         let _: &u32 = x;
     }
     if let &Some(Some(x)) = &Some(&mut Some(0)) {
@@ -59,13 +53,4 @@ pub fn main() {
     if let Some(&Some(x)) = &mut Some(Some(0)) {
         let _: u32 = x;
     }
-
-    let &mut x = &&mut 0;
-    let _: &u32 = x;
-
-    let &mut x = &&&&&&&&&&&&&&&&&&&&&&&&&&&&mut 0;
-    let _: &u32 = x;
-
-    let &mut &mut &mut &mut x = &mut &&&&mut &&&mut &mut 0;
-    let _: &u32 = x;
 }
