@@ -17,8 +17,6 @@ impl<T> const Foo for T where T: const Specialize {}
 //~^ error: const `impl` for trait `Foo` which is not marked with `#[const_trait]`
 //~| error: `const` can only be applied to `#[const_trait]` traits
 //~| error: the const parameter `host` is not constrained by the impl trait, self type, or predicates [E0207]
-//~| error: specialization impl does not specialize any associated items
-//~| error: could not resolve generic parameters on overridden impl
+//~| error: conflicting implementations of trait `Foo`
 
-fn main() {
-}
+fn main() {}

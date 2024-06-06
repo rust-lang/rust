@@ -398,7 +398,8 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             )));
         }
 
-        Ok(mir::Const::Ty(ty::Const::zero_sized(tables.tcx, ty_internal)).stable(&mut *tables))
+        Ok(mir::Const::Ty(ty_internal, ty::Const::zero_sized(tables.tcx, ty_internal))
+            .stable(&mut *tables))
     }
 
     fn new_const_str(&self, value: &str) -> MirConst {

@@ -590,6 +590,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .expect_const()
                     .eval(*this.tcx, this.param_env(), this.tcx.span)
                     .unwrap()
+                    .1
                     .unwrap_branch();
                 let index_len = index.len();
 

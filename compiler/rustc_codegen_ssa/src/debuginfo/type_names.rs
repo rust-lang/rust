@@ -693,41 +693,46 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        _ => match ct.ty().kind() {
-            ty::Int(ity) => {
-                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
-                let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
-                write!(output, "{val}")
-            }
-            ty::Uint(_) => {
-                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
-                write!(output, "{val}")
-            }
-            ty::Bool => {
-                let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
-                write!(output, "{val}")
-            }
-            _ => {
-                // If we cannot evaluate the constant to a known type, we fall back
-                // to emitting a stable hash value of the constant. This isn't very pretty
-                // but we get a deterministic, virtually unique value for the constant.
-                //
-                // Let's only emit 64 bits of the hash value. That should be plenty for
-                // avoiding collisions and will make the emitted type names shorter.
-                let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
-                    let mut hasher = StableHasher::new();
-                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
-                    hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
-                    hasher.finish::<Hash64>()
-                });
+        ty::ConstKind::Value(ty, _) => {
+            match ty.kind() {
+                ty::Int(ity) => {
+                    // FIXME: directly extract the bits from a valtree instead of evaluating an
+                    // alreay evaluated `Const` in order to get the bits.
+                    let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                    write!(output, "{val}")
+                }
+                ty::Uint(_) => {
+                    let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    write!(output, "{val}")
+                }
+                ty::Bool => {
+                    let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                    write!(output, "{val}")
+                }
+                _ => {
+                    // If we cannot evaluate the constant to a known type, we fall back
+                    // to emitting a stable hash value of the constant. This isn't very pretty
+                    // but we get a deterministic, virtually unique value for the constant.
+                    //
+                    // Let's only emit 64 bits of the hash value. That should be plenty for
+                    // avoiding collisions and will make the emitted type names shorter.
+                    let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
+                        let mut hasher = StableHasher::new();
+                        let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
+                        hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
+                        hasher.finish::<Hash64>()
+                    });
 
-                if cpp_like_debuginfo(tcx) {
-                    write!(output, "CONST${hash_short:x}")
-                } else {
-                    write!(output, "{{CONST#{hash_short:x}}}")
+                    if cpp_like_debuginfo(tcx) {
+                        write!(output, "CONST${hash_short:x}")
+                    } else {
+                        write!(output, "{{CONST#{hash_short:x}}}")
+                    }
                 }
             }
-        },
+        }
+        _ => bug!("Invalid `Const` during codegen: {:?}", ct),
     }
     .unwrap();
 }

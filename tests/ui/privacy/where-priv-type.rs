@@ -11,55 +11,46 @@ pub struct PubTy;
 pub struct PubTyGeneric<T>(T);
 pub trait PubTr {}
 impl PubTr for PrivTy {}
-pub trait PubTrWithAssocTy { type AssocTy; }
-impl PubTrWithAssocTy for PrivTy { type AssocTy = PrivTy; }
-
+pub trait PubTrWithAssocTy {
+    type AssocTy;
+}
+impl PubTrWithAssocTy for PrivTy {
+    type AssocTy = PrivTy;
+}
 
 pub struct S
 //~^ WARNING type `PrivTy` is more private than the item `S`
 where
-    PrivTy:
-{}
-
+    PrivTy:, {}
 
 pub enum E
 //~^ WARNING type `PrivTy` is more private than the item `E`
 where
-    PrivTy:
-{}
-
+    PrivTy:, {}
 
 pub fn f()
 //~^ WARNING type `PrivTy` is more private than the item `f`
 where
-    PrivTy:
-{}
-
+    PrivTy:,
+{
+}
 
 impl S
 //~^ WARNING type `PrivTy` is more private than the item `S`
 where
-    PrivTy:
+    PrivTy:,
 {
     pub fn f()
     //~^ WARNING type `PrivTy` is more private than the item `S::f`
     where
-        PrivTy:
-    {}
+        PrivTy:,
+    {
+    }
 }
 
+impl PubTr for PubTy where PrivTy: {}
 
-impl PubTr for PubTy
-where
-    PrivTy:
-{}
-
-
-impl<T> PubTr for PubTyGeneric<T>
-where
-    T: PubTrWithAssocTy<AssocTy=PrivTy>
-{}
-
+impl<T> PubTr for PubTyGeneric<T> where T: PubTrWithAssocTy<AssocTy = PrivTy> {}
 
 pub struct Const<const U: u8>;
 
@@ -70,7 +61,7 @@ pub trait Trait {
 
 impl<const U: u8> Trait for Const<U>
 where
-    Const<{ my_const_fn(U) }>: ,
+    Const<{ my_const_fn(U) }>:,
 {
     type AssocTy = Const<{ my_const_fn(U) }>;
     //~^ ERROR private type

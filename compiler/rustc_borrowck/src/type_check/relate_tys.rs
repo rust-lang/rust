@@ -193,7 +193,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
                 types: &mut |_bound_ty: ty::BoundTy| {
                     unreachable!("we only replace regions in nll_relate, not types")
                 },
-                consts: &mut |_bound_var: ty::BoundVar, _ty| {
+                consts: &mut |_bound_var: ty::BoundVar| {
                     unreachable!("we only replace regions in nll_relate, not consts")
                 },
             };
@@ -231,7 +231,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
             types: &mut |_bound_ty: ty::BoundTy| {
                 unreachable!("we only replace regions in nll_relate, not types")
             },
-            consts: &mut |_bound_var: ty::BoundVar, _ty| {
+            consts: &mut |_bound_var: ty::BoundVar| {
                 unreachable!("we only replace regions in nll_relate, not consts")
             },
         };

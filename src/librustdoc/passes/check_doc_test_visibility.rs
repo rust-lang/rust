@@ -62,7 +62,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::AssocTypeItem(..)
                 | clean::TypeAliasItem(_)
                 | clean::StaticItem(_)
-                | clean::ConstantItem(_)
+                | clean::ConstantItem(_, _, _)
                 | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)

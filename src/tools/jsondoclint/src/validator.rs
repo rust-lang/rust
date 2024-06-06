@@ -101,7 +101,10 @@ impl<'a> Validator<'a> {
                 ItemEnum::Impl(x) => self.check_impl(x, id),
                 ItemEnum::TypeAlias(x) => self.check_type_alias(x),
                 ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
-                ItemEnum::Constant(x) => self.check_constant(x),
+                ItemEnum::Constant { type_, const_ } => {
+                    self.check_type(type_);
+                    self.check_constant(const_);
+                }
                 ItemEnum::Static(x) => self.check_static(x),
                 ItemEnum::ForeignType => {} // nop
                 ItemEnum::Macro(x) => self.check_macro(x),
@@ -231,8 +234,8 @@ impl<'a> Validator<'a> {
         self.check_generics(&x.generics);
     }
 
-    fn check_constant(&mut self, x: &'a Constant) {
-        self.check_type(&x.type_);
+    fn check_constant(&mut self, _x: &'a Constant) {
+        // nop
     }
 
     fn check_static(&mut self, x: &'a Static) {

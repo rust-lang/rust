@@ -28,10 +28,10 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
-    GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,
-    PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity,
-    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericParamDefKind,
+    ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern, PatternKind,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity, Region,
+    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -268,7 +268,7 @@ pub struct CtxtInterners<'tcx> {
     clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
-    const_: InternedSet<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>,
+    const_: InternedSet<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>,
     pat: InternedSet<'tcx, PatternKind<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
@@ -338,18 +338,18 @@ impl<'tcx> CtxtInterners<'tcx> {
     #[inline(never)]
     fn intern_const(
         &self,
-        data: ty::ConstData<'tcx>,
+        kind: ty::ConstKind<'tcx>,
         sess: &Session,
         untracked: &Untracked,
     ) -> Const<'tcx> {
         Const(Interned::new_unchecked(
             self.const_
-                .intern(data, |data: ConstData<'_>| {
-                    let flags = super::flags::FlagComputation::for_const(&data.kind, data.ty);
-                    let stable_hash = self.stable_hash(&flags, sess, untracked, &data);
+                .intern(kind, |kind: ty::ConstKind<'_>| {
+                    let flags = super::flags::FlagComputation::for_const_kind(&kind);
+                    let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
-                        internee: data,
+                        internee: kind,
                         stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
@@ -601,18 +601,15 @@ impl<'tcx> CommonConsts<'tcx> {
         };
 
         CommonConsts {
-            unit: mk_const(ty::ConstData {
-                kind: ty::ConstKind::Value(ty::ValTree::zst()),
-                ty: types.unit,
-            }),
-            true_: mk_const(ty::ConstData {
-                kind: ty::ConstKind::Value(ty::ValTree::Leaf(ty::ScalarInt::TRUE)),
-                ty: types.bool,
-            }),
-            false_: mk_const(ty::ConstData {
-                kind: ty::ConstKind::Value(ty::ValTree::Leaf(ty::ScalarInt::FALSE)),
-                ty: types.bool,
-            }),
+            unit: mk_const(ty::ConstKind::Value(types.unit, ty::ValTree::zst())),
+            true_: mk_const(ty::ConstKind::Value(
+                types.bool,
+                ty::ValTree::Leaf(ty::ScalarInt::TRUE),
+            )),
+            false_: mk_const(ty::ConstKind::Value(
+                types.bool,
+                ty::ValTree::Leaf(ty::ScalarInt::FALSE),
+            )),
         }
     }
 }
@@ -2225,9 +2222,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+    pub fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>) -> Const<'tcx> {
         self.interners.intern_const(
-            ty::ConstData { kind, ty },
+            kind,
             self.sess,
             // This is only used to create a stable hashing context.
             &self.untracked,
@@ -2252,14 +2249,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Region::new_early_param(self, param.to_early_bound_region_data()).into()
             }
             GenericParamDefKind::Type { .. } => Ty::new_param(self, param.index, param.name).into(),
-            GenericParamDefKind::Const { .. } => ty::Const::new_param(
-                self,
-                ParamConst { index: param.index, name: param.name },
-                self.type_of(param.def_id)
-                    .no_bound_vars()
-                    .expect("const parameter types cannot be generic"),
-            )
-            .into(),
+            GenericParamDefKind::Const { .. } => {
+                ty::Const::new_param(self, ParamConst { index: param.index, name: param.name })
+                    .into()
+            }
         }
     }
 

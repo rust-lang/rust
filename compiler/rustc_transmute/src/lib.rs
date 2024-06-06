@@ -135,7 +135,7 @@ mod rustc {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::symbol::sym;
 
-            let Ok(cv) = c.eval(tcx, param_env, DUMMY_SP) else {
+            let Ok((ty, cv)) = c.eval(tcx, param_env, DUMMY_SP) else {
                 return Some(Self {
                     alignment: true,
                     lifetimes: true,
@@ -144,7 +144,7 @@ mod rustc {
                 });
             };
 
-            let adt_def = c.ty().ty_adt_def()?;
+            let adt_def = ty.ty_adt_def()?;
 
             assert_eq!(
                 tcx.require_lang_item(LangItem::TransmuteOpts, None),

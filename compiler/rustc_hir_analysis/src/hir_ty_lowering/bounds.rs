@@ -368,11 +368,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                     },
                                 )
                             });
-                            let ty = tcx
-                                .type_of(param.def_id)
-                                .no_bound_vars()
-                                .expect("ct params cannot have early bound vars");
-                            ty::Const::new_error(tcx, guar, ty).into()
+                            ty::Const::new_error(tcx, guar).into()
                         }
                     };
                     num_bound_vars += 1;

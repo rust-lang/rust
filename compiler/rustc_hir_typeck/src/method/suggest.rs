@@ -2096,9 +2096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
                                 .into(),
                             GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
-                            GenericArgKind::Const(arg) => {
-                                self.next_const_var(arg.ty(), DUMMY_SP).into()
-                            }
+                            GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
                         }
                     } else {
                         arg

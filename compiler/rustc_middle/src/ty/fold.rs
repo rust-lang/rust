@@ -134,13 +134,13 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
 pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx>;
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx>;
-    fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx>;
+    fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx>;
 }
 
 pub struct FnMutDelegate<'a, 'tcx> {
     pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
-    pub consts: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a),
+    pub consts: &'a mut (dyn FnMut(ty::BoundVar) -> ty::Const<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
@@ -150,8 +150,8 @@ impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
         (self.types)(bt)
     }
-    fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        (self.consts)(bv, ty)
+    fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
+        (self.consts)(bv)
     }
 }
 
@@ -224,7 +224,7 @@ where
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
-                let ct = self.delegate.replace_const(bound_const, ct.ty());
+                let ct = self.delegate.replace_const(bound_const);
                 debug_assert!(!ct.has_vars_bound_above(ty::INNERMOST));
                 ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
             }
@@ -282,7 +282,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let delegate = FnMutDelegate {
                 regions: &mut replace_regions,
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
-                consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
+                consts: &mut |b| bug!("unexpected bound ct in binder: {b:?}"),
             };
             let mut replacer = BoundVarReplacer::new(self, delegate);
             value.fold_with(&mut replacer)
@@ -353,9 +353,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
                     )
                 },
-                consts: &mut |c, ty: Ty<'tcx>| {
-                    ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c), ty)
-                },
+                consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
             },
         )
     }
@@ -398,12 +396,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     .expect_ty();
                 Ty::new_bound(self.tcx, ty::INNERMOST, BoundTy { var, kind })
             }
-            fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+            fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
                 let entry = self.map.entry(bv);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
-                ty::Const::new_bound(self.tcx, ty::INNERMOST, var, ty)
+                ty::Const::new_bound(self.tcx, ty::INNERMOST, var)
             }
         }
 

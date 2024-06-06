@@ -830,7 +830,6 @@ pub(crate) enum ItemKind {
     TypeAliasItem(Box<TypeAlias>),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
-    ConstantItem(Constant),
     TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
@@ -853,6 +852,7 @@ pub(crate) enum ItemKind {
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
     TyAssocConstItem(Generics, Box<Type>),
+    ConstantItem(Generics, Box<Type>, Constant),
     /// An associated constant in a trait impl or a provided one in a trait declaration.
     AssocConstItem(Generics, Box<Type>, ConstantKind),
     /// A required associated type in a trait declaration.
@@ -888,7 +888,7 @@ impl ItemKind {
             | TypeAliasItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
-            | ConstantItem(_)
+            | ConstantItem(_, _, _)
             | TraitAliasItem(_)
             | TyMethodItem(_)
             | MethodItem(_, _)
@@ -922,7 +922,7 @@ impl ItemKind {
                 | TypeAliasItem(_)
                 | OpaqueTyItem(_)
                 | StaticItem(_)
-                | ConstantItem(_)
+                | ConstantItem(_, _, _)
                 | TraitAliasItem(_)
                 | ForeignFunctionItem(_)
                 | ForeignStaticItem(_)
@@ -2364,8 +2364,6 @@ pub(crate) struct Static {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Constant {
-    pub(crate) type_: Box<Type>,
-    pub(crate) generics: Generics,
     pub(crate) kind: ConstantKind,
 }
 

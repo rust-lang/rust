@@ -38,11 +38,11 @@ impl<I: Interner> InferCtxtLike for NoInfcx<I> {
         panic!("cannot resolve {vid:?}")
     }
 
-    fn opportunistic_resolve_ct_var(&self, vid: ConstVid, _: I::Ty) -> I::Const {
+    fn opportunistic_resolve_ct_var(&self, vid: ConstVid) -> I::Const {
         panic!("cannot resolve {vid:?}")
     }
 
-    fn opportunistic_resolve_effect_var(&self, vid: EffectVid, _: I::Ty) -> I::Const {
+    fn opportunistic_resolve_effect_var(&self, vid: EffectVid) -> I::Const {
         panic!("cannot resolve {vid:?}")
     }
 

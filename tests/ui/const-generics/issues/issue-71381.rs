@@ -15,6 +15,7 @@ impl Test {
         //~^ ERROR: the type of const parameters must not depend on other generic parameters
         //[min]~^^ ERROR: using function pointers as const generic parameters is forbidden
         self.0 = Self::trampiline::<Args, IDX, FN> as _
+        //~^ ERROR: cannot assign to `self.0`
     }
 
     unsafe extern "C" fn trampiline<
