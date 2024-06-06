@@ -531,6 +531,7 @@ pub(crate) fn check_generic_arg_count(
 
         let num_default_params = expected_max - expected_min;
 
+        let mut all_params_are_binded = false;
         let gen_args_info = if provided > expected_max {
             invalid_args.extend((expected_max..provided).map(|i| i + args_offset));
             let num_redundant_args = provided - expected_max;
@@ -546,6 +547,20 @@ pub(crate) fn check_generic_arg_count(
             }
         } else {
             let num_missing_args = expected_max - provided;
+
+            let constraint_names: Vec<_> =
+                gen_args.constraints.iter().map(|b| b.ident.name).collect();
+            let param_names: Vec<_> = gen_params
+                .own_params
+                .iter()
+                .filter(|param| !has_self || param.index != 0) // Assumes `Self` will always be the first parameter
+                .map(|param| param.name)
+                .collect();
+            if constraint_names == param_names {
+                // We set this to true and delay emitting `WrongNumberOfGenericArgs`
+                // to provide a succinct error for cases like issue #113073
+                all_params_are_binded = true;
+            };
 
             GenericArgsInfo::MissingTypesOrConsts {
                 num_missing_args,
@@ -567,7 +582,7 @@ pub(crate) fn check_generic_arg_count(
                 def_id,
             )
             .diagnostic()
-            .emit()
+            .emit_unless(all_params_are_binded)
         });
 
         Err(reported)
