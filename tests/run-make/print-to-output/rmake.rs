@@ -4,7 +4,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use run_make_support::{rustc, target};
+use run_make_support::{fs_wrapper, rustc, target};
 
 struct Option<'a> {
     target: &'a str,
@@ -49,7 +49,7 @@ fn check(args: Option) {
 
         rustc().target(args.target).arg(print_arg).run();
 
-        std::fs::read_to_string(&tmp_path).unwrap()
+        fs_wrapper::read_to_string(&tmp_path)
     };
 
     check_(&stdout, args.includes);

@@ -1,4 +1,4 @@
-use run_make_support::rustc;
+use run_make_support::{fs_wrapper, rustc};
 
 fn main() {
     #[cfg(unix)]
@@ -17,8 +17,8 @@ fn main() {
     }
     let incr_dir = "incr-dir";
     rustc().input("foo.rs").incremental(&incr_dir).run();
-    for crate_dir in std::fs::read_dir(&incr_dir).unwrap() {
-        std::fs::create_dir(crate_dir.unwrap().path().join(&non_unicode)).unwrap();
+    for crate_dir in fs_wrapper::read_dir(&incr_dir) {
+        fs_wrapper::create_dir(crate_dir.unwrap().path().join(&non_unicode));
     }
     rustc().input("foo.rs").incremental(&incr_dir).run();
 }

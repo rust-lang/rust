@@ -8,6 +8,7 @@ pub mod clang;
 mod command;
 pub mod diff;
 mod drop_bomb;
+pub mod fs_wrapper;
 pub mod llvm_readobj;
 pub mod run;
 pub mod rustc;
@@ -148,7 +149,7 @@ pub fn dynamic_lib_extension() -> &'static str {
     }
 }
 
-/// Construct a rust library (rlib) name.
+/// Generate the name a rust library (rlib) would have.
 pub fn rust_lib_name(name: &str) -> String {
     format!("lib{name}.rlib")
 }
@@ -223,15 +224,15 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
         let dst = dst.as_ref();
         if !dst.is_dir() {
-            fs::create_dir_all(&dst)?;
+            std::fs::create_dir_all(&dst)?;
         }
-        for entry in fs::read_dir(src)? {
+        for entry in std::fs::read_dir(src)? {
             let entry = entry?;
             let ty = entry.file_type()?;
             if ty.is_dir() {
                 copy_dir_all_inner(entry.path(), dst.join(entry.file_name()))?;
             } else {
-                fs::copy(entry.path(), dst.join(entry.file_name()))?;
+                std::fs::copy(entry.path(), dst.join(entry.file_name()))?;
             }
         }
         Ok(())
@@ -250,13 +251,6 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
 
 /// Check that all files in `dir1` exist and have the same content in `dir2`. Panic otherwise.
 pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
-    fn read_file(path: &Path) -> Vec<u8> {
-        match fs::read(path) {
-            Ok(c) => c,
-            Err(e) => panic!("Failed to read `{}`: {:?}", path.display(), e),
-        }
-    }
-
     let dir2 = dir2.as_ref();
     read_dir(dir1, |entry_path| {
         let entry_name = entry_path.file_name().unwrap();
@@ -264,8 +258,8 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
             recursive_diff(&entry_path, &dir2.join(entry_name));
         } else {
             let path2 = dir2.join(entry_name);
-            let file1 = read_file(&entry_path);
-            let file2 = read_file(&path2);
+            let file1 = fs_wrapper::read(&entry_path);
+            let file2 = fs_wrapper::read(&path2);
 
             // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
             // Why not using String? Because there might be minified files or even potentially
@@ -281,7 +275,7 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
 }
 
 pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
-    for entry in fs::read_dir(dir).unwrap() {
+    for entry in fs_wrapper::read_dir(dir) {
         callback(&entry.unwrap().path());
     }
 }

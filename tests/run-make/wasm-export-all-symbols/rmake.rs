@@ -1,6 +1,6 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{rustc, wasmparser};
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::collections::HashMap;
 use std::path::Path;
 use wasmparser::ExternalKind::*;
@@ -33,7 +33,7 @@ fn test(args: &[&str]) {
 
 fn verify_exports(path: &Path, exports: &[(&str, wasmparser::ExternalKind)]) {
     println!("verify {path:?}");
-    let file = std::fs::read(path).unwrap();
+    let file = fs_wrapper::read(path);
     let mut wasm_exports = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {
         let payload = payload.unwrap();
