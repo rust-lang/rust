@@ -998,14 +998,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let Some(module) = single_import.imported_module.get() else {
                 return Err((Undetermined, Weak::No));
             };
-            let ImportKind::Single { source: ident, source_bindings, .. } = &single_import.kind
+            let ImportKind::Single { source: ident, target, target_bindings, .. } =
+                &single_import.kind
             else {
                 unreachable!();
             };
-            if binding.map_or(false, |binding| binding.module().is_some())
-                && source_bindings.iter().all(|binding| matches!(binding.get(), Err(Undetermined)))
-            {
-                // This branch allows the binding to be defined or updated later,
+            if (ident != target) && target_bindings.iter().all(|binding| binding.get().is_none()) {
+                // This branch allows the binding to be defined or updated later if the target name
+                // can hide the source but these bindings are not obtained.
                 // avoiding module inconsistency between the resolve process and the finalize process.
                 // See more details in #124840
                 return Err((Undetermined, Weak::No));
