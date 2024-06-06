@@ -21,7 +21,7 @@ pub fn items_with_name<'a>(
     assoc_item_search: AssocSearchMode,
 ) -> impl Iterator<Item = ItemInNs> + 'a {
     let krate_name = krate.display_name(sema.db).map(|name| name.to_string());
-    let _p = tracing::span!(tracing::Level::INFO, "items_with_name", name = name.text(), assoc_item_search = ?assoc_item_search, crate = ?krate_name)
+    let _p = tracing::info_span!("items_with_name", name = name.text(), assoc_item_search = ?assoc_item_search, crate = ?krate_name)
         .entered();
 
     let prefix = matches!(name, NameToImport::Prefix(..));
@@ -72,7 +72,7 @@ fn find_items<'a>(
     local_query: symbol_index::Query,
     external_query: import_map::Query,
 ) -> impl Iterator<Item = ItemInNs> + 'a {
-    let _p = tracing::span!(tracing::Level::INFO, "find_items").entered();
+    let _p = tracing::info_span!("find_items").entered();
     let db = sema.db;
 
     // NOTE: `external_query` includes `assoc_item_search`, so we don't need to

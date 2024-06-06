@@ -54,7 +54,7 @@ pub(crate) fn handle_did_open_text_document(
     state: &mut GlobalState,
     params: DidOpenTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_open_text_document").entered();
+    let _p = tracing::info_span!("handle_did_open_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let already_exists = state
@@ -87,7 +87,7 @@ pub(crate) fn handle_did_change_text_document(
     state: &mut GlobalState,
     params: DidChangeTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_change_text_document").entered();
+    let _p = tracing::info_span!("handle_did_change_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
@@ -116,7 +116,7 @@ pub(crate) fn handle_did_close_text_document(
     state: &mut GlobalState,
     params: DidCloseTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_close_text_document").entered();
+    let _p = tracing::info_span!("handle_did_close_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         if state.mem_docs.remove(&path).is_err() {
@@ -254,7 +254,7 @@ pub(crate) fn handle_did_change_watched_files(
 }
 
 fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
-    let _p = tracing::span!(tracing::Level::INFO, "run_flycheck").entered();
+    let _p = tracing::info_span!("run_flycheck").entered();
 
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
@@ -349,13 +349,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 }
 
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_cancel_flycheck").entered();
+    let _p = tracing::info_span!("handle_cancel_flycheck").entered();
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }
 
 pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_clear_flycheck").entered();
+    let _p = tracing::info_span!("handle_clear_flycheck").entered();
     state.diagnostics.clear_check_all();
     Ok(())
 }
@@ -364,7 +364,7 @@ pub(crate) fn handle_run_flycheck(
     state: &mut GlobalState,
     params: RunFlycheckParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_run_flycheck").entered();
+    let _p = tracing::info_span!("handle_run_flycheck").entered();
     if let Some(text_document) = params.text_document {
         if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
             if run_flycheck(state, vfs_path) {

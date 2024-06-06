@@ -297,7 +297,7 @@ pub fn diagnostics(
     resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
-    let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
+    let _p = tracing::info_span!("diagnostics").entered();
     let sema = Semantics::new(db);
     let mut res = Vec::new();
 
@@ -482,7 +482,7 @@ fn handle_lint_attributes(
     clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
 ) {
-    let _g = tracing::span!(tracing::Level::INFO, "handle_lint_attributes").entered();
+    let _g = tracing::info_span!("handle_lint_attributes").entered();
     let file_id = sema.hir_file_for(root);
     let preorder = root.preorder();
     for ev in preorder {

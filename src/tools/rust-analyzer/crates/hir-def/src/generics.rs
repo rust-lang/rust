@@ -467,7 +467,7 @@ impl GenericParams {
         db: &dyn DefDatabase,
         def: GenericDefId,
     ) -> Interned<GenericParams> {
-        let _p = tracing::span!(tracing::Level::INFO, "generic_params_query").entered();
+        let _p = tracing::info_span!("generic_params_query").entered();
 
         let krate = def.module(db).krate;
         let cfg_options = db.crate_graph();

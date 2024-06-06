@@ -129,7 +129,7 @@ impl ProcMacroServer {
     }
 
     pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = tracing::span!(tracing::Level::INFO, "ProcMacroServer::load_dylib").entered();
+        let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
         let macros =
             self.process.lock().unwrap_or_else(|e| e.into_inner()).find_proc_macros(&dylib.path)?;
 

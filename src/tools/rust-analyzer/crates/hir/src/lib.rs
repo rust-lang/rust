@@ -243,7 +243,7 @@ impl Crate {
         db: &dyn DefDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
-        let _p = tracing::span!(tracing::Level::INFO, "query_external_importables").entered();
+        let _p = tracing::info_span!("query_external_importables").entered();
         import_map::search_dependencies(db, self.into(), &query).into_iter().map(|item| {
             match ItemInNs::from(item) {
                 ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
@@ -552,8 +552,7 @@ impl Module {
         acc: &mut Vec<AnyDiagnostic>,
         style_lints: bool,
     ) {
-        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", name = ?self.name(db))
-            .entered();
+        let _p = tracing::info_span!("Module::diagnostics", name = ?self.name(db)).entered();
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -4631,8 +4630,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "iterate_method_candidates_with_traits").entered();
+        let _p = tracing::info_span!("iterate_method_candidates_with_traits").entered();
         let mut slot = None;
 
         self.iterate_method_candidates_dyn(
@@ -4681,8 +4679,7 @@ impl Type {
         name: Option<&Name>,
         callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
     ) {
-        let _p = tracing::span!(
-            tracing::Level::INFO,
+        let _p = tracing::info_span!(
             "iterate_method_candidates_dyn",
             with_local_impls = traits_in_scope.len(),
             traits_in_scope = traits_in_scope.len(),
@@ -4720,7 +4717,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        let _p = tracing::span!(tracing::Level::INFO, "iterate_path_candidates").entered();
+        let _p = tracing::info_span!("iterate_path_candidates").entered();
         let mut slot = None;
         self.iterate_path_candidates_dyn(
             db,
@@ -4787,7 +4784,7 @@ impl Type {
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
-        let _p = tracing::span!(tracing::Level::INFO, "applicable_inherent_traits").entered();
+        let _p = tracing::info_span!("applicable_inherent_traits").entered();
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
@@ -4795,7 +4792,7 @@ impl Type {
     }
 
     pub fn env_traits<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Trait> + 'a {
-        let _p = tracing::span!(tracing::Level::INFO, "env_traits").entered();
+        let _p = tracing::info_span!("env_traits").entered();
         self.autoderef_(db)
             .filter(|ty| matches!(ty.kind(Interner), TyKind::Placeholder(_)))
             .flat_map(|ty| {

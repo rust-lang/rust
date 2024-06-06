@@ -613,8 +613,7 @@ impl<'a> InferenceTable<'a> {
     }
 
     pub(crate) fn resolve_obligations_as_possible(&mut self) {
-        let _span =
-            tracing::span!(tracing::Level::INFO, "resolve_obligations_as_possible").entered();
+        let _span = tracing::info_span!("resolve_obligations_as_possible").entered();
         let mut changed = true;
         let mut obligations = mem::take(&mut self.resolve_obligations_buffer);
         while mem::take(&mut changed) {

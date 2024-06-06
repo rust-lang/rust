@@ -266,7 +266,7 @@ impl IntoIterator for SearchScope {
 
 impl Definition {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
-        let _p = tracing::span!(tracing::Level::INFO, "search_scope").entered();
+        let _p = tracing::info_span!("search_scope").entered();
 
         if let Definition::BuiltinType(_) = self {
             return SearchScope::crate_graph(db);
@@ -434,7 +434,7 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn search(&self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
-        let _p = tracing::span!(tracing::Level::INFO, "FindUsages:search").entered();
+        let _p = tracing::info_span!("FindUsages:search").entered();
         let sema = self.sema;
 
         let search_scope = {

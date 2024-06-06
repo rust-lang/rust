@@ -27,7 +27,7 @@ pub fn find_path(
     ignore_local_imports: bool,
     mut cfg: ImportPathConfig,
 ) -> Option<ModPath> {
-    let _p = tracing::span!(tracing::Level::INFO, "find_path").entered();
+    let _p = tracing::info_span!("find_path").entered();
 
     // - if the item is a builtin, it's in scope
     if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
@@ -474,7 +474,7 @@ fn find_local_import_locations(
     def_map: &DefMap,
     mut cb: impl FnMut(&Name, ModuleId),
 ) {
-    let _p = tracing::span!(tracing::Level::INFO, "find_local_import_locations").entered();
+    let _p = tracing::info_span!("find_local_import_locations").entered();
 
     // `from` can import anything below `from` with visibility of at least `from`, and anything
     // above `from` with any visibility. That means we do not need to descend into private siblings

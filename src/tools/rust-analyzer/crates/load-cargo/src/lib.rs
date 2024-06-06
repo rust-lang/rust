@@ -17,7 +17,7 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
-use tracing::{instrument, Level};
+use tracing::instrument;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -352,8 +352,8 @@ fn load_crate_graph(
                 }
             }
             vfs::loader::Message::Loaded { files } | vfs::loader::Message::Changed { files } => {
-                let _p = tracing::span!(Level::INFO, "load_cargo::load_crate_craph/LoadedChanged")
-                    .entered();
+                let _p =
+                    tracing::info_span!("load_cargo::load_crate_craph/LoadedChanged").entered();
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }

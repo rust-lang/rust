@@ -230,7 +230,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = tracing::span!(Level::INFO, "GlobalState::handle_event", event = %event).entered();
+        let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!(?loop_start, ?event, "handle_event");
@@ -249,9 +249,7 @@ impl GlobalState {
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::QueuedTask(task) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/queued_task")
-                        .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
                 self.handle_queued_task(task);
                 // Coalesce multiple task events into one loop turn
                 while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
@@ -259,8 +257,7 @@ impl GlobalState {
                 }
             }
             Event::Task(task) => {
-                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/task")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/task").entered();
                 let mut prime_caches_progress = Vec::new();
 
                 self.handle_task(&mut prime_caches_progress, task);
@@ -314,8 +311,7 @@ impl GlobalState {
                 }
             }
             Event::Vfs(message) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/vfs").entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/vfs").entered();
                 self.handle_vfs_msg(message);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
@@ -323,8 +319,7 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/flycheck")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
                 self.handle_flycheck_msg(message);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
@@ -332,9 +327,7 @@ impl GlobalState {
                 }
             }
             Event::TestResult(message) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/test_result")
-                        .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/test_result").entered();
                 self.handle_cargo_test_msg(message);
                 // Coalesce many test result event into a single loop turn
                 while let Ok(message) = self.test_run_receiver.try_recv() {
@@ -669,12 +662,11 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
-        let _p = tracing::span!(Level::INFO, "GlobalState::handle_vfs_msg").entered();
+        let _p = tracing::info_span!("GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
             vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
-                let _p = tracing::span!(Level::INFO, "GlobalState::handle_vfs_msg{changed/load}")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_vfs_msg{changed/load}").entered();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
@@ -688,8 +680,7 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
-                let _p =
-                    tracing::span!(Level::INFO, "GlobalState::handle_vfs_mgs/progress").entered();
+                let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let state = match n_done {
@@ -731,8 +722,7 @@ impl GlobalState {
                 let snap = self.snapshot();
 
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
-                    let _p = tracing::span!(tracing::Level::INFO, "GlobalState::check_if_indexed")
-                        .entered();
+                    let _p = tracing::info_span!("GlobalState::check_if_indexed").entered();
                     tracing::debug!(?uri, "handling uri");
                     let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
                     if let Ok(crates) = &snap.analysis.crates_for(id) {

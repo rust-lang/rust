@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
-    let _p = tracing::span!(tracing::Level::INFO, "missing_unsafe").entered();
+    let _p = tracing::info_span!("missing_unsafe").entered();
 
     let mut res = Vec::new();
     let is_unsafe = match def {
