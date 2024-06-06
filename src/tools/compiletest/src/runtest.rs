@@ -15,7 +15,7 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
 use crate::read2::{read2_abbreviated, Truncated};
-use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
+use crate::util::{add_dylib_path, copy_dir_all, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
 use colored::Colorize;
 use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
@@ -3458,6 +3458,21 @@ impl<'test> TestCx<'test> {
         let rmake_out_dir = base_dir.join("rmake_out");
         create_dir_all(&rmake_out_dir).unwrap();
 
+        // Copy all input files (apart from rmake.rs) to the temporary directory,
+        // so that the input directory structure from `tests/run-make/<test>` is mirrored
+        // to the `rmake_out` directory.
+        for path in walkdir::WalkDir::new(&self.testpaths.file).min_depth(1) {
+            let path = path.unwrap().path().to_path_buf();
+            if path.file_name().map(|s| s != OsStr::new("rmake.rs")).unwrap_or(false) {
+                let target = rmake_out_dir.join(path.strip_prefix(&self.testpaths.file).unwrap());
+                if path.is_dir() {
+                    copy_dir_all(&path, target).unwrap();
+                } else {
+                    fs::copy(&path, target).unwrap();
+                }
+            }
+        }
+
         // HACK: assume stageN-target, we only want stageN.
         let stage = self.config.stage_id.split('-').next().unwrap();
 
@@ -3559,7 +3574,7 @@ impl<'test> TestCx<'test> {
         let target_rpath_env_path = env::join_paths(target_rpath_env_path).unwrap();
 
         let mut cmd = Command::new(&recipe_bin);
-        cmd.current_dir(&self.testpaths.file)
+        cmd.current_dir(&rmake_out_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
