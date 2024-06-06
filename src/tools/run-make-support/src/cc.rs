@@ -54,8 +54,7 @@ impl Cc {
         self
     }
 
-    /// Specify `-o` or `-Fe`/`-Fo` depending on platform/compiler. This assumes that the executable
-    /// is under `$TMPDIR`.
+    /// Specify `-o` or `-Fe`/`-Fo` depending on platform/compiler.
     pub fn out_exe(&mut self, name: &str) -> &mut Self {
         // Ref: tools.mk (irrelevant lines omitted):
         //
@@ -69,13 +68,13 @@ impl Cc {
         // ```
 
         if is_msvc() {
-            let fe_path = cygpath_windows(tmp_dir().join(bin_name(name)));
-            let fo_path = cygpath_windows(tmp_dir().join(format!("{name}.obj")));
+            let fe_path = cygpath_windows(bin_name(name));
+            let fo_path = cygpath_windows(format!("{name}.obj"));
             self.cmd.arg(format!("-Fe:{fe_path}"));
             self.cmd.arg(format!("-Fo:{fo_path}"));
         } else {
             self.cmd.arg("-o");
-            self.cmd.arg(tmp_dir().join(name));
+            self.cmd.arg(name);
         }
 
         self

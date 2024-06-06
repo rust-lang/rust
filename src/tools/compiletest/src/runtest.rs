@@ -3533,18 +3533,11 @@ impl<'test> TestCx<'test> {
             .env("S", &src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("TMPDIR", &rmake_out_dir)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
             .env(dylib_env_var(), &host_dylib_env_paths)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
-            .env("LLVM_COMPONENTS", &self.config.llvm_components)
-            // We for sure don't want these tests to run in parallel, so make
-            // sure they don't have access to these vars if we run via `make`
-            // at the top level
-            .env_remove("MAKEFLAGS")
-            .env_remove("MFLAGS")
-            .env_remove("CARGO_MAKEFLAGS");
+            .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
             let mut stage0_sysroot = build_root.clone();
@@ -3585,16 +3578,9 @@ impl<'test> TestCx<'test> {
             .env("S", &src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("TMPDIR", &rmake_out_dir)
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
-            .env("LLVM_COMPONENTS", &self.config.llvm_components)
-            // We for sure don't want these tests to run in parallel, so make
-            // sure they don't have access to these vars if we run via `make`
-            // at the top level
-            .env_remove("MAKEFLAGS")
-            .env_remove("MFLAGS")
-            .env_remove("CARGO_MAKEFLAGS");
+            .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
             cmd.env("RUSTDOC", cwd.join(rustdoc));

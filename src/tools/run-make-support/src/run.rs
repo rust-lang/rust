@@ -8,13 +8,13 @@ use super::handle_failed_output;
 
 fn run_common(name: &str) -> (Command, Output) {
     let mut bin_path = PathBuf::new();
-    bin_path.push(env_var("TMPDIR"));
+    bin_path.push(env::current_dir().unwrap());
     bin_path.push(name);
     let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     let mut cmd = Command::new(bin_path);
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
-        paths.push(PathBuf::from(env_var("TMPDIR")));
+        paths.push(env::current_dir().unwrap());
         for p in env::split_paths(&env_var("TARGET_RPATH_ENV")) {
             paths.push(p.to_path_buf());
         }

@@ -45,11 +45,6 @@ pub fn env_var_os(name: &str) -> OsString {
     }
 }
 
-/// Path of `TMPDIR` (a temporary build directory, not under `/tmp`).
-pub fn tmp_dir() -> PathBuf {
-    env_var_os("TMPDIR").into()
-}
-
 /// `TARGET`
 pub fn target() -> String {
     env_var("TARGET")
@@ -73,7 +68,7 @@ pub fn is_darwin() -> bool {
 /// Construct a path to a static library under `$TMPDIR` given the library name. This will return a
 /// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
 pub fn static_lib(name: &str) -> PathBuf {
-    tmp_dir().join(static_lib_name(name))
+    PathBuf::from(static_lib_name(name))
 }
 
 pub fn python_command() -> Command {
@@ -119,7 +114,7 @@ pub fn static_lib_name(name: &str) -> String {
 /// Construct a path to a dynamic library under `$TMPDIR` given the library name. This will return a
 /// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
 pub fn dynamic_lib(name: &str) -> PathBuf {
-    tmp_dir().join(dynamic_lib_name(name))
+    PathBuf::from(dynamic_lib_name(name))
 }
 
 /// Construct the dynamic library name based on the platform.
@@ -162,7 +157,7 @@ pub fn dynamic_lib_extension() -> &'static str {
 /// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will return a
 /// path with `$TMPDIR` joined with the library name.
 pub fn rust_lib(name: &str) -> PathBuf {
-    tmp_dir().join(rust_lib_name(name))
+    PathBuf::from(rust_lib_name(name))
 }
 
 /// Generate the name a rust library (rlib) would have. If you want the complete path, use
