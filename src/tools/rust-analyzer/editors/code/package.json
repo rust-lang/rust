@@ -45,7 +45,7 @@
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "@hpcc-js/wasm": "^2.13.0",
+        "@hpcc-js/wasm": "^2.16.2",
         "anser": "^2.1.1",
         "d3": "^7.9.0",
         "d3-graphviz": "^5.0.2",
