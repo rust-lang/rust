@@ -118,7 +118,9 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
 
 pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     if !paths.is_empty() {
-        eprintln!("fmt error: path arguments are not accepted");
+        eprintln!(
+            "fmt error: path arguments are no longer accepted; use `--all` to format everything"
+        );
         crate::exit!(1);
     };
     if build.config.dry_run() {
