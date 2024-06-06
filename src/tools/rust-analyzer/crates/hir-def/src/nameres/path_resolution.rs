@@ -493,7 +493,12 @@ impl DefMap {
                 )
             })
         };
-        let prelude = || self.resolve_in_prelude(db, name);
+        let prelude = || {
+            if self.block.is_some() && module == DefMap::ROOT {
+                return PerNs::none();
+            }
+            self.resolve_in_prelude(db, name)
+        };
 
         from_legacy_macro
             .or(from_scope_or_builtin)
