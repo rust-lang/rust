@@ -64,7 +64,6 @@ pub struct MarkFrame<'a> {
     parent: Option<&'a MarkFrame<'a>>,
 }
 
-#[derive(PartialEq)]
 enum DepNodeColor {
     Red,
     Green(DepNodeIndex),
@@ -925,7 +924,7 @@ impl<D: Deps> DepGraph<D> {
     /// Returns true if the given node has been marked as red during the
     /// current compilation session. Used in various assertions
     pub fn is_red(&self, dep_node: &DepNode) -> bool {
-        self.node_color(dep_node) == Some(DepNodeColor::Red)
+        matches!(self.node_color(dep_node), Some(DepNodeColor::Red))
     }
 
     /// Returns true if the given node has been marked as green during the
