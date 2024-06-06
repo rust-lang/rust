@@ -9,7 +9,6 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
-use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::output;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
@@ -110,9 +109,8 @@ impl Step for ToolBuild {
             &self.target,
         );
 
-        let mut cargo = Command::from(cargo);
         // we check this below
-        let build_success = builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure());
+        let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
 
         builder.save_toolstate(
             tool,
