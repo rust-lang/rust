@@ -656,7 +656,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         // Functions marked `#[rustc_promotable]` are explicitly allowed to be promoted, so we can
         // accept them at this point.
         let fn_ty = callee.ty(self.body, self.tcx);
-        if let ty::FnDef(def_id, _) = *fn_ty.kind() {
+        if let ty::FnDef(def_id, _) = fn_ty.kind() {
             if self.tcx.is_promotable_const_fn(def_id) {
                 return Ok(());
             }
@@ -674,7 +674,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             return Err(Unpromotable);
         }
         // Make sure the callee is a `const fn`.
-        let is_const_fn = match *fn_ty.kind() {
+        let is_const_fn = match fn_ty.kind() {
             ty::FnDef(def_id, _) => self.tcx.is_const_fn_raw(def_id),
             _ => false,
         };

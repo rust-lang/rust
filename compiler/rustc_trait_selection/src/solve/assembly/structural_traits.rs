@@ -22,7 +22,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     let tcx = ecx.interner();
-    match *ty.kind() {
+    match ty.kind() {
         ty::Uint(_)
         | ty::Int(_)
         | ty::Bool
@@ -100,7 +100,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
-    match *ty.kind() {
+    match ty.kind() {
         // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
         // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -164,7 +164,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
-    match *ty.kind() {
+    match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
         ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
 
@@ -239,7 +239,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     self_ty: Ty<'tcx>,
     goal_kind: ty::ClosureKind,
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
-    match *self_ty.kind() {
+    match self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, args) => {
             let sig = tcx.fn_sig(def_id);
@@ -394,7 +394,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
     (ty::Binder<'tcx, AsyncCallableRelevantTypes<'tcx>>, Vec<ty::Predicate<'tcx>>),
     NoSolution,
 > {
-    match *self_ty.kind() {
+    match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
             let kind_ty = args.kind_ty();
@@ -709,7 +709,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
+        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
             && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
         {
             // We may have a case where our object type's projection bound is higher-ranked,

@@ -47,7 +47,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             predicate_args.iter().find_map(|arg| {
                 arg.walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Param(param_ty) = *ty.kind()
+                        && let ty::Param(param_ty) = ty.kind()
                         && matches(ty::ParamTerm::Ty(param_ty))
                     {
                         Some(arg)
@@ -364,7 +364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
                 expected_trait_ref.self_ty().kind()
-            && span.overlaps(self.tcx.def_span(*def_id))
+            && span.overlaps(self.tcx.def_span(def_id))
         {
             true
         } else {
@@ -648,7 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.blame_specific_part_of_expr_corresponding_to_generic_param(
                 param,
                 borrowed_expr,
-                (*ty_ref_type).into(),
+                ty_ref_type.into(),
             );
         }
 
@@ -882,7 +882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .variant_with_id(variant_def_id)
                     .fields
                     .iter()
-                    .map(|field| field.ty(self.tcx, *in_ty_adt_generic_args))
+                    .map(|field| field.ty(self.tcx, in_ty_adt_generic_args))
                     .enumerate()
                     .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param)),
             ) else {

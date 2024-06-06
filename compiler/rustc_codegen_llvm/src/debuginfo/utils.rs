@@ -76,7 +76,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
         return None;
     }
 
-    match *pointee_tail_ty.kind() {
+    match pointee_tail_ty.kind() {
         ty::Str | ty::Slice(_) => Some(FatPtrKind::Slice),
         ty::Dynamic(..) => Some(FatPtrKind::Dyn),
         ty::Foreign(_) => {

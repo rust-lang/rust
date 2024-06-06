@@ -400,7 +400,7 @@ fn emit_orphan_check_error<'tcx>(
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);
 
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Slice(_) => {
                         if is_foreign {
                             diag.subdiagnostic(

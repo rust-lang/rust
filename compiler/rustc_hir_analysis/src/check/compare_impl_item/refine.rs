@@ -76,7 +76,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         let hidden_ty = hidden_tys[&trait_projection.def_id].instantiate(tcx, impl_opaque_args);
 
         // If the hidden type is not an opaque, then we have "refined" the trait signature.
-        let ty::Alias(ty::Opaque, impl_opaque) = *hidden_ty.kind() else {
+        let ty::Alias(ty::Opaque, impl_opaque) = hidden_ty.kind() else {
             report_mismatched_rpitit_signature(
                 tcx,
                 trait_m_sig_with_self_for_diag,
@@ -212,7 +212,7 @@ struct ImplTraitInTraitCollector<'tcx> {
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(ty::Projection, proj) = *ty.kind()
+        if let ty::Alias(ty::Projection, proj) = ty.kind()
             && self.tcx.is_impl_trait_in_trait(proj.def_id)
         {
             if self.types.insert(proj) {
@@ -304,7 +304,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
 }
 
 fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<DefId>> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Ref(_, ty, _) => type_visibility(tcx, ty),
         ty::Adt(def, args) => {
             if def.is_fundamental() {

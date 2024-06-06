@@ -80,7 +80,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match src.layout.ty.kind() {
                     ty::FnDef(def_id, args) => {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
@@ -113,7 +113,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match src.layout.ty.kind() {
                     ty::Closure(def_id, args) => {
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
@@ -278,10 +278,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
 
-        Ok(match *cast_ty.kind() {
+        Ok(match cast_ty.kind() {
             // int -> int
             Int(_) | Uint(_) => {
-                let size = match *cast_ty.kind() {
+                let size = match cast_ty.kind() {
                     Int(t) => Integer::from_int_ty(self, t).size(),
                     Uint(t) => Integer::from_uint_ty(self, t).size(),
                     _ => bug!(),
@@ -336,7 +336,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             if f2.is_nan() { M::generate_nan(ecx, &[f1]) } else { f2 }
         }
 
-        match *dest_ty.kind() {
+        match dest_ty.kind() {
             // float -> uint
             Uint(t) => {
                 let size = Integer::from_uint_ty(self, t).size();
@@ -442,7 +442,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
-            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, *s, *c),
+            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, s, c),
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b); // implies same number of fields
 

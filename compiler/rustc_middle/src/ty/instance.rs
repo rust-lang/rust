@@ -694,7 +694,7 @@ impl<'tcx> Instance<'tcx> {
         trait_id: DefId,
         rcvr_args: ty::GenericArgsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = rcvr_args.type_at(0).kind() else {
             return None;
         };
         let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
@@ -726,7 +726,7 @@ impl<'tcx> Instance<'tcx> {
         };
 
         if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
-            let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+            let ty::Coroutine(_, id_args) = tcx.type_of(coroutine_def_id).skip_binder().kind()
             else {
                 bug!()
             };
@@ -871,7 +871,7 @@ fn polymorphize<'tcx>(
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             debug!("fold_ty: ty={:?}", ty);
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Closure(def_id, args) => {
                     let polymorphized_args =
                         polymorphize(self.tcx, ty::InstanceDef::Item(def_id), args);

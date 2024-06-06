@@ -534,7 +534,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 | ty::Foreign(..)
                 | ty::Dynamic(_, _, ty::DynStar) => tcx.types.unit,
 
-                ty::Error(e) => Ty::new_error(tcx, *e),
+                ty::Error(e) => Ty::new_error(tcx, e),
 
                 ty::Str | ty::Slice(_) => tcx.types.usize,
 
@@ -592,7 +592,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -628,7 +628,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -671,7 +671,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -707,7 +707,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -759,7 +759,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
-        let discriminant_ty = match *self_ty.kind() {
+        let discriminant_ty = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -811,7 +811,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let self_ty = goal.predicate.self_ty();
-        let async_destructor_ty = match *self_ty.kind() {
+        let async_destructor_ty = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)

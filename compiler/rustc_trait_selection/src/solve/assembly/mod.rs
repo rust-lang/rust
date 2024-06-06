@@ -84,7 +84,7 @@ pub(super) trait GoalKind<'tcx>:
     ) -> Result<Candidate<'tcx>, NoSolution> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
             let tcx = ecx.interner();
-            let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
+            let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
                 bug!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
             ecx.add_goals(
@@ -591,7 +591,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let (kind, alias_ty) = match *self_ty.kind() {
+        let (kind, alias_ty) = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -681,7 +681,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         }
 
         let self_ty = goal.predicate.self_ty();
-        let bounds = match *self_ty.kind() {
+        let bounds = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)

@@ -55,7 +55,7 @@ pub enum NotUniqueParam<'tcx> {
 
 impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self.ty.kind() {
+        match self.ty.kind() {
             ty::Int(ity) => {
                 let size = ty::tls::with(|tcx| Integer::from_int_ty(&tcx, ity).size());
                 let x = self.val;
@@ -225,7 +225,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     .emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
                 return Ty::new_error(self, reported);
             }
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(def, args) => {
                     if !def.is_struct() {
                         break;
@@ -480,7 +480,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl args refer to
         // parameters marked as pure.
 
-        let impl_args = match *self.type_of(impl_def_id).instantiate_identity().kind() {
+        let impl_args = match self.type_of(impl_def_id).instantiate_identity().kind() {
             ty::Adt(def_, args) if def_ == def => args,
             _ => span_bug!(self.def_span(impl_def_id), "expected ADT for self type of `Drop` impl"),
         };
@@ -497,7 +497,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a region param
                         _ => false,
                     },
-                    GenericArgKind::Type(ty) => match *ty.kind() {
+                    GenericArgKind::Type(ty) => match ty.kind() {
                         ty::Param(pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
                         // Error: not a type param
                         _ => false,
@@ -1124,7 +1124,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        let mut t = if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = *t.kind() {
+        let mut t = if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = t.kind() {
             self.expand_opaque_ty(def_id, args).unwrap_or(t)
         } else if t.has_opaque_types() || t.has_coroutines() {
             t.super_fold_with(self)
@@ -1132,7 +1132,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
             t
         };
         if self.expand_coroutines {
-            if let ty::CoroutineWitness(def_id, args) = *t.kind() {
+            if let ty::CoroutineWitness(def_id, args) = t.kind() {
                 t = self.expand_coroutine(def_id, args).unwrap_or(t);
             }
         }
@@ -1211,7 +1211,7 @@ pub enum AsyncDropGlueMorphology {
 impl<'tcx> Ty<'tcx> {
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
     pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
-        match *self.kind() {
+        match self.kind() {
             ty::Bool => Size::from_bytes(1),
             ty::Char => Size::from_bytes(4),
             ty::Int(ity) => Integer::from_int_ty(&tcx, ity).size(),
@@ -1222,7 +1222,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
-        match *self.kind() {
+        match self.kind() {
             ty::Int(ity) => (Integer::from_int_ty(&tcx, ity).size(), true),
             ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty).size(), false),
             _ => bug!("non integer discriminant"),
@@ -1425,7 +1425,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Closure(did, _)
             | ty::CoroutineClosure(did, _)
             | ty::Coroutine(did, _)
-            | ty::CoroutineWitness(did, _) => tcx.async_drop_glue_morphology(*did),
+            | ty::CoroutineWitness(did, _) => tcx.async_drop_glue_morphology(did),
 
             ty::Alias(..) | ty::Param(_) | ty::Bound(..) | ty::Placeholder(..) | ty::Infer(_) => {
                 // No specifics, but would usually mean forwarding async drop glue
@@ -1616,7 +1616,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn peel_refs(self) -> Ty<'tcx> {
         let mut ty = self;
         while let ty::Ref(_, inner_ty, _) = ty.kind() {
-            ty = *inner_ty;
+            ty = inner_ty;
         }
         ty
     }
@@ -1667,7 +1667,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     {
         use self::ExplicitSelf::*;
 
-        match *self_arg_ty.kind() {
+        match self_arg_ty.kind() {
             _ if is_self_ty(self_arg_ty) => ByValue,
             ty::Ref(region, ty, mutbl) if is_self_ty(ty) => ByReference(region, mutbl),
             ty::RawPtr(ty, mutbl) if is_self_ty(ty) => ByRawPointer(mutbl),
@@ -1699,7 +1699,7 @@ pub fn needs_drop_components_with_async<'tcx>(
     ty: Ty<'tcx>,
     asyncness: Asyncness,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
         | ty::Bool
@@ -1763,7 +1763,7 @@ pub fn needs_drop_components_with_async<'tcx>(
 }
 
 pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(_)

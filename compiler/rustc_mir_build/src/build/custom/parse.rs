@@ -45,7 +45,7 @@ macro_rules! parse_by_kind {
                 ExprKind::Call { ty, fun: _, args: $args, .. } if {
                     match ty.kind() {
                         ty::FnDef(did, _) => {
-                            $self.tcx.is_diagnostic_item(rustc_span::sym::$name, *did)
+                            $self.tcx.is_diagnostic_item(rustc_span::sym::$name, did)
                         }
                         _ => false,
                     }

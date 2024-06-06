@@ -229,7 +229,7 @@ fn structurally_same_type_impl<'tcx>(
     // type unless the newtype makes the type non-null.
     let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
         loop {
-            if let ty::Adt(def, args) = *ty.kind() {
+            if let ty::Adt(def, args) = ty.kind() {
                 let is_transparent = def.repr().transparent();
                 let is_non_null = types::nonnull_optimization_guaranteed(tcx, def);
                 debug!(
@@ -283,7 +283,7 @@ fn structurally_same_type_impl<'tcx>(
 
         #[allow(rustc::usage_of_ty_tykind)]
         let is_primitive_or_pointer =
-            |kind: &ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..) | Ref(..));
+            |kind: ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..) | Ref(..));
 
         ensure_sufficient_stack(|| {
             match (a_kind, b_kind) {
@@ -318,23 +318,23 @@ fn structurally_same_type_impl<'tcx>(
                     // For arrays, we also check the constness of the type.
                     a_const.kind() == b_const.kind()
                         && structurally_same_type_impl(
-                            seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
+                            seen_types, tcx, param_env, a_ty, b_ty, ckind,
                         )
                 }
                 (Slice(a_ty), Slice(b_ty)) => {
-                    structurally_same_type_impl(seen_types, tcx, param_env, *a_ty, *b_ty, ckind)
+                    structurally_same_type_impl(seen_types, tcx, param_env, a_ty, b_ty, ckind)
                 }
                 (RawPtr(a_ty, a_mutbl), RawPtr(b_ty, b_mutbl)) => {
                     a_mutbl == b_mutbl
                         && structurally_same_type_impl(
-                            seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
+                            seen_types, tcx, param_env, a_ty, b_ty, ckind,
                         )
                 }
                 (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
                     // For structural sameness, we don't need the region to be same.
                     a_mut == b_mut
                         && structurally_same_type_impl(
-                            seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
+                            seen_types, tcx, param_env, a_ty, b_ty, ckind,
                         )
                 }
                 (FnDef(..), FnDef(..)) => {

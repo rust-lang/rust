@@ -34,7 +34,7 @@ pub const SHORTHAND_OFFSET: usize = 0x80;
 
 pub trait EncodableWithShorthand<E: TyEncoder>: Copy + Eq + Hash {
     type Variant: Encodable<E>;
-    fn variant(&self) -> &Self::Variant;
+    fn variant(&self) -> Self::Variant; // njn: removed `&`
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -42,7 +42,7 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> EncodableWithShorthand<E> for Ty<'tcx
     type Variant = ty::TyKind<'tcx>;
 
     #[inline]
-    fn variant(&self) -> &Self::Variant {
+    fn variant(&self) -> Self::Variant {
         self.kind()
     }
 }
@@ -51,8 +51,8 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> EncodableWithShorthand<E> for ty::Pre
     type Variant = ty::PredicateKind<'tcx>;
 
     #[inline]
-    fn variant(&self) -> &Self::Variant {
-        self
+    fn variant(&self) -> Self::Variant {
+        *self // njn: added `*`
     }
 }
 
@@ -93,7 +93,7 @@ where
 
     // The shorthand encoding uses the same usize as the
     // discriminant, with an offset so they can't conflict.
-    let discriminant = intrinsics::discriminant_value(variant);
+    let discriminant = intrinsics::discriminant_value(&variant);
     assert!(SHORTHAND_OFFSET > discriminant as usize);
 
     let shorthand = start + SHORTHAND_OFFSET;

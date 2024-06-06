@@ -398,7 +398,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let (def_id, args) = match *ty.kind() {
+        let (def_id, args) = match ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, args, .. })
                 if matches!(self.tcx.def_kind(def_id), DefKind::OpaqueTy) =>
             {
@@ -733,7 +733,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
-                if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
+                if let (ty::Adt(exp_adt, _), ty::Adt(found_adt, _)) =
                     (exp_found.expected.kind(), exp_found.found.kind())
                 {
                     report_path_match(err, exp_adt.did(), found_adt.did());
@@ -1069,11 +1069,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Given two `fn` signatures highlight only sub-parts that are different.
     fn cmp_fn_sig(
         &self,
-        sig1: &ty::PolyFnSig<'tcx>,
-        sig2: &ty::PolyFnSig<'tcx>,
+        sig1: ty::PolyFnSig<'tcx>, // njn: removed `&`
+        sig2: ty::PolyFnSig<'tcx>, // njn: removed `&`
     ) -> (DiagStyledString, DiagStyledString) {
-        let sig1 = &(self.normalize_fn_sig)(*sig1);
-        let sig2 = &(self.normalize_fn_sig)(*sig2);
+        let sig1 = &(self.normalize_fn_sig)(sig1);
+        let sig2 = &(self.normalize_fn_sig)(sig2);
 
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
@@ -1252,7 +1252,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // process starts here
         match (t1.kind(), t2.kind()) {
-            (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
+            (ty::Adt(def1, sub1), ty::Adt(def2, sub2)) => {
                 let did1 = def1.did();
                 let did2 = def2.did();
 
@@ -1460,20 +1460,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             // When finding `&T != &T`, compare the references, then recurse into pointee type
-            (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2)) => {
+            (ty::Ref(r1, ref_ty1, mutbl1), ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 cmp_ty_refs(r1, mutbl1, r2, mutbl2, &mut values);
                 recurse(ref_ty1, ref_ty2, &mut values);
                 values
             }
             // When finding T != &T, highlight the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1), _) => {
+            (ty::Ref(r1, ref_ty1, mutbl1), _) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r1, mutbl1, &mut values.0);
                 recurse(ref_ty1, t2, &mut values);
                 values
             }
-            (_, &ty::Ref(r2, ref_ty2, mutbl2)) => {
+            (_, ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r2, mutbl2, &mut values.1);
                 recurse(t1, ref_ty2, &mut values);
@@ -1481,7 +1481,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             // When encountering tuples of the same size, highlight only the differing types
-            (&ty::Tuple(args1), &ty::Tuple(args2)) if args1.len() == args2.len() => {
+            (ty::Tuple(args1), ty::Tuple(args2)) if args1.len() == args2.len() => {
                 let mut values = (DiagStyledString::normal("("), DiagStyledString::normal("("));
                 let len = args1.len();
                 for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
@@ -1499,11 +1499,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                let mut values = self.cmp_fn_sig(&sig1, &sig2);
-                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_args(*did1, args1));
-                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2));
+                let sig1 = self.tcx.fn_sig(did1).instantiate(self.tcx, args1);
+                let sig2 = self.tcx.fn_sig(did2).instantiate(self.tcx, args2);
+                let mut values = self.cmp_fn_sig(sig1, sig2);
+                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_args(did1, args1));
+                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_args(did2, args2));
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
@@ -1511,21 +1511,21 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let mut values = self.cmp_fn_sig(&sig1, sig2);
+                let sig1 = self.tcx.fn_sig(did1).instantiate(self.tcx, args1);
+                let mut values = self.cmp_fn_sig(sig1, sig2);
                 values.0.push_highlighted(format!(
                     " {{{}}}",
-                    self.tcx.def_path_str_with_args(*did1, args1)
+                    self.tcx.def_path_str_with_args(did1, args1)
                 ));
                 values
             }
 
             (ty::FnPtr(sig1), ty::FnDef(did2, args2)) => {
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                let mut values = self.cmp_fn_sig(sig1, &sig2);
+                let sig2 = self.tcx.fn_sig(did2).instantiate(self.tcx, args2);
+                let mut values = self.cmp_fn_sig(sig1, sig2);
                 values
                     .1
-                    .push_normal(format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2)));
+                    .push_normal(format!(" {{{}}}", self.tcx.def_path_str_with_args(did2, args2)));
                 values
             }
 
@@ -1784,7 +1784,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let path = self.tcx.def_path(expected.did()).data;
                     let name = path.last().unwrap().data.get_opt_name();
                     if name == Some(primitive) {
-                        return Some(Similar::PrimitiveFound { expected: *expected, found });
+                        return Some(Similar::PrimitiveFound { expected, found });
                     }
                 } else if let Some(primitive) = expected.primitive_symbol()
                     && let ty::Adt(found, _) = found.kind()
@@ -1792,7 +1792,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let path = self.tcx.def_path(found.did()).data;
                     let name = path.last().unwrap().data.get_opt_name();
                     if name == Some(primitive) {
-                        return Some(Similar::PrimitiveExpected { expected, found: *found });
+                        return Some(Similar::PrimitiveExpected { expected, found });
                     }
                 } else if let ty::Adt(expected, _) = expected.kind()
                     && let ty::Adt(found, _) = found.kind()
@@ -1809,7 +1809,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if let (Some(e_last), Some(f_last)) = (e_path.last(), f_path.last())
                         && e_last == f_last
                     {
-                        return Some(Similar::Adts { expected: *expected, found: *found });
+                        return Some(Similar::Adts { expected, found });
                     }
                 }
                 None
@@ -1886,7 +1886,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                             let sm = self.tcx.sess.source_map();
-                            let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(def_id).lo());
                             format!(
                                 " (opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
@@ -2271,7 +2271,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if exp_found.references_error() {
                     return None;
                 }
-                let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
+                let (exp, fnd) = self.cmp_fn_sig(exp_found.expected, exp_found.found);
                 Some((exp, fnd, None))
             }
         }
@@ -2993,7 +2993,7 @@ impl fmt::Display for TyCategory {
 
 impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                 let kind =

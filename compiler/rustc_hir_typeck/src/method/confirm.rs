@@ -204,7 +204,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
-                        Ty::new_slice(self.tcx, *elem_ty)
+                        Ty::new_slice(self.tcx, elem_ty)
                     } else {
                         bug!(
                             "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
@@ -220,7 +220,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
-                    &ty::RawPtr(ty, mutbl) => {
+                    ty::RawPtr(ty, mutbl) => {
                         assert!(mutbl.is_mut());
                         Ty::new_imm_ptr(self.tcx, ty)
                     }

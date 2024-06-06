@@ -75,7 +75,7 @@ impl EnumSizeOpt {
             return None;
         }
         if let Some(alloc_id) = alloc_cache.get(&ty) {
-            return Some((*adt_def, num_discrs, *alloc_id));
+            return Some((adt_def, num_discrs, *alloc_id));
         }
 
         let data_layout = tcx.data_layout();
@@ -114,7 +114,7 @@ impl EnumSizeOpt {
             Mutability::Not,
         );
         let alloc = tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc));
-        Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
+        Some((adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut alloc_cache = FxHashMap::default();

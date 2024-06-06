@@ -591,7 +591,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }};
         }
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
-            let elem_ty = bx.cx.type_float_from_ty(*f);
+            let elem_ty = bx.cx.type_float_from_ty(f);
             match f.bit_width() {
                 32 => ("f", elem_ty),
                 64 => ("", elem_ty),
@@ -599,7 +599,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     return_error!(InvalidMonomorphization::FloatingPointVector {
                         span,
                         name,
-                        f_ty: *f,
+                        f_ty: f,
                         in_ty
                     });
                 }
@@ -686,7 +686,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         vec_len: u64,
     ) -> Type<'gcc> {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
-        let elem_ty = match *elem_ty.kind() {
+        let elem_ty = match elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
@@ -797,7 +797,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match *t.kind() {
+            match t.kind() {
                 ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
@@ -805,7 +805,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match *t.kind() {
+            match t.kind() {
                 ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
@@ -815,7 +815,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // to the element type of the first argument
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
-        let (pointer_count, underlying_ty) = match *element_ty1.kind() {
+        let (pointer_count, underlying_ty) = match element_ty1.kind() {
             ty::RawPtr(p_ty, _) if p_ty == in_elem => (ptr_count(element_ty1), non_ptr(element_ty1)),
             _ => {
                 require!(
@@ -911,7 +911,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
-            match *t.kind() {
+            match t.kind() {
                 ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
@@ -919,7 +919,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
-            match *t.kind() {
+            match t.kind() {
                 ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
@@ -930,7 +930,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
-        let (pointer_count, underlying_ty) = match *element_ty1.kind() {
+        let (pointer_count, underlying_ty) = match element_ty1.kind() {
             ty::RawPtr(p_ty, mutbl) if p_ty == in_elem && mutbl == hir::Mutability::Mut => {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
@@ -1034,7 +1034,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
+        let (signed, elem_width, elem_ty) = match in_elem.kind() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => {
                 (false, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_uint_from_ty(i))

@@ -228,7 +228,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 assert!(self.tcx().dcx().has_errors().is_some(), "bad base: `{base:?}`");
             }
             if let Some(base_ty) = base_ty
-                && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
+                && let ty::Ref(_, base_ty_inner, _) = base_ty.kind()
             {
                 let index_ty =
                     self.typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {

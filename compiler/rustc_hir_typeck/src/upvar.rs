@@ -169,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, args, infer_kind) = match *ty.kind() {
+        let (closure_def_id, args, infer_kind) = match ty.kind() {
             ty::Closure(def_id, args) => {
                 (def_id, UpvarArgs::Closure(args), self.closure_kind(ty).is_none())
             }
@@ -462,7 +462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // for the inner coroutine may actually be more restrictive.
             if infer_kind {
                 let ty::Coroutine(_, coroutine_args) =
-                    *self.typeck_results.borrow().expr_ty(body.value).kind()
+                    self.typeck_results.borrow().expr_ty(body.value).kind()
                 else {
                     bug!();
                 };

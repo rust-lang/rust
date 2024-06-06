@@ -447,7 +447,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             ty::Bound(debruijn, _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
@@ -582,7 +582,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.infcx.shallow_resolve(ty);
-        match *ty.kind() {
+        match ty.kind() {
             ty::Placeholder(p) => {
                 let replace_var = self.mapped_types.get(&p);
                 match replace_var {

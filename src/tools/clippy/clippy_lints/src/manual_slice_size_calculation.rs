@@ -94,7 +94,7 @@ fn simplify_half<'tcx>(
         && cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id)
         && let Some(ty2) = cx.typeck_results().node_args(func.hir_id).types().next()
         // T1 == T2?
-        && *ty1 == ty2
+        && ty1 == ty2
     {
         Some(receiver)
     } else {
