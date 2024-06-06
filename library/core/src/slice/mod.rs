@@ -731,7 +731,7 @@ impl<T> [T] {
     /// Returns a raw pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     ///
     /// The caller must also ensure that the memory the pointer (non-transitively) points to
     /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
@@ -766,7 +766,7 @@ impl<T> [T] {
     /// Returns an unsafe mutable pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     ///
     /// Modifying the container referenced by this slice may cause its buffer
     /// to be reallocated, which would also make any pointers to it invalid.

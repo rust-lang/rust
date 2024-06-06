@@ -1276,7 +1276,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// valid for zero sized reads if the vector didn't allocate.
     ///
     /// The caller must ensure that the vector outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     /// Modifying the vector may cause its buffer to be reallocated,
     /// which would also make any pointers to it invalid.
     ///
@@ -1336,7 +1336,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// raw pointer valid for zero sized reads if the vector didn't allocate.
     ///
     /// The caller must ensure that the vector outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     /// Modifying the vector may cause its buffer to be reallocated,
     /// which would also make any pointers to it invalid.
     ///
