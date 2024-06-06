@@ -541,7 +541,7 @@ pub fn collect_debugger_visualizers_transitive(
     tcx.debugger_visualizers(LOCAL_CRATE)
         .iter()
         .chain(
-            tcx.used_crates(())
+            tcx.crates(())
                 .iter()
                 .filter(|&cnum| {
                     let used_crate_source = tcx.used_crate_source(*cnum);
@@ -851,7 +851,7 @@ impl CrateInfo {
         // `compiler_builtins` are always placed last to ensure that they're linked correctly.
         used_crates.extend(compiler_builtins);
 
-        let crates = tcx.used_crates(());
+        let crates = tcx.crates(());
         let n_crates = crates.len();
         let mut info = CrateInfo {
             target_cpu,

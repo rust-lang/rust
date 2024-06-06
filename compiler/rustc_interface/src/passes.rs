@@ -464,7 +464,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                 }
             }
 
-            for &cnum in tcx.crates_including_speculative(()) {
+            for &cnum in tcx.crates(()) {
                 let source = tcx.used_crate_source(cnum);
                 if let Some((path, _)) = &source.dylib {
                     files.push(escape_dep_filename(&path.display().to_string()));
