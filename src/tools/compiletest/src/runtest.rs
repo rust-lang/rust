@@ -382,11 +382,11 @@ impl<'test> TestCx<'test> {
 
         // if a test does not crash, consider it an error
         if proc_res.status.success() || matches!(proc_res.status.code(), Some(1 | 0)) {
-            self.fatal(&format!(
+            self.fatal(
                 "test no longer crashes/triggers ICE! Please give it a mearningful name, \
             add a doc-comment to the start of the test explaining why it exists and \
-            move it to tests/ui or wherever you see fit."
-            ));
+            move it to tests/ui or wherever you see fit.",
+            );
         }
     }
 
@@ -705,10 +705,10 @@ impl<'test> TestCx<'test> {
             // since it is extensively used in the testsuite.
             check_cfg.push_str("cfg(FALSE");
             for revision in &self.props.revisions {
-                check_cfg.push_str(",");
-                check_cfg.push_str(&normalize_revision(&revision));
+                check_cfg.push(',');
+                check_cfg.push_str(&normalize_revision(revision));
             }
-            check_cfg.push_str(")");
+            check_cfg.push(')');
 
             cmd.args(&["--check-cfg", &check_cfg]);
         }
@@ -826,7 +826,7 @@ impl<'test> TestCx<'test> {
         // Append the other `cdb-command:`s
         for line in &dbg_cmds.commands {
             script_str.push_str(line);
-            script_str.push_str("\n");
+            script_str.push('\n');
         }
 
         script_str.push_str("qq\n"); // Quit the debugger (including remote debugger, if any)
@@ -1208,7 +1208,7 @@ impl<'test> TestCx<'test> {
         // Append the other commands
         for line in &dbg_cmds.commands {
             script_str.push_str(line);
-            script_str.push_str("\n");
+            script_str.push('\n');
         }
 
         // Finally, quit the debugger
@@ -1258,7 +1258,7 @@ impl<'test> TestCx<'test> {
         // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
         let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
 
-        options.iter().filter(|x| !options_to_remove.contains(x)).map(|x| x.clone()).collect()
+        options.iter().filter(|x| !options_to_remove.contains(x)).cloned().collect()
     }
 
     fn maybe_add_external_args(&self, cmd: &mut Command, args: &Vec<String>) {
@@ -2498,8 +2498,8 @@ impl<'test> TestCx<'test> {
             // This works with both `--emit asm` (as default output name for the assembly)
             // and `ptx-linker` because the latter can write output at requested location.
             let output_path = self.output_base_name().with_extension(extension);
-            let output_file = TargetLocation::ThisFile(output_path.clone());
-            output_file
+
+            TargetLocation::ThisFile(output_path.clone())
         }
     }
 
@@ -2746,7 +2746,7 @@ impl<'test> TestCx<'test> {
             for entry in walkdir::WalkDir::new(dir) {
                 let entry = entry.expect("failed to read file");
                 if entry.file_type().is_file()
-                    && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
+                    && entry.path().extension().and_then(|p| p.to_str()) == Some("html")
                 {
                     let status =
                         Command::new("tidy").args(&tidy_args).arg(entry.path()).status().unwrap();
@@ -2777,8 +2777,7 @@ impl<'test> TestCx<'test> {
             &compare_dir,
             self.config.verbose,
             |file_type, extension| {
-                file_type.is_file()
-                    && (extension == Some("html".into()) || extension == Some("js".into()))
+                file_type.is_file() && (extension == Some("html") || extension == Some("js"))
             },
         ) {
             return;
@@ -2824,11 +2823,11 @@ impl<'test> TestCx<'test> {
                 }
                 match String::from_utf8(line.clone()) {
                     Ok(line) => {
-                        if line.starts_with("+") {
+                        if line.starts_with('+') {
                             write!(&mut out, "{}", line.green()).unwrap();
-                        } else if line.starts_with("-") {
+                        } else if line.starts_with('-') {
                             write!(&mut out, "{}", line.red()).unwrap();
-                        } else if line.starts_with("@") {
+                        } else if line.starts_with('@') {
                             write!(&mut out, "{}", line.blue()).unwrap();
                         } else {
                             out.write_all(line.as_bytes()).unwrap();
@@ -2901,7 +2900,7 @@ impl<'test> TestCx<'test> {
                     && line.ends_with(';')
                 {
                     if let Some(ref mut other_files) = other_files {
-                        other_files.push(line.rsplit("mod ").next().unwrap().replace(";", ""));
+                        other_files.push(line.rsplit("mod ").next().unwrap().replace(';', ""));
                     }
                     None
                 } else {
@@ -3133,7 +3132,7 @@ impl<'test> TestCx<'test> {
             let mut string = String::new();
             for cgu in cgus {
                 string.push_str(&cgu[..]);
-                string.push_str(" ");
+                string.push(' ');
             }
 
             string
@@ -3166,10 +3165,7 @@ impl<'test> TestCx<'test> {
         // CGUs joined with "--". This function splits such composite CGU names
         // and handles each component individually.
         fn remove_crate_disambiguators_from_set_of_cgu_names(cgus: &str) -> String {
-            cgus.split("--")
-                .map(|cgu| remove_crate_disambiguator_from_cgu(cgu))
-                .collect::<Vec<_>>()
-                .join("--")
+            cgus.split("--").map(remove_crate_disambiguator_from_cgu).collect::<Vec<_>>().join("--")
         }
     }
 
@@ -3351,7 +3347,7 @@ impl<'test> TestCx<'test> {
             //   endif
         }
 
-        if self.config.target.contains("msvc") && self.config.cc != "" {
+        if self.config.target.contains("msvc") && !self.config.cc.is_empty() {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
             // and that `lib.exe` lives next to it.
             let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
@@ -3629,7 +3625,7 @@ impl<'test> TestCx<'test> {
             //   endif
         }
 
-        if self.config.target.contains("msvc") && self.config.cc != "" {
+        if self.config.target.contains("msvc") && !self.config.cc.is_empty() {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
             // and that `lib.exe` lives next to it.
             let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
@@ -3820,7 +3816,7 @@ impl<'test> TestCx<'test> {
             && !self.props.dont_check_compiler_stderr
         {
             self.fatal_proc_rec(
-                &format!("compiler output got truncated, cannot compare with reference file"),
+                "compiler output got truncated, cannot compare with reference file",
                 &proc_res,
             );
         }
@@ -4001,8 +3997,8 @@ impl<'test> TestCx<'test> {
                     crate_name.to_str().expect("crate name implies file name must be valid UTF-8");
                 // replace `a.foo` -> `a__foo` for crate name purposes.
                 // replace `revision-name-with-dashes` -> `revision_name_with_underscore`
-                let crate_name = crate_name.replace(".", "__");
-                let crate_name = crate_name.replace("-", "_");
+                let crate_name = crate_name.replace('.', "__");
+                let crate_name = crate_name.replace('-', "_");
                 rustc.arg("--crate-name");
                 rustc.arg(crate_name);
             }
@@ -4050,7 +4046,7 @@ impl<'test> TestCx<'test> {
     fn check_mir_dump(&self, test_info: MiroptTest) {
         let test_dir = self.testpaths.file.parent().unwrap();
         let test_crate =
-            self.testpaths.file.file_stem().unwrap().to_str().unwrap().replace("-", "_");
+            self.testpaths.file.file_stem().unwrap().to_str().unwrap().replace('-', "_");
 
         let MiroptTest { run_filecheck, suffix, files, passes: _ } = test_info;
 

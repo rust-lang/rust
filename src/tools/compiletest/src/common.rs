@@ -582,7 +582,7 @@ impl TargetCfgs {
                         name,
                         Some(
                             value
-                                .strip_suffix("\"")
+                                .strip_suffix('\"')
                                 .expect("key-value pair should be properly quoted"),
                         ),
                     )
