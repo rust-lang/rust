@@ -7,11 +7,11 @@
 //@ ignore-cross-compile
 
 use run_make_support::fs_wrapper;
-use run_make_support::{rmake_out_path, rustc};
+use run_make_support::rustc;
 
 fn main() {
-    rustc().input("foo.rs");
-    rustc().arg("-Zls=root").input(rmake_out_path("foo"));
-    fs_wrapper::create_file(rmake_out_path("bar"));
-    rustc().arg("-Zls=root").input(rmake_out_path("bar"));
+    rustc().input("foo.rs").run();
+    rustc().arg("-Zls=root").input("foo").run();
+    fs_wrapper::create_file("bar");
+    rustc().arg("-Zls=root").input("bar").run();
 }

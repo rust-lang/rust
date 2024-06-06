@@ -112,7 +112,6 @@ run-make/lto-dylib-dep/Makefile
 run-make/lto-empty/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
-run-make/lto-readonly-lib/Makefile
 run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
