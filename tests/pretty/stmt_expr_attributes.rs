@@ -147,13 +147,13 @@ fn _11() {
     let _ = #[rustc_dummy] (0);
     let _ = #[rustc_dummy] (0,);
     let _ = #[rustc_dummy] (0, 0);
-    let _ = (#[rustc_dummy] 0) + #[rustc_dummy] 0;
+    let _ = #[rustc_dummy] 0 + #[rustc_dummy] 0;
     let _ = #[rustc_dummy] !0;
     let _ = #[rustc_dummy] -0i32;
     let _ = #[rustc_dummy] false;
     let _ = #[rustc_dummy] 'c';
     let _ = #[rustc_dummy] 0;
-    let _ = (#[rustc_dummy] 0) as usize;
+    let _ = #[rustc_dummy] 0 as usize;
     let _ =
         #[rustc_dummy] while false {
             #![rustc_dummy]
@@ -208,8 +208,8 @@ fn _11() {
         };
     let const {} = #[rustc_dummy] const {};
     let mut x = 0;
-    let _ = (#[rustc_dummy] x) = 15;
-    let _ = (#[rustc_dummy] x) += 15;
+    let _ = #[rustc_dummy] x = 15;
+    let _ = #[rustc_dummy] x += 15;
     let s = Foo { data: () };
     let _ = #[rustc_dummy] s.data;
     let _ = (#[rustc_dummy] s).data;
@@ -219,8 +219,8 @@ fn _11() {
     let v = vec!(0);
     let _ = #[rustc_dummy] v[0];
     let _ = (#[rustc_dummy] v)[0];
-    let _ = (#[rustc_dummy] 0)..#[rustc_dummy] 0;
-    let _ = (#[rustc_dummy] 0)..;
+    let _ = #[rustc_dummy] 0..#[rustc_dummy] 0;
+    let _ = #[rustc_dummy] 0..;
     let _ = #[rustc_dummy] (0..0);
     let _ = #[rustc_dummy] (0..);
     let _ = #[rustc_dummy] (..0);
