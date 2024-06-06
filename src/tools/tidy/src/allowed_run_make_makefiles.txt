@@ -108,7 +108,6 @@ run-make/llvm-ident/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/longjmp-across-rust/Makefile
-run-make/ls-metadata/Makefile
 run-make/lto-dylib-dep/Makefile
 run-make/lto-empty/Makefile
 run-make/lto-linkage-used-attr/Makefile
