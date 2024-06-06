@@ -331,6 +331,10 @@ impl<'a> Converter<'a> {
                 }
                 C_STRING
             }
+            rustc_lexer::LiteralKind::GuardedStr { .. } => {
+                err = "Invalid string literal";
+                STRING
+            }
         };
 
         let err = if err.is_empty() { None } else { Some(err) };

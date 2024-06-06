@@ -12,7 +12,8 @@ use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
 use rustc_session::lint::builtin::{
-    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+    TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
@@ -241,6 +242,39 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.report_unknown_prefix(start);
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
+                }
+                rustc_lexer::TokenKind::Literal {
+                    kind: rustc_lexer::LiteralKind::GuardedStr { n_start_hashes, .. },
+                    suffix_start: _
+                } if !self.mk_sp(start, self.pos).edition().at_least_rust_2024() => {
+                    // Check if previous char was `#`, so we don't
+                    // lint for each `#` before the string.
+                    if !(
+                        start > self.start_pos &&
+                        self.src.as_bytes()[self.src_index(start) - 1] == b'#'
+                    ) {
+                        let span = self.mk_sp(start, self.pos);
+                        let space_span = n_start_hashes.map(|n_hashes| {
+                            let space_pos = start + BytePos(n_hashes.get().into());
+                            self.mk_sp(space_pos, space_pos)
+                        });
+
+                        // Before Rust 2021, only emit a lint for migration.
+                        self.psess.buffer_lint(
+                            RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+                            span,
+                            ast::CRATE_NODE_ID,
+                            BuiltinLintDiag::ReservedString(space_span),
+                        );
+                    }
+
+                    // reset the state so that only the first `#` was consumed.
+                    let next = start + BytePos(1);
+                    self.pos = next;
+                    self.cursor = Cursor::new(&str_before[1..]);
+
+                    let pound_span = self.mk_sp(start, next);
+                    return (Token::new(TokenKind::Pound, pound_span), preceded_by_whitespace);
                 }
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
@@ -488,6 +522,33 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.cook_unicode(kind, Mode::RawStr, start, end, 2 + n, 1 + n) // r##" "##
                 } else {
                     self.report_raw_str_error(start, 1);
+                }
+            }
+            // RFC 3598 reserved this syntax for future use. As of Rust 2024,
+            // using this syntax produces an error. In earlier editions, however, it
+            // only results in an (allowed by default) lint, and is treated as
+            // separate tokens.
+            rustc_lexer::LiteralKind::GuardedStr { n_start_hashes, n_end_hashes } => {
+                let span = self.mk_sp(start, self.pos);
+
+                if let Some(n_start_hashes) = n_start_hashes {
+                    let n = u32::from(n_start_hashes.get());
+                    let e = u32::from(n_end_hashes);
+                    let expn_data = span.ctxt().outer_expn_data();
+
+                    let space_pos = start + BytePos(n);
+                    let space_span = self.mk_sp(space_pos, space_pos);
+
+                    let sugg = if expn_data.is_root() {
+                        Some(errors::GuardedStringSugg(space_span))
+                    } else {
+                        None
+                    };
+
+                    self.dcx().emit_err(errors::ReservedString { span, sugg });
+                    self.cook_unicode(token::Str, Mode::Str, start, end, 1 + n, 1 + e) // ##" "##
+                } else {
+                    self.dcx().emit_fatal(errors::ReservedString { span, sugg: None });
                 }
             }
             rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
