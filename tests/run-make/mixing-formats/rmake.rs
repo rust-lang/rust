@@ -12,7 +12,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rustc, tmp_dir, run_in_tmpdir};
+use run_make_support::{run_in_tmpdir, rustc};
 use std::fs;
 
 fn main() {

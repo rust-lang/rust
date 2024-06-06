@@ -20,29 +20,17 @@ use run_make_support::object::ObjectSection;
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::RelocationTarget;
 use run_make_support::set_host_rpath;
-use run_make_support::tmp_dir;
 use run_make_support::{env_var, object};
 use std::collections::HashSet;
-
-const MANIFEST: &str = r#"
-[package]
-name = "scratch"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-path = "lib.rs""#;
+use std::path::PathBuf;
 
 fn main() {
-    let target_dir = tmp_dir().join("target");
+    let target_dir = PathBuf::from("target");
     let target = env_var("TARGET");
 
     println!("Testing compiler_builtins for {}", target);
 
-    // Set up the tiniest Cargo project: An empty no_std library. Just enough to run -Zbuild-std.
-    let manifest_path = tmp_dir().join("Cargo.toml");
-    std::fs::write(&manifest_path, MANIFEST.as_bytes()).unwrap();
-    std::fs::write(tmp_dir().join("lib.rs"), b"#![no_std]").unwrap();
+    let manifest_path = PathBuf::from("Cargo.toml");
 
     let path = env_var("PATH");
     let rustc = env_var("RUSTC");

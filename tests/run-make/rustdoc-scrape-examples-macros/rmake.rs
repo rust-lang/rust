@@ -1,11 +1,10 @@
 //@ ignore-cross-compile
 
-use run_make_support::{htmldocck, rustc, rustdoc, tmp_dir};
+use run_make_support::{htmldocck, rustc, rustdoc};
 
 fn main() {
-    let tmp_dir = tmp_dir();
-    let out_dir = tmp_dir.join("rustdoc");
-    let ex_dir = tmp_dir.join("ex.calls");
+    let out_dir = "rustdoc";
+    let ex_dir = "ex.calls";
     let proc_crate_name = "foobar_macro";
     let crate_name = "foobar";
 
@@ -41,8 +40,8 @@ fn main() {
         .crate_name("ex")
         .crate_type("bin")
         .output(&out_dir)
-        .extern_(crate_name, tmp_dir.join(format!("lib{crate_name}.rlib")))
-        .extern_(proc_crate_name, tmp_dir.join(dylib_name.trim()))
+        .extern_(crate_name, format!("lib{crate_name}.rlib"))
+        .extern_(proc_crate_name, dylib_name.trim())
         .arg("-Zunstable-options")
         .arg("--scrape-examples-output-path")
         .arg(&ex_dir)

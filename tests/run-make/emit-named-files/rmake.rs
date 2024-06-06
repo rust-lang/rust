@@ -1,7 +1,7 @@
 use std::fs::create_dir;
 use std::path::Path;
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::rustc;
 
 fn emit_and_check(out_dir: &Path, out_file: &str, format: &str) {
     let out_file = out_dir.join(out_file);
@@ -10,7 +10,7 @@ fn emit_and_check(out_dir: &Path, out_file: &str, format: &str) {
 }
 
 fn main() {
-    let out_dir = tmp_dir().join("emit");
+    let out_dir = Path::new("emit");
 
     create_dir(&out_dir).unwrap();
 

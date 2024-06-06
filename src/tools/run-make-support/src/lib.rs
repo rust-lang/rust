@@ -171,6 +171,11 @@ pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
+/// Return the current working directory.
+pub fn cwd() -> PathBuf {
+    env::current_dir().unwrap()
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]
