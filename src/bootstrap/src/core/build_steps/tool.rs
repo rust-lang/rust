@@ -10,6 +10,7 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::BootstrapCommand;
+use crate::utils::helpers::output;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -800,6 +801,59 @@ impl Step for LlvmBitcodeLinker {
             bin_destination
         } else {
             tool_out
+        }
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LibcxxVersionTool {
+    pub target: TargetSelection,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum LibcxxVersion {
+    Gnu(usize),
+    Llvm(usize),
+}
+
+impl Step for LibcxxVersionTool {
+    type Output = LibcxxVersion;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
+        let out_dir = builder.out.join(self.target.to_string()).join("libcxx-version");
+        let _ = fs::remove_dir_all(&out_dir);
+        t!(fs::create_dir_all(&out_dir));
+
+        let compiler = builder.cxx(self.target).unwrap();
+        let mut cmd = Command::new(compiler);
+
+        let executable = out_dir.join("libcxx-version");
+        cmd.arg("-o").arg(&executable).arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
+
+        builder.run_cmd(&mut cmd);
+
+        if !executable.exists() {
+            panic!("Something went wrong. {} is not present", executable.display());
+        }
+
+        let version_output = output(&mut Command::new(executable));
+
+        let version_str = version_output.split_once("version:").unwrap().1;
+        let version = version_str.trim().parse::<usize>().unwrap();
+
+        if version_output.starts_with("libstdc++") {
+            LibcxxVersion::Gnu(version)
+        } else if version_output.starts_with("libc++") {
+            LibcxxVersion::Llvm(version)
+        } else {
+            panic!("Coudln't recognize the standard library version.");
         }
     }
 }

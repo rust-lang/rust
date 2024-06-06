@@ -16,6 +16,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "library/stdarch",
         "src/tools/cargo",
         "src/tools/clippy",
+        "src/tools/libcxx-version",
         "src/tools/miri",
         "src/tools/rust-analyzer",
         "src/tools/rustc-perf",
