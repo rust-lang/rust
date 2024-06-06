@@ -76,7 +76,7 @@ impl<'tcx> MirPass<'tcx> for PromoteArraysOpt<'tcx> {
         if let Some(ctx) = tcx.hir().body_const_context(body.source.def_id()) {
             use hir::ConstContext::*;
             match ctx {
-                Static(_) | Const {inline: _ } => return,
+                Static(_) | Const { inline: _ } => return,
                 _ => {}
             }
         }
@@ -178,15 +178,28 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self, rvalue))]
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if !rvalue.ty(&self.ccx.body.local_decls, self.ccx.tcx).is_array() {
+        self.super_rvalue(rvalue, location);
+
+        let rvalue_ty = rvalue.ty(&self.ccx.body.local_decls, self.ccx.tcx);
+        if !rvalue_ty.is_array() {
             debug!(?rvalue);
         }
 
-        self.super_rvalue(rvalue, location);
-
-        let Rvalue::Aggregate(kind, _ops) = rvalue else {
+        let Rvalue::Aggregate(kind, operands) = rvalue else {
             return;
         };
+
+        if let ty::Adt(adt, _) = rvalue_ty.kind()
+            && adt.repr().simd()
+        {
+            debug!("ignore #[repr(simd)]");
+            if let Some(first) = operands.iter().next()
+                && let Operand::Copy(place) | Operand::Move(place) = first
+            {
+                self.temps[place.local] = TempState::Unpromotable;
+            }
+            return;
+        }
 
         debug!("pushing a candidate of type {:?} @ {:?}", kind, location);
         self.candidates.push(Candidate { location });

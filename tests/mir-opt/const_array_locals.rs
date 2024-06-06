@@ -1,4 +1,8 @@
 //@ test-mir-pass: PromoteArraysOpt
+#![feature(repr_simd)]
+
+#[repr(simd)]
+struct F32x8([f32; 8]);
 
 // EMIT_MIR const_array_locals.main.PromoteArraysOpt.diff
 // CHECK-LABEL: fn main() -> () {
@@ -28,6 +32,8 @@ pub fn main() {
     consume([255, 105, 15, 39, 62, 251, 191, 178, 9, 4, 56, 221,
         193, 164, 194, 197, 6, 243, 218, 171, 87, 247, 104,
         159, 22, 157, 105, 31, 96, 173, 50, 1,]);
+
+    let _f = F32x8([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
 }
 
 fn consume(_arr: [u16; 32]) {
