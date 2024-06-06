@@ -1,5 +1,5 @@
 use super::flags::FlagComputation;
-use super::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, TyCtxt, TypeFlags, WithInfcx};
+use super::{DebruijnIndex, TypeFlags};
 use crate::arena::Arena;
 use rustc_data_structures::aligned::{align_of, Aligned};
 use rustc_serialize::{Encodable, Encoder};
@@ -160,14 +160,6 @@ impl_list_empty!((), ());
 impl<H, T: fmt::Debug> fmt::Debug for RawList<H, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
-    }
-}
-impl<'tcx, H, T: DebugWithInfcx<TyCtxt<'tcx>>> DebugWithInfcx<TyCtxt<'tcx>> for RawList<H, T> {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        fmt::Debug::fmt(&this.map(|this| this.as_slice()), f)
     }
 }
 

@@ -10,7 +10,7 @@ use std::fmt;
 pub use self::closure::*;
 use self::TyKind::*;
 use crate::inherent::*;
-use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+use crate::{self as ty, DebruijnIndex, Interner};
 
 use rustc_ast_ir::Mutability;
 
@@ -341,12 +341,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
     }
 }
 
-impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        match this.data {
+// This is manually implemented because a derive would require `I: Debug`
+impl<I: Interner> fmt::Debug for TyKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             Bool => write!(f, "bool"),
             Char => write!(f, "char"),
             Int(i) => write!(f, "{i:?}"),
@@ -369,27 +367,23 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             }
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
-            Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
-            Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &this.wrap(t), &this.wrap(p)),
-            Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), this.wrap(ty)),
-            Ref(r, t, m) => write!(f, "&{:?} {}{:?}", this.wrap(r), m.prefix_str(), this.wrap(t)),
-            FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&this.wrap(s)).finish(),
-            FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
+            Array(t, c) => write!(f, "[{:?}; {:?}]", &t, &c),
+            Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &t, &p),
+            Slice(t) => write!(f, "[{:?}]", &t),
+            RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), ty),
+            Ref(r, t, m) => write!(f, "&{:?} {}{:?}", r, m.prefix_str(), t),
+            FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&s).finish(),
+            FnPtr(s) => write!(f, "{:?}", &s),
             Dynamic(p, r, repr) => match repr {
-                DynKind::Dyn => write!(f, "dyn {:?} + {:?}", &this.wrap(p), &this.wrap(r)),
+                DynKind::Dyn => write!(f, "dyn {:?} + {:?}", &p, &r),
                 DynKind::DynStar => {
-                    write!(f, "dyn* {:?} + {:?}", &this.wrap(p), &this.wrap(r))
+                    write!(f, "dyn* {:?} + {:?}", &p, &r)
                 }
             },
-            Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
-            CoroutineClosure(d, s) => {
-                f.debug_tuple("CoroutineClosure").field(d).field(&this.wrap(s)).finish()
-            }
-            Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).finish(),
-            CoroutineWitness(d, s) => {
-                f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
-            }
+            Closure(d, s) => f.debug_tuple("Closure").field(d).field(&s).finish(),
+            CoroutineClosure(d, s) => f.debug_tuple("CoroutineClosure").field(d).field(&s).finish(),
+            Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&s).finish(),
+            CoroutineWitness(d, s) => f.debug_tuple("CoroutineWitness").field(d).field(&s).finish(),
             Never => write!(f, "!"),
             Tuple(t) => {
                 write!(f, "(")?;
@@ -398,7 +392,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                     if count > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{:?}", &this.wrap(ty))?;
+                    write!(f, "{:?}", &ty)?;
                     count += 1;
                 }
                 // unary tuples need a trailing comma
@@ -407,20 +401,13 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
                 write!(f, ")")
             }
-            Alias(i, a) => f.debug_tuple("Alias").field(i).field(&this.wrap(a)).finish(),
+            Alias(i, a) => f.debug_tuple("Alias").field(i).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
-            Infer(t) => write!(f, "{:?}", this.wrap(t)),
+            Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),
         }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Debug`
-impl<I: Interner> fmt::Debug for TyKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 
@@ -435,7 +422,8 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
     Copy(bound = ""),
     Hash(bound = ""),
     PartialEq(bound = ""),
-    Eq(bound = "")
+    Eq(bound = ""),
+    Debug(bound = "")
 )]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
@@ -552,23 +540,6 @@ impl<I: Interner> AliasTy<I> {
     ) -> I::GenericArgs {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Inherent);
         interner.mk_args_from_iter(impl_args.into_iter().chain(self.args.into_iter().skip(1)))
-    }
-}
-
-impl<I: Interner> fmt::Debug for AliasTy<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<I: Interner> DebugWithInfcx<I> for AliasTy<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        f.debug_struct("AliasTy")
-            .field("args", &this.map(|data| data.args))
-            .field("def_id", &this.data.def_id)
-            .finish()
     }
 }
 
@@ -968,24 +939,6 @@ impl fmt::Debug for InferTy {
     }
 }
 
-impl<I: Interner> DebugWithInfcx<I> for InferTy {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        match this.data {
-            InferTy::TyVar(vid) => {
-                if let Some(universe) = this.infcx.universe_of_ty(*vid) {
-                    write!(f, "?{}_{}t", vid.index(), universe.index())
-                } else {
-                    write!(f, "{:?}", this.data)
-                }
-            }
-            _ => write!(f, "{:?}", this.data),
-        }
-    }
-}
-
 #[derive(derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
@@ -1078,15 +1031,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
 
 impl<I: Interner> fmt::Debug for FnSig<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<I: Interner> DebugWithInfcx<I> for FnSig<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        let sig = this.data;
+        let sig = self;
         let FnSig { inputs_and_output: _, c_variadic, safety, abi } = sig;
 
         write!(f, "{}", safety.prefix_str())?;
@@ -1100,7 +1045,7 @@ impl<I: Interner> DebugWithInfcx<I> for FnSig<I> {
             if i > 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{:?}", &this.wrap(ty))?;
+            write!(f, "{:?}", &ty)?;
         }
         if *c_variadic {
             if inputs.is_empty() {
@@ -1113,7 +1058,7 @@ impl<I: Interner> DebugWithInfcx<I> for FnSig<I> {
 
         match output.kind() {
             Tuple(list) if list.is_empty() => Ok(()),
-            _ => write!(f, " -> {:?}", &this.wrap(sig.output())),
+            _ => write!(f, " -> {:?}", sig.output()),
         }
     }
 }

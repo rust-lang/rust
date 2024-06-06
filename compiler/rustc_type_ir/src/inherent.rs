@@ -12,11 +12,11 @@ use rustc_ast_ir::Mutability;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty, CollectAndApply, DebugWithInfcx, Interner, UpcastFrom};
+use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
-    + DebugWithInfcx<I>
+    + Debug
     + Hash
     + Eq
     + Into<I::GenericArg>
@@ -116,7 +116,7 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq + TypeVis
 
 pub trait Region<I: Interner<Region = Self>>:
     Copy
-    + DebugWithInfcx<I>
+    + Debug
     + Hash
     + Eq
     + Into<I::GenericArg>
@@ -134,7 +134,7 @@ pub trait Region<I: Interner<Region = Self>>:
 
 pub trait Const<I: Interner<Const = Self>>:
     Copy
-    + DebugWithInfcx<I>
+    + Debug
     + Hash
     + Eq
     + Into<I::GenericArg>
@@ -166,7 +166,7 @@ pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
 
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     Copy
-    + DebugWithInfcx<I>
+    + Debug
     + Hash
     + Eq
     + IntoIterator<Item = I::GenericArg>
