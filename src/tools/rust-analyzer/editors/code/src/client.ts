@@ -63,7 +63,7 @@ function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownStri
                 (group.title ? group.title + " " : "") +
                 group.commands.map(renderCommand).join(" | "),
         )
-        .join("___");
+        .join(" | ");
 
     const result = new vscode.MarkdownString(text);
     result.isTrusted = true;
