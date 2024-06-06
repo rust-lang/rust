@@ -12,17 +12,16 @@ use super::elaborate;
 
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{Obligation, ObligationCause};
+use crate::traits::{util, Obligation, ObligationCause};
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
-    self, EarlyBinder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, EarlyBinder, ExistentialPredicateStableCmpExt as _, GenericArgs, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Upcast,
 };
-use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::abi::Abi;
@@ -738,122 +737,50 @@ enum AllowSelfProjections {
     No,
 }
 
+/// This is somewhat subtle. In general, we want to forbid
+/// references to `Self` in the argument and return types,
+/// since the value of `Self` is erased. However, there is one
+/// exception: it is ok to reference `Self` in order to access
+/// an associated type of the current trait, since we retain
+/// the value of those associated types in the object type
+/// itself.
+///
+/// ```rust,ignore (example)
+/// trait SuperTrait {
+///     type X;
+/// }
+///
+/// trait Trait : SuperTrait {
+///     type Y;
+///     fn foo(&self, x: Self) // bad
+///     fn foo(&self) -> Self // bad
+///     fn foo(&self) -> Option<Self> // bad
+///     fn foo(&self) -> Self::Y // OK, desugars to next example
+///     fn foo(&self) -> <Self as Trait>::Y // OK
+///     fn foo(&self) -> Self::X // OK, desugars to next example
+///     fn foo(&self) -> <Self as SuperTrait>::X // OK
+/// }
+/// ```
+///
+/// However, it is not as simple as allowing `Self` in a projected
+/// type, because there are illegal ways to use `Self` as well:
+///
+/// ```rust,ignore (example)
+/// trait Trait : SuperTrait {
+///     ...
+///     fn foo(&self) -> <Self as SomeOtherTrait>::X;
+/// }
+/// ```
+///
+/// Here we will not have the type of `X` recorded in the
+/// object type, and we cannot resolve `Self as SomeOtherTrait`
+/// without knowing what `Self` is.
 fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,
     allow_self_projections: AllowSelfProjections,
 ) -> bool {
-    // This is somewhat subtle. In general, we want to forbid
-    // references to `Self` in the argument and return types,
-    // since the value of `Self` is erased. However, there is one
-    // exception: it is ok to reference `Self` in order to access
-    // an associated type of the current trait, since we retain
-    // the value of those associated types in the object type
-    // itself.
-    //
-    // ```rust
-    // trait SuperTrait {
-    //     type X;
-    // }
-    //
-    // trait Trait : SuperTrait {
-    //     type Y;
-    //     fn foo(&self, x: Self) // bad
-    //     fn foo(&self) -> Self // bad
-    //     fn foo(&self) -> Option<Self> // bad
-    //     fn foo(&self) -> Self::Y // OK, desugars to next example
-    //     fn foo(&self) -> <Self as Trait>::Y // OK
-    //     fn foo(&self) -> Self::X // OK, desugars to next example
-    //     fn foo(&self) -> <Self as SuperTrait>::X // OK
-    // }
-    // ```
-    //
-    // However, it is not as simple as allowing `Self` in a projected
-    // type, because there are illegal ways to use `Self` as well:
-    //
-    // ```rust
-    // trait Trait : SuperTrait {
-    //     ...
-    //     fn foo(&self) -> <Self as SomeOtherTrait>::X;
-    // }
-    // ```
-    //
-    // Here we will not have the type of `X` recorded in the
-    // object type, and we cannot resolve `Self as SomeOtherTrait`
-    // without knowing what `Self` is.
-
-    struct IllegalSelfTypeVisitor<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
-        supertraits: Option<Vec<DefId>>,
-        allow_self_projections: AllowSelfProjections,
-    }
-
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
-        type Result = ControlFlow<()>;
-
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-            match t.kind() {
-                ty::Param(_) => {
-                    if t == self.tcx.types.self_param {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                }
-                ty::Alias(ty::Projection, ref data)
-                    if self.tcx.is_impl_trait_in_trait(data.def_id) =>
-                {
-                    // We'll deny these later in their own pass
-                    ControlFlow::Continue(())
-                }
-                ty::Alias(ty::Projection, ref data) => {
-                    match self.allow_self_projections {
-                        AllowSelfProjections::Yes => {
-                            // This is a projected type `<Foo as SomeTrait>::X`.
-
-                            // Compute supertraits of current trait lazily.
-                            if self.supertraits.is_none() {
-                                self.supertraits =
-                                    Some(self.tcx.supertrait_def_ids(self.trait_def_id).collect());
-                            }
-
-                            // Determine whether the trait reference `Foo as
-                            // SomeTrait` is in fact a supertrait of the
-                            // current trait. In that case, this type is
-                            // legal, because the type `X` will be specified
-                            // in the object type. Note that we can just use
-                            // direct equality here because all of these types
-                            // are part of the formal parameter listing, and
-                            // hence there should be no inference variables.
-                            let is_supertrait_of_current_trait = self
-                                .supertraits
-                                .as_ref()
-                                .unwrap()
-                                .contains(&data.trait_ref(self.tcx).def_id);
-
-                            // only walk contained types if it's not a super trait
-                            if is_supertrait_of_current_trait {
-                                ControlFlow::Continue(())
-                            } else {
-                                t.super_visit_with(self) // POSSIBLY reporting an error
-                            }
-                        }
-                        AllowSelfProjections::No => t.super_visit_with(self),
-                    }
-                }
-                _ => t.super_visit_with(self),
-            }
-        }
-
-        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
-            // Constants can only influence object safety if they are generic and reference `Self`.
-            // This is only possible for unevaluated constants, so we walk these here.
-            self.tcx.expand_abstract_consts(ct).super_visit_with(self)
-        }
-    }
-
     value
         .visit_with(&mut IllegalSelfTypeVisitor {
             tcx,
@@ -862,6 +789,123 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
             allow_self_projections,
         })
         .is_break()
+}
+
+struct IllegalSelfTypeVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+    supertraits: Option<Vec<ty::TraitRef<'tcx>>>,
+    allow_self_projections: AllowSelfProjections,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        match t.kind() {
+            ty::Param(_) => {
+                if t == self.tcx.types.self_param {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
+            ty::Alias(ty::Projection, ref data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
+                // We'll deny these later in their own pass
+                ControlFlow::Continue(())
+            }
+            ty::Alias(ty::Projection, ref data) => {
+                match self.allow_self_projections {
+                    AllowSelfProjections::Yes => {
+                        // This is a projected type `<Foo as SomeTrait>::X`.
+
+                        // Compute supertraits of current trait lazily.
+                        if self.supertraits.is_none() {
+                            self.supertraits = Some(
+                                util::supertraits(
+                                    self.tcx,
+                                    ty::Binder::dummy(ty::TraitRef::identity(
+                                        self.tcx,
+                                        self.trait_def_id,
+                                    )),
+                                )
+                                .map(|trait_ref| {
+                                    self.tcx.erase_regions(
+                                        self.tcx.instantiate_bound_regions_with_erased(trait_ref),
+                                    )
+                                })
+                                .collect(),
+                            );
+                        }
+
+                        // Determine whether the trait reference `Foo as
+                        // SomeTrait` is in fact a supertrait of the
+                        // current trait. In that case, this type is
+                        // legal, because the type `X` will be specified
+                        // in the object type. Note that we can just use
+                        // direct equality here because all of these types
+                        // are part of the formal parameter listing, and
+                        // hence there should be no inference variables.
+                        let is_supertrait_of_current_trait =
+                            self.supertraits.as_ref().unwrap().contains(
+                                &data.trait_ref(self.tcx).fold_with(
+                                    &mut EraseEscapingBoundRegions {
+                                        tcx: self.tcx,
+                                        binder: ty::INNERMOST,
+                                    },
+                                ),
+                            );
+
+                        // only walk contained types if it's not a super trait
+                        if is_supertrait_of_current_trait {
+                            ControlFlow::Continue(())
+                        } else {
+                            t.super_visit_with(self) // POSSIBLY reporting an error
+                        }
+                    }
+                    AllowSelfProjections::No => t.super_visit_with(self),
+                }
+            }
+            _ => t.super_visit_with(self),
+        }
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
+        // Constants can only influence object safety if they are generic and reference `Self`.
+        // This is only possible for unevaluated constants, so we walk these here.
+        self.tcx.expand_abstract_consts(ct).super_visit_with(self)
+    }
+}
+
+struct EraseEscapingBoundRegions<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    binder: ty::DebruijnIndex,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEscapingBoundRegions<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.binder.shift_in(1);
+        let result = t.super_fold_with(self);
+        self.binder.shift_out(1);
+        result
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::ReBound(debruijn, _) = *r
+            && debruijn < self.binder
+        {
+            r
+        } else {
+            self.tcx.lifetimes.re_erased
+        }
+    }
 }
 
 pub fn contains_illegal_impl_trait_in_trait<'tcx>(
