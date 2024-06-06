@@ -414,12 +414,18 @@ impl<'a> CrateLocator<'a> {
                 debug!("testing {}", spf.path.display());
 
                 let f = &spf.file_name_str;
-                let (hash, kind) = if f.starts_with(rlib_prefix) && f.ends_with(rlib_suffix) {
-                    (&f[rlib_prefix.len()..(f.len() - rlib_suffix.len())], CrateFlavor::Rlib)
-                } else if f.starts_with(rmeta_prefix) && f.ends_with(rmeta_suffix) {
-                    (&f[rmeta_prefix.len()..(f.len() - rmeta_suffix.len())], CrateFlavor::Rmeta)
-                } else if f.starts_with(dylib_prefix) && f.ends_with(dylib_suffix.as_ref()) {
-                    (&f[dylib_prefix.len()..(f.len() - dylib_suffix.len())], CrateFlavor::Dylib)
+                let (hash, kind) = if let Some(f) = f.strip_prefix(rlib_prefix)
+                    && let Some(f) = f.strip_suffix(rlib_suffix)
+                {
+                    (f, CrateFlavor::Rlib)
+                } else if let Some(f) = f.strip_prefix(rmeta_prefix)
+                    && let Some(f) = f.strip_suffix(rmeta_suffix)
+                {
+                    (f, CrateFlavor::Rmeta)
+                } else if let Some(f) = f.strip_prefix(dylib_prefix)
+                    && let Some(f) = f.strip_suffix(dylib_suffix.as_ref())
+                {
+                    (f, CrateFlavor::Dylib)
                 } else {
                     if f.starts_with(staticlib_prefix) && f.ends_with(staticlib_suffix.as_ref()) {
                         self.crate_rejections.via_kind.push(CrateMismatch {
