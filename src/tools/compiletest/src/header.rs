@@ -94,7 +94,7 @@ pub struct TestProps {
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
-    pub run_flags: Option<String>,
+    pub run_flags: Vec<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
@@ -262,7 +262,7 @@ impl TestProps {
             error_patterns: vec![],
             regex_error_patterns: vec![],
             compile_flags: vec![],
-            run_flags: None,
+            run_flags: vec![],
             pp_exact: None,
             aux_builds: vec![],
             aux_bins: vec![],
@@ -399,7 +399,9 @@ impl TestProps {
 
                     config.parse_and_update_revisions(ln, &mut self.revisions);
 
-                    config.set_name_value_directive(ln, RUN_FLAGS, &mut self.run_flags, |r| r);
+                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
+                        self.run_flags.extend(split_flags(&flags));
+                    }
 
                     if self.pp_exact.is_none() {
                         self.pp_exact = config.parse_pp_exact(ln, testfile);
