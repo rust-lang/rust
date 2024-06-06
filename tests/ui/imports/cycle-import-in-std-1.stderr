@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `io`
+  --> $DIR/cycle-import-in-std-1.rs:5:10
+   |
+LL | use io::{self as std};
+   |          ^^^^^^^^^^^ no external crate `io`
+   |
+   = help: consider importing one of these items instead:
+           core::io
+           std::io
+           std::os::unix::io
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.
