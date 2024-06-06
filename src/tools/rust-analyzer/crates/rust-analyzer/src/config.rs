@@ -902,10 +902,10 @@ impl Config {
 
 #[derive(Default, Debug)]
 pub struct ConfigChange {
-    user_config_change: Option<String>,
-    root_ratoml_change: Option<String>,
+    user_config_change: Option<Arc<str>>,
+    root_ratoml_change: Option<Arc<str>>,
     client_config_change: Option<serde_json::Value>,
-    ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<String>)>>,
+    ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
     source_map_change: Option<Arc<FxHashMap<SourceRootId, SourceRootId>>>,
 }
 
@@ -914,19 +914,19 @@ impl ConfigChange {
         &mut self,
         source_root: SourceRootId,
         vfs_path: VfsPath,
-        content: Option<String>,
-    ) -> Option<(VfsPath, Option<String>)> {
+        content: Option<Arc<str>>,
+    ) -> Option<(VfsPath, Option<Arc<str>>)> {
         self.ratoml_file_change
             .get_or_insert_with(Default::default)
             .insert(source_root, (vfs_path, content))
     }
 
-    pub fn change_user_config(&mut self, content: Option<String>) {
+    pub fn change_user_config(&mut self, content: Option<Arc<str>>) {
         assert!(self.user_config_change.is_none()); // Otherwise it is a double write.
         self.user_config_change = content;
     }
 
-    pub fn change_root_ratoml(&mut self, content: Option<String>) {
+    pub fn change_root_ratoml(&mut self, content: Option<Arc<str>>) {
         assert!(self.user_config_change.is_none()); // Otherwise it is a double write.
         self.root_ratoml_change = content;
     }
@@ -1206,8 +1206,7 @@ impl Config {
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
             user_config: None,
             ratoml_files: FxHashMap::default(),
-            default_config: DEFAULT_CONFIG_DATA
-                .get_or_init(|| Box::leak(Box::new(DefaultConfigData::default()))),
+            default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config_path,
             root_ratoml: None,
@@ -3548,7 +3547,8 @@ mod tests {
                 [cargo.sysroot]
                 non-table = "expected"
             }
-            .to_string(),
+            .to_string()
+            .into(),
         ));
 
         let (config, e, _) = config.apply_change(change);
@@ -3582,9 +3582,9 @@ mod tests {
                 be = "be"
                 valid = "valid"
             }
-            .to_string(),
+            .to_string()
+            .into(),
         ));
-
         let (_, e, _) = config.apply_change(change);
         expect_test::expect![[r#"
             ConfigErrors(
