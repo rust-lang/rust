@@ -334,7 +334,7 @@ impl WalkItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_) => {}
             ItemKind::Use(use_tree) => try_visit!(visitor.visit_use_tree(use_tree, item.id, false)),
-            ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
@@ -658,7 +658,12 @@ impl WalkItemKind for ForeignItemKind {
     ) -> V::Result {
         let &Item { id, span, ident, ref vis, .. } = item;
         match self {
-            ForeignItemKind::Static(box StaticForeignItem { ty, mutability: _, expr }) => {
+            ForeignItemKind::Static(box StaticForeignItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+            }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }

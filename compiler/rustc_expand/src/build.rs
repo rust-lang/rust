@@ -631,7 +631,10 @@ impl<'a> ExtCtxt<'a> {
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Static(ast::StaticItem { ty, mutability, expr: Some(expr) }.into()),
+            ast::ItemKind::Static(
+                ast::StaticItem { ty, safety: ast::Safety::Default, mutability, expr: Some(expr) }
+                    .into(),
+            ),
         )
     }
 

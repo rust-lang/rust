@@ -1973,6 +1973,7 @@ impl<'a> State<'a> {
     fn print_safety(&mut self, s: ast::Safety) {
         match s {
             ast::Safety::Default => {}
+            ast::Safety::Safe(_) => self.word_nbsp("safe"),
             ast::Safety::Unsafe(_) => self.word_nbsp("unsafe"),
         }
     }

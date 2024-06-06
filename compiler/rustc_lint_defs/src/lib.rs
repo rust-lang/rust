@@ -626,6 +626,9 @@ pub enum BuiltinLintDiag {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
+    MissingUnsafeOnExtern {
+        suggestion: Span,
+    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,

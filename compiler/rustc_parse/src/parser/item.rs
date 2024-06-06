@@ -226,10 +226,11 @@ impl<'a> Parser<'a> {
             self.expect_keyword(kw::Extern)?;
             self.parse_item_foreign_mod(attrs, safety)?
         } else if self.is_static_global() {
+            let safety = self.parse_safety(Case::Sensitive);
             // STATIC ITEM
             self.bump(); // `static`
             let mutability = self.parse_mutability();
-            let (ident, item) = self.parse_static_item(mutability)?;
+            let (ident, item) = self.parse_static_item(safety, mutability)?;
             (ident, ItemKind::Static(Box::new(item)))
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
@@ -952,7 +953,7 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+                        ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,
@@ -1221,6 +1222,7 @@ impl<'a> Parser<'a> {
                                 ty,
                                 mutability: Mutability::Not,
                                 expr,
+                                safety: Safety::Default,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -1258,7 +1260,10 @@ impl<'a> Parser<'a> {
                 matches!(token.kind, token::BinOp(token::Or) | token::OrOr)
             })
         } else {
-            false
+            let quals: &[Symbol] = &[kw::Unsafe, kw::Safe];
+            // `$qual static`
+            quals.iter().any(|&kw| self.check_keyword(kw))
+                && self.look_ahead(1, |t| t.is_keyword(kw::Static))
         }
     }
 
@@ -1319,7 +1324,11 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// Static = "static" "mut"? $ident ":" $ty (= $expr)? ";" ;
     /// ```
-    fn parse_static_item(&mut self, mutability: Mutability) -> PResult<'a, (Ident, StaticItem)> {
+    fn parse_static_item(
+        &mut self,
+        safety: Safety,
+        mutability: Mutability,
+    ) -> PResult<'a, (Ident, StaticItem)> {
         let ident = self.parse_ident()?;
 
         if self.token.kind == TokenKind::Lt && self.may_recover() {
@@ -1340,7 +1349,7 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        Ok((ident, StaticItem { ty, mutability, expr }))
+        Ok((ident, StaticItem { ty, safety, mutability, expr }))
     }
 
     /// Parse a constant item with the prefix `"const"` already parsed.
@@ -2400,9 +2409,9 @@ impl<'a> Parser<'a> {
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern]
         } else {
-            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern]
         };
         self.check_keyword_case(kw::Fn, case) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
@@ -2537,8 +2546,24 @@ impl<'a> Parser<'a> {
                     } else if self.check_keyword(kw::Unsafe) {
                         match safety {
                             Safety::Unsafe(sp) => Some(WrongKw::Duplicated(sp)),
+                            Safety::Safe(sp) => {
+                                recover_safety = Safety::Unsafe(self.token.span);
+                                Some(WrongKw::Misplaced(sp))
+                            }
                             Safety::Default => {
                                 recover_safety = Safety::Unsafe(self.token.span);
+                                Some(WrongKw::Misplaced(ext_start_sp))
+                            }
+                        }
+                    } else if self.check_keyword(kw::Safe) {
+                        match safety {
+                            Safety::Safe(sp) => Some(WrongKw::Duplicated(sp)),
+                            Safety::Unsafe(sp) => {
+                                recover_safety = Safety::Safe(self.token.span);
+                                Some(WrongKw::Misplaced(sp))
+                            }
+                            Safety::Default => {
+                                recover_safety = Safety::Safe(self.token.span);
                                 Some(WrongKw::Misplaced(ext_start_sp))
                             }
                         }

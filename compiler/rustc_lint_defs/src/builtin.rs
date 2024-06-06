@@ -66,6 +66,7 @@ declare_lint_pass! {
         META_VARIABLE_MISUSE,
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
+        MISSING_UNSAFE_ON_EXTERN,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
@@ -4801,5 +4802,42 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
+    };
+}
+
+declare_lint! {
+    /// The `missing_unsafe_on_extern` lint detects missing unsafe keyword on extern declarations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(unsafe_extern_blocks)]
+    /// #![warn(missing_unsafe_on_extern)]
+    /// #![allow(dead_code)]
+    ///
+    /// extern "C" {
+    ///     fn foo(_: i32);
+    /// }
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Declaring extern items, even without ever using them, can cause Undefined Behavior. We
+    /// should consider all sources of Undefined Behavior to be unsafe.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub MISSING_UNSAFE_ON_EXTERN,
+    Allow,
+    "detects missing unsafe keyword on extern declarations",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
     };
 }

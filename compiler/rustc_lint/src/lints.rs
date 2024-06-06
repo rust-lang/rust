@@ -2731,6 +2731,13 @@ pub enum DeprecatedWhereClauseLocationSugg {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_missing_unsafe_on_extern)]
+pub struct MissingUnsafeOnExtern {
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_single_use_lifetime)]
 pub struct SingleUseLifetime {
     #[label(lint_label_param)]

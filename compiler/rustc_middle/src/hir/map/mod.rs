@@ -305,7 +305,9 @@ impl<'hir> Map<'hir> {
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure => BodyOwnerKind::Closure,
-            DefKind::Static { mutability, nested: false } => BodyOwnerKind::Static(mutability),
+            DefKind::Static { safety: _, mutability, nested: false } => {
+                BodyOwnerKind::Static(mutability)
+            }
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }
     }
@@ -886,7 +888,7 @@ impl<'hir> Map<'hir> {
             Node::Variant(variant) => named_span(variant.span, variant.ident, None),
             Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
             Node::ForeignItem(item) => match item.kind {
-                ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
+                ForeignItemKind::Fn(decl, _, _, _) => until_within(item.span, decl.output.span()),
                 _ => named_span(item.span, item.ident, None),
             },
             Node::Ctor(_) => return self.span(self.tcx.parent_hir_id(hir_id)),

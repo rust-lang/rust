@@ -620,6 +620,8 @@ declare_features! (
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
+    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
+    (unstable, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
     /// Allows unsized fn parameters.
     (unstable, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

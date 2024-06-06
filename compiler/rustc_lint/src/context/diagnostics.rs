@@ -202,6 +202,9 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             };
             lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
         }
+        BuiltinLintDiag::MissingUnsafeOnExtern { suggestion } => {
+            lints::MissingUnsafeOnExtern { suggestion }.decorate_lint(diag);
+        }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
