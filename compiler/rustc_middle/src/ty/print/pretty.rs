@@ -3232,7 +3232,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
     let queue = &mut Vec::new();
     let mut seen_defs: DefIdSet = Default::default();
 
-    for &cnum in tcx.crates_including_speculative(()).iter() {
+    for &cnum in tcx.crates(()).iter() {
         let def_id = cnum.as_def_id();
 
         // Ignore crates that are not direct dependencies.
