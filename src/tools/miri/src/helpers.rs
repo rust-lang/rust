@@ -126,7 +126,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
     // the one in the sysroot and the one locally built by `cargo test`.)
     // FIXME: can we prefer the one from the sysroot?
     'crates: for krate in
-        tcx.used_crates(()).iter().filter(|&&krate| tcx.crate_name(krate).as_str() == crate_name)
+        tcx.crates(()).iter().filter(|&&krate| tcx.crate_name(krate).as_str() == crate_name)
     {
         let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
         // Go over the modules.
@@ -1364,7 +1364,7 @@ pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
         .map(|crates| crates.split(',').map(|krate| krate.to_string()).collect::<Vec<_>>())
         .unwrap_or_default();
     let mut local_crates = Vec::new();
-    for &crate_num in tcx.crates_including_speculative(()) {
+    for &crate_num in tcx.crates(()) {
         let name = tcx.crate_name(crate_num);
         let name = name.as_str();
         if local_crate_names.iter().any(|local_name| local_name == name) {

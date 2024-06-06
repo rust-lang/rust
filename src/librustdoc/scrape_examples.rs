@@ -283,7 +283,7 @@ pub(crate) fn run(
         // Collect CrateIds corresponding to provided target crates
         // If two different versions of the crate in the dependency tree, then examples will be collected from both.
         let all_crates = tcx
-            .crates_including_speculative(())
+            .crates(())
             .iter()
             .chain([&LOCAL_CRATE])
             .map(|crate_num| (crate_num, tcx.crate_name(*crate_num)))
