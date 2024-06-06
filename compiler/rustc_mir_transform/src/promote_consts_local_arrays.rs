@@ -180,19 +180,14 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
 
-        let rvalue_ty = rvalue.ty(&self.ccx.body.local_decls, self.ccx.tcx);
-        if !rvalue_ty.is_array() {
-            debug!(?rvalue);
-        }
-
         let Rvalue::Aggregate(kind, operands) = rvalue else {
+            debug!("ignoring rvalue=`{rvalue:?}`");
             return;
         };
 
-        if let ty::Adt(adt, _) = rvalue_ty.kind()
-            && adt.repr().simd()
-        {
-            debug!("ignore #[repr(simd)]");
+        let rvalue_ty = rvalue.ty(&self.ccx.body.local_decls, self.ccx.tcx);
+        if !rvalue_ty.is_array() {
+            debug!("ignoring rvalue=`{rvalue:?}`");
             if let Some(first) = operands.iter().next()
                 && let Operand::Copy(place) | Operand::Move(place) = first
             {
