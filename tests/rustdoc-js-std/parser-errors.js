@@ -195,7 +195,6 @@ const PARSED = [
         query: "a:b",
         elems: [],
         foundElems: 0,
-        original: "a:b",
         returned: [],
         userQuery: "a:b",
         error: "Unknown type filter `a`",

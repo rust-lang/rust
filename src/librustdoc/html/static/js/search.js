@@ -1572,7 +1572,9 @@ function initSearch(rawSearchIndex) {
                     for (const nested of fnType.generics) {
                         writeFn(nested, where);
                     }
-                    whereClause.set(fnParamNames[-1 - fnType.id], where);
+                    if (where.length > 0) {
+                        whereClause.set(fnParamNames[-1 - fnType.id], where);
+                    }
                 } else {
                     if (fnType.ty === TY_PRIMITIVE) {
                         if (fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ||
@@ -2917,7 +2919,7 @@ function initSearch(rawSearchIndex) {
             sorted_returned,
             sorted_others,
             parsedQuery);
-        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""),
+        await handleAliases(ret, parsedQuery.userQuery.replace(/"/g, ""),
             filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
