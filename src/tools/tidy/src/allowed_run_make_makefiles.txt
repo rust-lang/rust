@@ -10,7 +10,6 @@ run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
 run-make/compiler-lookup-paths-2/Makefile
-run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/cross-lang-lto-clang/Makefile
