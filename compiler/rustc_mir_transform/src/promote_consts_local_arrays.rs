@@ -82,9 +82,9 @@ impl<'tcx> MirPass<'tcx> for PromoteArraysOpt<'tcx> {
         }
 
         let ccx = ConstCx::new(tcx, body);
-        let (mut temps, all_candidates, already_promoted) = collect_temps_and_candidates(&ccx);
+        let (mut temps, mut all_candidates, already_promoted) = collect_temps_and_candidates(&ccx);
 
-        let promotable_candidates = validate_candidates(&ccx, &mut temps, &all_candidates);
+        let promotable_candidates = validate_candidates(&ccx, &mut temps, &mut all_candidates);
         debug!(candidates = ?promotable_candidates);
 
         let promoted =
@@ -109,18 +109,16 @@ enum TempState {
     PromotedOut,
 }
 
-/// A "root candidate" for promotion, which will become the
-/// returned value in a promoted MIR, unless it's a subset
-/// of a larger candidate.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-struct Candidate {
-    location: Location,
-}
+#[derive(Clone, Debug)]
+struct Candidates(Vec<Location>);
 
 struct Collector<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
     temps: IndexVec<Local, TempState>,
-    candidates: Vec<Candidate>,
+    /// A "root candidate" for promotion, which will become the
+    /// returned value in a promoted MIR, unless it's a subset
+    /// of a larger candidate.
+    candidates: Candidates,
     already_promoted: usize,
 }
 
@@ -197,7 +195,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         }
 
         debug!("pushing a candidate of type {:?} @ {:?}", kind, location);
-        self.candidates.push(Candidate { location });
+        self.candidates.0.push(location);
     }
 
     // #[instrument(level = "debug", skip(self, constant))]
@@ -214,10 +212,10 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
 fn collect_temps_and_candidates<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
-) -> (IndexVec<Local, TempState>, Vec<Candidate>, usize) {
+) -> (IndexVec<Local, TempState>, Candidates, usize) {
     let mut collector = Collector {
         temps: IndexVec::from_elem(TempState::Undefined, &ccx.body.local_decls),
-        candidates: vec![],
+        candidates: Candidates(vec![]),
         ccx,
         already_promoted: 0,
     };
@@ -254,8 +252,8 @@ impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
-    fn validate_candidate(&mut self, candidate: Candidate) -> Result<(), Unpromotable> {
-        let Left(statement) = self.body.stmt_at(candidate.location) else { bug!() };
+    fn validate_candidate(&mut self, candidate: Location) -> Result<(), Unpromotable> {
+        let Left(statement) = self.body.stmt_at(candidate) else { bug!() };
         let Some((place, rvalue @ Rvalue::Aggregate(box kind, operands))) =
             statement.kind.as_assign()
         else {
@@ -780,18 +778,15 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 }
 
-fn validate_candidates(
+fn validate_candidates<'a>(
     ccx: &ConstCx<'_, '_>,
     temps: &mut IndexSlice<Local, TempState>,
-    candidates: &[Candidate],
-) -> Vec<Candidate> {
+    candidates: &'a mut Candidates,
+) -> &'a mut Candidates {
     let mut validator = Validator { ccx, temps, promotion_safe_blocks: None };
 
+    candidates.0.retain(|&candidate| validator.validate_candidate(candidate).is_ok());
     candidates
-        .iter()
-        .copied()
-        .filter(|&candidate| validator.validate_candidate(candidate).is_ok())
-        .collect()
 }
 
 struct Promoter<'a, 'tcx> {
@@ -946,7 +941,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
+    fn promote_candidate(mut self, candidate: Location, next_promoted_id: usize) -> Body<'tcx> {
         let def = self.source.source.def_id();
         let promoted_id = Promoted::new(next_promoted_id);
         let (mut rvalue, promoted_op, promoted_ref_rvalue) = {
@@ -963,7 +958,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
             let blocks = self.source.basic_blocks.as_mut();
             let local_decls = &mut self.source.local_decls;
-            let loc = candidate.location;
+            let loc = candidate;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
             let StatementKind::Assign(box (place, Rvalue::Aggregate(_kind, _operands))) =
                 &mut statement.kind
@@ -1017,7 +1012,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         {
             let blocks = self.source.basic_blocks_mut();
-            let loc = candidate.location;
+            let loc = candidate;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
             if let StatementKind::Assign(box (_place, ref mut rvalue)) = &mut statement.kind {
                 *rvalue = promoted_rvalue;
@@ -1068,11 +1063,11 @@ fn promote_candidates<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
-    candidates: Vec<Candidate>,
+    candidates: &Candidates,
     already_promoted: usize,
 ) -> IndexVec<Promoted, Body<'tcx>> {
     // eagerly fail fast
-    if candidates.is_empty() {
+    if candidates.0.is_empty() {
         return IndexVec::new();
     }
 
@@ -1080,8 +1075,8 @@ fn promote_candidates<'tcx>(
 
     let mut extra_statements = vec![];
     // Visit candidates in reverse, in case they're nested.
-    for candidate in candidates.into_iter().rev() {
-        let Location { block, statement_index } = candidate.location;
+    for candidate in candidates.0.iter().copied().rev() {
+        let Location { block, statement_index } = candidate;
         if let StatementKind::Assign(box (place, _)) = &body[block].statements[statement_index].kind
         {
             if let Some(local) = place.as_local() {
@@ -1095,7 +1090,7 @@ fn promote_candidates<'tcx>(
         // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = IndexVec::from([LocalDecl::new(tcx.types.never, body.span)]);
 
-        let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
+        let mut scope = body.source_scopes[body.source_info(candidate).scope].clone();
         scope.parent_scope = None;
 
         let mut promoted = Body::new(
