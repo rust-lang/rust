@@ -496,15 +496,6 @@ pub(crate) struct OuterAttributeNotAllowedOnIfElse {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_outer_attr_ambiguous)]
-pub(crate) struct AmbiguousOuterAttributes {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: WrapInParentheses,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_missing_in_in_for_loop)]
 pub(crate) struct MissingInInForLoop {
     #[primary_span]
