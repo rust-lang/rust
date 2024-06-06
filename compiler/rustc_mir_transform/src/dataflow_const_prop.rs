@@ -199,7 +199,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
                     && let ty::Array(_, len) = operand_ty.kind()
-                    && let Some(len) = Const::Ty(self.tcx.types.usize, *len)
+                    && let Some(len) = Const::Ty(self.tcx.types.usize, len)
                         .try_eval_scalar_int(self.tcx, self.param_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());
@@ -218,7 +218,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             Rvalue::Len(place) => {
                 let place_ty = place.ty(self.local_decls, self.tcx);
                 if let ty::Array(_, len) = place_ty.ty.kind() {
-                    Const::Ty(self.tcx.types.usize, *len)
+                    Const::Ty(self.tcx.types.usize, len)
                         .try_eval_scalar(self.tcx, self.param_env)
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } else if let [ProjectionElem::Deref] = place.projection[..] {

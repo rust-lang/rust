@@ -383,7 +383,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let new_perm = match val.layout.ty.kind() {
-            &ty::Ref(_, pointee, mutability) =>
+            ty::Ref(_, pointee, mutability) =>
                 NewPermission::from_ref_ty(pointee, mutability, kind, this),
             _ => None,
         };
@@ -466,7 +466,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Check the type of this value to see what to do with it (retag, or recurse).
                 match place.layout.ty.kind() {
-                    &ty::Ref(_, pointee, mutability) => {
+                    ty::Ref(_, pointee, mutability) => {
                         let new_perm =
                             NewPermission::from_ref_ty(pointee, mutability, self.kind, self.ecx);
                         self.retag_ptr_inplace(place, new_perm)?;

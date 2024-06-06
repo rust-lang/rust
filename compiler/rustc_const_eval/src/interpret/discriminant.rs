@@ -130,7 +130,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
                 let discr_bits = discr_val.to_scalar().to_bits(discr_layout.size)?;
                 // Convert discriminant to variant index, and catch invalid discriminants.
-                let index = match *ty.kind() {
+                let index = match ty.kind() {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }

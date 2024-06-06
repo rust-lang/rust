@@ -136,7 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
         // If the callee is a bare function or a closure, then we're all set.
-        match *adjusted_ty.kind() {
+        match adjusted_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
@@ -319,10 +319,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // For initial two-phase borrow
                     // deployment, conservatively omit
                     // overloaded function call ops.
-                    let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::No);
+                    let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::No);
 
                     autoref = Some(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                         target: method.sig.inputs()[0],
                     });
                 }
@@ -433,7 +433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (fn_sig, def_id) = match *callee_ty.kind() {
+        let (fn_sig, def_id) = match callee_ty.kind() {
             ty::FnDef(def_id, args) => {
                 self.enforce_context_effects(call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
@@ -547,7 +547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
                 //
                 // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
-                if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
+                if let ty::FnDef(def_id, _args) = arg_ty.kind() {
                     let fn_once_def_id =
                         self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
                     let fn_once_output_def_id =

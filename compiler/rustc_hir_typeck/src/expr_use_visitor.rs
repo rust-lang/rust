@@ -1472,7 +1472,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let base_ty = self.expr_ty_adjusted(base)?;
 
         let ty::Ref(region, _, mutbl) =
-            *self.cx.try_structurally_resolve_type(base.span, base_ty).kind()
+            self.cx.try_structurally_resolve_type(base.span, base_ty).kind()
         else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };

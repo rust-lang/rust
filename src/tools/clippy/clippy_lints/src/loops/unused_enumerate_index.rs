@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, arg: &Expr<'_
         && let ExprKind::MethodCall(_method, self_arg, [], _) = arg.kind
         && let ty = cx.typeck_results().expr_ty(arg)
         && pat_is_wild(cx, &index.kind, body)
-        && let ty::Adt(base, _) = *ty.kind()
+        && let ty::Adt(base, _) = ty.kind()
         && cx.tcx.is_diagnostic_item(sym::Enumerate, base.did())
         && let Some((DefKind::AssocFn, call_id)) = cx.typeck_results().type_dependent_def(arg.hir_id)
         && cx.tcx.is_diagnostic_item(sym::enumerate_method, call_id)

@@ -15,7 +15,7 @@ impl<'tcx> At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            let ty::Alias(..) = *ty.kind() else {
+            let ty::Alias(..) = ty.kind() else {
                 return Ok(ty);
             };
 

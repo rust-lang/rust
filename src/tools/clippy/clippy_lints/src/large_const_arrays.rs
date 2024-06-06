@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             && let ty::Array(element_type, cst) = ty.kind()
             && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
             && let element_count = element_count.to_target_usize(cx.tcx)
-            && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
+            && let Ok(element_size) = cx.layout_of(element_type).map(|l| l.size.bytes())
             && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
         {
             let hi_pos = item.ident.span.lo() - BytePos::from_usize(1);

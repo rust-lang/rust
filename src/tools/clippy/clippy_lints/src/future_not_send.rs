@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind() {
+        if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = ret_ty.kind() {
             let preds = cx.tcx.explicit_item_super_predicates(def_id);
             let is_future = preds.iter_instantiated_copied(cx.tcx, args).any(|(p, _)| {
                 p.as_trait_clause().is_some_and(|trait_pred| {

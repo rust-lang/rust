@@ -82,37 +82,37 @@ impl<'tcx> InferCtxt<'tcx> {
 
         match (a.kind(), b.kind()) {
             // Relate integral variables to other types
-            (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
+            (ty::Infer(ty::IntVar(a_id)), ty::Infer(ty::IntVar(b_id))) => {
                 self.inner.borrow_mut().int_unification_table().union(a_id, b_id);
                 Ok(a)
             }
-            (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
+            (ty::Infer(ty::IntVar(v_id)), ty::Int(v)) => {
                 self.unify_integral_variable(v_id, IntType(v));
                 Ok(b)
             }
-            (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
+            (ty::Int(v), ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(v_id, IntType(v));
                 Ok(a)
             }
-            (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
+            (ty::Infer(ty::IntVar(v_id)), ty::Uint(v)) => {
                 self.unify_integral_variable(v_id, UintType(v));
                 Ok(b)
             }
-            (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
+            (ty::Uint(v), ty::Infer(ty::IntVar(v_id))) => {
                 self.unify_integral_variable(v_id, UintType(v));
                 Ok(a)
             }
 
             // Relate floating-point variables to other types
-            (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
+            (ty::Infer(ty::FloatVar(a_id)), ty::Infer(ty::FloatVar(b_id))) => {
                 self.inner.borrow_mut().float_unification_table().union(a_id, b_id);
                 Ok(a)
             }
-            (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
+            (ty::Infer(ty::FloatVar(v_id)), ty::Float(v)) => {
                 self.unify_float_variable(v_id, ty::FloatVarValue::Known(v));
                 Ok(b)
             }
-            (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
+            (ty::Float(v), ty::Infer(ty::FloatVar(v_id))) => {
                 self.unify_float_variable(v_id, ty::FloatVarValue::Known(v));
                 Ok(a)
             }
@@ -146,7 +146,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             // All other cases of inference are errors
-            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
+            (ty::Infer(_), _) | (_, ty::Infer(_)) => {
                 Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
             }
 
@@ -154,7 +154,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // equal to any other type (except for possibly itself). This is an
             // extremely heavy hammer, but can be relaxed in a fowards-compatible
             // way later.
-            (&ty::Alias(ty::Opaque, _), _) | (_, &ty::Alias(ty::Opaque, _)) if self.intercrate => {
+            (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) if self.intercrate => {
                 relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                 Ok(a)
             }

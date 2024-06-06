@@ -316,7 +316,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     let Some(copy_id) = cx.tcx.lang_items().copy_trait() else {
         return;
     };
-    let (ty_adt, ty_subs) = match *ty.kind() {
+    let (ty_adt, ty_subs) = match ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
         _ => return,
@@ -453,7 +453,7 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq)
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
-        && !has_non_exhaustive_attr(cx.tcx, *adt)
+        && !has_non_exhaustive_attr(cx.tcx, adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         && let Some(local_def_id) = adt.did().as_local()

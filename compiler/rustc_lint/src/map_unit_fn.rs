@@ -64,10 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                 MAP_UNIT_FN,
                                 span,
                                 MappingToUnit {
-                                    function_label: cx
-                                        .tcx
-                                        .span_of_impl(*id)
-                                        .unwrap_or(default_span),
+                                    function_label: cx.tcx.span_of_impl(id).unwrap_or(default_span),
                                     argument_label: args[0].span,
                                     map_label: arg_ty.default_span(cx.tcx),
                                     suggestion: path.ident.span,
@@ -83,10 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                 MAP_UNIT_FN,
                                 span,
                                 MappingToUnit {
-                                    function_label: cx
-                                        .tcx
-                                        .span_of_impl(*id)
-                                        .unwrap_or(default_span),
+                                    function_label: cx.tcx.span_of_impl(id).unwrap_or(default_span),
                                     argument_label: args[0].span,
                                     map_label: arg_ty.default_span(cx.tcx),
                                     suggestion: path.ident.span,

@@ -468,7 +468,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         assert!(mask.layout.size.bits() >= bitmask_len);
                         this.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap()
                     }
-                    ty::Array(elem, _len) if elem == &this.tcx.types.u8 => {
+                    ty::Array(elem, _len) if elem == this.tcx.types.u8 => {
                         // The array must have exactly the right size.
                         assert_eq!(mask.layout.size.bits(), bitmask_len);
                         // Read the raw bytes.
@@ -547,7 +547,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         assert!(dest.layout.size.bits() >= bitmask_len);
                         this.write_int(res, dest)?;
                     }
-                    ty::Array(elem, _len) if elem == &this.tcx.types.u8 => {
+                    ty::Array(elem, _len) if elem == this.tcx.types.u8 => {
                         // The array must have exactly the right size.
                         assert_eq!(dest.layout.size.bits(), bitmask_len);
                         // We have to write the result byte-for-byte.

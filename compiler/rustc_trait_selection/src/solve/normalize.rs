@@ -70,7 +70,7 @@ where
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
-            let ty::Alias(_, data) = *alias_ty.kind() else {
+            let ty::Alias(_, data) = alias_ty.kind() else {
                 unreachable!();
             };
 
@@ -181,7 +181,7 @@ where
             return Ok(ty);
         }
 
-        let ty::Alias(..) = *ty.kind() else { return ty.try_super_fold_with(self) };
+        let ty::Alias(..) = ty.kind() else { return ty.try_super_fold_with(self) };
 
         if ty.has_escaping_bound_vars() {
             let (ty, mapped_regions, mapped_types, mapped_consts) =

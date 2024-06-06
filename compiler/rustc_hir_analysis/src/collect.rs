@@ -1015,7 +1015,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                 // Here we don't care about the generic parameters, so `instantiate_identity` is enough.
                 match self.tcx.type_of(field.did).instantiate_identity().kind() {
                     ty::Adt(adt_def, _) => {
-                        self.check_field_in_nested_adt(*adt_def, unnamed_field_span);
+                        self.check_field_in_nested_adt(adt_def, unnamed_field_span);
                     }
                     ty_kind => span_bug!(
                         self.tcx.def_span(field.did),
@@ -1596,7 +1596,7 @@ pub fn suggest_impl_trait<'tcx>(
          item_ty: Ty<'tcx>| {
             let trait_name = tcx.item_name(trait_def_id);
             let args_tuple = args.type_at(1);
-            let ty::Tuple(types) = *args_tuple.kind() else {
+            let ty::Tuple(types) = args_tuple.kind() else {
                 return None;
             };
             let types = types.make_suggestable(tcx, false, None)?;

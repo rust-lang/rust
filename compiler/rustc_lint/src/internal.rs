@@ -69,7 +69,7 @@ fn typeck_results_of_method_fn<'tcx>(
             Some((segment.ident.span, def_id, cx.typeck_results().node_args(expr.hir_id)))
         }
         _ => match cx.typeck_results().node_type(expr.hir_id).kind() {
-            &ty::FnDef(def_id, args) => Some((expr.span, def_id, args)),
+            ty::FnDef(def_id, args) => Some((expr.span, def_id, args)),
             _ => None,
         },
     }
@@ -419,7 +419,7 @@ impl LateLintPass<'_> for Diagnostics {
         let (span, def_id, fn_gen_args, call_tys) = match expr.kind {
             ExprKind::Call(callee, args) => {
                 match cx.typeck_results().node_type(callee.hir_id).kind() {
-                    &ty::FnDef(def_id, fn_gen_args) => {
+                    ty::FnDef(def_id, fn_gen_args) => {
                         let call_tys: Vec<_> =
                             args.iter().map(|arg| cx.typeck_results().expr_ty(arg)).collect();
                         (callee.span, def_id, fn_gen_args, call_tys)

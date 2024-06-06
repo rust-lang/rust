@@ -106,7 +106,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, fn_args) = match *callee_ty.kind() {
+        let (def_id, fn_args) = match callee_ty.kind() {
             ty::FnDef(def_id, fn_args) => (def_id, fn_args),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
@@ -599,7 +599,7 @@ fn int_type_width_signed<'gcc, 'tcx>(
     ty: Ty<'tcx>,
     cx: &CodegenCx<'gcc, 'tcx>,
 ) -> Option<(u64, bool)> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Int(t) => Some((
             match t {
                 rustc_middle::ty::IntTy::Isize => u64::from(cx.tcx.sess.target.pointer_width),

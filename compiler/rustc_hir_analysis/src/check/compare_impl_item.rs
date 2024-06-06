@@ -860,7 +860,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
     }
 
     fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = *t.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() {
             let mut mapped_args = Vec::with_capacity(args.len());
             for (arg, v) in std::iter::zip(args, self.tcx.variances_of(def_id)) {
                 mapped_args.push(match (arg.unpack(), v) {
@@ -2264,7 +2264,7 @@ fn try_report_async_mismatch<'tcx>(
     }
 
     let ty::Alias(ty::Projection, ty::AliasTy { def_id: async_future_def_id, .. }) =
-        *tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
+        tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
     else {
         bug!("expected `async fn` to return an RPITIT");
     };

@@ -265,7 +265,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         use rustc_middle::ty::UintTy::*;
         use rustc_middle::ty::{Int, Uint};
 
-        let new_kind = match *typ.kind() {
+        let new_kind = match typ.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
             t @ (Uint(_) | Int(_)) => t,

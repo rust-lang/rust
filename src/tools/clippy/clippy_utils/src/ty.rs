@@ -91,7 +91,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     return true;
                 }
 
-                if let ty::Alias(ty::Opaque, AliasTy { def_id, .. }) = *inner_ty.kind() {
+                if let ty::Alias(ty::Opaque, AliasTy { def_id, .. }) = inner_ty.kind() {
                     if !seen.insert(def_id) {
                         return false;
                     }
@@ -191,7 +191,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
     ];
 
     let ty_to_check = match probably_ref_ty.kind() {
-        ty::Ref(_, ty_to_check, _) => *ty_to_check,
+        ty::Ref(_, ty_to_check, _) => ty_to_check,
         _ => probably_ref_ty,
     };
 
@@ -322,11 +322,11 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.has_attr(adt.did(), sym::must_use),
-        ty::Foreign(did) => cx.tcx.has_attr(*did, sym::must_use),
+        ty::Foreign(did) => cx.tcx.has_attr(did, sym::must_use),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
+            is_must_use_ty(cx, ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
@@ -340,7 +340,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         },
         ty::Dynamic(binder, _, _) => {
-            for predicate in *binder {
+            for predicate in binder {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
                         return true;
@@ -407,7 +407,7 @@ pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
 /// Returns `true` if the given type is a primitive (a `bool` or `char`, any integer or
 /// floating-point number type, a `str`, or an array, slice, or tuple of those types).
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
         ty::Ref(_, inner, _) if inner.is_str() => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
@@ -510,7 +510,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             // Check if any component type has any.
             match ty.kind() {
                 ty::Tuple(fields) => fields.iter().any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
-                ty::Array(ty, _) => needs_ordered_drop_inner(cx, *ty, seen),
+                ty::Array(ty, _) => needs_ordered_drop_inner(cx, ty, seen),
                 ty::Adt(adt, subs) => adt
                     .all_fields()
                     .map(|f| f.ty(cx.tcx, subs))
@@ -530,8 +530,8 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
     fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
         match ty.kind() {
-            ty::Ref(_, ty, Mutability::Mut) => f(*ty, count + 1, mutability),
-            ty::Ref(_, ty, Mutability::Not) => f(*ty, count + 1, Mutability::Not),
+            ty::Ref(_, ty, Mutability::Mut) => f(ty, count + 1, mutability),
+            ty::Ref(_, ty, Mutability::Not) => f(ty, count + 1, Mutability::Not),
             _ => (ty, count, mutability),
         }
     }
@@ -559,7 +559,7 @@ pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
         match ty.kind() {
-            ty::Ref(_, ty, _) => inner(*ty, depth + 1),
+            ty::Ref(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
         }
     }
@@ -599,7 +599,7 @@ pub fn is_uninit_value_valid_for_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) 
 
 /// A fallback for polymorphic types, which are not supported by `check_validity_requirement`.
 fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         // The array length may be polymorphic, let's try the inner type.
         ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
         // Peek through tuples and try their fallbacks.
@@ -707,7 +707,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
     if ty.is_box() {
         return ty_sig(cx, ty.boxed_ty());
     }
-    match *ty.kind() {
+    match ty.kind() {
         ty::Closure(id, subs) => {
             let decl = id
                 .as_local()
@@ -986,7 +986,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
         (Err(_), ty::Array(t, n)) => {
-            n.try_eval_target_usize(cx.tcx, cx.param_env).unwrap_or_default() * approx_ty_size(cx, *t)
+            n.try_eval_target_usize(cx.tcx, cx.param_env).unwrap_or_default() * approx_ty_size(cx, t)
         },
         (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
             .variants()
@@ -1200,7 +1200,7 @@ impl<'tcx> InteriorMut<'tcx> {
             Entry::Vacant(v) => v.insert(None),
         };
 
-        let interior_mut = match *ty.kind() {
+        let interior_mut = match ty.kind() {
             ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.is_interior_mut_ty(cx, inner_ty),
             ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.is_interior_mut_ty(cx, inner_ty),
             ty::Array(inner_ty, size) => {
@@ -1329,7 +1329,7 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
 
 /// Get's the type of a field by name.
 pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(def, args) if def.is_union() || def.is_struct() => def
             .non_enum_variant()
             .fields

@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             && !use_cx.is_ty_unified
             && let use_node = use_cx.use_node(cx)
             && let Some(DefinedTy::Mir(ty)) = use_node.defined_ty(cx)
-            && let ty::Param(ty) = *ty.value.skip_binder().kind()
+            && let ty::Param(ty) = ty.value.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_node {
                 ExprUseNode::MethodArg(_, _, 0) => None,
                 ExprUseNode::MethodArg(hir_id, None, i) => cx
@@ -327,7 +327,7 @@ fn is_mixed_projection_predicate<'tcx>(
         // The inner-most self type is a type parameter from the current function.
         let mut projection_term = projection_predicate.projection_term;
         loop {
-            match *projection_term.self_ty().kind() {
+            match projection_term.self_ty().kind() {
                 ty::Alias(ty::Projection, inner_projection_ty) => {
                     projection_term = inner_projection_ty.into();
                 },
@@ -422,7 +422,7 @@ fn replace_types<'tcx>(
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
                         && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
-                        deque.push_back((*term_param_ty, projected_ty));
+                        deque.push_back((term_param_ty, projected_ty));
                     }
                 }
             }

@@ -128,7 +128,7 @@ fn layout_of_uncached<'tcx>(
     };
     debug_assert!(!ty.has_non_region_infer());
 
-    Ok(match *ty.kind() {
+    Ok(match ty.kind() {
         ty::Pat(ty, pat) => {
             let layout = cx.layout_of(ty)?.layout;
             let mut layout = LayoutS::clone(&layout.0);
@@ -452,7 +452,7 @@ fn layout_of_uncached<'tcx>(
                     return Err(error(cx, LayoutError::Unknown(ty)));
                 };
 
-                (*e_ty, *count, true)
+                (e_ty, *count, true)
             } else {
                 // First ADT field is not an array:
                 (f0_ty, def.non_enum_variant().fields.len() as _, false)
@@ -1033,7 +1033,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: T
         );
     };
 
-    match *layout.ty.kind() {
+    match layout.ty.kind() {
         ty::Adt(adt_def, _) => {
             debug!("print-type-size t: `{:?}` process adt", layout.ty);
             let adt_kind = adt_def.adt_kind();

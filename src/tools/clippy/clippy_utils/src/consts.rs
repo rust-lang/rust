@@ -208,7 +208,7 @@ impl<'tcx> Constant<'tcx> {
         match (left, right) {
             (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),
             (Self::Char(l), Self::Char(r)) => Some(l.cmp(r)),
-            (&Self::Int(l), &Self::Int(r)) => match *cmp_type.kind() {
+            (&Self::Int(l), &Self::Int(r)) => match cmp_type.kind() {
                 ty::Int(int_ty) => Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty))),
                 ty::Uint(_) => Some(l.cmp(&r)),
                 _ => bug!("Not an int type"),
@@ -216,7 +216,7 @@ impl<'tcx> Constant<'tcx> {
             (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
             (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
             (Self::Bool(l), Self::Bool(r)) => Some(l.cmp(r)),
-            (Self::Tuple(l), Self::Tuple(r)) if l.len() == r.len() => match *cmp_type.kind() {
+            (Self::Tuple(l), Self::Tuple(r)) if l.len() == r.len() => match cmp_type.kind() {
                 ty::Tuple(tys) if tys.len() == l.len() => l
                     .iter()
                     .zip(r)
@@ -227,7 +227,7 @@ impl<'tcx> Constant<'tcx> {
                 _ => None,
             },
             (Self::Vec(l), Self::Vec(r)) => {
-                let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = *cmp_type.kind() else {
+                let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = cmp_type.kind() else {
                     return None;
                 };
                 iter::zip(l, r)
@@ -238,7 +238,7 @@ impl<'tcx> Constant<'tcx> {
             (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
                 match Self::partial_cmp(
                     tcx,
-                    match *cmp_type.kind() {
+                    match cmp_type.kind() {
                         ty::Array(ty, _) => ty,
                         _ => return None,
                     },
@@ -251,7 +251,7 @@ impl<'tcx> Constant<'tcx> {
             },
             (Self::Ref(lb), Self::Ref(rb)) => Self::partial_cmp(
                 tcx,
-                match *cmp_type.kind() {
+                match cmp_type.kind() {
                     ty::Ref(_, ty, _) => ty,
                     _ => return None,
                 },
@@ -266,7 +266,7 @@ impl<'tcx> Constant<'tcx> {
     /// Returns the integer value or `None` if `self` or `val_type` is not integer type.
     pub fn int_value(&self, tcx: TyCtxt<'_>, val_type: Ty<'_>) -> Option<FullInt> {
         if let Constant::Int(const_int) = *self {
-            match *val_type.kind() {
+            match val_type.kind() {
                 ty::Int(ity) => Some(FullInt::S(sext(tcx, const_int, ity))),
                 ty::Uint(_) => Some(FullInt::U(const_int)),
                 _ => None,
@@ -509,7 +509,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 if let Some(Constant::Adt(constant)) = &self.expr(local_expr)
                     && let ty::Adt(adt_def, _) = constant.ty().kind()
                     && adt_def.is_struct()
-                    && let Some(desired_field) = field_of_struct(*adt_def, self.tcx, *constant, field)
+                    && let Some(desired_field) = field_of_struct(adt_def, self.tcx, *constant, field)
                 {
                     mir_to_const(self.tcx, desired_field)
                 } else {
@@ -570,7 +570,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             Bool(b) => Some(Bool(!b)),
             Int(value) => {
                 let value = !value;
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Int(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
                     ty::Uint(ity) => Some(Int(clip(self.tcx, value, ity))),
                     _ => None,
@@ -584,7 +584,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         use self::Constant::{Int, F32, F64};
         match *o {
             Int(value) => {
-                let ty::Int(ity) = *ty.kind() else { return None };
+                let ty::Int(ity) = ty.kind() else { return None };
                 let (min, _) = ity.min_max()?;
                 // sign extend
                 let value = sext(self.tcx, value, ity);
@@ -726,7 +726,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck.expr_ty_opt(left)?.kind() {
+            (Constant::Int(l), Some(Constant::Int(r))) => match self.typeck.expr_ty_opt(left)?.kind() {
                 ty::Int(ity) => {
                     let (ty_min_value, _) = ity.min_max()?;
                     let bits = ity.bits();

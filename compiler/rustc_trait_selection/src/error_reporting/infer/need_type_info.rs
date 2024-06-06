@@ -282,7 +282,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
-                if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
+                if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind() {
                     let var_origin = self.infcx.type_var_origin(ty_vid);
                     if let Some(def_id) = var_origin.param_def_id
                         // The `Self` param of a trait has the def-id of the trait,
@@ -758,7 +758,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Closure(..) => 1000,
                     ty::FnDef(..) => 150,
                     ty::FnPtr(..) => 30,
@@ -850,7 +850,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
-                    (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
+                    (Infer(TyVar(a_vid)), Infer(TyVar(b_vid))) => {
                         self.tecx.sub_relations.borrow_mut().unified(self.tecx, a_vid, b_vid)
                     }
                     _ => false,

@@ -1601,7 +1601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             Ok((variant, ty.normalized))
         } else {
-            Err(match *ty.normalized.kind() {
+            Err(match ty.normalized.kind() {
                 ty::Error(guar) => {
                     // E0071 might be caused by a spelling error, which will have
                     // already caused an error message and probably a suggestion
@@ -2204,7 +2204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(callee_ty) = callee_ty
         {
             let callee_ty = callee_ty.peel_refs();
-            match *callee_ty.kind() {
+            match callee_ty.kind() {
                 ty::Param(param) => {
                     let param = self.tcx.generics_of(self.body_id).type_param(param, self.tcx);
                     if param.kind.is_synthetic() {
@@ -2453,7 +2453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if rcvr.hir_id.owner == typeck.hir_owner
                         && let Some(rcvr_ty) = typeck.node_type_opt(rcvr.hir_id)
                         && let ty::Closure(call_def_id, _) = rcvr_ty.kind()
-                        && def_id == *call_def_id
+                        && def_id == call_def_id
                         && let Some(idx) = expected_idx
                         && let Some(arg) = args.get(idx)
                         && let Some(arg_ty) = typeck.node_type_opt(arg.hir_id)

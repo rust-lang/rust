@@ -60,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
             )?;
 
         // Constrain `b_vid` to the generalized type `generalized_ty`.
-        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
+        if let ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
             self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
         } else {
             self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
@@ -100,7 +100,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
             } else {
                 match source_ty.kind() {
-                    &ty::Alias(ty::Projection, data) => {
+                    ty::Alias(ty::Projection, data) => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable `?normalized_source`, emitting
                         // `Projection(normalized_source, ?ty_normalized)` and `?normalized_source <: generalized_ty`.
@@ -458,7 +458,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        let g = match *t.kind() {
+        let g = match t.kind() {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("unexpected infer type: {t}")
             }

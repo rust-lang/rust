@@ -407,7 +407,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = Ty::new_imm_ref(tcx, *region, Ty::new_slice(tcx, *elem_ty));
+                ty = Ty::new_imm_ref(tcx, region, Ty::new_slice(tcx, elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
@@ -446,7 +446,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // which have their comparison defined in `core`.
         // (Interestingly this means that exhaustiveness analysis relies, for soundness,
         // on the `PartialEq` impls for `str` and `[u8]` to b correct!)
-        let compare_ty = match *ty.kind() {
+        let compare_ty = match ty.kind() {
             ty::Ref(_, deref_ty, _)
                 if deref_ty == self.tcx.types.str_ || deref_ty != self.tcx.types.u8 =>
             {

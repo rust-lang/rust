@@ -28,7 +28,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         match err {
             TypeError::ArgumentSorts(values, _) | TypeError::Sorts(values) => {
-                match (*values.expected.kind(), *values.found.kind()) {
+                match (values.expected.kind(), values.found.kind()) {
                     (ty::Closure(..), ty::Closure(..)) => {
                         diag.note("no two closures, even if identical, have the same type");
                         diag.help("consider boxing your closure and/or using it as a trait object");
@@ -545,7 +545,7 @@ impl<T> Trait<T> for X {
         };
         // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
         // This will also work for `impl Trait`.
-        let ty::Param(param_ty) = *proj_ty.self_ty().kind() else {
+        let ty::Param(param_ty) = proj_ty.self_ty().kind() else {
             return false;
         };
         let generics = tcx.generics_of(body_owner_def_id);
@@ -716,7 +716,7 @@ fn foo(&self) -> Self::T { String::new() }
         let tcx = self.tcx;
 
         let assoc = tcx.associated_item(proj_ty.def_id);
-        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *proj_ty.self_ty().kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
                 tcx.hir().expect_item(opaque_local_def_id).expect_opaque_ty()
@@ -764,7 +764,7 @@ fn foo(&self) -> Self::T { String::new() }
             })
             .filter_map(|item| {
                 let method = tcx.fn_sig(item.def_id).instantiate_identity();
-                match *method.output().skip_binder().kind() {
+                match method.output().skip_binder().kind() {
                     ty::Alias(ty::Projection, ty::AliasTy { def_id: item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
                     {

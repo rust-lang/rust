@@ -152,13 +152,13 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
             let sig = match callee_ty_adjusted.kind() {
                 ty::FnDef(def, _) => {
                     // Rewriting `x(|| f())` to `x(f)` where f is marked `#[track_caller]` moves the `Location`
-                    if cx.tcx.has_attr(*def, sym::track_caller) {
+                    if cx.tcx.has_attr(def, sym::track_caller) {
                         return;
                     }
 
                     cx.tcx.fn_sig(def).skip_binder().skip_binder()
                 },
-                ty::FnPtr(sig_tys, hdr) => sig_tys.with(*hdr).skip_binder(),
+                ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr).skip_binder(),
                 ty::Closure(_, subs) => cx
                     .tcx
                     .signature_unclosure(subs.as_closure().sig(), Safety::Safe)
@@ -167,7 +167,7 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
                     if typeck.type_dependent_def_id(body.value.hir_id).is_some()
                         && let subs = typeck.node_args(body.value.hir_id)
                         && let output = typeck.expr_ty(body.value)
-                        && let ty::Tuple(tys) = *subs.type_at(1).kind()
+                        && let ty::Tuple(tys) = subs.type_at(1).kind()
                     {
                         cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, Abi::Rust)
                     } else {
@@ -313,14 +313,14 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
 
     fn check_ty(from_ty: Ty<'_>, to_ty: Ty<'_>) -> bool {
         match (from_ty.kind(), to_ty.kind()) {
-            (&ty::Adt(_, from_subs), &ty::Adt(_, to_subs)) => check_subs(from_subs, to_subs),
-            (&ty::Array(from_ty, _), &ty::Array(to_ty, _)) | (&ty::Slice(from_ty), &ty::Slice(to_ty)) => {
+            (ty::Adt(_, from_subs), ty::Adt(_, to_subs)) => check_subs(from_subs, to_subs),
+            (ty::Array(from_ty, _), ty::Array(to_ty, _)) | (ty::Slice(from_ty), ty::Slice(to_ty)) => {
                 check_ty(from_ty, to_ty)
             },
-            (&ty::Ref(from_region, from_ty, _), &ty::Ref(to_region, to_ty, _)) => {
+            (ty::Ref(from_region, from_ty, _), ty::Ref(to_region, to_ty, _)) => {
                 check_region(from_region, to_region) || check_ty(from_ty, to_ty)
             },
-            (&ty::Tuple(from_tys), &ty::Tuple(to_tys)) => {
+            (ty::Tuple(from_tys), ty::Tuple(to_tys)) => {
                 from_tys.len() != to_tys.len()
                     || from_tys
                         .iter()

@@ -317,40 +317,37 @@ impl<'tcx> BorrowExplanation<'tcx> {
             let mut has_dyn = false;
             let mut failed = false;
 
-            let elaborated_args =
-                std::iter::zip(*args, &generics.own_params).map(|(arg, param)| {
-                    if let Some(ty::Dynamic(obj, _, ty::Dyn)) = arg.as_type().map(Ty::kind) {
-                        let default = tcx.object_lifetime_default(param.def_id);
+            let elaborated_args = std::iter::zip(args, &generics.own_params).map(|(arg, param)| {
+                if let Some(ty::Dynamic(obj, _, ty::Dyn)) = arg.as_type().map(Ty::kind) {
+                    let default = tcx.object_lifetime_default(param.def_id);
 
-                        let re_static = tcx.lifetimes.re_static;
+                    let re_static = tcx.lifetimes.re_static;
 
-                        let implied_region = match default {
-                            // This is not entirely precise.
-                            ObjectLifetimeDefault::Empty => re_static,
-                            ObjectLifetimeDefault::Ambiguous => {
+                    let implied_region = match default {
+                        // This is not entirely precise.
+                        ObjectLifetimeDefault::Empty => re_static,
+                        ObjectLifetimeDefault::Ambiguous => {
+                            failed = true;
+                            re_static
+                        }
+                        ObjectLifetimeDefault::Param(param_def_id) => {
+                            let index = generics.param_def_id_to_index[&param_def_id] as usize;
+                            args.get(index).and_then(|arg| arg.as_region()).unwrap_or_else(|| {
                                 failed = true;
                                 re_static
-                            }
-                            ObjectLifetimeDefault::Param(param_def_id) => {
-                                let index = generics.param_def_id_to_index[&param_def_id] as usize;
-                                args.get(index).and_then(|arg| arg.as_region()).unwrap_or_else(
-                                    || {
-                                        failed = true;
-                                        re_static
-                                    },
-                                )
-                            }
-                            ObjectLifetimeDefault::Static => re_static,
-                        };
+                            })
+                        }
+                        ObjectLifetimeDefault::Static => re_static,
+                    };
 
-                        has_dyn = true;
+                    has_dyn = true;
 
-                        Ty::new_dynamic(tcx, obj, implied_region, ty::Dyn).into()
-                    } else {
-                        arg
-                    }
-                });
-            let elaborated_ty = Ty::new_adt(tcx, *def, tcx.mk_args_from_iter(elaborated_args));
+                    Ty::new_dynamic(tcx, obj, implied_region, ty::Dyn).into()
+                } else {
+                    arg
+                }
+            });
+            let elaborated_ty = Ty::new_adt(tcx, def, tcx.mk_args_from_iter(elaborated_args));
 
             if has_dyn && !failed {
                 err.note(format!(

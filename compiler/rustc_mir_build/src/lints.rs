@@ -82,7 +82,7 @@ pub fn check_drop_recursion<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if let ty::Ref(_, dropped_ty, _) =
             tcx.liberate_late_bound_regions(def_id.to_def_id(), sig.input(0)).kind()
         {
-            check_recursion(tcx, body, RecursiveDrop { drop_for: *dropped_ty });
+            check_recursion(tcx, body, RecursiveDrop { drop_for: dropped_ty });
         }
     }
 }
@@ -137,7 +137,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
         let param_env = tcx.param_env(caller);
 
         let func_ty = func.ty(body, tcx);
-        if let ty::FnDef(callee, args) = *func_ty.kind() {
+        if let ty::FnDef(callee, args) = func_ty.kind() {
             let Ok(normalized_args) = tcx.try_normalize_erasing_regions(param_env, args) else {
                 return false;
             };

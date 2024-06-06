@@ -230,7 +230,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     (r, p)
                 );
                 // Fast path for the common case.
-                match (&p, erased_ty.kind()) {
+                match (p, erased_ty.kind()) {
                     // In outlive routines, all types are expected to be fully normalized.
                     // And therefore we can safely use structural equality for alias types.
                     (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}

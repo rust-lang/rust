@@ -423,7 +423,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let extra_args =
             self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
 
-        let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+        let (callee, fn_abi, with_caller_location) = match func.layout.ty.kind() {
             ty::FnPtr(..) => {
                 let fn_ptr = self.read_pointer(&func)?;
                 let fn_val = self.get_ptr_fn(fn_ptr)?;

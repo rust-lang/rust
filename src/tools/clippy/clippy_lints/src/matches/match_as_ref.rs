@@ -30,7 +30,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                 && let input_ty = args.type_at(0)
                 && let ty::Adt(_, args) = output_ty.kind()
                 && let output_ty = args.type_at(0)
-                && let ty::Ref(_, output_ty, _) = *output_ty.kind()
+                && let ty::Ref(_, output_ty, _) = output_ty.kind()
                 && input_ty != output_ty
             {
                 ".map(|x| x as _)"

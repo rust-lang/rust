@@ -58,7 +58,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         | ty::Ref(_, _, hir::Mutability::Not)
         | ty::Array(..) => return Ok(()),
 
-        &ty::Adt(adt, args) => (adt, args),
+        ty::Adt(adt, args) => (adt, args),
 
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
@@ -96,7 +96,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
     assert_matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
 
-    let inner_tys: Vec<_> = match *self_type.kind() {
+    let inner_tys: Vec<_> = match self_type.kind() {
         // Trivially okay as these types are all:
         // - Sized
         // - Contain no nested types

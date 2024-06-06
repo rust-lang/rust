@@ -377,7 +377,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 if suggest {
                     self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
                     let tcx = self.infcx.tcx;
-                    if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
+                    if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
                         self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                     }
                 }
@@ -431,7 +431,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
                 let tcx = self.infcx.tcx;
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
-                    && let ty::Closure(id, _) = *ty.kind()
+                    && let ty::Closure(id, _) = ty.kind()
                 {
                     self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                 }
@@ -953,7 +953,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     if let Some(ty::FnDef(def_id, _)) =
                         typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
                     {
-                        Some((*def_id, expr.span, *args))
+                        Some((def_id, expr.span, *args))
                     } else {
                         None
                     }

@@ -220,7 +220,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                             .any(|ty| self.has_sig_drop_attr_impl(ty)))
             },
             rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr_impl(ty)),
-            rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr_impl(*ty),
+            rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr_impl(ty),
             _ => false,
         };
 
@@ -380,7 +380,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         let output_ty = fn_sig.skip_binder().output();
         if let rustc_middle::ty::Ref(output_re, peel_ref_ty, _) = output_ty.kind()
             && input_re == output_re
-            && for_each_top_level_late_bound_region(*peel_ref_ty, contains_input_re).is_continue()
+            && for_each_top_level_late_bound_region(peel_ref_ty, contains_input_re).is_continue()
         {
             // We're lucky! The output type is still a direct reference to the value with significant drop.
             self.sig_drop_holder = SigDropHolder::DirectRef;
@@ -400,7 +400,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 fn ty_peel_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
     let mut n = 0;
     while let rustc_middle::ty::Ref(_, new_ty, Mutability::Not) = ty.kind() {
-        ty = *new_ty;
+        ty = new_ty;
         n += 1;
     }
     (ty, n)

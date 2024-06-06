@@ -51,7 +51,7 @@ declare_lint_pass!(NonPanicFmt => [NON_FMT_PANICS]);
 impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Call(f, [arg]) = &expr.kind {
-            if let &ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(f).kind() {
+            if let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(f).kind() {
                 let f_diagnostic_name = cx.tcx.get_diagnostic_name(def_id);
 
                 if cx.tcx.is_lang_item(def_id, LangItem::BeginPanic)

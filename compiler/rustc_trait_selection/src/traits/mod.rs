@@ -528,7 +528,7 @@ fn is_impossible_associated_item(
         type Result = ControlFlow<()>;
         fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
             // If this is a parameter from the trait item's own generics, then bail
-            if let ty::Param(param) = *t.kind()
+            if let ty::Param(param) = t.kind()
                 && let param_def_id = self.generics.type_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {

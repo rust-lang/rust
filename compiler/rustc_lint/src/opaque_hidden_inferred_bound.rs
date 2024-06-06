@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 let Some(proj_term) = proj.term.as_type() else { return };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
-                if let ty::Alias(ty::Opaque, opaque_ty) = *proj_term.kind()
+                if let ty::Alias(ty::Opaque, opaque_ty) = proj_term.kind()
                     && cx.tcx.parent(opaque_ty.def_id) == def_id
                     && matches!(
                         opaque.origin,
@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // HACK: `async fn() -> Self` in traits is "ok"...
                 // This is not really that great, but it's similar to why the `-> Self`
                 // return type is well-formed in traits even when `Self` isn't sized.
-                if let ty::Param(param_ty) = *proj_term.kind()
+                if let ty::Param(param_ty) = proj_term.kind()
                     && param_ty.name == kw::SelfUpper
                     && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(_))
                     && opaque.in_trait
@@ -158,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
                                 ty::ClauseKind::Trait(trait_pred),
                             ) => Some(AddBound {
-                                suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
+                                suggest_span: cx.tcx.def_span(def_id).shrink_to_hi(),
                                 trait_ref: trait_pred.print_modifiers_and_trait_path(),
                             }),
                             _ => None,

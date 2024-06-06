@@ -86,9 +86,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
             if let Some(ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
-                let coroutine_body = tcx.optimized_mir(*coroutine_def_id);
+                let coroutine_body = tcx.optimized_mir(coroutine_def_id);
 
-                let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+                let ty::Coroutine(_, id_args) = tcx.type_of(coroutine_def_id).skip_binder().kind()
                 else {
                     bug!()
                 };
@@ -444,8 +444,8 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         ty::Coroutine(coroutine_def_id, args) => {
-            assert_eq!(tcx.coroutine_movability(*coroutine_def_id), hir::Movability::Movable);
-            builder.coroutine_shim(dest, src, *coroutine_def_id, args.as_coroutine())
+            assert_eq!(tcx.coroutine_movability(coroutine_def_id), hir::Movability::Movable);
+            builder.coroutine_shim(dest, src, coroutine_def_id, args.as_coroutine())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
@@ -1031,7 +1031,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
 ) -> Body<'tcx> {
     let mut self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
     let mut self_local: Place<'tcx> = Local::from_usize(1).into();
-    let ty::CoroutineClosure(_, args) = *self_ty.kind() else {
+    let ty::CoroutineClosure(_, args) = self_ty.kind() else {
         bug!();
     };
 
@@ -1063,7 +1063,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         )
     });
     let sig = tcx.liberate_late_bound_regions(coroutine_closure_def_id, poly_sig);
-    let ty::Coroutine(coroutine_def_id, coroutine_args) = *sig.output().kind() else {
+    let ty::Coroutine(coroutine_def_id, coroutine_args) = sig.output().kind() else {
         bug!();
     };
 

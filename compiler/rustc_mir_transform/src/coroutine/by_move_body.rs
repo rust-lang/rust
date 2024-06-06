@@ -106,14 +106,14 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             return;
         }
 
-        let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
+        let ty::Coroutine(_, args) = coroutine_ty.kind() else { bug!("{body:#?}") };
         let args = args.as_coroutine();
 
         let coroutine_kind = args.kind_ty().to_opt_closure_kind().unwrap();
 
         let parent_def_id = tcx.local_parent(coroutine_def_id);
         let ty::CoroutineClosure(_, parent_args) =
-            *tcx.type_of(parent_def_id).instantiate_identity().kind()
+            tcx.type_of(parent_def_id).instantiate_identity().kind()
         else {
             bug!();
         };

@@ -219,7 +219,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let hir::ExprKind::Index(ref base, ref index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = self.typeck_results.expr_ty_adjusted(base);
-            if let ty::Ref(_, base_ty_inner, _) = *base_ty.kind() {
+            if let ty::Ref(_, base_ty_inner, _) = base_ty.kind() {
                 let index_ty = self.typeck_results.expr_ty_adjusted(index);
                 if self.is_builtin_index(e, base_ty_inner, index_ty) {
                     // Remove the method call record

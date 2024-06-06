@@ -62,7 +62,7 @@ struct ParameterCollector {
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
-        match *t.kind() {
+        match t.kind() {
             // Projections are not injective in general.
             ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _)
                 if !self.include_nonconstraining =>

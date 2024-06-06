@@ -193,7 +193,7 @@ impl<'tcx> NonCopyConst<'tcx> {
     }
 
     fn is_value_unfrozen_raw_inner(cx: &LateContext<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> bool {
-        match *ty.kind() {
+        match ty.kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
             ty::Adt(ty_def, ..) if ty_def.is_unsafe_cell() => true,

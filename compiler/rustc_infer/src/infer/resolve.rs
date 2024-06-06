@@ -131,7 +131,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
             Ok(t) // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.infcx.shallow_resolve(t);
-            match *t.kind() {
+            match t.kind() {
                 ty::Infer(ty::TyVar(vid)) => Err(FixupError::UnresolvedTy(vid)),
                 ty::Infer(ty::IntVar(vid)) => Err(FixupError::UnresolvedIntTy(vid)),
                 ty::Infer(ty::FloatVar(vid)) => Err(FixupError::UnresolvedFloatTy(vid)),

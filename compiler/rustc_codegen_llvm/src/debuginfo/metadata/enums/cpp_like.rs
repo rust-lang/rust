@@ -183,7 +183,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
-    let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
+    let ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
     };
 
@@ -665,7 +665,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
     };
 
     let (coroutine_def_id, coroutine_args) = match coroutine_type_and_layout.ty.kind() {
-        &ty::Coroutine(def_id, args) => (def_id, args.as_coroutine()),
+        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine()),
         _ => unreachable!(),
     };
 

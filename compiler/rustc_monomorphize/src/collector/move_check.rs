@@ -61,7 +61,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         }
 
         // Allow large moves into container types that themselves are cheap to move
-        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, _) = callee_ty.kind() else {
             return;
         };
         if self

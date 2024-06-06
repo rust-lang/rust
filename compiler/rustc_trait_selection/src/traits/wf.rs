@@ -646,7 +646,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
         let tcx = self.tcx();
 
-        match *t.kind() {
+        match t.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)

@@ -437,7 +437,7 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                 {
                     self.is_unsafe = true;
                 },
-                ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
+                ExprKind::Call(func, _) => match self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
                     ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe => {
                         self.is_unsafe = true;
                     },

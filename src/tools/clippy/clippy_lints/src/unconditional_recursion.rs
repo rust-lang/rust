@@ -140,7 +140,7 @@ fn matches_ty<'tcx>(
     expected_left: Ty<'tcx>,
     expected_right: Ty<'tcx>,
 ) -> bool {
-    while let (&ty::Ref(_, lty, _), &ty::Ref(_, rty, _)) = (left.kind(), right.kind()) {
+    while let (ty::Ref(_, lty, _), ty::Ref(_, rty, _)) = (left.kind(), right.kind()) {
         if lty == expected_left && rty == expected_right {
             return true;
         }
@@ -161,8 +161,8 @@ fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: Loca
 
     // That has two arguments.
     if let [self_arg, other_arg] = sig.inputs()
-        && let &ty::Ref(_, self_arg, _) = self_arg.kind()
-        && let &ty::Ref(_, other_arg, _) = other_arg.kind()
+        && let ty::Ref(_, self_arg, _) = self_arg.kind()
+        && let ty::Ref(_, other_arg, _) = other_arg.kind()
         // The two arguments are of the same type.
         && let Some(trait_def_id) = get_impl_trait_def_id(cx, method_def_id)
         // The trait is `PartialEq`.

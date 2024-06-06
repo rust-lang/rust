@@ -971,8 +971,9 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
-    pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        self.0.0
+    // njn: removed `&'tcx`
+    pub fn kind(self) -> TyKind<'tcx> {
+        **self.0.0 // njn: added `**`
     }
 
     // FIXME(compiler-errors): Think about removing this.
@@ -1017,7 +1018,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ty_vid(self) -> Option<ty::TyVid> {
         match self.kind() {
-            &Infer(TyVar(vid)) => Some(vid),
+            Infer(TyVar(vid)) => Some(vid),
             _ => None,
         }
     }
@@ -1034,13 +1035,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_bool(self) -> bool {
-        *self.kind() == Bool
+        self.kind() == Bool
     }
 
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(self) -> bool {
-        *self.kind() == Str
+        self.kind() == Str
     }
 
     #[inline]
@@ -1080,7 +1081,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
-            Array(ty, _) | Slice(ty) => *ty,
+            Array(ty, _) | Slice(ty) => ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
@@ -1101,7 +1102,7 @@ impl<'tcx> Ty<'tcx> {
                         // The way we evaluate the `N` in `[T; N]` here only works since we use
                         // `simd_size_and_type` post-monomorphization. It will probably start to ICE
                         // if we use it in generic code. See the `simd-array-trait` ui test.
-                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), *f0_elem_ty)
+                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), f0_elem_ty)
                     }
                     // Otherwise, the fields of this Adt are the SIMD components (and we assume they
                     // all have the same type).
@@ -1121,7 +1122,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ref_mutability(self) -> Option<hir::Mutability> {
         match self.kind() {
-            Ref(_, _, mutability) => Some(*mutability),
+            Ref(_, _, mutability) => Some(mutability),
             _ => None,
         }
     }
@@ -1315,7 +1316,7 @@ impl<'tcx> Ty<'tcx> {
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
-        match *self.kind() {
+        match self.kind() {
             Adt(def, _) if def.is_box() => Some(self.boxed_ty()),
             Ref(_, ty, _) => Some(ty),
             RawPtr(ty, _) if explicit => Some(ty),
@@ -1326,15 +1327,15 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of `ty[i]`.
     pub fn builtin_index(self) -> Option<Ty<'tcx>> {
         match self.kind() {
-            Array(ty, _) | Slice(ty) => Some(*ty),
+            Array(ty, _) | Slice(ty) => Some(ty),
             _ => None,
         }
     }
 
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
+            FnDef(def_id, args) => tcx.fn_sig(def_id).instantiate(tcx, args),
+            FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
             Error(_) => {
                 // ignore errors (#54954)
                 Binder::dummy(ty::FnSig {
@@ -1369,7 +1370,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
-            Adt(adt, _) => Some(*adt),
+            Adt(adt, _) => Some(adt),
             _ => None,
         }
     }
@@ -1391,9 +1392,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn variant_range(self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Coroutine(def_id, args) => {
-                Some(args.as_coroutine().variant_range(*def_id, tcx))
-            }
+            TyKind::Coroutine(def_id, args) => Some(args.as_coroutine().variant_range(def_id, tcx)),
             _ => None,
         }
     }
@@ -1413,7 +1412,7 @@ impl<'tcx> Ty<'tcx> {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
             TyKind::Coroutine(def_id, args) => {
-                Some(args.as_coroutine().discriminant_for_variant(*def_id, tcx, variant_index))
+                Some(args.as_coroutine().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
         }
@@ -1482,7 +1481,7 @@ impl<'tcx> Ty<'tcx> {
             AsyncDropGlueMorphology::Custom => (),
         }
 
-        match *self.kind() {
+        match self.kind() {
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx
                     .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDestruct, None));

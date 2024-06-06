@@ -123,7 +123,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 let span = self.tcx.def_span(impl_def_id);
                 let mut note = None;
                 if let ty::Ref(_, subty, _) = ty.kind() {
-                    note = Some(errors::InherentPrimitiveTyNote { subty: *subty });
+                    note = Some(errors::InherentPrimitiveTyNote { subty });
                 }
                 return Err(self.tcx.dcx().emit_err(errors::InherentPrimitiveTy { span, note }));
             }
@@ -148,10 +148,10 @@ impl<'tcx> InherentCollect<'tcx> {
         let mut self_ty = self.tcx.peel_off_weak_alias_tys(self_ty);
         // We allow impls on pattern types exactly when we allow impls on the base type.
         // FIXME(pattern_types): Figure out the exact coherence rules we want here.
-        while let ty::Pat(base, _) = *self_ty.kind() {
+        while let ty::Pat(base, _) = self_ty.kind() {
             self_ty = base;
         }
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),
             ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {

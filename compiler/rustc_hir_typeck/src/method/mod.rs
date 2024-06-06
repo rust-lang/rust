@@ -207,7 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
             if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
-                let trait_type = Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
+                let trait_type = Ty::new_ref(self.tcx, region, t_type, mutability.invert());
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(
                     segment.ident,

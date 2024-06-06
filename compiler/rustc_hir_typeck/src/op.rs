@@ -256,9 +256,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() {
-                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+                        let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                             target: method.sig.inputs()[0],
                         };
                         self.apply_adjustments(lhs_expr, vec![autoref]);
@@ -268,10 +268,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind() {
                         // Allow two-phase borrows for binops in initial deployment
                         // since they desugar to methods
-                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+                        let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
 
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                             target: method.sig.inputs()[1],
                         };
                         // HACK(eddyb) Bypass checks due to reborrows being in
@@ -507,12 +507,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if is_assign == IsAssign::No
                     && let Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
                 {
-                    if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty) {
-                        suggest_deref_binop(&mut err, *lhs_deref_ty);
+                    if self.type_is_copy_modulo_regions(self.param_env, lhs_deref_ty) {
+                        suggest_deref_binop(&mut err, lhs_deref_ty);
                     } else {
                         let lhs_inv_mutbl = mutbl.invert();
                         let lhs_inv_mutbl_ty =
-                            Ty::new_ref(self.tcx, *region, *lhs_deref_ty, lhs_inv_mutbl);
+                            Ty::new_ref(self.tcx, region, lhs_deref_ty, lhs_inv_mutbl);
 
                         suggest_different_borrow(
                             &mut err,
@@ -525,7 +525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
                             let rhs_inv_mutbl = mutbl.invert();
                             let rhs_inv_mutbl_ty =
-                                Ty::new_ref(self.tcx, *region, *rhs_deref_ty, rhs_inv_mutbl);
+                                Ty::new_ref(self.tcx, region, rhs_deref_ty, rhs_inv_mutbl);
 
                             suggest_different_borrow(
                                 &mut err,
@@ -704,12 +704,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |ty: Ty<'tcx>| ty.ty_adt_def().is_some_and(|ty_def| Some(ty_def.did()) == string_type);
 
         match (lhs_ty.kind(), rhs_ty.kind()) {
-            (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (*l_ty.kind() == Str || is_std_string(l_ty))
-                    && (*r_ty.kind() == Str
+            (Ref(_, l_ty, _), Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
+                if (l_ty.kind() == Str || is_std_string(l_ty))
+                    && (r_ty.kind() == Str
                         || is_std_string(r_ty)
                         || matches!(
-                            r_ty.kind(), Ref(_, inner_ty, _) if *inner_ty.kind() == Str
+                            r_ty.kind(), Ref(_, inner_ty, _) if inner_ty.kind() == Str
                         )) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
@@ -733,8 +733,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (*l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+            (Ref(_, l_ty, _), Adt(..)) // Handle `&str` & `&String` + `String`
+                if (l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -858,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             }
                             Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                            Ref(_, lty, _) if *lty.kind() == Str => {}
+                            Ref(_, lty, _) if lty.kind() == Str => {}
                             _ => {
                                 self.note_unmet_impls_on_type(&mut err, errors, true);
                             }
@@ -1071,7 +1071,7 @@ enum Op {
 /// Dereferences a single level of immutable referencing.
 fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
     match ty.kind() {
-        ty::Ref(_, ty, hir::Mutability::Not) => *ty,
+        ty::Ref(_, ty, hir::Mutability::Not) => ty,
         _ => ty,
     }
 }

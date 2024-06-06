@@ -132,7 +132,7 @@ fn ref_init(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Symbol, Span)> {
             return Some((symbol, func.span));
         }
 
-        if let ty::Adt(adt, _) = *cx.typeck_results().expr_ty(expr).kind()
+        if let ty::Adt(adt, _) = cx.typeck_results().expr_ty(expr).kind()
             && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::RcWeak | sym::ArcWeak))
         {
             return Some((Symbol::intern("Weak"), func.span));

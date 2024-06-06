@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
             && let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind()
             && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
             && let element_count = element_count.to_target_usize(cx.tcx)
-            && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
+            && let Ok(element_size) = cx.layout_of(element_type).map(|l| l.size.bytes())
             && !cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, node)| {
                 matches!(
                     node,

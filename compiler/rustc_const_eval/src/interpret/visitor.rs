@@ -86,7 +86,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
         trace!("walk_value: type: {ty}");
 
         // Special treatment for special types, where the (static) layout is not sufficient.
-        match *ty.kind() {
+        match ty.kind() {
             // If it is a trait object, switch to the real type that was used to create it.
             ty::Dynamic(data, _, ty::Dyn) => {
                 // Dyn types. This is unsized, and the actual dynamic type of the data is given by the

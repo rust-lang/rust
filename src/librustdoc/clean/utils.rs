@@ -353,7 +353,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar))
-            if *ty.kind() == ty::Uint(ty::UintTy::Usize) =>
+            if ty.kind() == ty::Uint(ty::UintTy::Usize) =>
         {
             scalar.to_string()
         }
@@ -370,8 +370,8 @@ pub(crate) fn print_evaluated_const(
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id).instantiate_identity();
         match (val, ty.kind()) {
-            (_, &ty::Ref(..)) => None,
-            (mir::ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
+            (_, ty::Ref(..)) => None,
+            (mir::ConstValue::Scalar(_), ty::Adt(_, _)) => None,
             (mir::ConstValue::Scalar(_), _) => {
                 let const_ = mir::Const::from_value(val, ty);
                 Some(print_const_with_custom_print_scalar(tcx, const_, with_underscores, with_type))

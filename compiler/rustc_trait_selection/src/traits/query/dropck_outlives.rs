@@ -43,12 +43,12 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Error(_) => true,
 
         // `T is PAT` and `[T]` have same properties as T.
-        ty::Pat(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        ty::Pat(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),
         ty::Array(ty, size) => {
             // Empty array never has a dtor. See issue #110288.
             match size.try_to_target_usize(tcx) {
                 Some(0) => true,
-                _ => trivial_dropck_outlives(tcx, *ty),
+                _ => trivial_dropck_outlives(tcx, ty),
             }
         }
 
@@ -232,7 +232,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         ty::Pat(ety, _) | ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, *ety, constraints)
+                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, ety, constraints)
             })?;
         }
 

@@ -2523,7 +2523,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn signature_unclosure(self, sig: PolyFnSig<'tcx>, safety: hir::Safety) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
             let params = match s.inputs()[0].kind() {
-                ty::Tuple(params) => *params,
+                ty::Tuple(params) => params,
                 _ => bug!(),
             };
             self.mk_fn_sig(params, s.output(), s.c_variadic, safety, abi::Abi::Rust)

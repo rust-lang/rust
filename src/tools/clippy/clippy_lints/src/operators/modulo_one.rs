@@ -13,7 +13,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, right:
         }
 
         if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind() {
-            if is_integer_const(cx, right, unsext(cx.tcx, -1, *ity)) {
+            if is_integer_const(cx, right, unsext(cx.tcx, -1, ity)) {
                 span_lint(
                     cx,
                     MODULO_ONE,

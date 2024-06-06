@@ -40,7 +40,7 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
 
-        Pat(ty, _) => sized_constraint_for_ty(tcx, *ty),
+        Pat(ty, _) => sized_constraint_for_ty(tcx, ty),
 
         Tuple(tys) => tys.last().and_then(|&ty| sized_constraint_for_ty(tcx, ty)),
 
@@ -181,7 +181,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
+        if let ty::Alias(ty::Projection, unshifted_alias_ty) = ty.kind()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
                 | ty::ImplTraitInTraitData::Impl { fn_def_id, .. },

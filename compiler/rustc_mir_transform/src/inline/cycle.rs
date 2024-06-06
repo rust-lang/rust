@@ -171,15 +171,15 @@ pub(crate) fn mir_inliner_callees<'tcx>(
             let ty::FnDef(def_id, generic_args) = ty.kind() else {
                 continue;
             };
-            let call = if tcx.is_intrinsic(*def_id, sym::const_eval_select) {
+            let call = if tcx.is_intrinsic(def_id, sym::const_eval_select) {
                 let func = &call_args[2].node;
                 let ty = func.ty(&body.local_decls, tcx);
                 let ty::FnDef(def_id, generic_args) = ty.kind() else {
                     continue;
                 };
-                (*def_id, *generic_args)
+                (def_id, generic_args)
             } else {
-                (*def_id, *generic_args)
+                (def_id, generic_args)
             };
             calls.insert(call);
         }

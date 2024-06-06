@@ -155,7 +155,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 unwind,
                 fn_span,
                 ..
-            } if let ty::FnDef(def_id, _) = *const_.ty().kind()
+            } if let ty::FnDef(def_id, _) = const_.ty().kind()
                 && tcx.is_intrinsic(def_id, sym::const_eval_select) =>
             {
                 let Ok([tupled_args, called_in_const, called_at_rt]) = take_array(args) else {

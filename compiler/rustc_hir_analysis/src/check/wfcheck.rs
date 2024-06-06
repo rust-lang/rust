@@ -147,13 +147,13 @@ where
         for ty in assumed_wf_types.iter() {
             match ty.kind() {
                 ty::Adt(def, _) => {
-                    if is_bevy_paramset(*def) {
+                    if is_bevy_paramset(def) {
                         break 'is_bevy true;
                     }
                 }
                 ty::Ref(_, ty, _) => match ty.kind() {
                     ty::Adt(def, _) => {
-                        if is_bevy_paramset(*def) {
+                        if is_bevy_paramset(def) {
                             break 'is_bevy true;
                         }
                     }
@@ -998,11 +998,11 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                             match ty.kind() {
                                 ty::Adt(adt_def, ..) => adt_def.did().is_local(),
                                 // Arrays and slices use the inner type's `ConstParamTy`.
-                                ty::Array(ty, ..) => ty_is_local(*ty),
-                                ty::Slice(ty) => ty_is_local(*ty),
+                                ty::Array(ty, ..) => ty_is_local(ty),
+                                ty::Slice(ty) => ty_is_local(ty),
                                 // `&` references use the inner type's `ConstParamTy`.
                                 // `&mut` are not supported.
-                                ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
+                                ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(ty),
                                 // Say that a tuple is local if any of its components are local.
                                 // This is not strictly correct, but it's likely that the user can fix the local component.
                                 ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),

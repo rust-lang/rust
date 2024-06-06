@@ -34,7 +34,7 @@ fn handle_expr(
                 && method.ident.name.as_str() == "is_ascii"
                 && path_to_local_id(receiver, first_param)
                 && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs()
-                && *char_arg_ty.kind() == ty::Char
+                && char_arg_ty.kind() == ty::Char
                 && let Some(snippet) = snippet_opt(cx, before_chars)
             {
                 span_lint_and_sugg(
@@ -103,7 +103,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         && let ExprKind::MethodCall(method, mut recv, [], _) = recv.kind
         && method.ident.name.as_str() == "chars"
         && let str_ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
-        && *str_ty.kind() == ty::Str
+        && str_ty.kind() == ty::Str
     {
         let expr_start = recv.span;
         while let ExprKind::MethodCall(_, new_recv, _, _) = recv.kind {

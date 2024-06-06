@@ -163,7 +163,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
     fn simplify_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = *place_ty.kind() {
+            if let ty::Array(_, len) = place_ty.kind() {
                 if !self.should_simplify(source_info, rvalue) {
                     return;
                 }
@@ -280,7 +280,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         // doing DefId lookups to figure out what we're actually calling.
         let arg_ty = arg.node.ty(self.local_decls, self.tcx);
 
-        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
+        let ty::Ref(_region, inner_ty, Mutability::Not) = arg_ty.kind() else { return };
 
         if !inner_ty.is_trivially_pure_clone_copy() {
             return;
@@ -385,7 +385,7 @@ fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
-    if let ty::FnDef(def_id, args) = *func_ty.kind() {
+    if let ty::FnDef(def_id, args) = func_ty.kind() {
         let intrinsic = tcx.intrinsic(def_id)?;
         return Some((intrinsic.name, args));
     }

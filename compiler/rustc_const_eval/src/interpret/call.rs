@@ -80,7 +80,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         may_unfold: impl Fn(AdtDef<'tcx>) -> bool,
     ) -> TyAndLayout<'tcx> {
         match layout.ty.kind() {
-            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
+            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(adt_def) => {
                 assert!(!adt_def.is_enum());
                 // Find the non-1-ZST field, and recurse.
                 let (_, field) = layout.non_1zst_field(self).unwrap();
@@ -131,7 +131,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Option<&T> behaves like &T, and same for fn()
                 inner
             }
-            ty::Adt(def, _) if is_npo(*def) => {
+            ty::Adt(def, _) if is_npo(def) => {
                 // Once we found a `nonnull_optimization_guaranteed` type, further strip off
                 // newtype structs from it to find the underlying ABI type.
                 self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct())
@@ -186,8 +186,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let pointee_ty = |ty: Ty<'tcx>| -> InterpResult<'tcx, Option<Ty<'tcx>>> {
             // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
             Ok(Some(match ty.kind() {
-                ty::Ref(_, ty, _) => *ty,
-                ty::RawPtr(ty, _) => *ty,
+                ty::Ref(_, ty, _) => ty,
+                ty::RawPtr(ty, _) => ty,
                 // We only accept `Box` with the default allocator.
                 _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
                 _ => return Ok(None),
@@ -209,8 +209,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `char` counts as `u32.`
         let int_ty = |ty: Ty<'tcx>| {
             Some(match ty.kind() {
-                ty::Int(ity) => (Integer::from_int_ty(&self.tcx, *ity), /* signed */ true),
-                ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, *uty), /* signed */ false),
+                ty::Int(ity) => (Integer::from_int_ty(&self.tcx, ity), /* signed */ true),
+                ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, uty), /* signed */ false),
                 ty::Char => (Integer::I32, /* signed */ false),
                 _ => return None,
             })

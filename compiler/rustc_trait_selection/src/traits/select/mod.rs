@@ -1612,7 +1612,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut in_parent_alias_type = false;
 
         loop {
-            let (kind, alias_ty) = match *self_ty.kind() {
+            let (kind, alias_ty) = match self_ty.kind() {
                 ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
                 ty::Infer(ty::TyVar(_)) => {
                     on_ambiguity();
@@ -2135,7 +2135,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
             ),
 
-            ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![*ty])),
+            ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![ty])),
 
             ty::Adt(def, args) => {
                 if let Some(sized_crit) = def.sized_constraint(self.tcx()) {
@@ -2169,7 +2169,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
 
             ty::Uint(_)
@@ -2301,7 +2301,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
     ) -> BuiltinImplConditions<'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        if let ty::Coroutine(did, ..) = *self_ty.kind()
+        if let ty::Coroutine(did, ..) = self_ty.kind()
             && self.tcx().coroutine_is_gen(did)
         {
             BuiltinImplConditions::Where(ty::Binder::dummy(Vec::new()))
@@ -2326,7 +2326,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,
     ) -> Result<ty::Binder<'tcx, Vec<Ty<'tcx>>>, SelectionError<'tcx>> {
-        Ok(match *t.skip_binder().kind() {
+        Ok(match t.skip_binder().kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2720,7 +2720,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         fn_trait_def_id: DefId,
         fn_host_effect: ty::Const<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        let ty::Closure(_, args) = *self_ty.kind() else {
+        let ty::Closure(_, args) = self_ty.kind() else {
             bug!("expected closure, found {self_ty}");
         };
         let closure_sig = args.as_closure().sig();

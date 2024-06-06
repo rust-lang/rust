@@ -1352,7 +1352,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
                 if self_arg_ty == self_ty {
                     item.decl.inputs.values[0].type_ = SelfTy;
-                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
+                } else if let ty::Ref(_, ty, _) = self_arg_ty.kind() {
                     if ty == self_ty {
                         match item.decl.inputs.values[0].type_ {
                             BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
@@ -2038,7 +2038,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
     container: Option<ContainerTy<'_, 'tcx>>,
 ) -> Type {
     let bound_ty = normalize(cx, bound_ty).unwrap_or(bound_ty);
-    match *bound_ty.skip_binder().kind() {
+    match bound_ty.skip_binder().kind() {
         ty::Never => Primitive(PrimitiveType::Never),
         ty::Bool => Primitive(PrimitiveType::Bool),
         ty::Char => Primitive(PrimitiveType::Char),
@@ -2404,7 +2404,7 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
 
 pub(crate) fn clean_variant_def_with_args<'tcx>(
     variant: &ty::VariantDef,
-    args: &GenericArgsRef<'tcx>,
+    args: GenericArgsRef<'tcx>, // njn: removed `&`
     cx: &mut DocContext<'tcx>,
 ) -> Item {
     let discriminant = match variant.discr {

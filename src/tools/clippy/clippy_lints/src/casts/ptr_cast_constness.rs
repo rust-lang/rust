@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
         && !from_ty.has_erased_regions()
     {
         let sugg = Sugg::hir(cx, cast_expr, "_");
-        let constness = match *to_mutbl {
+        let constness = match to_mutbl {
             Mutability::Not => "const",
             Mutability::Mut => "mut",
         };

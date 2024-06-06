@@ -277,7 +277,7 @@ fn can_cast(
         Int(_) => from_scalar.to_int(src_layout.size) as u128,
         _ => unreachable!("invalid int"),
     };
-    let size = match *cast_ty.kind() {
+    let size = match cast_ty.kind() {
         Int(t) => Integer::from_int_ty(&tcx, t).size(),
         Uint(t) => Integer::from_uint_ty(&tcx, t).size(),
         _ => unreachable!("invalid int"),

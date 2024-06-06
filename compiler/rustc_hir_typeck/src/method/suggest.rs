@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(arg_ty) = args[0].as_type() else {
                     return false;
                 };
-                let ty::Param(param) = *arg_ty.kind() else {
+                let ty::Param(param) = arg_ty.kind() else {
                     return false;
                 };
                 // Is `generic_param` the same as the arg for this trait predicate?
@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        match *ty.peel_refs().kind() {
+        match ty.peel_refs().kind() {
             ty::Param(param) => {
                 let generics = self.tcx.generics_of(self.body_id);
                 let generic_param = generics.type_param(param, self.tcx);
@@ -351,8 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
-                        let trait_type =
-                            Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
+                        let trait_type = Ty::new_ref(self.tcx, region, t_type, mutability.invert());
                         let msg = format!("you need `{trait_type}` instead of `{rcvr_ty}`");
                         let mut kind = &self_expr.kind;
                         while let hir::ExprKind::AddrOf(_, _, expr)
@@ -779,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // on pointers, check if the method would exist on a reference
         if let SelfSource::MethodCall(rcvr_expr) = source
-            && let ty::RawPtr(ty, ptr_mutbl) = *rcvr_ty.kind()
+            && let ty::RawPtr(ty, ptr_mutbl) = rcvr_ty.kind()
             && let Ok(pick) = self.lookup_probe_for_diagnostic(
                 item_name,
                 Ty::new_ref(tcx, ty::Region::new_error_misc(tcx), ty, ptr_mutbl),
@@ -787,7 +786,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::TraitsInScope,
                 None,
             )
-            && let ty::Ref(_, _, sugg_mutbl) = *pick.self_ty.kind()
+            && let ty::Ref(_, _, sugg_mutbl) = pick.self_ty.kind()
             && (sugg_mutbl.is_not() || ptr_mutbl.is_mut())
         {
             let (method, method_anchor) = match sugg_mutbl {
@@ -1385,7 +1384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             )),
                             _ => arg,
                         }));
-                    let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
+                    let rcvr_ty = Ty::new_adt(tcx, def, new_args);
                     if let Ok(method) = self.lookup_method_for_diagnostic(
                         rcvr_ty,
                         &item_segment,
@@ -2843,7 +2842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Target wrapper types - types that wrap or pretend to wrap another type,
             // perhaps this inner type is meant to be called?
             ty::AdtKind::Struct | ty::AdtKind::Union => {
-                let [first] = ***args else {
+                let [first] = **args else {
                     return;
                 };
                 let ty::GenericArgKind::Type(ty) = first.unpack() else {
@@ -3776,9 +3775,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sort_by_key(|&info| (!info.def_id.is_local(), self.tcx.def_path_str(info.def_id)));
             candidates.dedup();
 
-            let param_type = match *rcvr_ty.kind() {
+            let param_type = match rcvr_ty.kind() {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match *ty.kind() {
+                ty::Ref(_, ty, _) => match ty.kind() {
                     ty::Param(param) => Some(param),
                     _ => None,
                 },

@@ -63,7 +63,7 @@ impl SubRelations {
             };
 
             match (a.kind(), b.kind()) {
-                (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
                     let a = self.get_id(infcx, a_vid);
                     let b = self.get_id(infcx, b_vid);
                     self.table.with_log(&mut NoUndo).unify_var_var(a, b).unwrap();

@@ -192,7 +192,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
             return;
         }
 
-        if let ty::Alias(ty::Projection, opaque_ty) = *t.kind()
+        if let ty::Alias(ty::Projection, opaque_ty) = t.kind()
             && self.tcx.is_impl_trait_in_trait(opaque_ty.def_id)
         {
             // visit the opaque of the RPITIT
@@ -200,7 +200,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                 .type_of(opaque_ty.def_id)
                 .instantiate(self.tcx, opaque_ty.args)
                 .visit_with(self)
-        } else if let ty::Alias(ty::Opaque, opaque_ty) = *t.kind()
+        } else if let ty::Alias(ty::Opaque, opaque_ty) = t.kind()
             && let Some(opaque_def_id) = opaque_ty.def_id.as_local()
             // Don't recurse infinitely on an opaque
             && self.seen.insert(opaque_def_id)
@@ -402,7 +402,7 @@ fn extract_def_id_from_arg<'tcx>(
             _ => unreachable!(),
         },
         ty::GenericArgKind::Type(ty) => {
-            let ty::Param(param_ty) = *ty.kind() else {
+            let ty::Param(param_ty) = ty.kind() else {
                 bug!();
             };
             generics.type_param(param_ty, tcx).def_id

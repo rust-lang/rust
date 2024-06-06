@@ -350,7 +350,7 @@ fn same_lifetimes<'tcx>(a: MiddleTy<'tcx>, b: MiddleTy<'tcx>) -> bool {
 fn has_no_lifetime(ty: MiddleTy<'_>) -> bool {
     use rustc_middle::ty::{Adt, GenericArgKind};
     match ty.kind() {
-        &Adt(_, args) => !args
+        Adt(_, args) => !args
             .iter()
             // TODO: Handle inferred lifetimes
             .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(..))),

@@ -377,7 +377,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Next, we need to check that the return-type notation is being used on
             // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
             let output = tcx.fn_sig(assoc_item.def_id).skip_binder().output();
-            let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
+            let output = if let ty::Alias(ty::Projection, alias_ty) = output.skip_binder().kind()
                 && tcx.is_impl_trait_in_trait(alias_ty.def_id)
             {
                 alias_ty.into()
@@ -635,7 +635,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             ty::Param(param) => {
                 self.params.insert(param.index);
             }
-            ty::Bound(db, bt) if *db >= self.depth => {
+            ty::Bound(db, bt) if db >= self.depth => {
                 self.vars.insert(match bt.kind {
                     ty::BoundTyKind::Param(def_id, name) => (def_id, name),
                     ty::BoundTyKind::Anon => {

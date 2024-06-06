@@ -97,7 +97,7 @@ where
                 } else {
                     // Skip lifetime parameters that are not captures.
                     let variances = match kind {
-                        ty::Opaque => Some(self.tcx.variances_of(*def_id)),
+                        ty::Opaque => Some(self.tcx.variances_of(def_id)),
                         _ => None,
                     };
 

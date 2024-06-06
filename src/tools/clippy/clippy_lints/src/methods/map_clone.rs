@@ -78,7 +78,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                     let obj_ty = cx.typeck_results().expr_ty(obj);
                                     if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
                                         if matches!(mutability, Mutability::Not) {
-                                            let copy = is_copy(cx, *ty);
+                                            let copy = is_copy(cx, ty);
                                             lint_explicit_closure(cx, e.span, recv.span, copy, msrv);
                                         }
                                     } else {
@@ -123,8 +123,8 @@ fn handle_path(
             && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
             && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
             && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
-            && lst.iter().all(|l| l.as_type() == Some(*ty))
-            && !should_call_clone_as_function(cx, *ty)
+            && lst.iter().all(|l| l.as_type() == Some(ty))
+            && !should_call_clone_as_function(cx, ty)
         {
             lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
         }

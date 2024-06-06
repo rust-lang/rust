@@ -112,7 +112,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             ..
         } = &terminator.kind
         {
-            if let ty::FnDef(id, _) = *const_.ty().kind() {
+            if let ty::FnDef(id, _) = const_.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if self.infcx.tcx.is_lang_item(self.infcx.tcx.parent(id), LangItem::FnOnce) {
                     let closure = match args.first() {
@@ -348,7 +348,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(ty.boxed_ty(), field, variant_index, including_tuple_field)
         } else {
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
@@ -459,7 +459,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
-            match **region {
+            match *region {
                 ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
@@ -479,7 +479,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
-            match **region {
+            match *region {
                 ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
@@ -740,7 +740,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     }
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
-        match *func.kind() {
+        match func.kind() {
             ty::FnDef(def_id, args) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 
@@ -1048,7 +1048,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     // LL | blk();
                     //    | ----- this value implements `FnOnce`, which causes it to be moved when called
                     // ```
-                    if let ty::Param(param_ty) = *self_ty.kind()
+                    if let ty::Param(param_ty) = self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
                         && let Some(hir_generics) = self

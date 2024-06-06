@@ -500,7 +500,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 ty::Tuple(tys) => tys.last().is_none_or(|ty| is_very_trivially_sized(*ty)),
 
-                ty::Pat(ty, ..) => is_very_trivially_sized(*ty),
+                ty::Pat(ty, ..) => is_very_trivially_sized(ty),
 
                 // We don't want to do any queries, so there is not much we can do with ADTs.
                 ty::Adt(..) => false,

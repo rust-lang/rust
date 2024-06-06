@@ -436,7 +436,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         let is_fn_trait = tcx.is_fn_trait(leaf_trait_ref.def_id());
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
-                            *leaf_trait_ref.skip_binder().self_ty().kind()
+                            leaf_trait_ref.skip_binder().self_ty().kind()
                         {
                             !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                         } else {
@@ -725,7 +725,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.code()
                 && let Some(typeck_results) = &self.typeck_results
                 && let ty::Closure(closure_def_id, _) | ty::CoroutineClosure(closure_def_id, _) =
-                    *typeck_results.node_type(arg_hir_id).kind()
+                    typeck_results.node_type(arg_hir_id).kind()
             {
                 // Otherwise, extract the closure kind from the obligation.
                 let mut err = self.report_closure_error(
@@ -744,7 +744,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let self_ty = trait_ref.self_ty().skip_binder();
 
         if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id()) {
-            let (closure_def_id, found_args, by_ref_captures) = match *self_ty.kind() {
+            let (closure_def_id, found_args, by_ref_captures) = match self_ty.kind() {
                 ty::Closure(def_id, args) => {
                     (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), None)
                 }
@@ -1428,7 +1428,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if self.tcx.is_lang_item(projection_term.def_id, LangItem::FnOnceOutput) {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let item = match self_ty.kind() {
-                    ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
+                    ty::FnDef(def, _) => self.tcx.item_name(def).to_string(),
                     _ => self_ty.to_string(),
                 };
                 Some(format!(
@@ -1494,7 +1494,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let strip_references = |mut t: Ty<'tcx>| -> Ty<'tcx> {
             loop {
                 match t.kind() {
-                    ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => t = *inner,
+                    ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => t = inner,
                     _ => break t,
                 }
             }
@@ -2091,7 +2091,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(_) = *ty.kind() {
+                if let ty::Param(_) = ty.kind() {
                     let infcx = self.infcx;
                     *self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var(DUMMY_SP))
                 } else {
@@ -2600,7 +2600,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected_trait_ref.self_ty().error_reported()?;
         let found_trait_ty = found_trait_ref.self_ty();
 
-        let found_did = match *found_trait_ty.kind() {
+        let found_did = match found_trait_ty.kind() {
             ty::Closure(did, _) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => Some(did),
             _ => None,
         };

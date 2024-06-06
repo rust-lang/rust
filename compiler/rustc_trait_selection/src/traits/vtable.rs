@@ -324,7 +324,7 @@ fn vtable_entries<'tcx>(
 pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRef<'tcx>) -> usize {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
 
-    let ty::Dynamic(source, _, _) = *key.self_ty().kind() else {
+    let ty::Dynamic(source, _, _) = key.self_ty().kind() else {
         bug!();
     };
     let source_principal = tcx
@@ -380,7 +380,7 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     let (source, target) = key;
 
     // If the target principal is `None`, we can just return `None`.
-    let ty::Dynamic(target, _, _) = *target.kind() else {
+    let ty::Dynamic(target, _, _) = target.kind() else {
         bug!();
     };
     let target_principal = tcx
@@ -388,7 +388,7 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
         .with_self_ty(tcx, tcx.types.trait_object_dummy_self);
 
     // Given that we have a target principal, it is a bug for there not to be a source principal.
-    let ty::Dynamic(source, _, _) = *source.kind() else {
+    let ty::Dynamic(source, _, _) = source.kind() else {
         bug!();
     };
     let source_principal = tcx

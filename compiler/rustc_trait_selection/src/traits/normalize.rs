@@ -181,7 +181,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             return ty;
         }
 
-        let (kind, data) = match *ty.kind() {
+        let (kind, data) = match ty.kind() {
             ty::Alias(kind, data) => (kind, data),
             _ => return ty.super_fold_with(self),
         };

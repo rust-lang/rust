@@ -671,7 +671,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                             tcx,
                             args.parent_args(),
                             args.kind_ty(),
-                            tcx.coroutine_for_closure(*did),
+                            tcx.coroutine_for_closure(did),
                             Ty::new_error(tcx, guar),
                         ),
                         None,
@@ -817,7 +817,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut closure_env_projs = vec![];
         if let ty::Ref(_, ty, _) = closure_ty.kind() {
             closure_env_projs.push(ProjectionElem::Deref);
-            closure_ty = *ty;
+            closure_ty = ty;
         }
 
         let upvar_args = match closure_ty.kind() {

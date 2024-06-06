@@ -89,7 +89,7 @@ fn get_const_signed_int_eval<'cx>(
     let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
 
     if let Constant::Int(n) = ConstEvalCtxt::new(cx).eval(expr)?
-        && let ty::Int(ity) = *ty.kind()
+        && let ty::Int(ity) = ty.kind()
     {
         return Some(sext(cx.tcx, n, ity));
     }
@@ -104,7 +104,7 @@ fn get_const_unsigned_int_eval<'cx>(
     let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
 
     if let Constant::Int(n) = ConstEvalCtxt::new(cx).eval(expr)?
-        && let ty::Uint(_ity) = *ty.kind()
+        && let ty::Uint(_ity) = ty.kind()
     {
         return Some(n);
     }

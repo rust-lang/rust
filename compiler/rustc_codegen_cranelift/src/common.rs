@@ -71,7 +71,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::FnPtr(..) => pointer_ty(tcx),
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, *pointee_ty) {
+            if has_ptr_meta(tcx, pointee_ty) {
                 return None;
             } else {
                 pointer_ty(tcx)
@@ -91,7 +91,7 @@ fn clif_pair_type_from_ty<'tcx>(
             (clif_type_from_ty(tcx, types[0])?, clif_type_from_ty(tcx, types[1])?)
         }
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, *pointee_ty) {
+            if has_ptr_meta(tcx, pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
                 return None;

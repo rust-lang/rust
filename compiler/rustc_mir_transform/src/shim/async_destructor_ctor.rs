@@ -142,8 +142,8 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
         };
 
         match self_ty.kind() {
-            ty::Array(elem_ty, _) => self.build_slice(true, *elem_ty),
-            ty::Slice(elem_ty) => self.build_slice(false, *elem_ty),
+            ty::Array(elem_ty, _) => self.build_slice(true, elem_ty),
+            ty::Slice(elem_ty) => self.build_slice(false, elem_ty),
 
             ty::Tuple(elem_tys) => self.build_chain(None, elem_tys.iter()),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
@@ -156,7 +156,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             }
 
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
-                self.build_enum(*adt_def, *args, surface_drop_kind())
+                self.build_enum(adt_def, args, surface_drop_kind())
             }
 
             ty::Adt(adt_def, _) => {
@@ -561,7 +561,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
             // If projection of Discriminant then compare with `Ty::discriminant_ty`
             if let ty::Alias(ty::Projection, ty::AliasTy { args, def_id, .. }) = expected_ty.kind()
-                && self.tcx.is_lang_item(*def_id, LangItem::Discriminant)
+                && self.tcx.is_lang_item(def_id, LangItem::Discriminant)
                 && args.first().unwrap().as_type().unwrap().discriminant_ty(self.tcx) == operand_ty
             {
                 return;

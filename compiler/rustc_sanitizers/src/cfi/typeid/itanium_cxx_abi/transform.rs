@@ -341,7 +341,7 @@ pub fn transform_instance<'tcx>(
                 tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
                     !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
                 }));
-            Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind)
+            Ty::new_dynamic(tcx, filtered_preds, lifetime, kind)
         } else {
             // If there's no principal type, re-encode it as a unit, since we don't know anything
             // about it. This technically discards the knowledge that it was a type that was made

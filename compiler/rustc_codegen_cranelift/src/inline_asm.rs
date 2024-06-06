@@ -89,7 +89,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                 }
 
                 let const_ = fx.monomorphize(value.const_);
-                if let ty::FnDef(def_id, args) = *const_.ty().kind() {
+                if let ty::FnDef(def_id, args) = const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
                         ty::ParamEnv::reveal_all(),
@@ -253,7 +253,7 @@ pub(crate) fn codegen_naked_asm<'tcx>(
                     ty::ParamEnv::reveal_all(),
                     ty::EarlyBinder::bind(value.const_),
                 );
-                if let ty::FnDef(def_id, args) = *const_.ty().kind() {
+                if let ty::FnDef(def_id, args) = const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         tcx,
                         ty::ParamEnv::reveal_all(),

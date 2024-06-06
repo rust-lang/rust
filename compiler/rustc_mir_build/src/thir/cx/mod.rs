@@ -124,7 +124,7 @@ impl<'tcx> Cx<'tcx> {
         }
 
         let closure_ty = self.typeck_results.node_type(expr_id);
-        Some(match *closure_ty.kind() {
+        Some(match closure_ty.kind() {
             ty::Coroutine(..) => {
                 Param { ty: closure_ty, pat: None, ty_span: None, self_kind: None, hir_id: None }
             }

@@ -415,7 +415,7 @@ impl<'tcx> Key for Ty<'tcx> {
     }
 
     fn ty_def_id(&self) -> Option<DefId> {
-        match *self.kind() {
+        match self.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
             ty::Coroutine(def_id, ..) => Some(def_id),
             _ => None,

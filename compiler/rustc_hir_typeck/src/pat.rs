@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, inner_mutability) = expected.kind() {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -476,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
             let expected = self.structurally_resolve_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = *expected.kind()
+            if let ty::Ref(_, inner_ty, _) = expected.kind()
                 && self.try_structurally_resolve_type(span, inner_ty).is_slice()
             {
                 let tcx = self.tcx;
@@ -809,7 +809,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         match (expected.kind(), actual.kind(), ba) {
             (ty::Ref(_, inner_ty, _), _, BindingMode::NONE)
-                if self.can_eq(self.param_env, *inner_ty, actual) =>
+                if self.can_eq(self.param_env, inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
                     span.shrink_to_lo(),
@@ -819,7 +819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             (_, ty::Ref(_, inner_ty, _), BindingMode::REF)
-                if self.can_eq(self.param_env, expected, *inner_ty) =>
+                if self.can_eq(self.param_env, expected, inner_ty) =>
             {
                 err.span_suggestion_verbose(
                     span.with_hi(span.lo() + BytePos(4)),
@@ -1030,7 +1030,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Ty::new_error(tcx, e);
             }
             Res::SelfCtor(def_id) => {
-                if let ty::Adt(adt_def, _) = *tcx.type_of(def_id).skip_binder().kind()
+                if let ty::Adt(adt_def, _) = tcx.type_of(def_id).skip_binder().kind()
                     && adt_def.is_struct()
                     && let Some((CtorKind::Const, _)) = adt_def.non_enum_variant().ctor
                 {
@@ -2162,7 +2162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected = self.try_structurally_resolve_type(pat.span, expected);
         if new_match_ergonomics {
             if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
-                if !ref_pat_eat_one_layer_2024 && let ty::Ref(_, _, r_mutbl) = *expected.kind() {
+                if !ref_pat_eat_one_layer_2024 && let ty::Ref(_, _, r_mutbl) = expected.kind() {
                     // Don't attempt to consume inherited reference
                     pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(r_mutbl);
                 } else {
@@ -2225,7 +2225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to avoid creating needless variables. This also helps with
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
-                match *expected.kind() {
+                match expected.kind() {
                     ty::Ref(_, r_ty, r_mutbl)
                         if (no_ref_mut_behind_and && r_mutbl >= pat_mutbl)
                             || r_mutbl == pat_mutbl =>
@@ -2362,7 +2362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected = self.structurally_resolve_type(span, expected);
         debug!(?expected);
 
-        let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
+        let (element_ty, opt_slice_ty, inferred) = match expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
@@ -2574,7 +2574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(adt_def, _) if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did()) => {
                 (true, ty)
             }
-            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(*ty),
+            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(ty),
             ty::Slice(..) | ty::Array(..) => (true, ty),
             _ => (false, ty),
         }

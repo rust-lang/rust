@@ -58,7 +58,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
-            ty_op: |ty| match *ty.kind() {
+            ty_op: |ty| match ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
                     if self.can_define_opaque_ty(def_id) && !ty.has_escaping_bound_vars() =>
                 {
@@ -97,7 +97,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, TypeError<'tcx>> {
-        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
                 if self.intercrate {
@@ -147,7 +147,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     return None;
                 }
 
-                if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
+                if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
                     // want to make a decision on it right now. Likely this case is so super rare anyway, that
                     // no one encounters it in practice.
@@ -438,7 +438,7 @@ where
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // Skip lifetime parameters that are not captures.
-                let variances = self.tcx.variances_of(*def_id);
+                let variances = self.tcx.variances_of(def_id);
 
                 for (v, s) in std::iter::zip(variances, args.iter()) {
                     if *v != ty::Bivariant {
@@ -577,7 +577,7 @@ impl<'tcx> InferCtxt<'tcx> {
         for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
-                ty_op: |ty| match *ty.kind() {
+                ty_op: |ty| match ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.

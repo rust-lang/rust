@@ -61,7 +61,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Result<(), ty::Instance<'tcx>> {
         let callee_ty = instance.ty(bx.tcx(), ty::ParamEnv::reveal_all());
 
-        let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, fn_args) = callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 

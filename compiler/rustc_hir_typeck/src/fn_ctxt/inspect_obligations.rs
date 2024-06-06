@@ -63,7 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.shallow_resolve(ty);
         debug!(?ty);
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 self.root_var(expected_vid) == self.root_var(found_vid)
             }

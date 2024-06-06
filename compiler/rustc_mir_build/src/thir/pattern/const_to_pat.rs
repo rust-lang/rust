@@ -204,7 +204,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
                 let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
                 PatKind::Variant {
-                    adt_def: *adt_def,
+                    adt_def,
                     args,
                     variant_index,
                     subpatterns: self.field_pats(
@@ -237,7 +237,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| self.valtree_to_pat(*val, elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -246,12 +246,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| self.valtree_to_pat(*val, elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
             },
-            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
+            ty::Ref(_, pointee_ty, ..) => match pointee_ty.kind() {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant {
@@ -262,7 +262,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // deref pattern.
                 _ => {
                     if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
-                        let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
+                        let err = UnsizedPattern { span, non_sm_ty: pointee_ty };
                         let e = tcx.dcx().emit_err(err);
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                         PatKind::Error(e)
@@ -273,11 +273,11 @@ impl<'tcx> ConstToPat<'tcx> {
                         // as slices. This means we turn `&[T; N]` constants into slice patterns, which
                         // has no negative effects on pattern matching, even if we're actually matching on
                         // arrays.
-                        let pointee_ty = match *pointee_ty.kind() {
+                        let pointee_ty = match pointee_ty.kind() {
                             ty::Array(elem_ty, _) if self.treat_byte_string_as_slice => {
                                 Ty::new_slice(tcx, elem_ty)
                             }
-                            _ => *pointee_ty,
+                            _ => pointee_ty,
                         };
                         // References have the same valtree representation as their pointee.
                         let subpattern = self.valtree_to_pat(cv, pointee_ty);

@@ -837,7 +837,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_a = self.shallow_resolve(predicate.skip_binder().a);
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
-            (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+            (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
                 return Err((a_vid, b_vid));
             }
             _ => {}
@@ -1121,7 +1121,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Infer(v) = *ty.kind() {
+        if let ty::Infer(v) = ty.kind() {
             match v {
                 ty::TyVar(v) => {
                     // Not entirely obvious: if `typ` is a type variable,
@@ -1371,7 +1371,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// closure in the current function, in which case its
     /// `ClosureKind` may not yet be known.
     pub fn closure_kind(&self, closure_ty: Ty<'tcx>) -> Option<ty::ClosureKind> {
-        let unresolved_kind_ty = match *closure_ty.kind() {
+        let unresolved_kind_ty = match closure_ty.kind() {
             ty::Closure(_, args) => args.as_closure().kind_ty(),
             ty::CoroutineClosure(_, args) => args.as_coroutine_closure().kind_ty(),
             _ => bug!("unexpected type {closure_ty}"),
@@ -1594,7 +1594,7 @@ impl<'tcx> TyOrConstInferVar {
     /// Tries to extract an inference variable from a type, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
     fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
             ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),

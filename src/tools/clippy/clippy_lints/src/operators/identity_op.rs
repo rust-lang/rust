@@ -201,7 +201,7 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
 
 fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens, is_erased: bool) -> bool {
     if let Some(Constant::Int(v)) = ConstEvalCtxt::new(cx).eval_simple(e).map(Constant::peel_refs) {
-        let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
+        let check = match cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),
             _ => return false,

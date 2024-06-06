@@ -294,7 +294,7 @@ fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bo
         ExprKind::Call(callee, _) => {
             let callee_ty = cx.typeck_results().expr_ty(callee);
             if let ty::FnDef(callee_def_id, _) = callee_ty.kind() {
-                Some(*callee_def_id)
+                Some(callee_def_id)
             } else {
                 None
             }

@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         if let Constant::Int(off) = constant
                             && off <= usize::MAX as u128
                             && let ty::Uint(utype) = cx.typeck_results().expr_ty(index).kind()
-                            && *utype == ty::UintTy::Usize
+                            && utype == ty::UintTy::Usize
                             && let ty::Array(_, s) = ty.kind()
                             && let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env)
                         {

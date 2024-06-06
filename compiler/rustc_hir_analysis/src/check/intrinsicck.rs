@@ -57,7 +57,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             width => bug!("unsupported pointer width: {width}"),
         };
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
@@ -79,7 +79,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         if let Some(len) =
                             len.try_eval_target_usize(self.tcx, self.tcx.param_env(adt.did()))
                         {
-                            (len, *ty)
+                            (len, ty)
                         } else {
                             return None;
                         }
@@ -136,7 +136,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
         }
 
-        let asm_ty = match *ty.kind() {
+        let asm_ty = match ty.kind() {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,

@@ -1107,7 +1107,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .map_or(&[][..], |x| &**x)
         {
             if let rustc_ty::RawPtr(_, mutability) | rustc_ty::Ref(_, _, mutability) =
-                *adjust.last().map_or(target, |a| a.target).kind()
+                adjust.last().map_or(target, |a| a.target).kind()
             {
                 return CaptureKind::Ref(mutability);
             }
@@ -2371,10 +2371,10 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
-        rustc_ty::Slice(element_type) => is_recursively_primitive_type(*element_type),
-        rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &rustc_ty::Slice(_)) => {
+        rustc_ty::Slice(element_type) => is_recursively_primitive_type(element_type),
+        rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), rustc_ty::Slice(_)) => {
             if let rustc_ty::Slice(element_type) = inner_ty.kind() {
-                is_recursively_primitive_type(*element_type)
+                is_recursively_primitive_type(element_type)
             } else {
                 unreachable!()
             }
@@ -2525,7 +2525,7 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
 pub fn peel_middle_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
     let mut count = 0;
     while let rustc_ty::Ref(_, dest_ty, _) = ty.kind() {
-        ty = *dest_ty;
+        ty = dest_ty;
         count += 1;
     }
     (ty, count)

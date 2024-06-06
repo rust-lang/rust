@@ -465,7 +465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Immediate(lladdr)
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
-                        match *operand.layout.ty.kind() {
+                        match operand.layout.ty.kind() {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
                                     bx.tcx(),
@@ -481,7 +481,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)) => {
-                        match *operand.layout.ty.kind() {
+                        match operand.layout.ty.kind() {
                             ty::Closure(def_id, args) => {
                                 let instance = Instance::resolve_closure(
                                     bx.cx().tcx(),

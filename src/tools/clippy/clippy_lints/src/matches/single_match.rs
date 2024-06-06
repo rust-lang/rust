@@ -56,7 +56,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tc
         };
 
         let typeck = cx.typeck_results();
-        if *typeck.expr_ty(ex).peel_refs().kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
+        if typeck.expr_ty(ex).peel_refs().kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
             let mut v = PatVisitor {
                 typeck,
                 has_enum: false,
@@ -262,7 +262,7 @@ impl<'a> PatState<'a> {
         single_pat: Option<&'tcx Pat<'tcx>>,
         pats: impl IntoIterator<Item = &'tcx Pat<'tcx>>,
     ) -> bool {
-        let ty::Adt(adt, _) = *cx.typeck.pat_ty(pat).kind() else {
+        let ty::Adt(adt, _) = cx.typeck.pat_ty(pat).kind() else {
             // Should never happen
             *self = Self::Wild;
             return true;
@@ -308,7 +308,7 @@ impl<'a> PatState<'a> {
     fn add_pat<'tcx>(&mut self, cx: &'a PatCtxt<'tcx>, pat: &'tcx Pat<'_>) -> bool {
         match pat.kind {
             PatKind::Path(_)
-                if match *cx.typeck.pat_ty(pat).peel_refs().kind() {
+                if match cx.typeck.pat_ty(pat).peel_refs().kind() {
                     ty::Adt(adt, _) => adt.is_enum() || (adt.is_struct() && !adt.non_enum_variant().fields.is_empty()),
                     ty::Tuple(tys) => !tys.is_empty(),
                     ty::Array(_, len) => len.try_eval_target_usize(cx.tcx, cx.param_env) != Some(1),
@@ -329,7 +329,7 @@ impl<'a> PatState<'a> {
                 self.add_pat(cx, sub_pat)
             },
             PatKind::Slice([sub_pat], _, []) | PatKind::Slice([], _, [sub_pat])
-                if let ty::Array(_, len) = *cx.typeck.pat_ty(pat).kind()
+                if let ty::Array(_, len) = cx.typeck.pat_ty(pat).kind()
                     && len.try_eval_target_usize(cx.tcx, cx.param_env) == Some(1) =>
             {
                 self.add_pat(cx, sub_pat)
