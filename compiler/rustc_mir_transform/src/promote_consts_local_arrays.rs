@@ -252,6 +252,7 @@ impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
+    #[instrument(level = "trace", skip(self))]
     fn validate_candidate(&mut self, candidate: Location) -> Result<(), Unpromotable> {
         let Left(statement) = self.body.stmt_at(candidate) else { bug!() };
         let Some((place, rvalue @ Rvalue::Aggregate(box kind, operands))) =
@@ -276,6 +277,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             && size.bytes() <= STACK_THRESHOLD
         {
             debug!("size of array is too small: {:?}", size);
+            // for nested arrays
+            self.temps[place.local] = TempState::Unpromotable;
             return Err(Unpromotable);
         }
 
