@@ -347,7 +347,7 @@ pub(crate) fn run_global_ctxt(
         show_coverage,
     };
 
-    for cnum in tcx.crates_including_speculative(()) {
+    for cnum in tcx.crates(()) {
         crate::visit_lib::lib_embargo_visit_item(&mut ctxt, cnum.as_def_id());
     }
 
