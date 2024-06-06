@@ -375,8 +375,8 @@ pub(crate) fn hover_for_definition(
     HoverResult {
         markup: render::process_markup(sema.db, def, &markup, config),
         actions: [
-            show_implementations_action(sema.db, def),
             show_fn_references_action(sema.db, def),
+            show_implementations_action(sema.db, def),
             runnable_action(sema, def, file_id),
             goto_type_action_for_def(sema.db, def, &notable_traits),
         ]
