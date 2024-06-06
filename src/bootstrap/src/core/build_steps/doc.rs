@@ -29,7 +29,7 @@ macro_rules! submodule_helper {
 }
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr $(, submodule $(= $submodule:literal)? )? ;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr, $lang:expr $(, submodule $(= $submodule:literal)? )? ;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -61,6 +61,7 @@ macro_rules! book {
                     name: $book_name.to_owned(),
                     src: builder.src.join($path),
                     parent: Some(self),
+                    languages: $lang.into(),
                 })
             }
         }
@@ -74,15 +75,15 @@ macro_rules! book {
 // FIXME: Make checking for a submodule automatic somehow (maybe by having a list of all submodules
 // and checking against it?).
 book!(
-    CargoBook, "src/tools/cargo/src/doc", "cargo", submodule = "src/tools/cargo";
-    ClippyBook, "src/tools/clippy/book", "clippy";
-    EditionGuide, "src/doc/edition-guide", "edition-guide", submodule;
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", submodule;
-    Nomicon, "src/doc/nomicon", "nomicon", submodule;
-    Reference, "src/doc/reference", "reference", submodule;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", submodule;
-    RustdocBook, "src/doc/rustdoc", "rustdoc";
-    StyleGuide, "src/doc/style-guide", "style-guide";
+    CargoBook, "src/tools/cargo/src/doc", "cargo", &[], submodule = "src/tools/cargo";
+    ClippyBook, "src/tools/clippy/book", "clippy", &[];
+    EditionGuide, "src/doc/edition-guide", "edition-guide", &[], submodule;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", &[], submodule;
+    Nomicon, "src/doc/nomicon", "nomicon", &[], submodule;
+    Reference, "src/doc/reference", "reference", &[], submodule;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", &["ja"], submodule;
+    RustdocBook, "src/doc/rustdoc", "rustdoc", &[];
+    StyleGuide, "src/doc/style-guide", "style-guide", &[];
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -110,6 +111,7 @@ impl Step for UnstableBook {
             name: "unstable-book".to_owned(),
             src: builder.md_doc_out(self.target).join("unstable-book"),
             parent: Some(self),
+            languages: vec![],
         })
     }
 }
@@ -120,6 +122,7 @@ struct RustbookSrc<P: Step> {
     name: String,
     src: PathBuf,
     parent: Option<P>,
+    languages: Vec<&'static str>,
 }
 
 impl<P: Step> Step for RustbookSrc<P> {
@@ -151,7 +154,19 @@ impl<P: Step> Step for RustbookSrc<P> {
             builder.info(&format!("Rustbook ({target}) - {name}"));
             let _ = fs::remove_dir_all(&out);
 
-            builder.run(rustbook_cmd.arg("build").arg(src).arg("-d").arg(out));
+            builder.run(rustbook_cmd.arg("build").arg(&src).arg("-d").arg(&out));
+
+            for lang in &self.languages {
+                let out = out.join(lang);
+
+                builder.info(&format!("Rustbook ({target}) - {name} - {lang}"));
+                let _ = fs::remove_dir_all(&out);
+
+                let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
+                builder.run(
+                    rustbook_cmd.arg("build").arg(&src).arg("-d").arg(&out).arg("-l").arg(lang),
+                );
+            }
         }
 
         if self.parent.is_some() {
@@ -214,6 +229,7 @@ impl Step for TheBook {
             name: "book".to_owned(),
             src: absolute_path.clone(),
             parent: Some(self),
+            languages: vec![],
         });
 
         // building older edition redirects
@@ -225,6 +241,7 @@ impl Step for TheBook {
                 // There should only be one book that is marked as the parent for each target, so
                 // treat the other editions as not having a parent.
                 parent: Option::<Self>::None,
+                languages: vec![],
             });
         }
 
@@ -1208,6 +1225,7 @@ impl Step for RustcBook {
             name: "rustc".to_owned(),
             src: out_base,
             parent: Some(self),
+            languages: vec![],
         });
     }
 }
