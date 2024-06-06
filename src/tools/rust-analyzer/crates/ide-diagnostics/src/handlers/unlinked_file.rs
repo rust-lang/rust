@@ -11,7 +11,7 @@ use ide_db::{
 use paths::Utf8Component;
 use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
-    AstNode, TextRange,
+    AstNode,
 };
 use text_edit::TextEdit;
 
@@ -26,8 +26,6 @@ pub(crate) fn unlinked_file(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
-    // Limit diagnostic to the first few characters in the file. This matches how VS Code
-    // renders it with the full span, but on other editors, and is less invasive.
     let fixes = fixes(ctx, file_id);
     // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
     // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523
@@ -38,13 +36,6 @@ pub(crate) fn unlinked_file(
     };
 
     let range = ctx.sema.db.parse(file_id).syntax_node().text_range();
-    let range = FileLoader::file_text(ctx.sema.db, file_id)
-        .char_indices()
-        .take(3)
-        .last()
-        .map(|(i, _)| i)
-        .map(|i| TextRange::up_to(i.try_into().unwrap()))
-        .unwrap_or(range);
 
     acc.push(
         Diagnostic::new(
@@ -52,6 +43,7 @@ pub(crate) fn unlinked_file(
             message,
             FileRange { file_id, range },
         )
+        .with_unused(true)
         .with_fixes(fixes),
     );
 }
