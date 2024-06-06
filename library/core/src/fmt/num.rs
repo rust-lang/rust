@@ -212,6 +212,7 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
+        #[cfg(not(feature = "optimize_for_size"))]
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
@@ -270,6 +271,38 @@ macro_rules! impl_Display {
 
             // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
             // UTF-8 since `DEC_DIGITS_LUT` is
+            let buf_slice = unsafe {
+                str::from_utf8_unchecked(
+                    slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
+            };
+            f.pad_integral(is_nonnegative, "", buf_slice)
+        }
+
+        #[cfg(feature = "optimize_for_size")]
+        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
+            let mut buf = [MaybeUninit::<u8>::uninit(); 39];
+            let mut curr = buf.len();
+            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+
+            // SAFETY: To show that it's OK to copy into `buf_ptr`, notice that at the beginning
+            // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
+            // each step this is kept the same as `n` is divided. Since `n` is always
+            // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
+            // is safe to access.
+            unsafe {
+                loop {
+                    curr -= 1;
+                    buf_ptr.add(curr).write((n % 10) as u8 + b'0');
+                    n /= 10;
+
+                    if n == 0 {
+                        break;
+                    }
+                }
+            }
+
+            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid UTF-8
             let buf_slice = unsafe {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
