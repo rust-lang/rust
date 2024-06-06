@@ -647,7 +647,7 @@ fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Re
 /// This function is expensive and should be used sparingly.
 pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Vec<Res> {
     fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> impl Iterator<Item = DefId> + '_ {
-        tcx.crates_including_speculative(())
+        tcx.crates(())
             .iter()
             .copied()
             .filter(move |&num| tcx.crate_name(num) == name)
