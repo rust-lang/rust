@@ -2469,6 +2469,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    #[track_caller]
     fn fatal(&self, err: &str) -> ! {
         self.error(err);
         error!("fatal error, panic: {:?}", err);
