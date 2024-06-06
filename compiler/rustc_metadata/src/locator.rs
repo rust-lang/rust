@@ -222,7 +222,6 @@ use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
-use rustc_session::config;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
@@ -309,7 +308,6 @@ impl<'a> CrateLocator<'a> {
         is_rlib: bool,
         hash: Option<Svh>,
         extra_filename: Option<&'a str>,
-        is_host: bool,
         path_kind: PathKind,
     ) -> CrateLocator<'a> {
         let needs_object_code = sess.opts.output_types.should_codegen();
@@ -340,17 +338,9 @@ impl<'a> CrateLocator<'a> {
             },
             hash,
             extra_filename,
-            target: if is_host { &sess.host } else { &sess.target },
-            triple: if is_host {
-                TargetTriple::from_triple(config::host_triple())
-            } else {
-                sess.opts.target_triple.clone()
-            },
-            filesearch: if is_host {
-                sess.host_filesearch(path_kind)
-            } else {
-                sess.target_filesearch(path_kind)
-            },
+            target: &sess.target,
+            triple: sess.opts.target_triple.clone(),
+            filesearch: sess.target_filesearch(path_kind),
             is_proc_macro: false,
             crate_rejections: CrateRejections::default(),
         }
