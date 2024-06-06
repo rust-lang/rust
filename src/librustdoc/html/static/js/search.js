@@ -2162,7 +2162,8 @@ function initSearch(rawSearchIndex) {
             aliases.sort(sortFunc);
 
             const fetchDesc = alias => {
-                return searchIndexEmptyDesc.get(alias.crate).contains(alias.bitIndex) ? "" : searchState.loadDesc(alias);
+                return searchIndexEmptyDesc.get(alias.crate).contains(alias.bitIndex) ?
+                    "" : searchState.loadDesc(alias);
             };
             const [crateDescs, descs] = await Promise.all([
                 Promise.all(crateAliases.map(fetchDesc)),
@@ -2546,7 +2547,8 @@ function initSearch(rawSearchIndex) {
             sorted_returned,
             sorted_others,
             parsedQuery);
-        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
+        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""),
+            filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
                 return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
