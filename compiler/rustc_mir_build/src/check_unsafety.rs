@@ -9,7 +9,7 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
-use rustc_session::lint::builtin::{DEPRECATED_SAFE, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
+use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
@@ -118,7 +118,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                         && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
                 {
                     self.tcx.emit_node_span_lint(
-                        DEPRECATED_SAFE,
+                        DEPRECATED_SAFE_2024,
                         self.hir_context,
                         span,
                         CallToDeprecatedSafeFnRequiresUnsafe {
