@@ -1,13 +1,13 @@
 // Test that rustdoc will properly load in a theme file and display it in the theme selector.
 
-use run_make_support::{htmldocck, rustdoc, source_path, tmp_dir};
+use run_make_support::{htmldocck, rustdoc, source_root, tmp_dir};
 
 fn main() {
     let out_dir = tmp_dir().join("rustdoc-themes");
     let test_css = out_dir.join("test.css");
 
     let no_script =
-        std::fs::read_to_string(source_path().join("src/librustdoc/html/static/css/noscript.css"))
+        std::fs::read_to_string(source_root().join("src/librustdoc/html/static/css/noscript.css"))
             .unwrap();
 
     let mut test_content = String::new();
