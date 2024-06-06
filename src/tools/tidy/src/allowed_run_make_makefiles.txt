@@ -135,7 +135,6 @@ run-make/lto-readonly-lib/Makefile
 run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
-run-make/manual-crate-name/Makefile
 run-make/manual-link/Makefile
 run-make/many-crates-but-no-match/Makefile
 run-make/metadata-dep-info/Makefile

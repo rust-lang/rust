@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 trait X {
     fn provided(&self) -> usize {
         5

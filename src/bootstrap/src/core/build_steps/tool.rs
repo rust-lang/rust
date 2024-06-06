@@ -834,7 +834,7 @@ impl Step for LibcxxVersionTool {
         let compiler = builder.cxx(self.target).unwrap();
         let mut cmd = Command::new(compiler);
 
-        let executable = out_dir.join("libcxx-version");
+        let executable = out_dir.join(exe("libcxx-version", self.target));
         cmd.arg("-o").arg(&executable).arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
         builder.run_cmd(&mut cmd);

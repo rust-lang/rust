@@ -83,11 +83,12 @@ pub fn python_command() -> Command {
 
 pub fn htmldocck() -> Command {
     let mut python = python_command();
-    python.arg(source_path().join("src/etc/htmldocck.py"));
+    python.arg(source_root().join("src/etc/htmldocck.py"));
     python
 }
 
-pub fn source_path() -> PathBuf {
+/// Path to the root rust-lang/rust source checkout.
+pub fn source_root() -> PathBuf {
     env_var("S").into()
 }
 

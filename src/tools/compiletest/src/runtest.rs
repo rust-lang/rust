@@ -2355,7 +2355,7 @@ impl<'test> TestCx<'test> {
         args.push(exe_file.into_os_string());
 
         // Add the arguments in the run_flags directive
-        args.extend(self.split_maybe_args(&self.props.run_flags));
+        args.extend(self.props.run_flags.iter().map(OsString::from));
 
         let prog = args.remove(0);
         ProcArgs { prog, args }
@@ -2469,6 +2469,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    #[track_caller]
     fn fatal(&self, err: &str) -> ! {
         self.error(err);
         error!("fatal error, panic: {:?}", err);
@@ -4173,10 +4174,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
-        let rflags = self.props.run_flags.as_ref();
+        // Crude heuristic to detect when the output should have JSON-specific
+        // normalization steps applied.
+        let rflags = self.props.run_flags.join(" ");
         let cflags = self.props.compile_flags.join(" ");
-        let json = rflags
-            .map_or(false, |s| s.contains("--format json") || s.contains("--format=json"))
+        let json = rflags.contains("--format json")
+            || rflags.contains("--format=json")
             || cflags.contains("--error-format json")
             || cflags.contains("--error-format pretty-json")
             || cflags.contains("--error-format=json")
