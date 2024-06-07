@@ -89,7 +89,7 @@ pub fn htmldocck() -> Command {
 
 /// Path to the root rust-lang/rust source checkout.
 pub fn source_root() -> PathBuf {
-    env_var("S").into()
+    env_var("SOURCE_ROOT").into()
 }
 
 /// Construct the static library name based on the platform.
