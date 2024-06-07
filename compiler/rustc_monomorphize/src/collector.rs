@@ -772,7 +772,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Closure(source_ty));
                 let source_ty = self.monomorphize(source_ty);
-                if let ty::Closure(def_id, args) = *source_ty.kind() {
+                if let ty::Closure(def_id, args) = source_ty.kind() {
                     let instance =
                         Instance::resolve_closure(self.tcx, def_id, args, ty::ClosureKind::FnOnce);
                     if should_codegen_locally(self.tcx, instance) {
@@ -914,7 +914,7 @@ fn visit_fn_use<'tcx>(
     source: Span,
     output: &mut MonoItems<'tcx>,
 ) {
-    if let ty::FnDef(def_id, args) = *ty.kind() {
+    if let ty::FnDef(def_id, args) = ty.kind() {
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
         } else {
@@ -1097,7 +1097,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
 
     match (&source_ty.kind(), &target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
-        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(*a, *b),
+        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(a, b),
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }
@@ -1317,7 +1317,7 @@ fn visit_mentioned_item<'tcx>(
 ) {
     match *item {
         MentionedItem::Fn(ty) => {
-            if let ty::FnDef(def_id, args) = *ty.kind() {
+            if let ty::FnDef(def_id, args) = ty.kind() {
                 let instance =
                     Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
                 // `visit_instance_use` was written for "used" item collection but works just as well
@@ -1343,7 +1343,7 @@ fn visit_mentioned_item<'tcx>(
             }
         }
         MentionedItem::Closure(source_ty) => {
-            if let ty::Closure(def_id, args) = *source_ty.kind() {
+            if let ty::Closure(def_id, args) = source_ty.kind() {
                 let instance =
                     Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
                 if should_codegen_locally(tcx, instance) {

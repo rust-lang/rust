@@ -721,7 +721,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
         // These types seem reasonably opaque enough that they could be instantiated with their
         // borrowed variants in a function body when we see a move error.
-        let borrow_level = match *ty.kind() {
+        let borrow_level = match ty.kind() {
             ty::Param(_) => tcx
                 .explicit_predicates_of(self.mir_def_id().to_def_id())
                 .predicates
@@ -1210,7 +1210,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         } else if let ty::Param(param) = ty.kind()
             && let Some(_clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
-            && let generic_param = generics.type_param(*param, self.infcx.tcx)
+            && let generic_param = generics.type_param(param, self.infcx.tcx)
             && let param_span = self.infcx.tcx.def_span(generic_param.def_id)
             && if let Some(UseSpans::FnSelfUse { kind, .. }) = use_spans
                 && let CallKind::FnCall { fn_trait_id, self_ty } = kind
@@ -1358,7 +1358,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .into_iter()
             .map(|err| match err.obligation.predicate.kind().skip_binder() {
                 PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    match *predicate.self_ty().kind() {
+                    match predicate.self_ty().kind() {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
                             predicate.trait_ref.print_trait_sugared().to_string(),

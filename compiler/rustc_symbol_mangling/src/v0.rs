@@ -340,7 +340,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match *ty.kind() {
+        match ty.kind() {
             // Basic types, handled above.
             ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
                 unreachable!()
@@ -576,8 +576,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
                 if let ty::Int(ity) = ct_ty.kind() {
-                    let val =
-                        Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(bits) as i128;
+                    let val = Integer::from_int_ty(&self.tcx, ity).size().sign_extend(bits) as i128;
                     if val < 0 {
                         self.push("n");
                     }
@@ -640,7 +639,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     Ok(())
                 };
 
-                match *ct_ty.kind() {
+                match ct_ty.kind() {
                     ty::Array(..) | ty::Slice(_) => {
                         self.push("A");
                         print_field_list(self)?;

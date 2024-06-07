@@ -456,7 +456,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The mask must be an integer or an array.
                 assert!(
                     mask.layout.ty.is_integral()
-                        || matches!(mask.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
+                        || matches!(mask.layout.ty.kind(), ty::Array(elemty, _) if elemty == this.tcx.types.u8)
                 );
                 assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, mask.layout.size.bits());
@@ -502,7 +502,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Returns either an unsigned integer or array of `u8`.
                 assert!(
                     dest.layout.ty.is_integral()
-                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
+                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == this.tcx.types.u8)
                 );
                 assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, dest.layout.size.bits());

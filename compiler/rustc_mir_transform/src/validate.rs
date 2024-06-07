@@ -673,7 +673,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
                     }
                     kind => kind,
@@ -722,7 +722,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Coroutine(def_id, args) => {
+                    ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             // If we're currently validating an inlined copy of this body,
                             // then it will no longer be parameterized over the original
@@ -970,7 +970,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let data_ptr_ty = fields.raw[0].ty(self.body, self.tcx);
                         let metadata_ty = fields.raw[1].ty(self.body, self.tcx);
                         if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {
-                            if *in_mut != mutability {
+                            if in_mut != mutability {
                                 self.fail(location, "input and output mutability must match");
                             }
 

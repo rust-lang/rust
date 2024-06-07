@@ -635,7 +635,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     ) -> bool {
         let universe_of_term = match goal.predicate.term.unpack() {
             ty::TermKind::Ty(ty) => {
-                if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
+                if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
                     self.infcx.universe_of_ty(vid).unwrap()
                 } else {
                     return false;
@@ -669,7 +669,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTermOrNotNameable<'_, 'tcx> {
             type Result = ControlFlow<()>;
             fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-                match *t.kind() {
+                match t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
                         if let ty::TermKind::Ty(term) = self.term.unpack()
                             && let Some(term_vid) = term.ty_vid()
@@ -1108,7 +1108,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'_, '_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Alias(..) if !ty.has_escaping_bound_vars() => {
                 let infer_ty = self.ecx.next_ty_infer();
                 let normalizes_to = ty::PredicateKind::AliasRelate(

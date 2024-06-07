@@ -147,8 +147,8 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Alias(ty::Opaque, ..), _) => (a, enable_subtyping(b, true)?),
-            (_, &ty::Alias(ty::Opaque, ..)) => (enable_subtyping(a, false)?, b),
+            (ty::Alias(ty::Opaque, ..), _) => (a, enable_subtyping(b, true)?),
+            (_, ty::Alias(ty::Opaque, ..)) => (enable_subtyping(a, false)?, b),
             _ => unreachable!(
                 "expected at least one opaque type in `relate_opaques`, got {a} and {b}."
             ),
@@ -360,20 +360,20 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
         }
 
         match (a.kind(), b.kind()) {
-            (_, &ty::Infer(ty::TyVar(_))) => {
+            (_, ty::Infer(ty::TyVar(_))) => {
                 span_bug!(
                     self.span(),
                     "should not be relating type variables on the right in MIR typeck"
                 );
             }
 
-            (&ty::Infer(ty::TyVar(a_vid)), _) => {
+            (ty::Infer(ty::TyVar(a_vid)), _) => {
                 infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?
             }
 
             (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
                 infcx.super_combine_tys(self, a, b).map(|_| ()).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
@@ -387,8 +387,8 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
                     if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
                 })?;
             }
-            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
-            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+            (ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if def_id.is_local() && !self.type_checker.infcx.next_trait_solver() =>
             {
                 self.relate_opaques(a, b)?;

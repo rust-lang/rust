@@ -345,7 +345,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for expr in args {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
+                    if let ty::Ref(_, _, mutbl) = ty.kind() {
                         if mutbl == Mutability::Mut {
                             self.prefer_mutable = true;
                         }
@@ -360,7 +360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
+                    if let ty::Ref(_, _, mutbl) = ty.kind() {
                         if mutbl == Mutability::Mut {
                             self.prefer_mutable = true;
                         }

@@ -509,14 +509,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ty::VarianceDiagInfo::Invariant { ty, param_index } => {
                 let (desc, note) = match ty.kind() {
                     ty::RawPtr(ty, mutbl) => {
-                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(mutbl, rustc_hir::Mutability::Mut);
                         (
                             format!("a mutable pointer to `{}`", ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
-                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(mutbl, rustc_hir::Mutability::Mut);
                         (
                             format!("a mutable reference to `{inner_ty}`"),
                             "mutable references are invariant over their type parameter"
@@ -527,7 +527,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let generic_arg = args[param_index as usize];
                         let identity_args =
                             GenericArgs::identity_for_item(self.infcx.tcx, adt.did());
-                        let base_ty = Ty::new_adt(self.infcx.tcx, *adt, identity_args);
+                        let base_ty = Ty::new_adt(self.infcx.tcx, adt, identity_args);
                         let base_generic_arg = identity_args[param_index as usize];
                         let adt_desc = adt.descr();
 
@@ -540,8 +540,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         (desc, note)
                     }
                     ty::FnDef(def_id, _) => {
-                        let name = self.infcx.tcx.item_name(*def_id);
-                        let identity_args = GenericArgs::identity_for_item(self.infcx.tcx, *def_id);
+                        let name = self.infcx.tcx.item_name(def_id);
+                        let identity_args = GenericArgs::identity_for_item(self.infcx.tcx, def_id);
                         let desc = format!("a function pointer to `{name}`");
                         let note = format!(
                             "the function `{name}` is invariant over the parameter `{}`",
@@ -593,7 +593,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity()
         };
 
@@ -602,7 +602,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(*def) => {
+                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
                 }
                 _ if output_ty.contains_closure() => {
@@ -952,7 +952,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if let Ok(Some(instance)) = ty::Instance::resolve(
                 tcx,
                 self.param_env,
-                *fn_did,
+                fn_did,
                 self.infcx.resolve_vars_if_possible(args),
             ) {
                 instance
@@ -1070,8 +1070,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         else {
             return;
         };
-        let ty::Closure(_, args) = *tcx.type_of(closure_def_id).instantiate_identity().kind()
-        else {
+        let ty::Closure(_, args) = tcx.type_of(closure_def_id).instantiate_identity().kind() else {
             return;
         };
         let args = args.as_closure();
@@ -1092,7 +1091,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let liberated_sig = tcx.liberate_late_bound_regions(closure_def_id.to_def_id(), args.sig());
         let mut peeled_ty = liberated_sig.output();
         let mut count = 0;
-        while let ty::Ref(_, ref_ty, _) = *peeled_ty.kind() {
+        while let ty::Ref(_, ref_ty, _) = peeled_ty.kind() {
             peeled_ty = ref_ty;
             count += 1;
         }

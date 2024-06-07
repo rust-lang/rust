@@ -52,7 +52,7 @@ fn compute_slice_length<'tcx>(
                     && let Some(cast_ty) = cast_ty.builtin_deref(true)
                     && let ty::Slice(..) = cast_ty.kind()
                 {
-                    slice_lengths[local] = Some(*len);
+                    slice_lengths[local] = Some(len);
                 }
             }
             // The length information is stored in the fat pointer, so we treat `operand` as a value.

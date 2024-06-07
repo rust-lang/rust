@@ -43,20 +43,20 @@ impl DebugContext {
                 tcx,
                 type_dbg,
                 ty,
-                *elem_ty,
+                elem_ty,
                 len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
             ),
             // ty::Slice(_) | ty::Str
             // ty::Dynamic
             // ty::Foreign
             ty::RawPtr(pointee_type, _) | ty::Ref(_, pointee_type, _) => {
-                self.pointer_type(tcx, type_dbg, ty, *pointee_type)
+                self.pointer_type(tcx, type_dbg, ty, pointee_type)
             }
             // ty::Adt(def, args) if def.is_box() && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst())
             // ty::FnDef(..) | ty::FnPtr(..)
             // ty::Closure(..)
             // ty::Adt(def, ..)
-            ty::Tuple(components) => self.tuple_type(tcx, type_dbg, ty, *components),
+            ty::Tuple(components) => self.tuple_type(tcx, type_dbg, ty, components),
             // ty::Param(_)
             // FIXME implement remaining types and add unreachable!() to the fallback branch
             _ => self.placeholder_for_type(tcx, type_dbg, ty),

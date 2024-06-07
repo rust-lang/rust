@@ -159,7 +159,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, fn_args) = callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
@@ -496,9 +496,9 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         {
                             let (size, elem_ty) = ty.simd_size_and_type(self.tcx());
                             let elem_ll_ty = match elem_ty.kind() {
-                                ty::Float(f) => self.type_float_from_ty(*f),
-                                ty::Int(i) => self.type_int_from_ty(*i),
-                                ty::Uint(u) => self.type_uint_from_ty(*u),
+                                ty::Float(f) => self.type_float_from_ty(f),
+                                ty::Int(i) => self.type_int_from_ty(i),
+                                ty::Uint(u) => self.type_uint_from_ty(u),
                                 ty::RawPtr(_, _) => self.type_ptr(),
                                 _ => unreachable!(),
                             };
@@ -516,9 +516,9 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 {
                     let (size, elem_ty) = ret_ty.simd_size_and_type(self.tcx());
                     let elem_ll_ty = match elem_ty.kind() {
-                        ty::Float(f) => self.type_float_from_ty(*f),
-                        ty::Int(i) => self.type_int_from_ty(*i),
-                        ty::Uint(u) => self.type_uint_from_ty(*u),
+                        ty::Float(f) => self.type_float_from_ty(f),
+                        ty::Int(i) => self.type_int_from_ty(i),
+                        ty::Uint(u) => self.type_uint_from_ty(u),
                         ty::RawPtr(_, _) => self.type_ptr(),
                         _ => unreachable!(),
                     };
@@ -1465,14 +1465,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
-            let elem_ty = bx.cx.type_float_from_ty(*f);
+            let elem_ty = bx.cx.type_float_from_ty(f);
             match f.bit_width() {
                 32 => ("f32", elem_ty),
                 64 => ("f64", elem_ty),
                 _ => return_error!(InvalidMonomorphization::FloatingPointVector {
                     span,
                     name,
-                    f_ty: *f,
+                    f_ty: f,
                     in_ty,
                 }),
             }
@@ -1541,7 +1541,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
     fn llvm_vector_str(bx: &Builder<'_, '_, '_>, elem_ty: Ty<'_>, vec_len: u64) -> String {
-        match *elem_ty.kind() {
+        match elem_ty.kind() {
             ty::Int(v) => format!(
                 "v{}i{}",
                 vec_len,
@@ -1561,7 +1561,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     fn llvm_vector_ty<'ll>(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64) -> &'ll Type {
-        let elem_ty = match *elem_ty.kind() {
+        let elem_ty = match elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
@@ -1620,7 +1620,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                *element_ty1.kind(),
+                element_ty1.kind(),
                 ty::RawPtr(p_ty, _) if p_ty == in_elem && p_ty.kind() == element_ty0.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
@@ -1727,7 +1727,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                *pointer_ty.kind(),
+                pointer_ty.kind(),
                 ty::RawPtr(p_ty, _) if p_ty == values_elem && p_ty.kind() == values_elem.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
@@ -1820,7 +1820,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a mutable pointer type matching the element type
         require!(
             matches!(
-                *pointer_ty.kind(),
+                pointer_ty.kind(),
                 ty::RawPtr(p_ty, p_mutbl) if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
             ),
             InvalidMonomorphization::ExpectedElementType {
@@ -1918,7 +1918,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                *element_ty1.kind(),
+                element_ty1.kind(),
                 ty::RawPtr(p_ty, p_mutbl)
                     if p_ty == in_elem && p_mutbl.is_mut() && p_ty.kind() == element_ty0.kind()
             ),
@@ -2396,7 +2396,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_ctpop | sym::simd_cttz
     ) {
         let vec_ty = bx.cx.type_vector(
-            match *in_elem.kind() {
+            match in_elem.kind() {
                 ty::Int(i) => bx.cx.type_int_from_ty(i),
                 ty::Uint(i) => bx.cx.type_uint_from_ty(i),
                 _ => return_error!(InvalidMonomorphization::UnsupportedOperation {
@@ -2473,7 +2473,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
+        let (signed, elem_width, elem_ty) = match in_elem.kind() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
             _ => {

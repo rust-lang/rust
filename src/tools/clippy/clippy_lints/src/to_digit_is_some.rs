@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                 hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
                     if to_digits_path.ident.name.as_str() == "to_digit"
                         && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg)
-                        && *char_arg_ty.kind() == ty::Char
+                        && char_arg_ty.kind() == ty::Char
                     {
                         Some((true, *char_arg, radix_arg))
                     } else {
