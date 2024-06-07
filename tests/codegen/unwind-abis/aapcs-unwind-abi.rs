@@ -1,7 +1,7 @@
 //@ needs-llvm-components: arm
 //@ compile-flags: --target=armv7-unknown-linux-gnueabihf --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
-#![feature(no_core, lang_items, c_unwind)]
+#![feature(no_core, lang_items)]
 #[lang = "sized"]
 trait Sized {}
 

@@ -1,6 +1,6 @@
 //@ revisions: x86_64 i686
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -O -C panic=abort
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64] needs-llvm-components: x86
 //@[i686] compile-flags: --target i686-unknown-linux-gnu

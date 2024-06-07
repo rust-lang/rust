@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -O -C panic=abort
 //@ compile-flags: --target aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
 
