@@ -561,6 +561,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
     gate_all!(precise_capturing, "precise captures on `impl Trait` are experimental");
     gate_all!(global_registration, "global registration is experimental");
+    gate_all!(unsafe_attributes, "`#[unsafe()]` markers for attributes are experimental");
 
     if !visitor.features.never_patterns {
         if let Some(spans) = spans.get(&sym::never_patterns) {

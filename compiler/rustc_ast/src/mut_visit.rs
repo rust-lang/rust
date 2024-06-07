@@ -647,8 +647,10 @@ fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
         AttrKind::Normal(normal) => {
-            let NormalAttr { item: AttrItem { path, args, tokens }, tokens: attr_tokens } =
-                &mut **normal;
+            let NormalAttr {
+                item: AttrItem { unsafety: _, path, args, tokens },
+                tokens: attr_tokens,
+            } = &mut **normal;
             vis.visit_path(path);
             visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
@@ -678,7 +680,7 @@ fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T
 }
 
 fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
-    let MetaItem { path: _, kind, span } = mi;
+    let MetaItem { unsafety: _, path: _, kind, span } = mi;
     match kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(mis) => visit_thin_vec(mis, |mi| vis.visit_meta_list_item(mi)),
@@ -840,7 +842,7 @@ fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
         token::NtTy(ty) => vis.visit_ty(ty),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
-            let AttrItem { path, args, tokens } = item.deref_mut();
+            let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
             vis.visit_path(path);
             visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);

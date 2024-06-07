@@ -42,6 +42,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
 pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     let item = attr.get_normal_item();
     Ok(MetaItem {
+        unsafety: item.unsafety,
         span: attr.span,
         path: item.path.clone(),
         kind: match &item.args {

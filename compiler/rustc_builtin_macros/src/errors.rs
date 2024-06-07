@@ -296,6 +296,13 @@ pub(crate) struct DerivePathArgsValue {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_derive_unsafe_path)]
+pub(crate) struct DeriveUnsafePath {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_no_default_variant)]
 #[help]
 pub(crate) struct NoDefaultVariant {
