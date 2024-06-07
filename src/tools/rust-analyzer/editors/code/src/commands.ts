@@ -9,7 +9,6 @@ import {
     applySnippetTextEdits,
     type SnippetTextDocumentEdit,
 } from "./snippets";
-import { spawnSync } from "child_process";
 import { type RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
 import { AstInspector } from "./ast_inspector";
 import {
@@ -415,10 +414,9 @@ export function serverVersion(ctx: CtxInit): Cmd {
             void vscode.window.showWarningMessage(`rust-analyzer server is not running`);
             return;
         }
-        const { stdout } = spawnSync(ctx.serverPath, ["--version"], { encoding: "utf8" });
-        const versionString = stdout.slice(`rust-analyzer `.length).trim();
-
-        void vscode.window.showInformationMessage(`rust-analyzer version: ${versionString}`);
+        void vscode.window.showInformationMessage(
+            `rust-analyzer version: ${ctx.serverVersion} [${ctx.serverPath}]`,
+        );
     };
 }
 

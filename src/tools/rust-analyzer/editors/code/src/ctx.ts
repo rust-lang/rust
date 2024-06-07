@@ -25,6 +25,8 @@ import { bootstrap } from "./bootstrap";
 import type { RustAnalyzerExtensionApi } from "./main";
 import type { JsonProject } from "./rust_project";
 import { prepareTestExplorer } from "./test_explorer";
+import { spawn } from "node:child_process";
+import { text } from "node:stream/consumers";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -71,6 +73,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     readonly statusBar: vscode.StatusBarItem;
     config: Config;
     readonly workspace: Workspace;
+    readonly version: string;
 
     private _client: lc.LanguageClient | undefined;
     private _serverPath: string | undefined;
@@ -85,6 +88,15 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private _dependencies: RustDependenciesProvider | undefined;
     private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
     private lastStatus: ServerStatusParams | { health: "stopped" } = { health: "stopped" };
+    private _serverVersion: string;
+
+    get serverPath(): string | undefined {
+        return this._serverPath;
+    }
+
+    get serverVersion(): string | undefined {
+        return this._serverVersion;
+    }
 
     get client() {
         return this._client;
@@ -104,6 +116,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
         workspace: Workspace,
     ) {
         extCtx.subscriptions.push(this);
+        this.version = extCtx.extension.packageJSON.version ?? "<unknown>";
+        this._serverVersion = "<not running>";
         this.config = new Config(extCtx);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         if (this.config.testExplorer) {
@@ -184,6 +198,19 @@ export class Ctx implements RustAnalyzerExtensionApi {
 
                     log.error("Bootstrap error", err);
                     throw new Error(message);
+                },
+            );
+            text(spawn(this._serverPath, ["--version"]).stdout.setEncoding("utf-8")).then(
+                (data) => {
+                    const prefix = `rust-analyzer `;
+                    this._serverVersion = data
+                        .slice(data.startsWith(prefix) ? prefix.length : 0)
+                        .trim();
+                    this.refreshServerStatus();
+                },
+                (_) => {
+                    this._serverVersion = "<unknown>";
+                    this.refreshServerStatus();
                 },
             );
             const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
@@ -372,10 +399,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
         return this.extCtx.subscriptions;
     }
 
-    get serverPath(): string | undefined {
-        return this._serverPath;
-    }
-
     setWorkspaces(workspaces: JsonProject[]) {
         this.config.discoveredWorkspaces = workspaces;
     }
@@ -475,23 +498,24 @@ export class Ctx implements RustAnalyzerExtensionApi {
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendMarkdown("\n\n---\n\n");
         }
-        statusBar.tooltip.appendMarkdown("\n\n[Open Logs](command:rust-analyzer.openLogs)");
+
+        const toggleCheckOnSave = this.config.checkOnSave ? "Disable" : "Enable";
         statusBar.tooltip.appendMarkdown(
-            `\n\n[${
-                this.config.checkOnSave ? "Disable" : "Enable"
-            } Check on Save](command:rust-analyzer.toggleCheckOnSave)`,
+            `[Extension Info](command:analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
+                "\n\n---\n\n" +
+                '[$(terminal) Open Logs](command:rust-analyzer.openLogs "Open the server logs")' +
+                "\n\n" +
+                `[$(settings) ${toggleCheckOnSave} Check on Save](command:rust-analyzer.toggleCheckOnSave "Temporarily ${toggleCheckOnSave.toLowerCase()} check on save functionality")` +
+                "\n\n" +
+                '[$(refresh) Reload Workspace](command:rust-analyzer.reloadWorkspace "Reload and rediscover workspaces")' +
+                "\n\n" +
+                '[$(symbol-property) Rebuild Build Dependencies](command:rust-analyzer.rebuildProcMacros "Rebuild build scripts and proc-macros")' +
+                "\n\n" +
+                '[$(stop-circle) Stop server](command:rust-analyzer.stopServer "Stop the server")' +
+                "\n\n" +
+                '[$(debug-restart) Restart server](command:rust-analyzer.restartServer "Restart the server")',
         );
-        statusBar.tooltip.appendMarkdown(
-            "\n\n[Reload Workspace](command:rust-analyzer.reloadWorkspace)",
-        );
-        statusBar.tooltip.appendMarkdown(
-            "\n\n[Rebuild Proc Macros](command:rust-analyzer.rebuildProcMacros)",
-        );
-        statusBar.tooltip.appendMarkdown(
-            "\n\n[Restart server](command:rust-analyzer.restartServer)",
-        );
-        statusBar.tooltip.appendMarkdown("\n\n[Stop server](command:rust-analyzer.stopServer)");
-        if (!status.quiescent) icon = "$(sync~spin) ";
+        if (!status.quiescent) icon = "$(loading~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }
 
