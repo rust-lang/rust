@@ -154,14 +154,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
                 "expected at least one opaque type in `relate_opaques`, got {a} and {b}."
             ),
         };
-        let cause = ObligationCause::dummy_with_span(self.span());
-        self.register_goals(
-            infcx
-                .handle_opaque_type(a, b, &cause, self.param_env())?
-                .obligations
-                .into_iter()
-                .map(Goal::from),
-        );
+        self.register_goals(infcx.handle_opaque_type(a, b, self.span(), self.param_env())?);
         Ok(())
     }
 

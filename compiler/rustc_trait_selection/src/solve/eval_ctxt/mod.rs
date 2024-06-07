@@ -961,15 +961,15 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
     ) -> Result<(), NoSolution> {
-        let mut obligations = Vec::new();
+        let mut goals = Vec::new();
         self.infcx.insert_hidden_type(
             opaque_type_key,
-            &ObligationCause::dummy(),
+            DUMMY_SP,
             param_env,
             hidden_ty,
-            &mut obligations,
+            &mut goals,
         )?;
-        self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
+        self.add_goals(GoalSource::Misc, goals);
         Ok(())
     }
 
@@ -980,16 +980,15 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
     ) {
-        let mut obligations = Vec::new();
+        let mut goals = Vec::new();
         self.infcx.add_item_bounds_for_hidden_type(
             opaque_def_id,
             opaque_args,
-            ObligationCause::dummy(),
             param_env,
             hidden_ty,
-            &mut obligations,
+            &mut goals,
         );
-        self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
+        self.add_goals(GoalSource::Misc, goals);
     }
 
     // Do something for each opaque/hidden pair defined with `def_id` in the

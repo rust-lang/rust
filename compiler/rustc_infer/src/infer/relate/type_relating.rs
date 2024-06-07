@@ -150,14 +150,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                     && def_id.is_local()
                     && !infcx.next_trait_solver() =>
             {
-                // FIXME: Don't shuttle between Goal and Obligation
-                self.fields.goals.extend(
-                    infcx
-                        .handle_opaque_type(a, b, &self.fields.trace.cause, self.param_env())?
-                        .obligations
-                        .into_iter()
-                        .map(Goal::from),
-                );
+                self.fields.goals.extend(infcx.handle_opaque_type(
+                    a,
+                    b,
+                    self.fields.trace.cause.span,
+                    self.param_env(),
+                )?);
             }
 
             _ => {

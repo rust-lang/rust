@@ -21,7 +21,6 @@ use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
 
-use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
@@ -109,13 +108,7 @@ where
                 && def_id.is_local()
                 && !this.infcx().next_trait_solver() =>
         {
-            this.register_goals(
-                infcx
-                    .handle_opaque_type(a, b, this.cause(), this.param_env())?
-                    .obligations
-                    .into_iter()
-                    .map(Goal::from),
-            );
+            this.register_goals(infcx.handle_opaque_type(a, b, this.span(), this.param_env())?);
             Ok(a)
         }
 
