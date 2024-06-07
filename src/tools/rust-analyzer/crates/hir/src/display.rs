@@ -8,7 +8,7 @@ use hir_def::{
     },
     lang_item::LangItem,
     type_ref::{TypeBound, TypeRef},
-    AdtId, GenericDefId,
+    AdtId, GenericDefId, ItemContainerId, ItemTreeLoc, Lookup,
 };
 use hir_ty::{
     display::{
@@ -22,7 +22,7 @@ use itertools::Itertools;
 
 use crate::{
     Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module,
+    Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam, Macro, Module,
     SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias,
     TypeOrConstParam, TypeParam, Union, Variant,
 };
@@ -35,11 +35,18 @@ impl HirDisplay for Function {
         let mut module = self.module(db);
 
         match container {
-            Some(AssocItemContainer::Impl(_)) => {
+            Some(AssocItemContainer::Trait(trait_)) => {
+                write_trait_header(&trait_, f)?;
+                f.write_str("\n")?;
+            }
+            Some(AssocItemContainer::Impl(impl_)) => {
+                write_impl_header(&impl_, f)?;
+                f.write_str("\n")?;
+
                 // Block-local impls are "hoisted" to the nearest (non-block) module.
                 module = module.nearest_non_block_module(db);
             }
-            _ => {}
+            None => {}
         }
         let module_id = module.id;
         write_visibility(module_id, self.visibility(db), f)?;
@@ -127,6 +134,24 @@ impl HirDisplay for Function {
 
         Ok(())
     }
+}
+
+fn write_impl_header(impl_: &Impl, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+    let db = f.db;
+
+    f.write_str("impl")?;
+    let def_id = GenericDefId::ImplId(impl_.id);
+    write_generic_params(def_id, f)?;
+
+    if let Some(trait_) = impl_.trait_(db) {
+        let trait_data = db.trait_data(trait_.id);
+        write!(f, " {} for", trait_data.name.display(db.upcast()))?;
+    }
+
+    f.write_char(' ')?;
+    impl_.self_ty(db).hir_fmt(f)?;
+
+    Ok(())
 }
 
 impl HirDisplay for SelfParam {
@@ -562,6 +587,16 @@ fn write_where_clause(
 ) -> Result<bool, HirDisplayError> {
     let params = f.db.generic_params(def);
 
+    let container = match def {
+        GenericDefId::FunctionId(id) => match id.lookup(f.db.upcast()).container() {
+            ItemContainerId::ImplId(it) => Some(("impl", it.into())),
+            ItemContainerId::TraitId(it) => Some(("trait", it.into())),
+            _ => None,
+        }
+        .map(|(name, def)| (name, f.db.generic_params(def))),
+        _ => None,
+    };
+
     let no_displayable_pred = |params: &Interned<GenericParams>| {
         params.where_predicates.iter().all(|pred| {
             matches!(
@@ -572,12 +607,19 @@ fn write_where_clause(
         })
     };
 
-    if no_displayable_pred(&params) {
+    if no_displayable_pred(&params)
+        && container.as_ref().map_or(true, |(_, p)| no_displayable_pred(p))
+    {
         return Ok(false);
     }
 
     f.write_str("\nwhere")?;
     write_where_predicates(&params, f)?;
+
+    if let Some((name, container_params)) = container {
+        write!(f, "\n    // Bounds from {}:", name)?;
+        write_where_predicates(&container_params, f)?;
+    }
 
     Ok(true)
 }
