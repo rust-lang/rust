@@ -8,19 +8,19 @@ use crate::diagnostics::RegionName;
 #[derive(Diagnostic)]
 #[diag(borrowck_move_unsized, code = E0161)]
 pub(crate) struct MoveUnsized<'tcx> {
-    pub ty: Ty<'tcx>,
+    pub(crate) ty: Ty<'tcx>,
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(borrowck_higher_ranked_lifetime_error)]
 pub(crate) struct HigherRankedLifetimeError {
     #[subdiagnostic]
-    pub cause: Option<HigherRankedErrorCause>,
+    pub(crate) cause: Option<HigherRankedErrorCause>,
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -35,22 +35,22 @@ pub(crate) enum HigherRankedErrorCause {
 #[diag(borrowck_higher_ranked_subtype_error)]
 pub(crate) struct HigherRankedSubtypeError {
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(borrowck_generic_does_not_live_long_enough)]
 pub(crate) struct GenericDoesNotLiveLongEnough {
-    pub kind: String,
+    pub(crate) kind: String,
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(borrowck_var_does_not_need_mut)]
 pub(crate) struct VarNeedNotMut {
     #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 #[derive(Diagnostic)]
 #[diag(borrowck_var_cannot_escape_closure)]
@@ -58,9 +58,9 @@ pub(crate) struct VarNeedNotMut {
 #[note(borrowck_cannot_escape)]
 pub(crate) struct FnMutError {
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
     #[subdiagnostic]
-    pub ty_err: FnMutReturnTypeErr,
+    pub(crate) ty_err: FnMutReturnTypeErr,
 }
 
 #[derive(Subdiagnostic)]
@@ -105,7 +105,7 @@ pub(crate) enum FnMutReturnTypeErr {
 #[diag(borrowck_lifetime_constraints_error)]
 pub(crate) struct LifetimeOutliveErr {
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -283,38 +283,38 @@ pub(crate) enum CaptureVarCause {
 #[derive(Diagnostic)]
 #[diag(borrowck_cannot_move_when_borrowed, code = E0505)]
 pub(crate) struct MoveBorrow<'a> {
-    pub place: &'a str,
-    pub borrow_place: &'a str,
-    pub value_place: &'a str,
+    pub(crate) place: &'a str,
+    pub(crate) borrow_place: &'a str,
+    pub(crate) value_place: &'a str,
     #[primary_span]
     #[label(borrowck_move_label)]
-    pub span: Span,
+    pub(crate) span: Span,
     #[label]
-    pub borrow_span: Span,
+    pub(crate) borrow_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(borrowck_opaque_type_non_generic_param, code = E0792)]
 pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
-    pub ty: GenericArg<'tcx>,
-    pub kind: &'a str,
+    pub(crate) ty: GenericArg<'tcx>,
+    pub(crate) kind: &'a str,
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
     #[label]
-    pub param_span: Span,
+    pub(crate) param_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(borrowck_opaque_type_lifetime_mismatch)]
 pub(crate) struct LifetimeMismatchOpaqueParam<'tcx> {
-    pub arg: GenericArg<'tcx>,
-    pub prev: GenericArg<'tcx>,
+    pub(crate) arg: GenericArg<'tcx>,
+    pub(crate) prev: GenericArg<'tcx>,
     #[primary_span]
     #[label]
     #[note]
-    pub span: Span,
+    pub(crate) span: Span,
     #[label(borrowck_prev_lifetime_label)]
-    pub prev_span: Span,
+    pub(crate) prev_span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -475,7 +475,7 @@ pub(crate) enum TypeNoCopy<'a, 'tcx> {
 #[diag(borrowck_simd_intrinsic_arg_const)]
 pub(crate) struct SimdIntrinsicArgConst {
     #[primary_span]
-    pub span: Span,
-    pub arg: usize,
-    pub intrinsic: String,
+    pub(crate) span: Span,
+    pub(crate) arg: usize,
+    pub(crate) intrinsic: String,
 }

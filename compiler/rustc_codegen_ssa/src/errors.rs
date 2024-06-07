@@ -149,7 +149,7 @@ impl<'a> CopyPath<'a> {
     }
 }
 
-struct DebugArgPath<'a>(pub &'a Path);
+struct DebugArgPath<'a>(&'a Path);
 
 impl IntoDiagArg for DebugArgPath<'_> {
     fn into_diag_arg(self) -> rustc_errors::DiagArgValue {

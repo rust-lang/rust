@@ -21,6 +21,7 @@
 //! ```
 
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![allow(elided_lifetimes_in_paths)]

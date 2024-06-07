@@ -28,17 +28,17 @@ pub(crate) enum PathKind {
 }
 
 impl Path {
-    pub fn new(path: Vec<Symbol>) -> Path {
+    pub(crate) fn new(path: Vec<Symbol>) -> Path {
         Path::new_(path, Vec::new(), PathKind::Std)
     }
-    pub fn new_local(path: Symbol) -> Path {
+    pub(crate) fn new_local(path: Symbol) -> Path {
         Path::new_(vec![path], Vec::new(), PathKind::Local)
     }
-    pub fn new_(path: Vec<Symbol>, params: Vec<Box<Ty>>, kind: PathKind) -> Path {
+    pub(crate) fn new_(path: Vec<Symbol>, params: Vec<Box<Ty>>, kind: PathKind) -> Path {
         Path { path, params, kind }
     }
 
-    pub fn to_ty(
+    fn to_ty(
         &self,
         cx: &ExtCtxt<'_>,
         span: Span,
@@ -47,7 +47,7 @@ impl Path {
     ) -> P<ast::Ty> {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
-    pub fn to_path(
+    pub(crate) fn to_path(
         &self,
         cx: &ExtCtxt<'_>,
         span: Span,
@@ -88,7 +88,7 @@ pub(crate) fn self_ref() -> Ty {
 }
 
 impl Ty {
-    pub fn to_ty(
+    pub(crate) fn to_ty(
         &self,
         cx: &ExtCtxt<'_>,
         span: Span,
@@ -109,7 +109,7 @@ impl Ty {
         }
     }
 
-    pub fn to_path(
+    pub(crate) fn to_path(
         &self,
         cx: &ExtCtxt<'_>,
         span: Span,
@@ -164,14 +164,14 @@ fn mk_ty_param(
 /// Bounds on type parameters.
 #[derive(Clone)]
 pub(crate) struct Bounds {
-    pub bounds: Vec<(Symbol, Vec<Path>)>,
+    pub(crate) bounds: Vec<(Symbol, Vec<Path>)>,
 }
 
 impl Bounds {
-    pub fn empty() -> Bounds {
+    pub(crate) fn empty() -> Bounds {
         Bounds { bounds: Vec::new() }
     }
-    pub fn to_generics(
+    pub(crate) fn to_generics(
         &self,
         cx: &ExtCtxt<'_>,
         span: Span,

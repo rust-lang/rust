@@ -91,7 +91,7 @@ macro_rules! span_mirbug_and_err {
 
 mod canonical;
 mod constraint_conversion;
-pub mod free_region_relations;
+pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
 mod relate_tys;
@@ -2810,9 +2810,9 @@ impl NormalizeLocation for Location {
 /// that we use during MIR borrowchecking.
 #[derive(Debug)]
 pub(super) struct InstantiateOpaqueType<'tcx> {
-    pub base_universe: Option<ty::UniverseIndex>,
-    pub region_constraints: Option<RegionConstraintData<'tcx>>,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub(super) base_universe: Option<ty::UniverseIndex>,
+    pub(super) region_constraints: Option<RegionConstraintData<'tcx>>,
+    pub(super) obligations: Vec<PredicateObligation<'tcx>>,
 }
 
 impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {

@@ -199,51 +199,51 @@ pub(crate) mod ty;
 
 pub(crate) struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
-    pub span: Span,
+    pub(crate) span: Span,
 
     /// Path of the trait, including any type parameters
-    pub path: Path,
+    pub(crate) path: Path,
 
     /// Whether to skip adding the current trait as a bound to the type parameters of the type.
-    pub skip_path_as_bound: bool,
+    pub(crate) skip_path_as_bound: bool,
 
     /// Whether `Copy` is needed as an additional bound on type parameters in a packed struct.
-    pub needs_copy_as_bound_if_packed: bool,
+    pub(crate) needs_copy_as_bound_if_packed: bool,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: Vec<Ty>,
+    pub(crate) additional_bounds: Vec<Ty>,
 
     /// Can this trait be derived for unions?
-    pub supports_unions: bool,
+    pub(crate) supports_unions: bool,
 
-    pub methods: Vec<MethodDef<'a>>,
+    pub(crate) methods: Vec<MethodDef<'a>>,
 
-    pub associated_types: Vec<(Ident, Ty)>,
+    pub(crate) associated_types: Vec<(Ident, Ty)>,
 
-    pub is_const: bool,
+    pub(crate) is_const: bool,
 }
 
 pub(crate) struct MethodDef<'a> {
     /// name of the method
-    pub name: Symbol,
+    pub(crate) name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
-    pub generics: Bounds,
+    pub(crate) generics: Bounds,
 
     /// Is there is a `&self` argument? If not, it is a static function.
-    pub explicit_self: bool,
+    pub(crate) explicit_self: bool,
 
     /// Arguments other than the self argument.
-    pub nonself_args: Vec<(Ty, Symbol)>,
+    pub(crate) nonself_args: Vec<(Ty, Symbol)>,
 
     /// Returns type
-    pub ret_ty: Ty,
+    pub(crate) ret_ty: Ty,
 
-    pub attributes: ast::AttrVec,
+    pub(crate) attributes: ast::AttrVec,
 
-    pub fieldless_variants_strategy: FieldlessVariantsStrategy,
+    pub(crate) fieldless_variants_strategy: FieldlessVariantsStrategy,
 
-    pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
+    pub(crate) combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
 }
 
 /// How to handle fieldless enum variants.
@@ -265,25 +265,25 @@ pub(crate) enum FieldlessVariantsStrategy {
 /// All the data about the data structure/method being derived upon.
 pub(crate) struct Substructure<'a> {
     /// ident of self
-    pub type_ident: Ident,
+    pub(crate) type_ident: Ident,
     /// Verbatim access to any non-selflike arguments, i.e. arguments that
     /// don't have type `&Self`.
-    pub nonselflike_args: &'a [P<Expr>],
-    pub fields: &'a SubstructureFields<'a>,
+    pub(crate) nonselflike_args: &'a [P<Expr>],
+    pub(crate) fields: &'a SubstructureFields<'a>,
 }
 
 /// Summary of the relevant parts of a struct/enum field.
 pub(crate) struct FieldInfo {
-    pub span: Span,
+    pub(crate) span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
-    pub name: Option<Ident>,
+    pub(crate) name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
-    pub self_expr: P<Expr>,
+    pub(crate) self_expr: P<Expr>,
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
-    pub other_selflike_exprs: Vec<P<Expr>>,
+    pub(crate) other_selflike_exprs: Vec<P<Expr>>,
 }
 
 #[derive(Copy, Clone)]
@@ -352,15 +352,15 @@ struct TypeParameter {
 pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
-    pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
+    pub(crate) fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
-    pub fn new_expr(expr: P<Expr>) -> BlockOrExpr {
+    pub(crate) fn new_expr(expr: P<Expr>) -> BlockOrExpr {
         BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
+    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -462,7 +462,7 @@ fn find_type_parameters(
 }
 
 impl<'a> TraitDef<'a> {
-    pub fn expand(
+    pub(crate) fn expand(
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
@@ -472,7 +472,7 @@ impl<'a> TraitDef<'a> {
         self.expand_ext(cx, mitem, item, push, false);
     }
 
-    pub fn expand_ext(
+    pub(crate) fn expand_ext(
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,

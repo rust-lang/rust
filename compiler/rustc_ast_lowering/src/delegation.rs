@@ -55,9 +55,9 @@ use rustc_target::spec::abi;
 use std::iter;
 
 pub(crate) struct DelegationResults<'hir> {
-    pub body_id: hir::BodyId,
-    pub sig: hir::FnSig<'hir>,
-    pub generics: &'hir hir::Generics<'hir>,
+    pub(crate) body_id: hir::BodyId,
+    pub(crate) sig: hir::FnSig<'hir>,
+    pub(crate) generics: &'hir hir::Generics<'hir>,
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {

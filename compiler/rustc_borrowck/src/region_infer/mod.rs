@@ -44,7 +44,7 @@ mod graphviz;
 mod opaque_types;
 mod reverse_sccs;
 
-pub mod values;
+pub(crate) mod values;
 
 pub struct RegionInferenceContext<'tcx> {
     pub var_infos: VarInfos,
@@ -213,19 +213,19 @@ pub(crate) enum Cause {
 /// `InferCtxt::process_registered_region_obligations` and
 /// `InferCtxt::type_must_outlive` in `rustc_infer::infer::InferCtxt`.
 #[derive(Clone, Debug)]
-pub struct TypeTest<'tcx> {
+pub(crate) struct TypeTest<'tcx> {
     /// The type `T` that must outlive the region.
-    pub generic_kind: GenericKind<'tcx>,
+    pub(crate) generic_kind: GenericKind<'tcx>,
 
     /// The region `'x` that the type must outlive.
-    pub lower_bound: RegionVid,
+    pub(crate) lower_bound: RegionVid,
 
     /// The span to blame.
-    pub span: Span,
+    pub(crate) span: Span,
 
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
-    pub verify_bound: VerifyBound<'tcx>,
+    pub(crate) verify_bound: VerifyBound<'tcx>,
 }
 
 /// When we have an unmet lifetime constraint, we try to propagate it outward (e.g. to a closure
@@ -245,7 +245,7 @@ enum Trace<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum ExtraConstraintInfo {
+pub(crate) enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
@@ -2300,9 +2300,9 @@ impl<'tcx> RegionDefinition<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct BlameConstraint<'tcx> {
-    pub category: ConstraintCategory<'tcx>,
-    pub from_closure: bool,
-    pub cause: ObligationCause<'tcx>,
-    pub variance_info: ty::VarianceDiagInfo<'tcx>,
+pub(crate) struct BlameConstraint<'tcx> {
+    pub(crate) category: ConstraintCategory<'tcx>,
+    pub(crate) from_closure: bool,
+    pub(crate) cause: ObligationCause<'tcx>,
+    pub(crate) variance_info: ty::VarianceDiagInfo<'tcx>,
 }

@@ -268,7 +268,7 @@ pub(crate) struct BadDeriveLit {
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
-    pub help: BadDeriveLitHelp,
+    pub(crate) help: BadDeriveLitHelp,
 }
 
 #[derive(Subdiagnostic)]
@@ -327,9 +327,9 @@ pub(crate) struct MultipleDefaults {
     #[label]
     pub(crate) first: Span,
     #[label(builtin_macros_additional)]
-    pub additional: Vec<Span>,
+    pub(crate) additional: Vec<Span>,
     #[subdiagnostic]
-    pub suggs: Vec<MultipleDefaultsSugg>,
+    pub(crate) suggs: Vec<MultipleDefaultsSugg>,
 }
 
 #[derive(Subdiagnostic)]
@@ -581,9 +581,9 @@ pub(crate) struct FormatUnknownTrait<'a> {
 )]
 pub(crate) struct FormatUnknownTraitSugg {
     #[primary_span]
-    pub span: Span,
-    pub fmt: &'static str,
-    pub trait_name: &'static str,
+    pub(crate) span: Span,
+    pub(crate) fmt: &'static str,
+    pub(crate) trait_name: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -847,21 +847,21 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
 #[diag(builtin_macros_expected_comma_in_list)]
 pub(crate) struct ExpectedCommaInList {
     #[primary_span]
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_only_one_argument)]
 pub(crate) struct OnlyOneArgument<'a> {
     #[primary_span]
-    pub span: Span,
-    pub name: &'a str,
+    pub(crate) span: Span,
+    pub(crate) name: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_takes_no_arguments)]
 pub(crate) struct TakesNoArguments<'a> {
     #[primary_span]
-    pub span: Span,
-    pub name: &'a str,
+    pub(crate) span: Span,
+    pub(crate) name: &'a str,
 }

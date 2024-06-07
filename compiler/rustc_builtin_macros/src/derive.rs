@@ -13,7 +13,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
 
 pub(crate) struct Expander {
-    pub is_const: bool,
+    pub(crate) is_const: bool,
 }
 
 impl MultiItemModifier for Expander {

@@ -41,55 +41,54 @@ use std::str;
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'ll, 'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub check_overflow: bool,
-    pub use_dll_storage_attrs: bool,
-    pub tls_model: llvm::ThreadLocalMode,
+pub(crate) struct CodegenCx<'ll, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
+    check_overflow: bool,
+    pub(crate) use_dll_storage_attrs: bool,
+    pub(crate) tls_model: llvm::ThreadLocalMode,
 
-    pub llmod: &'ll llvm::Module,
-    pub llcx: &'ll llvm::Context,
-    pub codegen_unit: &'tcx CodegenUnit<'tcx>,
+    pub(crate) llmod: &'ll llvm::Module,
+    pub(crate) llcx: &'ll llvm::Context,
+    pub(crate) codegen_unit: &'tcx CodegenUnit<'tcx>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
+    pub(crate) instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
+    vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
+    pub(crate) const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+    pub(crate) const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
     /// (We have to make sure we don't invalidate any Values referring
     /// to constants.)
-    pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
+    pub(crate) statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
-    pub used_statics: RefCell<Vec<&'ll Value>>,
+    pub(crate) used_statics: RefCell<Vec<&'ll Value>>,
 
     /// Statics that will be placed in the llvm.compiler.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
+    pub(crate) compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
     /// Mapping of non-scalar types to llvm types.
-    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
+    pub(crate) type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
 
     /// Mapping of scalar types to llvm types.
-    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
+    pub(crate) scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
 
-    pub isize_ty: &'ll Type,
+    pub(crate) isize_ty: &'ll Type,
 
-    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
-    pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+    coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
+    pub(crate) dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     eh_catch_typeinfo: Cell<Option<&'ll Value>>,
-    pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
+    pub(crate) rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
 
@@ -100,7 +99,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// different type and clear the symbol name of the original global.
     /// `global_asm!` needs to be able to find this new global so that it can
     /// compute the correct mangled symbol name to insert into the asm.
-    pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
+    pub(crate) renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -113,7 +112,7 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-pub unsafe fn create_module<'ll>(
+pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
@@ -490,7 +489,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     #[inline]
-    pub fn coverage_context(&self) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
+    pub(crate) fn coverage_context(
+        &self,
+    ) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
         self.coverage_cx.as_ref()
     }
 
@@ -1017,7 +1018,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 impl CodegenCx<'_, '_> {
     /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
-    pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
+    pub(crate) fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local_gen_sym_counter.get();
         self.local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with

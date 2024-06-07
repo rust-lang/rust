@@ -15,7 +15,7 @@ use std::fmt;
 use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
 /// The results of the dataflow analyses used by the borrow checker.
-pub struct BorrowckResults<'mir, 'tcx> {
+pub(crate) struct BorrowckResults<'mir, 'tcx> {
     pub(crate) borrows: Results<'tcx, Borrows<'mir, 'tcx>>,
     pub(crate) uninits: Results<'tcx, MaybeUninitializedPlaces<'mir, 'tcx>>,
     pub(crate) ever_inits: Results<'tcx, EverInitializedPlaces<'mir, 'tcx>>,
@@ -23,7 +23,7 @@ pub struct BorrowckResults<'mir, 'tcx> {
 
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Debug)]
-pub struct BorrowckFlowState<'mir, 'tcx> {
+pub(crate) struct BorrowckFlowState<'mir, 'tcx> {
     pub(crate) borrows: <Borrows<'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
     pub(crate) uninits: <MaybeUninitializedPlaces<'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
     pub(crate) ever_inits: <EverInitializedPlaces<'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
