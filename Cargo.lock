@@ -2652,14 +2652,11 @@ version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6a622008b6e321afc04970976f62ee297fdbaa6f95318ca343e3eebb9648441"
 dependencies = [
- "compiler_builtins",
  "crc32fast",
  "flate2",
  "hashbrown",
  "indexmap",
  "memchr",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
  "ruzstd 0.5.0",
  "wasmparser",
 ]
@@ -2673,6 +2670,18 @@ dependencies = [
  "flate2",
  "memchr",
  "ruzstd 0.6.0",
+]
+
+[[package]]
+name = "object"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "576dfe1fc8f9df304abb159d767a29d0476f7750fbf8aa7ad07816004a207434"
+dependencies = [
+ "compiler_builtins",
+ "memchr",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -5356,7 +5365,7 @@ dependencies = [
  "hermit-abi",
  "libc",
  "miniz_oxide",
- "object 0.32.2",
+ "object 0.36.0",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
