@@ -221,5 +221,21 @@ help: and remove this obsolete arm
 LL -         0 => cfg!(not_enable),
    |
 
-error: aborting due to 13 previous errors
+error: this match arm has an identical body to another arm
+  --> tests/ui/match_same_arms2.rs:277:17
+   |
+LL |                 MaybeStaticStr::Borrowed(s) => s,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try changing either arm body
+help: or try merging the arm patterns
+   |
+LL |                 MaybeStaticStr::Borrowed(s) | MaybeStaticStr::Static(s) => s,
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: and remove this obsolete arm
+   |
+LL -                 MaybeStaticStr::Static(s) => s,
+   |
+
+error: aborting due to 14 previous errors
 
