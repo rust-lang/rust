@@ -12,7 +12,7 @@
 
 use std::fs::remove_file;
 
-use run_make_support::{cc, cwd, dynamic_lib, is_msvc, run, rustc};
+use run_make_support::{cc, cwd, dynamic_lib_name, is_msvc, run, rustc};
 
 fn main() {
     rustc().input("bar.rs").run();
@@ -25,7 +25,7 @@ fn main() {
     }
 
     run("foo");
-    remove_file(dynamic_lib("foo")).unwrap();
+    remove_file(dynamic_lib_name("foo")).unwrap();
 
     rustc().input("foo.rs").arg("-Clto").run();
     run("foo");

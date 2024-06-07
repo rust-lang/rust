@@ -65,12 +65,6 @@ pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
-/// Construct a path to a static library under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
-pub fn static_lib(name: &str) -> PathBuf {
-    PathBuf::from(static_lib_name(name))
-}
-
 pub fn python_command() -> Command {
     let python_path = env_var("PYTHON");
     Command::new(python_path)
@@ -111,12 +105,6 @@ pub fn static_lib_name(name: &str) -> String {
     if is_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }
 }
 
-/// Construct a path to a dynamic library under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
-pub fn dynamic_lib(name: &str) -> PathBuf {
-    PathBuf::from(dynamic_lib_name(name))
-}
-
 /// Construct the dynamic library name based on the platform.
 pub fn dynamic_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
@@ -154,14 +142,7 @@ pub fn dynamic_lib_extension() -> &'static str {
     }
 }
 
-/// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with the library name.
-pub fn rust_lib(name: &str) -> PathBuf {
-    PathBuf::from(rust_lib_name(name))
-}
-
-/// Generate the name a rust library (rlib) would have. If you want the complete path, use
-/// [`rust_lib`] instead.
+/// Construct a rust library (rlib) name.
 pub fn rust_lib_name(name: &str) -> String {
     format!("lib{name}.rlib")
 }

@@ -8,7 +8,7 @@ use std::process::Command;
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
 
-    let file = PathBuf::from("foo.wasm");
+    let file = Path::new("foo.wasm");
 
     run(&file, "return_two_i32", "1\n2\n");
     run(&file, "return_two_i64", "3\n4\n");

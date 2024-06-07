@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{htmldocck, rustc, rustdoc, rust_lib_name};
+use run_make_support::{htmldocck, rust_lib_name, rustc, rustdoc};
 
 fn main() {
     let out_dir = "rustdoc";

@@ -2,6 +2,7 @@
 
 use run_make_support::{rustc, wasmparser};
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 fn main() {
     test_file("foo.rs", &[("a", &["foo"]), ("b", &["foo"])]);
