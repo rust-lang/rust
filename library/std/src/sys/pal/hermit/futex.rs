@@ -10,7 +10,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     let timespec = timeout.and_then(|dur| {
         Some(hermit_abi::timespec {
             tv_sec: dur.as_secs().try_into().ok()?,
-            tv_nsec: dur.subsec_nanos().into(),
+            tv_nsec: dur.subsec_nanos().try_into().ok()?,
         })
     });
 

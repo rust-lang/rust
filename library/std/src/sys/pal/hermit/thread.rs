@@ -98,5 +98,5 @@ impl Thread {
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsafe { Ok(NonZero::new_unchecked(hermit_abi::get_processor_count())) }
+    unsafe { Ok(NonZero::new_unchecked(hermit_abi::available_parallelism())) }
 }
