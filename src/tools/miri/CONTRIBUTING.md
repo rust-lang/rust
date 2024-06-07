@@ -223,7 +223,7 @@ will eventually sync those changes back into this repository.
 When working on Miri in the rustc tree, here's how you can run tests:
 
 ```
-./x.py test miri --stage 1
+./x.py test miri
 ```
 
 `--bless` will work, too.
