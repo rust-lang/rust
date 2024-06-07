@@ -167,5 +167,6 @@ fn report_unsafe_args(sess: &Session, meta: &ast::MetaItem) {
             sess.dcx().emit_err(errors::DeriveUnsafePath { span });
         }
         Safety::Default => {}
+        Safety::Safe(_) => unreachable!(),
     }
 }
