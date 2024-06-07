@@ -96,8 +96,47 @@ macro_rules! int_divrem_guard {
                 // Nice base case to make it easy to const-fold away the other branch.
                 $rhs
             };
-            // Safety: $lhs and rhs are vectors
-            unsafe { core::intrinsics::simd::$simd_call($lhs, rhs) }
+
+            // aarch64 fails for arbitrary `v % 0` for non-powers-of-two
+            #[cfg(target_arch = "aarch64")]
+            {
+                const { assert!(Self::LEN <= 64) };
+                if Self::LEN == 1 {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 1> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<1>(Default::default()), rhs.resize::<1>(Default::default())) };
+                    x.resize(Default::default())
+                } else if Self::LEN <= 2 {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 2> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<2>(Default::default()), rhs.resize::<2>(Default::default())) };
+                    x.resize(Default::default())
+                } else if Self::LEN <= 4 {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 4> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<4>(Default::default()), rhs.resize::<4>(Default::default())) };
+                    x.resize(Default::default())
+                } else if Self::LEN <= 8 {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 8> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<8>(Default::default()), rhs.resize::<8>(Default::default())) };
+                    x.resize(Default::default())
+                } else if Self::LEN <= 16 {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 16> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<16>(Default::default()), rhs.resize::<16>(Default::default())) };
+                    x.resize(Default::default())
+                } else if Self::LEN <= 32 {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 32> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<32>(Default::default()), rhs.resize::<32>(Default::default())) };
+                    x.resize(Default::default())
+                } else {
+                    // Safety: $lhs and rhs are vectors
+                    let x: Simd::<_, 64> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<64>(Default::default()), rhs.resize::<64>(Default::default())) };
+                    x.resize(Default::default())
+                }
+            }
+
+            #[cfg(not(target_arch = "aarch64"))]
+            {
+                // Safety: $lhs and rhs are vectors
+                unsafe { core::intrinsics::simd::$simd_call($lhs, rhs) }
+            }
         }
     };
 }
