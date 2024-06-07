@@ -147,11 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
         let mir = cx.tcx.optimized_mir(def_id);
 
-        if let Err((span, err)) = is_min_const_fn(cx.tcx, mir, &self.msrv) {
-            if cx.tcx.is_const_fn_raw(def_id.to_def_id()) {
-                cx.tcx.dcx().span_err(span, err);
-            }
-        } else {
+        if let Ok(()) = is_min_const_fn(cx.tcx, mir, &self.msrv) {
             span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`");
         }
     }
