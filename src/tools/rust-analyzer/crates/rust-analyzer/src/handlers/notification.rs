@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notifications.
 
-use std::ops::Deref;
+use std::ops::{Deref, Not as _};
 
 use itertools::Itertools;
 use lsp_types::{
@@ -13,7 +13,7 @@ use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
-    config::Config,
+    config::{Config, ConfigChange},
     global_state::GlobalState,
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
@@ -71,6 +71,7 @@ pub(crate) fn handle_did_open_text_document(
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
 
+        tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
         if state.config.notifications().unindexed_project {
             tracing::debug!("queuing task");
@@ -196,10 +197,14 @@ pub(crate) fn handle_did_change_configuration(
                 }
                 (None, Some(mut configs)) => {
                     if let Some(json) = configs.get_mut(0) {
-                        // Note that json can be null according to the spec if the client can't
-                        // provide a configuration. This is handled in Config::update below.
-                        let mut config = Config::clone(&*this.config);
-                        this.config_errors = config.update(json.take()).err();
+                        let config = Config::clone(&*this.config);
+                        let mut change = ConfigChange::default();
+                        change.change_client_config(json.take());
+
+                        let (config, e, _) = config.apply_change(change);
+                        this.config_errors = e.is_empty().not().then_some(e);
+
+                        // Client config changes neccesitates .update_config method to be called.
                         this.update_configuration(config);
                     }
                 }

@@ -272,7 +272,7 @@ impl SourceRootConfig {
     /// If a `SourceRoot` doesn't have a parent and is local then it is not contained in this mapping but it can be asserted that it is a root `SourceRoot`.
     pub fn source_root_parent_map(&self) -> FxHashMap<SourceRootId, SourceRootId> {
         let roots = self.fsc.roots();
-        let mut map = FxHashMap::<SourceRootId, SourceRootId>::default();
+        let mut i = 0;
         roots
             .iter()
             .enumerate()
@@ -280,17 +280,16 @@ impl SourceRootConfig {
             .filter_map(|(idx, (root, root_id))| {
                 // We are interested in parents if they are also local source roots.
                 // So instead of a non-local parent we may take a local ancestor as a parent to a node.
-                roots.iter().take(idx).find_map(|(root2, root2_id)| {
+                roots[..idx].iter().find_map(|(root2, root2_id)| {
+                    i += 1;
                     if self.local_filesets.contains(root2_id) && root.starts_with(root2) {
                         return Some((root_id, root2_id));
                     }
                     None
                 })
             })
-            .for_each(|(child, parent)| {
-                map.insert(SourceRootId(*child as u32), SourceRootId(*parent as u32));
-            });
-        map
+            .map(|(&child, &parent)| (SourceRootId(child as u32), SourceRootId(parent as u32)))
+            .collect()
     }
 }
 

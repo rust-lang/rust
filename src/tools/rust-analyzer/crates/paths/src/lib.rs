@@ -135,6 +135,24 @@ impl AbsPathBuf {
     pub fn pop(&mut self) -> bool {
         self.0.pop()
     }
+
+    /// Equivalent of [`PathBuf::push`] for `AbsPathBuf`.
+    ///
+    /// Extends `self` with `path`.
+    ///
+    /// If `path` is absolute, it replaces the current path.
+    ///
+    /// On Windows:
+    ///
+    /// * if `path` has a root but no prefix (e.g., `\windows`), it
+    ///   replaces everything except for the prefix (if any) of `self`.
+    /// * if `path` has a prefix but no root, it replaces `self`.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
+    ///   and `path` is not empty, the new path is normalized: all references
+    ///   to `.` and `..` are removed.
+    pub fn push<P: AsRef<Utf8Path>>(&mut self, suffix: P) {
+        self.0.push(suffix)
+    }
 }
 
 impl fmt::Display for AbsPathBuf {

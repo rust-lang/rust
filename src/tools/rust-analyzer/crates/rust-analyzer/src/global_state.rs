@@ -3,13 +3,13 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::time::Instant;
+use std::{ops::Not as _, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths};
+use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabaseExt};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -25,13 +25,16 @@ use project_model::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use tracing::{span, Level};
 use triomphe::Arc;
-use vfs::{AnchoredPathBuf, Vfs};
+use vfs::{AnchoredPathBuf, ChangeKind, Vfs};
 
 use crate::{
-    config::{Config, ConfigError},
+    config::{Config, ConfigChange, ConfigErrors},
     diagnostics::{CheckFixes, DiagnosticCollection},
     line_index::{LineEndings, LineIndex},
-    lsp::{from_proto, to_proto::url_from_abs_path},
+    lsp::{
+        from_proto::{self},
+        to_proto::url_from_abs_path,
+    },
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
@@ -65,13 +68,13 @@ pub(crate) struct GlobalState {
     pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
 
     pub(crate) config: Arc<Config>,
-    pub(crate) config_errors: Option<ConfigError>,
+    pub(crate) config_errors: Option<ConfigErrors>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: MemDocs,
     pub(crate) source_root_config: SourceRootConfig,
     /// A mapping that maps a local source root's `SourceRootId` to it parent's `SourceRootId`, if it has one.
-    pub(crate) local_roots_parent_map: FxHashMap<SourceRootId, SourceRootId>,
+    pub(crate) local_roots_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
 
     // status
@@ -213,7 +216,7 @@ impl GlobalState {
             shutdown_requested: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
-            local_roots_parent_map: FxHashMap::default(),
+            local_roots_parent_map: Arc::new(FxHashMap::default()),
             config_errors: Default::default(),
 
             proc_macro_clients: Arc::from_iter([]),
@@ -254,6 +257,14 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = span!(Level::INFO, "GlobalState::process_changes").entered();
+
+        // We cannot directly resolve a change in a ratoml file to a format
+        // that can be used by the config module because config talks
+        // in `SourceRootId`s instead of `FileId`s and `FileId` -> `SourceRootId`
+        // mapping is not ready until `AnalysisHost::apply_changes` has been called.
+        let mut modified_ratoml_files: FxHashMap<FileId, (ChangeKind, vfs::VfsPath)> =
+            FxHashMap::default();
+
         let (change, modified_rust_files, workspace_structure_change) = {
             let mut change = ChangeWithProcMacros::new();
             let mut guard = self.vfs.write();
@@ -273,6 +284,11 @@ impl GlobalState {
             let mut modified_rust_files = vec![];
             for file in changed_files.into_values() {
                 let vfs_path = vfs.file_path(file.file_id);
+                if let Some(("rust-analyzer", Some("toml"))) = vfs_path.name_and_extension() {
+                    // Remember ids to use them after `apply_changes`
+                    modified_ratoml_files.insert(file.file_id, (file.kind(), vfs_path.clone()));
+                }
+
                 if let Some(path) = vfs_path.as_path() {
                     has_structure_changes |= file.is_created_or_deleted();
 
@@ -310,12 +326,15 @@ impl GlobalState {
                 bytes.push((file.file_id, text));
             }
             let (vfs, line_endings_map) = &mut *RwLockUpgradableReadGuard::upgrade(guard);
-            bytes.into_iter().for_each(|(file_id, text)| match text {
-                None => change.change_file(file_id, None),
-                Some((text, line_endings)) => {
-                    line_endings_map.insert(file_id, line_endings);
-                    change.change_file(file_id, Some(text));
-                }
+            bytes.into_iter().for_each(|(file_id, text)| {
+                let text = match text {
+                    None => None,
+                    Some((text, line_endings)) => {
+                        line_endings_map.insert(file_id, line_endings);
+                        Some(text)
+                    }
+                };
+                change.change_file(file_id, text);
             });
             if has_structure_changes {
                 let roots = self.source_root_config.partition(vfs);
@@ -326,6 +345,63 @@ impl GlobalState {
 
         let _p = span!(Level::INFO, "GlobalState::process_changes/apply_change").entered();
         self.analysis_host.apply_change(change);
+        if !modified_ratoml_files.is_empty()
+            || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
+        {
+            let config_change = {
+                let user_config_path = self.config.user_config_path();
+                let root_ratoml_path = self.config.root_ratoml_path();
+                let mut change = ConfigChange::default();
+                let db = self.analysis_host.raw_database();
+
+                for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
+                    if vfs_path == *user_config_path {
+                        change.change_user_config(Some(db.file_text(file_id)));
+                        continue;
+                    }
+
+                    if vfs_path == *root_ratoml_path {
+                        change.change_root_ratoml(Some(db.file_text(file_id)));
+                        continue;
+                    }
+
+                    // If change has been made to a ratoml file that
+                    // belongs to a non-local source root, we will ignore it.
+                    // As it doesn't make sense a users to use external config files.
+                    let sr_id = db.file_source_root(file_id);
+                    let sr = db.source_root(sr_id);
+                    if !sr.is_library {
+                        if let Some((old_path, old_text)) = change.change_ratoml(
+                            sr_id,
+                            vfs_path.clone(),
+                            Some(db.file_text(file_id)),
+                        ) {
+                            // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
+                            if old_path < vfs_path {
+                                span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
+                                // Put the old one back in.
+                                change.change_ratoml(sr_id, old_path, old_text);
+                            }
+                        }
+                    } else {
+                        // Mapping to a SourceRoot should always end up in `Ok`
+                        span!(Level::ERROR, "Mapping to SourceRootId failed.");
+                    }
+                }
+                change.change_source_root_parent_map(self.local_roots_parent_map.clone());
+                change
+            };
+
+            let (config, e, should_update) = self.config.apply_change(config_change);
+            self.config_errors = e.is_empty().not().then_some(e);
+
+            if should_update {
+                self.update_configuration(config);
+            } else {
+                // No global or client level config was changed. So we can just naively replace config.
+                self.config = Arc::new(config);
+            }
+        }
 
         {
             if !matches!(&workspace_structure_change, Some((.., true))) {

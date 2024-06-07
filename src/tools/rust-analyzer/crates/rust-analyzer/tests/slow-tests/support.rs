@@ -9,7 +9,10 @@ use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
 use paths::{Utf8Path, Utf8PathBuf};
-use rust_analyzer::{config::Config, lsp, main_loop};
+use rust_analyzer::{
+    config::{Config, ConfigChange, ConfigErrors},
+    lsp, main_loop,
+};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
 use test_utils::FixtureWithProjectMeta;
@@ -24,6 +27,7 @@ pub(crate) struct Project<'a> {
     roots: Vec<Utf8PathBuf>,
     config: serde_json::Value,
     root_dir_contains_symlink: bool,
+    user_config_path: Option<Utf8PathBuf>,
 }
 
 impl Project<'_> {
@@ -47,7 +51,13 @@ impl Project<'_> {
                 }
             }),
             root_dir_contains_symlink: false,
+            user_config_path: None,
         }
+    }
+
+    pub(crate) fn user_config_dir(mut self, config_path_dir: TestDir) -> Self {
+        self.user_config_path = Some(config_path_dir.path().to_owned());
+        self
     }
 
     pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Self {
@@ -111,10 +121,17 @@ impl Project<'_> {
         assert!(proc_macro_names.is_empty());
         assert!(mini_core.is_none());
         assert!(toolchain.is_none());
+
         for entry in fixture {
-            let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
-            fs::create_dir_all(path.parent().unwrap()).unwrap();
-            fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+            if let Some(pth) = entry.path.strip_prefix("/$$CONFIG_DIR$$") {
+                let path = self.user_config_path.clone().unwrap().join(&pth['/'.len_utf8()..]);
+                fs::create_dir_all(path.parent().unwrap()).unwrap();
+                fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+            } else {
+                let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
+                fs::create_dir_all(path.parent().unwrap()).unwrap();
+                fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+            }
         }
 
         let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
@@ -184,8 +201,16 @@ impl Project<'_> {
             },
             roots,
             None,
+            self.user_config_path,
         );
-        config.update(self.config).expect("invalid config");
+        let mut change = ConfigChange::default();
+
+        change.change_client_config(self.config);
+
+        let error_sink: ConfigErrors;
+        (config, error_sink, _) = config.apply_change(change);
+        assert!(error_sink.is_empty(), "{error_sink:?}");
+
         config.rediscover_workspaces();
 
         Server::new(tmp_dir.keep(), config)

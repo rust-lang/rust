@@ -154,7 +154,7 @@ pub(crate) fn fetch_native_diagnostics(
         .copied()
         .filter_map(|file_id| {
             let line_index = snapshot.file_line_index(file_id).ok()?;
-            let source_root = snapshot.analysis.source_root(file_id).ok()?;
+            let source_root = snapshot.analysis.source_root_id(file_id).ok()?;
 
             let diagnostics = snapshot
                 .analysis

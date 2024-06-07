@@ -17,6 +17,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::line_index::PositionEncoding;
 
+pub enum InternalTestingFetchConfig {}
+
+impl Request for InternalTestingFetchConfig {
+    type Params = InternalTestingFetchConfigParams;
+    type Result = serde_json::Value;
+    const METHOD: &'static str = "rust-analyzer-internal/internalTestingFetchConfig";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct InternalTestingFetchConfigParams {
+    pub text_document: Option<TextDocumentIdentifier>,
+    pub config: String,
+}
 pub enum AnalyzerStatus {}
 
 impl Request for AnalyzerStatus {

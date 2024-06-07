@@ -11,6 +11,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::disallowed_types)]
 
+mod ratoml;
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
 mod support;
@@ -30,15 +31,15 @@ use lsp_types::{
     InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
     RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
 };
+
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
 use serde_json::json;
 use stdx::format_to_acc;
-use test_utils::skip_slow_tests;
 
-use crate::{
-    support::{project, Project},
-    testdir::TestDir,
-};
+use test_utils::skip_slow_tests;
+use testdir::TestDir;
+
+use crate::support::{project, Project};
 
 #[test]
 fn completes_items_from_standard_library() {

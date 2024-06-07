@@ -18,7 +18,6 @@ mod cargo_target_spec;
 mod diagnostics;
 mod diff;
 mod dispatch;
-mod global_state;
 mod hack_recover_crate_name;
 mod line_index;
 mod main_loop;
@@ -40,6 +39,7 @@ pub mod tracing {
 }
 
 pub mod config;
+mod global_state;
 pub mod lsp;
 use self::lsp::ext as lsp_ext;
 

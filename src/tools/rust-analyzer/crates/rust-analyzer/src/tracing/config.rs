@@ -13,6 +13,7 @@ use tracing_tree::HierarchicalLayer;
 
 use crate::tracing::hprof;
 
+#[derive(Debug)]
 pub struct Config<T> {
     pub writer: T,
     pub filter: String,

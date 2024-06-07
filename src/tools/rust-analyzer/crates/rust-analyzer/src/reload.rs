@@ -24,6 +24,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
+use lsp_types::FileSystemWatcher;
 use proc_macro_api::ProcMacroServer;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use stdx::{format_to, thread::ThreadIntent};
@@ -442,40 +443,59 @@ impl GlobalState {
             let filter =
                 self.workspaces.iter().flat_map(|ws| ws.to_roots()).filter(|it| it.is_local);
 
-            let watchers = if self.config.did_change_watched_files_relative_pattern_support() {
-                // When relative patterns are supported by the client, prefer using them
-                filter
-                    .flat_map(|root| {
-                        root.include.into_iter().flat_map(|base| {
-                            [(base.clone(), "**/*.rs"), (base, "**/Cargo.{lock,toml}")]
+            let mut watchers: Vec<FileSystemWatcher> =
+                if self.config.did_change_watched_files_relative_pattern_support() {
+                    // When relative patterns are supported by the client, prefer using them
+                    filter
+                        .flat_map(|root| {
+                            root.include.into_iter().flat_map(|base| {
+                                [
+                                    (base.clone(), "**/*.rs"),
+                                    (base.clone(), "**/Cargo.{lock,toml}"),
+                                    (base, "**/rust-analyzer.toml"),
+                                ]
+                            })
                         })
-                    })
-                    .map(|(base, pat)| lsp_types::FileSystemWatcher {
-                        glob_pattern: lsp_types::GlobPattern::Relative(
-                            lsp_types::RelativePattern {
-                                base_uri: lsp_types::OneOf::Right(
-                                    lsp_types::Url::from_file_path(base).unwrap(),
-                                ),
-                                pattern: pat.to_owned(),
-                            },
-                        ),
-                        kind: None,
-                    })
-                    .collect()
-            } else {
-                // When they're not, integrate the base to make them into absolute patterns
-                filter
-                    .flat_map(|root| {
-                        root.include.into_iter().flat_map(|base| {
-                            [format!("{base}/**/*.rs"), format!("{base}/**/Cargo.{{lock,toml}}")]
+                        .map(|(base, pat)| lsp_types::FileSystemWatcher {
+                            glob_pattern: lsp_types::GlobPattern::Relative(
+                                lsp_types::RelativePattern {
+                                    base_uri: lsp_types::OneOf::Right(
+                                        lsp_types::Url::from_file_path(base).unwrap(),
+                                    ),
+                                    pattern: pat.to_owned(),
+                                },
+                            ),
+                            kind: None,
                         })
-                    })
+                        .collect()
+                } else {
+                    // When they're not, integrate the base to make them into absolute patterns
+                    filter
+                        .flat_map(|root| {
+                            root.include.into_iter().flat_map(|base| {
+                                [
+                                    format!("{base}/**/*.rs"),
+                                    format!("{base}/**/Cargo.{{toml,lock}}"),
+                                    format!("{base}/**/rust-analyzer.toml"),
+                                ]
+                            })
+                        })
+                        .map(|glob_pattern| lsp_types::FileSystemWatcher {
+                            glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                            kind: None,
+                        })
+                        .collect()
+                };
+
+            watchers.extend(
+                iter::once(self.config.user_config_path().to_string())
+                    .chain(iter::once(self.config.root_ratoml_path().to_string()))
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
                         glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
                         kind: None,
                     })
-                    .collect()
-            };
+                    .collect::<Vec<FileSystemWatcher>>(),
+            );
 
             let registration_options =
                 lsp_types::DidChangeWatchedFilesRegistrationOptions { watchers };
@@ -547,7 +567,7 @@ impl GlobalState {
             version: self.vfs_config_version,
         });
         self.source_root_config = project_folders.source_root_config;
-        self.local_roots_parent_map = self.source_root_config.source_root_parent_map();
+        self.local_roots_parent_map = Arc::new(self.source_root_config.source_root_parent_map());
 
         self.recreate_crate_graph(cause);
 
