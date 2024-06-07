@@ -2254,6 +2254,9 @@ impl<'test> TestCx<'test> {
         }
 
         match output_file {
+            // If the test's compile flags specify an output path with `-o`,
+            // avoid a compiler warning about `--out-dir` being ignored.
+            _ if self.props.compile_flags.iter().any(|flag| flag == "-o") => {}
             TargetLocation::ThisFile(path) => {
                 rustc.arg("-o").arg(path);
             }
