@@ -313,7 +313,7 @@ impl<'tcx> Clause<'tcx> {
     pub fn instantiate_supertrait(
         self,
         tcx: TyCtxt<'tcx>,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Clause<'tcx> {
         // The interaction between HRTB and supertraits is not entirely
         // obvious. Let me walk you (and myself) through an example.

@@ -3597,7 +3597,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         let rhs_span = match obligation.cause.code() {
             ObligationCauseCode::BinOp { rhs_span: Some(span), rhs_is_lit, .. } if *rhs_is_lit => {
@@ -4863,7 +4863,7 @@ impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
 pub(super) fn get_explanation_based_on_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
-    trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+    trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
 ) -> String {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
