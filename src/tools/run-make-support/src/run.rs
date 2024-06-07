@@ -2,19 +2,19 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use crate::{env_var, is_windows};
+use crate::{cwd, env_var, is_windows};
 
 use super::handle_failed_output;
 
 fn run_common(name: &str) -> (Command, Output) {
     let mut bin_path = PathBuf::new();
-    bin_path.push(env::current_dir().unwrap());
+    bin_path.push(cwd());
     bin_path.push(name);
     let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     let mut cmd = Command::new(bin_path);
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
-        paths.push(env::current_dir().unwrap());
+        paths.push(cwd());
         for p in env::split_paths(&env_var("TARGET_RPATH_ENV")) {
             paths.push(p.to_path_buf());
         }

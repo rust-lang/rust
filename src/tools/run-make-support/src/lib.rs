@@ -227,7 +227,7 @@ pub fn set_host_rpath(cmd: &mut Command) {
     let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
-        paths.push(env::current_dir().unwrap());
+        paths.push(cwd());
         paths.push(PathBuf::from(env_var("HOST_RPATH_DIR")));
         for p in env::split_paths(&env_var(&ld_lib_path_envvar)) {
             paths.push(p.to_path_buf());
@@ -325,9 +325,8 @@ pub fn assert_not_contains(haystack: &str, needle: &str) {
 /// 4) Calls `callback`
 /// 5) Switches working directory back to the original one
 /// 6) Removes `tmpdir`
-/// Switch current working directory to a temporary directory
 pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
-    let original_dir = env::current_dir().unwrap();
+    let original_dir = cwd();
     let tmpdir = original_dir.join("../temporary-directory");
     copy_dir_all(".", &tmpdir);
 
