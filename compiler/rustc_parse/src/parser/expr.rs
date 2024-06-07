@@ -327,9 +327,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_assoc_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
             })?;
 
-            self.error_ambiguous_outer_attrs(&lhs, lhs_span, rhs.span);
-            let span = lhs_span.to(rhs.span);
-
+            let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
             lhs = match op {
                 AssocOp::Add
                 | AssocOp::Subtract
@@ -428,18 +426,6 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn error_ambiguous_outer_attrs(&self, lhs: &P<Expr>, lhs_span: Span, rhs_span: Span) {
-        if let Some(attr) = lhs.attrs.iter().find(|a| a.style == AttrStyle::Outer) {
-            self.dcx().emit_err(errors::AmbiguousOuterAttributes {
-                span: attr.span.to(rhs_span),
-                sugg: errors::WrapInParentheses::Expression {
-                    left: attr.span.shrink_to_lo(),
-                    right: lhs_span.shrink_to_hi(),
-                },
-            });
-        }
-    }
-
     /// Possibly translate the current token to an associative operator.
     /// The method does not advance the current token.
     ///
@@ -520,8 +506,7 @@ impl<'a> Parser<'a> {
             None
         };
         let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
-        self.error_ambiguous_outer_attrs(&lhs, lhs.span, rhs_span);
-        let span = lhs.span.to(rhs_span);
+        let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
         let limits =
             if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
         let range = self.mk_range(Some(lhs), rhs, limits);
@@ -737,8 +722,7 @@ impl<'a> Parser<'a> {
         expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind,
     ) -> PResult<'a, P<Expr>> {
         let mk_expr = |this: &mut Self, lhs: P<Expr>, rhs: P<Ty>| {
-            this.error_ambiguous_outer_attrs(&lhs, lhs_span, rhs.span);
-            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs))
+            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, rhs.span), expr_kind(lhs, rhs))
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
@@ -3827,6 +3811,16 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_expr_err(&self, span: Span, guar: ErrorGuaranteed) -> P<Expr> {
         self.mk_expr(span, ExprKind::Err(guar))
+    }
+
+    /// Create expression span ensuring the span of the parent node
+    /// is larger than the span of lhs and rhs, including the attributes.
+    fn mk_expr_sp(&self, lhs: &P<Expr>, lhs_span: Span, rhs_span: Span) -> Span {
+        lhs.attrs
+            .iter()
+            .find(|a| a.style == AttrStyle::Outer)
+            .map_or(lhs_span, |a| a.span)
+            .to(rhs_span)
     }
 
     fn collect_tokens_for_expr(

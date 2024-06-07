@@ -16,7 +16,7 @@ fn foo(
 
 fn skip_on_statements() {
     #[cfg_attr(rustfmt, rustfmt::skip)]
-    { 5+3; }
+    5+3;
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -33,11 +33,11 @@ mod foo {
 #[clippy::msrv = "1.29"]
 fn msrv_1_29() {
     #[cfg_attr(rustfmt, rustfmt::skip)]
-    { 1+29; }
+    1+29;
 }
 
 #[clippy::msrv = "1.30"]
 fn msrv_1_30() {
     #[cfg_attr(rustfmt, rustfmt::skip)]
-    { 1+30; }
+    1+30;
 }
