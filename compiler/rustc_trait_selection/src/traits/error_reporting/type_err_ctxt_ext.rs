@@ -603,7 +603,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let explanation = get_explanation_based_on_obligation(
                             self.tcx,
                             &obligation,
-                            leaf_trait_ref,
                             &leaf_trait_predicate,
                             pre_message,
                         );
@@ -759,7 +758,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         self.try_to_add_help_message(
                             &obligation,
-                            leaf_trait_ref,
                             &leaf_trait_predicate,
                             &mut err,
                             span,
@@ -3215,7 +3213,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn try_to_add_help_message(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
         trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         err: &mut Diag<'_>,
         span: Span,
@@ -3233,15 +3230,21 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
 
         // Try to report a help message
+        let trait_def_id = trait_predicate.def_id();
         if is_fn_trait
             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
                 obligation.param_env,
-                trait_ref.self_ty(),
+                trait_predicate.self_ty(),
                 trait_predicate.skip_binder().polarity,
             )
         {
-            self.add_help_message_for_fn_trait(trait_ref, err, implemented_kind, params);
-        } else if !trait_ref.has_non_region_infer()
+            self.add_help_message_for_fn_trait(
+                trait_predicate.to_poly_trait_ref(),
+                err,
+                implemented_kind,
+                params,
+            );
+        } else if !trait_predicate.has_non_region_infer()
             && self.predicate_can_apply(obligation.param_env, *trait_predicate)
         {
             // If a where-clause may be useful, remind the
@@ -3257,13 +3260,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 None,
                 obligation.cause.body_id,
             );
-        } else if trait_ref.def_id().is_local()
-            && self.tcx.trait_impls_of(trait_ref.def_id()).is_empty()
-            && !self.tcx.trait_is_auto(trait_ref.def_id())
-            && !self.tcx.trait_is_alias(trait_ref.def_id())
+        } else if trait_def_id.is_local()
+            && self.tcx.trait_impls_of(trait_def_id).is_empty()
+            && !self.tcx.trait_is_auto(trait_def_id)
+            && !self.tcx.trait_is_alias(trait_def_id)
         {
             err.span_help(
-                self.tcx.def_span(trait_ref.def_id()),
+                self.tcx.def_span(trait_def_id),
                 crate::fluent_generated::trait_selection_trait_has_no_impls,
             );
         } else if !suggested && !unsatisfied_const {
@@ -3271,7 +3274,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let impl_candidates = self.find_similar_impl_candidates(*trait_predicate);
             if !self.report_similar_impl_candidates(
                 &impl_candidates,
-                trait_ref,
+                trait_predicate.to_poly_trait_ref(),
                 body_def_id,
                 err,
                 true,
@@ -3288,7 +3291,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.suggest_convert_to_slice(
                 err,
                 obligation,
-                trait_ref,
+                trait_predicate.to_poly_trait_ref(),
                 impl_candidates.as_slice(),
                 span,
             );
