@@ -40,7 +40,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::error::{ExpectedFound, TypeError::Sorts};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -682,7 +682,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.suggest_mismatched_types_on_tail(
                                 &mut err, expr, ty, e_ty, target_id,
                             );
-                            let error = Some(Sorts(ExpectedFound { expected: ty, found: e_ty }));
+                            let error =
+                                Some(TypeError::Sorts(ExpectedFound { expected: ty, found: e_ty }));
                             self.annotate_loop_expected_due_to_inference(err, expr, error);
                             if let Some(val) =
                                 self.err_ctxt().ty_kind_suggestion(self.param_env, ty)

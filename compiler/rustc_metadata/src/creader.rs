@@ -581,7 +581,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 self.tcx.crate_types().iter().all(|c| *c == CrateType::Rlib),
                 hash,
                 extra_filename,
-                false, // is_host
                 path_kind,
             );
 

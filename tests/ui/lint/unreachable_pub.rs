@@ -9,11 +9,15 @@ mod private_mod {
     pub use std::env::{Args}; // braced-use has different item spans than unbraced
     //~^ WARNING unreachable_pub
 
+    // we lint on struct definition
     pub struct Hydrogen { //~ WARNING unreachable_pub
-        // `pub` struct fields, too
-        pub neutrons: usize, //~ WARNING unreachable_pub
-        // (... but not more-restricted fields)
+        // but not on fields, even if they are `pub` as putting `pub(crate)`
+        // it would clutter the source code for little value
+        pub neutrons: usize,
         pub(crate) electrons: usize
+    }
+    pub(crate) struct Calcium {
+        pub neutrons: usize,
     }
     impl Hydrogen {
         // impls, too

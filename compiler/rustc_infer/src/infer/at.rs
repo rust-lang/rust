@@ -27,8 +27,8 @@
 
 use super::*;
 
+use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
 use rustc_middle::bug;
-use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
 /// Whether we should define opaque types or just treat them opaquely.
@@ -90,7 +90,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
+pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
     fn to_trace(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,

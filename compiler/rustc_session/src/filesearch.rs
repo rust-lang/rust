@@ -12,7 +12,7 @@ use tracing::debug;
 pub struct FileSearch<'a> {
     sysroot: &'a Path,
     triple: &'a str,
-    search_paths: &'a [SearchPath],
+    cli_search_paths: &'a [SearchPath],
     tlib_path: &'a SearchPath,
     kind: PathKind,
 }
@@ -20,7 +20,7 @@ pub struct FileSearch<'a> {
 impl<'a> FileSearch<'a> {
     pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
         let kind = self.kind;
-        self.search_paths
+        self.cli_search_paths
             .iter()
             .filter(move |sp| sp.kind.matches(kind))
             .chain(std::iter::once(self.tlib_path))
@@ -37,26 +37,26 @@ impl<'a> FileSearch<'a> {
     pub fn new(
         sysroot: &'a Path,
         triple: &'a str,
-        search_paths: &'a [SearchPath],
+        cli_search_paths: &'a [SearchPath],
         tlib_path: &'a SearchPath,
         kind: PathKind,
     ) -> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
-        FileSearch { sysroot, triple, search_paths, tlib_path, kind }
+        FileSearch { sysroot, triple, cli_search_paths, tlib_path, kind }
     }
 }
 
 pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
-    let rustlib_path = rustc_target::target_rustlib_path(sysroot, target_triple);
-    PathBuf::from_iter([sysroot, Path::new(&rustlib_path), Path::new("lib")])
+    let rustlib_path = rustc_target::relative_target_rustlib_path(sysroot, target_triple);
+    sysroot.join(rustlib_path).join("lib")
 }
 
 /// Returns a path to the target's `bin` folder within its `rustlib` path in the sysroot. This is
 /// where binaries are usually installed, e.g. the self-contained linkers, lld-wrappers, LLVM tools,
 /// etc.
 pub fn make_target_bin_path(sysroot: &Path, target_triple: &str) -> PathBuf {
-    let rustlib_path = rustc_target::target_rustlib_path(sysroot, target_triple);
-    PathBuf::from_iter([sysroot, Path::new(&rustlib_path), Path::new("bin")])
+    let rustlib_path = rustc_target::relative_target_rustlib_path(sysroot, target_triple);
+    sysroot.join(rustlib_path).join("bin")
 }
 
 #[cfg(unix)]
@@ -275,7 +275,7 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
                 p.pop();
                 p.pop();
                 // Look for the target rustlib directory in the suspected sysroot.
-                let mut rustlib_path = rustc_target::target_rustlib_path(&p, "dummy");
+                let mut rustlib_path = rustc_target::relative_target_rustlib_path(&p, "dummy");
                 rustlib_path.pop(); // pop off the dummy target.
                 rustlib_path.exists().then_some(p)
             }
