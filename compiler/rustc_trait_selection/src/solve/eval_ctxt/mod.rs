@@ -37,11 +37,11 @@ pub(super) mod canonical;
 mod probe;
 mod select;
 
-pub struct EvalCtxt<
-    'a,
+pub struct EvalCtxt<'a, Infcx, I = <Infcx as InferCtxtLike>::Interner>
+where
     Infcx: InferCtxtLike<Interner = I>,
-    I: Interner = <Infcx as InferCtxtLike>::Interner,
-> {
+    I: Interner,
+{
     /// The inference context that backs (mostly) inference and placeholder terms
     /// instantiated while solving goals.
     ///

@@ -21,18 +21,20 @@ use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
 use std::sync::Arc as Lrc;
 
+// These modules are `pub` since they are not glob-imported.
 #[macro_use]
 pub mod visit;
 #[cfg(feature = "nightly")]
 pub mod codec;
+pub mod error;
 pub mod fold;
 pub mod inherent;
 pub mod ir_print;
 pub mod lift;
+pub mod relate;
 pub mod solve;
-pub mod ty_info;
-pub mod ty_kind;
 
+// These modules are not `pub` since they are glob-imported.
 #[macro_use]
 mod macros;
 mod binder;
@@ -46,6 +48,8 @@ mod interner;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
+mod ty_info;
+mod ty_kind;
 mod upcast;
 
 pub use binder::*;

@@ -4,13 +4,16 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
+# tidy-alphabetical-start
 derivative = "2.2.0"
-rustc_macros = { path = "../rustc_macros", optional = true }
-rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
-rustc_serialize = { path = "../rustc_serialize", optional = true }
-rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
+rustc_data_structures = { path = "../rustc_data_structures", optional = true }
+rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
+rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
+rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
+tracing = "0.1"
+# tidy-alphabetical-end
 
 [features]
 default = ["nightly"]

@@ -58,6 +58,7 @@ use crate::traits::{
     PredicateObligation,
 };
 
+use crate::infer::relate::{self, RelateResult, TypeRelation};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
@@ -71,8 +72,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
-use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
@@ -2686,7 +2687,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
     /// FloatVar inference type are compatible with themselves or their concrete types (Int and
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
-    pub fn same_type_modulo_infer<T: relate::Relate<'tcx>>(&self, a: T, b: T) -> bool {
+    pub fn same_type_modulo_infer<T: relate::Relate<TyCtxt<'tcx>>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
         SameTypeModuloInfer(self).relate(a, b).is_ok()
     }
@@ -2694,7 +2695,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
 struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'tcx>);
 
-impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
@@ -2703,10 +2704,10 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         "SameTypeModuloInfer"
     }
 
-    fn relate_with_variance<T: relate::Relate<'tcx>>(
+    fn relate_with_variance<T: relate::Relate<TyCtxt<'tcx>>>(
         &mut self,
         _variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> relate::RelateResult<'tcx, T> {
@@ -2754,7 +2755,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> relate::RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: relate::Relate<'tcx>,
+        T: relate::Relate<TyCtxt<'tcx>>,
     {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }

@@ -60,6 +60,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
+pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
 use tracing::{debug, instrument};
 pub use vtable::*;
@@ -114,7 +115,7 @@ pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
     CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs, InlineConstArgsParts, ParamConst,
-    ParamTy, PolyFnSig, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
+    ParamTy, PolyFnSig, TyKind, TypeAndMut, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -122,7 +123,6 @@ pub use self::typeck_results::{
     TypeckResults, UserType, UserTypeAnnotationIndex,
 };
 
-pub mod _match;
 pub mod abstract_const;
 pub mod adjustment;
 pub mod cast;
@@ -309,38 +309,6 @@ impl Visibility {
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
-pub enum BoundConstness {
-    /// `Type: Trait`
-    NotConst,
-    /// `Type: const Trait`
-    Const,
-    /// `Type: ~const Trait`
-    ///
-    /// Requires resolving to const only when we are in a const context.
-    ConstIfConst,
-}
-
-impl BoundConstness {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::NotConst => "",
-            Self::Const => "const",
-            Self::ConstIfConst => "~const",
-        }
-    }
-}
-
-impl fmt::Display for BoundConstness {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NotConst => f.write_str("normal"),
-            Self::Const => f.write_str("const"),
-            Self::ConstIfConst => f.write_str("~const"),
         }
     }
 }

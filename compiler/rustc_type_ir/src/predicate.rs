@@ -793,3 +793,36 @@ pub struct CoercePredicate<I: Interner> {
     pub a: I::Ty,
     pub b: I::Ty,
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
+pub enum BoundConstness {
+    /// `Type: Trait`
+    NotConst,
+    /// `Type: const Trait`
+    Const,
+    /// `Type: ~const Trait`
+    ///
+    /// Requires resolving to const only when we are in a const context.
+    ConstIfConst,
+}
+
+impl BoundConstness {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NotConst => "",
+            Self::Const => "const",
+            Self::ConstIfConst => "~const",
+        }
+    }
+}
+
+impl fmt::Display for BoundConstness {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotConst => f.write_str("normal"),
+            Self::Const => f.write_str("const"),
+            Self::ConstIfConst => f.write_str("~const"),
+        }
+    }
+}

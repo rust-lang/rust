@@ -21,7 +21,7 @@ use super::combine::ObligationEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
 
-use rustc_middle::ty::relate::RelateResult;
+use super::RelateResult;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
 
