@@ -207,8 +207,7 @@ fn import_on_the_fly(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p =
-        tracing::span!(tracing::Level::INFO, "import_on_the_fly", ?potential_import_name).entered();
+    let _p = tracing::info_span!("import_on_the_fly", ?potential_import_name).entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
@@ -296,8 +295,7 @@ fn import_on_the_fly_pat_(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "import_on_the_fly_pat_", ?potential_import_name)
-        .entered();
+    let _p = tracing::info_span!("import_on_the_fly_pat_", ?potential_import_name).entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
@@ -347,9 +345,7 @@ fn import_on_the_fly_method(
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
-    let _p =
-        tracing::span!(tracing::Level::INFO, "import_on_the_fly_method", ?potential_import_name)
-            .entered();
+    let _p = tracing::info_span!("import_on_the_fly_method", ?potential_import_name).entered();
 
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
@@ -397,13 +393,8 @@ fn import_assets_for_path(
     potential_import_name: &str,
     qualifier: Option<ast::Path>,
 ) -> Option<ImportAssets> {
-    let _p = tracing::span!(
-        tracing::Level::INFO,
-        "import_assets_for_path",
-        ?potential_import_name,
-        ?qualifier
-    )
-    .entered();
+    let _p =
+        tracing::info_span!("import_assets_for_path", ?potential_import_name, ?qualifier).entered();
 
     let fuzzy_name_length = potential_import_name.len();
     let mut assets_for_path = ImportAssets::for_fuzzy_path(

@@ -276,7 +276,7 @@ struct DefCollector<'a> {
 
 impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
-        let _p = tracing::span!(tracing::Level::INFO, "seed_with_top_level").entered();
+        let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let crate_graph = self.db.crate_graph();
         let file_id = crate_graph[self.def_map.krate].root_file_id;
@@ -411,17 +411,17 @@ impl DefCollector<'_> {
     }
 
     fn resolution_loop(&mut self) {
-        let _p = tracing::span!(tracing::Level::INFO, "DefCollector::resolution_loop").entered();
+        let _p = tracing::info_span!("DefCollector::resolution_loop").entered();
 
         // main name resolution fixed-point loop.
         let mut i = 0;
         'resolve_attr: loop {
-            let _p = tracing::span!(tracing::Level::INFO, "resolve_macros loop").entered();
+            let _p = tracing::info_span!("resolve_macros loop").entered();
             'resolve_macros: loop {
                 self.db.unwind_if_cancelled();
 
                 {
-                    let _p = tracing::span!(tracing::Level::INFO, "resolve_imports loop").entered();
+                    let _p = tracing::info_span!("resolve_imports loop").entered();
 
                     'resolve_imports: loop {
                         if self.resolve_imports() == ReachedFixedPoint::Yes {
@@ -447,7 +447,7 @@ impl DefCollector<'_> {
     }
 
     fn collect(&mut self) {
-        let _p = tracing::span!(tracing::Level::INFO, "DefCollector::collect").entered();
+        let _p = tracing::info_span!("DefCollector::collect").entered();
 
         self.resolution_loop();
 
@@ -795,7 +795,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
-        let _p = tracing::span!(tracing::Level::INFO, "resolve_import", import_path = %import.path.display(self.db.upcast()))
+        let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db.upcast()))
             .entered();
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
         match import.source {
@@ -857,7 +857,7 @@ impl DefCollector<'_> {
     }
 
     fn record_resolved_import(&mut self, directive: &ImportDirective) {
-        let _p = tracing::span!(tracing::Level::INFO, "record_resolved_import").entered();
+        let _p = tracing::info_span!("record_resolved_import").entered();
 
         let module_id = directive.module_id;
         let import = &directive.import;
@@ -1422,7 +1422,7 @@ impl DefCollector<'_> {
     fn finish(mut self) -> DefMap {
         // Emit diagnostics for all remaining unexpanded macros.
 
-        let _p = tracing::span!(tracing::Level::INFO, "DefCollector::finish").entered();
+        let _p = tracing::info_span!("DefCollector::finish").entered();
 
         for directive in &self.unresolved_macros {
             match &directive.kind {

@@ -809,7 +809,7 @@ impl ExpansionInfo {
     }
 
     pub fn new(db: &dyn ExpandDatabase, macro_file: MacroFileId) -> ExpansionInfo {
-        let _p = tracing::span!(tracing::Level::INFO, "ExpansionInfo::new").entered();
+        let _p = tracing::info_span!("ExpansionInfo::new").entered();
         let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
         let arg_tt = loc.kind.arg(db);

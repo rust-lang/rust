@@ -70,8 +70,7 @@ impl GlobalState {
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "GlobalState::update_configuration").entered();
+        let _p = tracing::info_span!("GlobalState::update_configuration").entered();
         let old_config = mem::replace(&mut self.config, Arc::new(config));
         if self.config.lru_parse_query_capacity() != old_config.lru_parse_query_capacity() {
             self.analysis_host.update_lru_capacity(self.config.lru_parse_query_capacity());
@@ -372,7 +371,7 @@ impl GlobalState {
     }
 
     pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
-        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::switch_workspaces").entered();
+        let _p = tracing::info_span!("GlobalState::switch_workspaces").entered();
         tracing::info!(%cause, "will switch workspaces");
 
         let Some((workspaces, force_reload_crate_graph)) =
@@ -660,7 +659,7 @@ impl GlobalState {
     }
 
     fn reload_flycheck(&mut self) {
-        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::reload_flycheck").entered();
+        let _p = tracing::info_span!("GlobalState::reload_flycheck").entered();
         let config = self.config.flycheck();
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {

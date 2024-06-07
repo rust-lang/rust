@@ -91,7 +91,7 @@ pub fn borrowck_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
 ) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
-    let _p = tracing::span!(tracing::Level::INFO, "borrowck_query").entered();
+    let _p = tracing::info_span!("borrowck_query").entered();
     let mut res = vec![];
     all_mir_bodies(db, def, |body| {
         res.push(BorrowckResult {

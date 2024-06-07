@@ -52,7 +52,8 @@ impl RequestDispatcher<'_> {
             Some(it) => it,
             None => return self,
         };
-        let _guard = tracing::span!(tracing::Level::INFO, "request", method = ?req.method, "request_id" = ?req.id).entered();
+        let _guard =
+            tracing::info_span!("request", method = ?req.method, "request_id" = ?req.id).entered();
         tracing::debug!(?params);
         let result = {
             let _pctx = stdx::panic_context::enter(panic_context);
@@ -79,7 +80,8 @@ impl RequestDispatcher<'_> {
             Some(it) => it,
             None => return self,
         };
-        let _guard = tracing::span!(tracing::Level::INFO, "request", method = ?req.method, "request_id" = ?req.id).entered();
+        let _guard =
+            tracing::info_span!("request", method = ?req.method, "request_id" = ?req.id).entered();
         tracing::debug!(?params);
         let global_state_snapshot = self.global_state.snapshot();
 
@@ -162,7 +164,8 @@ impl RequestDispatcher<'_> {
             Some(it) => it,
             None => return self,
         };
-        let _guard = tracing::span!(tracing::Level::INFO, "request", method = ?req.method, "request_id" = ?req.id).entered();
+        let _guard =
+            tracing::info_span!("request", method = ?req.method, "request_id" = ?req.id).entered();
         tracing::debug!(?params);
 
         let world = self.global_state.snapshot();
@@ -297,8 +300,7 @@ impl NotificationDispatcher<'_> {
             None => return Ok(self),
         };
 
-        let _guard =
-            tracing::span!(tracing::Level::INFO, "notification", method = ?not.method).entered();
+        let _guard = tracing::info_span!("notification", method = ?not.method).entered();
 
         let params = match not.extract::<N::Params>(N::METHOD) {
             Ok(it) => it,

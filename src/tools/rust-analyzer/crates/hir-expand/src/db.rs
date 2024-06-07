@@ -334,7 +334,7 @@ fn parse_macro_expansion(
     db: &dyn ExpandDatabase,
     macro_file: MacroFileId,
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
-    let _p = tracing::span!(tracing::Level::INFO, "parse_macro_expansion").entered();
+    let _p = tracing::info_span!("parse_macro_expansion").entered();
     let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
     let edition = loc.def.edition;
     let expand_to = loc.expand_to();
@@ -588,7 +588,7 @@ fn macro_expand(
     macro_call_id: MacroCallId,
     loc: MacroCallLoc,
 ) -> ExpandResult<(CowArc<tt::Subtree>, MatchedArmIndex)> {
-    let _p = tracing::span!(tracing::Level::INFO, "macro_expand").entered();
+    let _p = tracing::info_span!("macro_expand").entered();
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => {

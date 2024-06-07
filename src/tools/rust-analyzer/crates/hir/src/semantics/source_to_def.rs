@@ -126,7 +126,7 @@ pub(super) struct SourceToDefCtx<'db, 'cache> {
 
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&mut self, file: FileId) -> &SmallVec<[ModuleId; 1]> {
-        let _p = tracing::span!(tracing::Level::INFO, "SourceToDefCtx::file_to_def").entered();
+        let _p = tracing::info_span!("SourceToDefCtx::file_to_def").entered();
         self.cache.file_to_def_cache.entry(file).or_insert_with(|| {
             let mut mods = SmallVec::new();
             for &crate_id in self.db.relevant_crates(file).iter() {
@@ -146,7 +146,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn module_to_def(&mut self, src: InFile<&ast::Module>) -> Option<ModuleId> {
-        let _p = tracing::span!(tracing::Level::INFO, "module_to_def").entered();
+        let _p = tracing::info_span!("module_to_def").entered();
         let parent_declaration = self
             .ancestors_with_macros(src.syntax_ref(), |_, ancestor| {
                 ancestor.map(Either::<ast::Module, ast::BlockExpr>::cast).transpose()
@@ -173,7 +173,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
-        let _p = tracing::span!(tracing::Level::INFO, "source_file_to_def").entered();
+        let _p = tracing::info_span!("source_file_to_def").entered();
         let file_id = src.file_id.original_file(self.db.upcast());
         self.file_to_def(file_id).first().copied()
     }
@@ -405,7 +405,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
-        let _p = tracing::span!(tracing::Level::INFO, "find_container").entered();
+        let _p = tracing::info_span!("find_container").entered();
         let def =
             self.ancestors_with_macros(src, |this, container| this.container_to_def(container));
         if let Some(def) = def {
@@ -564,7 +564,7 @@ impl_from! {
 
 impl ChildContainer {
     fn child_by_source(self, db: &dyn HirDatabase, file_id: HirFileId) -> DynMap {
-        let _p = tracing::span!(tracing::Level::INFO, "ChildContainer::child_by_source").entered();
+        let _p = tracing::info_span!("ChildContainer::child_by_source").entered();
         let db = db.upcast();
         match self {
             ChildContainer::DefWithBodyId(it) => it.child_by_source(db, file_id),

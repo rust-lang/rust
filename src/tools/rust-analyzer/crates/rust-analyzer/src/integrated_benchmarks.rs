@@ -175,7 +175,7 @@ fn integrated_completion_benchmark() {
     };
 
     {
-        let _p = tracing::span!(tracing::Level::INFO, "unqualified path completion").entered();
+        let _p = tracing::info_span!("unqualified path completion").entered();
         let _span = profile::cpu_span();
         let analysis = host.analysis();
         let config = CompletionConfig {
@@ -218,7 +218,7 @@ fn integrated_completion_benchmark() {
     };
 
     {
-        let _p = tracing::span!(tracing::Level::INFO, "dot completion").entered();
+        let _p = tracing::info_span!("dot completion").entered();
         let _span = profile::cpu_span();
         let analysis = host.analysis();
         let config = CompletionConfig {
@@ -316,7 +316,7 @@ fn integrated_diagnostics_benchmark() {
     };
 
     {
-        let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
+        let _p = tracing::info_span!("diagnostics").entered();
         let _span = profile::cpu_span();
         host.analysis()
             .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)

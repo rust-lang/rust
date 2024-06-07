@@ -462,7 +462,7 @@ pub(crate) fn inlay_hints(
     range_limit: Option<TextRange>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
-    let _p = tracing::span!(tracing::Level::INFO, "inlay_hints").entered();
+    let _p = tracing::info_span!("inlay_hints").entered();
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
     let file = file.syntax();
@@ -496,7 +496,7 @@ pub(crate) fn inlay_hints_resolve(
     config: &InlayHintsConfig,
     hasher: impl Fn(&InlayHint) -> u64,
 ) -> Option<InlayHint> {
-    let _p = tracing::span!(tracing::Level::INFO, "inlay_hints_resolve").entered();
+    let _p = tracing::info_span!("inlay_hints_resolve").entered();
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
     let file = file.syntax();

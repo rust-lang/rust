@@ -413,7 +413,7 @@ impl NameClass {
     }
 
     pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameClass::classify").entered();
+        let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
 
@@ -505,8 +505,7 @@ impl NameClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameClass::classify_lifetime", ?lifetime)
-            .entered();
+        let _p = tracing::info_span!("NameClass::classify_lifetime", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
 
         if let Some(it) = ast::LifetimeParam::cast(parent.clone()) {
@@ -597,8 +596,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         name_ref: &ast::NameRef,
     ) -> Option<NameRefClass> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "NameRefClass::classify", ?name_ref).entered();
+        let _p = tracing::info_span!("NameRefClass::classify", ?name_ref).entered();
 
         let parent = name_ref.syntax().parent()?;
 
@@ -697,8 +695,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameRefClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameRefClass::classify_lifetime", ?lifetime)
-            .entered();
+        let _p = tracing::info_span!("NameRefClass::classify_lifetime", ?lifetime).entered();
         if lifetime.text() == "'static" {
             return Some(NameRefClass::Definition(Definition::BuiltinLifetime(StaticLifetime)));
         }

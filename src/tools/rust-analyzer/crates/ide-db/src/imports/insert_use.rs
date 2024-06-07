@@ -194,7 +194,7 @@ fn insert_use_with_alias_option(
     cfg: &InsertUseConfig,
     alias: Option<ast::Rename>,
 ) {
-    let _p = tracing::span!(tracing::Level::INFO, "insert_use_with_alias_option").entered();
+    let _p = tracing::info_span!("insert_use_with_alias_option").entered();
     let mut mb = match cfg.granularity {
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
         ImportGranularity::Module => Some(MergeBehavior::Module),

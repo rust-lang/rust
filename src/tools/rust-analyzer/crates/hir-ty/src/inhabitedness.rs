@@ -15,7 +15,7 @@ use crate::{
 // FIXME: Turn this into a query, it can be quite slow
 /// Checks whether a type is visibly uninhabited from a particular module.
 pub(crate) fn is_ty_uninhabited_from(db: &dyn HirDatabase, ty: &Ty, target_mod: ModuleId) -> bool {
-    let _p = tracing::span!(tracing::Level::INFO, "is_ty_uninhabited_from", ?ty).entered();
+    let _p = tracing::info_span!("is_ty_uninhabited_from", ?ty).entered();
     let mut uninhabited_from =
         UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
     let inhabitedness = ty.visit_with(&mut uninhabited_from, DebruijnIndex::INNERMOST);
@@ -30,7 +30,7 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     subst: &Substitution,
     target_mod: ModuleId,
 ) -> bool {
-    let _p = tracing::span!(tracing::Level::INFO, "is_enum_variant_uninhabited_from").entered();
+    let _p = tracing::info_span!("is_enum_variant_uninhabited_from").entered();
 
     let mut uninhabited_from =
         UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
