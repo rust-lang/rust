@@ -862,6 +862,7 @@ fn visit_defaultness<T: MutVisitor>(defaultness: &mut Defaultness, vis: &mut T) 
 fn visit_safety<T: MutVisitor>(safety: &mut Safety, vis: &mut T) {
     match safety {
         Safety::Unsafe(span) => vis.visit_span(span),
+        Safety::Safe(span) => vis.visit_span(span),
         Safety::Default => {}
     }
 }
@@ -1079,7 +1080,7 @@ impl NoopVisitItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-            ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                 vis.visit_ty(ty);
                 visit_opt(expr, |expr| vis.visit_expr(expr));
             }
@@ -1289,7 +1290,12 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
 impl NoopVisitItemKind for ForeignItemKind {
     fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
         match self {
-            ForeignItemKind::Static(box StaticForeignItem { ty, mutability: _, expr }) => {
+            ForeignItemKind::Static(box StaticForeignItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+            }) => {
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
             }

@@ -12,7 +12,7 @@ use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::Mutability;
+use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
@@ -1517,7 +1517,11 @@ impl Disambiguator {
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
                 "const" | "constant" => Kind(DefKind::Const),
-                "static" => Kind(DefKind::Static { mutability: Mutability::Not, nested: false }),
+                "static" => Kind(DefKind::Static {
+                    mutability: Mutability::Not,
+                    nested: false,
+                    safety: Safety::Safe,
+                }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
                 "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
                 "type" => NS(Namespace::TypeNS),

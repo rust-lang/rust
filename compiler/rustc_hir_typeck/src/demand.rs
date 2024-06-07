@@ -350,7 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |ct| {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
-                    self.next_const_var(ct.ty(), DUMMY_SP)
+                    self.next_const_var(DUMMY_SP)
                 } else {
                     ct
                 }

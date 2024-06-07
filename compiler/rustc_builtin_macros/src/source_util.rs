@@ -12,8 +12,8 @@ use rustc_expand::base::{
 };
 use rustc_expand::module::DirOwnership;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
@@ -126,7 +126,7 @@ pub(crate) fn expand_include<'cx>(
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
     };
-    let p = new_parser_from_file(cx.psess(), &file, Some(sp));
+    let p = unwrap_or_emit_fatal(new_parser_from_file(cx.psess(), &file, Some(sp)));
 
     // If in the included file we have e.g., `mod bar;`,
     // then the path of `bar.rs` should be relative to the directory of `file`.

@@ -181,7 +181,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
-            ItemKind::Static(box ast::StaticItem { ty: t, mutability: m, expr: e }) => {
+            ItemKind::Static(box ast::StaticItem { ty: t, safety: _, mutability: m, expr: e }) => {
                 let (ty, body_id) =
                     self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 hir::ItemKind::Static(ty, *m, body_id)
@@ -388,7 +388,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(*s)),
                 };
                 hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
-                    safety: self.lower_safety(*safety),
+                    safety: self.lower_safety(*safety, hir::Safety::Safe),
                     polarity,
                     defaultness,
                     defaultness_span,
@@ -418,7 +418,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let items = this.arena.alloc_from_iter(
                             items.iter().map(|item| this.lower_trait_item_ref(item)),
                         );
-                        let safety = this.lower_safety(*safety);
+                        let safety = this.lower_safety(*safety, hir::Safety::Safe);
                         (safety, items, bounds)
                     },
                 );
@@ -660,13 +660,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 this.lower_fn_params_to_names(fdec),
                             )
                         });
+                    let safety = self.lower_safety(sig.header.safety, hir::Safety::Unsafe);
 
-                    hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
+                    hir::ForeignItemKind::Fn(fn_dec, fn_args, generics, safety)
                 }
-                ForeignItemKind::Static(box StaticForeignItem { ty, mutability, expr: _ }) => {
+                ForeignItemKind::Static(box StaticForeignItem {
+                    ty,
+                    mutability,
+                    expr: _,
+                    safety,
+                }) => {
                     let ty = self
                         .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
-                    hir::ForeignItemKind::Static(ty, *mutability)
+                    let safety = self.lower_safety(*safety, hir::Safety::Unsafe);
+
+                    hir::ForeignItemKind::Static(ty, *mutability, safety)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
@@ -1360,7 +1368,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::IsAsync::NotAsync
         };
         hir::FnHeader {
-            safety: self.lower_safety(h.safety),
+            safety: self.lower_safety(h.safety, hir::Safety::Safe),
             asyncness: asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
@@ -1410,10 +1418,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_safety(&mut self, s: Safety) -> hir::Safety {
+    pub(super) fn lower_safety(&mut self, s: Safety, default: hir::Safety) -> hir::Safety {
         match s {
             Safety::Unsafe(_) => hir::Safety::Unsafe,
-            Safety::Default => hir::Safety::Safe,
+            Safety::Default => default,
+            Safety::Safe(_) => hir::Safety::Safe,
         }
     }
 

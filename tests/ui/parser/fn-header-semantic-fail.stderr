@@ -78,14 +78,14 @@ LL |     extern "C" {
 LL |         async fn fe1();
    |         ^^^^^ help: remove this qualifier
 
-error: functions in `extern` blocks cannot have qualifiers
+error: items in unadorned `extern` blocks cannot have safety qualifiers
   --> $DIR/fn-header-semantic-fail.rs:47:9
    |
 LL |     extern "C" {
-   |     ---------- in this `extern` block
+   |     ---------- help: add unsafe to this `extern` block
 LL |         async fn fe1();
 LL |         unsafe fn fe2();
-   |         ^^^^^^ help: remove this qualifier
+   |         ^^^^^^^^^^^^^^^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:48:9
@@ -105,14 +105,14 @@ LL |     extern "C" {
 LL |         extern "C" fn fe4();
    |         ^^^^^^^^^^ help: remove this qualifier
 
-error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:50:21
+error: items in unadorned `extern` blocks cannot have safety qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:50:9
    |
 LL |     extern "C" {
-   |     ---------- in this `extern` block
+   |     ---------- help: add unsafe to this `extern` block
 ...
 LL |         const async unsafe extern "C" fn fe5();
-   |                     ^^^^^^ help: remove this qualifier
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:50:15

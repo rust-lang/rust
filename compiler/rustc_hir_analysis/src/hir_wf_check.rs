@@ -158,7 +158,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             },
             hir::Node::Field(field) => vec![field.ty],
             hir::Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Static(ty, _), ..
+                kind: ForeignItemKind::Static(ty, _, _), ..
             }) => vec![*ty],
             hir::Node::GenericParam(hir::GenericParam {
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },

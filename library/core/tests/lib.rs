@@ -75,6 +75,7 @@
 #![feature(ip)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
+#![feature(iter_chain)]
 #![feature(iter_collect_into)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_intersperse)]

@@ -217,6 +217,15 @@ pub enum ExternBlockSuggestion {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_extern_invalid_safety)]
+pub struct InvalidSafetyOnExtern {
+    #[primary_span]
+    pub item_span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub block: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_bound_in_context)]
 pub struct BoundInContext<'a> {
     #[primary_span]
@@ -483,6 +492,13 @@ pub struct UnsafeItem {
     #[primary_span]
     pub span: Span,
     pub kind: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_missing_unsafe_on_extern)]
+pub struct MissingUnsafeOnExtern {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

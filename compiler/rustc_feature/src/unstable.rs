@@ -529,8 +529,6 @@ declare_features! (
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
-    /// Make `mut` not reset the binding mode on edition >= 2024.
-    (incomplete, mut_preserve_binding_mode_2024, "1.79.0", Some(123076)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.
@@ -573,8 +571,6 @@ declare_features! (
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
-    /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
-    (incomplete, ref_pat_everywhere, "1.79.0", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.
@@ -624,6 +620,8 @@ declare_features! (
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
+    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
+    (unstable, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
     /// Allows unsized fn parameters.
     (unstable, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

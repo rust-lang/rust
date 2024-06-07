@@ -1,24 +1,24 @@
-error[E0308]: mismatched types
+error: cannot match inherited `&` with `&mut` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:7:17
    |
 LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
-   |                 ^^^^^^^^^^^^^    --------------- this expression has type `&Option<&Option<{integer}>>`
-   |                 |
-   |                 expected `Option<{integer}>`, found `&mut _`
+   |                 ^^^^^
    |
-   = note:           expected enum `Option<{integer}>`
-           found mutable reference `&mut _`
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &Some(&Some(0)) {
+   |                 ~
 
-error[E0308]: mismatched types
+error: cannot match inherited `&` with `&mut` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:10:23
    |
 LL |     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
-   |                       ^^^^^^     ------------------- this expression has type `&Option<&mut Option<{integer}>>`
-   |                       |
-   |                       expected integer, found `&mut _`
+   |                       ^^^^^
    |
-   = note:           expected type `{integer}`
-           found mutable reference `&mut _`
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &Some(&mut Some(0)) {
+   |                       ~
 
 error[E0308]: mismatched types
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:14:27
@@ -31,49 +31,49 @@ LL |         let _: &mut u32 = x;
    = note: expected mutable reference `&mut u32`
                       found reference `&{integer}`
 
-error[E0308]: mismatched types
+error: cannot match inherited `&` with `&mut` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:17:23
    |
 LL |     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
-   |                       ^^^^^^     ------------------- this expression has type `&mut Option<&Option<{integer}>>`
-   |                       |
-   |                       expected integer, found `&mut _`
+   |                       ^^^^^
    |
-   = note:           expected type `{integer}`
-           found mutable reference `&mut _`
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &mut Some(&Some(0)) {
+   |                       ~
 
-error[E0308]: mismatched types
+error: cannot match inherited `&` with `&mut` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:20:29
    |
 LL |     if let Some(&Some(Some((&mut _)))) = &Some(Some(&mut Some(0))) {
-   |                             ^^^^^^       ------------------------- this expression has type `&Option<Option<&mut Option<{integer}>>>`
-   |                             |
-   |                             expected integer, found `&mut _`
+   |                             ^^^^^
    |
-   = note:           expected type `{integer}`
-           found mutable reference `&mut _`
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(Some((&_)))) = &Some(Some(&mut Some(0))) {
+   |                             ~
 
-error[E0308]: mismatched types
+error: cannot match inherited `&` with `&mut` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:23:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
-   |                 ^^^^^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
-   |                 |
-   |                 expected `Option<{integer}>`, found `&mut _`
+   |                 ^^^^^
    |
-   = note:           expected enum `Option<{integer}>`
-           found mutable reference `&mut _`
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(x)) = &Some(Some(0)) {
+   |                 ~
 
-error[E0308]: mismatched types
+error: cannot match inherited `&` with `&mut` pattern
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:26:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
-   |                 ^^^^^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
-   |                 |
-   |                 expected `Option<{integer}>`, found `&mut _`
+   |                 ^^^^^
    |
-   = note:           expected enum `Option<{integer}>`
-           found mutable reference `&mut _`
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(x)) = &Some(Some(0)) {
+   |                 ~
 
 error[E0308]: mismatched types
   --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:30:9
@@ -81,9 +81,9 @@ error[E0308]: mismatched types
 LL |     let &mut _ = &&0;
    |         ^^^^^^   --- this expression has type `&&{integer}`
    |         |
-   |         expected integer, found `&mut _`
+   |         types differ in mutability
    |
-   = note:           expected type `{integer}`
+   = note:      expected reference `&&{integer}`
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
@@ -92,11 +92,87 @@ error[E0308]: mismatched types
 LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
    |         ^^^^^^   ----------------------------- this expression has type `&&&&&&&&&&&&&&&&&&&&&&&&&&&&{integer}`
    |         |
-   |         expected integer, found `&mut _`
+   |         types differ in mutability
    |
-   = note:           expected type `{integer}`
+   = note:      expected reference `&&&&&&&&&&&&&&&&&&&&&&&&&&&&{integer}`
            found mutable reference `&mut _`
 
-error: aborting due to 9 previous errors
+error: cannot match inherited `&` with `&mut` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:36:17
+   |
+LL |     if let Some(&mut Some(&_)) = &Some(&mut Some(0)) {
+   |                 ^^^^^
+   |
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &Some(&mut Some(0)) {
+   |                 ~
 
-For more information about this error, try `rustc --explain E0308`.
+error: cannot match inherited `&` with `&mut` pattern
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:40:22
+   |
+LL |     if let Some(Some(&mut x)) = &Some(Some(&mut 0)) {
+   |                      ^^^^^
+   |
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(Some(&x)) = &Some(Some(&mut 0)) {
+   |                      ~
+
+error[E0308]: mismatched types
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:44:9
+   |
+LL |     let &mut _ = &&mut 0;
+   |         ^^^^^^   ------- this expression has type `&&mut {integer}`
+   |         |
+   |         types differ in mutability
+   |
+   = note:      expected reference `&&mut {integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:47:9
+   |
+LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&mut 0;
+   |         ^^^^^^   --------------------------------- this expression has type `&&&&&&&&&&&&&&&&&&&&&&&&&&&&mut {integer}`
+   |         |
+   |         types differ in mutability
+   |
+   = note:      expected reference `&&&&&&&&&&&&&&&&&&&&&&&&&&&&mut {integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:50:14
+   |
+LL |     let &mut &mut &mut &mut _ = &mut &&&&mut &&&mut &mut 0;
+   |              ^^^^^^^^^^^^^^^^   -------------------------- this expression has type `&mut &&&&mut &&&mut &mut {integer}`
+   |              |
+   |              types differ in mutability
+   |
+   = note:      expected reference `&&&&mut &&&mut &mut {integer}`
+           found mutable reference `&mut _`
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:55:13
+   |
+LL |     let Foo(mut a) = &Foo(0);
+   |             ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:59:13
+   |
+LL |     let Foo(mut a) = &mut Foo(0);
+   |             ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 16 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

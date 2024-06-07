@@ -266,7 +266,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
         clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) => item_static(buf, cx, item, i),
-        clean::ConstantItem(ref c) => item_constant(buf, cx, item, c),
+        clean::ConstantItem(generics, ty, c) => item_constant(buf, cx, item, generics, ty, c),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
@@ -1844,7 +1844,14 @@ fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Ite
     }
 }
 
-fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
+fn item_constant(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    generics: &clean::Generics,
+    ty: &clean::Type,
+    c: &clean::Constant,
+) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
         render_attributes_in_code(w, it, cx);
@@ -1854,9 +1861,9 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
             "{vis}const {name}{generics}: {typ}{where_clause}",
             vis = visibility_print_with_space(it, cx),
             name = it.name.unwrap(),
-            generics = c.generics.print(cx),
-            typ = c.type_.print(cx),
-            where_clause = print_where_clause(&c.generics, cx, 0, Ending::NoNewline),
+            generics = generics.print(cx),
+            typ = ty.print(cx),
+            where_clause = print_where_clause(&generics, cx, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints

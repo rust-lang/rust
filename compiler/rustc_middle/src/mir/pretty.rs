@@ -559,10 +559,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static { mutability: hir::Mutability::Not, nested: false }, _) => {
+        (DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false }, _) => {
             write!(w, "static ")?
         }
-        (DefKind::Static { mutability: hir::Mutability::Mut, nested: false }, _) => {
+        (DefKind::Static { safety: _, mutability: hir::Mutability::Mut, nested: false }, _) => {
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
@@ -1313,12 +1313,12 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             };
 
             let val = match const_ {
-                Const::Ty(ct) => match ct.kind() {
+                Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
-                    ty::ConstKind::Value(val) => format!("ty::Valtree({})", fmt_valtree(&val)),
+                    ty::ConstKind::Value(_, val) => format!("ty::Valtree({})", fmt_valtree(&val)),
                     // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
@@ -1417,7 +1417,7 @@ pub fn write_allocations<'tcx>(
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
         fn visit_constant(&mut self, c: &ConstOperand<'tcx>, _: Location) {
             match c.const_ {
-                Const::Ty(_) | Const::Unevaluated(..) => {}
+                Const::Ty(_, _) | Const::Unevaluated(..) => {}
                 Const::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const_val(val));
                 }

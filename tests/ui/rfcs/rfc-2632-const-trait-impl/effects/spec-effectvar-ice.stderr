@@ -37,6 +37,15 @@ LL | impl<T> const Foo for T {}
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
+error[E0119]: conflicting implementations of trait `Foo`
+  --> $DIR/spec-effectvar-ice.rs:16:1
+   |
+LL | impl<T> const Foo for T {}
+   | ----------------------- first implementation here
+...
+LL | impl<T> const Foo for T where T: const Specialize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
 error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
   --> $DIR/spec-effectvar-ice.rs:16:9
    |
@@ -46,24 +55,7 @@ LL | impl<T> const Foo for T where T: const Specialize {}
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: specialization impl does not specialize any associated items
-  --> $DIR/spec-effectvar-ice.rs:16:1
-   |
-LL | impl<T> const Foo for T where T: const Specialize {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: impl is a specialization of this impl
-  --> $DIR/spec-effectvar-ice.rs:12:1
-   |
-LL | impl<T> const Foo for T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 6 previous errors
 
-error: could not resolve generic parameters on overridden impl
-  --> $DIR/spec-effectvar-ice.rs:16:1
-   |
-LL | impl<T> const Foo for T where T: const Specialize {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 7 previous errors
-
-For more information about this error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0119, E0207.
+For more information about an error, try `rustc --explain E0119`.

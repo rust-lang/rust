@@ -1,7 +1,7 @@
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
-use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -117,7 +117,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
 
-    // FIXME: Should ItemCtxt take a LocalDefId?
     let icx = ItemCtxt::new(tcx, def_id);
 
     const NO_GENERICS: &hir::Generics<'_> = hir::Generics::empty();
@@ -197,7 +196,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     .type_of(param.def_id.to_def_id())
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
-                let ct = icx.lowerer().lower_const_param(param.hir_id, ct_ty);
+                let ct = icx.lowerer().lower_const_param(param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
             }
@@ -244,12 +243,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = icx.lowerer().lower_lifetime(region_pred.lifetime, None);
+                let r1 = icx
+                    .lowerer()
+                    .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
-                        hir::GenericBound::Outlives(lt) => {
-                            (icx.lowerer().lower_lifetime(lt, None), lt.ident.span)
-                        }
+                        hir::GenericBound::Outlives(lt) => (
+                            icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
+                            lt.ident.span,
+                        ),
                         bound => {
                             span_bug!(
                                 bound.span(),

@@ -561,7 +561,8 @@ impl Builder {
         let main = Box::new(main);
         // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
         // lifetime change is justified.
-        let main = unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + 'static)) };
+        let main =
+            unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + Send + 'static)) };
 
         Ok(JoinInner {
             // SAFETY:
@@ -1544,7 +1545,7 @@ struct Packet<'scope, T> {
 // The type `T` should already always be Send (otherwise the thread could not
 // have been created) and the Packet is Sync because all access to the
 // `UnsafeCell` synchronized (by the `join()` boundary), and `ScopeData` is Sync.
-unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
+unsafe impl<'scope, T: Send> Sync for Packet<'scope, T> {}
 
 impl<'scope, T> Drop for Packet<'scope, T> {
     fn drop(&mut self) {

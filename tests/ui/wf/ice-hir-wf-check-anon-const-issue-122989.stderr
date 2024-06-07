@@ -13,7 +13,7 @@ LL | trait Foo<const N: dyn Bar<2>> {
    |                    +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:15:20
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:20
    |
 LL | trait Bar<const M: Foo<2>> {}
    |                    ^^^^^^
@@ -32,7 +32,7 @@ LL | trait Foo<const N: Bar<2>> {
    |           ^^^^^^^^^^^^^^^
    |
 note: ...which requires computing type of `Bar::M`...
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:15:11
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
    |
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^
@@ -43,26 +43,6 @@ note: cycle used when computing explicit predicates of trait `Foo`
 LL | trait Foo<const N: Bar<2>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
-error[E0391]: cycle detected when computing type of `Foo::N`
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:11
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |           ^^^^^^^^^^^^^^^
-   |
-note: ...which requires computing type of `Bar::M`...
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:15:11
-   |
-LL | trait Bar<const M: Foo<2>> {}
-   |           ^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `Foo::N`, completing the cycle
-note: cycle used when computing explicit predicates of trait `Foo`
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
-   |
-LL | trait Foo<const N: Bar<2>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:24
@@ -71,43 +51,20 @@ LL | trait Foo<const N: Bar<2>> {
    |                        ^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:8
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:8
    |
 LL | trait Foo<const N: Bar<2>> {
    |       --- this trait cannot be made into an object...
 ...
-LL |     fn func() {
+LL |     fn func() {}
    |        ^^^^ ...because associated function `func` has no `self` parameter
 help: consider turning `func` into a method by giving it a `&self` argument
    |
-LL |     fn func(&self) {
+LL |     fn func(&self) {}
    |             +++++
 help: alternatively, consider constraining `func` so it does not apply to trait objects
    |
-LL |     fn func() where Self: Sized {
-   |               +++++++++++++++++
-
-error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:11
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |           ^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
-   |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:8
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |       --- this trait cannot be made into an object...
-...
-LL |     fn func() {
-   |        ^^^^ ...because associated function `func` has no `self` parameter
-help: consider turning `func` into a method by giving it a `&self` argument
-   |
-LL |     fn func(&self) {
-   |             +++++
-help: alternatively, consider constraining `func` so it does not apply to trait objects
-   |
-LL |     fn func() where Self: Sized {
+LL |     fn func() where Self: Sized {}
    |               +++++++++++++++++
 
 error: `(dyn Bar<2> + 'static)` is forbidden as the type of a const generic parameter
@@ -119,61 +76,37 @@ LL | trait Foo<const N: Bar<2>> {
    = note: the only supported types are integers, `bool` and `char`
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:15:11
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
    |
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:8
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:8
    |
 LL | trait Foo<const N: Bar<2>> {
    |       --- this trait cannot be made into an object...
 ...
-LL |     fn func() {
+LL |     fn func() {}
    |        ^^^^ ...because associated function `func` has no `self` parameter
 help: consider turning `func` into a method by giving it a `&self` argument
    |
-LL |     fn func(&self) {
+LL |     fn func(&self) {}
    |             +++++
 help: alternatively, consider constraining `func` so it does not apply to trait objects
    |
-LL |     fn func() where Self: Sized {
+LL |     fn func() where Self: Sized {}
    |               +++++++++++++++++
 
 error: `(dyn Foo<2> + 'static)` is forbidden as the type of a const generic parameter
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:15:20
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:20
    |
 LL | trait Bar<const M: Foo<2>> {}
    |                    ^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
 
-error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:11
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |           ^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
-   |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:8
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |       --- this trait cannot be made into an object...
-...
-LL |     fn func() {
-   |        ^^^^ ...because associated function `func` has no `self` parameter
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider turning `func` into a method by giving it a `&self` argument
-   |
-LL |     fn func(&self) {
-   |             +++++
-help: alternatively, consider constraining `func` so it does not apply to trait objects
-   |
-LL |     fn func() where Self: Sized {
-   |               +++++++++++++++++
-
-error: aborting due to 8 previous errors; 2 warnings emitted
+error: aborting due to 5 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0038, E0391.
 For more information about an error, try `rustc --explain E0038`.

@@ -1,4 +1,4 @@
-use run_make_support::{htmldocck, rustc, rustdoc, source_path, tmp_dir};
+use run_make_support::{htmldocck, rustc, rustdoc, source_root, tmp_dir};
 use std::fs::read_dir;
 use std::path::Path;
 

@@ -8,13 +8,19 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use walkdir::WalkDir;
+
+#[cfg(not(feature = "bootstrap-self-test"))]
+use crate::builder::Builder;
+#[cfg(not(feature = "bootstrap-self-test"))]
+use crate::core::build_steps::tool;
+#[cfg(not(feature = "bootstrap-self-test"))]
+use std::collections::HashSet;
 
 use crate::builder::Kind;
 use crate::core::config::Target;
@@ -31,9 +37,15 @@ pub struct Finder {
 // it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
+#[cfg(not(feature = "bootstrap-self-test"))]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
 ];
+
+/// Minimum version threshold for libstdc++ required when using prebuilt LLVM
+/// from CI (with`llvm.download-ci-llvm` option).
+#[cfg(not(feature = "bootstrap-self-test"))]
+const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
     pub fn new() -> Self {
@@ -97,6 +109,32 @@ pub fn check(build: &mut Build) {
     // submodules and learn about various other aspects.
     if build.rust_info().is_managed_git_subrepository() {
         cmd_finder.must_have("git");
+    }
+
+    // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
+    #[cfg(not(feature = "bootstrap-self-test"))]
+    if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
+        let builder = Builder::new(build);
+        let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });
+
+        match libcxx_version {
+            tool::LibcxxVersion::Gnu(version) => {
+                if LIBSTDCXX_MIN_VERSION_THRESHOLD > version {
+                    eprintln!(
+                        "\nYour system's libstdc++ version is too old for the `llvm.download-ci-llvm` option."
+                    );
+                    eprintln!("Current version detected: '{}'", version);
+                    eprintln!("Minimum required version: '{}'", LIBSTDCXX_MIN_VERSION_THRESHOLD);
+                    eprintln!(
+                        "Consider upgrading libstdc++ or disabling the `llvm.download-ci-llvm` option."
+                    );
+                    crate::exit!(1);
+                }
+            }
+            tool::LibcxxVersion::Llvm(_) => {
+                // FIXME: Handle libc++ version check.
+            }
+        }
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
@@ -167,6 +205,7 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
+    #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> =
         output(Command::new(&build.config.initial_rustc).args(["--print", "target-list"]))
             .lines()
@@ -193,11 +232,11 @@ than building it.
             continue;
         }
 
-        let target_str = target.to_string();
-
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if !["A-A", "B-B", "C-C"].contains(&target_str.as_str()) {
+        #[cfg(not(feature = "bootstrap-self-test"))]
+        {
             let mut has_target = false;
+            let target_str = target.to_string();
 
             let missing_targets_hashset: HashSet<_> =
                 STAGE0_MISSING_TARGETS.iter().map(|t| t.to_string()).collect();
@@ -226,7 +265,7 @@ than building it.
                     target_filename.push(".json");
 
                     // Recursively traverse through nested directories.
-                    let walker = WalkDir::new(custom_target_path).into_iter();
+                    let walker = walkdir::WalkDir::new(custom_target_path).into_iter();
                     for entry in walker.filter_map(|e| e.ok()) {
                         has_target |= entry.file_name() == target_filename;
                     }

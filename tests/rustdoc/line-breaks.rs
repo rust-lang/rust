@@ -6,7 +6,7 @@ use std::ops::Add;
 // @matches foo/fn.function_with_a_really_long_name.html '//*[@class="rust item-decl"]//code' "\
 //     function_with_a_really_long_name\(\n\
 //    \    parameter_one: i32,\n\
-//    \    parameter_two: i32\n\
+//    \    parameter_two: i32,\n\
 //    \) -> Option<i32>$"
 pub fn function_with_a_really_long_name(parameter_one: i32, parameter_two: i32) -> Option<i32> {
     Some(parameter_one + parameter_two)

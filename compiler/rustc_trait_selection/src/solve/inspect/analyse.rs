@@ -208,7 +208,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
                     let unconstrained_term = match term.unpack() {
                         ty::TermKind::Ty(_) => infcx.next_ty_var(span).into(),
-                        ty::TermKind::Const(ct) => infcx.next_const_var(ct.ty(), span).into(),
+                        ty::TermKind::Const(_) => infcx.next_const_var(span).into(),
                     };
                     let goal =
                         goal.with(infcx.tcx, ty::NormalizesTo { alias, term: unconstrained_term });

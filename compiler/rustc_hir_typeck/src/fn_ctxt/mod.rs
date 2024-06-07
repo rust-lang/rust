@@ -15,7 +15,7 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
@@ -213,25 +213,21 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> DefId {
-        self.body_id.to_def_id()
+    fn item_def_id(&self) -> LocalDefId {
+        self.body_id
     }
 
-    fn allow_infer(&self) -> bool {
-        true
-    }
-
-    fn re_infer(&self, def: Option<&ty::GenericParamDef>, span: Span) -> Option<ty::Region<'tcx>> {
-        let v = match def {
-            Some(def) => infer::RegionParameterDefinition(span, def.name),
-            None => infer::MiscVariable(span),
+    fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
+        let v = match reason {
+            RegionInferReason::Param(def) => infer::RegionParameterDefinition(span, def.name),
+            _ => infer::MiscVariable(span),
         };
-        Some(self.next_region_var(v))
+        self.next_region_var(v)
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
@@ -241,12 +237,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn ct_infer(
-        &self,
-        ty: Ty<'tcx>,
-        param: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> Const<'tcx> {
+    fn ct_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         // FIXME ideally this shouldn't use unwrap
         match param {
             Some(
@@ -256,7 +247,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
                 },
             ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
-            None => self.next_const_var(ty, span),
+            None => self.next_const_var(span),
         }
     }
 
@@ -349,6 +340,22 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
         self.infcx.set_tainted_by_errors(e)
+    }
+
+    fn lower_fn_sig(
+        &self,
+        decl: &rustc_hir::FnDecl<'tcx>,
+        _generics: Option<&rustc_hir::Generics<'_>>,
+        _hir_id: rustc_hir::HirId,
+        _hir_ty: Option<&hir::Ty<'_>>,
+    ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
+        let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_arg_ty(a, None)).collect();
+
+        let output_ty = match decl.output {
+            hir::FnRetTy::Return(output) => self.lowerer().lower_ty(output),
+            hir::FnRetTy::DefaultReturn(..) => self.tcx().types.unit,
+        };
+        (input_tys, output_ty)
     }
 }
 

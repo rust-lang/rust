@@ -28,7 +28,7 @@ pub(crate) trait DocVisitor: Sized {
             | TypeAliasItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
-            | ConstantItem(_)
+            | ConstantItem(_, _, _)
             | TraitAliasItem(_)
             | TyMethodItem(_)
             | MethodItem(_, _)

@@ -82,6 +82,20 @@
 //!
 //! The corresponding [`Sync`] version of `OnceCell<T>` is [`OnceLock<T>`].
 //!
+//! ## `LazyCell<T, F>`
+//!
+//! A common pattern with OnceCell is, for a given OnceCell, to use the same function on every
+//! call to [`OnceCell::get_or_init`] with that cell. This is what is offered by [`LazyCell`],
+//! which pairs cells of `T` with functions of `F`, and always calls `F` before it yields `&T`.
+//! This happens implicitly by simply attempting to dereference the LazyCell to get its contents,
+//! so its use is much more transparent with a place which has been initialized by a constant.
+//!
+//! More complicated patterns that don't fit this description can be built on `OnceCell<T>` instead.
+//!
+//! `LazyCell` works by providing an implementation of `impl Deref` that calls the function,
+//! so you can just use it by dereference (e.g. `*lazy_cell` or `lazy_cell.deref()`).
+//!
+//! The corresponding [`Sync`] version of `LazyCell<T, F>` is [`LazyLock<T, F>`].
 //!
 //! # When to choose interior mutability
 //!
@@ -230,6 +244,7 @@
 //! [`RwLock<T>`]: ../../std/sync/struct.RwLock.html
 //! [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
 //! [`OnceLock<T>`]: ../../std/sync/struct.OnceLock.html
+//! [`LazyLock<T, F>`]: ../../std/sync/struct.LazyLock.html
 //! [`Sync`]: ../../std/marker/trait.Sync.html
 //! [`atomic`]: crate::sync::atomic
 
@@ -238,7 +253,7 @@
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
-use crate::mem::{self, size_of};
+use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::ptr::{self, NonNull};
 

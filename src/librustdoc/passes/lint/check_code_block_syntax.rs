@@ -5,7 +5,7 @@ use rustc_errors::{
     translation::{to_fluent_args, Translate},
     Applicability, DiagCtxt, DiagInner, LazyFallbackBundle,
 };
-use rustc_parse::parse_stream_from_source_str;
+use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
@@ -51,12 +51,12 @@ fn check_rust_syntax(
     let span = DUMMY_SP.apply_mark(expn_id.to_expn_id(), Transparency::Transparent);
 
     let is_empty = rustc_driver::catch_fatal_errors(|| {
-        parse_stream_from_source_str(
+        unwrap_or_emit_fatal(source_str_to_stream(
+            &psess,
             FileName::Custom(String::from("doctest")),
             source,
-            &psess,
             Some(span),
-        )
+        ))
         .is_empty()
     })
     .unwrap_or(false);

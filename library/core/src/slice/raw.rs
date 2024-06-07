@@ -1,7 +1,6 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::mem::{align_of, size_of};
 use crate::ops::Range;
 use crate::ptr;
 use crate::ub_checks;

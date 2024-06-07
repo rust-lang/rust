@@ -79,7 +79,6 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         &mut self,
         input: Result<ty::Const<'tcx>, ty::InferConst>,
         freshener: F,
-        ty: Ty<'tcx>,
     ) -> ty::Const<'tcx>
     where
         F: FnOnce(u32) -> ty::InferConst,
@@ -91,7 +90,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 Entry::Vacant(entry) => {
                     let index = self.const_freshen_count;
                     self.const_freshen_count += 1;
-                    let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
+                    let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index));
                     entry.insert(ct);
                     ct
                 }
@@ -149,7 +148,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                         ty::InferConst::Var(inner.const_unification_table().find(v).vid)
                     });
                 drop(inner);
-                self.freshen_const(input, ty::InferConst::Fresh, ct.ty())
+                self.freshen_const(input, ty::InferConst::Fresh)
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
@@ -158,7 +157,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                         ty::InferConst::EffectVar(inner.effect_unification_table().find(v).vid)
                     });
                 drop(inner);
-                self.freshen_const(input, ty::InferConst::Fresh, ct.ty())
+                self.freshen_const(input, ty::InferConst::Fresh)
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -177,7 +176,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             }
 
             ty::ConstKind::Param(_)
-            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Value(_, _)
             | ty::ConstKind::Unevaluated(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),

@@ -94,7 +94,7 @@ pub struct TestProps {
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
-    pub run_flags: Option<String>,
+    pub run_flags: Vec<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
@@ -107,6 +107,9 @@ pub struct TestProps {
     // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
     // to build and pass with the `--extern` flag.
     pub aux_crates: Vec<(String, String)>,
+    /// Similar to `aux_builds`, but also passes the resulting dylib path to
+    /// `-Zcodegen-backend`.
+    pub aux_codegen_backend: Option<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
@@ -231,6 +234,7 @@ mod directives {
     pub const AUX_BIN: &'static str = "aux-bin";
     pub const AUX_BUILD: &'static str = "aux-build";
     pub const AUX_CRATE: &'static str = "aux-crate";
+    pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
     pub const EXEC_ENV: &'static str = "exec-env";
     pub const RUSTC_ENV: &'static str = "rustc-env";
     pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
@@ -262,11 +266,12 @@ impl TestProps {
             error_patterns: vec![],
             regex_error_patterns: vec![],
             compile_flags: vec![],
-            run_flags: None,
+            run_flags: vec![],
             pp_exact: None,
             aux_builds: vec![],
             aux_bins: vec![],
             aux_crates: vec![],
+            aux_codegen_backend: None,
             revisions: vec![],
             rustc_env: vec![
                 ("RUSTC_ICE".to_string(), "0".to_string()),
@@ -399,7 +404,9 @@ impl TestProps {
 
                     config.parse_and_update_revisions(ln, &mut self.revisions);
 
-                    config.set_name_value_directive(ln, RUN_FLAGS, &mut self.run_flags, |r| r);
+                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
+                        self.run_flags.extend(split_flags(&flags));
+                    }
 
                     if self.pp_exact.is_none() {
                         self.pp_exact = config.parse_pp_exact(ln, testfile);
@@ -444,6 +451,9 @@ impl TestProps {
                         &mut self.aux_crates,
                         Config::parse_aux_crate,
                     );
+                    if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
+                        self.aux_codegen_backend = Some(r.trim().to_owned());
+                    }
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
@@ -720,6 +730,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "assembly-output",
     "aux-bin",
     "aux-build",
+    "aux-codegen-backend",
     "aux-crate",
     "build-aux-docs",
     "build-fail",
@@ -799,6 +810,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-none",
     "ignore-nto",
     "ignore-nvptx64",
+    "ignore-nvptx64-nvidia-cuda",
     "ignore-openbsd",
     "ignore-pass",
     "ignore-remote",
@@ -1267,6 +1279,8 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+    const SYSROOT_BASE: &str = "{{sysroot-base}}";
+    const TARGET_LINKER: &str = "{{target-linker}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
@@ -1279,6 +1293,14 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(BUILD_BASE) {
         value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    }
+
+    if value.contains(SYSROOT_BASE) {
+        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_string_lossy());
+    }
+
+    if value.contains(TARGET_LINKER) {
+        value = value.replace(TARGET_LINKER, config.target_linker.as_deref().unwrap_or(""));
     }
 
     value

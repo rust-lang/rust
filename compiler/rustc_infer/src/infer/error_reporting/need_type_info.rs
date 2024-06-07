@@ -543,9 +543,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             match arg.unpack() {
                                 GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
                                 GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
-                                GenericArgKind::Const(arg) => {
-                                    self.next_const_var(arg.ty(), DUMMY_SP).into()
-                                }
+                                GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
                             }
                         }))
                         .unwrap();

@@ -5,7 +5,17 @@
 
 use std::env;
 
-unsafe fn unsafe_fn() {}
+#[deny(unsafe_op_in_unsafe_fn)]
+unsafe fn unsafe_fn() {
+    env::set_var("FOO", "BAR");
+    //[e2024]~^ ERROR call to unsafe function `std::env::set_var` is unsafe
+    env::remove_var("FOO");
+    //[e2024]~^ ERROR call to unsafe function `std::env::remove_var` is unsafe
+    if false {
+        unsafe_fn();
+        //~^ ERROR call to unsafe function `unsafe_fn` is unsafe
+    }
+}
 fn safe_fn() {}
 
 #[deny(unused_unsafe)]

@@ -1218,7 +1218,7 @@ where
     /// will cause the map to produce seemingly random results. Higher-level and
     /// more foolproof APIs like `entry` should be preferred when possible.
     ///
-    /// In particular, the hash used to initialized the raw entry must still be
+    /// In particular, the hash used to initialize the raw entry must still be
     /// consistent with the hash of the key that is ultimately stored in the entry.
     /// This is because implementations of HashMap may need to recompute hashes
     /// when resizing, at which point only the keys are available.

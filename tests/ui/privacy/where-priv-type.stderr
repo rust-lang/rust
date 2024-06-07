@@ -1,5 +1,5 @@
 warning: type `PrivTy` is more private than the item `S`
-  --> $DIR/where-priv-type.rs:18:1
+  --> $DIR/where-priv-type.rs:21:1
    |
 LL | pub struct S
    | ^^^^^^^^^^^^ struct `S` is reachable at visibility `pub`
@@ -12,7 +12,7 @@ LL | struct PrivTy;
    = note: `#[warn(private_bounds)]` on by default
 
 warning: type `PrivTy` is more private than the item `E`
-  --> $DIR/where-priv-type.rs:25:1
+  --> $DIR/where-priv-type.rs:26:1
    |
 LL | pub enum E
    | ^^^^^^^^^^ enum `E` is reachable at visibility `pub`
@@ -24,13 +24,13 @@ LL | struct PrivTy;
    | ^^^^^^^^^^^^^
 
 warning: type `PrivTy` is more private than the item `f`
-  --> $DIR/where-priv-type.rs:32:1
+  --> $DIR/where-priv-type.rs:31:1
    |
 LL | / pub fn f()
 LL | |
 LL | | where
-LL | |     PrivTy:
-   | |___________^ function `f` is reachable at visibility `pub`
+LL | |     PrivTy:,
+   | |____________^ function `f` is reachable at visibility `pub`
    |
 note: but type `PrivTy` is only usable at visibility `pub(crate)`
   --> $DIR/where-priv-type.rs:8:1
@@ -39,13 +39,13 @@ LL | struct PrivTy;
    | ^^^^^^^^^^^^^
 
 warning: type `PrivTy` is more private than the item `S`
-  --> $DIR/where-priv-type.rs:39:1
+  --> $DIR/where-priv-type.rs:38:1
    |
 LL | / impl S
 LL | |
 LL | | where
-LL | |     PrivTy:
-   | |___________^ implementation `S` is reachable at visibility `pub`
+LL | |     PrivTy:,
+   | |____________^ implementation `S` is reachable at visibility `pub`
    |
 note: but type `PrivTy` is only usable at visibility `pub(crate)`
   --> $DIR/where-priv-type.rs:8:1
@@ -54,13 +54,13 @@ LL | struct PrivTy;
    | ^^^^^^^^^^^^^
 
 warning: type `PrivTy` is more private than the item `S::f`
-  --> $DIR/where-priv-type.rs:44:5
+  --> $DIR/where-priv-type.rs:43:5
    |
 LL | /     pub fn f()
 LL | |
 LL | |     where
-LL | |         PrivTy:
-   | |_______________^ associated function `S::f` is reachable at visibility `pub`
+LL | |         PrivTy:,
+   | |________________^ associated function `S::f` is reachable at visibility `pub`
    |
 note: but type `PrivTy` is only usable at visibility `pub(crate)`
   --> $DIR/where-priv-type.rs:8:1
@@ -69,7 +69,7 @@ LL | struct PrivTy;
    | ^^^^^^^^^^^^^
 
 error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
-  --> $DIR/where-priv-type.rs:75:5
+  --> $DIR/where-priv-type.rs:66:5
    |
 LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^ can't leak private type
@@ -78,7 +78,7 @@ LL | const fn my_const_fn(val: u8) -> u8 {
    | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
 
 error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
-  --> $DIR/where-priv-type.rs:75:5
+  --> $DIR/where-priv-type.rs:66:5
    |
 LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^ can't leak private type

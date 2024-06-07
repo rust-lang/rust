@@ -3,6 +3,14 @@ use core::iter::*;
 use core::num::NonZero;
 
 #[test]
+fn test_chain() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
+    assert_eq!(Vec::from_iter(chain(xs, ys)), expected);
+}
+
+#[test]
 fn test_iterator_chain() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];

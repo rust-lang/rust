@@ -201,26 +201,21 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::Const<'tcx> {
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         // If this is a value, we spend some effort to make it look nice.
-        if let ConstKind::Value(_) = this.data.kind() {
+        if let ConstKind::Value(_, _) = this.data.kind() {
             return ty::tls::with(move |tcx| {
                 // Somehow trying to lift the valtree results in lifetime errors, so we lift the
                 // entire constant.
                 let lifted = tcx.lift(*this.data).unwrap();
-                let ConstKind::Value(valtree) = lifted.kind() else {
+                let ConstKind::Value(ty, valtree) = lifted.kind() else {
                     bug!("we checked that this is a valtree")
                 };
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
+                cx.pretty_print_const_valtree(valtree, ty, /*print_ty*/ true)?;
                 f.write_str(&cx.into_buffer())
             });
         }
         // Fall back to something verbose.
-        write!(
-            f,
-            "{kind:?}: {ty:?}",
-            ty = &this.map(|data| data.ty()),
-            kind = &this.map(|data| data.kind())
-        )
+        write!(f, "{kind:?}", kind = &this.map(|data| data.kind()))
     }
 }
 
@@ -647,7 +642,6 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let ty = self.ty().try_fold_with(folder)?;
         let kind = match self.kind() {
             ConstKind::Param(p) => ConstKind::Param(p.try_fold_with(folder)?),
             ConstKind::Infer(i) => ConstKind::Infer(i.try_fold_with(folder)?),
@@ -656,21 +650,18 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             }
             ConstKind::Placeholder(p) => ConstKind::Placeholder(p.try_fold_with(folder)?),
             ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.try_fold_with(folder)?),
-            ConstKind::Value(v) => ConstKind::Value(v.try_fold_with(folder)?),
+            ConstKind::Value(t, v) => {
+                ConstKind::Value(t.try_fold_with(folder)?, v.try_fold_with(folder)?)
+            }
             ConstKind::Error(e) => ConstKind::Error(e.try_fold_with(folder)?),
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
         };
-        if ty != self.ty() || kind != self.kind() {
-            Ok(folder.interner().mk_ct_from_kind(kind, ty))
-        } else {
-            Ok(self)
-        }
+        if kind != self.kind() { Ok(folder.interner().mk_ct_from_kind(kind)) } else { Ok(self) }
     }
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.ty().visit_with(visitor));
         match self.kind() {
             ConstKind::Param(p) => p.visit_with(visitor),
             ConstKind::Infer(i) => i.visit_with(visitor),
@@ -680,7 +671,10 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             }
             ConstKind::Placeholder(p) => p.visit_with(visitor),
             ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
-            ConstKind::Value(v) => v.visit_with(visitor),
+            ConstKind::Value(t, v) => {
+                try_visit!(t.visit_with(visitor));
+                v.visit_with(visitor)
+            }
             ConstKind::Error(e) => e.visit_with(visitor),
             ConstKind::Expr(e) => e.visit_with(visitor),
         }
