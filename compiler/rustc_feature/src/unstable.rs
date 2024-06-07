@@ -363,8 +363,6 @@ declare_features! (
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680)),
-    /// Treat `extern "C"` function as nounwind.
-    (unstable, c_unwind, "1.52.0", Some(74990)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
