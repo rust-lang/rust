@@ -774,7 +774,6 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
                 1,
             ),
             bodies,
-            has_inline_consts: false,
         })));
         self.feed_owner_id().hir_attrs(attrs);
     }

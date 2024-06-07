@@ -1417,7 +1417,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
     match kind {
         ExprKind::Array(exprs) => visit_thin_exprs(exprs, vis),
         ExprKind::ConstBlock(anon_const) => {
-            vis.visit_expr(anon_const);
+            vis.visit_anon_const(anon_const);
         }
         ExprKind::Repeat(expr, count) => {
             vis.visit_expr(expr);

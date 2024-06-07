@@ -93,8 +93,7 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
         // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
         // the body satisfies the condition of two nodes being different have different
         // `hash_stable` results.
-        let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _, has_inline_consts: _ } =
-            *self;
+        let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _ } = *self;
         opt_hash_including_bodies.unwrap().hash_stable(hcx, hasher);
     }
 }

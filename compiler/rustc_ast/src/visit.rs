@@ -959,7 +959,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprKind::ConstBlock(anon_const) => try_visit!(visitor.visit_expr(anon_const)),
+        ExprKind::ConstBlock(anon_const) => try_visit!(visitor.visit_anon_const(anon_const)),
         ExprKind::Repeat(element, count) => {
             try_visit!(visitor.visit_expr(element));
             try_visit!(visitor.visit_anon_const(count));
