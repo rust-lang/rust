@@ -3515,7 +3515,6 @@ impl<'test> TestCx<'test> {
             .arg(&self.testpaths.file.join("rmake.rs"))
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
-            .env("S", &src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("TMPDIR", &rmake_out_dir)
