@@ -223,7 +223,7 @@ will eventually sync those changes back into this repository.
 When working on Miri in the rustc tree, here's how you can run tests:
 
 ```
-./x.py test miri --stage 0
+./x.py test miri --stage 1
 ```
 
 `--bless` will work, too.
@@ -231,7 +231,7 @@ When working on Miri in the rustc tree, here's how you can run tests:
 You can also directly run Miri on a Rust source file:
 
 ```
-./x.py run miri --stage 0 --args src/tools/miri/tests/pass/hello.rs
+./x.py run miri --stage 1 --args src/tools/miri/tests/pass/hello.rs
 ```
 
 ## Advanced topic: Syncing with the rustc repo
