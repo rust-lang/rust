@@ -174,14 +174,13 @@ fn check_for_main_and_extern_crate(
             let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
 
-            let mut parser =
-                match new_parser_from_source_str(&psess, filename, source.clone()) {
-                    Ok(p) => p,
-                    Err(errs) => {
-                        errs.into_iter().for_each(|err| err.cancel());
-                        return (found_main, found_extern_crate, found_macro);
-                    }
-                };
+            let mut parser = match new_parser_from_source_str(&psess, filename, source.clone()) {
+                Ok(p) => p,
+                Err(errs) => {
+                    errs.into_iter().for_each(|err| err.cancel());
+                    return (found_main, found_extern_crate, found_macro);
+                }
+            };
 
             loop {
                 match parser.parse_item(ForceCollect::No) {
@@ -280,16 +279,15 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
             let psess = ParseSess::with_dcx(dcx, sm);
-            let mut parser =
-                match new_parser_from_source_str(&psess, filename, source.to_owned()) {
-                    Ok(p) => p,
-                    Err(errs) => {
-                        errs.into_iter().for_each(|err| err.cancel());
-                        // If there is an unclosed delimiter, an error will be returned by the
-                        // tokentrees.
-                        return false;
-                    }
-                };
+            let mut parser = match new_parser_from_source_str(&psess, filename, source.to_owned()) {
+                Ok(p) => p,
+                Err(errs) => {
+                    errs.into_iter().for_each(|err| err.cancel());
+                    // If there is an unclosed delimiter, an error will be returned by the
+                    // tokentrees.
+                    return false;
+                }
+            };
             // If a parsing error happened, it's very likely that the attribute is incomplete.
             if let Err(e) = parser.parse_attribute(InnerAttrPolicy::Permitted) {
                 e.cancel();
