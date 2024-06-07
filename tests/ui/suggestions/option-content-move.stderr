@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
-  --> $DIR/option-content-move.rs:10:20
+  --> $DIR/option-content-move.rs:11:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
@@ -19,7 +19,7 @@ LL |                 if selection.1.clone().unwrap().contains(selection.0) {
    |                               ++++++++
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
-  --> $DIR/option-content-move.rs:28:20
+  --> $DIR/option-content-move.rs:30:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
