@@ -3,7 +3,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::relate::{ObligationEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::infer::relate::{Relate, RelateResult, TypeRelation};
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::traits::{Obligation, PredicateObligations};
+use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
@@ -560,7 +560,7 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
         );
     }
 
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
         let _: Result<_, ErrorGuaranteed> = self.type_checker.fully_perform_op(
             self.locations,
             self.category,

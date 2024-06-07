@@ -9,9 +9,7 @@ pub use SubregionOrigin::*;
 pub use ValuePairs::*;
 
 use crate::infer::relate::{CombineFields, RelateResult};
-use crate::traits::{
-    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
-};
+use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;
 use lexical_region_resolve::LexicalRegionResolutions;
@@ -68,7 +66,7 @@ pub mod type_variable;
 #[derive(Debug)]
 pub struct InferOk<'tcx, T> {
     pub value: T,
-    pub obligations: PredicateObligations<'tcx>,
+    pub obligations: Vec<PredicateObligation<'tcx>>,
 }
 pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
@@ -748,7 +746,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
 }
 
 impl<'tcx> InferOk<'tcx, ()> {
-    pub fn into_obligations(self) -> PredicateObligations<'tcx> {
+    pub fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
         self.obligations
     }
 }

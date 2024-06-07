@@ -8,7 +8,7 @@ use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
 use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
-use crate::traits::{ObligationCause, PredicateObligations};
+use crate::traits::{ObligationCause, PredicateObligation};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {
@@ -147,7 +147,7 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.fields.register_predicates(obligations);
     }
 
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
         self.fields.register_obligations(obligations);
     }
 

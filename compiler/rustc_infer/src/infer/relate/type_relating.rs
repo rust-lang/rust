@@ -1,7 +1,7 @@
 use super::combine::CombineFields;
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
 use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
-use crate::traits::{Obligation, PredicateObligations};
+use crate::traits::{Obligation, PredicateObligation};
 
 use super::{
     relate_args_invariantly, relate_args_with_variances, ObligationEmittingRelation, Relate,
@@ -318,7 +318,7 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         self.fields.register_predicates(obligations);
     }
 
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
         self.fields.register_obligations(obligations);
     }
 

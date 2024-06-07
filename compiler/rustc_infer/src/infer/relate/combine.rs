@@ -25,7 +25,7 @@ use super::StructurallyRelateAliases;
 use super::{RelateResult, TypeRelation};
 use crate::infer::relate;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
-use crate::traits::{Obligation, PredicateObligations};
+use crate::traits::{Obligation, PredicateObligation};
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -38,7 +38,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub infcx: &'infcx InferCtxt<'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub obligations: PredicateObligations<'tcx>,
+    pub obligations: Vec<PredicateObligation<'tcx>>,
     pub define_opaque_types: DefineOpaqueTypes,
 }
 
@@ -290,7 +290,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         Glb::new(self)
     }
 
-    pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    pub fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
         self.obligations.extend(obligations);
     }
 
@@ -315,7 +315,7 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
 
     /// Register obligations that must hold in order for this relation to hold
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>);
+    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
 
     /// Register predicates that must hold in order for this relation to hold. Uses
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should

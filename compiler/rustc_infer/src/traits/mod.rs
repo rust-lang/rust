@@ -114,8 +114,6 @@ impl<'tcx> PolyTraitObligation<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PredicateObligation<'_>, 48);
 
-pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
-
 pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 
 /// A callback that can be provided to `inspect_typeck`. Invoked on evaluation
