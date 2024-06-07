@@ -203,6 +203,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let allow_dead_code = attr::mk_attr_nested_word(
                         &self.sess.psess.attr_id_generator,
                         ast::AttrStyle::Outer,
+                        ast::Safety::Default,
                         sym::allow,
                         sym::dead_code,
                         self.def_site,

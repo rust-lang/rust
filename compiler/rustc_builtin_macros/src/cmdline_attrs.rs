@@ -17,7 +17,7 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
         ));
 
         let start_span = parser.token.span;
-        let AttrItem { path, args, tokens: _ } = match parser.parse_attr_item(false) {
+        let AttrItem { unsafety, path, args, tokens: _ } = match parser.parse_attr_item(false) {
             Ok(ai) => ai,
             Err(err) => {
                 err.emit();
@@ -33,6 +33,7 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
         krate.attrs.push(mk_attr(
             &psess.attr_id_generator,
             AttrStyle::Inner,
+            unsafety,
             path,
             args,
             start_span.to(end_span),

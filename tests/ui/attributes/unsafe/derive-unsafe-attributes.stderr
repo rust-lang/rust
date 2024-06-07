@@ -1,0 +1,8 @@
+error: traits in `#[derive(...)]` don't accept `unsafe(...)`
+  --> $DIR/derive-unsafe-attributes.rs:3:10
+   |
+LL | #[derive(unsafe(Debug))]
+   |          ^^^^^^
+
+error: aborting due to 1 previous error
+

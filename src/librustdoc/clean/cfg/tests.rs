@@ -1,6 +1,6 @@
 use super::*;
 
-use rustc_ast::{MetaItemLit, Path, StrStyle};
+use rustc_ast::{MetaItemLit, Path, Safety, StrStyle};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::DUMMY_SP;
@@ -16,6 +16,7 @@ fn name_value_cfg(name: &str, value: &str) -> Cfg {
 
 fn dummy_meta_item_word(name: &str) -> MetaItem {
     MetaItem {
+        unsafety: Safety::Default,
         path: Path::from_ident(Ident::from_str(name)),
         kind: MetaItemKind::Word,
         span: DUMMY_SP,
@@ -25,6 +26,7 @@ fn dummy_meta_item_word(name: &str) -> MetaItem {
 fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> MetaItem {
     let lit = MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP };
     MetaItem {
+        unsafety: Safety::Default,
         path: Path::from_ident(Ident::from_str(name)),
         kind: MetaItemKind::NameValue(lit),
         span: DUMMY_SP,
@@ -34,6 +36,7 @@ fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> Meta
 macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:ident),* $(,)?]) => {
         MetaItem {
+            unsafety: Safety::Default,
             path: Path::from_ident(Ident::from_str(stringify!($name))),
             kind: MetaItemKind::List(thin_vec![
                 $(
@@ -48,6 +51,7 @@ macro_rules! dummy_meta_item_list {
 
     ($name:ident, [$($list:expr),* $(,)?]) => {
         MetaItem {
+            unsafety: Safety::Default,
             path: Path::from_ident(Ident::from_str(stringify!($name))),
             kind: MetaItemKind::List(thin_vec![
                 $(
