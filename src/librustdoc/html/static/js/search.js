@@ -625,7 +625,6 @@ function initSearch(rawSearchIndex) {
      * @return {integer}
      */
     function getIdentEndPosition(parserState) {
-        const start = parserState.pos;
         let afterIdent = consumeIdent(parserState);
         let end = parserState.pos;
         let macroExclamation = -1;
@@ -2167,7 +2166,7 @@ function initSearch(rawSearchIndex) {
             };
             const [crateDescs, descs] = await Promise.all([
                 Promise.all(crateAliases.map(fetchDesc)),
-                Promise.all(aliases.map(fetchDesc))
+                Promise.all(aliases.map(fetchDesc)),
             ]);
 
             const pushFunc = alias => {
@@ -2183,9 +2182,13 @@ function initSearch(rawSearchIndex) {
                 }
             };
 
-            aliases.forEach((alias, i) => alias.desc = descs[i]);
+            aliases.forEach((alias, i) => {
+                alias.desc = descs[i];
+            });
             aliases.forEach(pushFunc);
-            crateAliases.forEach((alias, i) => alias.desc = crateDescs[i]);
+            crateAliases.forEach((alias, i) => {
+                alias.desc = crateDescs[i];
+            });
             crateAliases.forEach(pushFunc);
         }
 
