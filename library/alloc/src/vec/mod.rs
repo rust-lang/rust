@@ -1420,6 +1420,21 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
+    /// It is possible to initialize the spare capacity with [`spare_capacity_mut()`]:
+    ///
+    /// ```
+    /// # use core::mem::MaybeUninit;
+    /// let mut vec: Vec<u8> = Vec::with_capacity(1024);
+    /// let remaining = vec.spare_capacity_mut();
+    /// remaining[..512].iter_mut().for_each(|x| *x = MaybeUninit::new(0));
+    /// // SAFETY:
+    /// // 1. The `new_len` is less than the `capacity`.
+    /// // 2. The elements in range `0..new_len` are initialized.
+    /// unsafe {
+    ///     vec.set_len(256);
+    /// }
+    /// ```
+    ///
     /// This method can be useful for situations in which the vector
     /// is serving as a buffer for other code, particularly over FFI:
     ///
@@ -1477,6 +1492,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Normally, here, one would use [`clear`] instead to correctly drop
     /// the contents and thus not leak memory.
+    ///
+    /// [`spare_capacity_mut()`]: Vec::spare_capacity_mut
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, new_len: usize) {
