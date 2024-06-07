@@ -778,7 +778,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
-                    let meta = ast::MetaItem { kind: MetaItemKind::Word, span, path };
+                    // The `MetaItem` representing the trait to derive can't
+                    // have an unsafe around it (as of now).
+                    let meta = ast::MetaItem {
+                        unsafety: ast::Safety::Default,
+                        kind: MetaItemKind::Word,
+                        span,
+                        path,
+                    };
                     let items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
