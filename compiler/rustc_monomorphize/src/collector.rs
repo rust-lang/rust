@@ -207,8 +207,8 @@
 
 mod move_check;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_for_each_in, LRef, MTLock};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
@@ -251,10 +251,10 @@ pub enum MonoItemCollectionStrategy {
 
 pub struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
-    used_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+    used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
     // Maps every mono item to the mono items that use it.
-    user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+    user_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 }
 
 type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
@@ -262,10 +262,10 @@ type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
 /// The state that is shared across the concurrent threads that are doing collection.
 struct SharedState<'tcx> {
     /// Items that have been or are currently being recursively collected.
-    visited: MTLock<FxHashSet<MonoItem<'tcx>>>,
+    visited: MTLock<UnordSet<MonoItem<'tcx>>>,
     /// Items that have been or are currently being recursively treated as "mentioned", i.e., their
     /// consts are evaluated but nothing is added to the collection.
-    mentioned: MTLock<FxHashSet<MonoItem<'tcx>>>,
+    mentioned: MTLock<UnordSet<MonoItem<'tcx>>>,
     /// Which items are being used where, for better errors.
     usage_map: MTLock<UsageMap<'tcx>>,
 }
@@ -290,7 +290,7 @@ enum CollectionMode {
 
 impl<'tcx> UsageMap<'tcx> {
     fn new() -> UsageMap<'tcx> {
-        UsageMap { used_map: FxHashMap::default(), user_map: FxHashMap::default() }
+        UsageMap { used_map: Default::default(), user_map: Default::default() }
     }
 
     fn record_used<'a>(
@@ -668,7 +668,7 @@ struct MirUsedCollector<'a, 'tcx> {
     used_items: &'a mut MonoItems<'tcx>,
     /// See the comment in `collect_items_of_instance` for the purpose of this set.
     /// Note that this contains *not-monomorphized* items!
-    used_mentioned_items: &'a mut FxHashSet<MentionedItem<'tcx>>,
+    used_mentioned_items: &'a mut UnordSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
     visiting_call_terminator: bool,
     move_check: move_check::MoveCheckState,
@@ -1272,7 +1272,7 @@ fn collect_items_of_instance<'tcx>(
     // mentioned item. So instead we collect all pre-monomorphized `MentionedItem` that were already
     // added to `used_items` in a hash set, which can efficiently query in the
     // `body.mentioned_items` loop below without even having to monomorphize the item.
-    let mut used_mentioned_items = FxHashSet::<MentionedItem<'tcx>>::default();
+    let mut used_mentioned_items = Default::default();
     let mut collector = MirUsedCollector {
         tcx,
         body,
@@ -1628,10 +1628,10 @@ fn create_mono_items_for_default_impls<'tcx>(
 //=-----------------------------------------------------------------------------
 
 #[instrument(skip(tcx, strategy), level = "debug")]
-pub fn collect_crate_mono_items(
-    tcx: TyCtxt<'_>,
+pub(crate) fn collect_crate_mono_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
     strategy: MonoItemCollectionStrategy,
-) -> (FxHashSet<MonoItem<'_>>, UsageMap<'_>) {
+) -> (Vec<MonoItem<'tcx>>, UsageMap<'tcx>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
     let roots = tcx
@@ -1641,8 +1641,8 @@ pub fn collect_crate_mono_items(
     debug!("building mono item graph, beginning at roots");
 
     let mut state = SharedState {
-        visited: MTLock::new(FxHashSet::default()),
-        mentioned: MTLock::new(FxHashSet::default()),
+        visited: MTLock::new(UnordSet::default()),
+        mentioned: MTLock::new(UnordSet::default()),
         usage_map: MTLock::new(UsageMap::new()),
     };
     let recursion_limit = tcx.recursion_limit();
@@ -1665,5 +1665,11 @@ pub fn collect_crate_mono_items(
         });
     }
 
-    (state.visited.into_inner(), state.usage_map.into_inner())
+    // The set of MonoItems was created in an inherently indeterministic order because
+    // of parallelism. We sort it here to ensure that the output is deterministic.
+    let mono_items = tcx.with_stable_hashing_context(move |ref hcx| {
+        state.visited.into_inner().into_sorted(hcx, true)
+    });
+
+    (mono_items, state.usage_map.into_inner())
 }
