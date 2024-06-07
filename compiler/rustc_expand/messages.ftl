@@ -124,6 +124,9 @@ expand_not_a_meta_item =
 expand_only_one_word =
     must only be one word
 
+expand_proc_macro_back_compat = using an old version of `{$crate_name}`
+    .note = older versions of the `{$crate_name}` crate no longer compile; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives
+
 expand_proc_macro_derive_panicked =
     proc-macro derive panicked
     .help = message: {$message}

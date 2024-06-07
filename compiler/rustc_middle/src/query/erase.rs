@@ -4,7 +4,7 @@ use crate::traits;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty};
 use std::intrinsics::transmute_unchecked;
-use std::mem::{size_of, MaybeUninit};
+use std::mem::MaybeUninit;
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {

@@ -18,6 +18,8 @@ use crate::bounds::Bounds;
 use crate::errors;
 use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 
+use super::RegionInferReason;
+
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
     ///
@@ -166,7 +168,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
-                    let region = self.lower_lifetime(lifetime, None);
+                    let region = self.lower_lifetime(lifetime, RegionInferReason::OutlivesBound);
                     bounds.push_region_bound(
                         self.tcx(),
                         ty::Binder::bind_with_vars(
@@ -366,11 +368,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                     },
                                 )
                             });
-                            let ty = tcx
-                                .type_of(param.def_id)
-                                .no_bound_vars()
-                                .expect("ct params cannot have early bound vars");
-                            ty::Const::new_error(tcx, guar, ty).into()
+                            ty::Const::new_error(tcx, guar).into()
                         }
                     };
                     num_bound_vars += 1;

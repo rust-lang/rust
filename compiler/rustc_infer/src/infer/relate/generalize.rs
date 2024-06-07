@@ -329,6 +329,14 @@ impl<'tcx> Generalizer<'_, 'tcx> {
         }
     }
 
+    /// Create a new type variable in the universe of the target when
+    /// generalizing an alias. This has to set `has_unconstrained_ty_var`
+    /// if we're currently in a bivariant context.
+    fn next_ty_var_for_alias(&mut self) -> Ty<'tcx> {
+        self.has_unconstrained_ty_var |= self.ambient_variance == ty::Bivariant;
+        self.infcx.next_ty_var_in_universe(self.span, self.for_universe)
+    }
+
     /// An occurs check failure inside of an alias does not mean
     /// that the types definitely don't unify. We may be able
     /// to normalize the alias after all.
@@ -358,7 +366,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
         //
         // cc trait-system-refactor-initiative#110
         if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() && !self.in_alias {
-            return Ok(self.infcx.next_ty_var_in_universe(self.span, self.for_universe));
+            return Ok(self.next_ty_var_for_alias());
         }
 
         let is_nested_alias = mem::replace(&mut self.in_alias, true);
@@ -378,7 +386,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     }
 
                     debug!("generalization failure in alias");
-                    Ok(self.infcx.next_ty_var_in_universe(self.span, self.for_universe))
+                    Ok(self.next_ty_var_for_alias())
                 }
             }
         };
@@ -645,7 +653,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             {
                                 variable_table.union(vid, new_var_id);
                             }
-                            Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
+                            Ok(ty::Const::new_var(self.tcx(), new_var_id))
                         }
                     }
                 }
@@ -663,11 +671,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     args,
                     args,
                 )?;
-                Ok(ty::Const::new_unevaluated(
-                    self.tcx(),
-                    ty::UnevaluatedConst { def, args },
-                    c.ty(),
-                ))
+                Ok(ty::Const::new_unevaluated(self.tcx(), ty::UnevaluatedConst { def, args }))
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {

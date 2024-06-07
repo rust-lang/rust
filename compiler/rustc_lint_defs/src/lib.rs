@@ -618,10 +618,6 @@ pub enum BuiltinLintDiag {
         is_foreign: bool,
     },
     LegacyDeriveHelpers(Span),
-    ProcMacroBackCompat {
-        crate_name: String,
-        fixed_version: String,
-    },
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     TrailingMacro(bool, Ident),
@@ -630,6 +626,9 @@ pub enum BuiltinLintDiag {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
+    MissingUnsafeOnExtern {
+        suggestion: Span,
+    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,

@@ -737,7 +737,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
                 // probably clear enough.
                 let c = ty.numeric_max_val(cx.tcx).unwrap();
-                let value = mir::Const::from_ty_const(c, cx.tcx);
+                let value = mir::Const::from_ty_const(c, ty.0, cx.tcx);
                 lo = PatRangeBoundary::Finite(value);
             }
             let hi = if let Some(hi) = range.hi.minus_one() {

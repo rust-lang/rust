@@ -1833,6 +1833,16 @@ impl<'test> TestCx<'test> {
                 ));
             }
         }
+
+        // Build any `//@ aux-codegen-backend`, and pass the resulting library
+        // to `-Zcodegen-backend` when compiling the test file.
+        if let Some(aux_file) = &self.props.aux_codegen_backend {
+            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, false);
+            if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
+                let lib_path = aux_dir.join(&lib_name);
+                rustc.arg(format!("-Zcodegen-backend={}", lib_path.display()));
+            }
+        }
     }
 
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
@@ -2254,6 +2264,9 @@ impl<'test> TestCx<'test> {
         }
 
         match output_file {
+            // If the test's compile flags specify an output path with `-o`,
+            // avoid a compiler warning about `--out-dir` being ignored.
+            _ if self.props.compile_flags.iter().any(|flag| flag == "-o") => {}
             TargetLocation::ThisFile(path) => {
                 rustc.arg("-o").arg(path);
             }
@@ -2355,7 +2368,7 @@ impl<'test> TestCx<'test> {
         args.push(exe_file.into_os_string());
 
         // Add the arguments in the run_flags directive
-        args.extend(self.split_maybe_args(&self.props.run_flags));
+        args.extend(self.props.run_flags.iter().map(OsString::from));
 
         let prog = args.remove(0);
         ProcArgs { prog, args }
@@ -2469,6 +2482,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    #[track_caller]
     fn fatal(&self, err: &str) -> ! {
         self.error(err);
         error!("fatal error, panic: {:?}", err);
@@ -4173,10 +4187,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
-        let rflags = self.props.run_flags.as_ref();
+        // Crude heuristic to detect when the output should have JSON-specific
+        // normalization steps applied.
+        let rflags = self.props.run_flags.join(" ");
         let cflags = self.props.compile_flags.join(" ");
-        let json = rflags
-            .map_or(false, |s| s.contains("--format json") || s.contains("--format=json"))
+        let json = rflags.contains("--format json")
+            || rflags.contains("--format=json")
             || cflags.contains("--error-format json")
             || cflags.contains("--error-format pretty-json")
             || cflags.contains("--error-format=json")

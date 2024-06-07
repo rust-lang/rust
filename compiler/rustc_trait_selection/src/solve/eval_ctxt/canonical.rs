@@ -444,7 +444,7 @@ pub(in crate::solve) fn instantiate_canonical_state<'tcx, T: TypeFoldable<TyCtxt
                 infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
             }
             ty::GenericArgKind::Type(_) => infcx.next_ty_var(span).into(),
-            ty::GenericArgKind::Const(ct) => infcx.next_const_var(ct.ty(), span).into(),
+            ty::GenericArgKind::Const(_) => infcx.next_const_var(span).into(),
         };
 
         orig_values.push(unconstrained);

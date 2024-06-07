@@ -100,19 +100,11 @@ impl GenericParamDef {
         }
     }
 
-    pub fn to_error<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        preceding_args: &[ty::GenericArg<'tcx>],
-    ) -> ty::GenericArg<'tcx> {
+    pub fn to_error<'tcx>(&self, tcx: TyCtxt<'tcx>) -> ty::GenericArg<'tcx> {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
-            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
-                tcx,
-                tcx.type_of(self.def_id).instantiate(tcx, preceding_args),
-            )
-            .into(),
+            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(tcx).into(),
         }
     }
 }

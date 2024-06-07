@@ -330,6 +330,7 @@ trigger_files = [
     "src/tools/compiletest",
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
+    "src/tools/libcxx-version",
 ]
 
 [autolabel."T-infra"]
@@ -1117,6 +1118,7 @@ project-exploit-mitigations = [
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
+"/src/tools/libcxx-version" =                            ["@onur-ozkan"]
 
 # Enable tracking of PR review assignment
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html

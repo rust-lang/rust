@@ -1,6 +1,6 @@
 //@ edition: 2021
 //@ compile-flags: -Zunstable-options
-#![feature(mut_preserve_binding_mode_2024)]
+#![feature(ref_pat_eat_one_layer_2024)]
 #![allow(incomplete_features)]
 
 struct Foo(u8);

@@ -58,6 +58,22 @@ fn test_rpath_relative() {
 }
 
 #[test]
+fn test_rpath_relative_issue_119571() {
+    let config = &mut RPathConfig {
+        libs: &[],
+        out_filename: PathBuf::from("rustc"),
+        has_rpath: true,
+        is_like_osx: false,
+        linker_is_gnu: true,
+    };
+    // Should not panic when out_filename only contains filename.
+    // Issue 119571
+    let _ = get_rpath_relative_to_output(config, Path::new("lib/libstd.so"));
+    // Should not panic when lib only contains filename.
+    let _ = get_rpath_relative_to_output(config, Path::new("libstd.so"));
+}
+
+#[test]
 fn test_xlinker() {
     let args = rpaths_to_flags(vec!["a/normal/path".into(), "a,comma,path".into()]);
 

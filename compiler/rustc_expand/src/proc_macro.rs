@@ -4,14 +4,12 @@ use crate::proc_macro_server;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
-use rustc_parse::parser::ForceCollect;
+use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 struct MessagePipe<T> {
     tx: std::sync::mpsc::SyncSender<T>,
@@ -120,18 +118,13 @@ impl MultiItemModifier for DeriveProcMacro {
         // We need special handling for statement items
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
         let is_stmt = matches!(item, Annotatable::Stmt(..));
-        let hack = crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
-        let input = if hack {
-            let nt = match item {
-                Annotatable::Item(item) => token::NtItem(item),
-                Annotatable::Stmt(stmt) => token::NtStmt(stmt),
-                _ => unreachable!(),
-            };
-            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
-        } else {
-            item.to_tokens()
-        };
 
+        // We used to have an alternative behaviour for crates that needed it.
+        // We had a lint for a long time, but now we just emit a hard error.
+        // Eventually we might remove the special case hard error check
+        // altogether. See #73345.
+        crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
+        let input = item.to_tokens();
         let stream = {
             let _timer =
                 ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
@@ -161,8 +154,7 @@ impl MultiItemModifier for DeriveProcMacro {
         };
 
         let error_count_before = ecx.dcx().err_count();
-        let mut parser =
-            rustc_parse::stream_to_parser(&ecx.sess.psess, stream, Some("proc-macro derive"));
+        let mut parser = Parser::new(&ecx.sess.psess, stream, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {

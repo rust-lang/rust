@@ -104,10 +104,12 @@ impl<'tcx> Expr<'tcx> {
         tcx: TyCtxt<'tcx>,
         func_ty: Ty<'tcx>,
         func_expr: Const<'tcx>,
-        arguments: impl Iterator<Item = Const<'tcx>>,
+        arguments: impl IntoIterator<Item = Const<'tcx>>,
     ) -> Self {
         let args = tcx.mk_args_from_iter::<_, ty::GenericArg<'tcx>>(
-            [func_ty.into(), func_expr.into()].into_iter().chain(arguments.map(|ct| ct.into())),
+            [func_ty.into(), func_expr.into()]
+                .into_iter()
+                .chain(arguments.into_iter().map(|ct| ct.into())),
         );
 
         Self { kind: ExprKind::FunctionCall, args }
@@ -155,7 +157,7 @@ impl<'tcx> Expr<'tcx> {
         Self { kind, args }
     }
 
-    pub fn args(&self) -> ty::GenericArgsRef<'tcx> {
+    pub fn args(self) -> ty::GenericArgsRef<'tcx> {
         self.args
     }
 }

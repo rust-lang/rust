@@ -36,7 +36,7 @@ fn init_compiler_benchmarks(
     // Run rustc-perf benchmarks
     // Benchmark using profile_local with eprintln, which essentially just means
     // don't actually benchmark -- just make sure we run rustc a bunch of times.
-    cmd(&[
+    let mut cmd = cmd(&[
         env.cargo_stage_0().as_str(),
         "run",
         "-p",
@@ -61,7 +61,17 @@ fn init_compiler_benchmarks(
     .env("RUST_LOG", "collector=debug")
     .env("RUSTC", env.rustc_stage_0().as_str())
     .env("RUSTC_BOOTSTRAP", "1")
-    .workdir(&env.rustc_perf_dir())
+    .workdir(&env.rustc_perf_dir());
+
+    // This propagates cargo configs to `rustc-perf --cargo-config`,
+    // which is particularly useful when the environment is air-gapped,
+    // and you want to use the default set of training crates vendored
+    // in the rustc-src tarball.
+    for config in env.benchmark_cargo_config() {
+        cmd = cmd.arg("--cargo-config").arg(config);
+    }
+
+    cmd
 }
 
 /// Describes which `llvm-profdata` binary should be used for merging PGO profiles.

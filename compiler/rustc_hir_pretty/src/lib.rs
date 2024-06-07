@@ -345,12 +345,12 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(self.attrs(item.hir_id()));
         match item.kind {
-            hir::ForeignItemKind::Fn(decl, arg_names, generics) => {
+            hir::ForeignItemKind::Fn(decl, arg_names, generics, safety) => {
                 self.head("");
                 self.print_fn(
                     decl,
                     hir::FnHeader {
-                        safety: hir::Safety::Safe,
+                        safety,
                         constness: hir::Constness::NotConst,
                         abi: Abi::Rust,
                         asyncness: hir::IsAsync::NotAsync,
@@ -364,7 +364,8 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end() // end the outer fn box
             }
-            hir::ForeignItemKind::Static(t, m) => {
+            hir::ForeignItemKind::Static(t, m, safety) => {
+                self.print_safety(safety);
                 self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");

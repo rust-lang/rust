@@ -646,24 +646,25 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
             true
         }
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
-        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
+        (ty::ConstKind::Value(_, a_val), ty::ConstKind::Value(_, b_val)) => a_val == b_val,
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
-            assert_eq!(a.ty(), b.ty());
+            if cfg!(debug_assertions) {
+                let a_ty = tcx.type_of(au.def).instantiate(tcx, au.args);
+                let b_ty = tcx.type_of(bu.def).instantiate(tcx, bu.args);
+                assert_eq!(a_ty, b_ty);
+            }
+
             let args = relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
                 au.args,
                 bu.args,
             )?;
-            return Ok(ty::Const::new_unevaluated(
-                tcx,
-                ty::UnevaluatedConst { def: au.def, args },
-                a.ty(),
-            ));
+            return Ok(ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst { def: au.def, args }));
         }
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             match (ae.kind, be.kind) {
@@ -676,7 +677,7 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
             }
 
             let args = relation.relate(ae.args(), be.args())?;
-            return Ok(ty::Const::new_expr(tcx, ty::Expr::new(ae.kind, args), a.ty()));
+            return Ok(ty::Const::new_expr(tcx, ty::Expr::new(ae.kind, args)));
         }
         _ => false,
     };

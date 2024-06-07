@@ -1,10 +1,10 @@
-error: expected one of `extern`, `fn`, or `unsafe`, found keyword `const`
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const`
   --> $DIR/no-async-const.rs:4:11
    |
 LL | pub async const fn x() {}
    |     ------^^^^^
    |     |     |
-   |     |     expected one of `extern`, `fn`, or `unsafe`
+   |     |     expected one of `extern`, `fn`, `safe`, or `unsafe`
    |     help: `const` must come before `async`: `const async`
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`

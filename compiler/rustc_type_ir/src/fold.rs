@@ -387,7 +387,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_ct) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                Const::new_bound(self.tcx, debruijn, bound_ct, ct.ty())
+                Const::new_bound(self.tcx, debruijn, bound_ct)
             }
             _ => ct.super_fold_with(self),
         }

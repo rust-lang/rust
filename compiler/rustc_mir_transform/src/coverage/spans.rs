@@ -20,37 +20,31 @@ pub(super) fn extract_refined_covspans(
     basic_coverage_blocks: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let sorted_spans =
+    let sorted_span_buckets =
         from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
-    let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
-    code_mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
-        // Each span produced by the generator represents an ordinary code region.
-        mappings::CodeMapping { span, bcb }
-    }));
+    for bucket in sorted_span_buckets {
+        let refined_spans = SpansRefiner::refine_sorted_spans(bucket);
+        code_mappings.extend(refined_spans.into_iter().map(|RefinedCovspan { span, bcb }| {
+            // Each span produced by the refiner represents an ordinary code region.
+            mappings::CodeMapping { span, bcb }
+        }));
+    }
 }
 
 #[derive(Debug)]
 struct CurrCovspan {
     span: Span,
     bcb: BasicCoverageBlock,
-    is_hole: bool,
 }
 
 impl CurrCovspan {
-    fn new(span: Span, bcb: BasicCoverageBlock, is_hole: bool) -> Self {
-        Self { span, bcb, is_hole }
+    fn new(span: Span, bcb: BasicCoverageBlock) -> Self {
+        Self { span, bcb }
     }
 
     fn into_prev(self) -> PrevCovspan {
-        let Self { span, bcb, is_hole } = self;
-        PrevCovspan { span, bcb, merged_spans: vec![span], is_hole }
-    }
-
-    fn into_refined(self) -> RefinedCovspan {
-        // This is only called in cases where `curr` is a hole span that has
-        // been carved out of `prev`.
-        debug_assert!(self.is_hole);
-        self.into_prev().into_refined()
+        let Self { span, bcb } = self;
+        PrevCovspan { span, bcb, merged_spans: vec![span] }
     }
 }
 
@@ -61,12 +55,11 @@ struct PrevCovspan {
     /// List of all the original spans from MIR that have been merged into this
     /// span. Mainly used to precisely skip over gaps when truncating a span.
     merged_spans: Vec<Span>,
-    is_hole: bool,
 }
 
 impl PrevCovspan {
     fn is_mergeable(&self, other: &CurrCovspan) -> bool {
-        self.bcb == other.bcb && !self.is_hole && !other.is_hole
+        self.bcb == other.bcb
     }
 
     fn merge_from(&mut self, other: &CurrCovspan) {
@@ -84,14 +77,9 @@ impl PrevCovspan {
         if self.merged_spans.is_empty() { None } else { Some(self.into_refined()) }
     }
 
-    fn refined_copy(&self) -> RefinedCovspan {
-        let &Self { span, bcb, merged_spans: _, is_hole } = self;
-        RefinedCovspan { span, bcb, is_hole }
-    }
-
     fn into_refined(self) -> RefinedCovspan {
-        // Even though we consume self, we can just reuse the copying impl.
-        self.refined_copy()
+        let Self { span, bcb, merged_spans: _ } = self;
+        RefinedCovspan { span, bcb }
     }
 }
 
@@ -99,12 +87,11 @@ impl PrevCovspan {
 struct RefinedCovspan {
     span: Span,
     bcb: BasicCoverageBlock,
-    is_hole: bool,
 }
 
 impl RefinedCovspan {
     fn is_mergeable(&self, other: &Self) -> bool {
-        self.bcb == other.bcb && !self.is_hole && !other.is_hole
+        self.bcb == other.bcb
     }
 
     fn merge_from(&mut self, other: &Self) {
@@ -119,8 +106,6 @@ impl RefinedCovspan {
 ///  * Remove duplicate source code coverage regions
 ///  * Merge spans that represent continuous (both in source code and control flow), non-branching
 ///    execution
-///  * Carve out (leave uncovered) any "hole" spans that need to be left blank
-///    (e.g. closures that will be counted by their own MIR body)
 struct SpansRefiner {
     /// The initial set of coverage spans, sorted by `Span` (`lo` and `hi`) and by relative
     /// dominance between the `BasicCoverageBlock`s of equal `Span`s.
@@ -181,13 +166,6 @@ impl SpansRefiner {
                 );
                 let prev = self.take_prev().into_refined();
                 self.refined_spans.push(prev);
-            } else if prev.is_hole {
-                // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
-                // next iter
-                debug!(?prev, "prev (a hole) overlaps curr, so discarding curr");
-                self.take_curr(); // Discards curr.
-            } else if curr.is_hole {
-                self.carve_out_span_for_hole();
             } else {
                 self.cutoff_prev_at_overlapping_curr();
             }
@@ -211,9 +189,6 @@ impl SpansRefiner {
             }
         });
 
-        // Discard hole spans, since their purpose was to carve out chunks from
-        // other spans, but we don't want the holes themselves in the final mappings.
-        self.refined_spans.retain(|covspan| !covspan.is_hole);
         self.refined_spans
     }
 
@@ -249,50 +224,17 @@ impl SpansRefiner {
         if let Some(curr) = self.some_curr.take() {
             self.some_prev = Some(curr.into_prev());
         }
-        while let Some(curr) = self.sorted_spans_iter.next() {
-            debug!("FOR curr={:?}", curr);
-            if let Some(prev) = &self.some_prev
-                && prev.span.lo() > curr.span.lo()
-            {
-                // Skip curr because prev has already advanced beyond the end of curr.
-                // This can only happen if a prior iteration updated `prev` to skip past
-                // a region of code, such as skipping past a hole.
-                debug!(?prev, "prev.span starts after curr.span, so curr will be dropped");
-            } else {
-                self.some_curr = Some(CurrCovspan::new(curr.span, curr.bcb, curr.is_hole));
-                return true;
+        if let Some(SpanFromMir { span, bcb, .. }) = self.sorted_spans_iter.next() {
+            // This code only sees sorted spans after hole-carving, so there should
+            // be no way for `curr` to start before `prev`.
+            if let Some(prev) = &self.some_prev {
+                debug_assert!(prev.span.lo() <= span.lo());
             }
-        }
-        false
-    }
-
-    /// If `prev`s span extends left of the hole (`curr`), carve out the hole's span from
-    /// `prev`'s span. Add the portion of the span to the left of the hole; and if the span
-    /// extends to the right of the hole, update `prev` to that portion of the span.
-    fn carve_out_span_for_hole(&mut self) {
-        let prev = self.prev();
-        let curr = self.curr();
-
-        let left_cutoff = curr.span.lo();
-        let right_cutoff = curr.span.hi();
-        let has_pre_hole_span = prev.span.lo() < right_cutoff;
-        let has_post_hole_span = prev.span.hi() > right_cutoff;
-
-        if has_pre_hole_span {
-            let mut pre_hole = prev.refined_copy();
-            pre_hole.span = pre_hole.span.with_hi(left_cutoff);
-            debug!(?pre_hole, "prev overlaps a hole; adding pre-hole span");
-            self.refined_spans.push(pre_hole);
-        }
-
-        if has_post_hole_span {
-            // Mutate `prev.span` to start after the hole (and discard curr).
-            self.prev_mut().span = self.prev().span.with_lo(right_cutoff);
-            debug!(prev=?self.prev(), "mutated prev to start after the hole");
-
-            // Prevent this curr from becoming prev.
-            let hole_covspan = self.take_curr().into_refined();
-            self.refined_spans.push(hole_covspan); // since self.prev() was already updated
+            self.some_curr = Some(CurrCovspan::new(span, bcb));
+            debug!(?self.some_prev, ?self.some_curr, "next_coverage_span");
+            true
+        } else {
+            false
         }
     }
 

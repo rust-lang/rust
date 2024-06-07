@@ -283,31 +283,17 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
 
 pub(crate) fn clean_const<'tcx>(
     constant: &hir::ConstArg<'_>,
-    cx: &mut DocContext<'tcx>,
+    _cx: &mut DocContext<'tcx>,
 ) -> Constant {
-    let def_id = cx.tcx.hir().body_owner_def_id(constant.value.body).to_def_id();
-    Constant {
-        type_: Box::new(clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
-            cx,
-            Some(def_id),
-            None,
-        )),
-        generics: Generics::default(),
-        kind: ConstantKind::Anonymous { body: constant.value.body },
-    }
+    Constant { kind: ConstantKind::Anonymous { body: constant.value.body } }
 }
 
 pub(crate) fn clean_middle_const<'tcx>(
     constant: ty::Binder<'tcx, ty::Const<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    _cx: &mut DocContext<'tcx>,
 ) -> Constant {
     // FIXME: instead of storing the stringified expression, store `self` directly instead.
-    Constant {
-        type_: Box::new(clean_middle_ty(constant.map_bound(|c| c.ty()), cx, None, None)),
-        generics: Generics::default(),
-        kind: ConstantKind::TyConst { expr: constant.skip_binder().to_string().into() },
-    }
+    Constant { kind: ConstantKind::TyConst { expr: constant.skip_binder().to_string().into() } }
 }
 
 pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Lifetime> {
@@ -2738,11 +2724,11 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Static(ty, mutability, body_id) => {
                 StaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: Some(body_id) })
             }
-            ItemKind::Const(ty, generics, body_id) => ConstantItem(Constant {
-                type_: Box::new(clean_ty(ty, cx)),
-                generics: clean_generics(generics, cx),
-                kind: ConstantKind::Local { body: body_id, def_id },
-            }),
+            ItemKind::Const(ty, generics, body_id) => ConstantItem(
+                clean_generics(generics, cx),
+                Box::new(clean_ty(ty, cx)),
+                Constant { kind: ConstantKind::Local { body: body_id, def_id } },
+            ),
             ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                 bounds: ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 generics: clean_generics(ty.generics, cx),
@@ -3089,7 +3075,9 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(decl, names, generics) => {
+            // FIXME(missing_unsafe_on_extern) handle safety of foreign fns.
+            // Safety was added as part of the implementation of unsafe extern blocks PR #124482
+            hir::ForeignItemKind::Fn(decl, names, generics, _) => {
                 let (generics, decl) = enter_impl_trait(cx, |cx| {
                     // NOTE: generics must be cleaned before args
                     let generics = clean_generics(generics, cx);
@@ -3099,7 +3087,9 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                 });
                 ForeignFunctionItem(Box::new(Function { decl, generics }))
             }
-            hir::ForeignItemKind::Static(ty, mutability) => {
+            // FIXME(missing_unsafe_on_extern) handle safety of foreign statics.
+            // Safety was added as part of the implementation of unsafe extern blocks PR #124482
+            hir::ForeignItemKind::Static(ty, mutability, _) => {
                 ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })
             }
             hir::ForeignItemKind::Type => ForeignTypeItem,

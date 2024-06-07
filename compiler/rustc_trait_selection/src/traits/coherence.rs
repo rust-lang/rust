@@ -529,7 +529,6 @@ fn plug_infer_with_placeholders<'tcx>(
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
                             ty::Placeholder { universe: self.universe, bound: self.next_var() },
-                            ct.ty(),
                         ),
                     )
                 else {
@@ -924,11 +923,12 @@ where
                 }
             }
 
-            ty::Alias(kind @ (ty::Projection | ty::Inherent | ty::Weak), ..) => {
-                if ty.has_type_flags(ty::TypeFlags::HAS_TY_PARAM) {
-                    bug!("unexpected ty param in alias ty");
-                }
-
+            // A rigid alias may normalize to anything.
+            // * If it references an infer var, placeholder or bound ty, it may
+            //   normalize to that, so we have to treat it as an uncovered ty param.
+            // * Otherwise it may normalize to any non-type-generic type
+            //   be it local or non-local.
+            ty::Alias(kind, _) => {
                 if ty.has_type_flags(
                     ty::TypeFlags::HAS_TY_PLACEHOLDER
                         | ty::TypeFlags::HAS_TY_BOUND
@@ -948,7 +948,24 @@ where
                         }
                     }
                 } else {
-                    ControlFlow::Continue(())
+                    // Regarding *opaque types* specifically, we choose to treat them as non-local,
+                    // even those that appear within the same crate. This seems somewhat surprising
+                    // at first, but makes sense when you consider that opaque types are supposed
+                    // to hide the underlying type *within the same crate*. When an opaque type is
+                    // used from outside the module where it is declared, it should be impossible to
+                    // observe anything about it other than the traits that it implements.
+                    //
+                    // The alternative would be to look at the underlying type to determine whether
+                    // or not the opaque type itself should be considered local.
+                    //
+                    // However, this could make it a breaking change to switch the underlying hidden
+                    // type from a local type to a remote type. This would violate the rule that
+                    // opaque types should be completely opaque apart from the traits that they
+                    // implement, so we don't use this behavior.
+                    // Addendum: Moreover, revealing the underlying type is likely to cause cycle
+                    // errors as we rely on coherence / the specialization graph during typeck.
+
+                    self.found_non_local_ty(ty)
                 }
             }
 
@@ -990,35 +1007,6 @@ where
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
             ty::CoroutineWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Alias(ty::Opaque, ..) => {
-                // This merits some explanation.
-                // Normally, opaque types are not involved when performing
-                // coherence checking, since it is illegal to directly
-                // implement a trait on an opaque type. However, we might
-                // end up looking at an opaque type during coherence checking
-                // if an opaque type gets used within another type (e.g. as
-                // the type of a field) when checking for auto trait or `Sized`
-                // impls. This requires us to decide whether or not an opaque
-                // type should be considered 'local' or not.
-                //
-                // We choose to treat all opaque types as non-local, even
-                // those that appear within the same crate. This seems
-                // somewhat surprising at first, but makes sense when
-                // you consider that opaque types are supposed to hide
-                // the underlying type *within the same crate*. When an
-                // opaque type is used from outside the module
-                // where it is declared, it should be impossible to observe
-                // anything about it other than the traits that it implements.
-                //
-                // The alternative would be to look at the underlying type
-                // to determine whether or not the opaque type itself should
-                // be considered local. However, this could make it a breaking change
-                // to switch the underlying ('defining') type from a local type
-                // to a remote type. This would violate the rule that opaque
-                // types should be completely opaque apart from the traits
-                // that they implement, so we don't use this behavior.
-                self.found_non_local_ty(ty)
-            }
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.

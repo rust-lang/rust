@@ -4,8 +4,8 @@ use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
 ///
-/// This `struct` is created by [`Iterator::chain`]. See its documentation
-/// for more.
+/// This `struct` is created by [`chain`] or [`Iterator::chain`]. See their
+/// documentation for more.
 ///
 /// # Examples
 ///
@@ -36,6 +36,39 @@ impl<A, B> Chain<A, B> {
     pub(in super::super) fn new(a: A, b: B) -> Chain<A, B> {
         Chain { a: Some(a), b: Some(b) }
     }
+}
+
+/// Converts the arguments to iterators and links them together, in a chain.
+///
+/// See the documentation of [`Iterator::chain`] for more.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(iter_chain)]
+///
+/// use std::iter::chain;
+///
+/// let a = [1, 2, 3];
+/// let b = [4, 5, 6];
+///
+/// let mut iter = chain(a, b);
+///
+/// assert_eq!(iter.next(), Some(1));
+/// assert_eq!(iter.next(), Some(2));
+/// assert_eq!(iter.next(), Some(3));
+/// assert_eq!(iter.next(), Some(4));
+/// assert_eq!(iter.next(), Some(5));
+/// assert_eq!(iter.next(), Some(6));
+/// assert_eq!(iter.next(), None);
+/// ```
+#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
+pub fn chain<A, B>(a: A, b: B) -> Chain<A::IntoIter, B::IntoIter>
+where
+    A: IntoIterator,
+    B: IntoIterator<Item = A::Item>,
+{
+    Chain::new(a.into_iter(), b.into_iter())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

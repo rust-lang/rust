@@ -352,9 +352,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_binding, nonglob_binding) =
                             if old_glob { (old_binding, binding) } else { (binding, old_binding) };
-                        if glob_binding.res() != nonglob_binding.res()
-                            && key.ns == MacroNS
+                        if key.ns == MacroNS
                             && nonglob_binding.expansion != LocalExpnId::ROOT
+                            && glob_binding.res() != nonglob_binding.res()
                         {
                             resolution.binding = Some(this.ambiguity(
                                 AmbiguityKind::GlobVsExpanded,

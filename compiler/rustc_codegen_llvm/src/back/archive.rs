@@ -128,11 +128,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         is_direct_dependency: bool,
     ) -> PathBuf {
         let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
-        let output_path = {
-            let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{lib_name}{name_suffix}"));
-            output_path.with_extension("lib")
-        };
+        let output_path = tmpdir.join(format!("{lib_name}{name_suffix}.lib"));
 
         let target = &sess.target;
         let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(target);
@@ -157,8 +153,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions. Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path =
-                tmpdir.join(format!("{lib_name}{name_suffix}")).with_extension("def");
+            let def_file_path = tmpdir.join(format!("{lib_name}{name_suffix}.def"));
 
             let def_file_content = format!(
                 "EXPORTS\n{}",

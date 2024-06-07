@@ -212,21 +212,19 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             }
         },
         GenericArgKind::Lifetime(_) => {}
-        GenericArgKind::Const(parent_ct) => {
-            stack.push(parent_ct.ty().into());
-            match parent_ct.kind() {
-                ty::ConstKind::Infer(_)
-                | ty::ConstKind::Param(_)
-                | ty::ConstKind::Placeholder(_)
-                | ty::ConstKind::Bound(..)
-                | ty::ConstKind::Value(_)
-                | ty::ConstKind::Error(_) => {}
+        GenericArgKind::Const(parent_ct) => match parent_ct.kind() {
+            ty::ConstKind::Infer(_)
+            | ty::ConstKind::Param(_)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Error(_) => {}
 
-                ty::ConstKind::Expr(expr) => stack.extend(expr.args().iter().rev()),
-                ty::ConstKind::Unevaluated(ct) => {
-                    stack.extend(ct.args.iter().rev());
-                }
+            ty::ConstKind::Value(ty, _) => stack.push(ty.into()),
+
+            ty::ConstKind::Expr(expr) => stack.extend(expr.args().iter().rev()),
+            ty::ConstKind::Unevaluated(ct) => {
+                stack.extend(ct.args.iter().rev());
             }
-        }
+        },
     }
 }

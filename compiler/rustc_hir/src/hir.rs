@@ -3475,9 +3475,9 @@ impl ForeignItem<'_> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(&'hir FnDecl<'hir>, &'hir [Ident], &'hir Generics<'hir>),
+    Fn(&'hir FnDecl<'hir>, &'hir [Ident], &'hir Generics<'hir>, Safety),
     /// A foreign static item (`static ext: u8`).
-    Static(&'hir Ty<'hir>, Mutability),
+    Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.
     Type,
 }
@@ -3545,7 +3545,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
             OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_decl, _, _),
+                kind: ForeignItemKind::Fn(fn_decl, _, _, _),
                 ..
             }) => Some(fn_decl),
             _ => None,
@@ -3728,9 +3728,9 @@ impl<'hir> Node<'hir> {
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
             Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. })
-            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
-                Some(fn_decl)
-            }
+            | Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(fn_decl, _, _, _), ..
+            }) => Some(fn_decl),
             _ => None,
         }
     }
@@ -3813,7 +3813,7 @@ impl<'hir> Node<'hir> {
     pub fn generics(self) -> Option<&'hir Generics<'hir>> {
         match self {
             Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(_, _, generics), ..
+                kind: ForeignItemKind::Fn(_, _, generics, _), ..
             })
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),

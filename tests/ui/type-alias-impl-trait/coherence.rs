@@ -1,4 +1,6 @@
 //@ aux-build:foreign-crate.rs
+//@ revisions: classic next
+//@[next] compile-flags: -Znext-solver
 #![feature(type_alias_impl_trait)]
 
 extern crate foreign_crate;

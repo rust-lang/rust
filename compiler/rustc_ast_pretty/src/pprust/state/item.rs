@@ -31,7 +31,13 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(box ast::StaticForeignItem { ty, mutability, expr }) => {
+            ast::ForeignItemKind::Static(box ast::StaticForeignItem {
+                ty,
+                mutability,
+                expr,
+                safety,
+            }) => {
+                self.print_safety(*safety);
                 self.print_item_const(
                     ident,
                     Some(*mutability),
@@ -165,7 +171,8 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box StaticItem { ty, safety, mutability: mutbl, expr: body }) => {
+                self.print_safety(*safety);
                 self.print_item_const(
                     item.ident,
                     Some(*mutbl),

@@ -265,7 +265,7 @@ impl<'a> Parser<'a> {
     /// terminated by a semicolon.
     ///
     /// Matches `inner_attrs*`.
-    pub(crate) fn parse_inner_attributes(&mut self) -> PResult<'a, ast::AttrVec> {
+    pub fn parse_inner_attributes(&mut self) -> PResult<'a, ast::AttrVec> {
         let mut attrs = ast::AttrVec::new();
         loop {
             let start_pos: u32 = self.num_bump_calls.try_into().unwrap();

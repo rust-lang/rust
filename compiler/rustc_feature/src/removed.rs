@@ -128,6 +128,8 @@ declare_features! (
     /// Allows the use of type alias impl trait in function return positions
     (removed, min_type_alias_impl_trait, "1.56.0", Some(63063),
      Some("removed in favor of full type_alias_impl_trait")),
+    /// Make `mut` not reset the binding mode on edition >= 2024.
+    (removed, mut_preserve_binding_mode_2024, "1.79.0", Some(123076), Some("superseded by `ref_pat_eat_one_layer_2024`")),
     (removed, needs_allocator, "1.4.0", Some(27389),
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows use of unary negate on unsigned integers, e.g., -e for e: u8
@@ -181,6 +183,7 @@ declare_features! (
     (removed, pushpop_unsafe, "1.2.0", None, None),
     (removed, quad_precision_float, "1.0.0", None, None),
     (removed, quote, "1.33.0", Some(29601), None),
+    (removed, ref_pat_everywhere, "1.79.0", Some(123076), Some("superseded by `ref_pat_eat_one_layer_2024")),
     (removed, reflect, "1.0.0", Some(27749), None),
     /// Allows using the `#[register_attr]` attribute.
     (removed, register_attr, "1.65.0", Some(66080),

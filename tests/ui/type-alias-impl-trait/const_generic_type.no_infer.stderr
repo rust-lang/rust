@@ -1,13 +1,13 @@
-error[E0283]: type annotations needed
-  --> $DIR/const_generic_type.rs:7:1
+error: unconstrained opaque type
+  --> $DIR/const_generic_type.rs:5:12
    |
-LL | async fn test<const N: crate::Bar>() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+LL | type Bar = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: cannot satisfy `_: std::fmt::Display`
+   = note: `Bar` must be used in combination with a concrete type within the same module
 
 error: `Bar` is forbidden as the type of a const generic parameter
-  --> $DIR/const_generic_type.rs:7:24
+  --> $DIR/const_generic_type.rs:8:24
    |
 LL | async fn test<const N: crate::Bar>() {
    |                        ^^^^^^^^^^
@@ -16,4 +16,3 @@ LL | async fn test<const N: crate::Bar>() {
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0283`.

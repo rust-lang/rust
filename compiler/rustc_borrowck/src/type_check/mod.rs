@@ -346,7 +346,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         } else {
             let tcx = self.tcx();
             let maybe_uneval = match constant.const_ {
-                Const::Ty(ct) => match ct.kind() {
+                Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Unevaluated(_) => {
                         bug!("should not encounter unevaluated Const::Ty here, got {:?}", ct)
                     }
@@ -1856,7 +1856,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.const_ {
-                Const::Val(..) | Const::Ty(_) => None,
+                Const::Val(..) | Const::Ty(_, _) => None,
                 Const::Unevaluated(uv, _) => Some(uv),
             };
 

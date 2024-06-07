@@ -41,7 +41,8 @@ fn path_if_static_mut(tcx: TyCtxt<'_>, expr: &hir::Expr<'_>) -> Option<String> {
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
         && let hir::def::Res::Def(def_kind, _) = path.res
-        && let hir::def::DefKind::Static { mutability: Mutability::Mut, nested: false } = def_kind
+        && let hir::def::DefKind::Static { safety: _, mutability: Mutability::Mut, nested: false } =
+            def_kind
     {
         return Some(qpath_to_string(&tcx, &qpath));
     }

@@ -32,6 +32,7 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
+use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
 use rustc_session::getopts::{self, Matches};
@@ -1264,12 +1265,13 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
 }
 
 fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
-    match &sess.io.input {
-        Input::File(ifile) => rustc_parse::parse_crate_attrs_from_file(ifile, &sess.psess),
+    let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
+        Input::File(file) => new_parser_from_file(&sess.psess, file, None),
         Input::Str { name, input } => {
-            rustc_parse::parse_crate_attrs_from_source_str(name.clone(), input.clone(), &sess.psess)
+            new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
         }
-    }
+    });
+    parser.parse_inner_attributes()
 }
 
 /// Runs a closure and catches unwinds triggered by fatal errors.

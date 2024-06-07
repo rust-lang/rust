@@ -9,9 +9,10 @@ pub trait Trait {
     fn assoc_fn() -> Self::AssocTy;
 }
 
-impl<const U: u8> Trait for Const<U> // OK, trait impl predicates
+impl<const U: u8> Trait for Const<U>
 where
-    Const<{ my_const_fn(U) }>: ,
+    // OK, trait impl predicates
+    Const<{ my_const_fn(U) }>:,
 {
     type AssocTy = Const<{ my_const_fn(U) }>;
     //~^ ERROR private type

@@ -1,6 +1,6 @@
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
-use crate::method::{self, MethodCallee, SelfSource};
+use crate::method::{self, MethodCallee};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 use rustc_data_structures::fx::FxHashSet;
@@ -16,7 +16,7 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
 };
 use rustc_hir_analysis::hir_ty_lowering::{
     ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
-    GenericPathSegment, HirTyLowerer, IsMethodCall,
+    GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -436,7 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn lower_array_length(&self, length: &hir::ArrayLen<'tcx>) -> ty::Const<'tcx> {
         match length {
-            hir::ArrayLen::Infer(inf) => self.ct_infer(self.tcx.types.usize, None, inf.span),
+            hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
             hir::ArrayLen::Body(anon_const) => {
                 let span = self.tcx.def_span(anon_const.def_id);
                 let c = ty::Const::from_anon_const(self.tcx, anon_const.def_id);
@@ -735,7 +735,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx QPath<'tcx>,
         hir_id: HirId,
         span: Span,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
@@ -828,14 +827,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if item_name.name != kw::Empty {
                     if let Some(e) = self.report_method_error(
-                        span,
-                        None,
-                        ty.normalized,
-                        item_name,
                         hir_id,
-                        SelfSource::QPath(qself),
+                        ty.normalized,
                         error,
-                        args,
                         Expectation::NoExpectation,
                         trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
                     ) {
@@ -1072,7 +1066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
-                            // can `T::assoc`. It this came from an
+                            // can `T::assoc`. If this came from an
                             // inherent impl, we need to record the
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
@@ -1280,9 +1274,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.fcx.lowerer().lower_lifetime(lt, Some(param)).into()
-                    }
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => self
+                        .fcx
+                        .lowerer()
+                        .lower_lifetime(lt, RegionInferReason::Param(param))
+                        .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.fcx.lower_ty(ty).raw.into()
                     }
@@ -1296,20 +1292,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &GenericParamDefKind::Const { has_default, is_host_effect },
                         GenericArg::Infer(inf),
                     ) => {
-                        let tcx = self.fcx.tcx();
-
                         if has_default && is_host_effect {
                             self.fcx.var_for_effect(param)
                         } else {
-                            self.fcx
-                                .ct_infer(
-                                    tcx.type_of(param.def_id)
-                                        .no_bound_vars()
-                                        .expect("const parameter types cannot be generic"),
-                                    Some(param),
-                                    inf.span,
-                                )
-                                .into()
+                            self.fcx.ct_infer(Some(param), inf.span).into()
                         }
                     }
                     _ => unreachable!(),
@@ -1324,9 +1310,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        self.fcx.re_infer(Some(param), self.span).unwrap().into()
-                    }
+                    GenericParamDefKind::Lifetime => self
+                        .fcx
+                        .re_infer(
+                            self.span,
+                            rustc_hir_analysis::hir_ty_lowering::RegionInferReason::Param(param),
+                        )
+                        .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // If we have a default, then it doesn't matter that we're not
@@ -1416,11 +1406,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    self.dcx().span_delayed_bug(
+                    self.dcx().span_bug(
                         span,
                         format!(
-                        "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
-                    ),
+                            "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
+                        ),
                     );
                 }
             }

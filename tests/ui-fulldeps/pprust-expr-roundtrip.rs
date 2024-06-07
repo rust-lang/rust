@@ -36,7 +36,7 @@ use rustc_ast::mut_visit::{visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
-use rustc_parse::new_parser_from_source_str;
+use rustc_parse::{new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
@@ -46,8 +46,9 @@ use thin_vec::{thin_vec, ThinVec};
 fn parse_expr(psess: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
 
-    let mut p =
-        new_parser_from_source_str(psess, FileName::Custom(src_as_string.clone()), src_as_string);
+    let mut p = unwrap_or_emit_fatal(
+        new_parser_from_source_str(psess, FileName::Custom(src_as_string.clone()), src_as_string)
+    );
     p.parse_expr().map_err(|e| e.cancel()).ok()
 }
 

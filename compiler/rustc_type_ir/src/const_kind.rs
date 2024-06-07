@@ -32,7 +32,7 @@ pub enum ConstKind<I: Interner> {
     Unevaluated(ty::UnevaluatedConst<I>),
 
     /// Used to hold computed value.
-    Value(I::ValueConst),
+    Value(I::Ty, I::ValueConst),
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
@@ -51,7 +51,7 @@ impl<I: Interner> PartialEq for ConstKind<I> {
             (Bound(l0, l1), Bound(r0, r1)) => l0 == r0 && l1 == r1,
             (Placeholder(l0), Placeholder(r0)) => l0 == r0,
             (Unevaluated(l0), Unevaluated(r0)) => l0 == r0,
-            (Value(l0), Value(r0)) => l0 == r0,
+            (Value(l0, l1), Value(r0, r1)) => l0 == r0 && l1 == r1,
             (Error(l0), Error(r0)) => l0 == r0,
             (Expr(l0), Expr(r0)) => l0 == r0,
             _ => false,
@@ -80,7 +80,7 @@ impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
             Unevaluated(uv) => {
                 write!(f, "{:?}", &this.wrap(uv))
             }
-            Value(valtree) => write!(f, "{valtree:?}"),
+            Value(ty, valtree) => write!(f, "({valtree:?}: {:?})", &this.wrap(ty)),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{:?}", &this.wrap(expr)),
         }

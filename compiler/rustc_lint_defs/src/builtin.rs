@@ -66,6 +66,7 @@ declare_lint_pass! {
         META_VARIABLE_MISUSE,
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
+        MISSING_UNSAFE_ON_EXTERN,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
@@ -76,7 +77,6 @@ declare_lint_pass! {
         PATTERNS_IN_FNS_WITHOUT_BODY,
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
-        PROC_MACRO_BACK_COMPAT,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_LIFETIMES,
@@ -3665,53 +3665,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `proc_macro_back_compat` lint detects uses of old versions of certain
-    /// proc-macro crates, which have hardcoded workarounds in the compiler.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs-dependency)
-    ///
-    /// use time_macros_impl::impl_macros;
-    /// struct Foo;
-    /// impl_macros!(Foo);
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: using an old version of `time-macros-impl`
-    ///   ::: $DIR/group-compat-hack.rs:27:5
-    ///    |
-    /// LL |     impl_macros!(Foo);
-    ///    |     ------------------ in this macro invocation
-    ///    |
-    ///    = note: `#[warn(proc_macro_back_compat)]` on by default
-    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-    ///    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-    ///    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Eventually, the backwards-compatibility hacks present in the compiler will be removed,
-    /// causing older versions of certain crates to stop compiling.
-    /// This is a [future-incompatible] lint to ease the transition to an error.
-    /// See [issue #83125] for more details.
-    ///
-    /// [issue #83125]: https://github.com/rust-lang/rust/issues/83125
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PROC_MACRO_BACK_COMPAT,
-    Deny,
-    "detects usage of old versions of certain proc-macro crates",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
-    };
-}
-
-declare_lint! {
     /// The `rust_2021_incompatible_or_patterns` lint detects usage of old versions of or-patterns.
     ///
     /// ### Example
@@ -4849,5 +4802,42 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
+    };
+}
+
+declare_lint! {
+    /// The `missing_unsafe_on_extern` lint detects missing unsafe keyword on extern declarations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(unsafe_extern_blocks)]
+    /// #![warn(missing_unsafe_on_extern)]
+    /// #![allow(dead_code)]
+    ///
+    /// extern "C" {
+    ///     fn foo(_: i32);
+    /// }
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Declaring extern items, even without ever using them, can cause Undefined Behavior. We
+    /// should consider all sources of Undefined Behavior to be unsafe.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub MISSING_UNSAFE_ON_EXTERN,
+    Allow,
+    "detects missing unsafe keyword on extern declarations",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
     };
 }

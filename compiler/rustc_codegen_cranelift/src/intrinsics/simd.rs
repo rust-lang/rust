@@ -133,6 +133,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 .expect_const()
                 .eval(fx.tcx, ty::ParamEnv::reveal_all(), span)
                 .unwrap()
+                .1
                 .unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());

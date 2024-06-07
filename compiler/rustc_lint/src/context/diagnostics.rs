@@ -159,9 +159,6 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
             lints::LegacyDeriveHelpers { span: label_span }.decorate_lint(diag);
         }
-        BuiltinLintDiag::ProcMacroBackCompat { crate_name, fixed_version } => {
-            lints::ProcMacroBackCompat { crate_name, fixed_version }.decorate_lint(diag);
-        }
         BuiltinLintDiag::OrPatternsBackCompat(suggestion_span, suggestion) => {
             lints::OrPatternsBackCompat { span: suggestion_span, suggestion }.decorate_lint(diag);
         }
@@ -204,6 +201,9 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
                 None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
             };
             lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
+        }
+        BuiltinLintDiag::MissingUnsafeOnExtern { suggestion } => {
+            lints::MissingUnsafeOnExtern { suggestion }.decorate_lint(diag);
         }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,

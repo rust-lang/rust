@@ -7,7 +7,7 @@ LL |     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "
    = note: type parameters may not be used in the type of const parameters
 
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/issue-71381.rs:23:40
+  --> $DIR/issue-71381.rs:24:40
    |
 LL |         const FN: unsafe extern "C" fn(Args),
    |                                        ^^^^ the type must not depend on the parameter `Args`
@@ -23,13 +23,25 @@ LL |     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "
    = note: the only supported types are integers, `bool` and `char`
 
 error: using function pointers as const generic parameters is forbidden
-  --> $DIR/issue-71381.rs:23:19
+  --> $DIR/issue-71381.rs:24:19
    |
 LL |         const FN: unsafe extern "C" fn(Args),
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
 
-error: aborting due to 4 previous errors
+error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
+  --> $DIR/issue-71381.rs:17:9
+   |
+LL |         self.0 = Self::trampiline::<Args, IDX, FN> as _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "C" fn(Args)>(&mut self) {
+   |                                                                                         ~~~~~~~~~
 
-For more information about this error, try `rustc --explain E0770`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0594, E0770.
+For more information about an error, try `rustc --explain E0594`.

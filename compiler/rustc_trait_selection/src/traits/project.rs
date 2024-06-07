@@ -523,16 +523,9 @@ fn normalize_to_error<'a, 'tcx>(
         | ty::AliasTermKind::InherentTy
         | ty::AliasTermKind::OpaqueTy
         | ty::AliasTermKind::WeakTy => selcx.infcx.next_ty_var(cause.span).into(),
-        ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => selcx
-            .infcx
-            .next_const_var(
-                selcx
-                    .tcx()
-                    .type_of(projection_term.def_id)
-                    .instantiate(selcx.tcx(), projection_term.args),
-                cause.span,
-            )
-            .into(),
+        ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
+            selcx.infcx.next_const_var(cause.span).into()
+        }
     };
     let trait_obligation = Obligation {
         cause,
@@ -744,8 +737,6 @@ fn project<'cx, 'tcx>(
                         obligation.predicate.def_id,
                         obligation.predicate.args,
                     ),
-                    tcx.type_of(obligation.predicate.def_id)
-                        .instantiate(tcx, obligation.predicate.args),
                 )
                 .into(),
                 kind => {
@@ -2071,15 +2062,14 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     // * `args` ends up as `[u32, S]`
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_ty.defining_node);
-    let ty = tcx.type_of(assoc_ty.item.def_id);
     let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
     let term: ty::EarlyBinder<'tcx, ty::Term<'tcx>> = if is_const {
         let did = assoc_ty.item.def_id;
         let identity_args = crate::traits::GenericArgs::identity_for_item(tcx, did);
         let uv = ty::UnevaluatedConst::new(did, identity_args);
-        ty.map_bound(|ty| ty::Const::new_unevaluated(tcx, uv, ty).into())
+        ty::EarlyBinder::bind(ty::Const::new_unevaluated(tcx, uv).into())
     } else {
-        ty.map_bound(|ty| ty.into())
+        tcx.type_of(assoc_ty.item.def_id).map_bound(|ty| ty.into())
     };
     if !tcx.check_args_compatible(assoc_ty.item.def_id, args) {
         let err = Ty::new_error_with_message(

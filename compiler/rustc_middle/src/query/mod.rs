@@ -1861,22 +1861,13 @@ rustc_queries! {
         eval_always
         desc { "calculating the stability index for the local crate" }
     }
-    /// All loaded crates, including those loaded purely for doc links or diagnostics.
-    /// (Diagnostics include lints, so speculatively loaded crates may occur in successful
-    /// compilation even without doc links.)
-    /// Should be used when encoding crate metadata (and therefore when generating crate hash,
-    /// depinfo and similar things), to avoid dangling crate references in other encoded data,
-    /// like source maps.
-    /// May also be used for diagnostics - if we are loading a crate anyway we can suggest some
-    /// items from it as well.
-    /// But otherwise, `used_crates` should generally be used.
-    query crates_including_speculative(_: ()) -> &'tcx [CrateNum] {
+    query crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
-    /// Crates that are loaded non-speculatively (not for diagnostics or doc links).
-    /// Should be used to maintain observable language behavior, for example when collecting lang
-    /// items or impls from all crates, or collecting libraries to link.
+    // Crates that are loaded non-speculatively (not for diagnostics or doc links).
+    // FIXME: This is currently only used for collecting lang items, but should be used instead of
+    // `crates` in most other cases too.
     query used_crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
