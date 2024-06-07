@@ -4,9 +4,10 @@ use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
 use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
-use crate::traits::{ObligationCause, PredicateObligation};
+use crate::traits::ObligationCause;
 
-use super::{Relate, RelateResult, TypeRelation};
+use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
@@ -147,7 +148,10 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
         self.fields.register_predicates(obligations);
     }
 
-    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
+    fn register_obligations(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         self.fields.register_obligations(obligations)
     }
 

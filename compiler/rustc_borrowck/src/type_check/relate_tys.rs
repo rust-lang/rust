@@ -3,7 +3,8 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::relate::{ObligationEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::infer::relate::{Relate, RelateResult, TypeRelation};
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::traits::{Obligation, PredicateObligation};
+use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::Obligation;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
@@ -154,8 +155,13 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
             ),
         };
         let cause = ObligationCause::dummy_with_span(self.span());
-        let obligations = infcx.handle_opaque_type(a, b, &cause, self.param_env())?.obligations;
-        self.register_obligations(obligations);
+        self.register_obligations(
+            infcx
+                .handle_opaque_type(a, b, &cause, self.param_env())?
+                .obligations
+                .into_iter()
+                .map(Goal::from),
+        );
         Ok(())
     }
 
@@ -550,22 +556,32 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
         &mut self,
         obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
+        let tcx = self.tcx();
+        let param_env = self.param_env();
         self.register_obligations(
-            obligations
-                .into_iter()
-                .map(|to_pred| {
-                    Obligation::new(self.tcx(), ObligationCause::dummy(), self.param_env(), to_pred)
-                })
-                .collect(),
+            obligations.into_iter().map(|to_pred| Goal::new(tcx, param_env, to_pred)),
         );
     }
 
-    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
+    fn register_obligations(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         let _: Result<_, ErrorGuaranteed> = self.type_checker.fully_perform_op(
             self.locations,
             self.category,
             InstantiateOpaqueType {
-                obligations,
+                obligations: obligations
+                    .into_iter()
+                    .map(|goal| {
+                        Obligation::new(
+                            self.tcx(),
+                            ObligationCause::dummy_with_span(self.span()),
+                            goal.param_env,
+                            goal.predicate,
+                        )
+                    })
+                    .collect(),
                 // These fields are filled in during execution of the operation
                 base_universe: None,
                 region_constraints: None,

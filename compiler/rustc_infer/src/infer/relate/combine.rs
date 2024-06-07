@@ -28,6 +28,7 @@ use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligation};
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::EffectVarValue;
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_middle::ty::{IntType, UintType};
@@ -38,7 +39,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub infcx: &'infcx InferCtxt<'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub obligations: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     pub define_opaque_types: DefineOpaqueTypes,
 }
 
@@ -50,6 +51,20 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         define_opaque_types: DefineOpaqueTypes,
     ) -> Self {
         Self { infcx, trace, param_env, define_opaque_types, obligations: vec![] }
+    }
+
+    pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+        self.obligations
+            .into_iter()
+            .map(|goal| {
+                Obligation::new(
+                    self.infcx.tcx,
+                    self.trace.cause.clone(),
+                    goal.param_env,
+                    goal.predicate,
+                )
+            })
+            .collect()
     }
 }
 
@@ -290,7 +305,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         Glb::new(self)
     }
 
-    pub fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
+    pub fn register_obligations(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         self.obligations.extend(obligations);
     }
 
@@ -298,9 +316,11 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
-        self.obligations.extend(obligations.into_iter().map(|to_pred| {
-            Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
-        }))
+        self.obligations.extend(
+            obligations
+                .into_iter()
+                .map(|to_pred| Goal::new(self.infcx.tcx, self.param_env, to_pred)),
+        )
     }
 }
 
@@ -315,7 +335,10 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
 
     /// Register obligations that must hold in order for this relation to hold
-    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
+    fn register_obligations(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    );
 
     /// Register predicates that must hold in order for this relation to hold. Uses
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
