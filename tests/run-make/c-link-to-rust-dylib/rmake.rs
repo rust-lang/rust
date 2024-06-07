@@ -21,7 +21,7 @@ fn main() {
     run("bar");
 
     let expected_extension = dynamic_lib_extension();
-    read_dir(std::env::current_dir().unwrap(), |path| {
+    read_dir(cwd(), |path| {
         if path.is_file()
             && path.extension().is_some_and(|ext| ext == expected_extension)
             && path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {

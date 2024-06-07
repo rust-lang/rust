@@ -3463,7 +3463,7 @@ impl<'test> TestCx<'test> {
         // to the `rmake_out` directory.
         for path in walkdir::WalkDir::new(&self.testpaths.file).min_depth(1) {
             let path = path.unwrap().path().to_path_buf();
-            if path.file_name().map(|s| s != OsStr::new("rmake.rs")).unwrap_or(false) {
+            if path.file_name().is_some_and(|s| s != "rmake.rs") {
                 let target = rmake_out_dir.join(path.strip_prefix(&self.testpaths.file).unwrap());
                 if path.is_dir() {
                     copy_dir_all(&path, target).unwrap();

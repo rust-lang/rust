@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{htmldocck, rustc, rustdoc};
+use run_make_support::{htmldocck, rustc, rustdoc, rust_lib_name};
 
 fn main() {
     let out_dir = "rustdoc";
@@ -40,7 +40,7 @@ fn main() {
         .crate_name("ex")
         .crate_type("bin")
         .output(&out_dir)
-        .extern_(crate_name, format!("lib{crate_name}.rlib"))
+        .extern_(crate_name, rust_lib_name(crate_name))
         .extern_(proc_crate_name, dylib_name.trim())
         .arg("-Zunstable-options")
         .arg("--scrape-examples-output-path")

@@ -6,7 +6,7 @@
 // See <https://internals.rust-lang.org/t/easier-access-to-files-generated-by-emit-foo/20477>
 extern crate run_make_support;
 
-use run_make_support::rustc;
+use run_make_support::{cwd, rustc};
 
 fn main() {
     // With single codegen unit files are renamed to match the source file name
@@ -17,7 +17,7 @@ fn main() {
             .codegen_units(1)
             .json("artifacts")
             .error_format("json")
-            .incremental(&std::env::current_dir().unwrap())
+            .incremental(cwd())
             .run();
         let stderr = String::from_utf8_lossy(&output.stderr);
         for file in &["lib.o", "lib.ll", "lib.bc", "lib.s"] {
@@ -33,7 +33,7 @@ fn main() {
             .codegen_units(2)
             .json("artifacts")
             .error_format("json")
-            .incremental(&std::env::current_dir().unwrap())
+            .incremental(cwd())
             .run();
         let stderr = String::from_utf8_lossy(&output.stderr);
         for file in &["rcgu.o", "rcgu.ll", "rcgu.bc", "rcgu.s"] {
