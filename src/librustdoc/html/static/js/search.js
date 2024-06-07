@@ -671,9 +671,10 @@ function initSearch(rawSearchIndex) {
             ) {
                 break;
             } else if (parserState.pos > 0) {
-                throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
+                throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1],
+                    " (not a valid identifier)"];
             } else {
-                throw ["Unexpected ", c];
+                throw ["Unexpected ", c, " (not a valid identifier)"];
             }
             parserState.pos += 1;
             afterIdent = consumeIdent(parserState);

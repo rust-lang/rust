@@ -105,7 +105,7 @@ const PARSED = [
         original: "非法符号——",
         returned: [],
         userQuery: "非法符号——",
-        error: "Unexpected `—` after `号`",
+        error: "Unexpected `—` after `号` (not a valid identifier)",
     }
 ]
 const EXPECTED = [
