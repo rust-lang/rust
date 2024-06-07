@@ -36,6 +36,9 @@ allocator-api2 = { version = "0.2.9", optional = true, default-features = false,
 # Equivalent trait which can be shared with other hash table implementations.
 equivalent = { version = "1.0", optional = true, default-features = false }
 
+# borsh serde
+borsh = { version = "1.5.0", default-features = false, optional = true, features = ["derive"]}
+
 [dev-dependencies]
 lazy_static = "1.4"
 rand = { version = "0.8.3", features = ["small_rng"] }
@@ -65,6 +68,8 @@ raw = []
 # crate. This may lead to a performance increase but often comes at a compile
 # time cost.
 inline-more = []
+
+borsh = ["dep:borsh"]
 
 [package.metadata.docs.rs]
 features = ["nightly", "rayon", "serde", "raw"]
