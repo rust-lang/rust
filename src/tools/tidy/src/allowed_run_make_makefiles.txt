@@ -114,7 +114,6 @@ run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
-run-make/link-arg/Makefile
 run-make/link-args-order/Makefile
 run-make/link-cfg/Makefile
 run-make/link-dedup/Makefile
