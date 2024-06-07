@@ -50,6 +50,12 @@ LL |     let cell_absolute = ::std::cell::Cell::new(8u32);
    |                           ^^^ help: consider importing the item from `core`: `core`
 
 error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:48:9
+   |
+LL |     use std::error::Error;
+   |         ^^^ help: consider importing the item from `core`: `core`
+
+error: used import from `std` instead of `core`
   --> tests/ui/std_instead_of_core.rs:52:9
    |
 LL |     use std::iter::Iterator;
@@ -79,5 +85,5 @@ LL |     use alloc::slice::from_ref;
    = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::alloc_instead_of_core)]`
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
