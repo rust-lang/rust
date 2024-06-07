@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{get_parent_expr, is_trait_method, strip_pat_refs};
+use clippy_utils::{is_receiver_of_method_call, is_trait_method, strip_pat_refs};
 use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -155,14 +155,4 @@ pub(super) fn check<'tcx>(
             }
         }
     }
-}
-
-fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    if let Some(parent_expr) = get_parent_expr(cx, expr)
-        && let ExprKind::MethodCall(_, receiver, ..) = parent_expr.kind
-        && receiver.hir_id == expr.hir_id
-    {
-        return true;
-    }
-    false
 }
