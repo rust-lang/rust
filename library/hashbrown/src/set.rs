@@ -1044,7 +1044,7 @@ where
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
     pub fn is_disjoint(&self, other: &Self) -> bool {
-        self.iter().all(|v| !other.contains(v))
+        self.intersection(other).next().is_none()
     }
 
     /// Returns `true` if the set is a subset of another,
