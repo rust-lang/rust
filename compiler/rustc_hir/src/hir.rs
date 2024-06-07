@@ -2345,7 +2345,9 @@ impl ImplItemId {
     }
 }
 
-/// Represents anything within an `impl` block.
+/// Represents an associated item within an impl block.
+///
+/// Refer to [`Impl`] for an impl block declaration.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
@@ -3327,6 +3329,10 @@ pub enum ItemKind<'hir> {
     Impl(&'hir Impl<'hir>),
 }
 
+/// Represents an impl block declaration.
+///
+/// E.g., `impl $Type { .. }` or `impl $Trait for $Type { .. }`
+/// Refer to [`ImplItem`] for an associated item within an impl block.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
     pub safety: Safety,
