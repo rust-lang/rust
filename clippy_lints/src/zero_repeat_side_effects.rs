@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// side_effect();
     /// let a: [i32; 0] = [];
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.79.0"]
     pub ZERO_REPEAT_SIDE_EFFECTS,
     suspicious,
     "usage of zero-sized initializations of arrays or vecs causing side effects"

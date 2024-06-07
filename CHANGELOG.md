@@ -6,11 +6,69 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[93f0a9a9...master](https://github.com/rust-lang/rust-clippy/compare/93f0a9a9...master)
+[ca3b3937...master](https://github.com/rust-lang/rust-clippy/compare/ca3b3937...master)
+
+## Rust 1.79
+
+Current stable, released 2024-06-13
+
+[View all 102 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-03-08T11%3A13%3A58Z..2024-04-18T15%3A50%3A50Z+base%3Amaster)
+
+### New Lints
+
+* Added [`legacy_numeric_constants`] to `style`
+  [#12312](https://github.com/rust-lang/rust-clippy/pull/12312)
+* Added [`missing_transmute_annotations`] to `suspicious`
+  [#12239](https://github.com/rust-lang/rust-clippy/pull/12239)
+* Added [`integer_division_remainder_used`] to `restriction`
+  [#12451](https://github.com/rust-lang/rust-clippy/pull/12451)
+* Added [`duplicated_attributes`] to `suspicious`
+  [#12378](https://github.com/rust-lang/rust-clippy/pull/12378)
+* Added [`manual_unwrap_or_default`] to `suspicious`
+  [#12440](https://github.com/rust-lang/rust-clippy/pull/12440)
+* Added [`zero_repeat_side_effects`] to `suspicious`
+  [#12449](https://github.com/rust-lang/rust-clippy/pull/12449)
+* Added [`const_is_empty`] to `suspicious`
+  [#12310](https://github.com/rust-lang/rust-clippy/pull/12310)
+
+### Moves and Deprecations
+
+* Moved [`box_default`] to `style` (From `perf`)
+  [#12601](https://github.com/rust-lang/rust-clippy/pull/12601)
+* Moved [`manual_clamp`] to `complexity` (From `nursery` now warn-by-default)
+  [#12543](https://github.com/rust-lang/rust-clippy/pull/12543)
+* Moved [`readonly_write_lock`] to `perf` (From `nursery` now warn-by-default)
+  [#12479](https://github.com/rust-lang/rust-clippy/pull/12479)
+
+### Enhancements
+
+* [`module_name_repetitions`]: Added the [`allowed-prefixes`] configuration to allow common prefixes.
+  [#12573](https://github.com/rust-lang/rust-clippy/pull/12573)
+* [`cast_sign_loss`], [`cast_possible_truncation`], [`cast_lossless`]: Are now allowed in macros
+  [#12631](https://github.com/rust-lang/rust-clippy/pull/12631)
+* [`manual_clamp`]: Now only lints on constant min and max values
+  [#12543](https://github.com/rust-lang/rust-clippy/pull/12543)
+* [`assigning_clones`]: Now considers the [`msrv`] configuration
+  [#12511](https://github.com/rust-lang/rust-clippy/pull/12511)
+* [`needless_return`], [`useless_let_if_seq`], [`mut_mut`], [`read_zero_byte_vec`], [`unused_io_amount`],
+  [`unused_peekable`]: Now respects `#[allow]` attributes on the affected statement instead
+  [#12446](https://github.com/rust-lang/rust-clippy/pull/12446)
+
+### False Positive Fixes
+
+* [`cast_lossless`]: No longer lints when casting to `u128`
+  [#12496](https://github.com/rust-lang/rust-clippy/pull/12496)
+* [`std_instead_of_core`] No longer lints on modules that are only in `std`
+  [#12447](https://github.com/rust-lang/rust-clippy/pull/12447)
+
+### ICE Fixes
+
+* [`needless_return`]: No longer crashes on non-ascii characters
+  [#12493](https://github.com/rust-lang/rust-clippy/pull/12493)
 
 ## Rust 1.78
 
-Current stable, released 2024-05-02
+Released 2024-05-02
 
 [View all 112 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-01-26T05%3A46%3A23Z..2024-03-07T16%3A25%3A52Z+base%3Amaster)
 
