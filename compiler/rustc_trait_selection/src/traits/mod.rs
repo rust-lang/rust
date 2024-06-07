@@ -623,6 +623,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
+        specialization_enabled_in: specialize::specialization_enabled_in,
         instantiate_and_check_impossible_predicates,
         is_impossible_associated_item,
         ..*providers
