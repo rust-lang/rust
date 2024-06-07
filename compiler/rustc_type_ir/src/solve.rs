@@ -20,7 +20,6 @@ pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[derive(TypeFoldable_Generic, TypeVisitable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NoSolution;
 
@@ -60,7 +59,7 @@ impl<I: Interner, P> Goal<I, P> {
 ///
 /// This is necessary as we treat nested goals different depending on
 /// their source.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GoalSource {
     Misc,
@@ -170,7 +169,6 @@ pub enum CandidateSource<I: Interner> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BuiltinImplSource {
     /// Some builtin impl we don't need to differentiate. This should be used
@@ -214,7 +212,6 @@ pub struct Response<I: Interner> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum Certainty {
     Yes,
@@ -252,7 +249,6 @@ impl Certainty {
 
 /// Why we failed to evaluate a goal.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either

@@ -149,6 +149,10 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
+    fn try_to_target_usize(self, interner: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_target_usize(interner)
+    }
+
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst) -> Self {
         Const::new_infer(tcx, infer)
     }
@@ -167,6 +171,10 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
 
     fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
         Const::new_unevaluated(interner, uv)
+    }
+
+    fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {
+        Const::new_expr(interner, expr)
     }
 }
 

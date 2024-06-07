@@ -7,11 +7,11 @@ use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 // EAGER RESOLUTION
 
 /// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub struct EagerResolver<
-    'a,
+pub struct EagerResolver<'a, Infcx, I = <Infcx as InferCtxtLike>::Interner>
+where
     Infcx: InferCtxtLike<Interner = I>,
-    I: Interner = <Infcx as InferCtxtLike>::Interner,
-> {
+    I: Interner,
+{
     infcx: &'a Infcx,
 }
 

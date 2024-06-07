@@ -1,8 +1,8 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
-use rustc_next_trait_solver as ir;
-pub use rustc_next_trait_solver::solve::*;
+use rustc_type_ir as ir;
+pub use rustc_type_ir::solve::*;
 
 use crate::infer::canonical::QueryRegionConstraints;
 use crate::ty::{

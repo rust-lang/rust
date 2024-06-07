@@ -4201,6 +4201,7 @@ dependencies = [
  "rustc_middle",
  "rustc_span",
  "rustc_target",
+ "rustc_type_ir",
  "smallvec",
  "tracing",
 ]
@@ -4392,7 +4393,6 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_index",
  "rustc_macros",
- "rustc_next_trait_solver",
  "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
@@ -4509,6 +4509,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_type_ir",
  "rustc_type_ir_macros",
+ "tracing",
 ]
 
 [[package]]

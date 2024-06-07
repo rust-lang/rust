@@ -1,15 +1,16 @@
 use std::mem;
 
 use super::StructurallyRelateAliases;
+use super::{ObligationEmittingRelation, Relate, RelateResult, TypeRelation};
+use crate::infer::relate;
 use crate::infer::type_variable::TypeVariableValue;
-use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
+use crate::infer::{InferCtxt, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::MaxUniverse;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{AliasRelationDirection, InferConst, Term, TypeVisitable, TypeVisitableExt};
@@ -228,7 +229,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Attempts to generalize `source_term` for the type variable `target_vid`.
     /// This checks for cycles -- that is, whether `source_term` references `target_vid`.
-    fn generalize<T: Into<Term<'tcx>> + Relate<'tcx>>(
+    fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
         &self,
         span: Span,
         structurally_relate_aliases: StructurallyRelateAliases,
@@ -395,7 +396,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -430,10 +431,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, variance, b), ret)]
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
         variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -695,7 +696,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         _: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<TyCtxt<'tcx>>,
     {
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         Ok(a.rebind(result))

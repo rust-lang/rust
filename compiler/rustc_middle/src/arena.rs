@@ -62,7 +62,7 @@ macro_rules! arena_types {
             [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
             [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
             [] canonical_goal_evaluation:
-                rustc_next_trait_solver::solve::inspect::CanonicalGoalEvaluationStep<
+                rustc_type_ir::solve::inspect::CanonicalGoalEvaluationStep<
                     rustc_middle::ty::TyCtxt<'tcx>
                 >,
             [] query_region_constraints: rustc_middle::infer::canonical::QueryRegionConstraints<'tcx>,
