@@ -39,15 +39,11 @@ impl Instant {
                 InstantKind::Virtual { nanoseconds },
                 InstantKind::Virtual { nanoseconds: earlier },
             ) => {
-                // Trade some nanosecond precision to prevent as much overflow as possible.
-                let duration = match u64::try_from(
-                    // Manually convert from nanosecond to millisecond.
-                    // If it exceeded u64::MAX millisecond, we will just use u64::MAX millisecond,
-                    // Duration can't take in more than u64::MAX millisecond.
-                    nanoseconds.saturating_sub(earlier).saturating_div(1_000_000),
-                ) {
-                    Ok(millisecond) => Duration::from_millis(millisecond),
-                    _ => Duration::from_millis(u64::MAX),
+                // If it exceeded u64::MAX nanosecond, we will just keep u64::MAX nanosecond,
+                // Duration can't take in more than u64::MAX.
+                let duration = match u64::try_from(nanoseconds.saturating_sub(earlier)) {
+                    Ok(nanosecond) => Duration::from_nanos(nanosecond),
+                    Err(_err) => Duration::from_nanos(u64::MAX),
                 };
                 Duration::new(duration.as_secs(), duration.subsec_nanos())
             }
@@ -104,7 +100,7 @@ impl Clock {
             ClockKind::Host { .. } => std::thread::sleep(duration),
             ClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
-                let nanos: u128 = duration.as_nanos().try_into().unwrap();
+                let nanos: u128 = duration.as_nanos();
                 nanoseconds.update(|x| x + nanos);
             }
         }

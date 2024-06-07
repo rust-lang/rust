@@ -280,7 +280,7 @@ fn concurrent_wait_wake() {
     assert!(woken > 0 && woken < rounds);
 }
 
-// Reproduce of https://github.com/rust-lang/miri/issues/3647.
+// Reproduce https://github.com/rust-lang/miri/issues/3647. This should not ICE.
 fn large_timeout() {
     let futex: i32 = 123;
 
@@ -296,7 +296,6 @@ fn large_timeout() {
 }
 
 fn main() {
-    large_timeout();
     wake_nobody();
     wake_dangling();
     wait_wrong_val();
@@ -305,4 +304,5 @@ fn main() {
     wait_wake();
     wait_wake_bitset();
     concurrent_wait_wake();
+    large_timeout();
 }
