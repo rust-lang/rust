@@ -532,7 +532,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         };
 
                         let err_msg = self.get_standard_error_message(
-                            &main_trait_predicate,
+                            main_trait_predicate,
                             message,
                             predicate_is_const,
                             append_const_msg,
@@ -603,7 +603,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let explanation = get_explanation_based_on_obligation(
                             self.tcx,
                             &obligation,
-                            &leaf_trait_predicate,
+                            leaf_trait_predicate,
                             pre_message,
                         );
 
@@ -654,7 +654,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         let UnsatisfiedConst(unsatisfied_const) = self
                             .maybe_add_note_for_unsatisfied_const(
-                                &leaf_trait_predicate,
+                                leaf_trait_predicate,
                                 &mut err,
                                 span,
                             );
@@ -671,7 +671,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             err.span_label(tcx.def_span(body), s);
                         }
 
-                        self.suggest_floating_point_literal(&obligation, &mut err, &leaf_trait_ref);
+                        self.suggest_floating_point_literal(&obligation, &mut err, leaf_trait_ref);
                         self.suggest_dereferencing_index(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
@@ -706,7 +706,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             span,
                             leaf_trait_predicate,
                         );
-                        self.note_version_mismatch(&mut err, &leaf_trait_ref);
+                        self.note_version_mismatch(&mut err, leaf_trait_ref);
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
 
@@ -754,7 +754,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         self.try_to_add_help_message(
                             &obligation,
-                            &leaf_trait_predicate,
+                            leaf_trait_predicate,
                             &mut err,
                             span,
                             is_fn_trait,
@@ -2226,11 +2226,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
     /// with the same path as `trait_ref`, a help message about
     /// a probable version mismatch is added to `err`
-    fn note_version_mismatch(
-        &self,
-        err: &mut Diag<'_>,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
-    ) -> bool {
+    fn note_version_mismatch(&self, err: &mut Diag<'_>, trait_ref: ty::PolyTraitRef<'tcx>) -> bool {
         let get_trait_impls = |trait_def_id| {
             let mut trait_impls = vec![];
             self.tcx.for_each_relevant_impl(
@@ -3034,7 +3030,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn get_standard_error_message(
         &self,
-        trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
         predicate_is_const: bool,
         append_const_msg: Option<AppendConstMessage>,
@@ -3205,7 +3201,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn try_to_add_help_message(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
         err: &mut Diag<'_>,
         span: Span,
         is_fn_trait: bool,
@@ -3237,7 +3233,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 params,
             );
         } else if !trait_predicate.has_non_region_infer()
-            && self.predicate_can_apply(obligation.param_env, *trait_predicate)
+            && self.predicate_can_apply(obligation.param_env, trait_predicate)
         {
             // If a where-clause may be useful, remind the
             // user that they can add it.
@@ -3248,7 +3244,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // which is somewhat confusing.
             self.suggest_restricting_param_bound(
                 err,
-                *trait_predicate,
+                trait_predicate,
                 None,
                 obligation.cause.body_id,
             );
@@ -3263,7 +3259,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
         } else if !suggested && !unsatisfied_const {
             // Can't show anything else useful, try to find similar impls.
-            let impl_candidates = self.find_similar_impl_candidates(*trait_predicate);
+            let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
                 &impl_candidates,
                 trait_predicate.to_poly_trait_ref(),
@@ -3274,7 +3270,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ) {
                 self.report_similar_impl_candidates_for_root_obligation(
                     obligation,
-                    *trait_predicate,
+                    trait_predicate,
                     body_def_id,
                     err,
                 );
@@ -3348,7 +3344,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn maybe_add_note_for_unsatisfied_const(
         &self,
-        _trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+        _trait_predicate: ty::PolyTraitPredicate<'tcx>,
         _err: &mut Diag<'_>,
         _span: Span,
     ) -> UnsatisfiedConst {

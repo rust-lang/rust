@@ -194,7 +194,7 @@ fn predicates_reference_self(
     predicates
         .predicates
         .iter()
-        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, &trait_ref), sp))
+        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
         .collect()
 }

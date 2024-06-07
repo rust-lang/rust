@@ -537,7 +537,7 @@ impl<T> Trait<T> for X {
         for pred in hir_generics.bounds_for_param(def_id) {
             if self.constrain_generic_bound_associated_type_structured_suggestion(
                 diag,
-                &trait_ref,
+                trait_ref,
                 pred.bounds,
                 assoc,
                 assoc_args,
@@ -706,7 +706,7 @@ fn foo(&self) -> Self::T { String::new() }
 
             self.constrain_generic_bound_associated_type_structured_suggestion(
                 diag,
-                &trait_ref,
+                trait_ref,
                 opaque_hir_ty.bounds,
                 assoc,
                 assoc_args,
@@ -860,7 +860,7 @@ fn foo(&self) -> Self::T { String::new() }
     fn constrain_generic_bound_associated_type_structured_suggestion(
         &self,
         diag: &mut Diag<'_>,
-        trait_ref: &ty::TraitRef<'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: ty::AssocItem,
         assoc_args: &[ty::GenericArg<'tcx>],
