@@ -1851,6 +1851,7 @@ where
         let (_, upper) = self.iter.size_hint();
         (0, upper)
     }
+
     #[cfg_attr(feature = "inline-more", inline)]
     fn fold<B, F>(self, init: B, mut f: F) -> B
     where
@@ -1916,9 +1917,10 @@ where
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.size_hint();
-        (0, upper)
+        let (lower, upper) = self.iter.size_hint();
+        (lower.saturating_sub(self.other.len()), upper)
     }
+
     #[cfg_attr(feature = "inline-more", inline)]
     fn fold<B, F>(self, init: B, mut f: F) -> B
     where
@@ -1975,10 +1977,12 @@ where
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
     #[cfg_attr(feature = "inline-more", inline)]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
@@ -2048,10 +2052,12 @@ where
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
     #[cfg_attr(feature = "inline-more", inline)]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
