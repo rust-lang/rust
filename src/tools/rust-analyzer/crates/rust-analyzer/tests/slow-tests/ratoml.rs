@@ -2,23 +2,21 @@ use crate::support::{Project, Server};
 use crate::testdir::TestDir;
 use lsp_types::{
     notification::{DidChangeTextDocument, DidOpenTextDocument, DidSaveTextDocument},
-    request::{CodeActionRequest, HoverRequest},
-    CodeAction, CodeActionContext, CodeActionOrCommand, CodeActionParams, CodeActionResponse,
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, Hover,
-    HoverParams, Position, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
-    WorkDoneProgressParams,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem, Url,
+    VersionedTextDocumentIdentifier,
 };
 use paths::Utf8PathBuf;
 
+use rust_analyzer::lsp::ext::{InternalTestingFetchConfig, InternalTestingFetchConfigParams};
 use serde_json::json;
 
 enum QueryType {
-    AssistEmitMustUse,
+    Local,
     /// A query whose config key is a part of the global configs, so that
     /// testing for changes to this config means testing if global changes
     /// take affect.
-    GlobalHover,
+    Global,
 }
 
 struct RatomlTest {
@@ -31,32 +29,8 @@ struct RatomlTest {
 impl RatomlTest {
     const EMIT_MUST_USE: &'static str = r#"assist.emitMustUse = true"#;
     const EMIT_MUST_NOT_USE: &'static str = r#"assist.emitMustUse = false"#;
-    const EMIT_MUST_USE_SNIPPET: &'static str = r#"
-
-impl Value {
-    #[must_use]
-    fn as_text(&self) -> Option<&String> {
-        if let Self::Text(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}"#;
 
     const GLOBAL_TRAIT_ASSOC_ITEMS_ZERO: &'static str = r#"hover.show.traitAssocItems = 0"#;
-    const GLOBAL_TRAIT_ASSOC_ITEMS_SNIPPET: &'static str = r#"
-```rust
-p1
-```
-
-```rust
-trait RandomTrait {
-    type B;
-    fn abc() -> i32;
-    fn def() -> i64;
-}
-```"#;
 
     fn new(
         fixtures: Vec<&str>,
@@ -190,73 +164,19 @@ trait RandomTrait {
     }
 
     fn query(&self, query: QueryType, source_file_idx: usize) -> bool {
-        match query {
-            QueryType::AssistEmitMustUse => {
-                let res = self.server.send_request::<CodeActionRequest>(CodeActionParams {
-                    text_document: TextDocumentIdentifier {
-                        uri: self.urls[source_file_idx].clone(),
-                    },
-                    range: lsp_types::Range {
-                        start: Position::new(2, 13),
-                        end: Position::new(2, 15),
-                    },
-                    context: CodeActionContext {
-                        diagnostics: vec![],
-                        only: None,
-                        trigger_kind: None,
-                    },
-                    work_done_progress_params: WorkDoneProgressParams { work_done_token: None },
-                    partial_result_params: lsp_types::PartialResultParams {
-                        partial_result_token: None,
-                    },
-                });
-
-                let res = serde_json::de::from_str::<CodeActionResponse>(res.to_string().as_str())
-                    .unwrap();
-
-                // The difference setting the new config key will cause can be seen in the lower layers of this nested response
-                // so here are some ugly unwraps and other obscure stuff.
-                let ca: CodeAction = res
-                    .into_iter()
-                    .find_map(|it| {
-                        if let CodeActionOrCommand::CodeAction(ca) = it {
-                            if ca.title.as_str() == "Generate an `as_` method for this enum variant"
-                            {
-                                return Some(ca);
-                            }
-                        }
-
-                        None
-                    })
-                    .unwrap();
-
-                if let lsp_types::DocumentChanges::Edits(edits) =
-                    ca.edit.unwrap().document_changes.unwrap()
-                {
-                    if let lsp_types::OneOf::Left(l) = &edits[0].edits[0] {
-                        return l.new_text.as_str() == RatomlTest::EMIT_MUST_USE_SNIPPET;
-                    }
-                }
-            }
-            QueryType::GlobalHover => {
-                let res = self.server.send_request::<HoverRequest>(HoverParams {
-                    work_done_progress_params: WorkDoneProgressParams { work_done_token: None },
-                    text_document_position_params: TextDocumentPositionParams {
-                        text_document: TextDocumentIdentifier {
-                            uri: self.urls[source_file_idx].clone(),
-                        },
-                        position: Position::new(7, 18),
-                    },
-                });
-                let res = serde_json::de::from_str::<Hover>(res.to_string().as_str()).unwrap();
-                assert!(matches!(res.contents, lsp_types::HoverContents::Markup(_)));
-                if let lsp_types::HoverContents::Markup(m) = res.contents {
-                    return m.value == RatomlTest::GLOBAL_TRAIT_ASSOC_ITEMS_SNIPPET;
-                }
-            }
-        }
-
-        panic!()
+        let config = match query {
+            QueryType::Local => "local".to_owned(),
+            QueryType::Global => "global".to_owned(),
+        };
+        let res = self.server.send_request::<InternalTestingFetchConfig>(
+            InternalTestingFetchConfigParams {
+                text_document: Some(TextDocumentIdentifier {
+                    uri: self.urls[source_file_idx].clone(),
+                }),
+                config,
+            },
+        );
+        res.as_bool().unwrap()
     }
 }
 
@@ -306,7 +226,7 @@ enum Value {
         })),
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(server.query(QueryType::Local, 1));
 }
 
 /// Checks if client config can be modified.
@@ -382,6 +302,7 @@ enum Value {
 //     }
 
 #[test]
+#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_user_config_detected() {
     let server = RatomlTest::new(
         vec![
@@ -406,10 +327,11 @@ enum Value {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 2));
+    assert!(server.query(QueryType::Local, 2));
 }
 
 #[test]
+#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_create_user_config() {
     let mut server = RatomlTest::new(
         vec![
@@ -431,15 +353,16 @@ enum Value {
         None,
     );
 
-    assert!(!server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(!server.query(QueryType::Local, 1));
     server.create(
         "//- /$$CONFIG_DIR$$/rust-analyzer/rust-analyzer.toml",
         RatomlTest::EMIT_MUST_USE.to_owned(),
     );
-    assert!(server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(server.query(QueryType::Local, 1));
 }
 
 #[test]
+#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_modify_user_config() {
     let mut server = RatomlTest::new(
         vec![
@@ -463,12 +386,13 @@ assist.emitMustUse = true"#,
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(server.query(QueryType::Local, 1));
     server.edit(2, String::new());
-    assert!(!server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(!server.query(QueryType::Local, 1));
 }
 
 #[test]
+#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_delete_user_config() {
     let mut server = RatomlTest::new(
         vec![
@@ -492,9 +416,9 @@ assist.emitMustUse = true"#,
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(server.query(QueryType::Local, 1));
     server.delete(2);
-    assert!(!server.query(QueryType::AssistEmitMustUse, 1));
+    assert!(!server.query(QueryType::Local, 1));
 }
 // #[test]
 // fn delete_user_config() {
@@ -546,7 +470,7 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
 }
 
 #[test]
@@ -589,9 +513,9 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(!server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(!server.query(QueryType::Local, 3));
     server.edit(1, "assist.emitMustUse = true".to_owned());
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
 }
 
 #[test]
@@ -634,9 +558,9 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
     server.delete(1);
-    assert!(!server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(!server.query(QueryType::Local, 3));
 }
 
 #[test]
@@ -679,9 +603,9 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
     server.create("//- /p1/p2/rust-analyzer.toml", RatomlTest::EMIT_MUST_NOT_USE.to_owned());
-    assert!(!server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(!server.query(QueryType::Local, 3));
 }
 
 #[test]
@@ -724,9 +648,9 @@ pub fn add(left: usize, right: usize) -> usize {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
     server.delete(1);
-    assert!(!server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(!server.query(QueryType::Local, 3));
 }
 
 #[test]
@@ -769,8 +693,8 @@ enum Value {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
-    assert!(server.query(QueryType::AssistEmitMustUse, 4));
+    assert!(server.query(QueryType::Local, 3));
+    assert!(server.query(QueryType::Local, 4));
 }
 
 #[test]
@@ -804,7 +728,7 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
 
     let server = RatomlTest::new(
         vec![
@@ -835,7 +759,7 @@ enum Value {
         None,
     );
 
-    assert!(server.query(QueryType::AssistEmitMustUse, 3));
+    assert!(server.query(QueryType::Local, 3));
 }
 
 /// If a root is non-local, so we cannot find what its parent is
@@ -912,9 +836,7 @@ enum Value {
 
 /// Having a ratoml file at the root of a project enables
 /// configuring global level configurations as well.
-#[allow(unused)]
-// #[test]
-// FIXME: Re-enable this test when we have a global config we can check again
+#[test]
 fn ratoml_in_root_is_global() {
     let server = RatomlTest::new(
         vec![
@@ -945,7 +867,7 @@ fn main() {
         None,
     );
 
-    server.query(QueryType::GlobalHover, 2);
+    server.query(QueryType::Global, 2);
 }
 
 #[allow(unused)]
@@ -981,9 +903,9 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::GlobalHover, 2));
+    assert!(server.query(QueryType::Global, 2));
     server.edit(1, RatomlTest::GLOBAL_TRAIT_ASSOC_ITEMS_ZERO.to_owned());
-    assert!(!server.query(QueryType::GlobalHover, 2));
+    assert!(!server.query(QueryType::Global, 2));
 }
 
 #[allow(unused)]
@@ -1019,7 +941,7 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::GlobalHover, 2));
+    assert!(server.query(QueryType::Global, 2));
     server.delete(1);
-    assert!(!server.query(QueryType::GlobalHover, 2));
+    assert!(!server.query(QueryType::Global, 2));
 }

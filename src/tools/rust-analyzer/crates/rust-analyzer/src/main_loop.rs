@@ -486,6 +486,7 @@ impl GlobalState {
 
     fn update_diagnostics(&mut self) {
         let db = self.analysis_host.raw_database();
+        // spawn a task per subscription?
         let subscriptions = {
             let vfs = &self.vfs.read().0;
             self.mem_docs
@@ -986,6 +987,8 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::ExternalDocs>(handlers::handle_open_docs)
             .on::<NO_RETRY, lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
+            //
+            .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
             .finish();
     }
 

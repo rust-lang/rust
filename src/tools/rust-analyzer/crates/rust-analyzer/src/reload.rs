@@ -473,13 +473,11 @@ impl GlobalState {
                     // When they're not, integrate the base to make them into absolute patterns
                     filter
                         .flat_map(|root| {
-                            root.include.into_iter().flat_map(|it| {
+                            root.include.into_iter().flat_map(|base| {
                                 [
-                                    format!("{it}/**/*.rs"),
-                                    // FIXME @alibektas : Following dbarsky's recomm I merged toml and lock patterns into one.
-                                    // Is this correct?
-                                    format!("{it}/**/Cargo.{{toml,lock}}"),
-                                    format!("{it}/**/rust-analyzer.toml"),
+                                    format!("{base}/**/*.rs"),
+                                    format!("{base}/**/Cargo.{{toml,lock}}"),
+                                    format!("{base}/**/rust-analyzer.toml"),
                                 ]
                             })
                         })

@@ -703,6 +703,13 @@ impl Config {
         &self.user_config_path
     }
 
+    pub fn same_source_root_parent_map(
+        &self,
+        other: &Arc<FxHashMap<SourceRootId, SourceRootId>>,
+    ) -> bool {
+        Arc::ptr_eq(&self.source_root_parent_map, other)
+    }
+
     // FIXME @alibektas : Server's health uses error sink but in other places it is not used atm.
     /// Changes made to client and global configurations will partially not be reflected even after `.apply_change()` was called.
     /// The return tuple's bool component signals whether the `GlobalState` should call its `update_configuration()` method.
@@ -927,7 +934,7 @@ impl ConfigChange {
     }
 
     pub fn change_root_ratoml(&mut self, content: Option<Arc<str>>) {
-        assert!(self.user_config_change.is_none()); // Otherwise it is a double write.
+        assert!(self.root_ratoml_change.is_none()); // Otherwise it is a double write.
         self.root_ratoml_change = content;
     }
 
@@ -1204,10 +1211,10 @@ impl Config {
             workspace_roots,
             visual_studio_code_version,
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
-            user_config: None,
             ratoml_files: FxHashMap::default(),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
+            user_config: None,
             user_config_path,
             root_ratoml: None,
             root_ratoml_path,

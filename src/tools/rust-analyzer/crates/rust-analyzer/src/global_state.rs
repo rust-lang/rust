@@ -345,7 +345,9 @@ impl GlobalState {
 
         let _p = span!(Level::INFO, "GlobalState::process_changes/apply_change").entered();
         self.analysis_host.apply_change(change);
-        if !modified_ratoml_files.is_empty() {
+        if !modified_ratoml_files.is_empty()
+            || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
+        {
             let config_change = {
                 let user_config_path = self.config.user_config_path();
                 let root_ratoml_path = self.config.root_ratoml_path();
@@ -386,7 +388,7 @@ impl GlobalState {
                         span!(Level::ERROR, "Mapping to SourceRootId failed.");
                     }
                 }
-
+                change.change_source_root_parent_map(self.local_roots_parent_map.clone());
                 change
             };
 
