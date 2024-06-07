@@ -224,7 +224,7 @@ impl HirDisplay for Struct {
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
                 if let Some(limit) = f.entity_limit {
-                    display_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
+                    write_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
                 }
             }
             StructKind::Unit => _ = write_where_clause(def_id, f)?,
@@ -244,7 +244,7 @@ impl HirDisplay for Enum {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_variants(&self.variants(f.db), has_where_clause, limit, f)?;
+            write_variants(&self.variants(f.db), has_where_clause, limit, f)?;
         }
 
         Ok(())
@@ -261,13 +261,13 @@ impl HirDisplay for Union {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            display_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
+            write_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
         }
         Ok(())
     }
 }
 
-fn display_fields(
+fn write_fields(
     fields: &[Field],
     has_where_clause: bool,
     limit: usize,
@@ -278,11 +278,7 @@ fn display_fields(
     let (indent, separator) = if in_line { ("", ' ') } else { ("    ", '\n') };
     f.write_char(if !has_where_clause { ' ' } else { separator })?;
     if count == 0 {
-        if fields.is_empty() {
-            f.write_str("{}")?;
-        } else {
-            f.write_str("{ /* … */ }")?;
-        }
+        f.write_str(if fields.is_empty() { "{}" } else { "{ /* … */ }" })?;
     } else {
         f.write_char('{')?;
 
@@ -291,14 +287,11 @@ fn display_fields(
             for field in &fields[..count] {
                 f.write_str(indent)?;
                 field.hir_fmt(f)?;
-                f.write_char(',')?;
-                f.write_char(separator)?;
+                write!(f, ",{separator}")?;
             }
 
             if fields.len() > count {
-                f.write_str(indent)?;
-                f.write_str("/* … */")?;
-                f.write_char(separator)?;
+                write!(f, "{indent}/* … */{separator}")?;
             }
         }
 
@@ -308,7 +301,7 @@ fn display_fields(
     Ok(())
 }
 
-fn display_variants(
+fn write_variants(
     variants: &[Variant],
     has_where_clause: bool,
     limit: usize,
@@ -317,30 +310,22 @@ fn display_variants(
     let count = variants.len().min(limit);
     f.write_char(if !has_where_clause { ' ' } else { '\n' })?;
     if count == 0 {
-        if variants.is_empty() {
-            f.write_str("{}")?;
-        } else {
-            f.write_str("{ /* … */ }")?;
-        }
+        let variants = if variants.is_empty() { "{}" } else { "{ /* … */ }" };
+        f.write_str(variants)?;
     } else {
         f.write_str("{\n")?;
         for variant in &variants[..count] {
-            f.write_str("    ")?;
-            write!(f, "{}", variant.name(f.db).display(f.db.upcast()))?;
+            write!(f, "    {}", variant.name(f.db).display(f.db.upcast()))?;
             match variant.kind(f.db) {
                 StructKind::Tuple => {
-                    if variant.fields(f.db).is_empty() {
-                        f.write_str("()")?;
-                    } else {
-                        f.write_str("( /* … */ )")?;
-                    }
+                    let fields_str =
+                        if variant.fields(f.db).is_empty() { "()" } else { "( /* … */ )" };
+                    f.write_str(fields_str)?;
                 }
                 StructKind::Record => {
-                    if variant.fields(f.db).is_empty() {
-                        f.write_str(" {}")?;
-                    } else {
-                        f.write_str(" { /* … */ }")?;
-                    }
+                    let fields_str =
+                        if variant.fields(f.db).is_empty() { " {}" } else { " { /* … */ }" };
+                    f.write_str(fields_str)?;
                 }
                 StructKind::Unit => {}
             }
@@ -393,7 +378,7 @@ impl HirDisplay for Variant {
             }
             VariantData::Record(_) => {
                 if let Some(limit) = f.entity_limit {
-                    display_fields(&self.fields(f.db), false, limit, true, f)?;
+                    write_fields(&self.fields(f.db), false, limit, true, f)?;
                 }
             }
         }
