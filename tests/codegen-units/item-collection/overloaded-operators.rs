@@ -5,44 +5,44 @@
 
 use std::ops::{Add, Deref, Index, IndexMut};
 
-pub struct Indexable {
+pub struct _Indexable {
     data: [u8; 3],
 }
 
-impl Index<usize> for Indexable {
+impl Index<usize> for _Indexable {
     type Output = u8;
 
-    //~ MONO_ITEM fn <Indexable as std::ops::Index<usize>>::index
+    //~ MONO_ITEM fn <_Indexable as std::ops::Index<usize>>::index
     fn index(&self, index: usize) -> &Self::Output {
         if index >= 3 { &self.data[0] } else { &self.data[index] }
     }
 }
 
-impl IndexMut<usize> for Indexable {
-    //~ MONO_ITEM fn <Indexable as std::ops::IndexMut<usize>>::index_mut
+impl IndexMut<usize> for _Indexable {
+    //~ MONO_ITEM fn <_Indexable as std::ops::IndexMut<usize>>::index_mut
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         if index >= 3 { &mut self.data[0] } else { &mut self.data[index] }
     }
 }
 
-//~ MONO_ITEM fn <Equatable as std::cmp::PartialEq>::eq
-//~ MONO_ITEM fn <Equatable as std::cmp::PartialEq>::ne
+//~ MONO_ITEM fn <_Equatable as std::cmp::PartialEq>::eq
+//~ MONO_ITEM fn <_Equatable as std::cmp::PartialEq>::ne
 #[derive(PartialEq)]
-pub struct Equatable(u32);
+pub struct _Equatable(u32);
 
-impl Add<u32> for Equatable {
+impl Add<u32> for _Equatable {
     type Output = u32;
 
-    //~ MONO_ITEM fn <Equatable as std::ops::Add<u32>>::add
+    //~ MONO_ITEM fn <_Equatable as std::ops::Add<u32>>::add
     fn add(self, rhs: u32) -> u32 {
         self.0 + rhs
     }
 }
 
-impl Deref for Equatable {
+impl Deref for _Equatable {
     type Target = u32;
 
-    //~ MONO_ITEM fn <Equatable as std::ops::Deref>::deref
+    //~ MONO_ITEM fn <_Equatable as std::ops::Deref>::deref
     fn deref(&self) -> &Self::Target {
         &self.0
     }

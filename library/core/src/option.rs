@@ -1708,8 +1708,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_take_if)]
-    ///
     /// let mut x = Some(42);
     ///
     /// let prev = x.take_if(|v| if *v == 42 {
@@ -1726,7 +1724,7 @@ impl<T> Option<T> {
     /// assert_eq!(prev, Some(43));
     /// ```
     #[inline]
-    #[unstable(feature = "option_take_if", issue = "98934")]
+    #[stable(feature = "option_take_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn take_if<P>(&mut self, predicate: P) -> Option<T>
     where
         P: FnOnce(&mut T) -> bool,

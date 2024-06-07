@@ -1,0 +1,10 @@
+error: `diagnostic::on_unimplemented` is not an unsafe attribute
+  --> $DIR/unsafe-safe-attribute_diagnostic.rs:3:3
+   |
+LL | #[unsafe(diagnostic::on_unimplemented(
+   |   ^^^^^^
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 1 previous error
+
