@@ -126,7 +126,7 @@ use visitors::Visitable;
 use crate::consts::{constant, mir_to_const, Constant};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
-use crate::visitors::for_each_expr;
+use crate::visitors::for_each_expr_without_closures;
 
 use rustc_middle::hir::nested_filter;
 
@@ -1322,7 +1322,7 @@ pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<
 
 /// Returns `true` if `expr` contains a return expression
 pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
-    for_each_expr(expr, |e| {
+    for_each_expr_without_closures(expr, |e| {
         if matches!(e.kind, ExprKind::Ret(..)) {
             ControlFlow::Break(())
         } else {

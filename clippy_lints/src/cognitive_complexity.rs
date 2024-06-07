@@ -3,7 +3,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{get_async_fn_body, is_async_fn, LimitStack};
 use core::ops::ControlFlow;
 use rustc_ast::ast::Attribute;
@@ -65,7 +65,7 @@ impl CognitiveComplexity {
 
         let mut cc = 1u64;
         let mut returns = 0u64;
-        let _: Option<!> = for_each_expr(expr, |e| {
+        let _: Option<!> = for_each_expr_without_closures(expr, |e| {
             match e.kind {
                 ExprKind::If(_, _, _) => {
                     cc += 1;

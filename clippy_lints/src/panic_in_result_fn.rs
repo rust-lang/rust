@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
     let mut panics = Vec::new();
-    let _: Option<!> = for_each_expr(body.value, |e| {
+    let _: Option<!> = for_each_expr(cx, body.value, |e| {
         let Some(macro_call) = root_macro_call_first_node(cx, e) else {
             return ControlFlow::Continue(Descend::Yes);
         };

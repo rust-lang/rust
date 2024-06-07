@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
 use clippy_utils::{get_parent_expr, higher, is_from_proc_macro};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                 }
             }
         } else {
-            let _: Option<!> = for_each_expr(cond, |e| {
+            let _: Option<!> = for_each_expr_without_closures(cond, |e| {
                 if let ExprKind::Closure(closure) = e.kind {
                     // do not lint if the closure is called using an iterator (see #1141)
                     if let Some(parent) = get_parent_expr(cx, e)
