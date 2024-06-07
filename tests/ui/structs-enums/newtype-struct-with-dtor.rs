@@ -3,8 +3,10 @@
 #![allow(unused_variables)]
 //@ pretty-expanded FIXME #23616
 
+#[allow(dead_code)]
 pub struct Fd(u32);
 
+#[allow(dead_code)]
 fn foo(a: u32) {}
 
 impl Drop for Fd {
