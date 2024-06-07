@@ -60,7 +60,6 @@ pub enum AttributeType {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[allow(dead_code)]
 pub enum AttributeSafety {
     /// Normal attribute that does not need `#[unsafe(...)]`
     Normal,
