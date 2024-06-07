@@ -17,7 +17,7 @@
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
-use super::combine::ObligationEmittingRelation;
+use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
 
@@ -31,7 +31,7 @@ use rustc_middle::ty::{self, Ty};
 ///
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
-pub trait LatticeDir<'f, 'tcx>: ObligationEmittingRelation<'tcx> {
+pub trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
@@ -109,7 +109,7 @@ where
                 && def_id.is_local()
                 && !this.infcx().next_trait_solver() =>
         {
-            this.register_obligations(
+            this.register_goals(
                 infcx
                     .handle_opaque_type(a, b, this.cause(), this.param_env())?
                     .obligations

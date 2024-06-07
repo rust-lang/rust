@@ -1,5 +1,5 @@
 use super::combine::CombineFields;
-use crate::infer::relate::{ObligationEmittingRelation, StructurallyRelateAliases};
+use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
 use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
 use rustc_middle::traits::solve::Goal;
@@ -87,7 +87,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                     ty::Covariant => {
                         // can't make progress on `A <: B` if both A and B are
                         // type variables, so record an obligation.
-                        self.fields.obligations.push(Goal::new(
+                        self.fields.goals.push(Goal::new(
                             self.tcx(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
@@ -100,7 +100,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                     ty::Contravariant => {
                         // can't make progress on `B <: A` if both A and B are
                         // type variables, so record an obligation.
-                        self.fields.obligations.push(Goal::new(
+                        self.fields.goals.push(Goal::new(
                             self.tcx(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
@@ -151,7 +151,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                     && !infcx.next_trait_solver() =>
             {
                 // FIXME: Don't shuttle between Goal and Obligation
-                self.fields.obligations.extend(
+                self.fields.goals.extend(
                     infcx
                         .handle_opaque_type(a, b, &self.fields.trace.cause, self.param_env())?
                         .obligations
@@ -298,7 +298,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> ObligationEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
     }
@@ -318,14 +318,14 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         self.fields.register_predicates(obligations);
     }
 
-    fn register_obligations(
+    fn register_goals(
         &mut self,
         obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         self.fields.register_obligations(obligations);
     }
 
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
             ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),

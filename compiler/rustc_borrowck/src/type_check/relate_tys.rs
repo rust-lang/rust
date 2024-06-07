@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::relate::{ObligationEmittingRelation, StructurallyRelateAliases};
+use rustc_infer::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::infer::relate::{Relate, RelateResult, TypeRelation};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::solve::Goal;
@@ -155,7 +155,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
             ),
         };
         let cause = ObligationCause::dummy_with_span(self.span());
-        self.register_obligations(
+        self.register_goals(
             infcx
                 .handle_opaque_type(a, b, &cause, self.param_env())?
                 .obligations
@@ -539,7 +539,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
     }
 }
 
-impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
+impl<'bccx, 'tcx> PredicateEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
     fn span(&self) -> Span {
         self.locations.span(self.type_checker.body)
     }
@@ -558,12 +558,12 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
     ) {
         let tcx = self.tcx();
         let param_env = self.param_env();
-        self.register_obligations(
+        self.register_goals(
             obligations.into_iter().map(|to_pred| Goal::new(tcx, param_env, to_pred)),
         );
     }
 
-    fn register_obligations(
+    fn register_goals(
         &mut self,
         obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
@@ -589,7 +589,7 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
         );
     }
 
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
             ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),

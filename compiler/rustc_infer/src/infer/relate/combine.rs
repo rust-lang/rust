@@ -39,7 +39,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub infcx: &'infcx InferCtxt<'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub obligations: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+    pub goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     pub define_opaque_types: DefineOpaqueTypes,
 }
 
@@ -50,11 +50,11 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
     ) -> Self {
-        Self { infcx, trace, param_env, define_opaque_types, obligations: vec![] }
+        Self { infcx, trace, param_env, define_opaque_types, goals: vec![] }
     }
 
     pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations
+        self.goals
             .into_iter()
             .map(|goal| {
                 Obligation::new(
@@ -76,7 +76,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
-        R: ObligationEmittingRelation<'tcx>,
+        R: PredicateEmittingRelation<'tcx>,
     {
         debug_assert!(!a.has_escaping_bound_vars());
         debug_assert!(!b.has_escaping_bound_vars());
@@ -140,7 +140,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         relate::structurally_relate_tys(relation, a, b)
                     }
                     StructurallyRelateAliases::No => {
-                        relation.register_type_relate_obligation(a, b);
+                        relation.register_alias_relate_predicate(a, b);
                         Ok(a)
                     }
                 }
@@ -171,7 +171,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>>
     where
-        R: ObligationEmittingRelation<'tcx>,
+        R: PredicateEmittingRelation<'tcx>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         debug_assert!(!a.has_escaping_bound_vars());
@@ -309,14 +309,14 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         &mut self,
         obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
-        self.obligations.extend(obligations);
+        self.goals.extend(obligations);
     }
 
     pub fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
-        self.obligations.extend(
+        self.goals.extend(
             obligations
                 .into_iter()
                 .map(|to_pred| Goal::new(self.infcx.tcx, self.param_env, to_pred)),
@@ -324,7 +324,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     }
 }
 
-pub trait ObligationEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
+pub trait PredicateEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
     fn span(&self) -> Span;
 
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
@@ -335,19 +335,18 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
 
     /// Register obligations that must hold in order for this relation to hold
-    fn register_obligations(
+    fn register_goals(
         &mut self,
         obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     );
 
-    /// Register predicates that must hold in order for this relation to hold. Uses
-    /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
-    /// be used if control over the obligation causes is required.
+    /// Register predicates that must hold in order for this relation to hold.
+    /// This uses the default `param_env` of the obligation.
     fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     );
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
 }

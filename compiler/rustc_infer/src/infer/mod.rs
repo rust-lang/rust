@@ -1,6 +1,9 @@
 pub use at::DefineOpaqueTypes;
 pub use freshen::TypeFreshener;
 pub use lexical_region_resolve::RegionResolutionError;
+pub use relate::combine::CombineFields;
+pub use relate::combine::PredicateEmittingRelation;
+pub use relate::StructurallyRelateAliases;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 pub use rustc_middle::ty::IntVarValue;
 pub use BoundRegionConversionTime::*;
@@ -8,7 +11,7 @@ pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 pub use ValuePairs::*;
 
-use crate::infer::relate::{CombineFields, RelateResult};
+use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;

@@ -165,7 +165,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         Ok(InferOk {
             value: (),
             obligations: fields
-                .obligations
+                .goals
                 .into_iter()
                 .map(|goal| {
                     Obligation::new(
