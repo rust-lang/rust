@@ -1494,6 +1494,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query specialization_enabled_in(cnum: CrateNum) -> bool {
+        desc { "checking whether the crate enabled `specialization`/`min_specialization`" }
+        separate_provide_extern
+    }
+
     query specializes(_: (DefId, DefId)) -> bool {
         desc { "computing whether impls specialize one another" }
     }
