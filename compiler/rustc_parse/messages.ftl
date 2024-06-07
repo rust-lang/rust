@@ -622,8 +622,6 @@ parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allo
 parse_out_of_range_hex_escape = out of range hex escape
     .label = must be a character in the range [\x00-\x7f]
 
-parse_outer_attr_ambiguous = ambiguous outer attributes
-
 parse_outer_attr_explanation = outer attributes, like `#[test]`, annotate the item following them
 
 parse_outer_attribute_not_allowed_on_if_else = outer attributes are not allowed on `if` and `else` branches
