@@ -82,9 +82,9 @@ pub fn foo12(_: &Type4, _: &Type4, _: &Type4) {}
 // CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo11{{[{}][{}]}}closure{{[}][}]}}3FooEE"}
 // CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo11{{[{}][{}]}}closure{{[}][}]}}3FooES0_E"}
 // CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo11{{[{}][{}]}}closure{{[}][}]}}3FooES0_S0_E"}
-// CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo3FooEE"}
-// CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo3FooES0_E"}
-// CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo3FooES0_S0_E"}
+// CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo12{{[{}][{}]}}constant{{[}][}]}}3FooEE"}
+// CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo12{{[{}][{}]}}constant{{[}][}]}}3FooES0_E"}
+// CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo12{{[{}][{}]}}constant{{[}][}]}}3FooES0_S0_E"}
 // CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo8{{[{}][{}]}}impl{{[}][}]}}3barEE"}
 // CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo8{{[{}][{}]}}impl{{[}][}]}}3barES0_E"}
 // CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo8{{[{}][{}]}}impl{{[}][}]}}3barES0_S0_E"}
