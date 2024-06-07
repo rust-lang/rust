@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
     /// Parse a type suitable for a field definition.
     /// The difference from `parse_ty` is that this version
     /// allows anonymous structs and unions.
-    pub fn parse_ty_for_field_def(&mut self) -> PResult<'a, P<Ty>> {
+    pub(super) fn parse_ty_for_field_def(&mut self) -> PResult<'a, P<Ty>> {
         if self.can_begin_anon_struct_or_union() {
             self.parse_anon_struct_or_union()
         } else {
