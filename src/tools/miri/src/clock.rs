@@ -39,13 +39,11 @@ impl Instant {
                 InstantKind::Virtual { nanoseconds },
                 InstantKind::Virtual { nanoseconds: earlier },
             ) => {
+                let duration = nanoseconds.saturating_sub(earlier);
                 // It is possible for second to overflow because u64::MAX < (u128::MAX / 1e9).
-                let seconds = u64::try_from(
-                    nanoseconds.saturating_sub(earlier).saturating_div(1_000_000_000),
-                )
-                .unwrap();
+                let seconds = u64::try_from(duration.saturating_div(1_000_000_000)).unwrap();
                 // It is impossible for nanosecond to overflow because u32::MAX > 1e9.
-                let nanosecond = u32::try_from(nanoseconds.wrapping_rem(1_000_000_000)).unwrap();
+                let nanosecond = u32::try_from(duration.wrapping_rem(1_000_000_000)).unwrap();
                 Duration::new(seconds, nanosecond)
             }
             _ => panic!("all `Instant` must be of the same kind"),
