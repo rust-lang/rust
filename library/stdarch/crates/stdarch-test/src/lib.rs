@@ -71,7 +71,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     //eprintln!("  function: {:?}", function);
 
     let mut instrs = &function.instrs[..];
-    while instrs.last().map_or(false, |s| s == "nop") {
+    while instrs.last().map_or(false, |s| s == "nop" || s == "int3") {
         instrs = &instrs[..instrs.len() - 1];
     }
 
