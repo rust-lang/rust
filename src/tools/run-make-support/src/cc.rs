@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use crate::{bin_name, cygpath_windows, env_var, handle_failed_output, is_msvc, is_windows, uname};
 use crate::command::Command;
+use crate::{bin_name, cygpath_windows, env_var, is_msvc, is_windows, uname};
 
 /// Construct a new platform-specific C compiler invocation.
 ///

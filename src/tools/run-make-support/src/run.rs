@@ -1,8 +1,9 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use crate::{cwd, env_var, is_windows};
 use crate::command::{Command, CompletedProcess};
+use crate::{cwd, env_var, is_windows, set_host_rpath};
 
 use super::handle_failed_output;
 
@@ -61,4 +62,12 @@ pub fn run_fail(name: &str) -> CompletedProcess {
         handle_failed_output(&cmd, output, caller_line_number);
     }
     output
+}
+
+/// Create a new custom Command.
+/// This should be preferred to creating `std::process::Command` directly.
+pub fn cmd<S: AsRef<OsStr>>(program: S) -> Command {
+    let mut command = Command::new(program);
+    set_host_rpath(&mut command);
+    command
 }

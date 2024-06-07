@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use crate::{bin_name, env_var, handle_failed_output};
 use crate::command::Command;
+use crate::{bin_name, env_var};
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
 pub fn clang() -> Clang {

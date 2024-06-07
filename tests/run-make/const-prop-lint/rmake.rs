@@ -5,7 +5,7 @@ use std::fs;
 use run_make_support::{cwd, rustc};
 
 fn main() {
-    rustc().input("input.rs").run_fail_assert_exit_code(1);
+    rustc().input("input.rs").run_fail().assert_exit_code(1);
 
     for entry in fs::read_dir(cwd()).unwrap() {
         let entry = entry.unwrap();

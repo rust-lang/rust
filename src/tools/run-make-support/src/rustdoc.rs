@@ -1,8 +1,8 @@
 use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::{env_var, env_var_os, handle_failed_output, set_host_rpath};
 use crate::command::Command;
+use crate::{env_var, env_var_os, set_host_rpath};
 
 /// Construct a plain `rustdoc` invocation with no flags set.
 pub fn bare_rustdoc() -> Rustdoc {

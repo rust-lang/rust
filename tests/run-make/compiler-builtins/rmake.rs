@@ -19,8 +19,7 @@ use run_make_support::object::read::Object;
 use run_make_support::object::ObjectSection;
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::RelocationTarget;
-use run_make_support::set_host_rpath;
-use run_make_support::{env_var, object};
+use run_make_support::{cmd, env_var, object};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -35,7 +34,7 @@ fn main() {
     let path = env_var("PATH");
     let rustc = env_var("RUSTC");
     let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
-    let mut cmd = std::process::Command::new(bootstrap_cargo);
+    let mut cmd = cmd(bootstrap_cargo);
     cmd.args([
         "build",
         "--manifest-path",
@@ -52,10 +51,8 @@ fn main() {
     // Visual Studio 2022 requires that the LIB env var be set so it can
     // find the Windows SDK.
     .env("LIB", std::env::var("LIB").unwrap_or_default());
-    set_host_rpath(&mut cmd);
 
-    let status = cmd.status().unwrap();
-    assert!(status.success());
+    cmd.run();
 
     let rlibs_path = target_dir.join(target).join("debug").join("deps");
     let compiler_builtins_rlib = std::fs::read_dir(rlibs_path)

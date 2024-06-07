@@ -5,12 +5,12 @@
 
 pub mod cc;
 pub mod clang;
+mod command;
 pub mod diff;
 pub mod llvm_readobj;
 pub mod run;
 pub mod rustc;
 pub mod rustdoc;
-mod command;
 
 use std::env;
 use std::ffi::OsString;
@@ -27,7 +27,7 @@ pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
 pub use llvm_readobj::{llvm_readobj, LlvmReadobj};
-pub use run::{run, run_fail};
+pub use run::{cmd, run, run_fail};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
@@ -285,6 +285,7 @@ pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
 }
 
 /// Check that `haystack` does not contain `needle`. Panic otherwise.
+#[track_caller]
 pub fn assert_not_contains(haystack: &str, needle: &str) {
     if haystack.contains(needle) {
         eprintln!("=== HAYSTACK ===");
@@ -412,27 +413,13 @@ macro_rules! impl_common_helpers {
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
             pub fn run(&mut self) -> crate::command::CompletedProcess {
-                let caller_location = ::std::panic::Location::caller();
-                let caller_line_number = caller_location.line();
-
-                let output = self.cmd.command_output();
-                if !output.status().success() {
-                    handle_failed_output(&self.cmd, output, caller_line_number);
-                }
-                output
+                self.cmd.run()
             }
 
             /// Run the constructed command and assert that it does not successfully run.
             #[track_caller]
             pub fn run_fail(&mut self) -> crate::command::CompletedProcess {
-                let caller_location = ::std::panic::Location::caller();
-                let caller_line_number = caller_location.line();
-
-                let output = self.cmd.command_output();
-                if output.status().success() {
-                    handle_failed_output(&self.cmd, output, caller_line_number);
-                }
-                output
+                self.cmd.run_fail()
             }
 
             /// Set the path where the command will be run.
@@ -444,5 +431,5 @@ macro_rules! impl_common_helpers {
     };
 }
 
-pub(crate) use impl_common_helpers;
 use crate::command::{Command, CompletedProcess};
+pub(crate) use impl_common_helpers;

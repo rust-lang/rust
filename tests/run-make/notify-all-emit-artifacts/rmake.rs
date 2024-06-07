@@ -19,7 +19,7 @@ fn main() {
             .error_format("json")
             .incremental(cwd())
             .run();
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr = output.stderr_utf8();
         for file in &["lib.o", "lib.ll", "lib.bc", "lib.s"] {
             assert!(stderr.contains(file), "No {:?} in {:?}", file, stderr);
         }
@@ -35,7 +35,7 @@ fn main() {
             .error_format("json")
             .incremental(cwd())
             .run();
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr = output.stderr_utf8();
         for file in &["rcgu.o", "rcgu.ll", "rcgu.bc", "rcgu.s"] {
             assert!(stderr.contains(file), "No {:?} in {:?}", file, stderr);
         }

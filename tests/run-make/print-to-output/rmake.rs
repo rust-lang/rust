@@ -39,11 +39,7 @@ fn check(args: Option) {
     }
 
     // --print={option}
-    let stdout = {
-        let output = rustc().target(args.target).print(args.option).run();
-
-        String::from_utf8(output.stdout).unwrap()
-    };
+    let stdout = rustc().target(args.target).print(args.option).run().stdout_utf8();
 
     // --print={option}=PATH
     let output = {
@@ -51,7 +47,7 @@ fn check(args: Option) {
         let mut print_arg = OsString::from(format!("--print={}=", args.option));
         print_arg.push(tmp_path.as_os_str());
 
-        let _output = rustc().target(args.target).arg(print_arg).run();
+        rustc().target(args.target).arg(print_arg).run();
 
         std::fs::read_to_string(&tmp_path).unwrap()
     };

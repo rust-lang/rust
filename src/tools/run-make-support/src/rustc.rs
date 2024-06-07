@@ -1,8 +1,8 @@
+use command::Command;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
-use command::Command;
 
-use crate::{command, cwd, env_var, handle_failed_output, set_host_rpath};
+use crate::{command, cwd, env_var, set_host_rpath};
 
 /// Construct a new `rustc` invocation.
 pub fn rustc() -> Rustc {
