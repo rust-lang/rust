@@ -1,7 +1,7 @@
 use std::path::Path;
-use std::process::Command;
 
 use crate::{bin_name, env_var, handle_failed_output};
+use crate::command::Command;
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
 pub fn clang() -> Clang {
@@ -67,10 +67,5 @@ impl Clang {
     pub fn use_ld(&mut self, ld: &str) -> &mut Self {
         self.cmd.arg(format!("-fuse-ld={ld}"));
         self
-    }
-
-    /// Get the [`Output`][::std::process::Output] of the finished process.
-    pub fn command_output(&mut self) -> ::std::process::Output {
-        self.cmd.output().expect("failed to get output of finished process")
     }
 }
