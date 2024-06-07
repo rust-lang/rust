@@ -6,7 +6,7 @@ use std::time::{Duration, Instant as StdInstant};
 /// This number is pretty random, but it has been shown to approximately cause
 /// some sample programs to run within an order of magnitude of real time on desktop CPUs.
 /// (See `tests/pass/shims/time-with-isolation*.rs`.)
-const NANOSECONDS_PER_BASIC_BLOCK: u64 = 5000;
+const NANOSECONDS_PER_BASIC_BLOCK: u128 = 5000;
 
 #[derive(Debug)]
 pub struct Instant {
@@ -16,7 +16,7 @@ pub struct Instant {
 #[derive(Debug)]
 enum InstantKind {
     Host(StdInstant),
-    Virtual { nanoseconds: u64 },
+    Virtual { nanoseconds: u128 },
 }
 
 impl Instant {
@@ -25,9 +25,8 @@ impl Instant {
             InstantKind::Host(instant) =>
                 instant.checked_add(duration).map(|i| Instant { kind: InstantKind::Host(i) }),
             InstantKind::Virtual { nanoseconds } =>
-                u128::from(nanoseconds)
+                nanoseconds
                     .checked_add(duration.as_nanos())
-                    .and_then(|n| u64::try_from(n).ok())
                     .map(|nanoseconds| Instant { kind: InstantKind::Virtual { nanoseconds } }),
         }
     }
@@ -39,7 +38,19 @@ impl Instant {
             (
                 InstantKind::Virtual { nanoseconds },
                 InstantKind::Virtual { nanoseconds: earlier },
-            ) => Duration::from_nanos(nanoseconds.saturating_sub(earlier)),
+            ) => {
+                // Trade some nanosecond precision to prevent as much overflow as possible.
+                let duration = match u64::try_from(
+                    // Manually convert from nanosecond to millisecond.
+                    // If it exceeded u64::MAX millisecond, we will just use u64::MAX millisecond,
+                    // Duration can't take in more than u64::MAX millisecond.
+                    nanoseconds.saturating_sub(earlier).saturating_div(1_000_000),
+                ) {
+                    Ok(millisecond) => Duration::from_millis(millisecond),
+                    _ => Duration::from_millis(u64::MAX),
+                };
+                Duration::new(duration.as_secs(), duration.subsec_nanos())
+            }
             _ => panic!("all `Instant` must be of the same kind"),
         }
     }
@@ -59,7 +70,7 @@ enum ClockKind {
     },
     Virtual {
         /// The "current virtual time".
-        nanoseconds: Cell<u64>,
+        nanoseconds: Cell<u128>,
     },
 }
 
@@ -93,7 +104,7 @@ impl Clock {
             ClockKind::Host { .. } => std::thread::sleep(duration),
             ClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
-                let nanos: u64 = duration.as_nanos().try_into().unwrap();
+                let nanos: u128 = duration.as_nanos().try_into().unwrap();
                 nanoseconds.update(|x| x + nanos);
             }
         }
