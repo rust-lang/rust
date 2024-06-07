@@ -295,7 +295,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
             },
             (&ExprKind::Closure(_l), &ExprKind::Closure(_r)) => false,
-            (&ExprKind::ConstBlock(lb), &ExprKind::ConstBlock(rb)) => self.eq_expr(lb, rb),
+            (&ExprKind::ConstBlock(lb), &ExprKind::ConstBlock(rb)) => self.eq_body(lb.body, rb.body),
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
                 both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
             },
@@ -769,8 +769,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 // closures inherit TypeckResults
                 self.hash_expr(self.cx.tcx.hir().body(body).value);
             },
-            ExprKind::ConstBlock(l_id) => {
-                self.hash_expr(l_id);
+            ExprKind::ConstBlock(ref l_id) => {
+                self.hash_body(l_id.body);
             },
             ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
                 self.hash_expr(e);
