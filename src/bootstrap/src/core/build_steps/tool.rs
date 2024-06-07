@@ -368,7 +368,7 @@ impl ErrorIndex {
         let compiler = builder.compiler_for(builder.top_stage, host, host);
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
-        dylib_paths.push(PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)));
+        dylib_paths.push(PathBuf::from(&builder.sysroot_target_libdir(compiler, compiler.host)));
         add_dylib_path(dylib_paths, &mut cmd);
         cmd
     }
