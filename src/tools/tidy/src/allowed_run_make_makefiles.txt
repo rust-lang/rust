@@ -234,7 +234,6 @@ run-make/symbols-include-type-name/Makefile
 run-make/symlinked-extern/Makefile
 run-make/symlinked-libraries/Makefile
 run-make/symlinked-rlib/Makefile
-run-make/sysroot-crates-are-unstable/Makefile
 run-make/target-cpu-native/Makefile
 run-make/target-specs/Makefile
 run-make/target-without-atomic-cas/Makefile

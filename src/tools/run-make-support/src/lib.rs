@@ -280,7 +280,7 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     });
 }
 
-pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
+pub fn read_dir(dir: impl AsRef<Path>, mut callback: impl FnMut(&Path)) {
     for entry in fs::read_dir(dir).unwrap() {
         callback(&entry.unwrap().path());
     }
@@ -408,6 +408,17 @@ macro_rules! impl_common_helpers {
             #[track_caller]
             pub fn run_fail(&mut self) -> crate::command::CompletedProcess {
                 self.cmd.run_fail()
+            }
+
+            /// Run the constructed command, but don't check its result status.
+            /// The caller is responsible for performing any necessary checks.
+            ///
+            /// Prefer to call [`run`](Self::run) or [`run_fail`](Self::run_fail)
+            /// if possible.
+            #[must_use]
+            #[track_caller]
+            pub fn run_unchecked(&mut self) -> crate::command::CompletedProcess {
+                self.cmd.run_unchecked()
             }
 
             /// Set the path where the command will be run.
