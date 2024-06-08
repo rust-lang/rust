@@ -1,8 +1,22 @@
 use std::path::PathBuf;
 
-use rustc_span::edition::DEFAULT_EDITION;
+use super::{DocTest, GlobalTestOptions};
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
-use super::{make_test, GlobalTestOptions};
+// FIXME: remove the last element of the returned tuple and simplify arguments of this helper.
+fn make_test(
+    test_code: &str,
+    crate_name: Option<&str>,
+    dont_insert_main: bool,
+    opts: &GlobalTestOptions,
+    edition: Edition,
+    test_id: Option<&str>,
+) -> (String, usize, ()) {
+    let doctest = DocTest::new(test_code, crate_name, edition);
+    let (code, line_offset) =
+        doctest.generate_unique_doctest(dont_insert_main, opts, test_id, crate_name);
+    (code, line_offset, ())
+}
 
 /// Default [`GlobalTestOptions`] for these unit tests.
 fn default_global_opts(crate_name: impl Into<String>) -> GlobalTestOptions {
