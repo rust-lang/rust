@@ -639,6 +639,19 @@ Following is classes of tests that support revisions:
 - rustdoc UI tests
 - incremental (these are special in that they inherently cannot be run in parallel)
 
+### Ignoring unused revision names
+
+Normally, revision names mentioned in other headers and error annotations must
+correspond to an actual revision declared in a `revisions` header. This is
+enforced by an `./x test tidy` check.
+
+If a revision name needs to be temporarily removed from the revision list for
+some reason, the above check can be suppressed by adding the revision name to
+an `//@ unused-revision-names:` header instead.
+
+Specifying an unused name of `*` (i.e. `//@ unused-revision-names: *`) will
+permit any unused revision name to be mentioned.
+
 ## Compare modes
 
 Compiletest can be run in different modes, called _compare modes_, which can

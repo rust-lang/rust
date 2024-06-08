@@ -94,6 +94,8 @@ found in [`header.rs`] from the compiletest source.
     * `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
     * `force-host` — build only for the host target
     * [`revisions`](compiletest.md#revisions) — compile multiple times
+    * [`unused-revision-names`](compiletest.md#ignoring-unused-revision-names) -
+      suppress tidy checks for mentioning unknown revision names
     * [`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects output pattern
     * [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should ICE
     * [`known-bug`](ui.md#known-bugs) — indicates that the test is
