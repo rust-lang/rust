@@ -36,13 +36,13 @@ impl HirDisplay for Function {
 
         match container {
             Some(AssocItemContainer::Trait(trait_)) => {
-                if f.show_container_bounds() {
+                if f.show_container_bounds() && !f.db.generic_params(trait_.id.into()).is_empty() {
                     write_trait_header(&trait_, f)?;
                     f.write_str("\n")?;
                 }
             }
             Some(AssocItemContainer::Impl(impl_)) => {
-                if f.show_container_bounds() {
+                if f.show_container_bounds() && !f.db.generic_params(impl_.id.into()).is_empty() {
                     write_impl_header(&impl_, f)?;
                     f.write_str("\n")?;
                 }
