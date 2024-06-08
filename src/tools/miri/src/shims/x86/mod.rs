@@ -1140,15 +1140,15 @@ fn pmulhrsw<'tcx>(
     Ok(())
 }
 
-/// Perform a carry-less multiplication of two 64-bit integers, selected from left and right according to imm8,
-/// and store the results in dst.
+/// Perform a carry-less multiplication of two 64-bit integers, selected from `left` and `right` according to `imm8`,
+/// and store the results in `dst`.
 ///
-/// Left and right are both vectors of type 2 x i64. Only bits 0 and 4 of imm8 matter;
-/// they select the element of left and right, respectively.
+/// `left` and `right` are both vectors of type 2 x i64. Only bits 0 and 4 of `imm8` matter;
+/// they select the element of `left` and `right`, respectively.
 ///
 /// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128>
 fn pclmulqdq<'tcx>(
-    this: &mut crate::MiriInterpCx<'tcx>,
+    this: &mut MiriInterpCx<'tcx>,
     left: &OpTy<'tcx>,
     right: &OpTy<'tcx>,
     imm8: &OpTy<'tcx>,
