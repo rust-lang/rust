@@ -25,6 +25,7 @@ pub(crate) fn make_test(
     dont_insert_main: bool,
     opts: &GlobalTestOptions,
     edition: Edition,
+    // If `test_id` is `None`, it means we're generating code for a code example "run" link.
     test_id: Option<&str>,
 ) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s, edition);
@@ -65,21 +66,22 @@ pub(crate) fn make_test(
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !already_has_extern_crate && !opts.no_crate_inject && crate_name != Some("std") {
-        if let Some(crate_name) = crate_name {
-            // Don't inject `extern crate` if the crate is never used.
-            // NOTE: this is terribly inaccurate because it doesn't actually
-            // parse the source, but only has false positives, not false
-            // negatives.
-            if s.contains(crate_name) {
-                // rustdoc implicitly inserts an `extern crate` item for the own crate
-                // which may be unused, so we need to allow the lint.
-                prog.push_str("#[allow(unused_extern_crates)]\n");
+    if !already_has_extern_crate &&
+        !opts.no_crate_inject &&
+        let Some(crate_name) = crate_name &&
+        crate_name != "std" &&
+        // Don't inject `extern crate` if the crate is never used.
+        // NOTE: this is terribly inaccurate because it doesn't actually
+        // parse the source, but only has false positives, not false
+        // negatives.
+        s.contains(crate_name)
+    {
+        // rustdoc implicitly inserts an `extern crate` item for the own crate
+        // which may be unused, so we need to allow the lint.
+        prog.push_str("#[allow(unused_extern_crates)]\n");
 
-                prog.push_str(&format!("extern crate r#{crate_name};\n"));
-                line_offset += 1;
-            }
-        }
+        prog.push_str(&format!("extern crate r#{crate_name};\n"));
+        line_offset += 1;
     }
 
     // FIXME: This code cannot yet handle no_std test cases yet
@@ -234,22 +236,20 @@ fn check_for_main_and_extern_crate(
             (found_main, found_extern_crate, found_macro)
         })
     });
-    let (already_has_main, already_has_extern_crate, found_macro) = result?;
+    let (mut already_has_main, already_has_extern_crate, found_macro) = result?;
 
     // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
     // see it. In that case, run the old text-based scan to see if they at least have a main
     // function written inside a macro invocation. See
     // https://github.com/rust-lang/rust/issues/56898
-    let already_has_main = if found_macro && !already_has_main {
-        source
+    if found_macro && !already_has_main {
+        already_has_main = source
             .lines()
             .map(|line| {
                 let comment = line.find("//");
                 if let Some(comment_begins) = comment { &line[0..comment_begins] } else { line }
             })
-            .any(|code| code.contains("fn main"))
-    } else {
-        already_has_main
+            .any(|code| code.contains("fn main"));
     };
 
     Ok((already_has_main, already_has_extern_crate))
