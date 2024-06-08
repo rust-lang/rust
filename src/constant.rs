@@ -110,7 +110,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 if fx.clif_type(layout.ty).is_some() {
                     return CValue::const_val(fx, layout, int);
                 } else {
-                    let raw_val = int.size().truncate(int.assert_bits(int.size()));
+                    let raw_val = int.size().truncate(int.to_bits(int.size()));
                     let val = match int.size().bytes() {
                         1 => fx.bcx.ins().iconst(types::I8, raw_val as i64),
                         2 => fx.bcx.ins().iconst(types::I16, raw_val as i64),
@@ -501,12 +501,12 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                             Ordering::Equal => scalar_int,
                                             Ordering::Less => match ty.kind() {
                                                 ty::Uint(_) => ScalarInt::try_from_uint(
-                                                    scalar_int.assert_uint(scalar_int.size()),
+                                                    scalar_int.to_uint(scalar_int.size()),
                                                     fx.layout_of(*ty).size,
                                                 )
                                                 .unwrap(),
                                                 ty::Int(_) => ScalarInt::try_from_int(
-                                                    scalar_int.assert_int(scalar_int.size()),
+                                                    scalar_int.to_int(scalar_int.size()),
                                                     fx.layout_of(*ty).size,
                                                 )
                                                 .unwrap(),
