@@ -1038,14 +1038,26 @@ impl<'a> Builder<'a> {
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
-        let channel = match &*self.config.channel {
-            "stable" => &self.version,
-            "beta" => "beta",
-            "nightly" | "dev" => "nightly",
-            // custom build of rustdoc maybe? link to the latest stable docs just in case
-            _ => "stable",
+        // When using precompiled compiler from CI, we need to use CI rustc's channel and
+        // ignore `rust.channel` from the configuration. Otherwise most of the rustdoc tests
+        // will fail due to incompatible `DOC_RUST_LANG_ORG_CHANNEL`.
+        let channel = if let Some(commit) = self.config.download_rustc_commit() {
+            self.config
+                .read_file_by_commit(&PathBuf::from("src/ci/channel"), commit)
+                .trim()
+                .to_owned()
+        } else {
+            match &*self.config.channel {
+                "stable" => &self.version,
+                "beta" => "beta",
+                "nightly" | "dev" => "nightly",
+                // custom build of rustdoc maybe? link to the latest stable docs just in case
+                _ => "stable",
+            }
+            .to_owned()
         };
-        "https://doc.rust-lang.org/".to_owned() + channel
+
+        format!("https://doc.rust-lang.org/{channel}")
     }
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
