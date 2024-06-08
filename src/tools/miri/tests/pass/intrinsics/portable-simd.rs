@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, adt_const_params, core_intrinsics)]
+#![feature(portable_simd, adt_const_params, core_intrinsics, repr_simd)]
 #![allow(incomplete_features, internal_features)]
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
@@ -316,6 +316,44 @@ fn simd_mask() {
             i32x4::splat(0), // no
         );
         assert_eq!(selected1, i32x4::from_array([0, 0, 0, 1]));
+        assert_eq!(selected2, selected1);
+    }
+
+    // Non-power-of-2 multi-byte mask.
+    #[repr(simd, packed)]
+    #[allow(non_camel_case_types)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    struct i32x10(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32);
+    impl i32x10 {
+        fn splat(x: i32) -> Self {
+            Self(x, x, x, x, x, x, x, x, x, x)
+        }
+        fn from_array(a: [i32; 10]) -> Self {
+            unsafe { std::mem::transmute(a) }
+        }
+    }
+    unsafe {
+        let mask = i32x10::from_array([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0]);
+        let bitmask1: u16 = simd_bitmask(mask);
+        let bitmask2: [u8; 2] = simd_bitmask(mask);
+        if cfg!(target_endian = "little") {
+            assert_eq!(bitmask1, 0b0101001011);
+            assert_eq!(bitmask2, [0b01001011, 0b01]);
+        } else {
+            assert_eq!(bitmask1, 0b1101001010);
+            assert_eq!(bitmask2, [0b11, 0b01001010]);
+        }
+        let selected1 = simd_select_bitmask::<u16, _>(
+            if cfg!(target_endian = "little") { 0b0101001011 } else { 0b1101001010 },
+            i32x10::splat(!0), // yes
+            i32x10::splat(0),  // no
+        );
+        let selected2 = simd_select_bitmask::<[u8; 2], _>(
+            if cfg!(target_endian = "little") { [0b01001011, 0b01] } else { [0b11, 0b01001010] },
+            i32x10::splat(!0), // yes
+            i32x10::splat(0),  // no
+        );
+        assert_eq!(selected1, mask);
         assert_eq!(selected2, selected1);
     }
 }
