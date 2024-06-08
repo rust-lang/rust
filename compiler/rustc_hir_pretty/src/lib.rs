@@ -2161,7 +2161,7 @@ impl<'a> State<'a> {
                 if let Some(default) = default {
                     self.space();
                     self.word_space("=");
-                    self.print_anon_const(default);
+                    self.print_const_arg(default);
                 }
             }
         }

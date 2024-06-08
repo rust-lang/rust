@@ -73,7 +73,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             def_id: param_def_id,
             kind: GenericParamKind::Const { default: Some(ct), .. },
             ..
-        }) if ct.hir_id == hir_id => {
+        }) if ct.anon_const_hir_id() == hir_id => {
             return tcx
                 .type_of(param_def_id)
                 .no_bound_vars()

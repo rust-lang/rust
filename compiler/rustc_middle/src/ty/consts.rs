@@ -505,15 +505,15 @@ pub fn const_param_default<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-    let default_def_id = match tcx.hir_node_by_def_id(def_id) {
+    let default_ct = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { default: Some(ac), .. },
+            kind: hir::GenericParamKind::Const { default: Some(ct), .. },
             ..
-        }) => ac.def_id,
+        }) => ct,
         _ => span_bug!(
             tcx.def_span(def_id),
             "`const_param_default` expected a generic parameter with a constant"
         ),
     };
-    ty::EarlyBinder::bind(Const::from_anon_const(tcx, default_def_id))
+    ty::EarlyBinder::bind(Const::from_const_arg(tcx, default_ct, FeedConstTy::No))
 }

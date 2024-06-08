@@ -181,7 +181,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_generic_param(self, param);
     }
 
-    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir AnonConst) {
+    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir ConstArg<'hir>) {
         self.with_parent(param, |this| {
             intravisit::walk_const_param_default(this, ct);
         })

@@ -2204,7 +2204,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             false
                         }
                     })
-                    .map(|def| self.lower_anon_const_to_anon_const(def));
+                    .map(|def| self.lower_anon_const_to_const_arg(def));
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
