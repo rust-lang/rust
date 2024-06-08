@@ -27,7 +27,8 @@ const LICENSES: &[&str] = &[
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
     "MIT",
     "MIT/Apache-2.0",
-    "Unicode-DFS-2016",                                    // tinystr and icu4x
+    "Unicode-3.0",                                         // icu4x
+    "Unicode-DFS-2016",                                    // tinystr
     "Unlicense OR MIT",
     "Unlicense/MIT",
     "Zlib OR Apache-2.0 OR MIT",                           // tinyvec
@@ -442,32 +443,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
-// These crates come from ICU4X and are licensed under the unicode license.
-// It currently doesn't have an SPDX identifier, so they cannot put one there.
-// See https://github.com/unicode-org/icu4x/pull/3875
-// FIXME: This should be removed once ICU4X crates update.
-const ICU4X_UNICODE_LICENSE_DEPENDENCIES: &[&str] = &[
-    // tidy-alphabetical-start
-    "icu_list",
-    "icu_list_data",
-    "icu_locid",
-    "icu_locid_transform",
-    "icu_locid_transform_data",
-    "icu_provider",
-    "icu_provider_adapters",
-    "icu_provider_macros",
-    "litemap",
-    "tinystr",
-    "writeable",
-    "yoke",
-    "yoke-derive",
-    "zerofrom",
-    "zerofrom-derive",
-    "zerovec",
-    "zerovec-derive",
-    // tidy-alphabetical-end
-];
-
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "ahash",
@@ -678,10 +653,6 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
         let license = match &pkg.license {
             Some(license) => license,
             None => {
-                if ICU4X_UNICODE_LICENSE_DEPENDENCIES.contains(&pkg.name.as_str()) {
-                    // See the comment on ICU4X_UNICODE_LICENSE_DEPENDENCIES.
-                    continue;
-                }
                 tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
                 continue;
             }
