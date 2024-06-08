@@ -1053,6 +1053,10 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGINFO => " (SIGINFO)",
         #[cfg(target_os = "hurd")]
         libc::SIGLOST => " (SIGLOST)",
+        #[cfg(target_os = "freebsd")]
+        libc::SIGTHR => " (SIGTHR)",
+        #[cfg(target_os = "freebsd")]
+        libc::SIGLIBRT => " (SIGLIBRT)",
         _ => "",
     }
 }
