@@ -7,10 +7,10 @@
 
 use std::collections::HashSet;
 use std::ffi::OsString;
-use std::io::BufRead;
 use std::iter::FromIterator;
+use std::path::PathBuf;
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::rustc;
 
 struct PrintCfg {
     target: &'static str,
@@ -91,7 +91,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
 
     // --print=cfg=PATH
     {
-        let tmp_path = tmp_dir().join(format!("{target}.cfg"));
+        let tmp_path = PathBuf::from(format!("{target}.cfg"));
         let mut print_arg = OsString::from("--print=cfg=");
         print_arg.push(tmp_path.as_os_str());
 

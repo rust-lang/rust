@@ -39,6 +39,7 @@ use std::collections::VecDeque;
 use std::fmt::Write;
 use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
+use std::path::PathBuf;
 use std::str::{self, CharIndices};
 use std::sync::OnceLock;
 
@@ -287,8 +288,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .collect::<String>();
             let krate = krate.as_ref().map(|s| s.as_str());
 
-            let mut opts: GlobalTestOptions = Default::default();
-            opts.insert_indent_space = true;
+            // FIXME: separate out the code to make a code block into runnable code
+            //        from the complicated doctest logic
+            let opts = GlobalTestOptions {
+                crate_name: krate.map(String::from).unwrap_or_default(),
+                no_crate_inject: false,
+                insert_indent_space: true,
+                attrs: vec![],
+                args_file: PathBuf::new(),
+            };
             let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
@@ -710,7 +718,29 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub(crate) fn find_testable_code<T: doctest::Tester>(
+/// A newtype that represents a relative line number in Markdown.
+///
+/// In other words, this represents an offset from the first line of Markdown
+/// in a doc comment or other source. If the first Markdown line appears on line 32,
+/// and the `MdRelLine` is 3, then the absolute line for this one is 35. I.e., it's
+/// a zero-based offset.
+pub(crate) struct MdRelLine {
+    offset: usize,
+}
+
+impl MdRelLine {
+    /// See struct docs.
+    pub(crate) const fn new(offset: usize) -> Self {
+        Self { offset }
+    }
+
+    /// See struct docs.
+    pub(crate) const fn offset(self) -> usize {
+        self.offset
+    }
+}
+
+pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -720,7 +750,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
     find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
 }
 
-pub(crate) fn find_codes<T: doctest::Tester>(
+pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -772,8 +802,8 @@ pub(crate) fn find_codes<T: doctest::Tester>(
                 if nb_lines != 0 && !&doc[prev_offset..offset.start].ends_with('\n') {
                     nb_lines -= 1;
                 }
-                let line = tests.get_line() + nb_lines + 1;
-                tests.add_test(text, block_info, line);
+                let line = MdRelLine::new(nb_lines);
+                tests.visit_test(text, block_info, line);
                 prev_offset = offset.start;
             }
             Event::Start(Tag::Heading(level, _, _)) => {
@@ -781,7 +811,7 @@ pub(crate) fn find_codes<T: doctest::Tester>(
             }
             Event::Text(ref s) if register_header.is_some() => {
                 let level = register_header.unwrap();
-                tests.register_header(s, level);
+                tests.visit_header(s, level);
                 register_header = None;
             }
             _ => {}

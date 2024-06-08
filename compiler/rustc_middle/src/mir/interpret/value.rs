@@ -197,6 +197,11 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn from_i128(i: i128) -> Self {
+        Self::from_int(i, Size::from_bits(128))
+    }
+
+    #[inline]
     pub fn from_target_isize(i: i64, cx: &impl HasDataLayout) -> Self {
         Self::from_int(i, cx.data_layout().pointer_size)
     }

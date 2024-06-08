@@ -11,22 +11,21 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
-pub use attr_wrapper::AttrWrapper;
+use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
-pub use path::PathStyle;
+use path::PathStyle;
 
-use core::fmt;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs, Expr,
-    ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
+    self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
+    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
     VisibilityKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
@@ -37,7 +36,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use std::ops::Range;
-use std::{mem, slice};
+use std::{fmt, mem, slice};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -146,7 +145,7 @@ pub struct Parser<'a> {
     /// The current token.
     pub token: Token,
     /// The spacing for the current token.
-    pub token_spacing: Spacing,
+    token_spacing: Spacing,
     /// The previous token.
     pub prev_token: Token,
     pub capture_cfg: bool,
@@ -187,7 +186,7 @@ pub struct Parser<'a> {
     current_closure: Option<ClosureSpans>,
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
-    pub recovery: Recovery,
+    recovery: Recovery,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
@@ -197,10 +196,10 @@ rustc_data_structures::static_assert_size!(Parser<'_>, 264);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
-pub struct ClosureSpans {
-    pub whole_closure: Span,
-    pub closing_pipe: Span,
-    pub body: Span,
+struct ClosureSpans {
+    whole_closure: Span,
+    closing_pipe: Span,
+    body: Span,
 }
 
 /// Indicates a range of tokens that should be replaced by
@@ -220,13 +219,13 @@ pub struct ClosureSpans {
 /// the first macro inner attribute to invoke a proc-macro).
 /// When create a `TokenStream`, the inner attributes get inserted
 /// into the proper place in the token stream.
-pub type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
+type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
 
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
 /// we will never need an `AttrTokenStream`.
 #[derive(Copy, Clone, Debug)]
-pub enum Capturing {
+enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
     No,
     /// We are capturing tokens
@@ -374,13 +373,13 @@ pub enum FollowedByType {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum Trailing {
+enum Trailing {
     No,
     Yes,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TokenDescription {
+pub(super) enum TokenDescription {
     ReservedIdentifier,
     Keyword,
     ReservedKeyword,
@@ -388,7 +387,7 @@ pub enum TokenDescription {
 }
 
 impl TokenDescription {
-    pub fn from_token(token: &Token) -> Option<Self> {
+    pub(super) fn from_token(token: &Token) -> Option<Self> {
         match token.kind {
             _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
             _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
@@ -502,7 +501,7 @@ impl<'a> Parser<'a> {
     /// Expect next token to be edible or inedible token. If edible,
     /// then consume it; if inedible, then return without consuming
     /// anything. Signal a fatal error if next token is unexpected.
-    pub fn expect_one_of(
+    fn expect_one_of(
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
@@ -572,7 +571,7 @@ impl<'a> Parser<'a> {
     /// the main purpose of this function is to reduce the cluttering of the suggestions list
     /// which using the normal eat method could introduce in some cases.
     #[inline]
-    pub fn eat_noexpect(&mut self, tok: &TokenKind) -> bool {
+    fn eat_noexpect(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check_noexpect(tok);
         if is_present {
             self.bump()
@@ -1262,9 +1261,12 @@ impl<'a> Parser<'a> {
         }
         self.eat_keyword(kw::Const);
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
-        let expr = self.mk_expr(blk.span, ExprKind::Block(blk, None));
-        let blk_span = expr.span;
-        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(expr), attrs))
+        let anon_const = AnonConst {
+            id: DUMMY_NODE_ID,
+            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
+        };
+        let blk_span = anon_const.value.span;
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1517,7 +1519,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn collect_tokens_no_attrs<R: HasAttrs + HasTokens>(
+    fn collect_tokens_no_attrs<R: HasAttrs + HasTokens>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, R> {
@@ -1538,8 +1540,10 @@ impl<'a> Parser<'a> {
             })
     }
 
-    // debug view of the parser's token stream, up to `{lookahead}` tokens
-    pub fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug + '_ {
+    // Debug view of the parser's token stream, up to `{lookahead}` tokens.
+    // Only used when debugging.
+    #[allow(unused)]
+    pub(crate) fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug + '_ {
         struct DebugParser<'dbg> {
             parser: &'dbg Parser<'dbg>,
             lookahead: usize,
@@ -1615,7 +1619,7 @@ pub(crate) fn make_unclosed_delims_error(
 /// is then 'parsed' to build up an `AttrTokenStream` with nested
 /// `AttrTokenTree::Delimited` tokens.
 #[derive(Debug, Clone)]
-pub enum FlatToken {
+enum FlatToken {
     /// A token - this holds both delimiter (e.g. '{' and '}')
     /// and non-delimiter tokens
     Token(Token),

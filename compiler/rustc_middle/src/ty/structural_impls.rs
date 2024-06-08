@@ -296,7 +296,6 @@ TrivialTypeTraversalImpls! {
     ::rustc_target::abi::FieldIdx,
     ::rustc_target::abi::VariantIdx,
     crate::middle::region::Scope,
-    crate::ty::FloatTy,
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
@@ -316,7 +315,7 @@ TrivialTypeTraversalImpls! {
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
-    crate::ty::BoundConstness,
+    crate::ty::BoundRegion,
     // Including `BoundRegionKind` is a *bit* dubious, but direct
     // references to bound region appear in `ty::Error`, and aren't
     // really meant to be folded. In general, we can only fold a fully
@@ -324,16 +323,11 @@ TrivialTypeTraversalImpls! {
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
-    crate::ty::AliasTyKind,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::LateParamRegion,
-    crate::ty::InferTy,
-    crate::ty::IntVarValue,
     crate::ty::adjustment::PointerCoercion,
-    crate::ty::RegionVid,
-    crate::ty::Variance,
     ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,

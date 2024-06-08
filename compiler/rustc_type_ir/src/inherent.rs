@@ -7,7 +7,10 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 
+use rustc_ast_ir::Mutability;
+
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
+use crate::relate::Relate;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, DebugWithInfcx, Interner, UpcastFrom};
 
@@ -21,6 +24,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     + IntoKind<Kind = ty::TyKind<I>>
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
+    + Relate<I>
     + Flags
 {
     fn new_bool(interner: I) -> Self;
@@ -35,7 +39,36 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
 
+    fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self;
+
+    fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
+
+    fn new_foreign(interner: I, def_id: I::DefId) -> Self;
+
+    fn new_dynamic(
+        interner: I,
+        preds: I::BoundExistentialPredicates,
+        region: I::Region,
+        kind: ty::DynKind,
+    ) -> Self;
+
     fn new_coroutine(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_coroutine_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_coroutine_witness(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_ptr(interner: I, ty: Self, mutbl: Mutability) -> Self;
+
+    fn new_ref(interner: I, region: I::Region, ty: Self, mutbl: Mutability) -> Self;
+
+    fn new_array_with_const_len(interner: I, ty: Self, len: I::Const) -> Self;
+
+    fn new_slice(interner: I, ty: Self) -> Self;
+
+    fn new_tup(interner: I, tys: &[I::Ty]) -> Self;
 
     fn new_tup_from_iter<It, T>(interner: I, iter: It) -> T::Output
     where
@@ -49,6 +82,12 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn from_closure_kind(interner: I, kind: ty::ClosureKind) -> Self;
 
     fn from_coroutine_closure_kind(interner: I, kind: ty::ClosureKind) -> Self;
+
+    fn new_fn_def(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
+    fn new_fn_ptr(interner: I, sig: ty::Binder<I, ty::FnSig<I>>) -> Self;
+
+    fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
@@ -84,6 +123,7 @@ pub trait Region<I: Interner<Region = Self>>:
     + IntoKind<Kind = ty::RegionKind<I>>
     + Flags
     + TypeVisitable<I>
+    + Relate<I>
 {
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundRegion) -> Self;
 
@@ -102,8 +142,11 @@ pub trait Const<I: Interner<Const = Self>>:
     + IntoKind<Kind = ty::ConstKind<I>>
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
+    + Relate<I>
     + Flags
 {
+    fn try_to_target_usize(self, interner: I) -> Option<u64>;
+
     fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
@@ -113,6 +156,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
+
+    fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 }
 
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
@@ -128,13 +173,14 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     + Deref<Target: Deref<Target = [I::GenericArg]>>
     + Default
     + TypeFoldable<I>
+    + Relate<I>
 {
     fn type_at(self, i: usize) -> I::Ty;
 
     fn identity_for_item(interner: I, def_id: I::DefId) -> I::GenericArgs;
 
     fn extend_with_error(
-        tcx: I,
+        interner: I,
         def_id: I::DefId,
         original_args: &[I::GenericArg],
     ) -> I::GenericArgs;
@@ -192,4 +238,12 @@ pub trait BoundVarLike<I: Interner> {
 
 pub trait ParamLike {
     fn index(self) -> u32;
+}
+
+pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
+    fn def_id(self) -> I::DefId;
+}
+
+pub trait Features<I: Interner>: Copy {
+    fn generic_const_exprs(self) -> bool;
 }

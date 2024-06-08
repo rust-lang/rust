@@ -156,12 +156,6 @@ jobs:
 
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-        if: runner.environment == 'github-hosted'
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh

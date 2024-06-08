@@ -1,10 +1,9 @@
-use run_make_support::{htmldocck, rustc, rustdoc, source_root, tmp_dir};
+use run_make_support::{htmldocck, rustc, rustdoc, source_root};
 use std::fs::read_dir;
 use std::path::Path;
 
 pub fn scrape(extra_args: &[&str]) {
-    let lib_dir = tmp_dir();
-    let out_dir = tmp_dir().join("rustdoc");
+    let out_dir = Path::new("rustdoc");
     let crate_name = "foobar";
     let deps = read_dir("examples")
         .unwrap()
@@ -23,7 +22,7 @@ pub fn scrape(extra_args: &[&str]) {
             .crate_name(&dep_stem)
             .crate_type("bin")
             .output(&out_dir)
-            .extern_(crate_name, lib_dir.join(format!("lib{crate_name}.rmeta")))
+            .extern_(crate_name, format!("lib{crate_name}.rmeta"))
             .arg("-Zunstable-options")
             .arg("--scrape-examples-output-path")
             .arg(&out_example)

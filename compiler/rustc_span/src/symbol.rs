@@ -1962,6 +1962,7 @@ symbols! {
         unreachable_display,
         unreachable_macro,
         unrestricted_attribute_tokens,
+        unsafe_attributes,
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
         unsafe_cell_raw_get,

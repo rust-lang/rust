@@ -2265,7 +2265,7 @@ pub(crate) struct FnParseMode {
     ///     to true.
     ///   * The span is from Edition 2015. In particular, you can get a
     ///     2015 span inside a 2021 crate using macros.
-    pub req_name: ReqName,
+    pub(super) req_name: ReqName,
     /// If this flag is set to `true`, then plain, semicolon-terminated function
     /// prototypes are not allowed here.
     ///
@@ -2284,7 +2284,7 @@ pub(crate) struct FnParseMode {
     /// This field should only be set to false if the item is inside of a trait
     /// definition or extern block. Within an impl block or a module, it should
     /// always be set to true.
-    pub req_body: bool,
+    pub(super) req_body: bool,
 }
 
 /// Parsing of functions and methods.

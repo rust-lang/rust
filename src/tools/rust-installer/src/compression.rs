@@ -214,22 +214,16 @@ impl Write for CombinedEncoder {
     }
 
     fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        self.encoders
-            .par_iter_mut()
-            .map(|w| w.write_all(buf))
-            .collect::<std::io::Result<Vec<()>>>()?;
-        Ok(())
+        self.encoders.par_iter_mut().try_for_each(|w| w.write_all(buf))
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.encoders.par_iter_mut().map(|w| w.flush()).collect::<std::io::Result<Vec<()>>>()?;
-        Ok(())
+        self.encoders.par_iter_mut().try_for_each(Write::flush)
     }
 }
 
 impl Encoder for CombinedEncoder {
     fn finish(self: Box<Self>) -> Result<(), Error> {
-        self.encoders.into_par_iter().map(|e| e.finish()).collect::<Result<Vec<()>, Error>>()?;
-        Ok(())
+        self.encoders.into_par_iter().try_for_each(Encoder::finish)
     }
 }

@@ -4,9 +4,9 @@
 // and cause the test to fail.
 // See https://github.com/rust-lang/rust/issues/53964
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::rustc;
 
 fn main() {
     rustc().input("panic.rs").run();
-    rustc().input("app.rs").panic("abort").emit("obj").library_search_path(tmp_dir()).run();
+    rustc().input("app.rs").panic("abort").emit("obj").run();
 }

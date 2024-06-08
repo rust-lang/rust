@@ -1,7 +1,7 @@
 use std::fs::copy;
 use std::path::{Path, PathBuf};
 
-use run_make_support::{copy_dir_all, recursive_diff, rustdoc, tmp_dir};
+use run_make_support::{copy_dir_all, recursive_diff, rustdoc};
 
 #[derive(PartialEq)]
 enum JsonOutput {
@@ -19,8 +19,8 @@ fn generate_docs(out_dir: &Path, json_output: JsonOutput) {
 }
 
 fn main() {
-    let out_dir = tmp_dir().join("rustdoc");
-    let tmp_out_dir = tmp_dir().join("tmp-rustdoc");
+    let out_dir = PathBuf::from("rustdoc");
+    let tmp_out_dir = PathBuf::from("tmp-rustdoc");
 
     // Generate HTML docs.
     generate_docs(&out_dir, JsonOutput::No);

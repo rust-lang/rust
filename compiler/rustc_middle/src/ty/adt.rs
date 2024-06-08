@@ -200,6 +200,12 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
+    fn def_id(self) -> DefId {
+        self.did()
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,

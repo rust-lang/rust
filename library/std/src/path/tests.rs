@@ -127,6 +127,16 @@ fn into() {
 }
 
 #[test]
+fn test_pathbuf_leak() {
+    let string = "/have/a/cake".to_owned();
+    let (len, cap) = (string.len(), string.capacity());
+    let buf = PathBuf::from(string);
+    let leaked = buf.leak();
+    assert_eq!(leaked.as_os_str().as_encoded_bytes(), b"/have/a/cake");
+    unsafe { drop(String::from_raw_parts(leaked.as_mut_os_str() as *mut OsStr as _, len, cap)) }
+}
+
+#[test]
 #[cfg(unix)]
 pub fn test_decompositions_unix() {
     t!("",

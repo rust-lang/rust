@@ -5,9 +5,9 @@ use rustc_data_structures::base_n::BaseNString;
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::CASE_INSENSITIVE;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
 use rustc_index::Idx;
@@ -241,7 +241,17 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
     }
 }
 
-#[derive(Debug)]
+impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
+    type KeyType = Fingerprint;
+
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'_>) -> Self::KeyType {
+        let mut hasher = StableHasher::new();
+        self.hash_stable(&mut hcx.clone(), &mut hasher);
+        hasher.finish()
+    }
+}
+
+#[derive(Debug, HashStable)]
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
     /// name be unique amongst **all** crates. Therefore, it should
@@ -430,38 +440,19 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let CodegenUnit {
-            ref items,
-            name,
-            // The size estimate is not relevant to the hash
-            size_estimate: _,
-            primary: _,
-            is_code_coverage_dead_code_cgu,
-        } = *self;
+impl ToStableHashKey<StableHashingContext<'_>> for CodegenUnit<'_> {
+    type KeyType = String;
 
-        name.hash_stable(hcx, hasher);
-        is_code_coverage_dead_code_cgu.hash_stable(hcx, hasher);
-
-        let mut items: Vec<(Fingerprint, _)> = items
-            .iter()
-            .map(|(mono_item, &attrs)| {
-                let mut hasher = StableHasher::new();
-                mono_item.hash_stable(hcx, &mut hasher);
-                let mono_item_fingerprint = hasher.finish();
-                (mono_item_fingerprint, attrs)
-            })
-            .collect();
-
-        items.sort_unstable_by_key(|i| i.0);
-        items.hash_stable(hcx, hasher);
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'_>) -> Self::KeyType {
+        // Codegen unit names are conceptually required to be stable across
+        // compilation session so that object file names match up.
+        self.name.to_string()
     }
 }
 
 pub struct CodegenUnitNameBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    cache: FxHashMap<CrateNum, String>,
+    cache: UnordMap<CrateNum, String>,
 }
 
 impl<'tcx> CodegenUnitNameBuilder<'tcx> {

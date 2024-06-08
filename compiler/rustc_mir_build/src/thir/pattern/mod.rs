@@ -637,13 +637,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts inline const patterns.
     fn lower_inline_const(
         &mut self,
-        expr: &'tcx hir::Expr<'tcx>,
+        block: &'tcx hir::ConstBlock,
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
         let tcx = self.tcx;
-        let def_id = self.typeck_results.inline_consts[&id.local_id];
-        let ty = tcx.typeck(def_id).node_type(expr.hir_id);
+        let def_id = block.def_id;
+        let body_id = block.body;
+        let expr = &tcx.hir().body(body_id).value;
+        let ty = tcx.typeck(def_id).node_type(block.hir_id);
 
         // Special case inline consts that are just literals. This is solely
         // a performance optimization, as we could also just go through the regular

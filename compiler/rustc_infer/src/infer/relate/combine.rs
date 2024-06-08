@@ -22,12 +22,13 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::type_relating::TypeRelating;
 use super::StructurallyRelateAliases;
+use super::{RelateResult, TypeRelation};
+use crate::infer::relate;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::relate::{RelateResult, TypeRelation};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::Span;
@@ -121,7 +122,7 @@ impl<'tcx> InferCtxt<'tcx> {
             (_, ty::Alias(..)) | (ty::Alias(..), _) if self.next_trait_solver() => {
                 match relation.structurally_relate_aliases() {
                     StructurallyRelateAliases::Yes => {
-                        ty::relate::structurally_relate_tys(relation, a, b)
+                        relate::structurally_relate_tys(relation, a, b)
                     }
                     StructurallyRelateAliases::No => {
                         relation.register_type_relate_obligation(a, b);
@@ -132,7 +133,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(ty::relate::expected_found(a, b)))
+                Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
             }
 
             // During coherence, opaque types should be treated as *possibly*
@@ -144,7 +145,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 Ok(a)
             }
 
-            _ => ty::relate::structurally_relate_tys(relation, a, b),
+            _ => relate::structurally_relate_tys(relation, a, b),
         }
     }
 
@@ -234,11 +235,11 @@ impl<'tcx> InferCtxt<'tcx> {
                         Ok(b)
                     }
                     StructurallyRelateAliases::Yes => {
-                        ty::relate::structurally_relate_consts(relation, a, b)
+                        relate::structurally_relate_consts(relation, a, b)
                     }
                 }
             }
-            _ => ty::relate::structurally_relate_consts(relation, a, b),
+            _ => relate::structurally_relate_consts(relation, a, b),
         }
     }
 
@@ -303,7 +304,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     }
 }
 
-pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
+pub trait ObligationEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
     fn span(&self) -> Span;
 
     fn param_env(&self) -> ty::ParamEnv<'tcx>;

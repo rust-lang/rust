@@ -222,7 +222,6 @@ use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
-use rustc_session::config;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
@@ -309,7 +308,6 @@ impl<'a> CrateLocator<'a> {
         is_rlib: bool,
         hash: Option<Svh>,
         extra_filename: Option<&'a str>,
-        is_host: bool,
         path_kind: PathKind,
     ) -> CrateLocator<'a> {
         let needs_object_code = sess.opts.output_types.should_codegen();
@@ -340,17 +338,9 @@ impl<'a> CrateLocator<'a> {
             },
             hash,
             extra_filename,
-            target: if is_host { &sess.host } else { &sess.target },
-            triple: if is_host {
-                TargetTriple::from_triple(config::host_triple())
-            } else {
-                sess.opts.target_triple.clone()
-            },
-            filesearch: if is_host {
-                sess.host_filesearch(path_kind)
-            } else {
-                sess.target_filesearch(path_kind)
-            },
+            target: &sess.target,
+            triple: sess.opts.target_triple.clone(),
+            filesearch: sess.target_filesearch(path_kind),
             is_proc_macro: false,
             crate_rejections: CrateRejections::default(),
         }
@@ -424,12 +414,18 @@ impl<'a> CrateLocator<'a> {
                 debug!("testing {}", spf.path.display());
 
                 let f = &spf.file_name_str;
-                let (hash, kind) = if f.starts_with(rlib_prefix) && f.ends_with(rlib_suffix) {
-                    (&f[rlib_prefix.len()..(f.len() - rlib_suffix.len())], CrateFlavor::Rlib)
-                } else if f.starts_with(rmeta_prefix) && f.ends_with(rmeta_suffix) {
-                    (&f[rmeta_prefix.len()..(f.len() - rmeta_suffix.len())], CrateFlavor::Rmeta)
-                } else if f.starts_with(dylib_prefix) && f.ends_with(dylib_suffix.as_ref()) {
-                    (&f[dylib_prefix.len()..(f.len() - dylib_suffix.len())], CrateFlavor::Dylib)
+                let (hash, kind) = if let Some(f) = f.strip_prefix(rlib_prefix)
+                    && let Some(f) = f.strip_suffix(rlib_suffix)
+                {
+                    (f, CrateFlavor::Rlib)
+                } else if let Some(f) = f.strip_prefix(rmeta_prefix)
+                    && let Some(f) = f.strip_suffix(rmeta_suffix)
+                {
+                    (f, CrateFlavor::Rmeta)
+                } else if let Some(f) = f.strip_prefix(dylib_prefix)
+                    && let Some(f) = f.strip_suffix(dylib_suffix.as_ref())
+                {
+                    (f, CrateFlavor::Dylib)
                 } else {
                     if f.starts_with(staticlib_prefix) && f.ends_with(staticlib_suffix.as_ref()) {
                         self.crate_rejections.via_kind.push(CrateMismatch {

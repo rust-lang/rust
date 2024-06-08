@@ -1,6 +1,7 @@
 //! This test checks rustdoc `-` (stdin) handling
 
-use run_make_support::{rustdoc, tmp_dir};
+use run_make_support::rustdoc;
+use std::path::PathBuf;
 
 static INPUT: &str = r#"
 //! ```
@@ -10,8 +11,7 @@ pub struct F;
 "#;
 
 fn main() {
-    let tmp_dir = tmp_dir();
-    let out_dir = tmp_dir.join("doc");
+    let out_dir = PathBuf::from("doc");
 
     // rustdoc -
     rustdoc().arg("-").out_dir(&out_dir).stdin(INPUT).run();

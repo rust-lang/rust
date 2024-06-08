@@ -84,6 +84,7 @@ impl<'a> State<'a> {
             Node::ImplItem(a) => self.print_impl_item(a),
             Node::Variant(a) => self.print_variant(a),
             Node::AnonConst(a) => self.print_anon_const(a),
+            Node::ConstBlock(a) => self.print_inline_const(a),
             Node::Expr(a) => self.print_expr(a),
             Node::ExprField(a) => self.print_expr_field(a),
             Node::Stmt(a) => self.print_stmt(a),
@@ -1049,10 +1050,10 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_inline_const(&mut self, constant: &hir::Expr<'_>) {
+    fn print_inline_const(&mut self, constant: &hir::ConstBlock) {
         self.ibox(INDENT_UNIT);
         self.word_space("const");
-        self.print_expr(constant);
+        self.ann.nested(self, Nested::Body(constant.body));
         self.end()
     }
 

@@ -69,6 +69,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
+use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
@@ -135,8 +136,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
     type Clause = Clause<'tcx>;
-
     type Clauses = ty::Clauses<'tcx>;
+
+    fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
+        self.expand_abstract_consts(t)
+    }
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -146,6 +150,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn generics_of(self, def_id: DefId) -> &'tcx ty::Generics {
         self.generics_of(def_id)
+    }
+
+    type VariancesOf = &'tcx [ty::Variance];
+
+    fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf {
+        self.variances_of(def_id)
     }
 
     fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
@@ -205,7 +215,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_args(args)
     }
 
-    fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs {
+    fn mk_args_from_iter<I, T>(self, args: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::GenericArg, Self::GenericArgs>,
+    {
         self.mk_args_from_iter(args)
     }
 
@@ -224,12 +238,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.arena.alloc(step)
     }
 
+    fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::Ty, Self::Tys>,
+    {
+        self.mk_type_list_from_iter(args)
+    }
+
     fn parent(self, def_id: Self::DefId) -> Self::DefId {
         self.parent(def_id)
     }
 
     fn recursion_limit(self) -> usize {
         self.recursion_limit().0
+    }
+
+    type Features = &'tcx rustc_feature::Features;
+
+    fn features(self) -> Self::Features {
+        self.features()
     }
 }
 
@@ -246,6 +274,12 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
 
     fn prefix_str(self) -> &'static str {
         self.prefix_str()
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
+    fn generic_const_exprs(self) -> bool {
+        self.generic_const_exprs
     }
 }
 
@@ -740,7 +774,6 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
                 1,
             ),
             bodies,
-            has_inline_consts: false,
         })));
         self.feed_owner_id().hir_attrs(attrs);
     }
