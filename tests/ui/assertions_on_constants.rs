@@ -1,4 +1,4 @@
-#![allow(non_fmt_panics, clippy::needless_bool)]
+#![allow(non_fmt_panics, clippy::needless_bool, clippy::eq_op)]
 
 macro_rules! assert_const {
     ($len:expr) => {
@@ -47,14 +47,18 @@ fn main() {
     assert!(!CFG_FLAG);
 
     const _: () = assert!(true);
+    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+
+    assert!(8 == (7 + 1));
+    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
 
     // Don't lint if the value is dependent on a defined constant:
     const N: usize = 1024;
     const _: () = assert!(N.is_power_of_two());
 }
 
-#[allow(clippy::eq_op)]
 const _: () = {
     assert!(true);
+    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
     assert!(8 == (7 + 1));
 };

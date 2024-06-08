@@ -1,8 +1,8 @@
-use clippy_utils::consts::{constant_with_source, Constant, ConstantSource};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_inside_always_const_context;
 use clippy_utils::macros::{find_assert_args, root_macro_call_first_node, PanicExpn};
-use rustc_hir::{Expr, Item, ItemKind, Node};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -32,10 +32,6 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
 impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if is_inside_always_const_context(cx.tcx, e.hir_id) {
-            return;
-        }
-
         let Some(macro_call) = root_macro_call_first_node(cx, e) else {
             return;
         };
@@ -47,17 +43,16 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
         let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn) else {
             return;
         };
-        let Some((Constant::Bool(val), source)) = constant_with_source(cx, cx.typeck_results(), condition) else {
+        let Some(Constant::Bool(val)) = constant(cx, cx.typeck_results(), condition) else {
             return;
         };
-        if let ConstantSource::Constant = source
-            && let Node::Item(Item {
-                kind: ItemKind::Const(..),
-                ..
-            }) = cx.tcx.parent_hir_node(e.hir_id)
-        {
-            return;
+
+        match condition.kind {
+            ExprKind::Path(..) | ExprKind::Lit(_) => {},
+            _ if is_inside_always_const_context(cx.tcx, e.hir_id) => return,
+            _ => {},
         }
+
         if val {
             span_lint_and_help(
                 cx,

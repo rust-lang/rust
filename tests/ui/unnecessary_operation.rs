@@ -128,4 +128,5 @@ const _: () = {
 
 const fn foo() {
     [42, 55][get_usize()];
+    //~^ ERROR: unnecessary operation
 }
