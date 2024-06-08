@@ -60,6 +60,7 @@ impl<'tcx> MirPass<'tcx> for PromoteArraysOpt<'tcx> {
 
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        use hir::ConstContext::{Const, Static};
         debug!("running on body: {:?}", body.source.def_id());
         // There's not really any point in promoting errorful MIR.
         //
@@ -72,16 +73,12 @@ impl<'tcx> MirPass<'tcx> for PromoteArraysOpt<'tcx> {
             return;
         }
 
+        let ccx = ConstCx::new(tcx, body);
         // Ignore static/const items. Already processed by PromoteTemps
-        if let Some(ctx) = tcx.hir().body_const_context(body.source.def_id()) {
-            use hir::ConstContext::*;
-            match ctx {
-                Static(_) | Const { inline: _ } => return,
-                _ => {}
-            }
+        if let Some(Static(_) | Const { inline: _ }) = ccx.const_kind {
+            return;
         }
 
-        let ccx = ConstCx::new(tcx, body);
         let (mut temps, mut all_candidates, already_promoted) = collect_temps_and_candidates(&ccx);
 
         let promotable_candidates = validate_candidates(&ccx, &mut temps, &mut all_candidates);

@@ -5,7 +5,7 @@
 struct F32x8([f32; 8]);
 
 // EMIT_MIR const_array_locals.main.PromoteArraysOpt.diff
-// CHECK-LABEL: fn main() -> () {
+// CHECK-LABEL: fn main(
 #[rustfmt::skip]
 pub fn main() {
     // CHECK: let [[array_lit:_.*]]: [i32; 32];
