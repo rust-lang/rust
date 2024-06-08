@@ -24,10 +24,17 @@ pub(crate) struct DocTest {
     pub(crate) crate_attrs: String,
     pub(crate) crates: String,
     pub(crate) everything_else: String,
+    pub(crate) test_id: Option<String>,
 }
 
 impl DocTest {
-    pub(crate) fn new(source: &str, crate_name: Option<&str>, edition: Edition) -> Self {
+    pub(crate) fn new(
+        source: &str,
+        crate_name: Option<&str>,
+        edition: Edition,
+        // If `test_id` is `None`, it means we're generating code for a code example "run" link.
+        test_id: Option<String>,
+    ) -> Self {
         let (crate_attrs, everything_else, crates) = partition_source(source, edition);
         let mut supports_color = false;
 
@@ -45,6 +52,7 @@ impl DocTest {
                 crates,
                 everything_else,
                 already_has_extern_crate: false,
+                test_id,
             };
         };
         Self {
@@ -54,6 +62,7 @@ impl DocTest {
             crates,
             everything_else,
             already_has_extern_crate,
+            test_id,
         }
     }
 
@@ -64,8 +73,6 @@ impl DocTest {
         test_code: &str,
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
-        // If `test_id` is `None`, it means we're generating code for a code example "run" link.
-        test_id: Option<&str>,
         crate_name: Option<&str>,
     ) -> (String, usize) {
         let mut line_offset = 0;
@@ -118,12 +125,12 @@ impl DocTest {
             let returns_result = everything_else.ends_with("(())");
             // Give each doctest main function a unique name.
             // This is for example needed for the tooling around `-C instrument-coverage`.
-            let inner_fn_name = if let Some(test_id) = test_id {
+            let inner_fn_name = if let Some(ref test_id) = self.test_id {
                 format!("_doctest_main_{test_id}")
             } else {
                 "_inner".into()
             };
-            let inner_attr = if test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
+            let inner_attr = if self.test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
             let (main_pre, main_post) = if returns_result {
                 (
                     format!(
@@ -131,7 +138,7 @@ impl DocTest {
                     ),
                     format!("\n}} {inner_fn_name}().unwrap() }}"),
                 )
-            } else if test_id.is_some() {
+            } else if self.test_id.is_some() {
                 (
                     format!("fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
                     format!("\n}} {inner_fn_name}() }}"),
