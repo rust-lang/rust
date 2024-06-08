@@ -28,7 +28,7 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_macros::extension;
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
-use rustc_middle::ty::error::TypeError::{self, Sorts};
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::PrintPolyTraitRefExt;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
@@ -3842,7 +3842,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let Some(failed_pred) = failed_pred.as_projection_clause()
                     && let Some(found) = failed_pred.skip_binder().term.as_type()
                 {
-                    type_diffs = vec![Sorts(ty::error::ExpectedFound {
+                    type_diffs = vec![TypeError::Sorts(ty::error::ExpectedFound {
                         expected: where_pred
                             .skip_binder()
                             .projection_term
@@ -3985,7 +3985,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 continue;
             };
             for diff in type_diffs {
-                let Sorts(expected_found) = diff else {
+                let TypeError::Sorts(expected_found) = diff else {
                     continue;
                 };
                 if tcx.is_diagnostic_item(sym::IteratorItem, *def_id)
@@ -4165,7 +4165,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     };
                     if primary_spans.is_empty()
                         || type_diffs.iter().any(|diff| {
-                            let Sorts(expected_found) = diff else {
+                            let TypeError::Sorts(expected_found) = diff else {
                                 return false;
                             };
                             self.can_eq(param_env, expected_found.found, ty)
@@ -4198,7 +4198,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
                         if !self.can_eq(param_env, ty, *prev_ty) {
                             if type_diffs.iter().any(|diff| {
-                                let Sorts(expected_found) = diff else {
+                                let TypeError::Sorts(expected_found) = diff else {
                                     return false;
                                 };
                                 self.can_eq(param_env, expected_found.found, ty)
@@ -4248,7 +4248,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let ocx = ObligationCtxt::new(self.infcx);
         let mut assocs_in_this_method = Vec::with_capacity(type_diffs.len());
         for diff in type_diffs {
-            let Sorts(expected_found) = diff else {
+            let TypeError::Sorts(expected_found) = diff else {
                 continue;
             };
             let ty::Alias(ty::Projection, proj) = expected_found.expected.kind() else {

@@ -46,11 +46,10 @@ struct SemiUsedStruct;
 impl SemiUsedStruct {
     fn la_la_la() {}
 }
-struct StructUsedAsField;
+struct StructUsedAsField; //~ ERROR struct `StructUsedAsField` is never constructed
 pub struct StructUsedInEnum;
 struct StructUsedInGeneric;
-pub struct PubStruct2 {
-    #[allow(dead_code)]
+pub struct PubStruct2 { //~ ERROR struct `PubStruct2` is never constructed
     struct_used_as_field: *const StructUsedAsField
 }
 

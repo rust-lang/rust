@@ -20,7 +20,7 @@ use tracing::debug;
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
-pub enum PathStyle {
+pub(super) enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
     /// with something else. For example, in expressions `segment < ....` can be interpreted
     /// as a comparison and `segment ( ....` can be interpreted as a function call.

@@ -1,14 +1,14 @@
 //@ only-wasm32-wasip1
 //@ needs-wasmtime
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::rustc;
 use std::path::Path;
 use std::process::Command;
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
 
-    let file = tmp_dir().join("foo.wasm");
+    let file = Path::new("foo.wasm");
 
     run(&file, "return_two_i32", "1\n2\n");
     run(&file, "return_two_i64", "3\n4\n");

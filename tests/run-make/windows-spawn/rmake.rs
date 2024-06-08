@@ -1,6 +1,6 @@
 //@ only-windows
 
-use run_make_support::{run, rustc, tmp_dir};
+use run_make_support::{run, rustc};
 
 // On Windows `Command` uses `CreateProcessW` to run a new process.
 // However, in the past std used to not pass in the application name, leaving
@@ -10,8 +10,7 @@ use run_make_support::{run, rustc, tmp_dir};
 // `foo bar.exe` if foo.exe does not exist. Which is clearly not desired.
 
 fn main() {
-    let out_dir = tmp_dir();
-    rustc().input("hello.rs").output(out_dir.join("hopefullydoesntexist bar.exe")).run();
+    rustc().input("hello.rs").output("hopefullydoesntexist bar.exe").run();
     rustc().input("spawn.rs").run();
     run("spawn");
 }

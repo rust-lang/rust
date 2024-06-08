@@ -3367,7 +3367,7 @@ impl Target {
 
                 // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
                 // as a fallback.
-                let rustlib_path = crate::target_rustlib_path(sysroot, target_triple);
+                let rustlib_path = crate::relative_target_rustlib_path(sysroot, target_triple);
                 let p = PathBuf::from_iter([
                     Path::new(sysroot),
                     Path::new(&rustlib_path),

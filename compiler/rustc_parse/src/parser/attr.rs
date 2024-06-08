@@ -7,7 +7,7 @@ use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter};
 use rustc_errors::{codes::*, Diag, PResult};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, symbol::kw, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -252,9 +252,23 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtMeta, |attr| attr.into_inner());
 
         let do_parse = |this: &mut Self| {
+            let is_unsafe = this.eat_keyword(kw::Unsafe);
+            let unsafety = if is_unsafe {
+                let unsafe_span = this.prev_token.span;
+                this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
+                this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+
+                ast::Safety::Unsafe(unsafe_span)
+            } else {
+                ast::Safety::Default
+            };
+
             let path = this.parse_path(PathStyle::Mod)?;
             let args = this.parse_attr_args()?;
-            Ok(ast::AttrItem { path, args, tokens: None })
+            if is_unsafe {
+                this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+            }
+            Ok(ast::AttrItem { unsafety, path, args, tokens: None })
         };
         // Attr items don't have attributes
         if capture_tokens { self.collect_tokens_no_attrs(do_parse) } else { do_parse(self) }
@@ -375,10 +389,25 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
+        let is_unsafe = self.eat_keyword(kw::Unsafe);
+        let unsafety = if is_unsafe {
+            let unsafe_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
+            self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+
+            ast::Safety::Unsafe(unsafe_span)
+        } else {
+            ast::Safety::Default
+        };
+
         let path = self.parse_path(PathStyle::Mod)?;
         let kind = self.parse_meta_item_kind()?;
+        if is_unsafe {
+            self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+        }
         let span = lo.to(self.prev_token.span);
-        Ok(ast::MetaItem { path, kind, span })
+
+        Ok(ast::MetaItem { unsafety, path, kind, span })
     }
 
     pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {

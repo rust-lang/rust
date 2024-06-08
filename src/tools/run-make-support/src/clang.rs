@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::{bin_name, env_var, handle_failed_output, tmp_dir};
+use crate::{bin_name, env_var, handle_failed_output};
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
 pub fn clang() -> Clang {
@@ -30,11 +30,11 @@ impl Clang {
         self
     }
 
-    /// Specify the name of the executable. The executable will be placed under `$TMPDIR`, and the
-    /// extension will be determined by [`bin_name`].
+    /// Specify the name of the executable. The executable will be placed under the current directory
+    /// and the extension will be determined by [`bin_name`].
     pub fn out_exe(&mut self, name: &str) -> &mut Self {
         self.cmd.arg("-o");
-        self.cmd.arg(tmp_dir().join(bin_name(name)));
+        self.cmd.arg(bin_name(name));
         self
     }
 

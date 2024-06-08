@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
+use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
 use std::fmt;
 use std::ops::Index;
@@ -97,7 +97,7 @@ pub struct OutlivesConstraint<'tcx> {
     pub category: ConstraintCategory<'tcx>,
 
     /// Variance diagnostic information
-    pub variance_info: VarianceDiagInfo<'tcx>,
+    pub variance_info: VarianceDiagInfo<TyCtxt<'tcx>>,
 
     /// If this constraint is promoted from closure requirements.
     pub from_closure: bool,

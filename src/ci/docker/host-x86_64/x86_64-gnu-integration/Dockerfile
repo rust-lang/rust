@@ -1,3 +1,6 @@
+# This job builds a toolchain capable of building Fuchsia, and then builds
+# Fuchsia. See the build-fuchsia.sh script in this directory for more details.
+
 FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive

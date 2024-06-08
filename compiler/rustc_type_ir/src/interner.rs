@@ -6,6 +6,7 @@ use std::ops::Deref;
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
+use crate::relate::Relate;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, DebugWithInfcx};
@@ -25,8 +26,8 @@ pub trait Interner:
     + IrPrint<ty::CoercePredicate<Self>>
     + IrPrint<ty::FnSig<Self>>
 {
-    type DefId: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
-    type AdtDef: Copy + Debug + Hash + Eq;
+    type DefId: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
+    type AdtDef: AdtDef<Self>;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + Deref<Target = [Self::GenericArg]>;
@@ -35,8 +36,15 @@ pub trait Interner:
         + Hash
         + Eq
         + IntoKind<Kind = ty::GenericArgKind<Self>>
-        + TypeVisitable<Self>;
-    type Term: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<Self>> + TypeVisitable<Self>;
+        + TypeVisitable<Self>
+        + Relate<Self>;
+    type Term: Copy
+        + Debug
+        + Hash
+        + Eq
+        + IntoKind<Kind = ty::TermKind<Self>>
+        + TypeFoldable<Self>
+        + Relate<Self>;
 
     type BoundVarKinds: Copy
         + Debug
@@ -66,11 +74,11 @@ pub trait Interner:
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
-    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq + Relate<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
-    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
-    type Safety: Safety<Self>;
-    type Abi: Abi<Self>;
+    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self> + Relate<Self>;
+    type Safety: Safety<Self> + TypeFoldable<Self> + Relate<Self>;
+    type Abi: Abi<Self> + TypeFoldable<Self> + Relate<Self>;
 
     // Kinds of consts
     type Const: Const<Self>;
@@ -78,7 +86,7 @@ pub trait Interner:
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
-    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq + Relate<Self>;
 
     // Kinds of regions
     type Region: Region<Self>;
@@ -93,10 +101,15 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
+    fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
+
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
+
+    type VariancesOf: Copy + Debug + Deref<Target = [ty::Variance]>;
+    fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
     // FIXME: Remove after uplifting `EarlyBinder`
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
@@ -112,7 +125,12 @@ pub trait Interner:
     ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
-    fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs;
+
+    fn mk_args_from_iter<I, T>(self, args: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::GenericArg, Self::GenericArgs>;
+
     fn check_and_mk_args(
         self,
         def_id: Self::DefId,
@@ -124,9 +142,17 @@ pub trait Interner:
         step: CanonicalGoalEvaluationStep<Self>,
     ) -> Self::CanonicalGoalEvaluationStepRef;
 
+    fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::Ty, Self::Tys>;
+
     fn parent(self, def_id: Self::DefId) -> Self::DefId;
 
     fn recursion_limit(self) -> usize;
+
+    type Features: Features<Self>;
+    fn features(self) -> Self::Features;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

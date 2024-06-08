@@ -344,6 +344,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
         walk_anon_const(self, c)
     }
+    fn visit_inline_const(&mut self, c: &'v ConstBlock) -> Self::Result {
+        walk_inline_const(self, c)
+    }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) -> Self::Result {
         walk_expr(self, ex)
     }
@@ -718,6 +721,14 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
     visitor.visit_nested_body(constant.body)
 }
 
+pub fn walk_inline_const<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    constant: &'v ConstBlock,
+) -> V::Result {
+    try_visit!(visitor.visit_id(constant.hir_id));
+    visitor.visit_nested_body(constant.body)
+}
+
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) -> V::Result {
     try_visit!(visitor.visit_id(expression.hir_id));
     match expression.kind {
@@ -725,7 +736,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprKind::ConstBlock(ref const_block) => {
-            try_visit!(visitor.visit_expr(const_block))
+            try_visit!(visitor.visit_inline_const(const_block))
         }
         ExprKind::Repeat(ref element, ref count) => {
             try_visit!(visitor.visit_expr(element));

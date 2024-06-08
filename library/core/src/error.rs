@@ -1,5 +1,5 @@
 #![doc = include_str!("error.md")]
-#![unstable(feature = "error_in_core", issue = "103765")]
+#![stable(feature = "error_in_core", since = "CURRENT_RUSTC_VERSION")]
 
 #[cfg(test)]
 mod tests;
@@ -130,7 +130,6 @@ pub trait Error: Debug + Display {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     /// use core::fmt;
     /// use core::error::{request_ref, Request};
     ///
@@ -361,8 +360,7 @@ impl dyn Error {
 /// Get a string value from an error.
 ///
 /// ```rust
-/// # #![feature(error_generic_member_access)]
-/// # #![feature(error_in_core)]
+/// #![feature(error_generic_member_access)]
 /// use std::error::Error;
 /// use core::error::request_value;
 ///
@@ -385,8 +383,7 @@ where
 /// Get a string reference from an error.
 ///
 /// ```rust
-/// # #![feature(error_generic_member_access)]
-/// # #![feature(error_in_core)]
+/// #![feature(error_generic_member_access)]
 /// use core::error::Error;
 /// use core::error::request_ref;
 ///
@@ -458,7 +455,6 @@ where
 ///
 /// ```
 /// #![feature(error_generic_member_access)]
-/// #![feature(error_in_core)]
 /// use core::fmt;
 /// use core::error::Request;
 /// use core::error::request_ref;
@@ -529,7 +525,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -564,7 +559,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -600,7 +594,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -633,7 +626,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -700,7 +692,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     /// use core::error::request_value;
@@ -788,7 +779,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     /// use core::error::request_ref;

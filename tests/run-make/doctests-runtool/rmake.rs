@@ -1,12 +1,11 @@
 // Tests behavior of rustdoc `--runtool`.
 
-use run_make_support::{rustc, rustdoc, tmp_dir};
-use std::env::current_dir;
+use run_make_support::{rustc, rustdoc};
 use std::fs::{create_dir, remove_dir_all};
 use std::path::PathBuf;
 
 fn mkdir(name: &str) -> PathBuf {
-    let dir = tmp_dir().join(name);
+    let dir = PathBuf::from(name);
     create_dir(&dir).expect("failed to create doctests folder");
     dir
 }
@@ -22,7 +21,7 @@ fn main() {
     rustc().input("runtool.rs").output(&run_tool_binary).run();
 
     rustdoc()
-        .input(current_dir().unwrap().join("t.rs"))
+        .input("t.rs")
         .arg("-Zunstable-options")
         .arg("--test")
         .arg("--test-run-directory")
@@ -30,7 +29,6 @@ fn main() {
         .arg("--runtool")
         .arg(&run_tool_binary)
         .extern_("t", "libt.rlib")
-        .current_dir(tmp_dir())
         .run();
 
     remove_dir_all(run_dir);

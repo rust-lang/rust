@@ -211,7 +211,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.hir().maybe_body_owned_by(def_id).is_some()
+    tcx.mir_keys(()).contains(&def_id)
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
@@ -221,16 +221,6 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
 
     // All body-owners have MIR associated with them.
     set.extend(tcx.hir().body_owners());
-
-    // Inline consts' bodies are created in
-    // typeck instead of during ast lowering, like all other bodies so far.
-    for def_id in tcx.hir().body_owners() {
-        // Incremental performance optimization: only load typeck results for things that actually have inline consts
-        if tcx.hir_owner_nodes(tcx.hir().body_owned_by(def_id).id().hir_id.owner).has_inline_consts
-        {
-            set.extend(tcx.typeck(def_id).inline_consts.values())
-        }
-    }
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.

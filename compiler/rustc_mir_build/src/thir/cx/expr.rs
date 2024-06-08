@@ -671,9 +671,9 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::OffsetOf { container, fields }
             }
 
-            hir::ExprKind::ConstBlock(body) => {
-                let ty = self.typeck_results().node_type(body.hir_id);
-                let did = self.typeck_results().inline_consts[&expr.hir_id.local_id].into();
+            hir::ExprKind::ConstBlock(ref anon_const) => {
+                let ty = self.typeck_results().node_type(anon_const.hir_id);
+                let did = anon_const.def_id.to_def_id();
                 let typeck_root_def_id = tcx.typeck_root_def_id(did);
                 let parent_args =
                     tcx.erase_regions(GenericArgs::identity_for_item(tcx, typeck_root_def_id));

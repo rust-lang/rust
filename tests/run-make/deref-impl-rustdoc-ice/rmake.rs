@@ -7,10 +7,10 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rustc, rustdoc, tmp_dir};
+use run_make_support::{cwd, rustc, rustdoc};
 
 fn main() {
     rustc().input("foo.rs").run();
     rustc().input("bar.rs").run();
-    rustdoc().input("baz.rs").library_search_path(tmp_dir()).output(tmp_dir()).run();
+    rustdoc().input("baz.rs").library_search_path(cwd()).output(cwd()).run();
 }

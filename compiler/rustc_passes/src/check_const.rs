@@ -196,6 +196,11 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         self.recurse_into(kind, None, |this| intravisit::walk_anon_const(this, anon));
     }
 
+    fn visit_inline_const(&mut self, block: &'tcx hir::ConstBlock) {
+        let kind = Some(hir::ConstContext::Const { inline: true });
+        self.recurse_into(kind, None, |this| intravisit::walk_inline_const(this, block));
+    }
+
     fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         let owner = self.tcx.hir().body_owner_def_id(body.id());
         let kind = self.tcx.hir().body_const_context(owner);
@@ -222,11 +227,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
                 if let Some(expr) = non_const_expr {
                     self.const_check_violated(expr, e.span);
                 }
-            }
-            hir::ExprKind::ConstBlock(expr) => {
-                let kind = Some(hir::ConstContext::Const { inline: true });
-                self.recurse_into(kind, None, |this| intravisit::walk_expr(this, expr));
-                return;
             }
 
             _ => {}

@@ -12,24 +12,20 @@
 
 use std::fs::remove_file;
 
-use run_make_support::{cc, dynamic_lib, is_msvc, run, rustc, tmp_dir};
+use run_make_support::{cc, cwd, dynamic_lib_name, is_msvc, run, rustc};
 
 fn main() {
     rustc().input("bar.rs").run();
     rustc().input("foo.rs").run();
 
     if is_msvc() {
-        cc().input("foo.c").arg(tmp_dir().join("foo.dll.lib")).out_exe("foo").run();
+        cc().input("foo.c").arg("foo.dll.lib").out_exe("foo").run();
     } else {
-        cc().input("foo.c")
-            .arg("-lfoo")
-            .output(tmp_dir().join("foo"))
-            .library_search_path(tmp_dir())
-            .run();
+        cc().input("foo.c").arg("-lfoo").library_search_path(cwd()).output("foo").run();
     }
 
     run("foo");
-    remove_file(dynamic_lib("foo")).unwrap();
+    remove_file(dynamic_lib_name("foo")).unwrap();
 
     rustc().input("foo.rs").arg("-Clto").run();
     run("foo");

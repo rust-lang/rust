@@ -1,4 +1,5 @@
 //@ run-rustfix
+#[allow(dead_code)]
 pub struct LipogramCorpora {
     selections: Vec<(char, Option<String>)>,
 }
@@ -17,6 +18,7 @@ impl LipogramCorpora {
     }
 }
 
+#[allow(dead_code)]
 pub struct LipogramCorpora2 {
     selections: Vec<(char, Result<String, String>)>,
 }

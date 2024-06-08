@@ -25,15 +25,21 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     match attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
-            check_builtin_attribute(psess, attr, *name, *template)
+            match parse_meta(psess, attr) {
+                Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, *name, *template),
+                Err(err) => {
+                    err.emit();
+                }
+            }
         }
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
-            parse_meta(psess, attr)
-                .map_err(|err| {
+            match parse_meta(psess, attr) {
+                Ok(_) => {}
+                Err(err) => {
                     err.emit();
-                })
-                .ok();
+                }
+            }
         }
         _ => {}
     }
@@ -42,6 +48,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
 pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     let item = attr.get_normal_item();
     Ok(MetaItem {
+        unsafety: item.unsafety,
         span: attr.span,
         path: item.path.clone(),
         kind: match &item.args {
@@ -103,7 +110,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
     })
 }
 
-pub fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
@@ -113,7 +120,7 @@ pub fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter
     });
 }
 
-pub fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
@@ -130,20 +137,6 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
         MetaItemKind::List(..) => template.list.is_some(),
         MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
         MetaItemKind::NameValue(..) => false,
-    }
-}
-
-pub fn check_builtin_attribute(
-    psess: &ParseSess,
-    attr: &Attribute,
-    name: Symbol,
-    template: AttributeTemplate,
-) {
-    match parse_meta(psess, attr) {
-        Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, name, template),
-        Err(err) => {
-            err.emit();
-        }
     }
 }
 

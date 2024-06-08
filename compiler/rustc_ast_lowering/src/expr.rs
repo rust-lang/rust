@@ -75,8 +75,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(c) => {
-                    self.has_inline_consts = true;
-                    hir::ExprKind::ConstBlock(self.lower_expr(c))
+                    let c = self.with_new_scopes(c.value.span, |this| hir::ConstBlock {
+                        def_id: this.local_def_id(c.id),
+                        hir_id: this.lower_node_id(c.id),
+                        body: this.lower_const_body(c.value.span, Some(&c.value)),
+                    });
+                    hir::ExprKind::ConstBlock(c)
                 }
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
@@ -1801,6 +1805,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let attr = attr::mk_attr_nested_word(
             &self.tcx.sess.psess.attr_id_generator,
             AttrStyle::Outer,
+            Safety::Default,
             sym::allow,
             sym::unreachable_code,
             self.lower_span(span),

@@ -1,6 +1,5 @@
 #![feature(array_windows)]
 #![feature(is_sorted)]
-#![allow(rustc::potential_query_instability)]
 
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;

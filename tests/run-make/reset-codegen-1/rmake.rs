@@ -7,12 +7,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::rustc;
 use std::fs;
 
 fn compile(output_file: &str, emit: Option<&str>) {
     let mut rustc = rustc();
-    let rustc = rustc.codegen_units(4).output(tmp_dir().join(output_file)).input("foo.rs");
+    let rustc = rustc.codegen_units(4).output(output_file).input("foo.rs");
     if let Some(emit) = emit {
         rustc.emit(emit);
     }
