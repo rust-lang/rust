@@ -188,6 +188,7 @@ impl<'tcx> Const<'tcx> {
     /// `param_def_id` is the [`DefId`] of the declared param that this [`ConstArg`] is being
     /// supplied to. We need this in case this `ConstArg` is a [`ConstArgKind::Anon`]
     /// so we can tell the [`AnonConst`] what type it should be.
+    #[instrument(skip(tcx), level = "debug")]
     pub fn from_const_arg(
         tcx: TyCtxt<'tcx>,
         const_arg: &'tcx hir::ConstArg<'tcx>,
@@ -203,6 +204,7 @@ impl<'tcx> Const<'tcx> {
     ///
     /// This distinction is only relevant for [`hir::ConstArgKind::Anon`];
     /// see [`Self::from_const_arg_without_feeding`].
+    #[instrument(skip(tcx), level = "debug")]
     pub fn from_const_arg_without_feeding(
         tcx: TyCtxt<'tcx>,
         const_arg: &'tcx hir::ConstArg<'tcx>,
