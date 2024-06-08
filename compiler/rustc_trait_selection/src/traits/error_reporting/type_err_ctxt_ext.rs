@@ -638,20 +638,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             err.span_label(span, explanation);
                         }
 
-                        if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
-                            if !self.tcx.object_safety_violations(trait_ref.def_id()).is_empty() {
-                                if let ObligationCauseCode::SizedCallReturnType(did)
-                                    = obligation.cause.code()
-                                {
-                                    let fn_sig = self.tcx.fn_sig(did);
-                                    let ret_kind =
-                                        fn_sig.skip_binder().output().skip_binder().kind();
-                                    if let ty::Param(param_ty) = ret_kind
-                                        && param_ty.name == kw::SelfUpper
-                                    {
-                                        return err.delay_as_bug();
-                                    }
-                                }
+                        if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait()
+                            && let ObligationCauseCode::SizedCallReturnType(did)
+                                = obligation.cause.code()
+                        {
+                            let fn_sig = self.tcx.fn_sig(did);
+                            let ret_kind =
+                                fn_sig.skip_binder().output().skip_binder().kind();
+                            if let ty::Param(param_ty) = ret_kind
+                                && param_ty.name == kw::SelfUpper
+                            {
+                                return err.delay_as_bug();
                             }
                         }
 
