@@ -3625,17 +3625,6 @@ pub unsafe fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
     simd_extract!(a.as_i32x8(), INDEX as u32)
 }
 
-/// Returns the first element of the input vector of `[4 x double]`.
-///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsd_f64)
-#[inline]
-#[target_feature(enable = "avx2")]
-//#[cfg_attr(test, assert_instr(movsd))] FIXME
-#[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
-    simd_extract!(a, 0)
-}
-
 /// Returns the first element of the input vector of `[8 x i32]`.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsi256_si32)
@@ -5774,13 +5763,6 @@ mod tests {
         let r2 = _mm256_extract_epi32::<3>(a);
         assert_eq!(r1, -1);
         assert_eq!(r2, 3);
-    }
-
-    #[simd_test(enable = "avx2")]
-    unsafe fn test_mm256_cvtsd_f64() {
-        let a = _mm256_setr_pd(1., 2., 3., 4.);
-        let r = _mm256_cvtsd_f64(a);
-        assert_eq!(r, 1.);
     }
 
     #[simd_test(enable = "avx2")]

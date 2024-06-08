@@ -889,6 +889,17 @@ pub unsafe fn _mm256_cvtps_pd(a: __m128) -> __m256d {
     simd_cast(a)
 }
 
+/// Returns the first element of the input vector of `[4 x double]`.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsd_f64)
+#[inline]
+#[target_feature(enable = "avx")]
+#[cfg_attr(test, assert_instr(vmovsd))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
+    simd_extract!(a, 0)
+}
+
 /// Converts packed double-precision (64-bit) floating-point elements in `a`
 /// to packed 32-bit integers with truncation.
 ///
@@ -2937,7 +2948,7 @@ pub unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtss_f32)
 #[inline]
 #[target_feature(enable = "avx")]
-//#[cfg_attr(test, assert_instr(movss))] FIXME
+#[cfg_attr(test, assert_instr(vmovss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtss_f32(a: __m256) -> f32 {
     simd_extract!(a, 0)
@@ -3638,6 +3649,13 @@ mod tests {
         let r = _mm256_cvtps_pd(a);
         let e = _mm256_setr_pd(4., 9., 16., 25.);
         assert_eq_m256d(r, e);
+    }
+
+    #[simd_test(enable = "avx")]
+    unsafe fn test_mm256_cvtsd_f64() {
+        let a = _mm256_setr_pd(1., 2., 3., 4.);
+        let r = _mm256_cvtsd_f64(a);
+        assert_eq!(r, 1.);
     }
 
     #[simd_test(enable = "avx")]
