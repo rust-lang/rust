@@ -259,7 +259,7 @@ impl<'tcx> Const<'tcx> {
         let hir::QPath::Resolved(_, &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. }) =
             qpath
         else {
-            bug!("non-param passed to Const::from_param")
+            span_bug!(qpath.span(), "non-param {qpath:?} passed to Const::from_param")
         };
 
         match tcx.named_bound_var(hir_id) {

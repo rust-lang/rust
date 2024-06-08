@@ -1184,11 +1184,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(self.lower_anon_const_as_const_arg_direct(anon))
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn lower_anon_const_as_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
         if let ExprKind::Path(qself, path) = &anon.value.kind
             && let Some(res) = self
                 .resolver
-                .get_partial_res(anon.id)
+                .get_partial_res(anon.value.id)
                 .and_then(|partial_res| partial_res.full_res())
             // FIXME(min_generic_const_exprs): for now we only lower params to ConstArgKind::Path
             && let Res::Def(DefKind::ConstParam, _) = res
