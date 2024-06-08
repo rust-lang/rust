@@ -59,17 +59,18 @@ check-aux:
 		library/alloc \
 		--no-doc
 	# Some doctests have intentional memory leaks.
+	# Some use file system operations to demonstrate dealing with `Result`.
 	$(Q)MIRIFLAGS="-Zmiri-ignore-leaks -Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/core \
 		library/alloc \
 		--doc
-	# In `std` we cannot test everything.
-	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
+	# In `std` we cannot test everything, so we skip some modules.
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		--no-doc -- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
-	$(Q)MIRIFLAGS="-Zmiri-ignore-leaks -Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
+	$(Q)MIRIFLAGS="-Zmiri-ignore-leaks -Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		--doc -- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
