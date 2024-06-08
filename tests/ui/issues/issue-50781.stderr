@@ -29,7 +29,6 @@ LL |     fn foo(&self) where Self: Trait;
    |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
    = help: consider moving `foo` to another trait
    = help: only type `()` implements the trait, consider using it directly instead
-   = note: required for the cast from `&()` to `&dyn X`
 
 error[E0038]: the trait `X` cannot be made into an object
   --> $DIR/issue-50781.rs:16:6

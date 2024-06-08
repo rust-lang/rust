@@ -20,9 +20,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
-            self_ty.kind
-        else {
+        let hir::TyKind::TraitObject(traits, _, TraitObjectSyntax::None) = self_ty.kind else {
+            return None;
+        };
+        let [poly_trait_ref, ..] = traits else {
             return None;
         };
 
@@ -35,6 +36,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .is_some_and(|s| s.trim_end().ends_with('<'));
 
         let is_global = poly_trait_ref.trait_ref.path.is_global();
+
+        let object_safe = traits.iter().all(|ptr| match ptr.trait_ref.path.res {
+            Res::Def(DefKind::Trait, def_id) => tcx.object_safety_violations(def_id).is_empty(),
+            _ => false,
+        });
 
         let mut sugg = vec![(
             self_ty.span.shrink_to_lo(),
@@ -63,10 +69,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
             let mut downgrade = false;
             if self_ty.span.can_be_used_for_suggestions() {
-                let (non_object_safe, should_downgrade) =
-                    self.maybe_suggest_impl_trait(self_ty, &mut diag);
+                let should_downgrade = self.maybe_suggest_impl_trait(self_ty, &mut diag);
                 downgrade = should_downgrade;
-                if !non_object_safe {
+                if object_safe {
                     // Only emit this suggestion if the trait is object safe.
                     diag.multipart_suggestion_verbose(
                         label,
@@ -89,12 +94,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
-                if self_ty.span.can_be_used_for_suggestions() {
-                    lint.multipart_suggestion_verbose(
-                        "if this is an object-safe trait, use `dyn`",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
+                match (object_safe, self_ty.span.can_be_used_for_suggestions()) {
+                    (true, true) => {
+                        lint.multipart_suggestion_verbose(
+                            "as this is an \"object safe\" trait, write `dyn` in front of the \
+                             trait",
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    (true, false) => {
+                        lint.note(
+                            "as this is an \"object safe\" trait, you can write `dyn` in front of \
+                             the trait",
+                        );
+                    }
+                    (false, _) => {
+                        lint.note(
+                            "you can't use write a trait object here because the trait isn't \
+                             \"object safe\"",
+                        );
+                    }
                 }
                 self.maybe_suggest_blanket_trait_impl(self_ty, lint);
             });
@@ -170,7 +190,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Make sure that we are in the condition to suggest `impl Trait`.
     ///
     /// Returns whether a suggestion was provided and whether the error itself should not be emitted
-    fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> (bool, bool) {
+    fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
@@ -185,10 +205,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 owner_id,
                 ..
             }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
-            _ => return (false, false),
+            _ => return false,
         };
         let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
-            return (false, false);
+            return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
         let mut is_downgradable = true;
@@ -201,7 +221,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // For recursive traits, don't downgrade the error. (#119652)
                             is_downgradable = false;
                         }
-                        tcx.is_object_safe(id)
+                        tcx.object_safety_violations(id).is_empty()
                     }
                     _ => false,
                 })
@@ -234,7 +254,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // We'll emit the object safety error already, with a structured suggestion.
                 downgrade = true;
             }
-            return (true, downgrade);
+            return downgrade;
         }
         for ty in sig.decl.inputs {
             if ty.hir_id != self_ty.hir_id {
@@ -279,9 +299,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     Applicability::MachineApplicable,
                 );
             }
-            return (true, downgrade);
+            return downgrade;
         }
-        (false, downgrade)
+        downgrade
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {

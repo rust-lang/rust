@@ -11,6 +11,8 @@ trait B {
 }
 trait C {
     fn f(&self, a: C) -> C;
+    //~^ ERROR associated item referring to unboxed trait object for its own trait
+    //~| ERROR the trait `C` cannot be made into an object
 }
 
 fn main() {}

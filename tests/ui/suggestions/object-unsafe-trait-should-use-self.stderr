@@ -60,6 +60,35 @@ help: alternatively, consider constraining `f` so it does not apply to trait obj
 LL |     fn f(a: B) -> B where Self: Sized;
    |                     +++++++++++++++++
 
-error: aborting due to 4 previous errors
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/object-unsafe-trait-should-use-self.rs:13:20
+   |
+LL | trait C {
+   |       - in this trait
+LL |     fn f(&self, a: C) -> C;
+   |                    ^     ^
+   |
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL |     fn f(&self, a: Self) -> Self;
+   |                    ~~~~     ~~~~
+
+error[E0038]: the trait `C` cannot be made into an object
+  --> $DIR/object-unsafe-trait-should-use-self.rs:13:20
+   |
+LL |     fn f(&self, a: C) -> C;
+   |          -----     ^ `C` cannot be made into an object
+   |          |
+   |          help: consider changing method `f`'s `self` parameter to be `&self` (notice the capitalization): `&Self`
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-should-use-self.rs:13:10
+   |
+LL | trait C {
+   |       - this trait cannot be made into an object...
+LL |     fn f(&self, a: C) -> C;
+   |          ^^^^^ ...because method `f`'s `self` parameter cannot be dispatched on
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

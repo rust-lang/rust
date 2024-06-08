@@ -2,12 +2,7 @@
 
 trait Trait<const N: Trait = bar> {
     //~^ ERROR: cannot find value `bar` in this scope
-    //~| ERROR: cycle detected when computing type of `Trait::N`
-    //~| ERROR: the trait `Trait` cannot be made into an object
-    //~| ERROR: the trait `Trait` cannot be made into an object
-    //~| ERROR: the trait `Trait` cannot be made into an object
-    //~| ERROR: `(dyn Trait<{const error}> + 'static)` is forbidden as the type of a const generic parameter
-    //~| ERROR: trait objects must include the `dyn` keyword
+    //~| ERROR: cycle detected when computing predicates of `Trait`
     async fn a() {}
 }
 

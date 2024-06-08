@@ -4,32 +4,24 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL | fn f(_: impl Trait<T = Copy>) {}
    |                        ^^^^
    |
-help: add `dyn` keyword before this trait
-   |
-LL | fn f(_: impl Trait<T = dyn Copy>) {}
-   |                        +++
 help: you might have meant to write a bound here
    |
 LL | fn f(_: impl Trait<T: Copy>) {}
    |                     ~
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:9:24
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:8:24
    |
 LL | fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
-help: add `dyn` keyword before this trait
-   |
-LL | fn g(_: impl Trait<T = dyn std::fmt::Debug + Eq>) {}
-   |                        +++
 help: you might have meant to write a bound here
    |
 LL | fn g(_: impl Trait<T: std::fmt::Debug + Eq>) {}
    |                     ~
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:14:26
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:12:26
    |
 LL | fn h(_: impl Trait<T<> = 'static + for<'a> Fn(&'a ())>) {}
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,15 +36,10 @@ LL | fn h(_: impl Trait<T<>: 'static + for<'a> Fn(&'a ())>) {}
    |                       ~
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:20:26
+  --> $DIR/suggest-assoc-ty-bound-on-eq-bound.rs:18:26
    |
 LL | type Obj = dyn Trait<T = Clone>;
    |                          ^^^^^
-   |
-help: add `dyn` keyword before this trait
-   |
-LL | type Obj = dyn Trait<T = dyn Clone>;
-   |                          +++
 
 error: aborting due to 4 previous errors
 

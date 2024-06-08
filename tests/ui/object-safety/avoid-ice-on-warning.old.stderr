@@ -18,11 +18,8 @@ LL | fn call_this<F>(f: F) : Fn(&str) + call_that {}
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: you can't use write a trait object here because the trait isn't "object safe"
    = note: `#[warn(bare_trait_objects)]` on by default
-help: if this is an object-safe trait, use `dyn`
-   |
-LL | fn call_this<F>(f: F) : dyn Fn(&str) + call_that {}
-   |                         +++
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

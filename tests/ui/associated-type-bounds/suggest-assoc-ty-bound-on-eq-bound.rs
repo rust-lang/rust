@@ -3,12 +3,10 @@
 
 fn f(_: impl Trait<T = Copy>) {}
 //~^ ERROR trait objects must include the `dyn` keyword
-//~| HELP add `dyn` keyword before this trait
 //~| HELP you might have meant to write a bound here
 
 fn g(_: impl Trait<T = std::fmt::Debug + Eq>) {}
 //~^ ERROR trait objects must include the `dyn` keyword
-//~| HELP add `dyn` keyword before this trait
 //~| HELP you might have meant to write a bound here
 
 fn h(_: impl Trait<T<> = 'static + for<'a> Fn(&'a ())>) {}
@@ -19,7 +17,6 @@ fn h(_: impl Trait<T<> = 'static + for<'a> Fn(&'a ())>) {}
 // Don't suggest assoc ty bound in trait object types, that's not valid:
 type Obj = dyn Trait<T = Clone>;
 //~^ ERROR trait objects must include the `dyn` keyword
-//~| HELP add `dyn` keyword before this trait
 
 trait Trait { type T; }
 

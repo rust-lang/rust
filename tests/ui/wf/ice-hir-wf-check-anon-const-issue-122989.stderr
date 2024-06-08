@@ -1,112 +1,82 @@
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:20
+error[E0391]: cycle detected when computing predicates of `Foo`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
 LL | trait Foo<const N: Bar<2>> {
-   |                    ^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` on by default
-help: if this is an object-safe trait, use `dyn`
+note: ...which requires computing predicates of `Foo`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
-LL | trait Foo<const N: dyn Bar<2>> {
-   |                    +++
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:20
+LL | trait Foo<const N: Bar<2>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing explicit predicates of `Foo`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
-LL | trait Bar<const M: Foo<2>> {}
-   |                    ^^^^^^
+LL | trait Foo<const N: Bar<2>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing explicit predicates of trait `Foo`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is an object-safe trait, use `dyn`
-   |
-LL | trait Bar<const M: dyn Foo<2>> {}
-   |                    +++
-
-error[E0391]: cycle detected when computing type of `Foo::N`
+LL | trait Foo<const N: Bar<2>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing type of `Foo::N`...
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:11
    |
 LL | trait Foo<const N: Bar<2>> {
    |           ^^^^^^^^^^^^^^^
+note: ...which requires determining object safety of trait `Bar`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:1
    |
+LL | trait Bar<const M: Foo<2>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires check whether the item has a `where Self: Sized` bound...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:1
+   |
+LL | trait Bar<const M: Foo<2>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing predicates of `Bar`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:1
+   |
+LL | trait Bar<const M: Foo<2>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing predicates of `Bar`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:1
+   |
+LL | trait Bar<const M: Foo<2>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing explicit predicates of `Bar`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:1
+   |
+LL | trait Bar<const M: Foo<2>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing explicit predicates of trait `Bar`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:1
+   |
+LL | trait Bar<const M: Foo<2>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires computing type of `Bar::M`...
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:11
    |
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `Foo::N`, completing the cycle
-note: cycle used when computing explicit predicates of trait `Foo`
+note: ...which requires determining object safety of trait `Foo`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
+   |
+LL | trait Foo<const N: Bar<2>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires check whether the item has a `where Self: Sized` bound...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:4:5
+   |
+LL |     fn func() {
+   |     ^^^^^^^^^
+   = note: ...which again requires computing predicates of `Foo`, completing the cycle
+note: cycle used when checking that `Foo` is well-formed
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
 LL | trait Foo<const N: Bar<2>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:24
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |                        ^ `Foo` cannot be made into an object
-   |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:8
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |       --- this trait cannot be made into an object...
-...
-LL |     fn func() {}
-   |        ^^^^ ...because associated function `func` has no `self` parameter
-help: consider turning `func` into a method by giving it a `&self` argument
-   |
-LL |     fn func(&self) {}
-   |             +++++
-help: alternatively, consider constraining `func` so it does not apply to trait objects
-   |
-LL |     fn func() where Self: Sized {}
-   |               +++++++++++++++++
+error: aborting due to 1 previous error
 
-error: `(dyn Bar<2> + 'static)` is forbidden as the type of a const generic parameter
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:20
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |                    ^^^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-
-error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
-   |
-LL | trait Bar<const M: Foo<2>> {}
-   |           ^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
-   |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:8:8
-   |
-LL | trait Foo<const N: Bar<2>> {
-   |       --- this trait cannot be made into an object...
-...
-LL |     fn func() {}
-   |        ^^^^ ...because associated function `func` has no `self` parameter
-help: consider turning `func` into a method by giving it a `&self` argument
-   |
-LL |     fn func(&self) {}
-   |             +++++
-help: alternatively, consider constraining `func` so it does not apply to trait objects
-   |
-LL |     fn func() where Self: Sized {}
-   |               +++++++++++++++++
-
-error: `(dyn Foo<2> + 'static)` is forbidden as the type of a const generic parameter
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:20
-   |
-LL | trait Bar<const M: Foo<2>> {}
-   |                    ^^^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-
-error: aborting due to 5 previous errors; 2 warnings emitted
-
-Some errors have detailed explanations: E0038, E0391.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0391`.

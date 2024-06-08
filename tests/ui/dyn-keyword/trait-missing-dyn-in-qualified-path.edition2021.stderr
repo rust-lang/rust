@@ -3,11 +3,6 @@ error[E0782]: trait objects must include the `dyn` keyword
    |
 LL |     let x: u32 = <Default>::default();
    |                   ^^^^^^^
-   |
-help: add `dyn` keyword before this trait
-   |
-LL |     let x: u32 = <dyn Default>::default();
-   |                   +++
 
 error: aborting due to 1 previous error
 
