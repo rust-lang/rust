@@ -18,7 +18,6 @@ use rustc_span::{FileName, Span, DUMMY_SP};
 use super::GlobalTestOptions;
 
 pub(crate) struct DocTest {
-    pub(crate) test_code: String,
     pub(crate) supports_color: bool,
     pub(crate) already_has_extern_crate: bool,
     pub(crate) main_fn_span: Option<Span>,
@@ -40,7 +39,6 @@ impl DocTest {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
             return DocTest {
-                test_code: source.to_string(),
                 supports_color: false,
                 main_fn_span: None,
                 crate_attrs,
@@ -50,7 +48,6 @@ impl DocTest {
             };
         };
         Self {
-            test_code: source.to_string(),
             supports_color,
             main_fn_span,
             crate_attrs,
@@ -64,6 +61,7 @@ impl DocTest {
     /// lines before the test code begins.
     pub(crate) fn generate_unique_doctest(
         &self,
+        test_code: &str,
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
@@ -103,7 +101,7 @@ impl DocTest {
             // NOTE: this is terribly inaccurate because it doesn't actually
             // parse the source, but only has false positives, not false
             // negatives.
-            self.test_code.contains(crate_name)
+            test_code.contains(crate_name)
         {
             // rustdoc implicitly inserts an `extern crate` item for the own crate
             // which may be unused, so we need to allow the lint.

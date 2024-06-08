@@ -12,7 +12,7 @@ fn make_test(
 ) -> (String, usize) {
     let doctest = DocTest::new(test_code, crate_name, DEFAULT_EDITION);
     let (code, line_offset) =
-        doctest.generate_unique_doctest(dont_insert_main, opts, test_id, crate_name);
+        doctest.generate_unique_doctest(test_code, dont_insert_main, opts, test_id, crate_name);
     (code, line_offset)
 }
 
