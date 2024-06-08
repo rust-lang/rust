@@ -359,6 +359,12 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///     - a [slice], then the length of the slice tail must be an initialized
 ///       integer, and the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+///       For the special case where the dynamic tail length is 0, this function
+///       is safe to call.
+//        NOTE: the reason this is safe is that if an overflow were to occur already with size 0,
+//        then we would stop compilation as even the "statically known" part of the type would
+//        already be too big (or the call may be in dead code and optimized away, but then it
+//        doesn't matter).
 ///     - a [trait object], then the vtable part of the pointer must point
 ///       to a valid vtable acquired by an unsizing coercion, and the size
 ///       of the *entire value* (dynamic tail length + statically sized prefix)
@@ -506,6 +512,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///     - a [slice], then the length of the slice tail must be an initialized
 ///       integer, and the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+///       For the special case where the dynamic tail length is 0, this function
+///       is safe to call.
 ///     - a [trait object], then the vtable part of the pointer must point
 ///       to a valid vtable acquired by an unsizing coercion, and the size
 ///       of the *entire value* (dynamic tail length + statically sized prefix)

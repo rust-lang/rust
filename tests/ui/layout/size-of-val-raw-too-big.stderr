@@ -1,0 +1,4 @@
+error: values of the type `Example` are too big for the current architecture
+
+error: aborting due to 1 previous error
+
