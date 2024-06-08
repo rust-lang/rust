@@ -51,13 +51,13 @@ impl RustCollector {
 impl DoctestVisitor for RustCollector {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
         let line = self.get_base_line() + rel_line.offset();
-        self.tests.push(ScrapedDoctest {
-            filename: self.get_filename(),
+        self.tests.push(ScrapedDoctest::new(
+            self.get_filename(),
             line,
-            logical_path: self.cur_path.clone(),
-            langstr: config,
-            text: test,
-        });
+            self.cur_path.clone(),
+            config,
+            test,
+        ));
     }
 
     fn visit_header(&mut self, _name: &str, _level: u32) {}

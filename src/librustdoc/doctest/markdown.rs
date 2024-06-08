@@ -22,13 +22,7 @@ impl DoctestVisitor for MdCollector {
         let filename = self.filename.clone();
         // First line of Markdown is line 1.
         let line = 1 + rel_line.offset();
-        self.tests.push(ScrapedDoctest {
-            filename,
-            line,
-            logical_path: self.cur_path.clone(),
-            langstr: config,
-            text: test,
-        });
+        self.tests.push(ScrapedDoctest::new(filename, line, self.cur_path.clone(), config, test));
     }
 
     fn visit_header(&mut self, name: &str, level: u32) {
