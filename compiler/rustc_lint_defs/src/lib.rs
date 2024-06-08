@@ -747,6 +747,11 @@ pub enum BuiltinLintDiag {
     OutOfScopeMacroCalls {
         path: String,
     },
+    UnexpectedBuiltinCfg {
+        cfg: String,
+        cfg_name: Symbol,
+        controlled_by: &'static str,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
