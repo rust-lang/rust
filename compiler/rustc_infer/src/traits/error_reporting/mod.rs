@@ -5,6 +5,7 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -228,100 +229,10 @@ pub fn report_object_safety_error<'tcx>(
     let mut has_suggested = false;
     if let Some(hir_id) = hir_id {
         let node = tcx.hir_node(hir_id);
-        if let hir::Node::Ty(ty) = node
-            && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
-        {
-            let mut hir_id = hir_id;
-            while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
-                hir_id = ty.hir_id;
-            }
-            if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
-                // Do not suggest `impl Trait` when dealing with things like super-traits.
-                err.span_suggestion_verbose(
-                    ty.span.until(trait_ref.span),
-                    "consider using an opaque type instead",
-                    "impl ",
-                    Applicability::MaybeIncorrect,
-                );
-                has_suggested = true;
-            }
+        if let hir::Node::Ty(ty) = node {
+            has_suggested |= suggest_impl_trait_on_bare_trait(tcx, &mut err, ty);
         }
-        if let hir::Node::Expr(expr) = node
-            && let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, path_segment)) = expr.kind
-            && let hir::TyKind::TraitObject([trait_ref, ..], _, trait_object_syntax) = ty.kind
-        {
-            if let TraitObjectSyntax::None = trait_object_syntax
-                && !expr.span.edition().at_least_rust_2021()
-            {
-                err.span_note(
-                    trait_ref.trait_ref.path.span,
-                    format!(
-                        "`{trait_str}` is the type for the trait in editions 2015 and 2018 and is \
-                         equivalent to writing `dyn {trait_str}`",
-                    ),
-                );
-            }
-            let segment = path_segment.ident;
-            err.help(format!(
-                "when writing `<dyn {trait_str}>::{segment}` you are requiring `{trait_str}` be \
-                 \"object safe\", which it isn't",
-            ));
-            let (only, msg, sugg, appl) = if let [only] = &impls[..] {
-                // We know there's a single implementation for this trait, so we can be explicit on
-                // the type they should have used.
-                let ty = tcx.type_of(*only).instantiate_identity();
-                (
-                    true,
-                    format!(
-                        "specify the specific `impl` for type `{ty}` to avoid requiring \"object \
-                         safety\" from `{trait_str}`",
-                    ),
-                    with_no_trimmed_paths!(format!("{ty} as ")),
-                    Applicability::MachineApplicable,
-                )
-            } else {
-                (
-                    false,
-                    format!(
-                        "you might have meant to access the associated function of a specific \
-                         `impl` to avoid requiring \"object safety\" from `{trait_str}`, either \
-                         with some explicit type...",
-                    ),
-                    "/* Type */ as ".to_string(),
-                    Applicability::HasPlaceholders,
-                )
-            };
-            // `<dyn Trait>::segment()` or `<Trait>::segment()` to `<Type as Trait>::segment()`
-            let sp = ty.span.until(trait_ref.trait_ref.path.span);
-            err.span_suggestion_verbose(sp, msg, sugg, appl);
-            if !only {
-                // `<dyn Trait>::segment()` or `<Trait>::segment()` to `Trait::segment()`
-                err.multipart_suggestion_verbose(
-                    "...or rely on inference if the compiler has enough context to identify the \
-                     desired type on its own...",
-                    vec![
-                        (expr.span.until(trait_ref.trait_ref.path.span), String::new()),
-                        (
-                            path_segment
-                                .ident
-                                .span
-                                .shrink_to_lo()
-                                .with_lo(trait_ref.trait_ref.path.span.hi()),
-                            "::".to_string(),
-                        ),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
-                // `<dyn Trait>::segment()` or `<Trait>::segment()` to `<_ as Trait>::segment()`
-                err.span_suggestion_verbose(
-                    ty.span.until(trait_ref.trait_ref.path.span),
-                    "...which is equivalent to",
-                    format!("_ as "),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            has_suggested = true;
-        }
+        has_suggested |= suggest_path_on_bare_trait(tcx, &mut err, node);
     }
     match &impls[..] {
         _ if has_suggested => {}
@@ -365,4 +276,131 @@ pub fn report_object_safety_error<'tcx>(
     }
 
     err
+}
+
+pub fn suggest_impl_trait_on_bare_trait(
+    tcx: TyCtxt<'_>,
+    err: &mut Diag<'_>,
+    ty: &hir::Ty<'_>,
+) -> bool {
+    let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind else { return false };
+    let mut hir_id = ty.hir_id;
+    while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
+        hir_id = ty.hir_id;
+    }
+    if tcx.parent_hir_node(hir_id).fn_sig().is_none() {
+        return false;
+    }
+    // Do not suggest `impl Trait` when dealing with things like super-traits.
+    err.span_suggestion_verbose(
+        ty.span.until(trait_ref.span),
+        "consider using an opaque type instead",
+        "impl ",
+        Applicability::MaybeIncorrect,
+    );
+    true
+}
+
+pub fn suggest_path_on_bare_trait(
+    tcx: TyCtxt<'_>,
+    err: &mut Diag<'_>,
+    node: hir::Node<'_>,
+) -> bool {
+    let hir::Node::Expr(expr) = node else { return false };
+    let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, path_segment)) = expr.kind else {
+        return false;
+    };
+    let hir::TyKind::TraitObject([trait_ref, ..], _, trait_object_syntax) = ty.kind else {
+        return false;
+    };
+    let trait_def_id = match trait_ref.trait_ref.path.res {
+        Res::Def(DefKind::Trait, def_id) => def_id,
+        _ => return false,
+    };
+    let trait_str = tcx.def_path_str(trait_def_id);
+    if let TraitObjectSyntax::None = trait_object_syntax
+        && !expr.span.edition().at_least_rust_2021()
+    {
+        err.span_note(
+            trait_ref.trait_ref.path.span,
+            format!(
+                "`{trait_str}` is the type for the trait in editions 2015 and 2018 and is \
+                 equivalent to writing `dyn {trait_str}`",
+            ),
+        );
+    }
+    let segment = path_segment.ident;
+    err.help(format!(
+        "when writing `<{}{trait_str}>::{segment}` you are requiring `{trait_str}` be \"object \
+         safe\", which it isn't",
+        if let TraitObjectSyntax::None = trait_object_syntax { "" } else { "dyn " },
+    ));
+    let impls_of = tcx.trait_impls_of(trait_def_id);
+    let impls = if impls_of.blanket_impls().is_empty() {
+        impls_of
+            .non_blanket_impls()
+            .values()
+            .flatten()
+            .filter(|def_id| {
+                !matches!(tcx.type_of(*def_id).instantiate_identity().kind(), ty::Dynamic(..))
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+    let (only, msg, sugg, appl) = if let [only] = &impls[..] {
+        // We know there's a single implementation for this trait, so we can be explicit on
+        // the type they should have used.
+        let ty = tcx.type_of(*only).instantiate_identity();
+        (
+            true,
+            format!(
+                "specify the specific `impl` for type `{ty}` to avoid requiring \"object safety\" \
+                 from `{trait_str}`",
+            ),
+            with_no_trimmed_paths!(format!("{ty} as ")),
+            Applicability::MachineApplicable,
+        )
+    } else {
+        (
+            false,
+            format!(
+                "you might have meant to access the associated function of a specific `impl` to \
+                 avoid requiring \"object safety\" from `{trait_str}`, either with some explicit \
+                 type...",
+            ),
+            "/* Type */ as ".to_string(),
+            Applicability::HasPlaceholders,
+        )
+    };
+    // `<dyn Trait>::segment()` or `<Trait>::segment()` to `<Type as Trait>::segment()`
+    let sp = ty.span.until(trait_ref.trait_ref.path.span);
+    err.span_suggestion_verbose(sp, msg, sugg, appl);
+    if !only {
+        // `<dyn Trait>::segment()` or `<Trait>::segment()` to `Trait::segment()`
+        err.multipart_suggestion_verbose(
+            "...or rely on inference if the compiler has enough context to identify the desired \
+             type on its own...",
+            vec![
+                (expr.span.until(trait_ref.trait_ref.path.span), String::new()),
+                (
+                    path_segment
+                        .ident
+                        .span
+                        .shrink_to_lo()
+                        .with_lo(trait_ref.trait_ref.path.span.hi()),
+                    "::".to_string(),
+                ),
+            ],
+            Applicability::MaybeIncorrect,
+        );
+        // `<dyn Trait>::segment()` or `<Trait>::segment()` to `<_ as Trait>::segment()`
+        err.span_suggestion_verbose(
+            ty.span.until(trait_ref.trait_ref.path.span),
+            "...which is equivalent to",
+            format!("_ as "),
+            Applicability::MaybeIncorrect,
+        );
+    }
+    true
 }

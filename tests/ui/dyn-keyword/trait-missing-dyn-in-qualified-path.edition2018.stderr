@@ -25,7 +25,7 @@ note: `Default` is the type for the trait in editions 2015 and 2018 and is equiv
    |
 LL |     let x: u32 = <Default>::default();
    |                   ^^^^^^^
-   = help: when writing `<dyn Default>::default` you are requiring `Default` be "object safe", which it isn't
+   = help: when writing `<Default>::default` you are requiring `Default` be "object safe", which it isn't
 help: you might have meant to access the associated function of a specific `impl` to avoid requiring "object safety" from `Default`, either with some explicit type...
    |
 LL |     let x: u32 = </* Type */ as Default>::default();
