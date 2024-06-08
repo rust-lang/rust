@@ -58,8 +58,18 @@ LL | |         None => "Alice",
 LL | |     };
    | |_____^ help: replace with: `Some("Bob").unwrap_or("Alice")`
 
+error: this pattern reimplements `Option::unwrap_or`
+  --> tests/ui/manual_unwrap_or.rs:87:5
+   |
+LL | /     if let Some(x) = Some(1) {
+LL | |         x
+LL | |     } else {
+LL | |         42
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(42)`
+
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:90:5
+  --> tests/ui/manual_unwrap_or.rs:120:5
    |
 LL | /     match Ok::<i32, &str>(1) {
 LL | |         Ok(i) => i,
@@ -68,7 +78,7 @@ LL | |     };
    | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(42)`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:97:5
+  --> tests/ui/manual_unwrap_or.rs:127:5
    |
 LL | /     match a {
 LL | |         Ok(i) => i,
@@ -77,7 +87,7 @@ LL | |     };
    | |_____^ help: replace with: `a.unwrap_or(42)`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:103:5
+  --> tests/ui/manual_unwrap_or.rs:133:5
    |
 LL | /     match Ok(1) as Result<i32, &str> {
 LL | |         Ok(i) => i,
@@ -86,7 +96,7 @@ LL | |     };
    | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(42)`
 
 error: this pattern reimplements `Option::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:116:5
+  --> tests/ui/manual_unwrap_or.rs:146:5
    |
 LL | /     match s.method() {
 LL | |         Some(i) => i,
@@ -95,7 +105,7 @@ LL | |     };
    | |_____^ help: replace with: `s.method().unwrap_or(42)`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:122:5
+  --> tests/ui/manual_unwrap_or.rs:152:5
    |
 LL | /     match Ok::<i32, &str>(1) {
 LL | |         Err(_) => 42,
@@ -104,7 +114,7 @@ LL | |     };
    | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(42)`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:128:5
+  --> tests/ui/manual_unwrap_or.rs:158:5
    |
 LL | /     match Ok::<i32, &str>(1) {
 LL | |         Ok(i) => i,
@@ -113,7 +123,7 @@ LL | |     };
    | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(1 + 42)`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:135:5
+  --> tests/ui/manual_unwrap_or.rs:165:5
    |
 LL | /     match Ok::<i32, &str>(1) {
 LL | |         Ok(i) => i,
@@ -134,7 +144,7 @@ LL ~     });
    |
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:145:5
+  --> tests/ui/manual_unwrap_or.rs:175:5
    |
 LL | /     match Ok::<&str, &str>("Bob") {
 LL | |         Ok(i) => i,
@@ -142,8 +152,18 @@ LL | |         Err(_) => "Alice",
 LL | |     };
    | |_____^ help: replace with: `Ok::<&str, &str>("Bob").unwrap_or("Alice")`
 
+error: this pattern reimplements `Result::unwrap_or`
+  --> tests/ui/manual_unwrap_or.rs:211:5
+   |
+LL | /     if let Ok(x) = Ok::<i32, i32>(1) {
+LL | |         x
+LL | |     } else {
+LL | |         42
+LL | |     };
+   | |_____^ help: replace with: `Ok::<i32, i32>(1).unwrap_or(42)`
+
 error: this pattern reimplements `Option::unwrap_or`
-  --> tests/ui/manual_unwrap_or.rs:205:17
+  --> tests/ui/manual_unwrap_or.rs:265:17
    |
 LL |           let _ = match some_macro!() {
    |  _________________^
@@ -152,5 +172,5 @@ LL | |             None => 0,
 LL | |         };
    | |_________^ help: replace with: `some_macro!().unwrap_or(0)`
 
-error: aborting due to 14 previous errors
+error: aborting due to 16 previous errors
 
