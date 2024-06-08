@@ -12,8 +12,9 @@ backend. The library must be of crate type `dylib` and must contain a function
 named `__rustc_codegen_backend` with a signature of `fn() -> Box<dyn rustc_codegen_ssa::traits::CodegenBackend>`.
 
 ## Example
-See also the [`hotplug_codegen_backend`](https://github.com/rust-lang/rust/tree/master/tests/run-make-fulldeps/hotplug_codegen_backend) test
-for a full example.
+See also the [`codegen-backend/hotplug`] test for a working example.
+
+[`codegen-backend/hotplug`]: https://github.com/rust-lang/rust/tree/master/tests/ui-fulldeps/codegen-backend/hotplug.rs
 
 ```rust,ignore (partial-example)
 use rustc_codegen_ssa::traits::CodegenBackend;
