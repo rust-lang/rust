@@ -1608,19 +1608,8 @@ impl Config {
             set(&mut config.channel, channel);
 
             config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
-            // This list is incomplete, please help by expanding it!
-            if config.download_rustc_commit.is_some() {
-                // We need the channel used by the downloaded compiler to match the one we set for rustdoc;
-                // otherwise rustdoc-ui tests break.
-                if config.channel != ci_channel
-                    && !(config.channel == "dev" && ci_channel == "nightly")
-                {
-                    panic!(
-                        "setting rust.channel={} is incompatible with download-rustc",
-                        config.channel
-                    );
-                }
-            }
+
+            // FIXME: handle download-rustc incompatible options.
 
             debug = debug_toml;
             debug_assertions = debug_assertions_toml;
