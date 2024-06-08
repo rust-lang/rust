@@ -2,8 +2,9 @@
 //! output to a file (instead of stdout)
 
 use std::ffi::OsString;
+use std::path::PathBuf;
 
-use run_make_support::{rustc, target, tmp_dir};
+use run_make_support::{rustc, target};
 
 struct Option<'a> {
     target: &'a str,
@@ -46,7 +47,7 @@ fn check(args: Option) {
 
     // --print={option}=PATH
     let output = {
-        let tmp_path = tmp_dir().join(format!("{}.txt", args.option));
+        let tmp_path = PathBuf::from(format!("{}.txt", args.option));
         let mut print_arg = OsString::from(format!("--print={}=", args.option));
         print_arg.push(tmp_path.as_os_str());
 

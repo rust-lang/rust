@@ -1,7 +1,7 @@
-use run_make_support::{python_command, rustdoc, tmp_dir};
+use run_make_support::{python_command, rustdoc};
 
 fn main() {
-    let out_dir = tmp_dir().join("out");
+    let out_dir = "out";
     rustdoc()
         .input("foo.rs")
         .arg("-Zunstable-options")

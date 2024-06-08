@@ -1,7 +1,7 @@
 use crate::common::Config;
 use std::env;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tracing::*;
@@ -75,4 +75,18 @@ pub fn add_dylib_path(cmd: &mut Command, paths: impl Iterator<Item = impl Into<P
     let old_paths = path_env.as_ref().map(env::split_paths);
     let new_paths = paths.map(Into::into).chain(old_paths.into_iter().flatten());
     cmd.env(dylib_env_var(), env::join_paths(new_paths).unwrap());
+}
+
+pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    std::fs::create_dir_all(&dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            std::fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
 }

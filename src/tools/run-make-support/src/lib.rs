@@ -45,11 +45,6 @@ pub fn env_var_os(name: &str) -> OsString {
     }
 }
 
-/// Path of `TMPDIR` (a temporary build directory, not under `/tmp`).
-pub fn tmp_dir() -> PathBuf {
-    env_var_os("TMPDIR").into()
-}
-
 /// `TARGET`
 pub fn target() -> String {
     env_var("TARGET")
@@ -68,12 +63,6 @@ pub fn is_msvc() -> bool {
 /// Check if target uses macOS.
 pub fn is_darwin() -> bool {
     target().contains("darwin")
-}
-
-/// Construct a path to a static library under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
-pub fn static_lib(name: &str) -> PathBuf {
-    tmp_dir().join(static_lib_name(name))
 }
 
 pub fn python_command() -> Command {
@@ -116,12 +105,6 @@ pub fn static_lib_name(name: &str) -> String {
     if is_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }
 }
 
-/// Construct a path to a dynamic library under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
-pub fn dynamic_lib(name: &str) -> PathBuf {
-    tmp_dir().join(dynamic_lib_name(name))
-}
-
 /// Construct the dynamic library name based on the platform.
 pub fn dynamic_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
@@ -159,14 +142,7 @@ pub fn dynamic_lib_extension() -> &'static str {
     }
 }
 
-/// Construct a path to a rust library (rlib) under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with the library name.
-pub fn rust_lib(name: &str) -> PathBuf {
-    tmp_dir().join(rust_lib_name(name))
-}
-
-/// Generate the name a rust library (rlib) would have. If you want the complete path, use
-/// [`rust_lib`] instead.
+/// Construct a rust library (rlib) name.
 pub fn rust_lib_name(name: &str) -> String {
     format!("lib{name}.rlib")
 }
@@ -174,6 +150,11 @@ pub fn rust_lib_name(name: &str) -> String {
 /// Construct the binary name based on platform.
 pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
+}
+
+/// Return the current working directory.
+pub fn cwd() -> PathBuf {
+    env::current_dir().unwrap()
 }
 
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
@@ -227,7 +208,7 @@ pub fn set_host_rpath(cmd: &mut Command) {
     let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
-        paths.push(PathBuf::from(env_var("TMPDIR")));
+        paths.push(cwd());
         paths.push(PathBuf::from(env_var("HOST_RPATH_DIR")));
         for p in env::split_paths(&env_var(&ld_lib_path_envvar)) {
             paths.push(p.to_path_buf());
@@ -313,6 +294,27 @@ pub fn assert_not_contains(haystack: &str, needle: &str) {
         eprintln!("{}", needle);
         panic!("needle was unexpectedly found in haystack");
     }
+}
+
+/// This function is designed for running commands in a temporary directory
+/// that is cleared after the function ends.
+///
+/// What this function does:
+/// 1) Creates a temporary directory (`tmpdir`)
+/// 2) Copies all files from the current directory to `tmpdir`
+/// 3) Changes the current working directory to `tmpdir`
+/// 4) Calls `callback`
+/// 5) Switches working directory back to the original one
+/// 6) Removes `tmpdir`
+pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
+    let original_dir = cwd();
+    let tmpdir = original_dir.join("../temporary-directory");
+    copy_dir_all(".", &tmpdir);
+
+    env::set_current_dir(&tmpdir).unwrap();
+    callback();
+    env::set_current_dir(original_dir).unwrap();
+    fs::remove_dir_all(tmpdir).unwrap();
 }
 
 /// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct

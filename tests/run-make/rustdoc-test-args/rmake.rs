@@ -1,4 +1,4 @@
-use run_make_support::{rustdoc, tmp_dir};
+use run_make_support::rustdoc;
 use std::path::Path;
 use std::{fs, iter};
 
@@ -8,8 +8,8 @@ fn generate_a_lot_of_cfgs(path: &Path) {
 }
 
 fn main() {
-    let arg_file = tmp_dir().join("args");
+    let arg_file = Path::new("args");
     generate_a_lot_of_cfgs(&arg_file);
 
-    rustdoc().out_dir(tmp_dir()).input("foo.rs").arg_file(&arg_file).arg("--test").run();
+    rustdoc().input("foo.rs").arg_file(&arg_file).arg("--test").run();
 }

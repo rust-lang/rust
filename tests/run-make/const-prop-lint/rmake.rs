@@ -2,12 +2,12 @@
 
 use std::fs;
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::{cwd, rustc};
 
 fn main() {
     rustc().input("input.rs").run_fail_assert_exit_code(1);
 
-    for entry in fs::read_dir(tmp_dir()).unwrap() {
+    for entry in fs::read_dir(cwd()).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
 

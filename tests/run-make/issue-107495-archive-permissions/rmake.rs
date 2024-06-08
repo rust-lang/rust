@@ -3,7 +3,7 @@
 #[cfg(unix)]
 extern crate libc;
 
-use run_make_support::{aux_build, tmp_dir};
+use run_make_support::aux_build;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -16,7 +16,7 @@ fn main() {
     }
 
     aux_build().arg("foo.rs").run();
-    verify(&tmp_dir().join("libfoo.rlib"));
+    verify(Path::new("libfoo.rlib"));
 }
 
 fn verify(path: &Path) {

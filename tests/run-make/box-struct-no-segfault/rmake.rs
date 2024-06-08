@@ -5,9 +5,9 @@
 // This test checks that this bug does not resurface.
 // See https://github.com/rust-lang/rust/issues/28766
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::rustc;
 
 fn main() {
     rustc().opt().input("foo.rs").run();
-    rustc().opt().library_search_path(tmp_dir()).input("main.rs").run();
+    rustc().opt().input("main.rs").run();
 }

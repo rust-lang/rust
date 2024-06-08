@@ -1,7 +1,7 @@
-use run_make_support::{htmldocck, rustdoc, tmp_dir};
+use run_make_support::{htmldocck, rustdoc};
 
 fn main() {
-    let out_dir = tmp_dir().join("rustdoc");
+    let out_dir = "rustdoc";
 
     rustdoc()
         .input("src/lib.rs")
