@@ -112,7 +112,6 @@
 #![feature(const_slice_from_ref)]
 #![feature(waker_getters)]
 #![feature(error_generic_member_access)]
-#![feature(error_in_core)]
 #![feature(trait_upcasting)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
