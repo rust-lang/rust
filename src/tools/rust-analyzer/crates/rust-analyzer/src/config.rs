@@ -1261,7 +1261,7 @@ impl Config {
 impl Config {
     pub fn assist(&self, source_root: Option<SourceRootId>) -> AssistConfig {
         AssistConfig {
-            snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
+            snippet_cap: self.snippet_cap(),
             allowed: None,
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
@@ -1321,6 +1321,7 @@ impl Config {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
+            snippet_cap: self.snippet_cap(),
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
@@ -2007,8 +2008,10 @@ impl Config {
         *self.references_excludeTests()
     }
 
-    pub fn snippet_cap(&self) -> bool {
-        self.experimental("snippetTextEdit")
+    pub fn snippet_cap(&self) -> Option<SnippetCap> {
+        // FIXME: Also detect the proposed lsp version at caps.workspace.workspaceEdit.snippetEditSupport
+        // once lsp-types has it.
+        SnippetCap::new(self.experimental("snippetTextEdit"))
     }
 
     pub fn call_info(&self) -> CallInfoConfig {

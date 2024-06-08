@@ -25,7 +25,7 @@ use ide_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
         SourceDatabase, SourceDatabaseExt,
     },
-    LineIndexDatabase,
+    LineIndexDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -982,6 +982,7 @@ impl flags::AnalysisStats {
                     disable_experimental: false,
                     disabled: Default::default(),
                     expr_fill_default: Default::default(),
+                    snippet_cap: SnippetCap::new(true),
                     insert_use: ide_db::imports::insert_use::InsertUseConfig {
                         granularity: ide_db::imports::insert_use::ImportGranularity::Crate,
                         enforce_granularity: true,

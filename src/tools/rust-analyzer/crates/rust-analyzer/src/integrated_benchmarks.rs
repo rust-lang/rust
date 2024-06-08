@@ -289,6 +289,7 @@ fn integrated_diagnostics_benchmark() {
         disabled: Default::default(),
         expr_fill_default: Default::default(),
         style_lints: false,
+        snippet_cap: SnippetCap::new(true),
         insert_use: InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: false,
