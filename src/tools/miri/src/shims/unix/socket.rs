@@ -51,9 +51,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fds = &mut this.machine.fds;
         let sv0 = fds.insert_fd(FileDescriptor::new(SocketPair));
-        let sv0 = Scalar::try_from_int(sv0, sv.layout.size).unwrap();
+        let sv0 = Scalar::from_int(sv0, sv.layout.size);
         let sv1 = fds.insert_fd(FileDescriptor::new(SocketPair));
-        let sv1 = Scalar::try_from_int(sv1, sv.layout.size).unwrap();
+        let sv1 = Scalar::from_int(sv1, sv.layout.size);
 
         this.write_scalar(sv0, &sv)?;
         this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;

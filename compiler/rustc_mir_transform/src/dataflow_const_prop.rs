@@ -326,7 +326,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             // This allows the set of visited edges to grow monotonically with the lattice.
             FlatSet::Bottom => TerminatorEdges::None,
             FlatSet::Elem(scalar) => {
-                let choice = scalar.assert_bits(scalar.size());
+                let choice = scalar.assert_scalar_int().to_bits_unchecked();
                 TerminatorEdges::Single(targets.target_for_value(choice))
             }
             FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
@@ -609,7 +609,7 @@ fn propagatable_scalar(
     map: &Map,
 ) -> Option<Scalar> {
     if let FlatSet::Elem(value) = state.get_idx(place, map)
-        && value.try_to_int().is_ok()
+        && value.try_to_scalar_int().is_ok()
     {
         // Do not attempt to propagate pointers, as we may fail to preserve their identity.
         Some(value)
@@ -670,7 +670,7 @@ fn try_write_constant<'tcx>(
                 let FlatSet::Elem(Scalar::Int(discr)) = state.get_idx(discr, map) else {
                     throw_machine_stop_str!("discriminant with provenance")
                 };
-                let discr_bits = discr.assert_bits(discr.size());
+                let discr_bits = discr.to_bits(discr.size());
                 let Some((variant, _)) = def.discriminants(*ecx.tcx).find(|(_, var)| discr_bits == var.val) else {
                     throw_machine_stop_str!("illegal discriminant for enum")
                 };

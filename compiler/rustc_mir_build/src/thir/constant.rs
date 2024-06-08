@@ -58,11 +58,9 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            let bits = parse_float_into_scalar(*n, *fty, neg)
-                .ok_or_else(|| {
-                    tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
-                })?
-                .assert_int();
+            let bits = parse_float_into_scalar(*n, *fty, neg).ok_or_else(|| {
+                tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
+            })?;
             ty::ValTree::from_scalar_int(bits)
         }
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),

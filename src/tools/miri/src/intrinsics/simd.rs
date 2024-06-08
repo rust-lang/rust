@@ -600,8 +600,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 for i in 0..dest_len {
                     let src_index: u64 = index[usize::try_from(i).unwrap()]
                         .unwrap_leaf()
-                        .try_to_u32()
-                        .unwrap()
+                        .to_u32()
                         .into();
                     let dest = this.project_index(&dest, i)?;
 

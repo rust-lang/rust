@@ -47,7 +47,7 @@ fn destructure_const<'tcx>(
         ty::Adt(def, args) => {
             let (variant_idx, branches) = if def.is_enum() {
                 let (head, rest) = branches.split_first().unwrap();
-                (VariantIdx::from_u32(head.unwrap_leaf().try_to_u32().unwrap()), rest)
+                (VariantIdx::from_u32(head.unwrap_leaf().to_u32()), rest)
             } else {
                 (FIRST_VARIANT, branches)
             };
