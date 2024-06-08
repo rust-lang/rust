@@ -5,6 +5,7 @@
 
 pub mod cc;
 pub mod clang;
+mod command;
 pub mod diff;
 pub mod llvm_readobj;
 pub mod run;
@@ -16,7 +17,6 @@ use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
 
 pub use gimli;
 pub use object;
@@ -27,7 +27,7 @@ pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
 pub use llvm_readobj::{llvm_readobj, LlvmReadobj};
-pub use run::{run, run_fail};
+pub use run::{cmd, run, run_fail};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
@@ -167,13 +167,12 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
     let mut cygpath = Command::new("cygpath");
     cygpath.arg("-w");
     cygpath.arg(path.as_ref());
-    let output = cygpath.output().unwrap();
-    if !output.status.success() {
+    let output = cygpath.command_output();
+    if !output.status().success() {
         handle_failed_output(&cygpath, output, caller_line_number);
     }
-    let s = String::from_utf8(output.stdout).unwrap();
     // cygpath -w can attach a newline
-    s.trim().to_string()
+    output.stdout_utf8().trim().to_string()
 }
 
 /// Run `uname`. This assumes that `uname` is available on the platform!
@@ -183,23 +182,23 @@ pub fn uname() -> String {
     let caller_line_number = caller_location.line();
 
     let mut uname = Command::new("uname");
-    let output = uname.output().unwrap();
-    if !output.status.success() {
+    let output = uname.command_output();
+    if !output.status().success() {
         handle_failed_output(&uname, output, caller_line_number);
     }
-    String::from_utf8(output.stdout).unwrap()
+    output.stdout_utf8()
 }
 
-fn handle_failed_output(cmd: &Command, output: Output, caller_line_number: u32) -> ! {
-    if output.status.success() {
+fn handle_failed_output(cmd: &Command, output: CompletedProcess, caller_line_number: u32) -> ! {
+    if output.status().success() {
         eprintln!("command unexpectedly succeeded at line {caller_line_number}");
     } else {
         eprintln!("command failed at line {caller_line_number}");
     }
     eprintln!("{cmd:?}");
-    eprintln!("output status: `{}`", output.status);
-    eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());
-    eprintln!("=== STDERR ===\n{}\n\n", String::from_utf8(output.stderr).unwrap());
+    eprintln!("output status: `{}`", output.status());
+    eprintln!("=== STDOUT ===\n{}\n\n", output.stdout_utf8());
+    eprintln!("=== STDERR ===\n{}\n\n", output.stderr_utf8());
     std::process::exit(1)
 }
 
@@ -286,6 +285,7 @@ pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
 }
 
 /// Check that `haystack` does not contain `needle`. Panic otherwise.
+#[track_caller]
 pub fn assert_not_contains(haystack: &str, needle: &str) {
     if haystack.contains(needle) {
         eprintln!("=== HAYSTACK ===");
@@ -412,28 +412,14 @@ macro_rules! impl_common_helpers {
 
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
-            pub fn run(&mut self) -> ::std::process::Output {
-                let caller_location = ::std::panic::Location::caller();
-                let caller_line_number = caller_location.line();
-
-                let output = self.command_output();
-                if !output.status.success() {
-                    handle_failed_output(&self.cmd, output, caller_line_number);
-                }
-                output
+            pub fn run(&mut self) -> crate::command::CompletedProcess {
+                self.cmd.run()
             }
 
             /// Run the constructed command and assert that it does not successfully run.
             #[track_caller]
-            pub fn run_fail(&mut self) -> ::std::process::Output {
-                let caller_location = ::std::panic::Location::caller();
-                let caller_line_number = caller_location.line();
-
-                let output = self.command_output();
-                if output.status.success() {
-                    handle_failed_output(&self.cmd, output, caller_line_number);
-                }
-                output
+            pub fn run_fail(&mut self) -> crate::command::CompletedProcess {
+                self.cmd.run_fail()
             }
 
             /// Set the path where the command will be run.
@@ -445,4 +431,5 @@ macro_rules! impl_common_helpers {
     };
 }
 
+use crate::command::{Command, CompletedProcess};
 pub(crate) use impl_common_helpers;

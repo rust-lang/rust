@@ -83,8 +83,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
     // --print=cfg
     {
         let output = rustc().target(target).print("cfg").run();
-
-        let stdout = String::from_utf8(output.stdout).unwrap();
+        let stdout = output.stdout_utf8();
 
         check_(&stdout, includes, disallow);
     }
@@ -95,7 +94,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
         let mut print_arg = OsString::from("--print=cfg=");
         print_arg.push(tmp_path.as_os_str());
 
-        let output = rustc().target(target).arg(print_arg).run();
+        rustc().target(target).arg(print_arg).run();
 
         let output = std::fs::read_to_string(&tmp_path).unwrap();
 

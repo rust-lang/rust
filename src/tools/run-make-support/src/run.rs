@@ -1,12 +1,13 @@
 use std::env;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
 
-use crate::{cwd, env_var, is_windows};
+use crate::command::{Command, CompletedProcess};
+use crate::{cwd, env_var, is_windows, set_host_rpath};
 
 use super::handle_failed_output;
 
-fn run_common(name: &str) -> (Command, Output) {
+fn run_common(name: &str) -> (Command, CompletedProcess) {
     let mut bin_path = PathBuf::new();
     bin_path.push(cwd());
     bin_path.push(name);
@@ -33,18 +34,18 @@ fn run_common(name: &str) -> (Command, Output) {
         cmd.env("PATH", env::join_paths(paths.iter()).unwrap());
     }
 
-    let output = cmd.output().unwrap();
+    let output = cmd.command_output();
     (cmd, output)
 }
 
 /// Run a built binary and make sure it succeeds.
 #[track_caller]
-pub fn run(name: &str) -> Output {
+pub fn run(name: &str) -> CompletedProcess {
     let caller_location = std::panic::Location::caller();
     let caller_line_number = caller_location.line();
 
     let (cmd, output) = run_common(name);
-    if !output.status.success() {
+    if !output.status().success() {
         handle_failed_output(&cmd, output, caller_line_number);
     }
     output
@@ -52,13 +53,21 @@ pub fn run(name: &str) -> Output {
 
 /// Run a built binary and make sure it fails.
 #[track_caller]
-pub fn run_fail(name: &str) -> Output {
+pub fn run_fail(name: &str) -> CompletedProcess {
     let caller_location = std::panic::Location::caller();
     let caller_line_number = caller_location.line();
 
     let (cmd, output) = run_common(name);
-    if output.status.success() {
+    if output.status().success() {
         handle_failed_output(&cmd, output, caller_line_number);
     }
     output
+}
+
+/// Create a new custom Command.
+/// This should be preferred to creating `std::process::Command` directly.
+pub fn cmd<S: AsRef<OsStr>>(program: S) -> Command {
+    let mut command = Command::new(program);
+    set_host_rpath(&mut command);
+    command
 }
