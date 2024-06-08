@@ -184,7 +184,7 @@
 //! requires at least a level of pointer indirection each time a new object is added to the mix
 //! (and, practically, a heap allocation).
 //!
-//! Although there were other reason as well, this issue of expensive composition is the key thing
+//! Although there were other reasons as well, this issue of expensive composition is the key thing
 //! that drove Rust towards adopting a different model. It is particularly a problem
 //! when one considers, for example, the implications of composing together the [`Future`]s which
 //! will eventually make up an asynchronous task (including address-sensitive `async fn` state
