@@ -825,6 +825,10 @@ lint_unnameable_test_items = cannot test inner items
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
 
+lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
+    .label = usage of unsafe attribute
+lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
