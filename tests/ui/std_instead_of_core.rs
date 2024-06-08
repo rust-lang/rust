@@ -45,8 +45,8 @@ fn std_instead_of_core() {
 
     let _ = std::env!("PATH");
 
-    // do not lint until `error_in_core` is stable
     use std::error::Error;
+    //~^ ERROR: used import from `std` instead of `core`
 
     // lint items re-exported from private modules, `core::iter::traits::iterator::Iterator`
     use std::iter::Iterator;
