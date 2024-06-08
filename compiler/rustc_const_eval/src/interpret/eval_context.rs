@@ -1103,11 +1103,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Operand::Immediate(Immediate::Uninit)
         });
 
-        // StorageLive expects the local to be dead, and marks it live.
+        // If the local is already live, deallocate its old memory.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
-        if !matches!(old, LocalValue::Dead) {
-            throw_ub_custom!(fluent::const_eval_double_storage_live);
-        }
+        self.deallocate_local(old)?;
         Ok(())
     }
 
@@ -1121,7 +1119,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        // It is entirely okay for this local to be already dead (at least that's how we currently generate MIR)
+        // If the local is already dead, this is a NOP.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
         self.deallocate_local(old)?;
         Ok(())
