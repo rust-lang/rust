@@ -3,6 +3,21 @@ error[E0782]: trait objects must include the `dyn` keyword
    |
 LL |     let x: u32 = <Default>::default();
    |                   ^^^^^^^
+   |
+   = help: when writing `<Default>::default` you are requiring `Default` be "object safe", which it isn't
+help: you might have meant to access the associated function of a specific `impl` to avoid requiring "object safety" from `Default`, either with some explicit type...
+   |
+LL |     let x: u32 = </* Type */ as Default>::default();
+   |                   +++++++++++++
+help: ...or rely on inference if the compiler has enough context to identify the desired type on its own...
+   |
+LL -     let x: u32 = <Default>::default();
+LL +     let x: u32 = Default::default();
+   |
+help: ...which is equivalent to
+   |
+LL |     let x: u32 = <_ as Default>::default();
+   |                   ++++
 
 error: aborting due to 1 previous error
 

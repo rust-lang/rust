@@ -2,6 +2,7 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_errors::{codes::*, Diag, EmissionGuarantee, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_infer::traits::error_reporting::suggest_path_on_bare_trait;
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
@@ -80,6 +81,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
             }
+
+            if !object_safe && self_ty.span.can_be_used_for_suggestions() {
+                // suggest_impl_trait_on_bare_trait(tcx, &mut diag, self_ty);
+                let parent = tcx.parent_hir_node(self_ty.hir_id);
+                suggest_path_on_bare_trait(tcx, &mut diag, parent);
+            }
+
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
