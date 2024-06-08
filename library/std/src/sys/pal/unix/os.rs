@@ -462,21 +462,21 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "haiku")]
 pub fn current_exe() -> io::Result<PathBuf> {
+    let mut name = vec![0; libc::PATH_MAX as usize];
     unsafe {
-        let mut info: mem::MaybeUninit<libc::image_info> = mem::MaybeUninit::uninit();
-        let mut cookie: i32 = 0;
-        // the executable can be found at team id 0
-        let result = libc::_get_next_image_info(
-            0,
-            &mut cookie,
-            info.as_mut_ptr(),
-            mem::size_of::<libc::image_info>(),
+        let result = libc::find_path(
+            std::ptr::null_mut(),
+            libc::path_base_directory::B_FIND_PATH_IMAGE_PATH,
+            std::ptr::null_mut(),
+            name.as_mut_ptr(),
+            name.len(),
         );
-        if result != 0 {
+        if result != libc::B_OK {
             use crate::io::ErrorKind;
             Err(io::const_io_error!(ErrorKind::Uncategorized, "Error getting executable path"))
         } else {
-            let name = CStr::from_ptr((*info.as_ptr()).name.as_ptr()).to_bytes();
+            // find_path adds the null terminator.
+            let name = CStr::from_ptr(name.as_ptr()).to_bytes();
             Ok(PathBuf::from(OsStr::from_bytes(name)))
         }
     }
