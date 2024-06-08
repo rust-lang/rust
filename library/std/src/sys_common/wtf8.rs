@@ -325,6 +325,11 @@ impl Wtf8Buf {
         self.bytes.shrink_to(min_capacity)
     }
 
+    #[inline]
+    pub fn leak<'a>(self) -> &'a mut Wtf8 {
+        unsafe { Wtf8::from_mut_bytes_unchecked(self.bytes.leak()) }
+    }
+
     /// Returns the number of bytes that this string buffer can hold without reallocating.
     #[inline]
     pub fn capacity(&self) -> usize {
