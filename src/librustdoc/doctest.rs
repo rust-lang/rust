@@ -2,7 +2,7 @@ mod make;
 mod markdown;
 mod rust;
 
-pub(crate) use make::make_test;
+pub(crate) use make::DocTest;
 pub(crate) use markdown::test as test_markdown;
 
 use rustc_ast as ast;
@@ -736,13 +736,12 @@ fn doctest_run_fn(
         unused_externs.lock().unwrap().push(uext);
     };
     let edition = scraped_test.edition(&rustdoc_options);
-    let (full_test_code, full_test_line_offset, supports_color) = make_test(
-        &scraped_test.text,
-        Some(&global_opts.crate_name),
+    let doctest = DocTest::new(&scraped_test.text, Some(&global_opts.crate_name), edition);
+    let (full_test_code, full_test_line_offset) = doctest.generate_unique_doctest(
         scraped_test.langstr.test_harness,
         &global_opts,
-        edition,
         Some(&test_opts.test_id),
+        Some(&global_opts.crate_name),
     );
     let runnable_test = RunnableDoctest {
         full_test_code,
@@ -751,7 +750,8 @@ fn doctest_run_fn(
         global_opts,
         scraped_test,
     };
-    let res = run_test(runnable_test, &rustdoc_options, supports_color, report_unused_externs);
+    let res =
+        run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
 
     if let Err(err) = res {
         match err {
