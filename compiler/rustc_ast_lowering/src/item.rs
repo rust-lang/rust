@@ -1598,7 +1598,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some((span, hir_id, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let anon_const =
+            let anon_const_did =
                 self.create_def(def_id, const_node_id, kw::Empty, DefKind::AnonConst, span);
 
             let const_id = self.next_id();
@@ -1606,7 +1606,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let bool_id = self.next_id();
 
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-            self.children.push((anon_const, hir::MaybeOwner::NonOwner(const_id)));
+            self.children.push((anon_const_did, hir::MaybeOwner::NonOwner(const_id)));
 
             let const_body = self.lower_body(|this| {
                 (
@@ -1621,6 +1621,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             });
 
+            let default_ac = self.arena.alloc(hir::AnonConst {
+                def_id: anon_const_did,
+                hir_id: const_id,
+                body: const_body,
+                span,
+            });
+            let default_ct = self.arena.alloc(hir::ConstArg {
+                hir_id: self.next_id(),
+                kind: hir::ConstArgKind::Anon(default_ac),
+                is_desugared_from_effects: true,
+            });
             let param = hir::GenericParam {
                 def_id,
                 hir_id,
@@ -1644,13 +1655,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
-                    // FIXME(effects) we might not need a default.
-                    default: Some(self.arena.alloc(hir::AnonConst {
-                        def_id: anon_const,
-                        hir_id: const_id,
-                        body: const_body,
-                        span,
-                    })),
+                    default: Some(default_ct),
                     is_host_effect: true,
                     synthetic: true,
                 },

@@ -637,8 +637,9 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default
-                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                default: default.map(|ct| {
+                    Box::new(ty::Const::from_const_arg_without_feeding(cx.tcx, ct).to_string())
+                }),
                 synthetic,
             },
         ),
