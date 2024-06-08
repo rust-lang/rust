@@ -9,10 +9,11 @@ use core::intrinsics::simd as intrinsics;
 use core::{mem, ptr};
 
 // Test codegen for not only "packed" but also "fully aligned" SIMD types, and conversion between
-// A repr(packed,simd) type with 3 elements can't exceed its element alignment,
-// whereas the same type as repr(simd) will instead have padding.
+// them. A repr(packed,simd) type with 3 elements can't exceed its element alignment, whereas the
+// same type as repr(simd) will instead have padding.
 
 #[repr(simd, packed)]
+#[derive(Copy, Clone)]
 pub struct Simd<T, const N: usize>([T; N]);
 
 #[repr(simd)]
@@ -28,16 +29,30 @@ fn load<T, const N: usize>(v: Simd<T, N>) -> FullSimd<T, N> {
     }
 }
 
-// CHECK-LABEL: square_packed
+// CHECK-LABEL: square_packed_full
 // CHECK-SAME: ptr{{[a-z_ ]*}} sret([[RET_TYPE:[^)]+]]) [[RET_ALIGN:align (8|16)]]{{[^%]*}} [[RET_VREG:%[_0-9]*]]
 // CHECK-SAME: ptr{{[a-z_ ]*}} align 4
 #[no_mangle]
-pub fn square_packed(x: Simd<f32, 3>) -> FullSimd<f32, 3> {
+pub fn square_packed_full(x: Simd<f32, 3>) -> FullSimd<f32, 3> {
     // CHECK-NEXT: start
     // noopt: alloca [[RET_TYPE]], [[RET_ALIGN]]
     // CHECK: load <3 x float>
     let x = load(x);
     // CHECK: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
+    // CHECK-NEXT: store <3 x float> [[VREG]], ptr [[RET_VREG]], [[RET_ALIGN]]
+    // CHECK-NEXT: ret void
+    unsafe { intrinsics::simd_mul(x, x) }
+}
+
+// CHECK-LABEL: square_packed
+// CHECK-SAME: ptr{{[a-z_ ]*}} sret([[RET_TYPE:[^)]+]]) [[RET_ALIGN:align 4]]{{[^%]*}} [[RET_VREG:%[_0-9]*]]
+// CHECK-SAME: ptr{{[a-z_ ]*}} align 4
+#[no_mangle]
+pub fn square_packed(x: Simd<f32, 3>) -> Simd<f32, 3> {
+    // CHECK-NEXT: start
+    // CHECK-NEXT: load <3 x float>
+    // noopt-NEXT: load <3 x float>
+    // CHECK-NEXT: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
     // CHECK-NEXT: store <3 x float> [[VREG]], ptr [[RET_VREG]], [[RET_ALIGN]]
     // CHECK-NEXT: ret void
     unsafe { intrinsics::simd_mul(x, x) }
