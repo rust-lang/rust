@@ -120,6 +120,6 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
 
     let mut collector = CreateRunnableDoctests::new(options.clone(), opts);
     md_collector.tests.into_iter().for_each(|t| collector.add_test(t));
-    crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
+    crate::doctest::run_tests(options.test_args, options.nocapture, collector.standalone_tests);
     Ok(())
 }
