@@ -648,6 +648,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             if let ty::Param(param_ty) = ret_kind
                                 && param_ty.name == kw::SelfUpper
                             {
+                                // We expect the return type of an fn call is expected to be
+                                // `Sized`.  In the test `trait-missing-dyn-in-qualified-path.rs`
+                                // under edition 2018, when writing `<Default>::default()`, we will
+                                // check both `dyn Default` and `<dyn Default>::default()` for
+                                // being `Sized`, but in every case where an associated function
+                                // like `Default::default` which returns `Self`, if the returned
+                                // value is `!Sized`, so will be the `Self`, so we'd always have
+                                // two redundat errors.
                                 return err.delay_as_bug();
                             }
                         }
