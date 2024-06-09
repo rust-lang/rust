@@ -40,6 +40,8 @@ impl Instant {
                 InstantKind::Virtual { nanoseconds: earlier },
             ) => {
                 let duration = nanoseconds.saturating_sub(earlier);
+                // `Duration` does not provide a nice constructor from a `u128` of nanoseconds,
+                // so we have to implement this ourselves.
                 // It is possible for second to overflow because u64::MAX < (u128::MAX / 1e9).
                 let seconds = u64::try_from(duration.saturating_div(1_000_000_000)).unwrap();
                 // It is impossible for nanosecond to overflow because u32::MAX > 1e9.
