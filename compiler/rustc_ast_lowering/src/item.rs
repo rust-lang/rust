@@ -1630,7 +1630,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let default_ct = self.arena.alloc(hir::ConstArg {
                 hir_id: self.next_id(),
                 kind: hir::ConstArgKind::Anon(default_ac),
-                is_desugared_from_effects: true,
+                is_desugared_from_effects: false,
             });
             let param = hir::GenericParam {
                 def_id,
