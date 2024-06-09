@@ -102,6 +102,7 @@ static TARGETS: &[&str] = &[
     "i686-unknown-freebsd",
     "i686-unknown-linux-gnu",
     "i686-unknown-linux-musl",
+    "i686-unknown-redox",
     "i686-unknown-uefi",
     "loongarch64-unknown-linux-gnu",
     "loongarch64-unknown-none",
