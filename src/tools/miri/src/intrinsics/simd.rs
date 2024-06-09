@@ -499,7 +499,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let bitmask_len = u32::try_from(bitmask_len).unwrap();
                 for i in 0..dest_len {
                     let bit_i = simd_bitmask_index(i, dest_len, this.data_layout().endian);
-                    let mask = mask & 1u64.checked_shl(bit_i).unwrap();
+                    let mask = mask & 1u64.strict_shl(bit_i);
                     let yes = this.read_immediate(&this.project_index(&yes, i.into())?)?;
                     let no = this.read_immediate(&this.project_index(&no, i.into())?)?;
                     let dest = this.project_index(&dest, i.into())?;
@@ -511,7 +511,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // If the mask is "padded", ensure that padding is all-zero.
                     // This deliberately does not use `simd_bitmask_index`; these bits are outside
                     // the bitmask. It does not matter in which order we check them.
-                    let mask = mask & 1u64.checked_shl(i).unwrap();
+                    let mask = mask & 1u64.strict_shl(i);
                     if mask != 0 {
                         throw_ub_format!(
                             "a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits"
@@ -535,9 +535,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.project_index(&op, i.into())?)?;
                     if simd_element_to_bool(op)? {
-                        res |= 1u64
-                            .checked_shl(simd_bitmask_index(i, op_len, this.data_layout().endian))
-                            .unwrap();
+                        let bit_i = simd_bitmask_index(i, op_len, this.data_layout().endian);
+                        res |= 1u64.strict_shl(bit_i);
                     }
                 }
                 // Write the result, depending on the `dest` type.
@@ -653,8 +652,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let val = if src_index < left_len {
                         this.read_immediate(&this.project_index(&left, src_index)?)?
-                    } else if src_index < left_len.checked_add(right_len).unwrap() {
-                        let right_idx = src_index.checked_sub(left_len).unwrap();
+                    } else if src_index < left_len.strict_add(right_len) {
+                        let right_idx = src_index.strict_sub(left_len);
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         throw_ub_format!(
@@ -693,8 +692,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let val = if src_index < left_len {
                         this.read_immediate(&this.project_index(&left, src_index)?)?
-                    } else if src_index < left_len.checked_add(right_len).unwrap() {
-                        let right_idx = src_index.checked_sub(left_len).unwrap();
+                    } else if src_index < left_len.strict_add(right_len) {
+                        let right_idx = src_index.strict_sub(left_len);
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         throw_ub_format!(
