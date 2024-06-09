@@ -1,6 +1,6 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
-use super::api;
+use super::api::{self, WinError};
 use crate::cmp;
 use crate::io;
 use crate::mem::MaybeUninit;
@@ -370,7 +370,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 
         // ReadConsoleW returns success with ERROR_OPERATION_ABORTED for Ctrl-C or Ctrl-Break.
         // Explicitly check for that case here and try again.
-        if amount == 0 && api::get_last_error().code == c::ERROR_OPERATION_ABORTED {
+        if amount == 0 && api::get_last_error() == WinError::OPERATION_ABORTED {
             continue;
         }
         break;
