@@ -261,6 +261,49 @@ pub fn test_while_readonly<P: AsRef<Path>, F: FnOnce() + std::panic::UnwindSafe>
     success.unwrap();
 }
 
+fn ar<P: AsRef<str>, P2: AsRef<str>>(obj_path: P, lib_path: P2, caller_line_number: u32) {
+    let mut ar = Command::new(env_var("AR"));
+    ar.current_dir(cwd()).arg("crus").arg(lib_path.as_ref()).arg(obj_path.as_ref());
+    let output = ar.run();
+    if !output.status().success() {
+        handle_failed_output(&ar, output, caller_line_number);
+    }
+}
+
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
+#[track_caller]
+pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
+    let caller_location = std::panic::Location::caller();
+    let caller_line_number = caller_location.line();
+
+    let obj_file = format!("{lib_name}.o");
+    let src = format!("{lib_name}.c");
+    let lib_name = if is_msvc() {
+        let lib_path = format!("lib{lib_name}.lib");
+        // First compiling `.c` to `.o`.
+        cc().arg("-c").out_exe(&obj_file).input(src).run();
+        // Generating `.lib` from `.o`.
+        let mut msvc_lib = Command::new(env_var("MSVC_LIB"));
+        msvc_lib
+            .current_dir(cwd())
+            .arg(&format!("-out:{}", cygpath_windows(&lib_path)))
+            .arg(&obj_file);
+        let output = msvc_lib.run();
+        if !output.status().success() {
+            handle_failed_output(&msvc_lib, output, caller_line_number);
+        }
+        lib_path
+    } else {
+        let lib_path = format!("lib{lib_name}.a");
+        // First compiling `.c` to `.o`.
+        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
+        // Generating `.a` from `.o`.
+        ar(obj_file, &lib_path, caller_line_number);
+        lib_path
+    };
+    path(lib_name)
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]
