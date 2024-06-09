@@ -311,7 +311,8 @@ lint_any!(
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     Compiletest, "src/tools/compiletest", "compiletest";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    Jsondocck, "src/tools/jsondocck", "jsondocck";
+    HtmldocCk, "src/tools/htmldocck", "htmldocck";
+    JsondocCk, "src/tools/jsondocck", "jsondocck";
     Jsondoclint, "src/tools/jsondoclint", "jsondoclint";
     LintDocs, "src/tools/lint-docs", "lint-docs";
     LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker";

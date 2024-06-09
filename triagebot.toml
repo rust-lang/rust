@@ -169,7 +169,7 @@ trigger_files = [
     "tests/rustdoc-json",
 
     # Internal tooling
-    "src/etc/htmldocck.py",
+    "src/tools/htmldocck",
     "src/tools/jsondocck",
     "src/tools/jsondoclint",
     "src/tools/rustdoc-gui",

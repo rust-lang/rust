@@ -302,6 +302,7 @@ bootstrap_tool!(
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     LintDocs, "src/tools/lint-docs", "lint-docs";
+    HtmlDocCk, "src/tools/htmldocck", "htmldocck";
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
     JsonDocLint, "src/tools/jsondoclint", "jsondoclint";
     HtmlChecker, "src/tools/html-checker", "html-checker";
