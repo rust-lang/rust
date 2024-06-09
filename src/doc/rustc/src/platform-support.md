@@ -202,7 +202,7 @@ target | std | notes
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
 [`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | x86_64 OpenHarmony
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
-`x86_64-unknown-redox` | ✓ | Redox OS
+[`x86_64-unknown-redox`](platform-support/redox.md) | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 64-bit UEFI
 
 [^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
@@ -258,7 +258,7 @@ target | std | host | notes
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
-`aarch64-unknown-redox` | ? |  | ARM64 Redox OS
+[`aarch64-unknown-redox`](platform-support/redox.md) | ✓ |  | ARM64 Redox OS
 `aarch64-uwp-windows-msvc` | ? |  |
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
@@ -300,7 +300,7 @@ target | std | host | notes
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd [^x86_32-floats-return-ABI]
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2 [^x86_32-floats-return-ABI]
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD [^x86_32-floats-return-ABI]
-`i686-unknown-redox` | ? |  | i686 Redox OS
+[`i686-unknown-redox`](platform-support/redox.md) | ✓ |  | i686 Redox OS
 `i686-uwp-windows-gnu` | ? |  | [^x86_32-floats-return-ABI]
 `i686-uwp-windows-msvc` | ? |  | [^x86_32-floats-return-ABI]
 [`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
