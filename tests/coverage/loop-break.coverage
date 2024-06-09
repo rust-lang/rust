@@ -1,7 +1,7 @@
    LL|       |//@ edition: 2021
    LL|       |
    LL|      1|fn main() {
-   LL|      1|    loop {
+   LL|       |    loop {
    LL|      1|        if core::hint::black_box(true) {
    LL|      1|            break;
    LL|      0|        }
