@@ -1,5 +1,4 @@
-//@ignore-target-windows: No eventfd on Windows
-//@ignore-target-apple: No eventfd in macos
+//@only-target-linux
 fn main() {
     // eventfd read will block when EFD_NONBLOCK flag is clear and counter = 0.
     // This will pass when blocking is implemented.
