@@ -102,7 +102,7 @@ impl Clock {
             ClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
                 let nanos: u128 = duration.as_nanos();
-                nanoseconds.update(|x| x + nanos);
+                nanoseconds.update(|x| x.checked_add(nanos).expect("Miri's virtual clock cannot represent an execution this long"));
             }
         }
     }
