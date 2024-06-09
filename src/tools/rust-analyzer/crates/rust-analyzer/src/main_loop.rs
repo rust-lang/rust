@@ -3,6 +3,7 @@
 
 use std::{
     fmt,
+    ops::Div as _,
     time::{Duration, Instant},
 };
 
@@ -499,7 +500,7 @@ impl GlobalState {
         tracing::trace!("updating notifications for {:?}", subscriptions);
         // Split up the work on multiple threads, but we don't wanna fill the entire task pool with
         // diagnostic tasks, so we limit the number of tasks to a quarter of the total thread pool.
-        let max_tasks = self.config.main_loop_num_threads() / 4;
+        let max_tasks = self.config.main_loop_num_threads().div(4).max(1);
         let chunk_length = subscriptions.len() / max_tasks;
         let remainder = subscriptions.len() % max_tasks;
 
