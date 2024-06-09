@@ -364,12 +364,6 @@ macro_rules! impl_common_helpers {
                 self
             }
 
-            /// Clear all environmental variables.
-            pub fn env_var(&mut self) -> &mut Self {
-                self.cmd.env_clear();
-                self
-            }
-
             /// Generic command argument provider. Prefer specific helper methods if possible.
             /// Note that for some executables, arguments might be platform specific. For C/C++
             /// compilers, arguments might be platform *and* compiler specific.
