@@ -452,13 +452,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (no, no_len) = this.operand_to_simd(no)?;
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
                 let bitmask_len = dest_len.next_multiple_of(8);
+                if bitmask_len > 64 {
+                    throw_unsup_format!(
+                        "simd_bitmask: masks larger than 64 elements are currently not supported"
+                    );
+                }
 
                 // The mask must be an integer or an array.
                 assert!(
                     mask.layout.ty.is_integral()
                         || matches!(mask.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
                 );
-                assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, mask.layout.size.bits());
                 assert_eq!(dest_len, yes_len);
                 assert_eq!(dest_len, no_len);
@@ -498,13 +502,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let bitmask_len = op_len.next_multiple_of(8);
+                if bitmask_len > 64 {
+                    throw_unsup_format!(
+                        "simd_bitmask: masks larger than 64 elements are currently not supported"
+                    );
+                }
 
                 // Returns either an unsigned integer or array of `u8`.
                 assert!(
                     dest.layout.ty.is_integral()
                         || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
                 );
-                assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, dest.layout.size.bits());
                 let op_len = u32::try_from(op_len).unwrap();
 
