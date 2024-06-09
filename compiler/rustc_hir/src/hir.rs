@@ -1010,6 +1010,7 @@ pub struct Block<'hir> {
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
+    /// The span includes the curly braces `{` and `}` around the block.
     pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
     /// break out of this block early.

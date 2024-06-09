@@ -8,6 +8,16 @@ LL |     std::fs::File::open("foo")?;
    |                               ^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
+help: consider adding return type
+   |
+LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
+LL |     // error for a `Try` type on a non-`Try` fn
+ ...
+LL |     try_trait_generic::<()>();
+LL + 
+LL +     Ok(())
+LL + }
+   |
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/try-operator-on-main.rs:10:5

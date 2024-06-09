@@ -4586,6 +4586,47 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             _ => "/* value */".to_string(),
         })
     }
+
+    fn suggest_add_result_as_return_type(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) {
+        if ObligationCauseCode::QuestionMark != *obligation.cause.code().peel_derives() {
+            return;
+        }
+
+        let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
+        if let hir::Node::Item(item) = node
+            && let hir::ItemKind::Fn(sig, _, body_id) = item.kind
+            && let hir::FnRetTy::DefaultReturn(ret_span) = sig.decl.output
+            && self.tcx.is_diagnostic_item(sym::FromResidual, trait_ref.def_id())
+            && let ty::Tuple(l) = trait_ref.skip_binder().args.type_at(0).kind()
+            && l.len() == 0
+            && let ty::Adt(def, _) = trait_ref.skip_binder().args.type_at(1).kind()
+            && self.tcx.is_diagnostic_item(sym::Result, def.did())
+        {
+            let body = self.tcx.hir().body(body_id);
+            let mut sugg_spans =
+                vec![(ret_span, " -> Result<(), Box<dyn std::error::Error>>".to_string())];
+
+            if let hir::ExprKind::Block(b, _) = body.value.kind
+                && b.expr.is_none()
+            {
+                sugg_spans.push((
+                    // The span will point to the closing curly brace `}` of the block.
+                    b.span.shrink_to_hi().with_lo(b.span.hi() - BytePos(1)),
+                    "\n    Ok(())\n}".to_string(),
+                ));
+            }
+            err.multipart_suggestion_verbose(
+                format!("consider adding return type"),
+                sugg_spans,
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.
