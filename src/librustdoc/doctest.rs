@@ -129,6 +129,7 @@ pub(crate) fn run(
         edition: options.edition,
         target_triple: options.target.clone(),
         crate_name: options.crate_name.clone(),
+        remap_path_prefix: options.remap_path_prefix.clone(),
         ..config::Options::default()
     };
 
@@ -572,7 +573,6 @@ fn make_maybe_absolute_path(path: PathBuf) -> PathBuf {
         std::env::current_dir().map(|c| c.join(&path)).unwrap_or_else(|_| path)
     }
 }
-
 struct IndividualTestOptions {
     outdir: DirState,
     test_id: String,
@@ -651,7 +651,7 @@ impl CreateRunnableDoctests {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        format!("{} - {item_path}(line {line})", filename.prefer_local())
+        format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly())
     }
 
     fn add_test(&mut self, test: ScrapedDoctest) {
