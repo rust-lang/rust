@@ -609,10 +609,25 @@
                 "properties": {
                     "rust-analyzer.cachePriming.numThreads": {
                         "markdownDescription": "How many worker threads to handle priming caches. The default `0` means to pick automatically.",
-                        "default": 0,
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 255
+                        "default": "physical",
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 255
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "physical",
+                                    "logical"
+                                ],
+                                "enumDescriptions": [
+                                    "Use the number of physical cores",
+                                    "Use the number of logical cores"
+                                ]
+                            }
+                        ]
                     }
                 }
             },
@@ -2225,11 +2240,27 @@
                     "rust-analyzer.numThreads": {
                         "markdownDescription": "How many worker threads in the main loop. The default `null` means to pick automatically.",
                         "default": null,
-                        "type": [
-                            "null",
-                            "integer"
-                        ],
-                        "minimum": 0
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 255
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "physical",
+                                    "logical"
+                                ],
+                                "enumDescriptions": [
+                                    "Use the number of physical cores",
+                                    "Use the number of logical cores"
+                                ]
+                            }
+                        ]
                     }
                 }
             },
