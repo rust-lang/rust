@@ -10,10 +10,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
 
-    fn init_once_get_id(
-        &mut self,
-        init_once_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, InitOnceId> {
+    fn init_once_get_id(&mut self, init_once_op: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
         this.init_once_get_or_create_id(init_once_op, this.windows_ty_layout("INIT_ONCE"), 0)
     }
@@ -22,8 +19,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn init_once_try_begin(
         &mut self,
         id: InitOnceId,
-        pending_place: &MPlaceTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        pending_place: &MPlaceTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         Ok(match this.init_once_status(id) {
@@ -49,11 +46,11 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn InitOnceBeginInitialize(
         &mut self,
-        init_once_op: &OpTy<'tcx, Provenance>,
-        flags_op: &OpTy<'tcx, Provenance>,
-        pending_op: &OpTy<'tcx, Provenance>,
-        context_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        init_once_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        pending_op: &OpTy<'tcx>,
+        context_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -82,8 +79,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     id: InitOnceId,
-                    pending_place: MPlaceTy<'tcx, Provenance>,
-                    dest: MPlaceTy<'tcx, Provenance>,
+                    pending_place: MPlaceTy<'tcx>,
+                    dest: MPlaceTy<'tcx>,
                 }
                 @unblock = |this| {
                     let ret = this.init_once_try_begin(id, &pending_place, &dest)?;
@@ -97,10 +94,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn InitOnceComplete(
         &mut self,
-        init_once_op: &OpTy<'tcx, Provenance>,
-        flags_op: &OpTy<'tcx, Provenance>,
-        context_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        init_once_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        context_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let id = this.init_once_get_id(init_once_op)?;
@@ -137,11 +134,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn WaitOnAddress(
         &mut self,
-        ptr_op: &OpTy<'tcx, Provenance>,
-        compare_op: &OpTy<'tcx, Provenance>,
-        size_op: &OpTy<'tcx, Provenance>,
-        timeout_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        ptr_op: &OpTy<'tcx>,
+        compare_op: &OpTy<'tcx>,
+        size_op: &OpTy<'tcx>,
+        timeout_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -160,11 +157,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let size = Size::from_bytes(size);
 
-        let timeout_time = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
+        let timeout = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
             None
         } else {
             let duration = Duration::from_millis(timeout_ms.into());
-            Some(Timeout::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration))
         };
 
         // See the Linux futex implementation for why this fence exists.
@@ -180,7 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.futex_wait(
                 addr,
                 u32::MAX, // bitset
-                timeout_time,
+                timeout,
                 Scalar::from_i32(1), // retval_succ
                 Scalar::from_i32(0), // retval_timeout
                 dest.clone(),
@@ -193,7 +190,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn WakeByAddressSingle(&mut self, ptr_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn WakeByAddressSingle(&mut self, ptr_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let ptr = this.read_pointer(ptr_op)?;
@@ -206,7 +203,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         Ok(())
     }
-    fn WakeByAddressAll(&mut self, ptr_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn WakeByAddressAll(&mut self, ptr_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let ptr = this.read_pointer(ptr_op)?;

@@ -56,7 +56,7 @@ impl<'tcx> Tree {
             "{} with tag {:?}: {:?}, size {}",
             access_kind,
             prov,
-            Pointer::new(alloc_id, range.start),
+            interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes(),
         );
         // TODO: for now we bail out on wildcard pointers. Eventually we should
@@ -195,7 +195,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the provenance that should be used henceforth.
     fn tb_reborrow(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>, // parent tag extracted from here
+        place: &MPlaceTy<'tcx>, // parent tag extracted from here
         ptr_size: Size,
         new_perm: NewPermission,
         new_tag: BorTag,
@@ -258,7 +258,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             new_tag,
             orig_tag,
             place.layout.ty,
-            Pointer::new(alloc_id, base_offset),
+            interpret::Pointer::new(alloc_id, base_offset),
             ptr_size.bytes()
         );
 
@@ -327,9 +327,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn tb_retag_place(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         new_perm: NewPermission,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
 
         // Determine the size of the reborrow.
@@ -366,9 +366,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Retags an individual pointer, returning the retagged version.
     fn tb_retag_reference(
         &mut self,
-        val: &ImmTy<'tcx, Provenance>,
+        val: &ImmTy<'tcx>,
         new_perm: NewPermission,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let place = this.ref_to_mplace(val)?;
         let new_place = this.tb_retag_place(&place, new_perm)?;
@@ -383,8 +383,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn tb_retag_ptr_value(
         &mut self,
         kind: RetagKind,
-        val: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        val: &ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let new_perm = match val.layout.ty.kind() {
             &ty::Ref(_, pointee, mutability) =>
@@ -402,7 +402,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn tb_retag_place_contents(
         &mut self,
         kind: RetagKind,
-        place: &PlaceTy<'tcx, Provenance>,
+        place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let options = this.machine.borrow_tracker.as_mut().unwrap().get_mut();
@@ -423,7 +423,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
             fn retag_ptr_inplace(
                 &mut self,
-                place: &PlaceTy<'tcx, Provenance>,
+                place: &PlaceTy<'tcx>,
                 new_perm: Option<NewPermission>,
             ) -> InterpResult<'tcx> {
                 if let Some(new_perm) = new_perm {
@@ -435,7 +435,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
         impl<'ecx, 'tcx> ValueVisitor<'tcx, MiriMachine<'tcx>> for RetagVisitor<'ecx, 'tcx> {
-            type V = PlaceTy<'tcx, Provenance>;
+            type V = PlaceTy<'tcx>;
 
             #[inline(always)]
             fn ecx(&self) -> &MiriInterpCx<'tcx> {
@@ -445,11 +445,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             /// Regardless of how `Unique` is handled, Boxes are always reborrowed.
             /// When `Unique` is also reborrowed, then it behaves exactly like `Box`
             /// except for the fact that `Box` has a non-zero-sized reborrow.
-            fn visit_box(
-                &mut self,
-                box_ty: Ty<'tcx>,
-                place: &PlaceTy<'tcx, Provenance>,
-            ) -> InterpResult<'tcx> {
+            fn visit_box(&mut self, box_ty: Ty<'tcx>, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
                 // Only boxes for the global allocator get any special treatment.
                 if box_ty.is_box_global(*self.ecx.tcx) {
                     let new_perm = NewPermission::from_unique_ty(
@@ -463,7 +459,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(())
             }
 
-            fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+            fn visit_value(&mut self, place: &PlaceTy<'tcx>) -> InterpResult<'tcx> {
                 // If this place is smaller than a pointer, we know that it can't contain any
                 // pointers we need to retag, so we can stop recursion early.
                 // This optimization is crucial for ZSTs, because they can contain way more fields
@@ -526,10 +522,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// call.
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
-    fn tb_protect_place(
-        &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+    fn tb_protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
 
         // Retag it. With protection! That is the entire point.
@@ -581,7 +574,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// of `ptr` (with 0 representing `ptr` itself)
     fn tb_give_pointer_debug_name(
         &mut self,
-        ptr: Pointer<Option<Provenance>>,
+        ptr: Pointer,
         nth_parent: u8,
         name: &str,
     ) -> InterpResult<'tcx> {
@@ -604,8 +597,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 /// and output can be used by `retag_ptr_inplace`.
 fn inner_ptr_of_unique<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    place: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
+    place: &PlaceTy<'tcx>,
+) -> InterpResult<'tcx, PlaceTy<'tcx>> {
     // Follows the same layout as `interpret/visitor.rs:walk_value` for `Box` in
     // `rustc_const_eval`, just with one fewer layer.
     // Here we have a `Unique(NonNull(*mut), PhantomData)`

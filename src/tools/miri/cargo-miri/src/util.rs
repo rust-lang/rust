@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::File;
@@ -11,14 +12,15 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::arg::*;
 
-pub fn show_error(msg: &impl std::fmt::Display) -> ! {
+pub fn show_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
     std::process::exit(1)
 }
 
 macro_rules! show_error {
-    ($($tt:tt)*) => { crate::util::show_error(&format_args!($($tt)*)) };
+    ($($tt:tt)*) => { crate::util::show_error_(&format_args!($($tt)*)) };
 }
+pub(crate) use show_error;
 
 /// The information to run a crate with the given environment.
 #[derive(Clone, Serialize, Deserialize)]
@@ -232,21 +234,18 @@ pub fn get_cargo_metadata() -> Metadata {
 }
 
 /// Pulls all the crates in this workspace from the cargo metadata.
-/// Workspace members are emitted like "miri 0.1.0 (path+file:///path/to/miri)"
 /// Additionally, somewhere between cargo metadata and TyCtxt, '-' gets replaced with '_' so we
 /// make that same transformation here.
 pub fn local_crates(metadata: &Metadata) -> String {
     assert!(!metadata.workspace_members.is_empty());
-    let mut local_crates = String::new();
-    for member in &metadata.workspace_members {
-        let name = member.repr.split(' ').next().unwrap();
-        let name = name.replace('-', "_");
-        local_crates.push_str(&name);
-        local_crates.push(',');
-    }
-    local_crates.pop(); // Remove the trailing ','
-
-    local_crates
+    let package_name_by_id: HashMap<_, _> =
+        metadata.packages.iter().map(|package| (&package.id, package.name.as_str())).collect();
+    metadata
+        .workspace_members
+        .iter()
+        .map(|id| package_name_by_id[id].replace('-', "_"))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 /// Debug-print a command that is going to be run.

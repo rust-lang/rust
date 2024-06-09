@@ -8,7 +8,6 @@
 )]
 
 // Some "regular" crates we want to share with rustc
-#[macro_use]
 extern crate tracing;
 
 // The rustc crates we need
@@ -25,6 +24,8 @@ use std::env::{self, VarError};
 use std::num::NonZero;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use tracing::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;

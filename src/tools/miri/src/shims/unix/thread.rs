@@ -6,10 +6,10 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_create(
         &mut self,
-        thread: &OpTy<'tcx, Provenance>,
-        _attr: &OpTy<'tcx, Provenance>,
-        start_routine: &OpTy<'tcx, Provenance>,
-        arg: &OpTy<'tcx, Provenance>,
+        thread: &OpTy<'tcx>,
+        _attr: &OpTy<'tcx>,
+        start_routine: &OpTy<'tcx>,
+        arg: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -32,8 +32,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_join(
         &mut self,
-        thread: &OpTy<'tcx, Provenance>,
-        retval: &OpTy<'tcx, Provenance>,
+        thread: &OpTy<'tcx>,
+        retval: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -48,7 +48,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(0)
     }
 
-    fn pthread_detach(&mut self, thread: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
@@ -60,7 +60,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(0)
     }
 
-    fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let thread_id = this.active_thread();
@@ -71,10 +71,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// including the null terminator.
     fn pthread_setname_np(
         &mut self,
-        thread: Scalar<Provenance>,
-        name: Scalar<Provenance>,
+        thread: Scalar,
+        name: Scalar,
         max_name_len: usize,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
@@ -95,10 +95,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_getname_np(
         &mut self,
-        thread: Scalar<Provenance>,
-        name_out: Scalar<Provenance>,
-        len: Scalar<Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        thread: Scalar,
+        name_out: Scalar,
+        len: Scalar,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;

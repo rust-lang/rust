@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::SystemTime;
 
 use rustc_target::abi::Size;
 
@@ -10,9 +9,7 @@ use crate::*;
 // - kind: i32
 
 #[inline]
-fn mutexattr_kind_offset<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-) -> InterpResult<'tcx, u64> {
+fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" | "macos" => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
@@ -21,7 +18,7 @@ fn mutexattr_kind_offset<'tcx>(
 
 fn mutexattr_get_kind<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx, Provenance>,
+    attr_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         attr_op,
@@ -34,7 +31,7 @@ fn mutexattr_get_kind<'tcx>(
 
 fn mutexattr_set_kind<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx, Provenance>,
+    attr_op: &OpTy<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
@@ -53,17 +50,11 @@ fn mutexattr_set_kind<'tcx>(
 /// in `pthread_mutexattr_settype` function.
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
 
-fn is_mutex_kind_default<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, bool> {
+fn is_mutex_kind_default<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tcx, bool> {
     Ok(kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"))
 }
 
-fn is_mutex_kind_normal<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, bool> {
+fn is_mutex_kind_normal<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tcx, bool> {
     let mutex_normal_kind = ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL");
     Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
 }
@@ -125,7 +116,7 @@ fn mutex_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
 
 fn mutex_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx, Provenance>,
+    mutex_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, MutexId> {
     ecx.mutex_get_or_create_id(
         mutex_op,
@@ -136,7 +127,7 @@ fn mutex_get_id<'tcx>(
 
 fn mutex_reset_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx, Provenance>,
+    mutex_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         mutex_op,
@@ -149,7 +140,7 @@ fn mutex_reset_id<'tcx>(
 
 fn mutex_get_kind<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx, Provenance>,
+    mutex_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         mutex_op,
@@ -162,7 +153,7 @@ fn mutex_get_kind<'tcx>(
 
 fn mutex_set_kind<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx, Provenance>,
+    mutex_op: &OpTy<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
@@ -206,7 +197,7 @@ fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
 
 fn rwlock_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    rwlock_op: &OpTy<'tcx, Provenance>,
+    rwlock_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, RwLockId> {
     ecx.rwlock_get_or_create_id(
         rwlock_op,
@@ -220,9 +211,7 @@ fn rwlock_get_id<'tcx>(
 // - clock: i32
 
 #[inline]
-fn condattr_clock_offset<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-) -> InterpResult<'tcx, u64> {
+fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
         // macOS does not have a clock attribute.
@@ -232,7 +221,7 @@ fn condattr_clock_offset<'tcx>(
 
 fn condattr_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx, Provenance>,
+    attr_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         attr_op,
@@ -245,7 +234,7 @@ fn condattr_get_clock_id<'tcx>(
 
 fn condattr_set_clock_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx, Provenance>,
+    attr_op: &OpTy<'tcx>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
@@ -323,7 +312,7 @@ fn cond_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
 
 fn cond_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx, Provenance>,
+    cond_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, CondvarId> {
     ecx.condvar_get_or_create_id(
         cond_op,
@@ -334,7 +323,7 @@ fn cond_get_id<'tcx>(
 
 fn cond_reset_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx, Provenance>,
+    cond_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
         cond_op,
@@ -347,7 +336,7 @@ fn cond_reset_id<'tcx>(
 
 fn cond_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx, Provenance>,
+    cond_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
         cond_op,
@@ -360,7 +349,7 @@ fn cond_get_clock_id<'tcx>(
 
 fn cond_set_clock_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx, Provenance>,
+    cond_op: &OpTy<'tcx>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
@@ -374,10 +363,7 @@ fn cond_set_clock_id<'tcx>(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn pthread_mutexattr_init(
-        &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_mutexattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let default_kind = this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT");
@@ -388,8 +374,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_mutexattr_settype(
         &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-        kind_op: &OpTy<'tcx, Provenance>,
+        attr_op: &OpTy<'tcx>,
+        kind_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -427,10 +413,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(0)
     }
 
-    fn pthread_mutexattr_destroy(
-        &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_mutexattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         // Destroying an uninit pthread_mutexattr is UB, so check to make sure it's not uninit.
@@ -457,8 +440,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_mutex_init(
         &mut self,
-        mutex_op: &OpTy<'tcx, Provenance>,
-        attr_op: &OpTy<'tcx, Provenance>,
+        mutex_op: &OpTy<'tcx>,
+        attr_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -479,8 +462,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_mutex_lock(
         &mut self,
-        mutex_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        mutex_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -518,10 +501,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn pthread_mutex_trylock(
-        &mut self,
-        mutex_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_mutex_trylock(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let kind = mutex_get_kind(this, mutex_op)?;
@@ -553,10 +533,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn pthread_mutex_unlock(
-        &mut self,
-        mutex_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_mutex_unlock(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let kind = mutex_get_kind(this, mutex_op)?;
@@ -587,10 +564,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn pthread_mutex_destroy(
-        &mut self,
-        mutex_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_mutex_destroy(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
@@ -614,8 +588,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_rwlock_rdlock(
         &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        rwlock_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -631,10 +605,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn pthread_rwlock_tryrdlock(
-        &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let id = rwlock_get_id(this, rwlock_op)?;
@@ -649,8 +620,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_rwlock_wrlock(
         &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        rwlock_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -678,10 +649,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn pthread_rwlock_trywrlock(
-        &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_rwlock_trywrlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let id = rwlock_get_id(this, rwlock_op)?;
@@ -694,10 +662,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn pthread_rwlock_unlock(
-        &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_rwlock_unlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let id = rwlock_get_id(this, rwlock_op)?;
@@ -712,10 +677,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn pthread_rwlock_destroy(
-        &mut self,
-        rwlock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_rwlock_destroy(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let id = rwlock_get_id(this, rwlock_op)?;
@@ -736,10 +698,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(0)
     }
 
-    fn pthread_condattr_init(
-        &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_condattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         // no clock attribute on macOS
@@ -756,9 +715,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_condattr_setclock(
         &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-        clock_id_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        attr_op: &OpTy<'tcx>,
+        clock_id_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
@@ -776,9 +735,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_condattr_getclock(
         &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-        clk_id_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        attr_op: &OpTy<'tcx>,
+        clk_id_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
@@ -787,10 +746,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(0))
     }
 
-    fn pthread_condattr_destroy(
-        &mut self,
-        attr_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_condattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
@@ -810,8 +766,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_cond_init(
         &mut self,
-        cond_op: &OpTy<'tcx, Provenance>,
-        attr_op: &OpTy<'tcx, Provenance>,
+        cond_op: &OpTy<'tcx>,
+        attr_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -831,17 +787,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(0)
     }
 
-    fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         let id = cond_get_id(this, cond_op)?;
         this.condvar_signal(id)?;
         Ok(0)
     }
 
-    fn pthread_cond_broadcast(
-        &mut self,
-        cond_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_cond_broadcast(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         let id = cond_get_id(this, cond_op)?;
         while this.condvar_signal(id)? {}
@@ -850,9 +803,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_cond_wait(
         &mut self,
-        cond_op: &OpTy<'tcx, Provenance>,
-        mutex_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        cond_op: &OpTy<'tcx>,
+        mutex_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -873,10 +826,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_cond_timedwait(
         &mut self,
-        cond_op: &OpTy<'tcx, Provenance>,
-        mutex_op: &OpTy<'tcx, Provenance>,
-        abstime_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        cond_op: &OpTy<'tcx>,
+        mutex_op: &OpTy<'tcx>,
+        abstime_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -895,11 +848,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(());
             }
         };
-        let timeout_time = if is_cond_clock_realtime(this, clock_id) {
+        let timeout_clock = if is_cond_clock_realtime(this, clock_id) {
             this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
-            Timeout::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
+            TimeoutClock::RealTime
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
-            Timeout::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
+            TimeoutClock::Monotonic
         } else {
             throw_unsup_format!("unsupported clock id: {}", clock_id);
         };
@@ -907,7 +860,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.condvar_wait(
             id,
             mutex_id,
-            Some(timeout_time),
+            Some((timeout_clock, TimeoutAnchor::Absolute, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),
@@ -916,10 +869,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn pthread_cond_destroy(
-        &mut self,
-        cond_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_cond_destroy(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let id = cond_get_id(this, cond_op)?;

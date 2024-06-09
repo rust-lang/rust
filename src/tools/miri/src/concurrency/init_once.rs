@@ -7,7 +7,7 @@ use super::sync::EvalContextExtPriv as _;
 use super::vector_clock::VClock;
 use crate::*;
 
-declare_id!(InitOnceId);
+super::sync::declare_id!(InitOnceId);
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 /// The current status of a one time initialization.
@@ -33,10 +33,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn init_once_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, InitOnceId>
     where
-        F: FnOnce(
-            &mut MiriInterpCx<'tcx>,
-            InitOnceId,
-        ) -> InterpResult<'tcx, Option<InitOnceId>>,
+        F: FnOnce(&mut MiriInterpCx<'tcx>, InitOnceId) -> InterpResult<'tcx, Option<InitOnceId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.sync.init_onces.next_index();
@@ -54,7 +51,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn init_once_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx, Provenance>,
+        lock_op: &OpTy<'tcx>,
         lock_layout: TyAndLayout<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, InitOnceId> {

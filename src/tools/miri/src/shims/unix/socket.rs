@@ -35,11 +35,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// <https://linux.die.net/man/2/socketpair>
     fn socketpair(
         &mut self,
-        domain: &OpTy<'tcx, Provenance>,
-        type_: &OpTy<'tcx, Provenance>,
-        protocol: &OpTy<'tcx, Provenance>,
-        sv: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        domain: &OpTy<'tcx>,
+        type_: &OpTy<'tcx>,
+        protocol: &OpTy<'tcx>,
+        sv: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let _domain = this.read_scalar(domain)?.to_i32()?;

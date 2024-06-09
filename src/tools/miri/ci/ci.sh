@@ -148,8 +148,8 @@ case $HOST_TARGET in
     UNIX="panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
     TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX threadname libc-time fs
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX threadname libc-time fs
-    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX threadname pthread-sync libc-time
-    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX threadname pthread-sync libc-time
+    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX threadname pthread-sync available-parallelism libc-time
+    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX threadname pthread-sync available-parallelism libc-time
     TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX
     TEST_TARGET=wasm32-wasip2          run_tests_minimal empty_main wasm heap_alloc libc-mem
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal empty_main wasm

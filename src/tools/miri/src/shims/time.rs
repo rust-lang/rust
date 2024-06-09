@@ -18,9 +18,9 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn clock_gettime(
         &mut self,
-        clk_id_op: &OpTy<'tcx, Provenance>,
-        tp_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        clk_id_op: &OpTy<'tcx>,
+        tp_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         // This clock support is deliberately minimal because a lot of clock types have fiddly
         // properties (is it possible for Miri to be suspended independently of the host?). If you
         // have a use for another clock type, please open an issue.
@@ -78,7 +78,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.check_no_isolation("`clock_gettime` with `REALTIME` clocks")?;
             system_time_to_duration(&SystemTime::now())?
         } else if relative_clocks.contains(&clk_id) {
-            this.machine.clock.now().duration_since(this.machine.clock.anchor())
+            this.machine.clock.now().duration_since(this.machine.clock.epoch())
         } else {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -93,11 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(0))
     }
 
-    fn gettimeofday(
-        &mut self,
-        tv_op: &OpTy<'tcx, Provenance>,
-        tz_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn gettimeofday(&mut self, tv_op: &OpTy<'tcx>, tz_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("gettimeofday");
@@ -127,9 +123,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // https://linux.die.net/man/3/localtime_r
     fn localtime_r(
         &mut self,
-        timep: &OpTy<'tcx, Provenance>,
-        result_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        timep: &OpTy<'tcx>,
+        result_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("localtime_r");
@@ -212,7 +208,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn GetSystemTimeAsFileTime(
         &mut self,
         shim_name: &str,
-        LPFILETIME_op: &OpTy<'tcx, Provenance>,
+        LPFILETIME_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -242,15 +238,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[allow(non_snake_case)]
     fn QueryPerformanceCounter(
         &mut self,
-        lpPerformanceCount_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        lpPerformanceCount_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceCounter");
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.anchor());
+        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
@@ -261,8 +257,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[allow(non_snake_case)]
     fn QueryPerformanceFrequency(
         &mut self,
-        lpFrequency_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        lpFrequency_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceFrequency");
@@ -279,24 +275,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(-1)) // Return non-zero on success
     }
 
-    fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
 
         this.assert_target_os("macos", "mach_absolute_time");
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.anchor());
+        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
         let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
         })?;
         Ok(Scalar::from_u64(res))
     }
 
-    fn mach_timebase_info(
-        &mut self,
-        info_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "mach_timebase_info");
@@ -313,8 +306,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn nanosleep(
         &mut self,
-        req_op: &OpTy<'tcx, Provenance>,
-        _rem: &OpTy<'tcx, Provenance>, // Signal handlers are not supported, so rem will never be written to.
+        req_op: &OpTy<'tcx>,
+        _rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -330,16 +323,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(-1);
             }
         };
-        // If adding the duration overflows, let's just sleep for an hour. Waking up early is always acceptable.
-        let now = this.machine.clock.now();
-        let timeout_time = now
-            .checked_add(duration)
-            .unwrap_or_else(|| now.checked_add(Duration::from_secs(3600)).unwrap());
-        let timeout_time = Timeout::Monotonic(timeout_time);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some(timeout_time),
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
                 @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
@@ -350,7 +337,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     #[allow(non_snake_case)]
-    fn Sleep(&mut self, timeout: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn Sleep(&mut self, timeout: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "Sleep");
@@ -358,12 +345,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 
         let duration = Duration::from_millis(timeout_ms.into());
-        let timeout_time = this.machine.clock.now().checked_add(duration).unwrap();
-        let timeout_time = Timeout::Monotonic(timeout_time);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some(timeout_time),
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
                 @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }

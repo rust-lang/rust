@@ -273,7 +273,7 @@ impl FdTable {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn fcntl(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
+    fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         if args.len() < 2 {
@@ -329,7 +329,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn close(&mut self, fd_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn close(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -355,12 +355,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok((-1).into())
     }
 
-    fn read(
-        &mut self,
-        fd: i32,
-        buf: Pointer<Option<Provenance>>,
-        count: u64,
-    ) -> InterpResult<'tcx, i64> {
+    fn read(&mut self, fd: i32, buf: Pointer, count: u64) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -409,12 +404,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn write(
-        &mut self,
-        fd: i32,
-        buf: Pointer<Option<Provenance>>,
-        count: u64,
-    ) -> InterpResult<'tcx, i64> {
+    fn write(&mut self, fd: i32, buf: Pointer, count: u64) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.

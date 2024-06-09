@@ -1,13 +1,11 @@
-use std::time::SystemTime;
-
 use crate::*;
 
 /// Implementation of the SYS_futex syscall.
 /// `args` is the arguments *after* the syscall number.
 pub fn futex<'tcx>(
     this: &mut MiriInterpCx<'tcx>,
-    args: &[OpTy<'tcx, Provenance>],
-    dest: &MPlaceTy<'tcx, Provenance>,
+    args: &[OpTy<'tcx>],
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     // The amount of arguments used depends on the type of futex operation.
     // The full futex syscall takes six arguments (excluding the syscall
@@ -84,15 +82,9 @@ pub fn futex<'tcx>(
             }
 
             let timeout = this.deref_pointer_as(&args[3], this.libc_ty_layout("timespec"))?;
-            let timeout_time = if this.ptr_is_null(timeout.ptr())? {
+            let timeout = if this.ptr_is_null(timeout.ptr())? {
                 None
             } else {
-                let realtime = op & futex_realtime == futex_realtime;
-                if realtime {
-                    this.check_no_isolation(
-                        "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
-                    )?;
-                }
                 let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {
@@ -102,23 +94,22 @@ pub fn futex<'tcx>(
                         return Ok(());
                     }
                 };
-                Some(if wait_bitset {
+                let timeout_clock = if op & futex_realtime == futex_realtime {
+                    this.check_no_isolation(
+                        "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
+                    )?;
+                    TimeoutClock::RealTime
+                } else {
+                    TimeoutClock::Monotonic
+                };
+                let timeout_anchor = if wait_bitset {
                     // FUTEX_WAIT_BITSET uses an absolute timestamp.
-                    if realtime {
-                        Timeout::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
-                    } else {
-                        Timeout::Monotonic(
-                            this.machine.clock.anchor().checked_add(duration).unwrap(),
-                        )
-                    }
+                    TimeoutAnchor::Absolute
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
-                    if realtime {
-                        Timeout::RealTime(SystemTime::now().checked_add(duration).unwrap())
-                    } else {
-                        Timeout::Monotonic(this.machine.clock.now().checked_add(duration).unwrap())
-                    }
-                })
+                    TimeoutAnchor::Relative
+                };
+                Some((timeout_clock, timeout_anchor, duration))
             };
             // There may be a concurrent thread changing the value of addr
             // and then invoking the FUTEX_WAKE syscall. It is critical that the
@@ -172,7 +163,7 @@ pub fn futex<'tcx>(
                 this.futex_wait(
                     addr_usize,
                     bitset,
-                    timeout_time,
+                    timeout,
                     Scalar::from_target_isize(0, this), // retval_succ
                     Scalar::from_target_isize(-1, this), // retval_timeout
                     dest.clone(),

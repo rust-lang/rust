@@ -56,21 +56,21 @@ impl VisitProvenance for Provenance {
     }
 }
 
-impl VisitProvenance for Pointer<Provenance> {
+impl VisitProvenance for StrictPointer {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let (prov, _offset) = self.into_parts();
         prov.visit_provenance(visit);
     }
 }
 
-impl VisitProvenance for Pointer<Option<Provenance>> {
+impl VisitProvenance for Pointer {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let (prov, _offset) = self.into_parts();
         prov.visit_provenance(visit);
     }
 }
 
-impl VisitProvenance for Scalar<Provenance> {
+impl VisitProvenance for Scalar {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         match self {
             Scalar::Ptr(ptr, _) => ptr.visit_provenance(visit),
@@ -103,20 +103,20 @@ impl VisitProvenance for MemPlaceMeta<Provenance> {
     }
 }
 
-impl VisitProvenance for ImmTy<'_, Provenance> {
+impl VisitProvenance for ImmTy<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         (**self).visit_provenance(visit)
     }
 }
 
-impl VisitProvenance for MPlaceTy<'_, Provenance> {
+impl VisitProvenance for MPlaceTy<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.ptr().visit_provenance(visit);
         self.meta().visit_provenance(visit);
     }
 }
 
-impl VisitProvenance for PlaceTy<'_, Provenance> {
+impl VisitProvenance for PlaceTy<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         match self.as_mplace_or_local() {
             Either::Left(mplace) => mplace.visit_provenance(visit),
@@ -125,7 +125,7 @@ impl VisitProvenance for PlaceTy<'_, Provenance> {
     }
 }
 
-impl VisitProvenance for OpTy<'_, Provenance> {
+impl VisitProvenance for OpTy<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         match self.as_mplace_or_imm() {
             Either::Left(mplace) => mplace.visit_provenance(visit),

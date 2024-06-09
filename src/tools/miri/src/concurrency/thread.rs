@@ -256,10 +256,10 @@ pub struct Thread<'tcx> {
     /// which then forwards it to 'Resume'. However this argument is implicit in MIR,
     /// so we have to store it out-of-band. When there are multiple active unwinds,
     /// the innermost one is always caught first, so we can store them as a stack.
-    pub(crate) panic_payloads: Vec<Scalar<Provenance>>,
+    pub(crate) panic_payloads: Vec<Scalar>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
-    pub(crate) last_error: Option<MPlaceTy<'tcx, Provenance>>,
+    pub(crate) last_error: Option<MPlaceTy<'tcx>>,
 }
 
 pub type StackEmptyCallback<'tcx> =
@@ -407,7 +407,7 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
 
 /// The moment in time when a blocked thread should be woken up.
 #[derive(Debug)]
-pub enum Timeout {
+enum Timeout {
     Monotonic(Instant),
     RealTime(SystemTime),
 }
@@ -421,6 +421,34 @@ impl Timeout {
                 time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO),
         }
     }
+
+    /// Will try to add `duration`, but if that overflows it may add less.
+    fn add_lossy(&self, duration: Duration) -> Self {
+        match self {
+            Timeout::Monotonic(i) => Timeout::Monotonic(i.add_lossy(duration)),
+            Timeout::RealTime(s) => {
+                // If this overflows, try adding just 1h and assume that will not overflow.
+                Timeout::RealTime(
+                    s.checked_add(duration)
+                        .unwrap_or_else(|| s.checked_add(Duration::from_secs(3600)).unwrap()),
+                )
+            }
+        }
+    }
+}
+
+/// The clock to use for the timeout you are asking for.
+#[derive(Debug, Copy, Clone)]
+pub enum TimeoutClock {
+    Monotonic,
+    RealTime,
+}
+
+/// Whether the timeout is relative or absolute.
+#[derive(Debug, Copy, Clone)]
+pub enum TimeoutAnchor {
+    Relative,
+    Absolute,
 }
 
 /// A set of threads.
@@ -432,9 +460,8 @@ pub struct ThreadManager<'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'tcx>>,
-    /// A mapping from a thread-local static to an allocation id of a thread
-    /// specific allocation.
-    thread_local_alloc_ids: FxHashMap<(DefId, ThreadId), Pointer<Provenance>>,
+    /// A mapping from a thread-local static to the thread specific allocation.
+    thread_local_allocs: FxHashMap<(DefId, ThreadId), StrictPointer>,
     /// A flag that indicates that we should change the active thread.
     yield_active_thread: bool,
 }
@@ -443,7 +470,7 @@ impl VisitProvenance for ThreadManager<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let ThreadManager {
             threads,
-            thread_local_alloc_ids,
+            thread_local_allocs,
             active_thread: _,
             yield_active_thread: _,
         } = self;
@@ -451,7 +478,7 @@ impl VisitProvenance for ThreadManager<'_> {
         for thread in threads {
             thread.visit_provenance(visit);
         }
-        for ptr in thread_local_alloc_ids.values() {
+        for ptr in thread_local_allocs.values() {
             ptr.visit_provenance(visit);
         }
     }
@@ -465,7 +492,7 @@ impl<'tcx> Default for ThreadManager<'tcx> {
         Self {
             active_thread: ThreadId::MAIN_THREAD,
             threads,
-            thread_local_alloc_ids: Default::default(),
+            thread_local_allocs: Default::default(),
             yield_active_thread: false,
         }
     }
@@ -487,16 +514,16 @@ impl<'tcx> ThreadManager<'tcx> {
 
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
-    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<Pointer<Provenance>> {
-        self.thread_local_alloc_ids.get(&(def_id, self.active_thread)).cloned()
+    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<StrictPointer> {
+        self.thread_local_allocs.get(&(def_id, self.active_thread)).cloned()
     }
 
     /// Set the pointer for the allocation of the given thread local
     /// static for the active thread.
     ///
     /// Panics if a thread local is initialized twice for the same thread.
-    fn set_thread_local_alloc(&mut self, def_id: DefId, ptr: Pointer<Provenance>) {
-        self.thread_local_alloc_ids.try_insert((def_id, self.active_thread), ptr).unwrap();
+    fn set_thread_local_alloc(&mut self, def_id: DefId, ptr: StrictPointer) {
+        self.thread_local_allocs.try_insert((def_id, self.active_thread), ptr).unwrap();
     }
 
     /// Borrow the stack of the active thread.
@@ -848,7 +875,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_or_create_thread_local_alloc(
         &mut self,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, StrictPointer> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
         if let Some(old_alloc) = this.machine.threads.get_thread_local_alloc_id(def_id) {
@@ -864,7 +891,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let alloc = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
             // We make a full copy of this allocation.
-            let mut alloc = alloc.inner().adjust_from_tcx(&this.tcx, |ptr| this.global_root_pointer(ptr))?;
+            let mut alloc =
+                alloc.inner().adjust_from_tcx(&this.tcx, |ptr| this.global_root_pointer(ptr))?;
             // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
             alloc.mutability = Mutability::Mut;
             // Create a fresh allocation with this content.
@@ -878,10 +906,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn start_regular_thread(
         &mut self,
-        thread: Option<MPlaceTy<'tcx, Provenance>>,
-        start_routine: Pointer<Option<Provenance>>,
+        thread: Option<MPlaceTy<'tcx>>,
+        start_routine: Pointer,
         start_abi: Abi,
-        func_arg: ImmTy<'tcx, Provenance>,
+        func_arg: ImmTy<'tcx>,
         ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
@@ -948,18 +976,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let gone_thread = this.active_thread();
         {
             let mut free_tls_statics = Vec::new();
-            this.machine.threads.thread_local_alloc_ids.retain(
-                |&(_def_id, thread), &mut alloc_id| {
-                    if thread != gone_thread {
-                        // A different thread, keep this static around.
-                        return true;
-                    }
-                    // Delete this static from the map and from memory.
-                    // We cannot free directly here as we cannot use `?` in this context.
-                    free_tls_statics.push(alloc_id);
-                    false
-                },
-            );
+            this.machine.threads.thread_local_allocs.retain(|&(_def_id, thread), &mut alloc_id| {
+                if thread != gone_thread {
+                    // A different thread, keep this static around.
+                    return true;
+                }
+                // Delete this static from the map and from memory.
+                // We cannot free directly here as we cannot use `?` in this context.
+                free_tls_statics.push(alloc_id);
+                false
+            });
             // Now free the TLS statics.
             for ptr in free_tls_statics {
                 match tls_alloc_action {
@@ -997,13 +1023,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn block_thread(
         &mut self,
         reason: BlockReason,
-        timeout: Option<Timeout>,
+        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         callback: impl UnblockCallback<'tcx> + 'tcx,
     ) {
         let this = self.eval_context_mut();
-        if !this.machine.communicate() && matches!(timeout, Some(Timeout::RealTime(..))) {
-            panic!("cannot have `RealTime` callback with isolation enabled!")
-        }
+        let timeout = timeout.map(|(clock, anchor, duration)| {
+            let anchor = match clock {
+                TimeoutClock::RealTime => {
+                    assert!(
+                        this.machine.communicate(),
+                        "cannot have `RealTime` timeout with isolation enabled!"
+                    );
+                    Timeout::RealTime(match anchor {
+                        TimeoutAnchor::Absolute => SystemTime::UNIX_EPOCH,
+                        TimeoutAnchor::Relative => SystemTime::now(),
+                    })
+                }
+                TimeoutClock::Monotonic =>
+                    Timeout::Monotonic(match anchor {
+                        TimeoutAnchor::Absolute => this.machine.clock.epoch(),
+                        TimeoutAnchor::Relative => this.machine.clock.now(),
+                    }),
+            };
+            anchor.add_lossy(duration)
+        });
         this.machine.threads.block_thread(reason, timeout, callback);
     }
 

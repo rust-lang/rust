@@ -257,7 +257,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    fn ptr_from_addr_cast(&self, addr: u64) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn ptr_from_addr_cast(&self, addr: u64) -> InterpResult<'tcx, Pointer> {
         trace!("Casting {:#x} to a pointer", addr);
 
         let ecx = self.eval_context_ref();
@@ -297,10 +297,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Convert a relative (tcx) pointer to a Miri pointer.
     fn adjust_alloc_root_pointer(
         &self,
-        ptr: Pointer<CtfeProvenance>,
+        ptr: interpret::Pointer<CtfeProvenance>,
         tag: BorTag,
         kind: MemoryKind,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, interpret::Pointer<Provenance>> {
         let ecx = self.eval_context_ref();
 
         let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
@@ -310,12 +310,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = ecx.data_layout();
         let absolute_addr = dl.overflowing_offset(base_addr, offset.bytes()).0;
-        Ok(Pointer::new(Provenance::Concrete { alloc_id, tag }, Size::from_bytes(absolute_addr)))
+        Ok(interpret::Pointer::new(
+            Provenance::Concrete { alloc_id, tag },
+            Size::from_bytes(absolute_addr),
+        ))
     }
 
     /// When a pointer is used for a memory access, this computes where in which allocation the
     /// access is going.
-    fn ptr_get_alloc(&self, ptr: Pointer<Provenance>) -> Option<(AllocId, Size)> {
+    fn ptr_get_alloc(&self, ptr: interpret::Pointer<Provenance>) -> Option<(AllocId, Size)> {
         let ecx = self.eval_context_ref();
 
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)

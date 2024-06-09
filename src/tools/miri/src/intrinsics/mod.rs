@@ -1,3 +1,5 @@
+#![warn(clippy::arithmetic_side_effects)]
+
 mod atomic;
 mod simd;
 
@@ -23,8 +25,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -79,8 +81,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
@@ -385,7 +387,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let float_finite = |x: &ImmTy<'tcx, _>| -> InterpResult<'tcx, bool> {
+                let float_finite = |x: &ImmTy<'tcx>| -> InterpResult<'tcx, bool> {
                     let ty::Float(fty) = x.layout.ty.kind() else {
                         bug!("float_finite: non-float input type {}", x.layout.ty)
                     };

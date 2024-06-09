@@ -25,10 +25,10 @@ struct Epoll {
 struct EpollEvent {
     #[allow(dead_code)]
     events: u32,
-    /// `Scalar<Provenance>` is used to represent the
+    /// `Scalar` is used to represent the
     /// `epoll_data` type union.
     #[allow(dead_code)]
-    data: Scalar<Provenance>,
+    data: Scalar,
 }
 
 impl FileDescription for Epoll {
@@ -51,10 +51,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// is 0, then this function is the same as `epoll_create()`.
     ///
     /// <https://linux.die.net/man/2/epoll_create1>
-    fn epoll_create1(
-        &mut self,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn epoll_create1(&mut self, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let flags = this.read_scalar(flags)?.to_i32()?;
@@ -85,11 +82,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// <https://linux.die.net/man/2/epoll_ctl>
     fn epoll_ctl(
         &mut self,
-        epfd: &OpTy<'tcx, Provenance>,
-        op: &OpTy<'tcx, Provenance>,
-        fd: &OpTy<'tcx, Provenance>,
-        event: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        epfd: &OpTy<'tcx>,
+        op: &OpTy<'tcx>,
+        fd: &OpTy<'tcx>,
+        event: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let epfd = this.read_scalar(epfd)?.to_i32()?;
@@ -167,11 +164,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// <https://man7.org/linux/man-pages/man2/epoll_wait.2.html>
     fn epoll_wait(
         &mut self,
-        epfd: &OpTy<'tcx, Provenance>,
-        events: &OpTy<'tcx, Provenance>,
-        maxevents: &OpTy<'tcx, Provenance>,
-        timeout: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        epfd: &OpTy<'tcx>,
+        events: &OpTy<'tcx>,
+        maxevents: &OpTy<'tcx>,
+        timeout: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let epfd = this.read_scalar(epfd)?.to_i32()?;

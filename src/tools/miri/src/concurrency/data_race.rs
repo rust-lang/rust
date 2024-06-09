@@ -606,9 +606,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Perform an atomic read operation at the memory location.
     fn read_scalar_atomic(
         &self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         atomic: AtomicReadOrd,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
         this.atomic_access_check(place, AtomicAccessType::Load(atomic))?;
         // This will read from the last store in the modification order of this location. In case
@@ -625,8 +625,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Perform an atomic write operation at the memory location.
     fn write_scalar_atomic(
         &mut self,
-        val: Scalar<Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        val: Scalar,
+        dest: &MPlaceTy<'tcx>,
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -645,12 +645,12 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Perform an atomic RMW operation on a memory location.
     fn atomic_rmw_op_immediate(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        rhs: &ImmTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
+        rhs: &ImmTy<'tcx>,
         op: mir::BinOp,
         not: bool,
         atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
@@ -670,10 +670,10 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// scalar value, the old value is returned.
     fn atomic_exchange_scalar(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        new: Scalar<Provenance>,
+        place: &MPlaceTy<'tcx>,
+        new: Scalar,
         atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
@@ -690,11 +690,11 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// scalar value, the old value is returned.
     fn atomic_min_max_scalar(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        rhs: ImmTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
+        rhs: ImmTy<'tcx>,
         min: bool,
         atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
@@ -726,9 +726,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// identical.
     fn atomic_compare_exchange_scalar(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        expect_old: &ImmTy<'tcx, Provenance>,
-        new: Scalar<Provenance>,
+        place: &MPlaceTy<'tcx>,
+        expect_old: &ImmTy<'tcx>,
+        new: Scalar,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
@@ -948,7 +948,7 @@ impl VClockAlloc {
         mem_clocks: &MemoryCellClocks,
         access: AccessType,
         access_size: Size,
-        ptr_dbg: Pointer<AllocId>,
+        ptr_dbg: interpret::Pointer<AllocId>,
         ty: Option<Ty<'_>>,
     ) -> InterpResult<'tcx> {
         let (active_index, active_clocks) = global.active_thread_state(thread_mgr);
@@ -1063,7 +1063,7 @@ impl VClockAlloc {
                         mem_clocks,
                         AccessType::NaRead(read_type),
                         access_range.size,
-                        Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
+                        interpret::Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
                         ty,
                     );
                 }
@@ -1108,7 +1108,7 @@ impl VClockAlloc {
                         mem_clocks,
                         AccessType::NaWrite(write_type),
                         access_range.size,
-                        Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
+                        interpret::Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
                         ty,
                     );
                 }
@@ -1163,7 +1163,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Checks that an atomic access is legal at the given place.
     fn atomic_access_check(
         &self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         access_type: AtomicAccessType,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
@@ -1219,7 +1219,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// associated memory-place and on the current thread.
     fn validate_atomic_load(
         &self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
@@ -1241,7 +1241,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// associated memory-place and on the current thread.
     fn validate_atomic_store(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -1263,7 +1263,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// at the associated memory place and on the current thread.
     fn validate_atomic_rmw(
         &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
         use AtomicRwOrd::*;
@@ -1292,7 +1292,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Generic atomic operation implementation
     fn validate_atomic_op<A: Debug + Copy>(
         &self,
-        place: &MPlaceTy<'tcx, Provenance>,
+        place: &MPlaceTy<'tcx>,
         atomic: A,
         access: AccessType,
         mut op: impl FnMut(
@@ -1337,7 +1337,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                                     mem_clocks,
                                     access,
                                     place.layout.size,
-                                    Pointer::new(
+                                    interpret::Pointer::new(
                                         alloc_id,
                                         Size::from_bytes(mem_clocks_range.start),
                                     ),

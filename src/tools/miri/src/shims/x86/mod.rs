@@ -26,8 +26,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
@@ -103,6 +103,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if this.tcx.sess.unstable_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
                 }
+            }
+
+            "pclmulqdq" => {
+                let [left, right, imm] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                pclmulqdq(this, left, right, imm, dest)?;
             }
 
             name if name.starts_with("sse.") => {
@@ -244,9 +251,9 @@ impl FloatBinOp {
 fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
     this: &crate::MiriInterpCx<'tcx>,
     which: FloatBinOp,
-    left: &ImmTy<'tcx, Provenance>,
-    right: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
+    left: &ImmTy<'tcx>,
+    right: &ImmTy<'tcx>,
+) -> InterpResult<'tcx, Scalar> {
     match which {
         FloatBinOp::Arith(which) => {
             let res = this.binary_op(which, left, right)?;
@@ -306,9 +313,9 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
 fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
     this: &mut crate::MiriInterpCx<'tcx>,
     which: FloatBinOp,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
@@ -337,9 +344,9 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
 fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
     this: &mut crate::MiriInterpCx<'tcx>,
     which: FloatBinOp,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
@@ -384,8 +391,8 @@ enum FloatUnaryOp {
 fn unary_op_f32<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
     which: FloatUnaryOp,
-    op: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
+    op: &ImmTy<'tcx>,
+) -> InterpResult<'tcx, Scalar> {
     match which {
         FloatUnaryOp::Sqrt => {
             let op = op.to_scalar();
@@ -435,8 +442,8 @@ fn apply_random_float_error<F: rustc_apfloat::Float>(
 fn unary_op_ss<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
     which: FloatUnaryOp,
-    op: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -458,8 +465,8 @@ fn unary_op_ss<'tcx>(
 fn unary_op_ps<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
     which: FloatUnaryOp,
-    op: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -494,10 +501,10 @@ enum ShiftOp {
 /// bit is copied to all bits.
 fn shift_simd_by_scalar<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
     which: ShiftOp,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -550,10 +557,10 @@ fn shift_simd_by_scalar<'tcx>(
 /// bit is copied to all bits.
 fn shift_simd_by_simd<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
     which: ShiftOp,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
@@ -602,7 +609,7 @@ fn shift_simd_by_simd<'tcx>(
 /// the first value.
 fn extract_first_u64<'tcx>(
     this: &crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, u64> {
     // Transmute vector to `[u64; 2]`
     let array_layout = this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u64, 2))?;
@@ -616,10 +623,10 @@ fn extract_first_u64<'tcx>(
 // and copies the remaining elements from `left`.
 fn round_first<'tcx, F: rustc_apfloat::Float>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    rounding: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    rounding: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
@@ -647,9 +654,9 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
 // Rounds all elements of `op` according to `rounding`.
 fn round_all<'tcx, F: rustc_apfloat::Float>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx, Provenance>,
-    rounding: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
+    rounding: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -699,9 +706,9 @@ fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::R
 /// has less elements than `dest`, the rest is filled with zeros.
 fn convert_float_to_int<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
     rnd: rustc_apfloat::Round,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -734,8 +741,8 @@ fn convert_float_to_int<'tcx>(
 /// will wrap around.
 fn int_abs<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (op, op_len) = this.operand_to_simd(op)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -802,9 +809,9 @@ fn horizontal_bin_op<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
     which: mir::BinOp,
     saturating: bool,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     assert_eq!(left.layout, dest.layout);
     assert_eq!(right.layout, dest.layout);
@@ -853,10 +860,10 @@ fn horizontal_bin_op<'tcx>(
 /// 128-bit blocks of `left` and `right`).
 fn conditional_dot_product<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    imm: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    imm: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     assert_eq!(left.layout, dest.layout);
     assert_eq!(right.layout, dest.layout);
@@ -911,8 +918,8 @@ fn conditional_dot_product<'tcx>(
 /// The second is true when `(op & mask) == mask`
 fn test_bits_masked<'tcx>(
     this: &crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx, Provenance>,
-    mask: &OpTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
+    mask: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, (bool, bool)> {
     assert_eq!(op.layout, mask.layout);
 
@@ -942,8 +949,8 @@ fn test_bits_masked<'tcx>(
 /// The second is true when the highest bit of each element of `!op & mask` is zero.
 fn test_high_bits_masked<'tcx>(
     this: &crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx, Provenance>,
-    mask: &OpTy<'tcx, Provenance>,
+    op: &OpTy<'tcx>,
+    mask: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, (bool, bool)> {
     assert_eq!(op.layout, mask.layout);
 
@@ -973,9 +980,9 @@ fn test_high_bits_masked<'tcx>(
 /// element of `mask`. `ptr` does not need to be aligned.
 fn mask_load<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    ptr: &OpTy<'tcx, Provenance>,
-    mask: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    ptr: &OpTy<'tcx>,
+    mask: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (mask, mask_len) = this.operand_to_simd(mask)?;
     let (dest, dest_len) = this.mplace_to_simd(dest)?;
@@ -1006,9 +1013,9 @@ fn mask_load<'tcx>(
 /// element of `mask`. `ptr` does not need to be aligned.
 fn mask_store<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    ptr: &OpTy<'tcx, Provenance>,
-    mask: &OpTy<'tcx, Provenance>,
-    value: &OpTy<'tcx, Provenance>,
+    ptr: &OpTy<'tcx>,
+    mask: &OpTy<'tcx>,
+    value: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (mask, mask_len) = this.operand_to_simd(mask)?;
     let (value, value_len) = this.operand_to_simd(value)?;
@@ -1046,10 +1053,10 @@ fn mask_store<'tcx>(
 /// 128-bit chunks of `left` and `right`).
 fn mpsadbw<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    imm: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    imm: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     assert_eq!(left.layout, right.layout);
     assert_eq!(left.layout.size, dest.layout.size);
@@ -1103,9 +1110,9 @@ fn mpsadbw<'tcx>(
 /// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhrs_epi16>
 fn pmulhrsw<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
@@ -1133,6 +1140,68 @@ fn pmulhrsw<'tcx>(
     Ok(())
 }
 
+/// Perform a carry-less multiplication of two 64-bit integers, selected from `left` and `right` according to `imm8`,
+/// and store the results in `dst`.
+///
+/// `left` and `right` are both vectors of type 2 x i64. Only bits 0 and 4 of `imm8` matter;
+/// they select the element of `left` and `right`, respectively.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128>
+fn pclmulqdq<'tcx>(
+    this: &mut MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    imm8: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    assert_eq!(left.layout, right.layout);
+    assert_eq!(left.layout.size, dest.layout.size);
+
+    // Transmute to `[u64; 2]`
+
+    let array_layout = this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u64, 2))?;
+    let left = left.transmute(array_layout, this)?;
+    let right = right.transmute(array_layout, this)?;
+    let dest = dest.transmute(array_layout, this)?;
+
+    let imm8 = this.read_scalar(imm8)?.to_u8()?;
+
+    // select the 64-bit integer from left that the user specified (low or high)
+    let index = if (imm8 & 0x01) == 0 { 0 } else { 1 };
+    let left = this.read_scalar(&this.project_index(&left, index)?)?.to_u64()?;
+
+    // select the 64-bit integer from right that the user specified (low or high)
+    let index = if (imm8 & 0x10) == 0 { 0 } else { 1 };
+    let right = this.read_scalar(&this.project_index(&right, index)?)?.to_u64()?;
+
+    // Perform carry-less multiplication
+    //
+    // This operation is like long multiplication, but ignores all carries.
+    // That idea corresponds to the xor operator, which is used in the implementation.
+    //
+    // Wikipedia has an example https://en.wikipedia.org/wiki/Carry-less_product#Example
+    let mut result: u128 = 0;
+
+    for i in 0..64 {
+        // if the i-th bit in right is set
+        if (right & (1 << i)) != 0 {
+            // xor result with `left` shifted to the left by i positions
+            result ^= (left as u128) << i;
+        }
+    }
+
+    let result_low = (result & 0xFFFF_FFFF_FFFF_FFFF) as u64;
+    let result_high = (result >> 64) as u64;
+
+    let dest_low = this.project_index(&dest, 0)?;
+    this.write_scalar(Scalar::from_u64(result_low), &dest_low)?;
+
+    let dest_high = this.project_index(&dest, 1)?;
+    this.write_scalar(Scalar::from_u64(result_high), &dest_high)?;
+
+    Ok(())
+}
+
 /// Packs two N-bit integer vectors to a single N/2-bit integers.
 ///
 /// The conversion from N-bit to N/2-bit should be provided by `f`.
@@ -1142,10 +1211,10 @@ fn pmulhrsw<'tcx>(
 /// 128-bit chunks of `left` and `right`).
 fn pack_generic<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
-    f: impl Fn(Scalar<Provenance>) -> InterpResult<'tcx, Scalar<Provenance>>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+    f: impl Fn(Scalar) -> InterpResult<'tcx, Scalar>,
 ) -> InterpResult<'tcx, ()> {
     assert_eq!(left.layout, right.layout);
     assert_eq!(left.layout.size, dest.layout.size);
@@ -1187,9 +1256,9 @@ fn pack_generic<'tcx>(
 /// 128-bit chunks of `left` and `right`).
 fn packsswb<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i16()?;
@@ -1206,9 +1275,9 @@ fn packsswb<'tcx>(
 /// 128-bit chunks of `left` and `right`).
 fn packuswb<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i16()?;
@@ -1225,9 +1294,9 @@ fn packuswb<'tcx>(
 /// 128-bit chunks of `left` and `right`).
 fn packssdw<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i32()?;
@@ -1244,9 +1313,9 @@ fn packssdw<'tcx>(
 /// 128-bit chunks of `left` and `right`).
 fn packusdw<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     pack_generic(this, left, right, dest, |op| {
         let op = op.to_i32()?;
@@ -1261,9 +1330,9 @@ fn packusdw<'tcx>(
 /// In other words, multiplies `left` with `right.signum()`.
 fn psign<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     let (left, left_len) = this.operand_to_simd(left)?;
     let (right, right_len) = this.operand_to_simd(right)?;
