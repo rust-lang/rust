@@ -73,7 +73,7 @@ config_data! {
         /// Warm up caches on project load.
         cachePriming_enable: bool = true,
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
-        cachePriming_numThreads: ParallelCachePrimingNumThreads = 0u8,
+        cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
         /// Pass `--all-targets` to cargo invocation.
         cargo_allTargets: bool           = true,
@@ -583,7 +583,7 @@ config_data! {
         notifications_unindexedProject: bool      = false,
 
         /// How many worker threads in the main loop. The default `null` means to pick automatically.
-        numThreads: Option<usize> = None,
+        numThreads: Option<NumThreads> = None,
 
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = true,
@@ -2095,15 +2095,22 @@ impl Config {
         }
     }
 
-    pub fn prime_caches_num_threads(&self) -> u8 {
-        match *self.cachePriming_numThreads() {
-            0 => num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
-            n => n,
+    pub fn prime_caches_num_threads(&self) -> usize {
+        match self.cachePriming_numThreads() {
+            NumThreads::Concrete(0) | NumThreads::Physical => num_cpus::get_physical(),
+            &NumThreads::Concrete(n) => n,
+            NumThreads::Logical => num_cpus::get(),
         }
     }
 
     pub fn main_loop_num_threads(&self) -> usize {
-        self.numThreads().unwrap_or(num_cpus::get_physical())
+        match self.numThreads() {
+            Some(NumThreads::Concrete(0)) | None | Some(NumThreads::Physical) => {
+                num_cpus::get_physical()
+            }
+            &Some(NumThreads::Concrete(n)) => n,
+            Some(NumThreads::Logical) => num_cpus::get(),
+        }
     }
 
     pub fn typing_autoclose_angle(&self) -> bool {
@@ -2522,6 +2529,15 @@ fn untagged_option_hover_render_kind() {
 pub enum TargetDirectory {
     UseSubdirectory(bool),
     Directory(Utf8PathBuf),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+pub enum NumThreads {
+    Physical,
+    Logical,
+    Concrete(usize),
 }
 
 macro_rules! _default_val {
@@ -3257,6 +3273,24 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
                 {
                     "type": "string"
+                },
+            ],
+        },
+        "Option<NumThreads>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "string",
+                    "enum": ["physical", "logical", ],
+                    "enumDescriptions": [
+                        "Use the number of physical cores",
+                        "Use the number of logical cores",
+                    ],
                 },
             ],
         },
