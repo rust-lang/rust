@@ -1,5 +1,4 @@
-//@ignore-target-windows: No eventfd on Windows
-//@ignore-target-apple: No eventfd in macos
+//@only-target-linux
 fn main() {
     // eventfd write will block when EFD_NONBLOCK flag is clear
     // and the addition caused counter to exceed u64::MAX - 1.

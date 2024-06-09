@@ -1,6 +1,7 @@
 //! Linux `eventfd` implementation.
 use std::io;
 use std::io::{Error, ErrorKind};
+use std::mem;
 
 use rustc_target::abi::Endian;
 
@@ -9,8 +10,8 @@ use crate::{concurrency::VClock, *};
 
 use self::shims::unix::fd::FileDescriptor;
 
-/// Minimum size of u8 array to hold u64 value.
-const U64_MIN_ARRAY_SIZE: usize = 8;
+// We'll only do reads and writes in chunks of size u64.
+const U64_ARRAY_SIZE: usize = mem::size_of::<u64>();
 
 /// Maximum value that the eventfd counter can hold.
 const MAX_COUNTER: u64 = u64::MAX - 1;
@@ -51,7 +52,7 @@ impl FileDescription for Event {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // Check the size of slice, and return error only if the size of the slice < 8.
-        let Some(bytes) = bytes.first_chunk_mut::<U64_MIN_ARRAY_SIZE>() else {
+        let Some(bytes) = bytes.first_chunk_mut::<U64_ARRAY_SIZE>() else {
             return Ok(Err(Error::from(ErrorKind::InvalidInput)));
         };
         // Block when counter == 0.
@@ -63,7 +64,7 @@ impl FileDescription for Event {
                 throw_unsup_format!("eventfd: blocking is unsupported");
             }
         } else {
-            // Prevent false alarm in data race detection when doing synchronisation via eventfd.
+            // Synchronize with all prior `write` calls to this FD.
             ecx.acquire_clock(&self.clock);
             // Return the counter in the host endianness using the buffer provided by caller.
             *bytes = match ecx.tcx.sess.target.endian {
@@ -71,7 +72,7 @@ impl FileDescription for Event {
                 Endian::Big => self.counter.to_be_bytes(),
             };
             self.counter = 0;
-            return Ok(Ok(U64_MIN_ARRAY_SIZE));
+            return Ok(Ok(U64_ARRAY_SIZE));
         }
     }
 
@@ -94,7 +95,7 @@ impl FileDescription for Event {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // Check the size of slice, and return error only if the size of the slice < 8.
-        let Some(bytes) = bytes.first_chunk::<U64_MIN_ARRAY_SIZE>() else {
+        let Some(bytes) = bytes.first_chunk::<U64_ARRAY_SIZE>() else {
             return Ok(Err(Error::from(ErrorKind::InvalidInput)));
         };
         // Convert from bytes to int according to host endianness.
@@ -110,8 +111,10 @@ impl FileDescription for Event {
         // Else, block.
         match self.counter.checked_add(num) {
             Some(new_count @ 0..=MAX_COUNTER) => {
-                // Prevent false alarm in data race detection when doing synchronisation via eventfd.
-                self.clock.join(&ecx.release_clock().unwrap());
+                // Future `read` calls will synchronize with this write, so update the FD clock.
+                if let Some(clock) = &ecx.release_clock() {
+                    self.clock.join(clock);
+                }
                 self.counter = new_count;
             }
             None | Some(u64::MAX) => {
@@ -123,7 +126,7 @@ impl FileDescription for Event {
                 }
             }
         };
-        Ok(Ok(U64_MIN_ARRAY_SIZE))
+        Ok(Ok(U64_ARRAY_SIZE))
     }
 }
 
@@ -163,9 +166,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let mut is_nonblock = false;
-        // Unload the flag that we support.
+        // Unset the flag that we support.
         // After unloading, flags != 0 means other flags are used.
         if flags & efd_cloexec == efd_cloexec {
+            // cloexec is ignored because Miri does not support exec.
             flags &= !efd_cloexec;
         }
         if flags & efd_nonblock == efd_nonblock {
@@ -173,9 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock = true;
         }
         if flags != 0 {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return Ok(Scalar::from_i32(-1));
+            throw_unsup_format!("eventfd: encountered unknown unsupported flags {:#x}", flags);
         }
 
         let fd = this.machine.fds.insert_fd(FileDescriptor::new(Event {

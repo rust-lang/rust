@@ -1,5 +1,4 @@
-//@ignore-target-windows: No eventfd in windows
-//@ignore-target-apple: No eventfd in macos
+//@only-target-linux
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 
@@ -42,9 +41,11 @@ fn test_read_write() {
     // value -1.
     let mut buf: [u8; 8] = [0; 8];
     let res = read_bytes(fd, &mut buf);
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EAGAIN));
     assert_eq!(res, -1);
 
-    // Write with supplied buffer that > 8 bytes should be allowed.
+    // Write with supplied buffer bigger than 8 bytes should be allowed.
     let sized_9_data: [u8; 9];
     if cfg!(target_endian = "big") {
         // Adjust the data based on the endianness of host system.
@@ -55,19 +56,23 @@ fn test_read_write() {
     let res = write_bytes(fd, sized_9_data);
     assert_eq!(res, 8);
 
-    // Read with supplied buffer that < 8 bytes should fail with return
+    // Read with supplied buffer smaller than 8 bytes should fail with return
     // value -1.
     let mut buf: [u8; 7] = [1; 7];
     let res = read_bytes(fd, &mut buf);
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
     assert_eq!(res, -1);
 
-    // Write with supplied buffer that < 8 bytes should fail with return
+    // Write with supplied buffer smaller than 8 bytes should fail with return
     // value -1.
     let size_7_data: [u8; 7] = [1; 7];
     let res = write_bytes(fd, size_7_data);
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
     assert_eq!(res, -1);
 
-    // Read with supplied buffer > 8 bytes should be allowed.
+    // Read with supplied buffer bigger than 8 bytes should be allowed.
     let mut buf: [u8; 9] = [1; 9];
     let res = read_bytes(fd, &mut buf);
     assert_eq!(res, 8);
@@ -75,6 +80,8 @@ fn test_read_write() {
     // Write u64::MAX should fail.
     let u64_max_bytes: [u8; 8] = [255; 8];
     let res = write_bytes(fd, u64_max_bytes);
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
     assert_eq!(res, -1);
 }
 
