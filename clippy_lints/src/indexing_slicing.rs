@@ -2,8 +2,8 @@
 
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::higher;
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
+use clippy_utils::{higher, is_from_proc_macro};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -102,7 +102,9 @@ impl IndexingSlicing {
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if self.suppress_restriction_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+        if (self.suppress_restriction_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id))
+            || is_from_proc_macro(cx, expr)
+        {
             return;
         }
 

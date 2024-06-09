@@ -1,3 +1,5 @@
+//@aux-build: proc_macros.rs
+
 #![warn(clippy::indexing_slicing)]
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
 // we want to avoid false positives.
@@ -10,6 +12,9 @@
     unused
 )]
 #![warn(clippy::indexing_slicing)]
+
+extern crate proc_macros;
+use proc_macros::with_span;
 
 use std::ops::Index;
 
@@ -85,6 +90,22 @@ impl<T> Index<i32> for Z<T> {
         &self.0
     }
 }
+
+with_span!(
+    span
+
+    fn dont_lint_proc_macro() {
+        let x = [1, 2, 3, 4];
+        let index: usize = 1;
+        &x[index..];
+        &x[..10];
+
+        let x = vec![0; 5];
+        let index: usize = 1;
+        &x[index..];
+        &x[..10];
+    }
+);
 
 fn main() {
     let x = [1, 2, 3, 4];
