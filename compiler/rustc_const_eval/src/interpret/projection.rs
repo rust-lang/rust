@@ -81,6 +81,8 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert!(layout.is_sized());
+        // We sometimes do pointer arithmetic with this function, disregarding the source type.
+        // So we don't check the sizes here.
         self.offset_with_meta(offset, OffsetMode::Inbounds, MemPlaceMeta::None, layout, ecx)
     }
 
