@@ -163,7 +163,9 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    // used to signal semantic highlighting to fall back to syntax based highlighting until proc-macros have been loaded
+    // used to signal semantic highlighting to fall back to syntax based highlighting until
+    // proc-macros have been loaded
+    // FIXME: Can we derive this from somewhere else?
     pub(crate) proc_macros_loaded: bool,
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }

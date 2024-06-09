@@ -17,7 +17,7 @@ use vfs::FileId;
 
 use crate::{
     config::Config,
-    diagnostics::fetch_native_diagnostics,
+    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration},
     dispatch::{NotificationDispatcher, RequestDispatcher},
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
     hack_recover_crate_name,
@@ -87,7 +87,7 @@ pub(crate) enum Task {
     Response(lsp_server::Response),
     ClientNotification(lsp_ext::UnindexedProjectParams),
     Retry(lsp_server::Request),
-    Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Diagnostics(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     DiscoverTest(lsp_ext::DiscoverTestResults),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
@@ -479,7 +479,7 @@ impl GlobalState {
 
     fn update_diagnostics(&mut self) {
         let db = self.analysis_host.raw_database();
-        // spawn a task per subscription?
+        let generation = self.diagnostics.next_generation();
         let subscriptions = {
             let vfs = &self.vfs.read().0;
             self.mem_docs
@@ -494,16 +494,37 @@ impl GlobalState {
                     // forever if we emitted them here.
                     !db.source_root(source_root).is_library
                 })
-                .collect::<Vec<_>>()
+                .collect::<std::sync::Arc<_>>()
         };
         tracing::trace!("updating notifications for {:?}", subscriptions);
+        // Split up the work on multiple threads, but we don't wanna fill the entire task pool with
+        // diagnostic tasks, so we limit the number of tasks to a quarter of the total thread pool.
+        let max_tasks = self.config.main_loop_num_threads() / 4;
+        let chunk_length = subscriptions.len() / max_tasks;
+        let remainder = subscriptions.len() % max_tasks;
 
-        // Diagnostics are triggered by the user typing
-        // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
-            let snapshot = self.snapshot();
-            move || Task::Diagnostics(fetch_native_diagnostics(snapshot, subscriptions))
-        });
+        let mut start = 0;
+        for task_idx in 0..max_tasks {
+            let extra = if task_idx < remainder { 1 } else { 0 };
+            let end = start + chunk_length + extra;
+            let slice = start..end;
+            if slice.is_empty() {
+                break;
+            }
+            // Diagnostics are triggered by the user typing
+            // so we run them on a latency sensitive thread.
+            self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
+                let snapshot = self.snapshot();
+                let subscriptions = subscriptions.clone();
+                move || {
+                    Task::Diagnostics(
+                        generation,
+                        fetch_native_diagnostics(snapshot, subscriptions, slice),
+                    )
+                }
+            });
+            start = end;
+        }
     }
 
     fn update_tests(&mut self) {
@@ -590,9 +611,9 @@ impl GlobalState {
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
             Task::Retry(_) => (),
-            Task::Diagnostics(diagnostics_per_file) => {
+            Task::Diagnostics(generation, diagnostics_per_file) => {
                 for (file_id, diagnostics) in diagnostics_per_file {
-                    self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                    self.diagnostics.set_native_diagnostics(generation, file_id, diagnostics)
                 }
             }
             Task::PrimeCaches(progress) => match progress {
