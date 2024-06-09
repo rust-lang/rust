@@ -6,6 +6,7 @@
 pub mod binary_heap;
 #[cfg(not(no_global_oom_handling))]
 mod btree;
+pub mod fixed_queue;
 #[cfg(not(no_global_oom_handling))]
 pub mod linked_list;
 #[cfg(not(no_global_oom_handling))]
@@ -41,6 +42,8 @@ pub use btree_map::BTreeMap;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use btree_set::BTreeSet;
+
+pub use fixed_queue::FixedQueue;
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
