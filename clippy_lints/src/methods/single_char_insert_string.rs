@@ -29,7 +29,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::
 
     if let ExprKind::AddrOf(BorrowKind::Ref, _, arg) = &args[1].kind
         && let ExprKind::MethodCall(path_segment, method_arg, _, _) = &arg.kind
-        && path_segment.ident.as_str() == "to_string"
+        && path_segment.ident.name == rustc_span::sym::to_string
         && (is_ref_char(cx, method_arg) || is_char(cx, method_arg))
     {
         let base_string_snippet =
