@@ -1155,20 +1155,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ty,
                                 );
 
-                                let qpath = self.lower_qpath(
-                                    ty.id,
-                                    &None,
-                                    path,
-                                    ParamMode::Optional,
-                                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                                    None,
-                                );
-                                let const_arg = ConstArg {
-                                    hir_id: self.next_id(),
-                                    kind: ConstArgKind::Path(qpath),
-                                    is_desugared_from_effects: false,
-                                };
-                                return GenericArg::Const(self.arena.alloc(const_arg));
+                                let ct =
+                                    self.lower_const_path_as_const_arg(path, res, ty.id, ty.span);
+                                return GenericArg::Const(ct);
                             }
                         }
                     }
@@ -1178,6 +1167,68 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(self.lower_anon_const_as_const_arg(ct)),
         }
+    }
+
+    fn lower_const_path_as_const_arg(
+        &mut self,
+        path: &Path,
+        res: Res<NodeId>,
+        ty_id: NodeId,
+        span: Span,
+    ) -> &'hir hir::ConstArg<'hir> {
+        let ct_kind = match res {
+            Res::Def(DefKind::ConstParam, _) => {
+                let qpath = self.lower_qpath(
+                    ty_id,
+                    &None,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                );
+                ConstArgKind::Path(qpath)
+            }
+            _ => {
+                // Construct an AnonConst where the expr is the "ty"'s path.
+
+                let parent_def_id = self.current_hir_id_owner;
+                let node_id = self.next_node_id();
+                let span = self.lower_span(span);
+
+                // Add a definition for the in-band const def.
+                let def_id = self.create_def(
+                    parent_def_id.def_id,
+                    node_id,
+                    kw::Empty,
+                    DefKind::AnonConst,
+                    span,
+                );
+
+                let path_expr = Expr {
+                    id: ty_id,
+                    kind: ExprKind::Path(None, path.clone()),
+                    span,
+                    attrs: AttrVec::new(),
+                    tokens: None,
+                };
+
+                let ct = self.with_new_scopes(span, |this| {
+                    self.arena.alloc(hir::AnonConst {
+                        def_id,
+                        hir_id: this.lower_node_id(node_id),
+                        body: this.lower_const_body(path_expr.span, Some(&path_expr)),
+                        span,
+                    })
+                });
+                hir::ConstArgKind::Anon(ct)
+            }
+        };
+
+        self.arena.alloc(hir::ConstArg {
+            hir_id: self.next_id(),
+            kind: ct_kind,
+            is_desugared_from_effects: false,
+        })
     }
 
     fn lower_anon_const_as_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {
