@@ -15,7 +15,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
-use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
+use project_model::{CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use tracing::instrument;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
@@ -235,6 +235,19 @@ impl ProjectFolders {
             if root.is_local {
                 local_filesets.push(fsc.len() as u64);
             }
+            fsc.add_file_set(file_set_roots)
+        }
+
+        // register the workspace manifest as well, note that this currently causes duplicates for
+        // non-virtual cargo workspaces! We ought to fix that
+        for manifest in workspaces.iter().filter_map(|ws| ws.manifest().map(ManifestPath::as_ref)) {
+            let file_set_roots: Vec<VfsPath> = vec![VfsPath::from(manifest.to_owned())];
+
+            let entry = vfs::loader::Entry::Files(vec![manifest.to_owned()]);
+
+            res.watch.push(res.load.len());
+            res.load.push(entry);
+            local_filesets.push(fsc.len() as u64);
             fsc.add_file_set(file_set_roots)
         }
 

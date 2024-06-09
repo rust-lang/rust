@@ -282,7 +282,7 @@ impl Vfs {
     /// Returns the id associated with `path`
     ///
     /// - If `path` does not exists in the `Vfs`, allocate a new id for it, associated with a
-    /// deleted file;
+    ///   deleted file;
     /// - Else, returns `path`'s id.
     ///
     /// Does not record a change.

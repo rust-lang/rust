@@ -167,6 +167,11 @@ impl ProjectJson {
         &self.project_root
     }
 
+    /// Returns the path to the project's manifest file, if it exists.
+    pub fn manifest(&self) -> Option<&ManifestPath> {
+        self.manifest.as_ref()
+    }
+
     /// Returns the path to the project's manifest or root folder, if no manifest exists.
     pub fn manifest_or_root(&self) -> &AbsPath {
         self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())

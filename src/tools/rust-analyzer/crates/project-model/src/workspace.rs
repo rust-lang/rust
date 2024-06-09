@@ -527,6 +527,16 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn manifest(&self) -> Option<&ManifestPath> {
+        match &self.kind {
+            ProjectWorkspaceKind::Cargo { cargo, .. } => Some(cargo.manifest_path()),
+            ProjectWorkspaceKind::Json(project) => project.manifest(),
+            ProjectWorkspaceKind::DetachedFile { cargo, .. } => {
+                Some(cargo.as_ref()?.0.manifest_path())
+            }
+        }
+    }
+
     pub fn find_sysroot_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
         self.sysroot.discover_proc_macro_srv()
     }

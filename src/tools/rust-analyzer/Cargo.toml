@@ -162,7 +162,11 @@ xshell = "0.2.5"
 dashmap = { version = "=5.5.3", features = ["raw-api"] }
 
 [workspace.lints.rust]
-rust_2018_idioms = "warn"
+bare_trait_objects = "warn"
+elided_lifetimes_in_paths = "warn"
+ellipsis_inclusive_range_patterns = "warn"
+explicit_outlives_requirements = "warn"
+unused_extern_crates = "warn"
 unused_lifetimes = "warn"
 unreachable_pub = "warn"
 semicolon_in_expressions_from_macros = "warn"

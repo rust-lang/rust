@@ -5,6 +5,7 @@
 //! * `defs` - Set of items in scope at term search target location
 //! * `lookup` - Lookup table for types
 //! * `should_continue` - Function that indicates when to stop iterating
+//!
 //! And they return iterator that yields type trees that unify with the `goal` type.
 
 use std::iter;

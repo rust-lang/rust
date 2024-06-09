@@ -122,7 +122,7 @@ impl DiagnosticCollection {
         &self,
         file_id: FileId,
     ) -> impl Iterator<Item = &lsp_types::Diagnostic> {
-        let native = self.native.get(&file_id).into_iter().map(|(_, d)| d).flatten();
+        let native = self.native.get(&file_id).into_iter().flat_map(|(_, d)| d);
         let check = self.check.values().filter_map(move |it| it.get(&file_id)).flatten();
         native.chain(check)
     }
