@@ -135,9 +135,6 @@ impl Rustc {
         self.cmd.arg("--remap-path-prefix");
         self.cmd.arg(format!("{from}={to}"));
 
-        self
-    }
-
     /// Specify path to the input file.
     pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg(path.as_ref());
@@ -243,7 +240,11 @@ impl Rustc {
     }
 
     /// Add a directory to the library search path with a restriction. Equivalent to `-L KIND=PATH` in rustc.
-    pub fn specific_library_search_path<P: AsRef<Path>>(&mut self, kind: &str, path: P) -> &mut Self {
+    pub fn specific_library_search_path<P: AsRef<Path>>(
+        &mut self,
+        kind: &str,
+        path: P,
+    ) -> &mut Self {
         assert!(["dependency", "native", "all", "framework", "crate"].contains(&kind));
         let path = path.as_ref().to_string_lossy();
         self.cmd.arg(format!("-L{kind}={path}"));
