@@ -2399,15 +2399,19 @@ function initSearch(rawSearchIndex) {
              * @param {boolean} isAssocType
              */
             function convertNameToId(elem, isAssocType) {
-                if (typeNameIdMap.has(elem.normalizedPathLast) &&
-                    (isAssocType || !typeNameIdMap.get(elem.normalizedPathLast).assocOnly)) {
-                    elem.id = typeNameIdMap.get(elem.normalizedPathLast).id;
+                const loweredName = elem.pathLast.toLowerCase();
+                if (typeNameIdMap.has(loweredName) &&
+                    (isAssocType || !typeNameIdMap.get(loweredName).assocOnly)) {
+                    elem.id = typeNameIdMap.get(loweredName).id;
                 } else if (!parsedQuery.literalSearch) {
                     let match = null;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
                     for (const [name, {id, assocOnly}] of typeNameIdMap) {
-                        const dist = editDistance(name, elem.normalizedPathLast, maxEditDistance);
+                        const dist = Math.min(
+                            editDistance(name, loweredName, maxEditDistance),
+                            editDistance(name, elem.normalizedPathLast, maxEditDistance),
+                        );
                         if (dist <= matchDist && dist <= maxEditDistance &&
                             (isAssocType || !assocOnly)) {
                             if (dist === matchDist && matchName > name) {
