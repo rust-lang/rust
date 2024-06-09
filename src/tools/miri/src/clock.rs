@@ -43,7 +43,8 @@ impl Instant {
                 // `Duration` does not provide a nice constructor from a `u128` of nanoseconds,
                 // so we have to implement this ourselves.
                 // It is possible for second to overflow because u64::MAX < (u128::MAX / 1e9).
-                let seconds = u64::try_from(duration.saturating_div(1_000_000_000)).unwrap();
+                // It will be saturated to u64::MAX seconds if the value after division exceeds u64::MAX.
+                let seconds = u64::try_from(duration / 1_000_000_000).unwrap_or(u64::MAX);
                 // It is impossible for nanosecond to overflow because u32::MAX > 1e9.
                 let nanosecond = u32::try_from(duration.wrapping_rem(1_000_000_000)).unwrap();
                 Duration::new(seconds, nanosecond)
