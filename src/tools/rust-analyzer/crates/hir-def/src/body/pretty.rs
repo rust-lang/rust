@@ -69,7 +69,9 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
             p.buf.push(' ');
         });
         // remove the last ", " in param list
-        p.buf.truncate(p.buf.len() - 2);
+        if body.params.len() > 0 {
+            p.buf.truncate(p.buf.len() - 2);
+        }
         p.buf.push(')');
         p.buf.push(' ');
         // return type
