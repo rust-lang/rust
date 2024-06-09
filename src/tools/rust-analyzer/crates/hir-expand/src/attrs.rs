@@ -54,7 +54,7 @@ impl RawAttrs {
                     let span = span_map.span_for_range(comment.syntax().text_range());
                     Attr {
                         id,
-                        input: Some(Interned::new(AttrInput::Literal(tt::Literal {
+                        input: Some(Box::new(AttrInput::Literal(tt::Literal {
                             text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
                             span,
                         }))),
@@ -199,7 +199,7 @@ impl AttrId {
 pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
-    pub input: Option<Interned<AttrInput>>,
+    pub input: Option<Box<AttrInput>>,
     pub ctxt: SyntaxContextId,
 }
 
@@ -234,7 +234,7 @@ impl Attr {
         })?);
         let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
-            Some(Interned::new(AttrInput::Literal(tt::Literal {
+            Some(Box::new(AttrInput::Literal(tt::Literal {
                 text: lit.token().text().into(),
                 span,
             })))
@@ -245,7 +245,7 @@ impl Attr {
                 span,
                 DocCommentDesugarMode::ProcMacro,
             );
-            Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
+            Some(Box::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
@@ -281,12 +281,12 @@ impl Attr {
 
         let input = match input.first() {
             Some(tt::TokenTree::Subtree(tree)) => {
-                Some(Interned::new(AttrInput::TokenTree(Box::new(tree.clone()))))
+                Some(Box::new(AttrInput::TokenTree(Box::new(tree.clone()))))
             }
             Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))) => {
                 let input = match input.get(1) {
                     Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) => {
-                        Some(Interned::new(AttrInput::Literal(lit.clone())))
+                        Some(Box::new(AttrInput::Literal(lit.clone())))
                     }
                     _ => None,
                 };
