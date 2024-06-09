@@ -236,18 +236,6 @@ impl Rustc {
         self
     }
 
-    /// Add an extra argument to prepend the linker invocation, via `-Zpre-link-arg`.
-    pub fn pre_link_arg(&mut self, link_arg: &str) -> &mut Self {
-        self.cmd.arg(format!("-Zpre-link-arg={link_arg}"));
-        self
-    }
-
-    /// Add multiple extra arguments to the linker invocation, via `-Zpre-link-args`.
-    pub fn pre_link_args(&mut self, link_args: &str) -> &mut Self {
-        self.cmd.arg(format!("-Zpre-link-args={link_args}"));
-        self
-    }
-
     /// Specify a stdin input
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
         self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());

@@ -8,18 +8,12 @@
 //@ ignore-cross-compile
 
 use run_make_support::fs_wrapper;
-use run_make_support::{cwd, run, rustc};
+use run_make_support::{run, rust_lib_name, rustc, test_while_readonly};
 
 fn main() {
     rustc().input("lib.rs").run();
-    let entries = fs_wrapper::read_dir(cwd());
-    for entry in entries {
-        if entry.path().extension().and_then(|s| s.to_str()) == Some("rlib") {
-            let mut perms = fs_wrapper::metadata(entry.path()).permissions();
-            perms.set_readonly(true);
-            fs_wrapper::set_permissions(entry.path(), perms);
-        }
-    }
-    rustc().input("main.rs").arg("-Clto").run();
-    run("main");
+    test_while_readonly(rust_lib_name("lib"), || {
+        rustc().input("main.rs").arg("-Clto").run();
+        run("main");
+    });
 }

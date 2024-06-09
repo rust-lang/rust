@@ -3,6 +3,9 @@
 // checks that linker arguments remain intact and in the order they were originally passed in.
 // See https://github.com/rust-lang/rust/pull/70665
 
+//@ ignore-msvc
+// Reason: the ld linker does not exist on Windows.
+
 use run_make_support::rustc;
 
 fn main() {
@@ -10,18 +13,18 @@ fn main() {
         .input("empty.rs")
         .linker_flavor("ld")
         .link_arg("a")
-        .link_args("\"b c\"")
-        .link_args("\"d e\"")
+        .link_args("b c")
+        .link_args("d e")
         .link_arg("f")
         .run_fail()
-        .assert_stderr_contains("\"a\" \"b\" \"c\" \"d\" \"e\" \"f\"");
+        .assert_stderr_contains(r#""a" "b" "c" "d" "e" "f""#);
     rustc()
         .input("empty.rs")
         .linker_flavor("ld")
-        .pre_link_arg("a")
-        .pre_link_args("\"b c\"")
-        .pre_link_args("\"d e\"")
-        .pre_link_arg("f")
+        .arg("-Zpre-link-arg=a")
+        .arg("-Zpre-link-args=b c")
+        .arg("-Zpre-link-args=d e")
+        .arg("-Zpre-link-arg=f")
         .run_fail()
-        .assert_stderr_contains("\"a\" \"b\" \"c\" \"d\" \"e\" \"f\"");
+        .assert_stderr_contains(r#""a" "b" "c" "d" "e" "f""#);
 }
