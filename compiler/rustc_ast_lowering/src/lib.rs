@@ -1203,6 +1203,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     DefKind::AnonConst,
                     span,
                 );
+                let hir_id = self.lower_node_id(node_id);
+                self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
 
                 let path_expr = Expr {
                     id: ty_id,
@@ -1215,7 +1217,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let ct = self.with_new_scopes(span, |this| {
                     self.arena.alloc(hir::AnonConst {
                         def_id,
-                        hir_id: this.lower_node_id(node_id),
+                        hir_id,
                         body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                         span,
                     })
@@ -1261,6 +1263,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let lowered_anon = self.lower_anon_const(anon);
+        self.children.push((lowered_anon.def_id, hir::MaybeOwner::NonOwner(lowered_anon.hir_id)));
         ConstArg {
             hir_id: self.next_id(),
             kind: ConstArgKind::Anon(lowered_anon),
