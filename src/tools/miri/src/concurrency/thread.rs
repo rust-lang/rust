@@ -407,7 +407,7 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
 
 /// The moment in time when a blocked thread should be woken up.
 #[derive(Debug)]
-pub enum Timeout {
+enum Timeout {
     Monotonic(Instant),
     RealTime(SystemTime),
 }
@@ -421,6 +421,34 @@ impl Timeout {
                 time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO),
         }
     }
+
+    /// Will try to add `duration`, but if that overflows it may add less.
+    fn add_lossy(&self, duration: Duration) -> Self {
+        match self {
+            Timeout::Monotonic(i) => Timeout::Monotonic(i.add_lossy(duration)),
+            Timeout::RealTime(s) => {
+                // If this overflows, try adding just 1h and assume that will not overflow.
+                Timeout::RealTime(
+                    s.checked_add(duration)
+                        .unwrap_or_else(|| s.checked_add(Duration::from_secs(3600)).unwrap()),
+                )
+            }
+        }
+    }
+}
+
+/// The clock to use for the timeout you are asking for.
+#[derive(Debug, Copy, Clone)]
+pub enum TimeoutClock {
+    Monotonic,
+    RealTime,
+}
+
+/// Whether the timeout is relative or absolute.
+#[derive(Debug, Copy, Clone)]
+pub enum TimeoutAnchor {
+    Relative,
+    Absolute,
 }
 
 /// A set of threads.
@@ -995,13 +1023,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn block_thread(
         &mut self,
         reason: BlockReason,
-        timeout: Option<Timeout>,
+        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         callback: impl UnblockCallback<'tcx> + 'tcx,
     ) {
         let this = self.eval_context_mut();
-        if !this.machine.communicate() && matches!(timeout, Some(Timeout::RealTime(..))) {
-            panic!("cannot have `RealTime` callback with isolation enabled!")
-        }
+        let timeout = timeout.map(|(clock, anchor, duration)| {
+            let anchor = match clock {
+                TimeoutClock::RealTime => {
+                    assert!(
+                        this.machine.communicate(),
+                        "cannot have `RealTime` timeout with isolation enabled!"
+                    );
+                    Timeout::RealTime(match anchor {
+                        TimeoutAnchor::Absolute => SystemTime::UNIX_EPOCH,
+                        TimeoutAnchor::Relative => SystemTime::now(),
+                    })
+                }
+                TimeoutClock::Monotonic =>
+                    Timeout::Monotonic(match anchor {
+                        TimeoutAnchor::Absolute => this.machine.clock.epoch(),
+                        TimeoutAnchor::Relative => this.machine.clock.now(),
+                    }),
+            };
+            anchor.add_lossy(duration)
+        });
         this.machine.threads.block_thread(reason, timeout, callback);
     }
 

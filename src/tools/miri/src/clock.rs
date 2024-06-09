@@ -20,14 +20,20 @@ enum InstantKind {
 }
 
 impl Instant {
-    pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
+    /// Will try to add `duration`, but if that overflows it may add less.
+    pub fn add_lossy(&self, duration: Duration) -> Instant {
         match self.kind {
-            InstantKind::Host(instant) =>
-                instant.checked_add(duration).map(|i| Instant { kind: InstantKind::Host(i) }),
-            InstantKind::Virtual { nanoseconds } =>
-                nanoseconds
-                    .checked_add(duration.as_nanos())
-                    .map(|nanoseconds| Instant { kind: InstantKind::Virtual { nanoseconds } }),
+            InstantKind::Host(instant) => {
+                // If this overflows, try adding just 1h and assume that will not overflow.
+                let i = instant
+                    .checked_add(duration)
+                    .unwrap_or_else(|| instant.checked_add(Duration::from_secs(3600)).unwrap());
+                Instant { kind: InstantKind::Host(i) }
+            }
+            InstantKind::Virtual { nanoseconds } => {
+                let n = nanoseconds.saturating_add(duration.as_nanos());
+                Instant { kind: InstantKind::Virtual { nanoseconds: n } }
+            }
         }
     }
 
@@ -63,8 +69,9 @@ pub struct Clock {
 #[derive(Debug)]
 enum ClockKind {
     Host {
-        /// The "time anchor" for this machine's monotone clock.
-        time_anchor: StdInstant,
+        /// The "epoch" for this machine's monotone clock:
+        /// the moment we consider to be time = 0.
+        epoch: StdInstant,
     },
     Virtual {
         /// The "current virtual time".
@@ -76,7 +83,7 @@ impl Clock {
     /// Create a new clock based on the availability of communication with the host.
     pub fn new(communicate: bool) -> Self {
         let kind = if communicate {
-            ClockKind::Host { time_anchor: StdInstant::now() }
+            ClockKind::Host { epoch: StdInstant::now() }
         } else {
             ClockKind::Virtual { nanoseconds: 0.into() }
         };
@@ -111,10 +118,10 @@ impl Clock {
         }
     }
 
-    /// Return the `anchor` instant, to convert between monotone instants and durations relative to the anchor.
-    pub fn anchor(&self) -> Instant {
+    /// Return the `epoch` instant (time = 0), to convert between monotone instants and absolute durations.
+    pub fn epoch(&self) -> Instant {
         match &self.kind {
-            ClockKind::Host { time_anchor } => Instant { kind: InstantKind::Host(*time_anchor) },
+            ClockKind::Host { epoch } => Instant { kind: InstantKind::Host(*epoch) },
             ClockKind::Virtual { .. } => Instant { kind: InstantKind::Virtual { nanoseconds: 0 } },
         }
     }
