@@ -898,8 +898,7 @@ because of the `[-]` element which would overlap with it. */
 	So, for table layouts, override the default with break-word, which does
 	_not_ affect min-content intrinsic sizes.
 */
-table,
-.item-table {
+table {
 	overflow-wrap: break-word;
 }
 
