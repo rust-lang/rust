@@ -41,12 +41,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
         tail: usize,
         len: usize,
     ) -> FixedQueue<T, N> {
-        FixedQueue {
-            buffer,
-            head,
-            tail,
-            len,
-        }
+        FixedQueue { buffer, head, tail, len }
     }
 
     /// Create a new FixedQueue with a given capacity.
@@ -260,19 +255,9 @@ impl<T: Display, const N: usize> Display for FixedQueue<T, N> {
         }
         write!(f, "{{")?;
         for x in 0..(self.len - 1) {
-            write!(
-                f,
-                "{}, ",
-                self.buffer[(self.head + x) % N].as_ref().unwrap()
-            )?;
+            write!(f, "{}, ", self.buffer[(self.head + x) % N].as_ref().unwrap())?;
         }
-        write!(
-            f,
-            "{}}}",
-            self.buffer[(self.head + self.len - 1) % N]
-                .as_ref()
-                .unwrap()
-        )
+        write!(f, "{}}}", self.buffer[(self.head + self.len - 1) % N].as_ref().unwrap())
     }
 }
 
@@ -283,12 +268,7 @@ mod test {
     #[test]
     fn with() {
         let x = FixedQueue::<usize, 3>::with([None; 3], 789, 456, 123);
-        let y = FixedQueue::<usize, 3> {
-            buffer: [None; 3],
-            head: 789,
-            tail: 456,
-            len: 123,
-        };
+        let y = FixedQueue::<usize, 3> { buffer: [None; 3], head: 789, tail: 456, len: 123 };
         assert_eq!(x, y);
     }
 
