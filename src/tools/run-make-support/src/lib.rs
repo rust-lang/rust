@@ -318,28 +318,23 @@ pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
 }
 
 /// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct
-/// containing a `cmd: Command` field and a `output` function. The provided helpers are:
+/// containing a `cmd: Command` field. The provided helpers are:
 ///
 /// 1. Generic argument acceptors: `arg` and `args` (delegated to [`Command`]). These are intended
 ///    to be *fallback* argument acceptors, when specific helpers don't make sense. Prefer to add
 ///    new specific helper methods over relying on these generic argument providers.
 /// 2. Environment manipulation methods: `env`, `env_remove` and `env_clear`: these delegate to
 ///    methods of the same name on [`Command`].
-/// 3. Output and execution: `output`, `run` and `run_fail` are provided. `output` waits for the
-///    command to finish running and returns the process's [`Output`]. `run` and `run_fail` are
-///    higher-level convenience methods which waits for the command to finish running and assert
-///    that the command successfully ran or failed as expected. Prefer `run` and `run_fail` when
-///    possible.
+/// 3. Output and execution: `run` and `run_fail` are provided. These are
+///    higher-level convenience methods which wait for the command to finish running and assert
+///    that the command successfully ran or failed as expected. They return
+///    [`CompletedProcess`], which can be used to assert the stdout/stderr/exit code of the executed
+///    process.
 ///
 /// Example usage:
 ///
 /// ```ignore (illustrative)
 /// struct CommandWrapper { cmd: Command } // <- required `cmd` field
-///
-/// impl CommandWrapper {
-///     /// Get the [`Output`][::std::process::Output] of the finished process.
-///     pub fn command_output(&mut self) -> Output { /* ... */ } // <- required `command_output()` method
-/// }
 ///
 /// crate::impl_common_helpers!(CommandWrapper);
 ///
@@ -347,9 +342,6 @@ pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
 ///     // ... additional specific helper methods
 /// }
 /// ```
-///
-/// [`Command`]: ::std::process::Command
-/// [`Output`]: ::std::process::Output
 macro_rules! impl_common_helpers {
     ($wrapper: ident) => {
         impl $wrapper {

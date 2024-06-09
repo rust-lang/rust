@@ -3,29 +3,9 @@ use crate::exec::{cmd, CmdBuilder};
 use crate::utils::io::{count_files, delete_directory};
 use crate::utils::with_log_group;
 use anyhow::Context;
+use build_helper::{LLVM_PGO_CRATES, RUSTC_PGO_CRATES};
 use camino::{Utf8Path, Utf8PathBuf};
 use humansize::BINARY;
-
-const LLVM_PGO_CRATES: &[&str] = &[
-    "syn-1.0.89",
-    "cargo-0.60.0",
-    "serde-1.0.136",
-    "ripgrep-13.0.0",
-    "regex-1.5.5",
-    "clap-3.1.6",
-    "hyper-0.14.18",
-];
-
-const RUSTC_PGO_CRATES: &[&str] = &[
-    "externs",
-    "ctfe-stress-5",
-    "cargo-0.60.0",
-    "token-stream-stress",
-    "match-stress",
-    "tuple-stress",
-    "diesel-1.4.8",
-    "bitmaps-3.1.0",
-];
 
 fn init_compiler_benchmarks(
     env: &Environment,

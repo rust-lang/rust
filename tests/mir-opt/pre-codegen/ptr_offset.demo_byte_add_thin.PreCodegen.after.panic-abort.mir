@@ -20,11 +20,13 @@ fn demo_byte_add_thin(_1: *const u32, _2: usize) -> *const u32 {
     }
 
     bb0: {
+        StorageLive(_4);
         StorageLive(_3);
         _3 = _1 as *const u8 (PtrToPtr);
         _4 = Offset(_3, _2);
         StorageDead(_3);
         _0 = _4 as *const u32 (PtrToPtr);
+        StorageDead(_4);
         return;
     }
 }

@@ -67,6 +67,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None),
+    ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None),
     ("src/tools/x", &[], None),
     // tidy-alphabetical-end
 ];
@@ -142,6 +143,22 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-end
 ];
 
+const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
+    // tidy-alphabetical-start
+    ("alloc-no-stdlib", "BSD-3-Clause"),
+    ("alloc-stdlib", "BSD-3-Clause"),
+    ("brotli", "BSD-3-Clause/MIT"),
+    ("brotli-decompressor", "BSD-3-Clause/MIT"),
+    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
+    ("inferno", "CDDL-1.0"),
+    ("instant", "BSD-3-Clause"),
+    ("ring", NON_STANDARD_LICENSE), // see EXCEPTIONS_NON_STANDARD_LICENSE_DEPS for more.
+    ("ryu", "Apache-2.0 OR BSL-1.0"),
+    ("snap", "BSD-3-Clause"),
+    ("subtle", "BSD-3-Clause"),
+    // tidy-alphabetical-end
+];
+
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
@@ -176,6 +193,20 @@ const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
 
 const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
     ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptible, but we use it under MIT OR Apache-2.0
+];
+
+/// Placeholder for non-standard license file.
+const NON_STANDARD_LICENSE: &str = "NON_STANDARD_LICENSE";
+
+/// These dependencies have non-standard licenses but are genenrally permitted.
+const EXCEPTIONS_NON_STANDARD_LICENSE_DEPS: &[&str] = &[
+    // `ring` is included because it is an optional dependency of `hyper`,
+    // which is a training data in rustc-perf for optimized build.
+    // The license of it is generally `ISC AND MIT AND OpenSSL`,
+    // though the `package.license` field is not set.
+    //
+    // See https://github.com/briansmith/ring/issues/902
+    "ring",
 ];
 
 /// These are the root crates that are part of the runtime. The licenses for
@@ -610,6 +641,11 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
         for pkg in metadata.packages.iter().filter(|p| p.name == *name) {
             match &pkg.license {
                 None => {
+                    if *license == NON_STANDARD_LICENSE
+                        && EXCEPTIONS_NON_STANDARD_LICENSE_DEPS.contains(&pkg.name.as_str())
+                    {
+                        continue;
+                    }
                     tidy_error!(
                         bad,
                         "dependency exception `{}` does not declare a license expression",
