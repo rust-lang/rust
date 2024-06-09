@@ -1,71 +1,71 @@
 <summary>["AVX512DQ"]</summary><p>
 
 - And:
-    * [ ] _mm_mask_and_pd
-    * [ ] _mm_maskz_and_pd
-    * [ ] _mm_mask_and_ps
-    * [ ] _mm_maskz_and_ps
-    * [ ] _mm256_mask_and_pd
-    * [ ] _mm256_maskz_and_pd
-    * [ ] _mm256_mask_and_ps
-    * [ ] _mm256_maskz_and_ps
-    * [ ] _mm512_and_pd
-    * [ ] _mm512_mask_and_pd
-    * [ ] _mm512_maskz_and_pd
-    * [ ] _mm512_and_ps
-    * [ ] _mm512_mask_and_ps
-    * [ ] _mm512_maskz_and_ps
+    * [x] _mm_mask_and_pd
+    * [x] _mm_maskz_and_pd
+    * [x] _mm_mask_and_ps
+    * [x] _mm_maskz_and_ps
+    * [x] _mm256_mask_and_pd
+    * [x] _mm256_maskz_and_pd
+    * [x] _mm256_mask_and_ps
+    * [x] _mm256_maskz_and_ps
+    * [x] _mm512_and_pd
+    * [x] _mm512_mask_and_pd
+    * [x] _mm512_maskz_and_pd
+    * [x] _mm512_and_ps
+    * [x] _mm512_mask_and_ps
+    * [x] _mm512_maskz_and_ps
 
 
 - AndNot:
-    * [ ] _mm_mask_andnot_pd
-    * [ ] _mm_maskz_andnot_pd
-    * [ ] _mm_mask_andnot_ps
-    * [ ] _mm_maskz_andnot_ps
-    * [ ] _mm256_mask_andnot_pd
-    * [ ] _mm256_maskz_andnot_pd
-    * [ ] _mm256_mask_andnot_ps
-    * [ ] _mm256_maskz_andnot_ps
-    * [ ] _mm512_andnot_pd
-    * [ ] _mm512_mask_andnot_pd
-    * [ ] _mm512_maskz_andnot_pd
-    * [ ] _mm512_andnot_ps
-    * [ ] _mm512_mask_andnot_ps
-    * [ ] _mm512_maskz_andnot_ps
+    * [x] _mm_mask_andnot_pd
+    * [x] _mm_maskz_andnot_pd
+    * [x] _mm_mask_andnot_ps
+    * [x] _mm_maskz_andnot_ps
+    * [x] _mm256_mask_andnot_pd
+    * [x] _mm256_maskz_andnot_pd
+    * [x] _mm256_mask_andnot_ps
+    * [x] _mm256_maskz_andnot_ps
+    * [x] _mm512_andnot_pd
+    * [x] _mm512_mask_andnot_pd
+    * [x] _mm512_maskz_andnot_pd
+    * [x] _mm512_andnot_ps
+    * [x] _mm512_mask_andnot_ps
+    * [x] _mm512_maskz_andnot_ps
 
 
 - Or:
-    * [ ] _mm_mask_or_pd
-    * [ ] _mm_maskz_or_pd
-    * [ ] _mm_mask_or_ps
-    * [ ] _mm_maskz_or_ps
-    * [ ] _mm256_mask_or_pd
-    * [ ] _mm256_maskz_or_pd
-    * [ ] _mm256_mask_or_ps
-    * [ ] _mm256_maskz_or_ps
-    * [ ] _mm512_or_pd
-    * [ ] _mm512_mask_or_pd
-    * [ ] _mm512_maskz_or_pd
-    * [ ] _mm512_or_ps
-    * [ ] _mm512_mask_or_ps
-    * [ ] _mm512_maskz_or_ps
+    * [x] _mm_mask_or_pd
+    * [x] _mm_maskz_or_pd
+    * [x] _mm_mask_or_ps
+    * [x] _mm_maskz_or_ps
+    * [x] _mm256_mask_or_pd
+    * [x] _mm256_maskz_or_pd
+    * [x] _mm256_mask_or_ps
+    * [x] _mm256_maskz_or_ps
+    * [x] _mm512_or_pd
+    * [x] _mm512_mask_or_pd
+    * [x] _mm512_maskz_or_pd
+    * [x] _mm512_or_ps
+    * [x] _mm512_mask_or_ps
+    * [x] _mm512_maskz_or_ps
 
 
 - Xor:
-    * [ ] _mm_mask_xor_pd
-    * [ ] _mm_maskz_xor_pd
-    * [ ] _mm_mask_xor_ps
-    * [ ] _mm_maskz_xor_ps
-    * [ ] _mm256_mask_xor_pd
-    * [ ] _mm256_maskz_xor_pd
-    * [ ] _mm256_mask_xor_ps
-    * [ ] _mm256_maskz_xor_ps
-    * [ ] _mm512_xor_pd
-    * [ ] _mm512_mask_xor_pd
-    * [ ] _mm512_maskz_xor_pd
-    * [ ] _mm512_xor_ps
-    * [ ] _mm512_mask_xor_ps
-    * [ ] _mm512_maskz_xor_ps
+    * [x] _mm_mask_xor_pd
+    * [x] _mm_maskz_xor_pd
+    * [x] _mm_mask_xor_ps
+    * [x] _mm_maskz_xor_ps
+    * [x] _mm256_mask_xor_pd
+    * [x] _mm256_maskz_xor_pd
+    * [x] _mm256_mask_xor_ps
+    * [x] _mm256_maskz_xor_ps
+    * [x] _mm512_xor_pd
+    * [x] _mm512_mask_xor_pd
+    * [x] _mm512_maskz_xor_pd
+    * [x] _mm512_xor_ps
+    * [x] _mm512_mask_xor_ps
+    * [x] _mm512_maskz_xor_ps
 
 
 - Broadcast
