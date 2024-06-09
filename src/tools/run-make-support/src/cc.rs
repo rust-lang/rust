@@ -7,6 +7,7 @@ use crate::{bin_name, cygpath_windows, env_var, is_msvc, is_windows, uname};
 ///
 /// WARNING: This means that what flags are accepted by the underlying C compiler is
 /// platform- AND compiler-specific. Consult the relevant docs for `gcc`, `clang` and `mvsc`.
+#[track_caller]
 pub fn cc() -> Cc {
     Cc::new()
 }
@@ -25,6 +26,7 @@ impl Cc {
     ///
     /// WARNING: This means that what flags are accepted by the underlying C compile is
     /// platform- AND compiler-specific. Consult the relevant docs for `gcc`, `clang` and `mvsc`.
+    #[track_caller]
     pub fn new() -> Self {
         let compiler = env_var("CC");
 
@@ -83,11 +85,6 @@ impl Cc {
         self.cmd.arg("-o");
         self.cmd.arg(path.as_ref());
         self
-    }
-
-    /// Get the [`Output`][::std::process::Output] of the finished process.
-    pub fn command_output(&mut self) -> ::std::process::Output {
-        self.cmd.output().expect("failed to get output of finished process")
     }
 }
 

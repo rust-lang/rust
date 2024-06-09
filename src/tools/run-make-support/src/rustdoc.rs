@@ -5,11 +5,13 @@ use crate::command::Command;
 use crate::{env_var, env_var_os, set_host_rpath};
 
 /// Construct a plain `rustdoc` invocation with no flags set.
+#[track_caller]
 pub fn bare_rustdoc() -> Rustdoc {
     Rustdoc::bare()
 }
 
 /// Construct a new `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
+#[track_caller]
 pub fn rustdoc() -> Rustdoc {
     Rustdoc::new()
 }
@@ -21,6 +23,7 @@ pub struct Rustdoc {
 
 crate::impl_common_helpers!(Rustdoc);
 
+#[track_caller]
 fn setup_common() -> Command {
     let rustdoc = env_var("RUSTDOC");
     let mut cmd = Command::new(rustdoc);
@@ -30,12 +33,14 @@ fn setup_common() -> Command {
 
 impl Rustdoc {
     /// Construct a bare `rustdoc` invocation.
+    #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
         Self { cmd }
     }
 
     /// Construct a `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
+    #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
         let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");

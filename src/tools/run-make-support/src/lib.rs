@@ -17,6 +17,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io;
+use std::panic;
 use std::path::{Path, PathBuf};
 
 pub use gimli;
@@ -32,6 +33,7 @@ pub use run::{cmd, run, run_fail};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
+#[track_caller]
 pub fn env_var(name: &str) -> String {
     match env::var(name) {
         Ok(v) => v,
@@ -39,6 +41,7 @@ pub fn env_var(name: &str) -> String {
     }
 }
 
+#[track_caller]
 pub fn env_var_os(name: &str) -> OsString {
     match env::var_os(name) {
         Some(v) => v,
@@ -66,11 +69,13 @@ pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
+#[track_caller]
 pub fn python_command() -> Command {
     let python_path = env_var("PYTHON");
     Command::new(python_path)
 }
 
+#[track_caller]
 pub fn htmldocck() -> Command {
     let mut python = python_command();
     python.arg(source_root().join("src/etc/htmldocck.py"));
@@ -162,15 +167,13 @@ pub fn cwd() -> PathBuf {
 /// available on the platform!
 #[track_caller]
 pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
-    let caller_location = std::panic::Location::caller();
-    let caller_line_number = caller_location.line();
-
+    let caller = panic::Location::caller();
     let mut cygpath = Command::new("cygpath");
     cygpath.arg("-w");
     cygpath.arg(path.as_ref());
-    let output = cygpath.command_output();
+    let output = cygpath.run();
     if !output.status().success() {
-        handle_failed_output(&cygpath, output, caller_line_number);
+        handle_failed_output(&cygpath, output, caller.line());
     }
     // cygpath -w can attach a newline
     output.stdout_utf8().trim().to_string()
@@ -179,13 +182,11 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
 /// Run `uname`. This assumes that `uname` is available on the platform!
 #[track_caller]
 pub fn uname() -> String {
-    let caller_location = std::panic::Location::caller();
-    let caller_line_number = caller_location.line();
-
+    let caller = panic::Location::caller();
     let mut uname = Command::new("uname");
-    let output = uname.command_output();
+    let output = uname.run();
     if !output.status().success() {
-        handle_failed_output(&uname, output, caller_line_number);
+        handle_failed_output(&uname, output, caller.line());
     }
     output.stdout_utf8()
 }
@@ -393,7 +394,7 @@ macro_rules! impl_common_helpers {
             where
                 I: FnOnce(&::std::process::Command),
             {
-                inspector(&self.cmd);
+                self.cmd.inspect(inspector);
                 self
             }
 
@@ -410,7 +411,7 @@ macro_rules! impl_common_helpers {
             }
 
             /// Set the path where the command will be run.
-            pub fn current_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+            pub fn current_dir<P: AsRef<::std::path::Path>>(&mut self, path: P) -> &mut Self {
                 self.cmd.current_dir(path);
                 self
             }
