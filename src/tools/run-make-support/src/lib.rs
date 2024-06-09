@@ -294,6 +294,26 @@ pub fn not_contains<P: AsRef<Path>>(path: P, expected: &str) -> bool {
     !path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().contains(expected))
 }
 
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
+#[track_caller]
+pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
+    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
+    let src = format!("{lib_name}.c");
+    let lib_path = static_lib_name(lib_name);
+    if is_msvc() {
+        cc().arg("-c").out_exe(&obj_file).input(src).run();
+    } else {
+        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
+    };
+    let mut obj_file = PathBuf::from(format!("{lib_name}.o"));
+    if is_msvc() {
+        obj_file.set_extension("");
+        obj_file.set_extension("obj");
+    }
+    ar(&[obj_file], &lib_path);
+    path(lib_path)
+}
+
 /// Returns true if the filename at `path` is not in `expected`.
 pub fn filename_not_in_denylist<P: AsRef<Path>, V: AsRef<[String]>>(path: P, expected: V) -> bool {
     let expected = expected.as_ref();

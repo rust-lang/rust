@@ -7,6 +7,11 @@
 use run_make_support::{cwd, fs_wrapper, rustc};
 
 fn main() {
-    rustc().crate_type("lib").input("foo.rs").dump_mono_stats(cwd()).arg("-Zdump-mono-stats-format=json").run();
-    assert!(fs_wrapper::read_to_string("foo.mono_items.json").contains("\"name\":\"bar\"");
+    rustc()
+        .crate_type("lib")
+        .input("foo.rs")
+        .arg(format!("-Zdump-mono-stats={}", cwd().display()))
+        .arg("-Zdump-mono-stats-format=json")
+        .run();
+    assert!(fs_wrapper::read_to_string("foo.mono_items.json").contains(r#""name":"bar""#));
 }

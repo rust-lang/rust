@@ -94,7 +94,6 @@ run-make/pgo-indirect-call-promotion/Makefile
 run-make/pointer-auth-link-with-c/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
-run-make/prune-link-args/Makefile
 run-make/raw-dylib-alt-calling-convention/Makefile
 run-make/raw-dylib-c/Makefile
 run-make/raw-dylib-custom-dlltool/Makefile

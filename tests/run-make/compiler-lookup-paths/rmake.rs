@@ -5,99 +5,80 @@
 // fail to be used by the compiler.
 // See https://github.com/rust-lang/rust/pull/19941
 
-use run_make_support::fs_wrapper;
-use run_make_support::{rmake_out_path, rustc};
+//@ ignore-wasm32
+//@ ignore-wasm64
+// Reason: a C compiler is required for build_native_static_lib
+
+use run_make_support::{build_native_static_lib, fs_wrapper, rustc, static_lib_name};
 
 fn main() {
-    assert!(rmake_out_path("libnative.a").exists());
-    fs_wrapper::create_dir_all(rmake_out_path("crate"));
-    fs_wrapper::create_dir_all(rmake_out_path("native"));
-    fs_wrapper::rename(rmake_out_path("libnative.a"), rmake_out_path("native"));
+    build_native_static_lib("native");
+    let lib_native = static_lib_name("native");
+    fs_wrapper::create_dir_all("crate");
+    fs_wrapper::create_dir_all("native");
+    fs_wrapper::rename(&lib_native, format!("native/{}", &lib_native));
     rustc().input("a.rs").run();
-    fs_wrapper::rename(rmake_out_path("liba.a"), rmake_out_path("crate"));
-    rustc()
-        .input("b.rs")
-        .specific_library_search_path("native", rmake_out_path("crate"))
-        .run_fail();
-    rustc()
-        .input("b.rs")
-        .specific_library_search_path("dependency", rmake_out_path("crate"))
-        .run_fail();
-    rustc().input("b.rs").specific_library_search_path("crate", rmake_out_path("crate")).run();
-    rustc().input("b.rs").specific_library_search_path("all", rmake_out_path("crate")).run();
+    fs_wrapper::rename("liba.rlib", "crate/liba.rlib");
+    rustc().input("b.rs").specific_library_search_path("native", "crate").run_fail();
+    rustc().input("b.rs").specific_library_search_path("dependency", "crate").run_fail();
+    rustc().input("b.rs").specific_library_search_path("crate", "crate").run();
+    rustc().input("b.rs").specific_library_search_path("all", "crate").run();
 
-    rustc()
-        .input("c.rs")
-        .specific_library_search_path("native", rmake_out_path("crate"))
-        .run_fail();
-    rustc().input("c.rs").specific_library_search_path("crate", rmake_out_path("crate")).run_fail();
-    rustc().input("c.rs").specific_library_search_path("dependency", rmake_out_path("crate")).run();
-    rustc().input("c.rs").specific_library_search_path("all", rmake_out_path("crate")).run();
+    rustc().input("c.rs").specific_library_search_path("native", "crate").run_fail();
+    rustc().input("c.rs").specific_library_search_path("crate", "crate").run_fail();
+    rustc().input("c.rs").specific_library_search_path("dependency", "crate").run();
+    rustc().input("c.rs").specific_library_search_path("all", "crate").run();
 
-    rustc()
-        .input("d.rs")
-        .specific_library_search_path("dependency", rmake_out_path("native"))
-        .run_fail();
-    rustc()
-        .input("d.rs")
-        .specific_library_search_path("crate", rmake_out_path("native"))
-        .run_fail();
-    rustc().input("d.rs").specific_library_search_path("native", rmake_out_path("native")).run();
-    rustc().input("d.rs").specific_library_search_path("all", rmake_out_path("native")).run();
+    rustc().input("d.rs").specific_library_search_path("dependency", "native").run_fail();
+    rustc().input("d.rs").specific_library_search_path("crate", "native").run_fail();
+    rustc().input("d.rs").specific_library_search_path("native", "native").run();
+    rustc().input("d.rs").specific_library_search_path("all", "native").run();
 
     // Deduplication tests.
-    fs_wrapper::create_dir_all(rmake_out_path("e1"));
-    fs_wrapper::create_dir_all(rmake_out_path("e2"));
+    fs_wrapper::create_dir_all("e1");
+    fs_wrapper::create_dir_all("e2");
 
-    rustc().input("e.rs").output(rmake_out_path("e1/libe.rlib")).run();
-    rustc().input("e.rs").output(rmake_out_path("e2/libe.rlib")).run();
+    rustc().input("e.rs").output("e1/libe.rlib").run();
+    rustc().input("e.rs").output("e2/libe.rlib").run();
     // If the library hash is correct, compilation should succeed.
+    rustc().input("f.rs").library_search_path("e1").library_search_path("e2").run();
     rustc()
         .input("f.rs")
-        .library_search_path(rmake_out_path("e1"))
-        .library_search_path(rmake_out_path("e2"))
+        .specific_library_search_path("crate", "e1")
+        .library_search_path("e2")
         .run();
     rustc()
         .input("f.rs")
-        .specific_library_search_path("crate", rmake_out_path("e1"))
-        .library_search_path(rmake_out_path("e2"))
-        .run();
-    rustc()
-        .input("f.rs")
-        .specific_library_search_path("crate", rmake_out_path("e1"))
-        .specific_library_search_path("crate", rmake_out_path("e2"))
+        .specific_library_search_path("crate", "e1")
+        .specific_library_search_path("crate", "e2")
         .run();
     // If the library has a different hash, errors should occur.
-    rustc().input("e2.rs").output(rmake_out_path("e2/libe.rlib")).run();
+    rustc().input("e2.rs").output("e2/libe.rlib").run();
+    rustc().input("f.rs").library_search_path("e1").library_search_path("e2").run_fail();
     rustc()
         .input("f.rs")
-        .library_search_path(rmake_out_path("e1"))
-        .library_search_path(rmake_out_path("e2"))
+        .specific_library_search_path("crate", "e1")
+        .library_search_path("e2")
         .run_fail();
     rustc()
         .input("f.rs")
-        .specific_library_search_path("crate", rmake_out_path("e1"))
-        .library_search_path(rmake_out_path("e2"))
-        .run_fail();
-    rustc()
-        .input("f.rs")
-        .specific_library_search_path("crate", rmake_out_path("e1"))
-        .specific_library_search_path("crate", rmake_out_path("e2"))
+        .specific_library_search_path("crate", "e1")
+        .specific_library_search_path("crate", "e2")
         .run_fail();
     // Native and dependency paths do not cause errors.
     rustc()
         .input("f.rs")
-        .specific_library_search_path("native", rmake_out_path("e1"))
-        .library_search_path(rmake_out_path("e2"))
+        .specific_library_search_path("native", "e1")
+        .library_search_path("e2")
         .run();
     rustc()
         .input("f.rs")
-        .specific_library_search_path("dependency", rmake_out_path("e1"))
-        .library_search_path(rmake_out_path("e2"))
+        .specific_library_search_path("dependency", "e1")
+        .library_search_path("e2")
         .run();
     rustc()
         .input("f.rs")
-        .specific_library_search_path("dependency", rmake_out_path("e1"))
-        .specific_library_search_path("crate", rmake_out_path("e2"))
+        .specific_library_search_path("dependency", "e1")
+        .specific_library_search_path("crate", "e2")
         .run();
 }
