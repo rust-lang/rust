@@ -52,32 +52,25 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
         let (mut params, ret_type) = (function_data.params.iter(), &function_data.ret_type);
         if let Some(self_param) = body.self_param {
             p.print_binding(self_param);
-            p.buf.push(':');
-            p.buf.push(' ');
+            p.buf.push_str(": ");
             if let Some(ty) = params.next() {
                 p.print_type_ref(ty);
-                p.buf.push(',');
-                p.buf.push(' ');
+                p.buf.push_str(", ");
             }
         }
         body.params.iter().zip(params).for_each(|(&param, ty)| {
             p.print_pat(param);
-            p.buf.push(':');
-            p.buf.push(' ');
+            p.buf.push_str(": ");
             p.print_type_ref(ty);
-            p.buf.push(',');
-            p.buf.push(' ');
+            p.buf.push_str(", ");
         });
         // remove the last ", " in param list
         if body.params.len() > 0 {
             p.buf.truncate(p.buf.len() - 2);
         }
         p.buf.push(')');
-        p.buf.push(' ');
         // return type
-        p.buf.push('-');
-        p.buf.push('>');
-        p.buf.push(' ');
+        p.buf.push_str(" -> ");
         p.print_type_ref(ret_type);
         p.buf.push(' ');
     }
