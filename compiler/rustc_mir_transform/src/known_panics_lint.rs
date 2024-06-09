@@ -625,9 +625,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf => op_layout.size.bytes(),
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => {
-                        op_layout.offset_of_subfield(self, fields.iter()).bytes()
-                    }
+                    NullOp::OffsetOf(fields) => self
+                        .tcx
+                        .offset_of_subfield(self.param_env, op_layout, fields.iter())
+                        .bytes(),
                     NullOp::UbChecks => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()

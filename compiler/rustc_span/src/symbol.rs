@@ -1304,6 +1304,7 @@ symbols! {
         offset_of,
         offset_of_enum,
         offset_of_nested,
+        offset_of_slice,
         ok_or_else,
         omit_gdb_pretty_printer_section,
         on,

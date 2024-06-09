@@ -386,6 +386,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn require_type_has_static_alignment(
+        &self,
+        ty: Ty<'tcx>,
+        span: Span,
+        code: traits::ObligationCauseCode<'tcx>,
+    ) {
+        if !ty.references_error() {
+            let tail =
+                self.tcx.struct_tail_with_normalize(ty, |ty| self.normalize(span, ty), || {});
+            // Sized types have static alignment, and so do slices.
+            if tail.is_trivially_sized(self.tcx) || matches!(tail.kind(), ty::Slice(..)) {
+                // Nothing else is required here.
+            } else {
+                // We can't be sure, let's required full `Sized`.
+                let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
+                self.require_type_meets(ty, span, code, lang_item);
+            }
+        }
+    }
+
     pub fn register_bound(
         &self,
         ty: Ty<'tcx>,
