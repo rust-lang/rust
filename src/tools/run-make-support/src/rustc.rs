@@ -100,6 +100,12 @@ impl Rustc {
         self
     }
 
+    //Adjust the backtrace level, displaying more detailed information at higher levels.
+    pub fn set_backtrace_level<R: AsRef<OsStr>>(&mut self, level: R) -> &mut Self {
+        self.cmd.env("RUST_BACKTRACE", level);
+        self
+    }
+
     /// Specify path to the output file. Equivalent to `-o`` in rustc.
     pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-o");

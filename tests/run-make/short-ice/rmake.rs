@@ -5,15 +5,23 @@
 // See https://github.com/rust-lang/rust/issues/107910
 
 use run_make_support::rustc;
-use std::env;
 
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
-    let mut rust_test_1 = rustc().input("src/lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
-    env::set_var("RUST_BACKTRACE", "full");
-    let mut rust_test_2 = rustc().input("src/lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
-    let rust_test_log_1 = rust_test_1.stderr_utf8().push_str(&rust_test_1.stdout_utf8()).as_str();
-    let rust_test_log_2 = rust_test_2.stderr_utf8().push_str(&rust_test_2.stdout_utf8()).as_str();
+    let rust_test_1 =
+        rustc().set_backtrace_level("1").input("src/lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
+    let rust_test_2 = rustc()
+        .set_backtrace_level("full")
+        .input("src/lib.rs")
+        .arg("-Ztreat-err-as-bug=1")
+        .run_fail();
+
+    let mut rust_test_log_1 = rust_test_1.stderr_utf8();
+    rust_test_log_1.push_str(&rust_test_1.stdout_utf8());
+    let rust_test_log_1 = rust_test_log_1.as_str();
+
+    let mut rust_test_log_2 = rust_test_2.stderr_utf8();
+    rust_test_log_2.push_str(&rust_test_2.stdout_utf8());
+    let rust_test_log_2 = rust_test_log_2.as_str();
 
     let rustc_query_count_full = count_lines_with(rust_test_log_2, "rustc_query_");
 
