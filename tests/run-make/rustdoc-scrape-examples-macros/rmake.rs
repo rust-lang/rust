@@ -56,5 +56,5 @@ fn main() {
         .arg(&ex_dir)
         .run();
 
-    assert!(htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success());
+    htmldocck().arg(out_dir).arg("src/lib.rs").run();
 }

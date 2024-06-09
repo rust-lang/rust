@@ -45,5 +45,5 @@ pub fn scrape(extra_args: &[&str]) {
     }
     rustdoc.run();
 
-    assert!(htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success());
+    htmldocck().arg(out_dir).arg("src/lib.rs").run();
 }
