@@ -1,3 +1,5 @@
+#![warn(clippy::arithmetic_side_effects)]
+
 mod atomic;
 mod simd;
 
