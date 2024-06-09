@@ -1,11 +1,10 @@
 //@ compile-flags: -O
-//@ min-llvm-version: 17
 
 #![crate_type = "lib"]
 
-#[no_mangle]
 // CHECK-LABEL: @foo
-// CHECK: getelementptr inbounds
+// CHECK-NEXT: {{.*}}:
+// CHECK-NEXT: getelementptr inbounds
 // CHECK-NEXT: load i64
 // CHECK-NEXT: icmp eq i64
 // CHECK-NEXT: br i1

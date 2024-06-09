@@ -8,9 +8,9 @@ use std::convert::TryInto;
 
 const N: usize = 24;
 
-#[no_mangle]
 // CHECK-LABEL: @example
 // CHECK-NOT: unwrap_failed
+#[no_mangle]
 pub fn example(a: Vec<u8>) -> u8 {
     if a.len() != 32 {
         return 0;

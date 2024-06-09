@@ -11,7 +11,5 @@
 // CHECK-NEXT: ret i1
 #[no_mangle]
 pub fn unwrap_combinators(a: Option<i32>, b: i32) -> bool {
-    a.map(|t| t >= b)
-     .unwrap_or(false)
+    a.map(|t| t >= b).unwrap_or(false)
 }
-
