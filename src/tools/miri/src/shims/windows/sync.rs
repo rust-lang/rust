@@ -157,11 +157,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let size = Size::from_bytes(size);
 
-        let timeout_time = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
+        let timeout = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
             None
         } else {
             let duration = Duration::from_millis(timeout_ms.into());
-            Some(Timeout::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration))
         };
 
         // See the Linux futex implementation for why this fence exists.
@@ -177,7 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.futex_wait(
                 addr,
                 u32::MAX, // bitset
-                timeout_time,
+                timeout,
                 Scalar::from_i32(1), // retval_succ
                 Scalar::from_i32(0), // retval_timeout
                 dest.clone(),

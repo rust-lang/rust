@@ -78,7 +78,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.check_no_isolation("`clock_gettime` with `REALTIME` clocks")?;
             system_time_to_duration(&SystemTime::now())?
         } else if relative_clocks.contains(&clk_id) {
-            this.machine.clock.now().duration_since(this.machine.clock.anchor())
+            this.machine.clock.now().duration_since(this.machine.clock.epoch())
         } else {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -246,7 +246,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.anchor());
+        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
@@ -282,7 +282,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.anchor());
+        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
         let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
         })?;
@@ -323,16 +323,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(-1);
             }
         };
-        // If adding the duration overflows, let's just sleep for an hour. Waking up early is always acceptable.
-        let now = this.machine.clock.now();
-        let timeout_time = now
-            .checked_add(duration)
-            .unwrap_or_else(|| now.checked_add(Duration::from_secs(3600)).unwrap());
-        let timeout_time = Timeout::Monotonic(timeout_time);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some(timeout_time),
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
                 @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
@@ -351,12 +345,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 
         let duration = Duration::from_millis(timeout_ms.into());
-        let timeout_time = this.machine.clock.now().checked_add(duration).unwrap();
-        let timeout_time = Timeout::Monotonic(timeout_time);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some(timeout_time),
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
                 @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }

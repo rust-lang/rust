@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::SystemTime;
 
 use rustc_target::abi::Size;
 
@@ -849,11 +848,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(());
             }
         };
-        let timeout_time = if is_cond_clock_realtime(this, clock_id) {
+        let timeout_clock = if is_cond_clock_realtime(this, clock_id) {
             this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
-            Timeout::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
+            TimeoutClock::RealTime
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
-            Timeout::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
+            TimeoutClock::Monotonic
         } else {
             throw_unsup_format!("unsupported clock id: {}", clock_id);
         };
@@ -861,7 +860,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.condvar_wait(
             id,
             mutex_id,
-            Some(timeout_time),
+            Some((timeout_clock, TimeoutAnchor::Absolute, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),

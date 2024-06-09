@@ -1,5 +1,6 @@
 use std::collections::{hash_map::Entry, VecDeque};
 use std::ops::Not;
+use std::time::Duration;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{Idx, IndexVec};
@@ -623,7 +624,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         condvar: CondvarId,
         mutex: MutexId,
-        timeout: Option<Timeout>,
+        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         retval_succ: Scalar,
         retval_timeout: Scalar,
         dest: MPlaceTy<'tcx>,
@@ -704,7 +705,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         addr: u64,
         bitset: u32,
-        timeout: Option<Timeout>,
+        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         retval_succ: Scalar,
         retval_timeout: Scalar,
         dest: MPlaceTy<'tcx>,
