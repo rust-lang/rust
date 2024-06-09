@@ -783,6 +783,39 @@ fn non_freeze<T: Copy>(x: T) {
     }
 }
 
+// Check that we can const-prop into `from_raw_parts`
+fn slice_const_length(x: &[i32]) -> *const [i32] {
+    // CHECK-LABEL: fn slice_const_length(
+    // CHECK: _0 = *const [i32] from ({{_[0-9]+}}, const 123_usize);
+    let ptr = x.as_ptr();
+    let len = 123;
+    std::intrinsics::aggregate_raw_ptr(ptr, len)
+}
+
+fn meta_of_ref_to_slice(x: *const i32) -> usize {
+    // CHECK-LABEL: fn meta_of_ref_to_slice
+    // CHECK: _0 = const 1_usize
+    let ptr: *const [i32] = std::intrinsics::aggregate_raw_ptr(x, 1);
+    std::intrinsics::ptr_metadata(ptr)
+}
+
+fn slice_from_raw_parts_as_ptr(x: *const u16, n: usize) -> (*const u16, *const f32) {
+    // CHECK-LABEL: fn slice_from_raw_parts_as_ptr
+    // CHECK: _8 = _1 as *const f32 (PtrToPtr);
+    // CHECK: _0 = (_1, move _8);
+    let ptr: *const [u16] = std::intrinsics::aggregate_raw_ptr(x, n);
+    (ptr as *const u16, ptr as *const f32)
+}
+
+fn casts_before_aggregate_raw_ptr(x: *const u32) -> *const [u8] {
+    // CHECK-LABEL: fn casts_before_aggregate_raw_ptr
+    // CHECK: _0 = *const [u8] from (_1, const 4_usize);
+    let x = x as *const [u8; 4];
+    let x = x as *const u8;
+    let x = x as *const ();
+    std::intrinsics::aggregate_raw_ptr(x, 4)
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -807,6 +840,9 @@ fn main() {
     wide_ptr_integer();
     borrowed(5);
     non_freeze(5);
+    slice_const_length(&[1]);
+    meta_of_ref_to_slice(&42);
+    slice_from_raw_parts_as_ptr(&123, 456);
 }
 
 #[inline(never)]
@@ -840,3 +876,7 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.wide_ptr_integer.GVN.diff
 // EMIT_MIR gvn.borrowed.GVN.diff
 // EMIT_MIR gvn.non_freeze.GVN.diff
+// EMIT_MIR gvn.slice_const_length.GVN.diff
+// EMIT_MIR gvn.meta_of_ref_to_slice.GVN.diff
+// EMIT_MIR gvn.slice_from_raw_parts_as_ptr.GVN.diff
+// EMIT_MIR gvn.casts_before_aggregate_raw_ptr.GVN.diff
