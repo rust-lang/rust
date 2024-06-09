@@ -1,8 +1,9 @@
 use super::utils::get_hint_if_single_char_arg;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
+use rustc_ast::BorrowKind;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, ExprKind};
 use rustc_lint::LateContext;
 
 use super::SINGLE_CHAR_ADD_STR;
@@ -24,4 +25,42 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::
             applicability,
         );
     }
+
+    if let ExprKind::AddrOf(BorrowKind::Ref, _, arg) = &args[0].kind
+        && let ExprKind::MethodCall(path_segment, method_arg, _, _) = &arg.kind
+        && path_segment.ident.as_str() == "to_string"
+        && (is_ref_char(cx, method_arg) || is_char(cx, method_arg))
+    {
+        let base_string_snippet =
+            snippet_with_applicability(cx, receiver.span.source_callsite(), "..", &mut applicability);
+        let extension_string =
+            snippet_with_applicability(cx, method_arg.span.source_callsite(), "..", &mut applicability);
+        let deref_string = if is_ref_char(cx, method_arg) { "*" } else { "" };
+
+        let sugg = format!("{base_string_snippet}.push({deref_string}{extension_string})");
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_ADD_STR,
+            expr.span,
+            "calling `push_str()` using a single-character converted to string",
+            "consider using `push` without `to_string()`",
+            sugg,
+            applicability,
+        );
+    }
+}
+
+fn is_ref_char(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    if cx.typeck_results().expr_ty(expr).is_ref()
+        && let rustc_middle::ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(expr).kind()
+        && ty.is_char()
+    {
+        return true;
+    }
+
+    false
+}
+
+fn is_char(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    cx.typeck_results().expr_ty(expr).is_char()
 }
