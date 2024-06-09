@@ -454,7 +454,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let bitmask_len = dest_len.next_multiple_of(8);
                 if bitmask_len > 64 {
                     throw_unsup_format!(
-                        "simd_bitmask: masks larger than 64 elements are currently not supported"
+                        "simd_select_bitmask: vectors larger than 64 elements are currently not supported"
                     );
                 }
 
@@ -504,7 +504,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let bitmask_len = op_len.next_multiple_of(8);
                 if bitmask_len > 64 {
                     throw_unsup_format!(
-                        "simd_bitmask: masks larger than 64 elements are currently not supported"
+                        "simd_bitmask: vectors larger than 64 elements are currently not supported"
                     );
                 }
 
