@@ -1195,7 +1195,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             && let Res::Def(DefKind::ConstParam, _) = res
         {
             let qpath = self.lower_qpath(
-                anon.id,
+                anon.value.id,
                 qself,
                 path,
                 ParamMode::Optional,
