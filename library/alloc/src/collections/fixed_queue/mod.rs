@@ -3,6 +3,9 @@ use core::{
     ops::{Index, Range},
 };
 
+#[cfg(test)]
+mod tests;
+
 /// Fixed Size Queue:
 /// A linear queue implemented with a static ring buffer of owned nodes.
 ///
