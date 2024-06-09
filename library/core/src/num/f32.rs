@@ -327,6 +327,11 @@ pub mod consts {
     #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_PI: f32 = 0.564189583547756286948079451560772586_f32;
 
+    /// 1/sqrt(2π)
+    #[doc(alias = "FRAC_1_SQRT_TAU")]
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_2PI: f32 = 0.398942280401432677939946059934381868_f32;
+
     /// 2/π
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_PI: f32 = 0.636619772367581343075535053490057448_f32;
