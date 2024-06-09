@@ -441,7 +441,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => ty::Const::from_const_arg_without_feeding(tcx, ct).into(),
+                    hir::Term::Const(ct) => {
+                        ty::Const::from_const_arg_without_feeding(tcx, ct).into()
+                    }
                 };
 
                 // Find any late-bound regions declared in `ty` that are not
