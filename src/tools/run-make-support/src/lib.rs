@@ -7,6 +7,7 @@ pub mod cc;
 pub mod clang;
 mod command;
 pub mod diff;
+mod drop_bomb;
 pub mod llvm_readobj;
 pub mod run;
 pub mod rustc;
