@@ -3551,6 +3551,10 @@ impl<'test> TestCx<'test> {
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
+        // In test code we want to be very pedantic about values being silently discarded that are
+        // annotated with `#[must_use]`.
+        cmd.arg("-Dunused_must_use");
+
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
             let mut stage0_sysroot = build_root.clone();
             stage0_sysroot.push("stage0-sysroot");
