@@ -13,14 +13,14 @@ use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::{FileName, Span, DUMMY_SP};
+use rustc_span::FileName;
 
 use super::GlobalTestOptions;
 
 pub(crate) struct DocTest {
     pub(crate) supports_color: bool,
     pub(crate) already_has_extern_crate: bool,
-    pub(crate) main_fn_span: Option<Span>,
+    pub(crate) has_main_fn: bool,
     pub(crate) crate_attrs: String,
     pub(crate) crates: String,
     pub(crate) everything_else: String,
@@ -43,7 +43,7 @@ impl DocTest {
 
         // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
         // crate already is included.
-        let Ok((main_fn_span, already_has_extern_crate, failed_ast)) =
+        let Ok((has_main_fn, already_has_extern_crate, failed_ast)) =
             check_for_main_and_extern_crate(
                 crate_name,
                 source,
@@ -58,7 +58,7 @@ impl DocTest {
             // The error will be reported during compilation.
             return DocTest {
                 supports_color: false,
-                main_fn_span: None,
+                has_main_fn: false,
                 crate_attrs,
                 crates,
                 everything_else,
@@ -70,7 +70,7 @@ impl DocTest {
         };
         Self {
             supports_color,
-            main_fn_span,
+            has_main_fn,
             crate_attrs,
             crates,
             everything_else,
@@ -141,7 +141,7 @@ impl DocTest {
         }
 
         // FIXME: This code cannot yet handle no_std test cases yet
-        if dont_insert_main || self.main_fn_span.is_some() || prog.contains("![no_std]") {
+        if dont_insert_main || self.has_main_fn || prog.contains("![no_std]") {
             prog.push_str(everything_else);
         } else {
             let returns_result = everything_else.ends_with("(())");
@@ -218,7 +218,7 @@ fn cancel_error_count(psess: &ParseSess) {
 
 fn parse_source(
     source: String,
-    found_main_span: &mut Option<Span>,
+    has_main_fn: &mut bool,
     found_extern_crate: &mut bool,
     found_macro: &mut bool,
     crate_name: &Option<&str>,
@@ -263,22 +263,22 @@ fn parse_source(
     // functions, we would thing all top-level items (so basically nothing).
     fn check_item(
         item: &ast::Item,
-        found_main_span: &mut Option<Span>,
+        has_main_fn: &mut bool,
         found_extern_crate: &mut bool,
         found_macro: &mut bool,
         crate_name: &Option<&str>,
     ) {
         match item.kind {
-            ast::ItemKind::Fn(ref fn_item) if found_main_span.is_none() => {
+            ast::ItemKind::Fn(ref fn_item) if !*has_main_fn => {
                 if item.ident.name == sym::main {
-                    *found_main_span = Some(item.span);
+                    *has_main_fn = true;
                 }
                 if let Some(ref body) = fn_item.body {
                     for stmt in &body.stmts {
                         match stmt.kind {
                             ast::StmtKind::Item(ref item) => check_item(
                                 item,
-                                found_main_span,
+                                has_main_fn,
                                 found_extern_crate,
                                 found_macro,
                                 crate_name,
@@ -305,9 +305,9 @@ fn parse_source(
     loop {
         match parser.parse_item(ForceCollect::No) {
             Ok(Some(item)) => {
-                check_item(&item, found_main_span, found_extern_crate, found_macro, crate_name);
+                check_item(&item, has_main_fn, found_extern_crate, found_macro, crate_name);
 
-                if found_main_span.is_some() && *found_extern_crate {
+                if *has_main_fn && *found_extern_crate {
                     break;
                 }
             }
@@ -319,7 +319,7 @@ fn parse_source(
             }
         }
 
-        // The supplied slice is only used for diagnostics,
+        // The supplied item is only used for diagnostics,
         // which are swallowed here anyway.
         parser.maybe_consume_incorrect_semicolon(None);
     }
@@ -328,6 +328,7 @@ fn parse_source(
     parsing_result
 }
 
+/// Returns `(has_main_fn, already_has_extern_crate, failed_ast)`.
 fn check_for_main_and_extern_crate(
     crate_name: Option<&str>,
     original_source_code: &str,
@@ -336,16 +337,16 @@ fn check_for_main_and_extern_crate(
     edition: Edition,
     supports_color: &mut bool,
     can_merge_doctests: bool,
-) -> Result<(Option<Span>, bool, bool), FatalError> {
+) -> Result<(bool, bool, bool), FatalError> {
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            let mut found_main_span = None;
+            let mut has_main_fn = false;
             let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
 
             let mut parsing_result = parse_source(
                 format!("{crates}{everything_else}"),
-                &mut found_main_span,
+                &mut has_main_fn,
                 &mut found_extern_crate,
                 &mut found_macro,
                 &crate_name,
@@ -366,7 +367,7 @@ fn check_for_main_and_extern_crate(
                 // faster doctests run time.
                 parsing_result = parse_source(
                     format!("{crates}\nfn __doctest_wrap(){{{everything_else}\n}}"),
-                    &mut found_main_span,
+                    &mut has_main_fn,
                     &mut found_extern_crate,
                     &mut found_macro,
                     &crate_name,
@@ -374,13 +375,13 @@ fn check_for_main_and_extern_crate(
                 );
             }
 
-            (found_main_span, found_extern_crate, found_macro, parsing_result)
+            (has_main_fn, found_extern_crate, found_macro, parsing_result)
         })
     });
-    let (mut main_fn_span, already_has_extern_crate, found_macro, parsing_result) = match result {
+    let (mut has_main_fn, already_has_extern_crate, found_macro, parsing_result) = match result {
         Err(..) | Ok((_, _, _, ParsingResult::Failed)) => return Err(FatalError),
-        Ok((main_fn_span, already_has_extern_crate, found_macro, parsing_result)) => {
-            (main_fn_span, already_has_extern_crate, found_macro, parsing_result)
+        Ok((has_main_fn, already_has_extern_crate, found_macro, parsing_result)) => {
+            (has_main_fn, already_has_extern_crate, found_macro, parsing_result)
         }
     };
 
@@ -389,7 +390,7 @@ fn check_for_main_and_extern_crate(
     // function written inside a macro invocation. See
     // https://github.com/rust-lang/rust/issues/56898
     if found_macro
-        && main_fn_span.is_none()
+        && !has_main_fn
         && original_source_code
             .lines()
             .map(|line| {
@@ -398,10 +399,10 @@ fn check_for_main_and_extern_crate(
             })
             .any(|code| code.contains("fn main"))
     {
-        main_fn_span = Some(DUMMY_SP);
+        has_main_fn = true;
     }
 
-    Ok((main_fn_span, already_has_extern_crate, parsing_result != ParsingResult::Ok))
+    Ok((has_main_fn, already_has_extern_crate, parsing_result != ParsingResult::Ok))
 }
 
 fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
@@ -448,6 +449,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
     .unwrap_or(false)
 }
 
+/// Returns `(crate_attrs, content, crates)`.
 fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     #[derive(Copy, Clone, PartialEq)]
     enum PartitionState {
@@ -456,7 +458,7 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
         Other,
     }
     let mut state = PartitionState::Attrs;
-    let mut before = String::new();
+    let mut crate_attrs = String::new();
     let mut crates = String::new();
     let mut after = String::new();
 
@@ -520,8 +522,8 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
 
         match state {
             PartitionState::Attrs => {
-                before.push_str(line);
-                before.push('\n');
+                crate_attrs.push_str(line);
+                crate_attrs.push('\n');
             }
             PartitionState::Crates => {
                 crates.push_str(line);
