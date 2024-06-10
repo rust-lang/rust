@@ -2162,16 +2162,55 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// List all the lifetimes that appear in the provided type.
     fn find_lifetime_for_self(&self, ty: &'ast Ty) -> Set1<LifetimeRes> {
-        struct SelfVisitor<'r, 'a, 'tcx> {
+        /// Visits a type to find all the &references, and determines the
+        /// set of lifetimes for all of those references where the referent
+        /// contains Self.
+        struct FindReferenceVisitor<'r, 'a, 'tcx> {
             r: &'r Resolver<'a, 'tcx>,
             impl_self: Option<Res>,
             lifetime: Set1<LifetimeRes>,
+        }
+
+        impl<'a> Visitor<'a> for FindReferenceVisitor<'_, '_, '_> {
+            fn visit_ty(&mut self, ty: &'a Ty) {
+                trace!("FindReferenceVisitor considering ty={:?}", ty);
+                if let TyKind::Ref(lt, _) = ty.kind {
+                    // See if anything inside the &thing contains Self
+                    let mut visitor =
+                        SelfVisitor { r: self.r, impl_self: self.impl_self, self_found: false };
+                    visitor.visit_ty(ty);
+                    trace!("FindReferenceVisitor: SelfVisitor self_found={:?}", visitor.self_found);
+                    if visitor.self_found {
+                        let lt_id = if let Some(lt) = lt {
+                            lt.id
+                        } else {
+                            let res = self.r.lifetimes_res_map[&ty.id];
+                            let LifetimeRes::ElidedAnchor { start, .. } = res else { bug!() };
+                            start
+                        };
+                        let lt_res = self.r.lifetimes_res_map[&lt_id];
+                        trace!("FindReferenceVisitor inserting res={:?}", lt_res);
+                        self.lifetime.insert(lt_res);
+                    }
+                }
+                visit::walk_ty(self, ty)
+            }
+
+            // A type may have an expression as a const generic argument.
+            // We do not want to recurse into those.
+            fn visit_expr(&mut self, _: &'a Expr) {}
+        }
+
+        /// Visitor which checks the referent of a &Thing to see if the
+        /// Thing contains Self
+        struct SelfVisitor<'r, 'a, 'tcx> {
+            r: &'r Resolver<'a, 'tcx>,
+            impl_self: Option<Res>,
             self_found: bool,
         }
 
         impl SelfVisitor<'_, '_, '_> {
-            // Look for `self: &'a Self` - also desugared from `&'a self`,
-            // and if that matches, use it for elision and return early.
+            // Look for `self: &'a Self` - also desugared from `&'a self`
             fn is_self_ty(&self, ty: &Ty) -> bool {
                 match ty.kind {
                     TyKind::ImplicitSelf => true,
@@ -2193,18 +2232,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 if self.is_self_ty(ty) {
                     trace!("SelfVisitor found Self");
                     self.self_found = true;
-                }
-                if let TyKind::Ref(lt, _) = ty.kind {
-                    let lt_id = if let Some(lt) = lt {
-                        lt.id
-                    } else {
-                        let res = self.r.lifetimes_res_map[&ty.id];
-                        let LifetimeRes::ElidedAnchor { start, .. } = res else { bug!() };
-                        start
-                    };
-                    let lt_res = self.r.lifetimes_res_map[&lt_id];
-                    trace!("SelfVisitor inserting res={:?}", lt_res);
-                    self.lifetime.insert(lt_res);
                 }
                 visit::walk_ty(self, ty)
             }
@@ -2235,11 +2262,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, _,) | Res::PrimTy(_)
                 )
             });
-        let mut visitor =
-            SelfVisitor { r: self.r, impl_self, lifetime: Set1::Empty, self_found: false };
+        let mut visitor = FindReferenceVisitor { r: self.r, impl_self, lifetime: Set1::Empty };
         visitor.visit_ty(ty);
-        trace!("SelfVisitor found={:?}, self_found={:?}", visitor.lifetime, visitor.self_found);
-        if visitor.self_found { visitor.lifetime } else { Set1::Empty }
+        trace!("FindReferenceVisitor found={:?}", visitor.lifetime);
+        visitor.lifetime
     }
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
