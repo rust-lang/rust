@@ -172,7 +172,7 @@ The following header commands will check LLVM support:
 * `ignore-llvm-version: 9.0` — ignores a specific LLVM version
 * `ignore-llvm-version: 7.0 - 9.9.9` — ignores LLVM versions in a range (inclusive)
 * `needs-llvm-components: powerpc` — ignores if the specific LLVM component was not built.
-  Note: The test will fail on CI if the component does not exist.
+  Note: The test will fail on CI (when `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not exist.
 * `needs-matching-clang` — ignores if the version of clang does not match the
   LLVM version of rustc.
   These tests are always ignored unless a special environment variable,
