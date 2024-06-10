@@ -884,9 +884,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         };
         if let Some(expected_trait) = expected_trait {
-            if vtable_trait != expected_trait.principal() {
-                throw_ub!(InvalidVTableTrait { expected_trait, vtable_trait });
-            }
+            self.check_vtable_for_type(vtable_trait, expected_trait)?;
         }
         Ok(ty)
     }
