@@ -898,17 +898,20 @@ because of the `[-]` element which would overlap with it. */
 	So, for table layouts, override the default with break-word, which does
 	_not_ affect min-content intrinsic sizes.
 */
-table {
+table,
+.item-table {
 	overflow-wrap: break-word;
 }
 
 .item-table {
-	display: table;
+	display: flex;
+	flex-direction: column;
 	padding: 0;
 	margin: 0;
 }
 .item-table > li {
-	display: table-row;
+	display: flex;
+	justify-content: space-between;
 }
 .item-table > li > div {
 	display: table-cell;
@@ -2125,6 +2128,9 @@ in src-script.js and main.js
 		right: 5px;
 		padding: 2px 4px;
 		box-shadow: 0 0 4px var(--main-background-color);
+	}
+	.item-table > li > .item-name {
+		max-width: 50%;
 	}
 }
 
