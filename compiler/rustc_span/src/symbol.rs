@@ -859,6 +859,7 @@ symbols! {
         field,
         field_init_shorthand,
         file,
+        fixed_queue,
         float,
         float_to_int_unchecked,
         floorf128,
