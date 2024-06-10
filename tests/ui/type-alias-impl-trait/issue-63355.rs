@@ -1,5 +1,4 @@
 #![feature(type_alias_impl_trait)]
-//@ check-pass
 
 pub trait Foo {}
 
@@ -39,6 +38,7 @@ impl Baz for () {
     }
 
     fn bar() -> Self::Bar {
+        //~^ ERROR: item does not constrain `FooImpl::{opaque#0}`
         ()
     }
 }

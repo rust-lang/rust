@@ -390,6 +390,17 @@ pub struct TaitForwardCompat {
     pub item_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_tait_forward_compat2)]
+#[note]
+pub struct TaitForwardCompat2 {
+    #[primary_span]
+    pub span: Span,
+    #[note(hir_analysis_opaque)]
+    pub opaque_type_span: Span,
+    pub opaque_type: String,
+}
+
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,

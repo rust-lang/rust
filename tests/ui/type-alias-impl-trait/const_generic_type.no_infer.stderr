@@ -1,3 +1,36 @@
+error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
+  --> $DIR/const_generic_type.rs:8:10
+   |
+LL | async fn test<const N: crate::Bar>() {
+   |          ^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/const_generic_type.rs:5:12
+   |
+LL | type Bar = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
+  --> $DIR/const_generic_type.rs:8:38
+   |
+LL |   async fn test<const N: crate::Bar>() {
+   |  ______________________________________^
+LL | |
+LL | |
+LL | |
+LL | |     #[cfg(infer)]
+LL | |     let x: u32 = N;
+LL | | }
+   | |_^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/const_generic_type.rs:5:12
+   |
+LL | type Bar = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
 error: unconstrained opaque type
   --> $DIR/const_generic_type.rs:5:12
    |
@@ -14,5 +47,5 @@ LL | async fn test<const N: crate::Bar>() {
    |
    = note: the only supported types are integers, `bool` and `char`
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
