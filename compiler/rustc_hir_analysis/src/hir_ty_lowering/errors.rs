@@ -269,20 +269,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         // If we still couldn't find any associated item, and only one associated item exists,
-        // suggests using it.
+        // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
-            // This should still compile, except on `#![feature(associated_type_defaults)]`
-            // where it could suggests `type A = Self::A`, thus recursing infinitely.
-            let applicability =
-                if assoc_kind == ty::AssocKind::Type && tcx.features().associated_type_defaults {
-                    Applicability::Unspecified
-                } else {
-                    Applicability::MaybeIncorrect
-                };
-
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
                 span: assoc_name.span,
-                applicability,
                 ty_param_name,
                 assoc_kind: assoc_kind_str,
                 suggested_name: *candidate_name,
