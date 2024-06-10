@@ -132,9 +132,6 @@ pub struct SemanticsImpl<'db> {
     s2d_cache: RefCell<SourceToDefCache>,
     /// Rootnode to HirFileId cache
     root_to_file_cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
-    /// HirFileId to Rootnode cache (this adds a layer over the database LRU cache to prevent
-    /// possibly frequent invalidation)
-    parse_cache: RefCell<FxHashMap<HirFileId, SyntaxNode>>,
     /// MacroCall to its expansion's MacroFileId cache
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
 }
@@ -295,7 +292,6 @@ impl<'db> SemanticsImpl<'db> {
             db,
             s2d_cache: Default::default(),
             root_to_file_cache: Default::default(),
-            parse_cache: Default::default(),
             macro_call_cache: Default::default(),
         }
     }
@@ -307,9 +303,6 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
-        if let Some(root) = self.parse_cache.borrow().get(&file_id) {
-            return root.clone();
-        }
         let node = self.db.parse_or_expand(file_id);
         self.cache(node.clone(), file_id);
         node
@@ -1490,9 +1483,8 @@ impl<'db> SemanticsImpl<'db> {
     fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
         assert!(root_node.parent().is_none());
         let mut cache = self.root_to_file_cache.borrow_mut();
-        let prev = cache.insert(root_node.clone(), file_id);
+        let prev = cache.insert(root_node, file_id);
         assert!(prev.is_none() || prev == Some(file_id));
-        self.parse_cache.borrow_mut().insert(file_id, root_node);
     }
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
