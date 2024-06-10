@@ -1,4 +1,5 @@
 use super::*;
+use crate::{string::String, vec::Vec};
 
 #[test]
 fn with() {
