@@ -361,8 +361,9 @@ fn rename_to_self(
         bail!("Parameter type differs from impl block type");
     }
 
-    let InFile { file_id, value: param_source } =
-        first_param.source(sema.db).ok_or_else(|| format_err!("No source for parameter found"))?;
+    let InFile { file_id, value: param_source } = sema
+        .source(first_param.clone())
+        .ok_or_else(|| format_err!("No source for parameter found"))?;
 
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
@@ -392,7 +393,7 @@ fn rename_self_to_param(
     let identifier_kind = IdentifierKind::classify(new_name)?;
 
     let InFile { file_id, value: self_param } =
-        self_param.source(sema.db).ok_or_else(|| format_err!("cannot find function source"))?;
+        sema.source(self_param).ok_or_else(|| format_err!("cannot find function source"))?;
 
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
