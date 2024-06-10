@@ -122,7 +122,6 @@ run-make/link-framework/Makefile
 run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
 run-make/llvm-ident/Makefile
-run-make/llvm-outputs/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/longjmp-across-rust/Makefile
