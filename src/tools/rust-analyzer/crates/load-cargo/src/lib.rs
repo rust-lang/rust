@@ -285,7 +285,6 @@ impl SourceRootConfig {
     /// If a `SourceRoot` doesn't have a parent and is local then it is not contained in this mapping but it can be asserted that it is a root `SourceRoot`.
     pub fn source_root_parent_map(&self) -> FxHashMap<SourceRootId, SourceRootId> {
         let roots = self.fsc.roots();
-        let mut i = 0;
         roots
             .iter()
             .enumerate()
@@ -293,9 +292,14 @@ impl SourceRootConfig {
             .filter_map(|(idx, (root, root_id))| {
                 // We are interested in parents if they are also local source roots.
                 // So instead of a non-local parent we may take a local ancestor as a parent to a node.
+                //
+                // Here paths in roots are sorted lexicographically, so if a root
+                // is a parent of another root, it will be before it in the list.
                 roots[..idx].iter().find_map(|(root2, root2_id)| {
-                    i += 1;
-                    if self.local_filesets.contains(root2_id) && root.starts_with(root2) {
+                    if self.local_filesets.contains(root2_id)
+                        && root.starts_with(root2)
+                        && root_id != root2_id
+                    {
                         return Some((root_id, root2_id));
                     }
                     None
@@ -571,5 +575,21 @@ mod tests {
         vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
 
         assert_eq!(vc, vec![(SourceRootId(3), SourceRootId(1)),])
+    }
+
+    #[test]
+    fn parents_with_identical_root_id() {
+        let mut builder = FileSetConfigBuilder::default();
+        builder.add_file_set(vec![
+            VfsPath::new_virtual_path("/ROOT/def".to_owned()),
+            VfsPath::new_virtual_path("/ROOT/def/abc/def".to_owned()),
+        ]);
+        builder.add_file_set(vec![VfsPath::new_virtual_path("/ROOT/def/abc/def/ghi".to_owned())]);
+        let fsc = builder.build();
+        let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
+        let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+        vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+
+        assert_eq!(vc, vec![(SourceRootId(1), SourceRootId(0)),])
     }
 }
