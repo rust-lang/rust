@@ -81,7 +81,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             if !object_safe && self_ty.span.can_be_used_for_suggestions() {
-                // suggest_impl_trait_on_bare_trait(tcx, &mut diag, self_ty);
                 let parent = tcx.parent_hir_node(self_ty.hir_id);
                 suggest_path_on_bare_trait(tcx, &mut diag, parent);
             }
@@ -89,6 +88,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
+
+            if object_safe {
+                let parents = self.tcx().hir().parent_iter(self_ty.hir_id);
+                for (_, parent) in parents {
+                    let hir::Node::Expr(expr) = parent else {
+                        break;
+                    };
+                    if let hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment)) = expr.kind
+                        && let Res::Err = segment.res
+                    {
+                        // If the trait is object safe *and* there's a path segment that couldn't be
+                        // resolved, we know that we will have a resolve error later. If there's an
+                        // unresolved segment *and* the trait is not object safe, then no other
+                        // error would have been emitted, so we always emit an error in that case.
+                        diag.emit();
+                        return None;
+                    }
+                }
+            }
             diag.stash(self_ty.span, StashKey::TraitMissingMethod)
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
