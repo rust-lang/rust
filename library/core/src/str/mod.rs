@@ -732,7 +732,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "split_at_checked", since = "1.80.0")]
     pub fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -772,7 +772,7 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "split_at_checked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "split_at_checked", since = "1.80.0")]
     pub fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -2546,8 +2546,8 @@ impl str {
     /// ```
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_start(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2571,8 +2571,8 @@ impl str {
     /// ```
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_end(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate
@@ -2597,8 +2597,8 @@ impl str {
     /// ```
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii(&self) -> &str {
         // SAFETY: Removing ASCII characters from a `&str` does not invalidate

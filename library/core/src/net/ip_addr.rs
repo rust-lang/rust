@@ -464,7 +464,7 @@ impl Ipv4Addr {
     ///
     /// assert_eq!(Ipv4Addr::BITS, 32);
     /// ```
-    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bits", since = "1.80.0")]
     pub const BITS: u32 = 32;
 
     /// Converts an IPv4 address into a `u32` representation using native byte order.
@@ -492,8 +492,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x00), Ipv4Addr::from_bits(addr_bits));
     ///
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
-    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
     pub const fn to_bits(self) -> u32 {
@@ -512,8 +512,8 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::from(0x12345678);
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
-    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
     pub const fn from_bits(bits: u32) -> Ipv4Addr {
@@ -1238,7 +1238,7 @@ impl Ipv6Addr {
     ///
     /// assert_eq!(Ipv6Addr::BITS, 128);
     /// ```
-    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_bits", since = "1.80.0")]
     pub const BITS: u32 = 128;
 
     /// Converts an IPv6 address into a `u128` representation using native byte order.
@@ -1277,8 +1277,8 @@ impl Ipv6Addr {
     ///     Ipv6Addr::from_bits(addr_bits));
     ///
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
-    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
     pub const fn to_bits(self) -> u128 {
@@ -1302,8 +1302,8 @@ impl Ipv6Addr {
     ///     ),
     ///     addr);
     /// ```
-    #[rustc_const_stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
-    #[stable(feature = "ip_bits", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
+    #[stable(feature = "ip_bits", since = "1.80.0")]
     #[must_use]
     #[inline]
     pub const fn from_bits(bits: u128) -> Ipv6Addr {

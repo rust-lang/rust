@@ -1724,7 +1724,7 @@ impl<T> Option<T> {
     /// assert_eq!(prev, Some(43));
     /// ```
     #[inline]
-    #[stable(feature = "option_take_if", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "option_take_if", since = "1.80.0")]
     pub fn take_if<P>(&mut self, predicate: P) -> Option<T>
     where
         P: FnOnce(&mut T) -> bool,

@@ -2123,23 +2123,23 @@ impl<I> FromIterator<I> for Box<[I]> {
 
 /// This implementation is required to make sure that the `Box<[I]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<I, A: Allocator> !Iterator for Box<[I], A> {}
 
 /// This implementation is required to make sure that the `&Box<[I]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<'a, I, A: Allocator> !Iterator for &'a Box<[I], A> {}
 
 /// This implementation is required to make sure that the `&mut Box<[I]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<'a, I, A: Allocator> !Iterator for &'a mut Box<[I], A> {}
 
 // Note: the `#[rustc_skip_during_method_dispatch(boxed_slice)]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2024,
 // so those calls will still resolve to the slice implementation, by reference.
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<I, A: Allocator> IntoIterator for Box<[I], A> {
     type IntoIter = vec::IntoIter<I, A>;
     type Item = I;
@@ -2148,7 +2148,7 @@ impl<I, A: Allocator> IntoIterator for Box<[I], A> {
     }
 }
 
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<'a, I, A: Allocator> IntoIterator for &'a Box<[I], A> {
     type IntoIter = slice::Iter<'a, I>;
     type Item = &'a I;
@@ -2157,7 +2157,7 @@ impl<'a, I, A: Allocator> IntoIterator for &'a Box<[I], A> {
     }
 }
 
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<'a, I, A: Allocator> IntoIterator for &'a mut Box<[I], A> {
     type IntoIter = slice::IterMut<'a, I>;
     type Item = &'a mut I;
@@ -2167,7 +2167,7 @@ impl<'a, I, A: Allocator> IntoIterator for &'a mut Box<[I], A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl FromIterator<char> for Box<str> {
     fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
         String::from_iter(iter).into_boxed_str()
@@ -2175,7 +2175,7 @@ impl FromIterator<char> for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<'a> FromIterator<&'a char> for Box<str> {
     fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
         String::from_iter(iter).into_boxed_str()
@@ -2183,7 +2183,7 @@ impl<'a> FromIterator<&'a char> for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<'a> FromIterator<&'a str> for Box<str> {
     fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
         String::from_iter(iter).into_boxed_str()
@@ -2191,7 +2191,7 @@ impl<'a> FromIterator<&'a str> for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl FromIterator<String> for Box<str> {
     fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
         String::from_iter(iter).into_boxed_str()
@@ -2199,7 +2199,7 @@ impl FromIterator<String> for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<A: Allocator> FromIterator<Box<str, A>> for Box<str> {
     fn from_iter<T: IntoIterator<Item = Box<str, A>>>(iter: T) -> Self {
         String::from_iter(iter).into_boxed_str()
@@ -2207,7 +2207,7 @@ impl<A: Allocator> FromIterator<Box<str, A>> for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
     fn from_iter<T: IntoIterator<Item = Cow<'a, str>>>(iter: T) -> Self {
         String::from_iter(iter).into_boxed_str()
