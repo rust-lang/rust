@@ -19,6 +19,7 @@ mod tests;
 ///
 /// A `FixedQueue` with a known list of items can be initialized from an array:
 /// ```
+/// #![feature(fixed_queue)]
 /// use alloc::collections::FixedQueue;
 ///
 /// let fque = FixedQueue::from([1, 2, 3]);
