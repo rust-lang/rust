@@ -452,6 +452,7 @@ pub(crate) struct CompletionContext<'a> {
     /// - crate-root
     ///  - mod foo
     ///   - mod bar
+    ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
 }

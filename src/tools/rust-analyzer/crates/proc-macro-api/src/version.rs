@@ -93,6 +93,7 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 ///   means bytes from here(including this sequence) are compressed in
 ///   snappy compression format. Version info is inside here, so decompress
 ///   this.
+///
 /// The bytes you get after decompressing the snappy format portion has
 /// following layout:
 /// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes(again)
@@ -102,6 +103,7 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 ///   for the version string's utf8 bytes
 /// * [version string bytes encoded in utf8] <- GET THIS BOI
 /// * [some more bytes that we don't really care but about still there] :-)
+///
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
 pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {

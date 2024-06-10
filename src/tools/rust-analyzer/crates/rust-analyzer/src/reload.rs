@@ -440,15 +440,19 @@ impl GlobalState {
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
-            let filter =
-                self.workspaces.iter().flat_map(|ws| ws.to_roots()).filter(|it| it.is_local);
+            let filter = self
+                .workspaces
+                .iter()
+                .flat_map(|ws| ws.to_roots())
+                .filter(|it| it.is_local)
+                .map(|it| it.include);
 
             let mut watchers: Vec<FileSystemWatcher> =
                 if self.config.did_change_watched_files_relative_pattern_support() {
                     // When relative patterns are supported by the client, prefer using them
                     filter
-                        .flat_map(|root| {
-                            root.include.into_iter().flat_map(|base| {
+                        .flat_map(|include| {
+                            include.into_iter().flat_map(|base| {
                                 [
                                     (base.clone(), "**/*.rs"),
                                     (base.clone(), "**/Cargo.{lock,toml}"),
@@ -471,8 +475,8 @@ impl GlobalState {
                 } else {
                     // When they're not, integrate the base to make them into absolute patterns
                     filter
-                        .flat_map(|root| {
-                            root.include.into_iter().flat_map(|base| {
+                        .flat_map(|include| {
+                            include.into_iter().flat_map(|base| {
                                 [
                                     format!("{base}/**/*.rs"),
                                     format!("{base}/**/Cargo.{{toml,lock}}"),
@@ -488,13 +492,14 @@ impl GlobalState {
                 };
 
             watchers.extend(
-                iter::once(self.config.user_config_path().to_string())
-                    .chain(iter::once(self.config.root_ratoml_path().to_string()))
+                iter::once(self.config.user_config_path().as_path())
+                    .chain(iter::once(self.config.root_ratoml_path().as_path()))
+                    .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
+                    .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern.to_string()),
                         kind: None,
-                    })
-                    .collect::<Vec<FileSystemWatcher>>(),
+                    }),
             );
 
             let registration_options =

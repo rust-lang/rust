@@ -246,6 +246,7 @@ impl TyBuilder<()> {
     /// - yield type of coroutine ([`Coroutine::Yield`](std::ops::Coroutine::Yield))
     /// - return type of coroutine ([`Coroutine::Return`](std::ops::Coroutine::Return))
     /// - generic parameters in scope on `parent`
+    ///
     /// in this order.
     ///
     /// This method prepopulates the builder with placeholder substitution of `parent`, so you
