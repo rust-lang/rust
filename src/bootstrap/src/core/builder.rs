@@ -4,13 +4,11 @@ use std::collections::BTreeSet;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
-use std::fs::{self, File};
+use std::fs;
 use std::hash::Hash;
-use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
@@ -577,7 +575,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        let submodules_paths = self.builder.get_all_submodules();
+        let submodules_paths = build_helper::util::parse_gitmodules(&self.builder.src);
 
         self.paths.insert(PathSet::Set(
             paths
@@ -2236,28 +2234,6 @@ impl<'a> Builder<'a> {
         self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
-    }
-
-    /// Return paths of all submodules.
-    pub fn get_all_submodules(&self) -> &[String] {
-        static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
-
-        let init_submodules_paths = |src: &PathBuf| {
-            let file = File::open(src.join(".gitmodules")).unwrap();
-
-            let mut submodules_paths = vec![];
-            for line in BufReader::new(file).lines().map_while(Result::ok) {
-                let line = line.trim();
-                if line.starts_with("path") {
-                    let actual_path = line.split(' ').last().expect("Couldn't get value of path");
-                    submodules_paths.push(actual_path.to_owned());
-                }
-            }
-
-            submodules_paths
-        };
-
-        SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
     }
 
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning

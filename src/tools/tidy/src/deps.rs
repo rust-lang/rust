@@ -1,7 +1,9 @@
 //! Checks the licenses of third-party dependencies.
 
+use build_helper::ci::CiEnv;
 use cargo_metadata::{Metadata, Package, PackageId};
 use std::collections::HashSet;
+use std::fs::read_dir;
 use std::path::Path;
 
 /// These are licenses that are allowed for all crates, including the runtime,
@@ -514,7 +516,19 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let mut checked_runtime_licenses = false;
 
+    let submodules = build_helper::util::parse_gitmodules(root);
     for &(workspace, exceptions, permitted_deps) in WORKSPACES {
+        // Skip if it's a submodule, not in a CI environment, and not initialized.
+        //
+        // This prevents enforcing developers to fetch submodules for tidy.
+        if submodules.contains(&workspace.into())
+            && !CiEnv::is_ci()
+            // If the directory is empty, we can consider it as an uninitialized submodule.
+            && read_dir(root.join(workspace)).unwrap().next().is_none()
+        {
+            continue;
+        }
+
         if !root.join(workspace).join("Cargo.lock").exists() {
             tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
             continue;

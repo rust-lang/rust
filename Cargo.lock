@@ -5697,6 +5697,7 @@ dependencies = [
 name = "tidy"
 version = "0.1.0"
 dependencies = [
+ "build_helper",
  "cargo_metadata 0.15.4",
  "ignore",
  "miropt-test-tools",

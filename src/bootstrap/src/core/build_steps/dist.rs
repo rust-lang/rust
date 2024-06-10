@@ -1014,7 +1014,7 @@ impl Step for PlainSourceTarball {
             // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
 
             // Ensure we have all submodules from src and other directories checked out.
-            for submodule in builder.get_all_submodules() {
+            for submodule in build_helper::util::parse_gitmodules(&builder.src) {
                 builder.update_submodule(Path::new(submodule));
             }
 
