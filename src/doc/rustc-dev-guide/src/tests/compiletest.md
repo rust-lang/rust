@@ -404,6 +404,18 @@ Two `run-make` tests are ported over to Rust recipes as examples:
 - <https://github.com/rust-lang/rust/tree/master/tests/run-make/CURRENT_RUSTC_VERSION>
 - <https://github.com/rust-lang/rust/tree/master/tests/run-make/a-b-a-linker-guard>
 
+#### Quickly check if `rmake.rs` tests can be compiled
+
+You can quickly check if `rmake.rs` tests can be compiled without having to
+build stage1 rustc by forcing `rmake.rs` to be compiled with the stage0
+compiler:
+
+```bash
+$ COMPILETEST_FORCE_STAGE0=1 x test --stage 0 tests/run-make/<test-name>
+```
+
+Of course, some tests will not successfully *run* in this way.
+
 #### Using Makefiles (legacy)
 
 > NOTE:
