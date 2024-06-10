@@ -1,6 +1,7 @@
 //! Doctest functionality used only for doctests in `.md` Markdown files.
 
 use std::fs::read_to_string;
+use std::sync::{Arc, Mutex};
 
 use rustc_span::FileName;
 use tempfile::tempdir;
@@ -114,6 +115,16 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
 
     let mut collector = CreateRunnableDoctests::new(options.clone(), opts);
     md_collector.tests.into_iter().for_each(|t| collector.add_test(t));
-    crate::doctest::run_tests(options.test_args, options.nocapture, collector.standalone_tests);
+    let CreateRunnableDoctests { opts, rustdoc_options, standalone_tests, mergeable_tests, .. } =
+        collector;
+    crate::doctest::run_tests(
+        options.test_args,
+        options.nocapture,
+        opts,
+        &rustdoc_options,
+        &Arc::new(Mutex::new(Vec::new())),
+        standalone_tests,
+        mergeable_tests,
+    );
     Ok(())
 }
