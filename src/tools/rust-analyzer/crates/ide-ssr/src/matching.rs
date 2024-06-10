@@ -575,7 +575,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                             .resolve_method_call_as_callable(code)
                             .and_then(|callable| {
                                 let (self_param, _) = callable.receiver_param(self.sema.db)?;
-                                Some(self_param.source(self.sema.db)?.value.kind())
+                                Some(self.sema.source(self_param)?.value.kind())
                             })
                             .unwrap_or(ast::SelfParamKind::Owned);
                     }

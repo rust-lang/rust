@@ -220,7 +220,7 @@ impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
             Definition::Local(it) => Some(it.to_nav(db)),
-            Definition::Label(it) => Some(it.to_nav(db)),
+            Definition::Label(it) => it.try_to_nav(db),
             Definition::Module(it) => Some(it.to_nav(db)),
             Definition::Macro(it) => it.try_to_nav(db),
             Definition::Field(it) => it.try_to_nav(db),
@@ -562,12 +562,12 @@ impl ToNav for hir::Local {
     }
 }
 
-impl ToNav for hir::Label {
-    fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
-        let InFile { file_id, value } = self.source(db);
+impl TryToNav for hir::Label {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+        let InFile { file_id, value } = self.source(db)?;
         let name = self.name(db).to_smol_str();
 
-        orig_range_with_focus(db, file_id, value.syntax(), value.lifetime()).map(
+        Some(orig_range_with_focus(db, file_id, value.syntax(), value.lifetime()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
                 file_id,
                 name: name.clone(),
@@ -579,7 +579,7 @@ impl ToNav for hir::Label {
                 description: None,
                 docs: None,
             },
-        )
+        ))
     }
 }
 

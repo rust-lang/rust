@@ -64,7 +64,6 @@ use hir_expand::{
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
-    db::InternedClosure,
     diagnostics::BodyValidationDiagnostic,
     error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
@@ -1097,6 +1096,35 @@ impl TupleField {
 pub enum FieldSource {
     Named(ast::RecordField),
     Pos(ast::TupleField),
+}
+
+impl AstNode for FieldSource {
+    fn can_cast(kind: syntax::SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        ast::RecordField::can_cast(kind) || ast::TupleField::can_cast(kind)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        if ast::RecordField::can_cast(syntax.kind()) {
+            <ast::RecordField as AstNode>::cast(syntax).map(FieldSource::Named)
+        } else if ast::TupleField::can_cast(syntax.kind()) {
+            <ast::TupleField as AstNode>::cast(syntax).map(FieldSource::Pos)
+        } else {
+            None
+        }
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            FieldSource::Named(it) => it.syntax(),
+            FieldSource::Pos(it) => it.syntax(),
+        }
+    }
 }
 
 impl Field {
@@ -2216,46 +2244,8 @@ impl Param {
         }
     }
 
-    pub fn pattern_source(&self, db: &dyn HirDatabase) -> Option<ast::Pat> {
+    pub fn pattern_source(self, db: &dyn HirDatabase) -> Option<ast::Pat> {
         self.source(db).and_then(|p| p.value.right()?.pat())
-    }
-
-    pub fn source(
-        &self,
-        db: &dyn HirDatabase,
-    ) -> Option<InFile<Either<ast::SelfParam, ast::Param>>> {
-        match self.func {
-            Callee::Def(CallableDefId::FunctionId(func)) => {
-                let InFile { file_id, value } = Function { id: func }.source(db)?;
-                let params = value.param_list()?;
-                if let Some(self_param) = params.self_param() {
-                    if let Some(idx) = self.idx.checked_sub(1) {
-                        params.params().nth(idx).map(Either::Right)
-                    } else {
-                        Some(Either::Left(self_param))
-                    }
-                } else {
-                    params.params().nth(self.idx).map(Either::Right)
-                }
-                .map(|value| InFile { file_id, value })
-            }
-            Callee::Closure(closure, _) => {
-                let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
-                let (_, source_map) = db.body_with_source_map(owner);
-                let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
-                let root = db.parse_or_expand(file_id);
-                match value.to_node(&root) {
-                    ast::Expr::ClosureExpr(it) => it
-                        .param_list()?
-                        .params()
-                        .nth(self.idx)
-                        .map(Either::Right)
-                        .map(|value| InFile { file_id: ast.file_id, value }),
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
     }
 }
 
@@ -2278,14 +2268,6 @@ impl SelfParam {
                 _ => Access::Owned,
             })
             .unwrap_or(Access::Owned)
-    }
-
-    pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::SelfParam>> {
-        let InFile { file_id, value } = Function::from(self.func).source(db)?;
-        value
-            .param_list()
-            .and_then(|params| params.self_param())
-            .map(|value| InFile { file_id, value })
     }
 
     pub fn parent_fn(&self) -> Function {
@@ -3457,13 +3439,6 @@ impl Label {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let body = db.body(self.parent);
         body[self.label_id].name.clone()
-    }
-
-    pub fn source(self, db: &dyn HirDatabase) -> InFile<ast::Label> {
-        let (_body, source_map) = db.body_with_source_map(self.parent);
-        let src = source_map.label_syntax(self.label_id);
-        let root = src.file_syntax(db.upcast());
-        src.map(|ast| ast.to_node(&root))
     }
 }
 
