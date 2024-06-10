@@ -6,6 +6,7 @@
 pub mod binary_heap;
 #[cfg(not(no_global_oom_handling))]
 mod btree;
+#[cfg(not(no_global_oom_handling))]
 pub mod fixed_queue;
 #[cfg(not(no_global_oom_handling))]
 pub mod linked_list;
@@ -43,6 +44,9 @@ pub use btree_map::BTreeMap;
 #[doc(no_inline)]
 pub use btree_set::BTreeSet;
 
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "fixed_queue", issue = "126204")]
+#[doc(no_inline)]
 pub use fixed_queue::FixedQueue;
 
 #[cfg(not(no_global_oom_handling))]
