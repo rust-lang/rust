@@ -149,7 +149,7 @@ fn generate_mergeable_doctest(
         writeln!(output, "mod {test_id} {{\n").unwrap();
     } else {
         writeln!(output, "mod {test_id} {{\n{}", doctest.crates).unwrap();
-        if doctest.main_fn_span.is_some() {
+        if doctest.has_main_fn {
             output.push_str(&doctest.everything_else);
         } else {
             let returns_result = if doctest.everything_else.trim_end().ends_with("(())") {
