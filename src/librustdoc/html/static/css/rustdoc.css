@@ -2130,7 +2130,7 @@ in src-script.js and main.js
 	}
 
 	.item-table > li > .item-name {
-		padding-right: 1.25rem;
+		max-width: 40vw;
 	}
 }
 
