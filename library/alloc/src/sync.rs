@@ -3405,7 +3405,7 @@ static STATIC_INNER_SLICE: SliceArcInnerForStatic = SliceArcInnerForStatic {
 };
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl Default for Arc<str> {
     /// Creates an empty str inside an Arc
     ///
@@ -3420,7 +3420,7 @@ impl Default for Arc<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl Default for Arc<core::ffi::CStr> {
     /// Creates an empty CStr inside an Arc
     ///
@@ -3439,7 +3439,7 @@ impl Default for Arc<core::ffi::CStr> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl<T> Default for Arc<[T]> {
     /// Creates an empty `[T]` inside an Arc
     ///

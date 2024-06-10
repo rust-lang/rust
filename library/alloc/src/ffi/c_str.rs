@@ -911,7 +911,7 @@ impl From<&CStr> for Rc<CStr> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl Default for Rc<CStr> {
     /// Creates an empty CStr inside an Rc
     ///

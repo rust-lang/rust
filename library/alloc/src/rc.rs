@@ -2250,7 +2250,7 @@ impl<T: Default> Default for Rc<T> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl Default for Rc<str> {
     /// Creates an empty str inside an Rc
     ///
@@ -2262,7 +2262,7 @@ impl Default for Rc<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "more_rc_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl<T> Default for Rc<[T]> {
     /// Creates an empty `[T]` inside an Rc
     ///
