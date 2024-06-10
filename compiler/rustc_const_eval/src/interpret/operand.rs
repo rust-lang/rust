@@ -89,6 +89,12 @@ impl<Prov: Provenance> Immediate<Prov> {
 
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
+    pub fn to_scalar_int(self) -> ScalarInt {
+        self.to_scalar().try_to_scalar_int().unwrap()
+    }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn to_scalar_pair(self) -> (Scalar<Prov>, Scalar<Prov>) {
         match self {
             Immediate::ScalarPair(val1, val2) => (val1, val2),
@@ -220,18 +226,10 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     }
 
     #[inline]
-    pub fn try_from_uint(i: impl Into<u128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
-        Some(Self::from_scalar(Scalar::try_from_uint(i, layout.size)?, layout))
-    }
-    #[inline]
     pub fn from_uint(i: impl Into<u128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_uint(i, layout.size), layout)
     }
 
-    #[inline]
-    pub fn try_from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
-        Some(Self::from_scalar(Scalar::try_from_int(i, layout.size)?, layout))
-    }
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
@@ -276,7 +274,8 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
-        let int = self.to_scalar().assert_int();
+        let int = self.imm.to_scalar_int();
+        assert_eq!(int.size(), self.layout.size);
         ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
     }
 

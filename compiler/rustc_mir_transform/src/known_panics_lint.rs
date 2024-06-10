@@ -356,15 +356,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 debug!("check_binary_op: reporting assert for {:?}", location);
                 let panic = AssertKind::Overflow(
                     op,
-                    match l {
-                        Some(l) => l.to_const_int(),
-                        // Invent a dummy value, the diagnostic ignores it anyway
-                        None => ConstInt::new(
-                            ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
-                            left_ty.is_signed(),
-                            left_ty.is_ptr_sized_integral(),
-                        ),
-                    },
+                    // Invent a dummy value, the diagnostic ignores it anyway
+                    ConstInt::new(
+                        ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
+                        left_ty.is_signed(),
+                        left_ty.is_ptr_sized_integral(),
+                    ),
                     r.to_const_int(),
                 );
                 self.report_assert_as_lint(location, AssertLintKind::ArithmeticOverflow, panic);
@@ -787,8 +784,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
-                    && let Ok(constant) = value_const.try_to_int()
-                    && let Ok(constant) = constant.try_to_bits(constant.size())
+                    && let Ok(constant) = value_const.to_bits(value_const.size())
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
                     // one target.
