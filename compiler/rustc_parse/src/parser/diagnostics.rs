@@ -2958,9 +2958,10 @@ impl<'a> Parser<'a> {
 
     /// This checks if this is a conflict marker, depending of the parameter passed.
     ///
-    /// * `>>>>>`
-    /// * `=====`
-    /// * `<<<<<`
+    /// * `<<<<<<<`
+    /// * `|||||||`
+    /// * `=======`
+    /// * `>>>>>>>`
     ///
     pub(super) fn is_vcs_conflict_marker(
         &mut self,
