@@ -649,7 +649,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 && param_ty.name == kw::SelfUpper
                             {
                                 // We expect the return type of an fn call is expected to be
-                                // `Sized`.  In the test `trait-missing-dyn-in-qualified-path.rs`
+                                // `Sized`. In the test `trait-missing-dyn-in-qualified-path.rs`
                                 // under edition 2018, when writing `<Default>::default()`, we will
                                 // check both `dyn Default` and `<dyn Default>::default()` for
                                 // being `Sized`, but in every case where an associated function
