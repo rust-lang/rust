@@ -429,6 +429,12 @@ trigger_files = [
     "tests/ui/stack-protector"
 ]
 
+[autolabel."A-run-make"]
+trigger_files = [
+    "tests/run-make",
+    "src/tools/run-make-support"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -684,7 +690,13 @@ message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."tests/run-make/"]
-message = "Some changes occurred in run-make tests."
+message = """
+This PR modifies `tests/run-make/`. If this PR is trying to port a Makefile
+run-make test to use rmake.rs, please update the
+[run-make port tracking issue](https://github.com/rust-lang/rust/issues/121876)
+so we can track our progress. You can either modify the tracking issue
+directly, or you can comment on the tracking issue and link this PR.
+"""
 cc = ["@jieyouxu"]
 
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]

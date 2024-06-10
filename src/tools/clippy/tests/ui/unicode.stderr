@@ -11,7 +11,7 @@ error: invisible character detected
   --> tests/ui/unicode.rs:7:12
    |
 LL |     print!("Here >­< is a SHY, and ­another");
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >\u{AD}< is a SHY, and \u{AD}another"`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >\u{AD}< is a SHY, and \u{AD}another"`
 
 error: invisible character detected
   --> tests/ui/unicode.rs:9:12
