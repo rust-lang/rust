@@ -383,7 +383,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_pointer(src)?;
-                // u64 cast is from usize to u64, which is always good
                 let val = Immediate::new_slice(
                     ptr,
                     length.eval_target_usize(*self.tcx, self.param_env),
@@ -401,13 +400,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (old_data, old_vptr) = val.to_scalar_pair();
                 let old_data = old_data.to_pointer(self)?;
                 let old_vptr = old_vptr.to_pointer(self)?;
-                let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
-                if old_trait != data_a.principal() {
-                    throw_ub!(InvalidVTableTrait {
-                        expected_trait: data_a,
-                        vtable_trait: old_trait,
-                    });
-                }
+                let ty = self.get_ptr_vtable_ty(old_vptr, Some(data_a))?;
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
