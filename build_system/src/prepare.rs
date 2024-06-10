@@ -72,30 +72,33 @@ fn prepare_libcore(
     let mut patches = Vec::new();
     walk_dir(
         "patches",
-        |_| Ok(()),
-        |file_path: &Path| {
+        &mut |_| Ok(()),
+        &mut |file_path: &Path| {
             patches.push(file_path.to_path_buf());
             Ok(())
         },
+        false,
     )?;
     if cross_compile {
         walk_dir(
             "patches/cross_patches",
-            |_| Ok(()),
-            |file_path: &Path| {
+            &mut |_| Ok(()),
+            &mut |file_path: &Path| {
                 patches.push(file_path.to_path_buf());
                 Ok(())
             },
+            false,
         )?;
     }
     if libgccjit12_patches {
         walk_dir(
             "patches/libgccjit12",
-            |_| Ok(()),
-            |file_path: &Path| {
+            &mut |_| Ok(()),
+            &mut |file_path: &Path| {
                 patches.push(file_path.to_path_buf());
                 Ok(())
             },
+            false,
         )?;
     }
     patches.sort();

@@ -343,7 +343,12 @@ pub fn git_clone_root_dir(
     git_clone_inner(to_clone, &dest_parent_dir.join(&repo_name), shallow_clone, repo_name)
 }
 
-pub fn walk_dir<P, D, F>(dir: P, mut dir_cb: D, mut file_cb: F) -> Result<(), String>
+pub fn walk_dir<P, D, F>(
+    dir: P,
+    dir_cb: &mut D,
+    file_cb: &mut F,
+    recursive: bool,
+) -> Result<(), String>
 where
     P: AsRef<Path>,
     D: FnMut(&Path) -> Result<(), String>,
@@ -358,6 +363,9 @@ where
         let entry_path = entry.path();
         if entry_path.is_dir() {
             dir_cb(&entry_path)?;
+            if recursive {
+                walk_dir(entry_path, dir_cb, file_cb, recursive)?; // Recursive call
+            }
         } else {
             file_cb(&entry_path)?;
         }

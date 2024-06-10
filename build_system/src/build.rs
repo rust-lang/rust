@@ -68,7 +68,7 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
     // Clean target dir except for build scripts and incremental cache
     let _ = walk_dir(
         start_dir.join("target"),
-        |dir: &Path| {
+        &mut |dir: &Path| {
             for top in &["debug", "release"] {
                 let _ = fs::remove_dir_all(dir.join(top).join("build"));
                 let _ = fs::remove_dir_all(dir.join(top).join("deps"));
@@ -77,7 +77,7 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
 
                 let _ = walk_dir(
                     dir.join(top),
-                    |sub_dir: &Path| {
+                    &mut |sub_dir: &Path| {
                         if sub_dir
                             .file_name()
                             .map(|filename| filename.to_str().unwrap().starts_with("libsysroot"))
@@ -87,7 +87,7 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
                         }
                         Ok(())
                     },
-                    |file: &Path| {
+                    &mut |file: &Path| {
                         if file
                             .file_name()
                             .map(|filename| filename.to_str().unwrap().starts_with("libsysroot"))
@@ -97,11 +97,13 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
                         }
                         Ok(())
                     },
+                    false,
                 );
             }
             Ok(())
         },
-        |_| Ok(()),
+        &mut |_| Ok(()),
+        false,
     );
 
     let _ = fs::remove_file(start_dir.join("Cargo.lock"));
@@ -166,14 +168,15 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
     create_dir(&sysroot_path)?;
-    let copier = |dir_to_copy: &Path| {
+    let mut copier = |dir_to_copy: &Path| {
         // FIXME: should not use shell command!
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
     walk_dir(
         start_dir.join(&format!("target/{}/{}/deps", config.target_triple, channel)),
-        copier,
-        copier,
+        &mut copier.clone(),
+        &mut copier,
+        false,
     )?;
 
     // Copy the source files to the sysroot (Rust for Linux needs this).
