@@ -26,6 +26,7 @@ pub(crate) struct DocTest {
     pub(crate) everything_else: String,
     pub(crate) test_id: Option<String>,
     pub(crate) failed_ast: bool,
+    pub(crate) can_be_merged: bool,
 }
 
 impl DocTest {
@@ -33,6 +34,7 @@ impl DocTest {
         source: &str,
         crate_name: Option<&str>,
         edition: Edition,
+        can_merge_doctests: bool,
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
         test_id: Option<String>,
     ) -> Self {
@@ -49,6 +51,7 @@ impl DocTest {
                 &crates,
                 edition,
                 &mut supports_color,
+                can_merge_doctests,
             )
         else {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
@@ -62,6 +65,7 @@ impl DocTest {
                 already_has_extern_crate: false,
                 test_id,
                 failed_ast: true,
+                can_be_merged: false,
             };
         };
         Self {
@@ -72,7 +76,10 @@ impl DocTest {
             everything_else,
             already_has_extern_crate,
             test_id,
-            failed_ast,
+            failed_ast: false,
+            // If the AST returned an error, we don't want this doctest to be merged with the
+            // others.
+            can_be_merged: !failed_ast,
         }
     }
 
@@ -85,6 +92,11 @@ impl DocTest {
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
     ) -> (String, usize) {
+        if self.failed_ast {
+            // If the AST failed to compile, no need to go generate a complete doctest, the error
+            // will be better this way.
+            return (test_code.to_string(), 0);
+        }
         let mut line_offset = 0;
         let mut prog = String::new();
         let everything_else = self.everything_else.trim();
@@ -323,6 +335,7 @@ fn check_for_main_and_extern_crate(
     crates: &str,
     edition: Edition,
     supports_color: &mut bool,
+    can_merge_doctests: bool,
 ) -> Result<(Option<Span>, bool, bool), FatalError> {
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
@@ -340,7 +353,7 @@ fn check_for_main_and_extern_crate(
             );
             // No need to double-check this if the "merged doctests" feature isn't enabled (so
             // before the 2024 edition).
-            if edition >= Edition::Edition2024 && parsing_result != ParsingResult::Ok {
+            if can_merge_doctests && parsing_result != ParsingResult::Ok {
                 // If we found an AST error, we want to ensure it's because of an expression being
                 // used outside of a function.
                 //
@@ -525,5 +538,5 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     debug!("crates:\n{crates}");
     debug!("after:\n{after}");
 
-    (before, after, crates)
+    (before, after.trim().to_owned(), crates)
 }

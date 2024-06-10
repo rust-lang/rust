@@ -635,7 +635,7 @@ fn run_test(
         cmd.current_dir(run_directory);
     }
 
-    let result = if rustdoc_options.nocapture {
+    let result = if is_multiple_tests || rustdoc_options.nocapture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -801,10 +801,15 @@ impl CreateRunnableDoctests {
         );
 
         let edition = scraped_test.edition(&self.rustdoc_options);
-        let doctest =
-            DocTest::new(&scraped_test.text, Some(&self.opts.crate_name), edition, Some(test_id));
+        let doctest = DocTest::new(
+            &scraped_test.text,
+            Some(&self.opts.crate_name),
+            edition,
+            self.can_merge_doctests,
+            Some(test_id),
+        );
         let is_standalone = !self.can_merge_doctests
-            || doctest.failed_ast
+            || !doctest.can_be_merged
             || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness
             || scraped_test.langstr.standalone
