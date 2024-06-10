@@ -289,7 +289,7 @@ pub(crate) fn run_tests(
         for (doctest, scraped_test) in &doctests {
             tests_runner.add_test(doctest, scraped_test, &target_str);
         }
-        if let Ok(success) = tests_runner.run_tests(
+        if let Ok(success) = tests_runner.run_merged_tests(
             rustdoc_test_options,
             edition,
             &opts,
@@ -454,6 +454,7 @@ fn run_test(
     doctest: RunnableDoctest,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
+    is_multiple_tests: bool,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let langstr = &doctest.langstr;
@@ -474,11 +475,14 @@ fn run_test(
     }
 
     compiler.arg("--edition").arg(&doctest.edition.to_string());
-    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
-    compiler.env(
-        "UNSTABLE_RUSTDOC_TEST_LINE",
-        format!("{}", doctest.line as isize - doctest.full_test_line_offset as isize),
-    );
+    if !is_multiple_tests {
+        // Setting these environment variables is unneeded if this is a merged doctest.
+        compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
+        compiler.env(
+            "UNSTABLE_RUSTDOC_TEST_LINE",
+            format!("{}", doctest.line as isize - doctest.full_test_line_offset as isize),
+        );
+    }
     compiler.arg("-o").arg(&output_file);
     if langstr.test_harness {
         compiler.arg("--test");
@@ -521,18 +525,37 @@ fn run_test(
         }
     }
 
-    compiler.arg("-");
-    compiler.stdin(Stdio::piped());
-    compiler.stderr(Stdio::piped());
+    // If this is a merged doctest, we need to write it into a file instead of using stdin
+    // because if the size of the merged doctests is too big, it'll simply break stdin.
+    if is_multiple_tests {
+        // It makes the compilation failure much faster if it is for a combined doctest.
+        compiler.arg("--error-format=short");
+        let input_file =
+            doctest.test_opts.outdir.path().join(&format!("doctest_{}.rs", doctest.edition));
+        if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
+            // If we cannot write this file for any reason, we leave. All combined tests will be
+            // tested as standalone tests.
+            return Err(TestFailure::CompileError);
+        }
+        compiler.arg(input_file);
+        compiler.stderr(Stdio::null());
+    } else {
+        compiler.arg("-");
+        compiler.stdin(Stdio::piped());
+        compiler.stderr(Stdio::piped());
+    }
 
     debug!("compiler invocation for doctest: {compiler:?}");
 
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
-    {
+    let output = if is_multiple_tests {
+        let status = child.wait().expect("Failed to wait");
+        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
+    } else {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(doctest.full_test_code.as_bytes()).expect("could write out test sources");
-    }
-    let output = child.wait_with_output().expect("Failed to read stdout");
+        child.wait_with_output().expect("Failed to read stdout")
+    };
 
     struct Bomb<'a>(&'a str);
     impl Drop for Bomb<'_> {
@@ -885,8 +908,13 @@ fn doctest_run_fn(
         edition: scraped_test.edition(&rustdoc_options),
         no_run: scraped_test.no_run(&rustdoc_options),
     };
-    let res =
-        run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
+    let res = run_test(
+        runnable_test,
+        &rustdoc_options,
+        doctest.supports_color,
+        false,
+        report_unused_externs,
+    );
 
     if let Err(err) = res {
         match err {
