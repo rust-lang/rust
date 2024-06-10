@@ -206,7 +206,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         test_args,
         nocapture,
         opts,
-        rustdoc_options,
+        &rustdoc_options,
         &unused_extern_reports,
         standalone_tests,
         mergeable_tests,
@@ -259,10 +259,10 @@ pub(crate) fn run_tests(
     mut test_args: Vec<String>,
     nocapture: bool,
     opts: GlobalTestOptions,
-    rustdoc_options: RustdocOptions,
+    rustdoc_options: &Arc<RustdocOptions>,
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
-    mut mergeable_tests: FxHashMap<Edition, Vec<(DocTest, ScrapedDoctest)>>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTest, ScrapedDoctest)>>,
 ) {
     test_args.insert(0, "rustdoctest".to_string());
     if nocapture {
@@ -270,28 +270,32 @@ pub(crate) fn run_tests(
     }
 
     let mut nb_errors = 0;
+    let target_str = rustdoc_options.target.to_string();
 
     for (edition, mut doctests) in mergeable_tests {
         if doctests.is_empty() {
             continue;
         }
         doctests.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
-        let outdir = Arc::clone(&doctests[0].outdir);
 
         let mut tests_runner = runner::DocTestRunner::new();
 
         let rustdoc_test_options = IndividualTestOptions::new(
             &rustdoc_options,
-            format!("merged_doctest"),
-            PathBuf::from(r"doctest.rs"),
+            &format!("merged_doctest_{edition}"),
+            PathBuf::from(format!("doctest_{edition}.rs")),
         );
 
         for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test);
+            tests_runner.add_test(doctest, scraped_test, &target_str);
         }
-        if let Ok(success) =
-            tests_runner.run_tests(rustdoc_test_options, edition, &opts, &test_args, &outdir)
-        {
+        if let Ok(success) = tests_runner.run_tests(
+            rustdoc_test_options,
+            edition,
+            &opts,
+            &test_args,
+            rustdoc_options,
+        ) {
             if !success {
                 nb_errors += 1;
             }
@@ -311,7 +315,7 @@ pub(crate) fn run_tests(
                     doctest,
                     scraped_test,
                     opts.clone(),
-                    rustdoc_test_options.clone(),
+                    Arc::clone(&rustdoc_options),
                     unused_extern_reports.clone(),
                 ));
             }
@@ -406,7 +410,7 @@ impl DirState {
 // We could unify this struct the one in rustc but they have different
 // ownership semantics, so doing so would create wasteful allocations.
 #[derive(serde::Serialize, serde::Deserialize)]
-struct UnusedExterns {
+pub(crate) struct UnusedExterns {
     /// Lint level of the unused_crate_dependencies lint
     lint_level: String,
     /// List of unused externs by their names.
@@ -642,12 +646,11 @@ fn make_maybe_absolute_path(path: PathBuf) -> PathBuf {
 }
 struct IndividualTestOptions {
     outdir: DirState,
-    test_id: String,
     path: PathBuf,
 }
 
 impl IndividualTestOptions {
-    fn new(options: &RustdocOptions, test_id: String, test_path: PathBuf) -> Self {
+    fn new(options: &RustdocOptions, test_id: &str, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
             path.push(&test_id);
@@ -662,15 +665,14 @@ impl IndividualTestOptions {
             DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
         };
 
-        Self { outdir, test_id, path: test_path }
+        Self { outdir, path: test_path }
     }
 }
 
 /// A doctest scraped from the code, ready to be turned into a runnable test.
-struct ScrapedDoctest {
+pub(crate) struct ScrapedDoctest {
     filename: FileName,
     line: usize,
-    logical_path: Vec<String>,
     langstr: LangString,
     text: String,
     name: String,
@@ -692,7 +694,7 @@ impl ScrapedDoctest {
         let name =
             format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
 
-        Self { filename, line, logical_path, langstr, text, name }
+        Self { filename, line, langstr, text, name }
     }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
@@ -700,6 +702,19 @@ impl ScrapedDoctest {
 
     fn no_run(&self, opts: &RustdocOptions) -> bool {
         self.langstr.no_run || opts.no_run
+    }
+    fn path(&self) -> PathBuf {
+        match &self.filename {
+            FileName::Real(path) => {
+                if let Some(local_path) = path.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    // Somehow we got the filename from the metadata of another crate, should never happen
+                    unreachable!("doctest from a different crate");
+                }
+            }
+            _ => PathBuf::from(r"doctest.rs"),
+        }
     }
 }
 
@@ -757,7 +772,7 @@ impl CreateRunnableDoctests {
 
         let edition = scraped_test.edition(&self.rustdoc_options);
         let doctest =
-            DocTest::new(&scraped_test.text, Some(&self.opts.crate_name), edition, test_id);
+            DocTest::new(&scraped_test.text, Some(&self.opts.crate_name), edition, Some(test_id));
         let is_standalone = scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness
             || self.rustdoc_options.nocapture
@@ -784,7 +799,7 @@ impl CreateRunnableDoctests {
             test,
             scraped_test,
             self.opts.clone(),
-            self.rustdoc_options.clone(),
+            Arc::clone(&self.rustdoc_options),
             self.unused_extern_reports.clone(),
         )
     }
@@ -794,32 +809,20 @@ fn generate_test_desc_and_fn(
     test: DocTest,
     scraped_test: ScrapedDoctest,
     opts: GlobalTestOptions,
-    rustdoc_options: IndividualTestOptions,
+    rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> test::TestDescAndFn {
     let target_str = rustdoc_options.target.to_string();
+    let rustdoc_test_options = IndividualTestOptions::new(
+        &rustdoc_options,
+        test.test_id.as_deref().unwrap_or_else(|| "<doctest>"),
+        scraped_test.path(),
+    );
 
-    let path = match &scraped_test.filename {
-        FileName::Real(path) => {
-            if let Some(local_path) = path.local_path() {
-                local_path.to_path_buf()
-            } else {
-                // Somehow we got the filename from the metadata of another crate, should never happen
-                unreachable!("doctest from a different crate");
-            }
-        }
-        _ => PathBuf::from(r"doctest.rs"),
-    };
-
-    let name = &test.name;
-    let rustdoc_test_options =
-        IndividualTestOptions::new(&rustdoc_options, test.test_id.clone(), path);
-    // let rustdoc_options_clone = rustdoc_options.clone();
-
-    debug!("creating test {name}: {}", scraped_test.text);
+    debug!("creating test {}: {}", scraped_test.name, scraped_test.text);
     test::TestDescAndFn {
         desc: test::TestDesc {
-            name: test::DynTestName(name),
+            name: test::DynTestName(scraped_test.name.clone()),
             ignore: match scraped_test.langstr.ignore {
                 Ignore::All => true,
                 Ignore::None => false,
