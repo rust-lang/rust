@@ -443,8 +443,8 @@ impl AtomicBool {
     ///
     /// # Safety
     ///
-    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can
-    ///   be bigger than `align_of::<bool>()`).
+    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that this is always true, since
+    ///   `align_of::<AtomicBool>() == 1`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
     /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
     ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
