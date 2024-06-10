@@ -779,6 +779,7 @@ impl CreateRunnableDoctests {
         let is_standalone = !self.can_merge_doctests
             || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness
+            || scraped_test.langstr.standalone
             || self.rustdoc_options.nocapture
             || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output")
             || doctest.crate_attrs.contains("#![no_std]");

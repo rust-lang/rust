@@ -868,6 +868,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
+    pub(crate) standalone: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
@@ -1179,6 +1180,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
+            standalone: false,
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
@@ -1247,6 +1249,10 @@ impl LangString {
                         data.compile_fail = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
+                    }
+                    LangStringToken::LangToken("standalone") => {
+                        data.standalone = true;
+                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
                     LangStringToken::LangToken(x) if x.starts_with("edition") => {
                         data.edition = x[7..].parse::<Edition>().ok();
