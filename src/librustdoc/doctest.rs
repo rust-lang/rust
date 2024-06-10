@@ -732,10 +732,12 @@ struct CreateRunnableDoctests {
     visited_tests: FxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
     compiling_test_count: AtomicUsize,
+    can_merge_doctests: bool,
 }
 
 impl CreateRunnableDoctests {
     fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDoctests {
+        let can_merge_doctests = rustdoc_options.edition >= Edition::Edition2024;
         CreateRunnableDoctests {
             standalone_tests: Vec::new(),
             mergeable_tests: FxHashMap::default(),
@@ -744,6 +746,7 @@ impl CreateRunnableDoctests {
             visited_tests: FxHashMap::default(),
             unused_extern_reports: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
+            can_merge_doctests,
         }
     }
 
@@ -773,7 +776,8 @@ impl CreateRunnableDoctests {
         let edition = scraped_test.edition(&self.rustdoc_options);
         let doctest =
             DocTest::new(&scraped_test.text, Some(&self.opts.crate_name), edition, Some(test_id));
-        let is_standalone = scraped_test.langstr.compile_fail
+        let is_standalone = !self.can_merge_doctests
+            || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness
             || self.rustdoc_options.nocapture
             || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output")
