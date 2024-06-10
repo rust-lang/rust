@@ -914,10 +914,6 @@ table,
 .item-table > li > div {
 	display: table-cell;
 }
-.item-table > li > .item-name {
-	padding-right: 1.25rem;
-	max-width: 40vw;
-}
 
 .search-results-title {
 	margin-top: 0;
@@ -2060,10 +2056,6 @@ in src-script.js and main.js
 		background: var(--main-background-color);
 	}
 
-	.item-table>li>div {
-		max-width: unset !IMPORTANT;
-	}
-
 	/* Display an alternating layout on tablets and phones */
 	.item-table, .item-row, .item-table > li, .item-table > li > div,
 	.search-results > a, .search-results > a > div {
@@ -2131,6 +2123,11 @@ in src-script.js and main.js
 		right: 5px;
 		padding: 2px 4px;
 		box-shadow: 0 0 4px var(--main-background-color);
+	}
+
+	.item-table > li > .item-name {
+		padding-right: 1.25rem;
+		max-width: 40vw;
 	}
 }
 
