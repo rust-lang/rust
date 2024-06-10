@@ -2,13 +2,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
 
 use std::fmt::Write;
-use std::sync::{Arc, Mutex};
 
 use crate::doctest::{
-    run_test, DirState, DocTest, GlobalTestOptions, IndividualTestOptions, RunnableDoctest,
-    RustdocOptions, ScrapedDoctest, TestFailure, UnusedExterns,
+    run_test, DocTest, GlobalTestOptions, IndividualTestOptions, RunnableDoctest, RustdocOptions,
+    ScrapedDoctest, TestFailure, UnusedExterns,
 };
-use crate::html::markdown::LangString;
+use crate::html::markdown::{Ignore, LangString};
 
 /// Convenient type to merge compatible doctests into one.
 pub(crate) struct DocTestRunner {
@@ -17,7 +16,6 @@ pub(crate) struct DocTestRunner {
     output: String,
     supports_color: bool,
     nb_tests: usize,
-    doctests: Vec<DocTest>,
 }
 
 impl DocTestRunner {
@@ -28,12 +26,21 @@ impl DocTestRunner {
             output: String::new(),
             supports_color: true,
             nb_tests: 0,
-            doctests: Vec::with_capacity(10),
         }
     }
 
-    pub(crate) fn add_test(&mut self, doctest: &DocTest, scraped_test: &ScrapedDoctest) {
-        if !doctest.ignore {
+    pub(crate) fn add_test(
+        &mut self,
+        doctest: &DocTest,
+        scraped_test: &ScrapedDoctest,
+        target_str: &str,
+    ) {
+        let ignore = match scraped_test.langstr.ignore {
+            Ignore::All => true,
+            Ignore::None => false,
+            Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
+        };
+        if !ignore {
             for line in doctest.crate_attrs.split('\n') {
                 self.crate_attrs.insert(line.to_string());
             }
@@ -43,11 +50,16 @@ impl DocTestRunner {
         }
         self.ids.push_str(&format!(
             "{}::TEST",
-            generate_mergeable_doctest(doctest, scraped_test, self.nb_tests, &mut self.output),
+            generate_mergeable_doctest(
+                doctest,
+                scraped_test,
+                ignore,
+                self.nb_tests,
+                &mut self.output
+            ),
         ));
         self.supports_color &= doctest.supports_color;
         self.nb_tests += 1;
-        self.doctests.push(doctest);
     }
 
     pub(crate) fn run_tests(
@@ -56,9 +68,7 @@ impl DocTestRunner {
         edition: Edition,
         opts: &GlobalTestOptions,
         test_args: &[String],
-        outdir: &Arc<DirState>,
         rustdoc_options: &RustdocOptions,
-        unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
     ) -> Result<bool, ()> {
         let mut code = "\
 #![allow(unused_extern_crates)]
@@ -73,7 +83,19 @@ impl DocTestRunner {
             code.push('\n');
         }
 
-        DocTest::push_attrs(&mut code, opts, &mut 0);
+        if opts.attrs.is_empty() {
+            // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
+            // lints that are commonly triggered in doctests. The crate-level test attributes are
+            // commonly used to make tests fail in case they trigger warnings, so having this there in
+            // that case may cause some tests to pass when they shouldn't have.
+            code.push_str("#![allow(unused)]\n");
+        }
+
+        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
+        for attr in &opts.attrs {
+            code.push_str(&format!("#![{attr}]\n"));
+        }
+
         code.push_str("extern crate test;\n");
 
         let test_args =
@@ -91,7 +113,6 @@ test::test_main(&[{test_args}], vec![{ids}], None);
             ids = self.ids,
         )
         .expect("failed to generate test code");
-        // let out_dir = build_test_dir(outdir, true, "");
         let runnable_test = RunnableDoctest {
             full_test_code: code,
             full_test_line_offset: 0,
@@ -102,7 +123,8 @@ test::test_main(&[{test_args}], vec![{ids}], None);
             edition,
             no_run: false,
         };
-        let ret = run_test(runnable_test, rustdoc_options, self.supports_color, unused_externs);
+        let ret =
+            run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
         if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
     }
 }
@@ -111,12 +133,13 @@ test::test_main(&[{test_args}], vec![{ids}], None);
 fn generate_mergeable_doctest(
     doctest: &DocTest,
     scraped_test: &ScrapedDoctest,
+    ignore: bool,
     id: usize,
     output: &mut String,
 ) -> String {
     let test_id = format!("__doctest_{id}");
 
-    if doctest.ignore {
+    if ignore {
         // We generate nothing else.
         writeln!(output, "mod {test_id} {{\n").unwrap();
     } else {
@@ -166,8 +189,7 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
 }};
 }}",
         test_name = scraped_test.name,
-        ignore = scraped_test.langstr.ignore,
-        file = scraped_test.file,
+        file = scraped_test.path(),
         line = scraped_test.line,
         no_run = scraped_test.langstr.no_run,
         should_panic = if !scraped_test.langstr.no_run && scraped_test.langstr.should_panic {
@@ -177,7 +199,7 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
         },
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
-        runner = if scraped_test.langstr.no_run || scraped_test.langstr.ignore {
+        runner = if ignore || scraped_test.langstr.no_run {
             "Ok::<(), String>(())"
         } else {
             "self::main()"
