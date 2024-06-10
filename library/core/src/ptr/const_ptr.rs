@@ -330,7 +330,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     if let Some(val_back) = ptr.as_ref() {
-    ///         println!("We got back the value: {val_back}!");
+    ///         assert_eq!(val_back, &10);
     ///     }
     /// }
     /// ```
@@ -346,7 +346,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     let val_back = &*ptr;
-    ///     println!("We got back the value: {val_back}!");
+    ///     assert_eq!(val_back, &10);
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
@@ -393,7 +393,7 @@ impl<T: ?Sized> *const T {
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
-    ///     println!("We got back the value: {}!", ptr.as_ref_unchecked());
+    ///     assert_eq!(ptr.as_ref_unchecked(), &10);
     /// }
     /// ```
     // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
@@ -439,7 +439,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     if let Some(val_back) = ptr.as_uninit_ref() {
-    ///         println!("We got back the value: {}!", val_back.assume_init());
+    ///         assert_eq!(val_back.assume_init(), 10);
     ///     }
     /// }
     /// ```
@@ -501,8 +501,8 @@ impl<T: ?Sized> *const T {
     /// let ptr: *const u8 = s.as_ptr();
     ///
     /// unsafe {
-    ///     println!("{}", *ptr.offset(1) as char);
-    ///     println!("{}", *ptr.offset(2) as char);
+    ///     assert_eq!(*ptr.offset(1) as char, '2');
+    ///     assert_eq!(*ptr.offset(2) as char, '3');
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -573,19 +573,21 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
+    /// # use std::fmt::Write;
     /// // Iterate using a raw pointer in increments of two elements
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
     /// let step = 2;
     /// let end_rounded_up = ptr.wrapping_offset(6);
     ///
-    /// // This loop prints "1, 3, 5, "
+    /// let mut out = String::new();
     /// while ptr != end_rounded_up {
     ///     unsafe {
-    ///         print!("{}, ", *ptr);
+    ///         write!(&mut out, "{}, ", *ptr).unwrap();
     ///     }
     ///     ptr = ptr.wrapping_offset(step);
     /// }
+    /// assert_eq!(out.as_str(), "1, 3, 5, ");
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -988,8 +990,8 @@ impl<T: ?Sized> *const T {
     /// let ptr: *const u8 = s.as_ptr();
     ///
     /// unsafe {
-    ///     println!("{}", *ptr.add(1) as char);
-    ///     println!("{}", *ptr.add(2) as char);
+    ///     assert_eq!(*ptr.add(1), b'2');
+    ///     assert_eq!(*ptr.add(2), b'3');
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
@@ -1073,8 +1075,8 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     let end: *const u8 = s.as_ptr().add(3);
-    ///     println!("{}", *end.sub(1) as char);
-    ///     println!("{}", *end.sub(2) as char);
+    ///     assert_eq!(*end.sub(1), b'3');
+    ///     assert_eq!(*end.sub(2), b'2');
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
@@ -1155,19 +1157,21 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
+    /// # use std::fmt::Write;
     /// // Iterate using a raw pointer in increments of two elements
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
     /// let step = 2;
     /// let end_rounded_up = ptr.wrapping_add(6);
     ///
-    /// // This loop prints "1, 3, 5, "
+    /// let mut out = String::new();
     /// while ptr != end_rounded_up {
     ///     unsafe {
-    ///         print!("{}, ", *ptr);
+    ///         write!(&mut out, "{}, ", *ptr).unwrap();
     ///     }
     ///     ptr = ptr.wrapping_add(step);
     /// }
+    /// assert_eq!(out, "1, 3, 5, ");
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1234,19 +1238,21 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
+    /// # use std::fmt::Write;
     /// // Iterate using a raw pointer in increments of two elements (backwards)
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
     /// let start_rounded_down = ptr.wrapping_sub(2);
     /// ptr = ptr.wrapping_add(4);
     /// let step = 2;
-    /// // This loop prints "5, 3, 1, "
+    /// let mut out = String::new();
     /// while ptr != start_rounded_down {
     ///     unsafe {
-    ///         print!("{}, ", *ptr);
+    ///         write!(&mut out, "{}, ", *ptr).unwrap();
     ///     }
     ///     ptr = ptr.wrapping_sub(step);
     /// }
+    /// assert_eq!(out, "5, 3, 1, ");
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
