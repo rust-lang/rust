@@ -6399,9 +6399,9 @@ dependencies = [
 
 [[package]]
 name = "windows-bindgen"
-version = "0.56.0"
+version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a28e3ea6330cf17fdcdce8bf08d0549ce93769dca9bedc6c39c36c8c0e17db46"
+checksum = "1ccb96113d6277ba543c0f77e1c5494af8094bf9daf9b85acdc3f1b620e7c7b4"
 dependencies = [
  "proc-macro2",
  "rayon",
@@ -6422,9 +6422,9 @@ dependencies = [
 
 [[package]]
 name = "windows-metadata"
-version = "0.56.0"
+version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3993f7827fff10c454e3a24847075598c7c08108304b8b07943c2c73d78f3b34"
+checksum = "8308d076825b9d9e5abc64f8113e96d02b2aeeba869b20fdd65c7e70cda13dfc"
 
 [[package]]
 name = "windows-sys"
