@@ -1,5 +1,7 @@
 <summary>["AVX512DQ"]</summary><p>
 
+[Intel's List](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512DQ)
+
 - And:
     * [x] _mm_mask_and_pd
     * [x] _mm_maskz_and_pd
@@ -69,39 +71,39 @@
 
 
 - Broadcast
-    * [ ] _mm256_broadcast_f32x2
-    * [ ] _mm256_mask_broadcast_f32x2
-    * [ ] _mm256_maskz_broadcast_f32x2
-    * [ ] _mm512_broadcast_f32x2
-    * [ ] _mm512_mask_broadcast_f32x2
-    * [ ] _mm512_maskz_broadcast_f32x2
-    * [ ] _mm512_broadcast_f32x8
-    * [ ] _mm512_mask_broadcast_f32x8
-    * [ ] _mm512_maskz_broadcast_f32x8
-    * [ ] _mm256_broadcast_f64x2
-    * [ ] _mm256_mask_broadcast_f64x2
-    * [ ] _mm256_maskz_broadcast_f64x2
-    * [ ] _mm512_broadcast_f64x2
-    * [ ] _mm512_mask_broadcast_f64x2
-    * [ ] _mm512_maskz_broadcast_f64x2
-    * [ ] _mm_broadcast_i32x2
-    * [ ] _mm_mask_broadcast_i32x2
-    * [ ] _mm_maskz_broadcast_i32x2
-    * [ ] _mm256_broadcast_i32x2
-    * [ ] _mm256_mask_broadcast_i32x2
-    * [ ] _mm256_maskz_broadcast_i32x2
-    * [ ] _mm512_broadcast_i32x2
-    * [ ] _mm512_mask_broadcast_i32x2
-    * [ ] _mm512_maskz_broadcast_i32x2
-    * [ ] _mm512_broadcast_i32x8
-    * [ ] _mm512_mask_broadcast_i32x8
-    * [ ] _mm512_maskz_broadcast_i32x8
-    * [ ] _mm256_broadcast_i64x2
-    * [ ] _mm256_mask_broadcast_i64x2
-    * [ ] _mm256_maskz_broadcast_i64x2
-    * [ ] _mm512_broadcast_i64x2
-    * [ ] _mm512_mask_broadcast_i64x2
-    * [ ] _mm512_maskz_broadcast_i64x2
+    * [x] _mm256_broadcast_f32x2
+    * [x] _mm256_mask_broadcast_f32x2
+    * [x] _mm256_maskz_broadcast_f32x2
+    * [x] _mm512_broadcast_f32x2
+    * [x] _mm512_mask_broadcast_f32x2
+    * [x] _mm512_maskz_broadcast_f32x2
+    * [x] _mm512_broadcast_f32x8
+    * [x] _mm512_mask_broadcast_f32x8
+    * [x] _mm512_maskz_broadcast_f32x8
+    * [x] _mm256_broadcast_f64x2
+    * [x] _mm256_mask_broadcast_f64x2
+    * [x] _mm256_maskz_broadcast_f64x2
+    * [x] _mm512_broadcast_f64x2
+    * [x] _mm512_mask_broadcast_f64x2
+    * [x] _mm512_maskz_broadcast_f64x2
+    * [x] _mm_broadcast_i32x2
+    * [x] _mm_mask_broadcast_i32x2
+    * [x] _mm_maskz_broadcast_i32x2
+    * [x] _mm256_broadcast_i32x2
+    * [x] _mm256_mask_broadcast_i32x2
+    * [x] _mm256_maskz_broadcast_i32x2
+    * [x] _mm512_broadcast_i32x2
+    * [x] _mm512_mask_broadcast_i32x2
+    * [x] _mm512_maskz_broadcast_i32x2
+    * [x] _mm512_broadcast_i32x8
+    * [x] _mm512_mask_broadcast_i32x8
+    * [x] _mm512_maskz_broadcast_i32x8
+    * [x] _mm256_broadcast_i64x2
+    * [x] _mm256_mask_broadcast_i64x2
+    * [x] _mm256_maskz_broadcast_i64x2
+    * [x] _mm512_broadcast_i64x2
+    * [x] _mm512_mask_broadcast_i64x2
+    * [x] _mm512_maskz_broadcast_i64x2
 
 
 - Convert:
@@ -252,45 +254,45 @@
 
 
 - Element Extract:
-    * [ ] _mm512_extractf32x8_ps
-    * [ ] _mm512_mask_extractf32x8_ps
-    * [ ] _mm512_maskz_extractf32x8_ps
-    * [ ] _mm256_extractf64x2_pd
-    * [ ] _mm256_mask_extractf64x2_pd
-    * [ ] _mm256_maskz_extractf64x2_pd
-    * [ ] _mm512_extractf64x2_pd
-    * [ ] _mm512_mask_extractf64x2_pd
-    * [ ] _mm512_maskz_extractf64x2_pd
-    * [ ] _mm512_extracti32x8_epi32
-    * [ ] _mm512_mask_extracti32x8_epi32
-    * [ ] _mm512_maskz_extracti32x8_epi32
-    * [ ] _mm256_extracti64x2_epi64
-    * [ ] _mm256_mask_extracti64x2_epi64
-    * [ ] _mm256_maskz_extracti64x2_epi64
-    * [ ] _mm512_extracti64x2_epi64
-    * [ ] _mm512_mask_extracti64x2_epi64
-    * [ ] _mm512_maskz_extracti64x2_epi64
+    * [x] _mm512_extractf32x8_ps
+    * [x] _mm512_mask_extractf32x8_ps
+    * [x] _mm512_maskz_extractf32x8_ps
+    * [x] _mm256_extractf64x2_pd
+    * [x] _mm256_mask_extractf64x2_pd
+    * [x] _mm256_maskz_extractf64x2_pd
+    * [x] _mm512_extractf64x2_pd
+    * [x] _mm512_mask_extractf64x2_pd
+    * [x] _mm512_maskz_extractf64x2_pd
+    * [x] _mm512_extracti32x8_epi32
+    * [x] _mm512_mask_extracti32x8_epi32
+    * [x] _mm512_maskz_extracti32x8_epi32
+    * [x] _mm256_extracti64x2_epi64
+    * [x] _mm256_mask_extracti64x2_epi64
+    * [x] _mm256_maskz_extracti64x2_epi64
+    * [x] _mm512_extracti64x2_epi64
+    * [x] _mm512_mask_extracti64x2_epi64
+    * [x] _mm512_maskz_extracti64x2_epi64
 
 
 - Element Insert:
-    * [ ] _mm512_insertf32x8
-    * [ ] _mm512_mask_insertf32x8
-    * [ ] _mm512_maskz_insertf32x8
-    * [ ] _mm256_insertf64x2
-    * [ ] _mm256_mask_insertf64x2
-    * [ ] _mm256_maskz_insertf64x2
-    * [ ] _mm512_insertf64x2
-    * [ ] _mm512_mask_insertf64x2
-    * [ ] _mm512_maskz_insertf64x2
-    * [ ] _mm512_inserti32x8
-    * [ ] _mm512_mask_inserti32x8
-    * [ ] _mm512_maskz_inserti32x8
-    * [ ] _mm256_inserti64x2
-    * [ ] _mm256_mask_inserti64x2
-    * [ ] _mm256_maskz_inserti64x2
-    * [ ] _mm512_inserti64x2
-    * [ ] _mm512_mask_inserti64x2
-    * [ ] _mm512_maskz_inserti64x2
+    * [x] _mm512_insertf32x8
+    * [x] _mm512_mask_insertf32x8
+    * [x] _mm512_maskz_insertf32x8
+    * [x] _mm256_insertf64x2
+    * [x] _mm256_mask_insertf64x2
+    * [x] _mm256_maskz_insertf64x2
+    * [x] _mm512_insertf64x2
+    * [x] _mm512_mask_insertf64x2
+    * [x] _mm512_maskz_insertf64x2
+    * [x] _mm512_inserti32x8
+    * [x] _mm512_mask_inserti32x8
+    * [x] _mm512_maskz_inserti32x8
+    * [x] _mm256_inserti64x2
+    * [x] _mm256_mask_inserti64x2
+    * [x] _mm256_maskz_inserti64x2
+    * [x] _mm512_inserti64x2
+    * [x] _mm512_mask_inserti64x2
+    * [x] _mm512_maskz_inserti64x2
 
 
 - FP-Class
