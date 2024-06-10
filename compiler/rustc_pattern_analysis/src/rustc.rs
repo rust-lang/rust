@@ -6,11 +6,12 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{self, FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, FieldDef, OpaqueTypeKey, Ty, TyCtxt, TypeVisitableExt, VariantDef};
+use rustc_middle::ty::{
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
@@ -701,9 +702,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ty::Int(_) => miint.as_finite_int(size.bits()).unwrap(),
                     _ => miint.as_finite_uint().unwrap(),
                 };
-                match Scalar::try_from_uint(bits, size) {
+                match ScalarInt::try_from_uint(bits, size) {
                     Some(scalar) => {
-                        let value = mir::Const::from_scalar(tcx, scalar, ty.inner());
+                        let value = mir::Const::from_scalar(tcx, scalar.into(), ty.inner());
                         PatRangeBoundary::Finite(value)
                     }
                     // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value

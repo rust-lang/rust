@@ -1033,8 +1033,8 @@ impl<'tcx> PatRangeBoundary<'tcx> {
                 if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
                     let sz = ty.primitive_size(tcx);
                     let cmp = match ty.kind() {
-                        ty::Uint(_) | ty::Char => a.assert_uint(sz).cmp(&b.assert_uint(sz)),
-                        ty::Int(_) => a.assert_int(sz).cmp(&b.assert_int(sz)),
+                        ty::Uint(_) | ty::Char => a.to_uint(sz).cmp(&b.to_uint(sz)),
+                        ty::Int(_) => a.to_int(sz).cmp(&b.to_int(sz)),
                         _ => unreachable!(),
                     };
                     return Some(cmp);

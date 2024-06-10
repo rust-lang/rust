@@ -499,13 +499,14 @@ where
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
-        // Basically we just transmute this place into an array following simd_size_and_type.
-        // (Transmuting is okay since this is an in-memory place. We also double-check the size
-        // stays the same.)
+        // Basically we want to transmute this place into an array following simd_size_and_type.
         let (len, e_ty) = mplace.layout.ty.simd_size_and_type(*self.tcx);
-        let array = Ty::new_array(self.tcx.tcx, e_ty, len);
-        let layout = self.layout_of(array)?;
-        let mplace = mplace.transmute(layout, self)?;
+        // Some SIMD types have padding, so `len` many `e_ty` does not cover the entire place.
+        // Therefore we cannot transmute, and instead we project at offset 0, which side-steps
+        // the size check.
+        let array_layout = self.layout_of(Ty::new_array(self.tcx.tcx, e_ty, len))?;
+        assert!(array_layout.size <= mplace.layout.size);
+        let mplace = mplace.offset(Size::ZERO, array_layout, self)?;
         Ok((mplace, len))
     }
 

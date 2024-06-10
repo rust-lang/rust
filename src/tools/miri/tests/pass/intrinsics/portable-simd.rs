@@ -658,11 +658,32 @@ fn simd_masked_loadstore() {
     assert_eq!(buf, [2, 3, 4]);
 }
 
+fn simd_ops_non_pow2() {
+    // Just a little smoke test for operations on non-power-of-two vectors.
+    #[repr(simd, packed)]
+    #[derive(Copy, Clone)]
+    pub struct SimdPacked<T, const N: usize>([T; N]);
+    #[repr(simd)]
+    #[derive(Copy, Clone)]
+    pub struct SimdPadded<T, const N: usize>([T; N]);
+
+    let x = SimdPacked([1u32; 3]);
+    let y = SimdPacked([2u32; 3]);
+    let z = unsafe { intrinsics::simd_add(x, y) };
+    assert_eq!({ z.0 }, [3u32; 3]);
+
+    let x = SimdPadded([1u32; 3]);
+    let y = SimdPadded([2u32; 3]);
+    let z = unsafe { intrinsics::simd_add(x, y) };
+    assert_eq!(z.0, [3u32; 3]);
+}
+
 fn main() {
     simd_mask();
     simd_ops_f32();
     simd_ops_f64();
     simd_ops_i32();
+    simd_ops_non_pow2();
     simd_cast();
     simd_swizzle();
     simd_gather_scatter();

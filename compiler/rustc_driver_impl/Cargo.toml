@@ -19,7 +19,6 @@ rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
-rustc_hir = { path = "../rustc_hir" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }

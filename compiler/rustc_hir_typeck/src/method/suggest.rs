@@ -1640,10 +1640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .unwrap_or(Ty::new_misc_error(self.tcx)),
                 );
 
-                // FIXME: `probe_for_name_many` searches for methods in inherent implementations,
-                // so it may return a candidate that doesn't belong to this `revr_ty`. We need to
-                // check whether the instantiated type matches the received one.
-                for _matched_method in self.probe_for_name_many(
+                let Ok(candidates) = self.probe_for_name_many(
                     Mode::MethodCall,
                     item_name,
                     None,
@@ -1651,7 +1648,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rcvr_ty,
                     source_expr.hir_id,
                     ProbeScope::TraitsInScope,
-                ) {
+                ) else {
+                    return;
+                };
+
+                // FIXME: `probe_for_name_many` searches for methods in inherent implementations,
+                // so it may return a candidate that doesn't belong to this `revr_ty`. We need to
+                // check whether the instantiated type matches the received one.
+                for _matched_method in candidates {
                     // found a match, push to stack
                     stack_methods.push(rcvr_ty);
                 }
