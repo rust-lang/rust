@@ -11,7 +11,7 @@ fn make_test(
     test_id: Option<&str>,
 ) -> (String, usize) {
     let doctest =
-        DocTest::new(test_code, crate_name, DEFAULT_EDITION, test_id.map(|s| s.to_string()));
+        DocTest::new(test_code, crate_name, DEFAULT_EDITION, false, test_id.map(|s| s.to_string()));
     let (code, line_offset) =
         doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
     (code, line_offset)
