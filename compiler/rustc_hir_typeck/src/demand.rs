@@ -827,7 +827,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) else {
             return;
         };
-        let in_scope_methods = self.probe_for_name_many(
+
+        let Ok(in_scope_methods) = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
             Some(expected),
@@ -835,11 +836,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             deref.hir_id,
             probe::ProbeScope::TraitsInScope,
-        );
+        ) else {
+            return;
+        };
+
         let other_methods_in_scope: Vec<_> =
             in_scope_methods.iter().filter(|c| c.item.def_id != pick.item.def_id).collect();
 
-        let all_methods = self.probe_for_name_many(
+        let Ok(all_methods) = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
             Some(expected),
@@ -847,7 +851,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             deref.hir_id,
             probe::ProbeScope::AllTraits,
-        );
+        ) else {
+            return;
+        };
+
         let suggestions: Vec<_> = all_methods
             .into_iter()
             .filter(|c| c.item.def_id != pick.item.def_id)
