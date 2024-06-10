@@ -1274,10 +1274,8 @@ pub struct SplitWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct SplitAsciiWhitespace<'a> {
-    pub(super) inner: Map<
-        Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty<'a>>,
-        UnsafeBytesToStr<'a>,
-    >,
+    pub(super) inner:
+        Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty>, UnsafeBytesToStr>,
 }
 
 /// An iterator over the substrings of a string,

@@ -255,7 +255,6 @@
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
-#![feature(type_alias_impl_trait)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
