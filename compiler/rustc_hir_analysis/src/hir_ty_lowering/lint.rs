@@ -69,8 +69,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut diag =
                 rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions() {
-                self.maybe_suggest_impl_trait(self_ty, &mut diag);
-                if object_safe {
+                if !self.maybe_suggest_impl_trait(self_ty, &mut diag) && object_safe {
                     // Only emit this suggestion if the trait is object safe.
                     diag.multipart_suggestion_verbose(
                         label,
@@ -212,34 +211,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
         //        and suggest `Trait0<Ty = impl Trait1>`.
-        let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {
+        let (sig, generics) = match tcx.hir_node_by_def_id(parent_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
-                (sig, generics, None)
+                (sig, generics)
             }
             hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 generics,
-                owner_id,
                 ..
-            }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
+            }) => (sig, generics),
             _ => return false,
         };
         let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
             return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
-        let mut is_downgradable = true;
-        let mut downgrade = false;
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|o| match o.trait_ref.path.res {
-                    Res::Def(DefKind::Trait, id) => {
-                        if Some(id) == owner {
-                            // For recursive traits, don't downgrade the error. (#119652)
-                            is_downgradable = false;
-                        }
-                        tcx.object_safety_violations(id).is_empty()
-                    }
+                    Res::Def(DefKind::Trait, id) => tcx.object_safety_violations(id).is_empty(),
                     _ => false,
                 })
             }
@@ -267,11 +257,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else if is_downgradable {
-                // We'll emit the object safety error already, with a structured suggestion.
-                downgrade = true;
+                return true;
             }
-            return downgrade;
+            return false;
         }
         for ty in sig.decl.inputs {
             if ty.hir_id != self_ty.hir_id {
@@ -293,10 +281,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                if is_downgradable {
-                    // We'll emit the object safety error already, with a structured suggestion.
-                    downgrade = true;
-                }
             } else {
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
@@ -316,9 +300,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     Applicability::MachineApplicable,
                 );
             }
-            return downgrade;
+            return true;
         }
-        downgrade
+        false
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {

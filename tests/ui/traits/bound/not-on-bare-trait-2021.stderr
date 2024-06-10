@@ -16,10 +16,6 @@ help: alternatively, use a trait object to accept any type that implements `Foo 
    |
 LL | fn foo(_x: &(dyn Foo + Send)) {
    |            +++++           +
-help: add `dyn` keyword before this trait
-   |
-LL | fn foo(_x: dyn Foo + Send) {
-   |            +++
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/not-on-bare-trait-2021.rs:11:11
@@ -39,10 +35,6 @@ help: alternatively, use a trait object to accept any type that implements `Foo`
    |
 LL | fn bar(x: &dyn Foo) -> Foo {
    |           ++++
-help: add `dyn` keyword before this trait
-   |
-LL | fn bar(x: dyn Foo) -> Foo {
-   |           +++
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/not-on-bare-trait-2021.rs:11:19
@@ -58,10 +50,6 @@ help: alternatively, you can return an owned trait object
    |
 LL | fn bar(x: Foo) -> Box<dyn Foo> {
    |                   +++++++    +
-help: add `dyn` keyword before this trait
-   |
-LL | fn bar(x: Foo) -> dyn Foo {
-   |                   +++
 
 error: aborting due to 3 previous errors
 
