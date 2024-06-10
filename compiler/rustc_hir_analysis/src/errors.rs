@@ -126,12 +126,14 @@ pub enum AssocItemNotFoundSugg<'a> {
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
-    #[suggestion(hir_analysis_assoc_item_not_found_other_sugg, code = "{suggested_name}")]
+    #[suggestion(
+        hir_analysis_assoc_item_not_found_other_sugg,
+        code = "{suggested_name}",
+        applicability = "maybe-incorrect"
+    )]
     Other {
         #[primary_span]
         span: Span,
-        #[applicability]
-        applicability: Applicability,
         ty_param_name: &'a str,
         assoc_kind: &'static str,
         suggested_name: Symbol,
