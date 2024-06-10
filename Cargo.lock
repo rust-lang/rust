@@ -4954,6 +4954,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
+ "unicode-segmentation",
 ]
 
 [[package]]
