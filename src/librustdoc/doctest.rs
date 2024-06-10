@@ -800,6 +800,7 @@ impl CreateRunnableDoctests {
         let doctest =
             DocTest::new(&scraped_test.text, Some(&self.opts.crate_name), edition, Some(test_id));
         let is_standalone = !self.can_merge_doctests
+            || doctest.failed_ast
             || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness
             || scraped_test.langstr.standalone
