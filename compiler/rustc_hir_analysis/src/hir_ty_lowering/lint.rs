@@ -68,10 +68,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let label = "add `dyn` keyword before this trait";
             let mut diag =
                 rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
-            let mut downgrade = false;
             if self_ty.span.can_be_used_for_suggestions() {
-                let should_downgrade = self.maybe_suggest_impl_trait(self_ty, &mut diag);
-                downgrade = should_downgrade;
+                self.maybe_suggest_impl_trait(self_ty, &mut diag);
                 if object_safe {
                     // Only emit this suggestion if the trait is object safe.
                     diag.multipart_suggestion_verbose(
@@ -91,14 +89,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
-            if downgrade {
-                // FIXME: Delayed bugs and stashing are not compatible, so we paper over it here by
-                // consuming the diagnostic without emitting it, instead of downgrading it.
-                diag.delay_as_bug();
-                None
-            } else {
-                diag.stash(self_ty.span, StashKey::TraitMissingMethod)
-            }
+            diag.stash(self_ty.span, StashKey::TraitMissingMethod)
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");

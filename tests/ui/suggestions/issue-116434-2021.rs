@@ -3,8 +3,8 @@
 trait Foo {
     type Clone;
     fn foo() -> Clone;
-    //~^ ERROR the trait `Clone` cannot be made into an object [E0038]
-    //~| HELP there is an associated type with the same name
+    //~^ ERROR trait objects must include the `dyn` keyword
+    //~| HELP `Clone` is not object safe, use `impl Clone` to return an opaque type, as long as you return a single underlying type
 }
 
 trait DbHandle: Sized {}
@@ -12,8 +12,8 @@ trait DbHandle: Sized {}
 trait DbInterface {
     type DbHandle;
     fn handle() -> DbHandle;
-    //~^ ERROR the trait `DbHandle` cannot be made into an object [E0038]
-    //~| HELP there is an associated type with the same name
+    //~^ ERROR trait objects must include the `dyn` keyword
+    //~| HELP `DbHandle` is not object safe, use `impl DbHandle` to return an opaque type, as long as you return a single underlying type
 }
 
 fn main() {}
