@@ -1608,19 +1608,8 @@ impl Config {
             set(&mut config.channel, channel);
 
             config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
-            // This list is incomplete, please help by expanding it!
-            if config.download_rustc_commit.is_some() {
-                // We need the channel used by the downloaded compiler to match the one we set for rustdoc;
-                // otherwise rustdoc-ui tests break.
-                if config.channel != ci_channel
-                    && !(config.channel == "dev" && ci_channel == "nightly")
-                {
-                    panic!(
-                        "setting rust.channel={} is incompatible with download-rustc",
-                        config.channel
-                    );
-                }
-            }
+
+            // FIXME: handle download-rustc incompatible options.
 
             debug = debug_toml;
             debug_assertions = debug_assertions_toml;
@@ -2134,17 +2123,29 @@ impl Config {
         args
     }
 
+    /// Returns the content of the given file at a specific commit.
+    pub(crate) fn read_file_by_commit(&self, file: &Path, commit: &str) -> String {
+        assert!(
+            self.rust_info.is_managed_git_subrepository(),
+            "`Config::read_file_by_commit` is not supported in non-git sources."
+        );
+
+        let mut git = self.git();
+        git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
+        output(&mut git)
+    }
+
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
     /// Return the version it would have used for the given commit.
     pub(crate) fn artifact_version_part(&self, commit: &str) -> String {
         let (channel, version) = if self.rust_info.is_managed_git_subrepository() {
-            let mut channel = self.git();
-            channel.arg("show").arg(format!("{commit}:src/ci/channel"));
-            let channel = output(&mut channel);
-            let mut version = self.git();
-            version.arg("show").arg(format!("{commit}:src/version"));
-            let version = output(&mut version);
-            (channel.trim().to_owned(), version.trim().to_owned())
+            let channel = self
+                .read_file_by_commit(&PathBuf::from("src/ci/channel"), commit)
+                .trim()
+                .to_owned();
+            let version =
+                self.read_file_by_commit(&PathBuf::from("src/version"), commit).trim().to_owned();
+            (channel, version)
         } else {
             let channel = fs::read_to_string(self.src.join("src/ci/channel"));
             let version = fs::read_to_string(self.src.join("src/version"));
