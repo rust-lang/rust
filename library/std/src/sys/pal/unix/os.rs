@@ -465,9 +465,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
     let mut name = vec![0; libc::PATH_MAX as usize];
     unsafe {
         let result = libc::find_path(
-            std::ptr::null_mut(),
+            crate::ptr::null_mut(),
             libc::path_base_directory::B_FIND_PATH_IMAGE_PATH,
-            std::ptr::null_mut(),
+            crate::ptr::null_mut(),
             name.as_mut_ptr(),
             name.len(),
         );
