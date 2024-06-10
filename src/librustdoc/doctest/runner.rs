@@ -62,7 +62,7 @@ impl DocTestRunner {
         self.nb_tests += 1;
     }
 
-    pub(crate) fn run_tests(
+    pub(crate) fn run_merged_tests(
         &mut self,
         test_options: IndividualTestOptions,
         edition: Edition,
@@ -123,8 +123,13 @@ test::test_main(&[{test_args}], vec![{ids}], None);
             edition,
             no_run: false,
         };
-        let ret =
-            run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
+        let ret = run_test(
+            runnable_test,
+            rustdoc_options,
+            self.supports_color,
+            true,
+            |_: UnusedExterns| {},
+        );
         if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
     }
 }
