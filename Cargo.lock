@@ -3627,7 +3627,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "smallvec",
 ]
 
 [[package]]
@@ -3708,7 +3707,6 @@ dependencies = [
  "icu_locid",
  "icu_locid_transform",
  "icu_provider",
- "icu_provider_adapters",
  "zerovec",
 ]
 
@@ -3889,7 +3887,6 @@ dependencies = [
  "portable-atomic",
  "rustc-hash",
  "rustc-rayon",
- "rustc-rayon-core",
  "rustc_arena",
  "rustc_graphviz",
  "rustc_index",
@@ -3930,7 +3927,6 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_fluent_macro",
- "rustc_hir",
  "rustc_hir_analysis",
  "rustc_hir_pretty",
  "rustc_hir_typeck",
@@ -4193,7 +4189,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.66",
- "synstructure",
 ]
 
 [[package]]
@@ -4385,7 +4380,6 @@ dependencies = [
  "field-offset",
  "gsgdt",
  "polonius-engine",
- "rustc-rayon",
  "rustc-rayon-core",
  "rustc_apfloat",
  "rustc_arena",
@@ -4417,7 +4411,6 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "either",
  "itertools 0.12.1",
  "rustc_apfloat",
  "rustc_arena",
@@ -4436,7 +4429,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "smallvec",
  "tracing",
 ]
 
@@ -4511,14 +4503,7 @@ dependencies = [
 name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
- "derivative",
- "rustc_ast_ir",
- "rustc_data_structures",
- "rustc_macros",
- "rustc_serialize",
  "rustc_type_ir",
- "rustc_type_ir_macros",
- "tracing",
 ]
 
 [[package]]
@@ -4623,7 +4608,6 @@ version = "0.0.0"
 dependencies = [
  "field-offset",
  "measureme",
- "rustc-rayon-core",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -5329,7 +5313,6 @@ name = "stable_mir"
 version = "0.1.0-preview"
 dependencies = [
  "scoped-tls",
- "tracing",
 ]
 
 [[package]]
@@ -5625,8 +5608,6 @@ dependencies = [
  "core",
  "getopts",
  "libc",
- "panic_abort",
- "panic_unwind",
  "std",
 ]
 
