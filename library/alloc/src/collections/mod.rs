@@ -7,6 +7,7 @@ pub mod binary_heap;
 #[cfg(not(no_global_oom_handling))]
 mod btree;
 #[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "fixed_queue", issue = "126204")]
 pub mod fixed_queue;
 #[cfg(not(no_global_oom_handling))]
 pub mod linked_list;
