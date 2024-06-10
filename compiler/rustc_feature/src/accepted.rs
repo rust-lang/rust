@@ -139,7 +139,7 @@ declare_features! (
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477)),
     /// Allows users to provide classes for fenced code block using `class:classname`.
-    (accepted, custom_code_classes_in_docs, "CURRENT_RUSTC_VERSION", Some(79483)),
+    (accepted, custom_code_classes_in_docs, "1.80.0", Some(79483)),
     /// Allows using `#[debugger_visualizer]` attribute.
     (accepted, debugger_visualizer, "1.71.0", Some(95939)),
     /// Allows rustc to inject a default alloc_error_handler
@@ -165,7 +165,7 @@ declare_features! (
     /// Allows using `dyn Trait` as a syntax for trait objects.
     (accepted, dyn_trait, "1.27.0", Some(44662)),
     /// Allows `X..Y` patterns.
-    (accepted, exclusive_range_pattern, "CURRENT_RUSTC_VERSION", Some(37854)),
+    (accepted, exclusive_range_pattern, "1.80.0", Some(37854)),
     /// Allows integer match exhaustiveness checking (RFC 2591).
     (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907)),
     /// Allows explicit generic arguments specification with `impl Trait` present.
