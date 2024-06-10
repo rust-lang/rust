@@ -274,6 +274,7 @@ pub(crate) fn run_tests(
     }
 
     let mut nb_errors = 0;
+    let mut ran_edition_tests = 0;
     let target_str = rustdoc_options.target.to_string();
 
     for (edition, mut doctests) in mergeable_tests {
@@ -300,6 +301,7 @@ pub(crate) fn run_tests(
             &test_args,
             rustdoc_options,
         ) {
+            ran_edition_tests += 1;
             if !success {
                 nb_errors += 1;
             }
@@ -326,7 +328,9 @@ pub(crate) fn run_tests(
         }
     }
 
-    if !standalone_tests.is_empty() {
+    // We need to call `test_main` even if there is no doctest to run to get the output
+    // `running 0 tests...`.
+    if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
         test::test_main(&test_args, standalone_tests, None);
     }
