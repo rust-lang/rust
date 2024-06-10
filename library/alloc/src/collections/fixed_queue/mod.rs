@@ -1,6 +1,8 @@
+use crate::vec::Vec;
 use core::{
-    fmt::{Debug, Display},
+    fmt, mem,
     ops::{Index, Range},
+    slice,
 };
 
 #[cfg(test)]
@@ -28,6 +30,7 @@ mod tests;
 /// [`push`]: FixedQueue::push
 /// [`pop`]: FixedQueue::pop
 #[derive(Debug)]
+#[unstable(feature = "fixed_queue", issue = "126204")]
 pub struct FixedQueue<T, const N: usize> {
     buffer: [Option<T>; N],
     head: usize,
@@ -48,6 +51,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
     }
 
     /// Create a new FixedQueue with a given capacity.
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub const fn new() -> FixedQueue<T, N>
     where
         Option<T>: Copy,
@@ -57,29 +61,34 @@ impl<T, const N: usize> FixedQueue<T, N> {
 
     /// Return the max capacity of the FixedQueue.
     #[inline]
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub const fn capacity(&self) -> usize {
         N
     }
 
     /// Returns the number of elements in the FixedQueue.
     #[inline]
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub const fn len(&self) -> usize {
         self.len
     }
 
     /// Check if the queue is empty.
     #[inline]
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
     /// Check if the queue is full.
     #[inline]
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub const fn is_full(&self) -> bool {
         self.len == N
     }
 
     /// Removes all elements from the queue.
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub fn clear(&mut self) {
         for i in 0..N {
             drop(self.buffer[i].take());
@@ -90,6 +99,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
     }
 
     /// Fills the queue with an element.
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub fn fill(&mut self, item: T)
     where
         Option<T>: Copy,
@@ -102,6 +112,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
 
     /// Add an element to the queue. If queue is full, the first element
     /// is popped and returned.
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub fn push(&mut self, item: T) -> Option<T> {
         // 'pop' first
         let overwritten = self.buffer[self.tail].take();
@@ -121,6 +132,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
 
     /// Removes and returns the oldest element from the queue.
     #[inline]
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub fn pop(&mut self) -> Option<T>
     where
         Option<T>: Copy,
@@ -135,6 +147,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
     }
 
     /// Converts the queue into its array equivalent.
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub fn to_option_array(self) -> [Option<T>; N]
     where
         Option<T>: Copy,
@@ -147,6 +160,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
     }
 
     /// Converts the queue into its vec equivalent.
+    #[unstable(feature = "fixed_queue", issue = "126204")]
     pub fn to_vec(self) -> Vec<T>
     where
         T: Copy,
@@ -161,6 +175,7 @@ impl<T, const N: usize> FixedQueue<T, N> {
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T, const N: usize> From<[T; N]> for FixedQueue<T, N> {
     /// Creates a FixedQueue from a fixed size array.
     fn from(array: [T; N]) -> Self {
@@ -168,6 +183,7 @@ impl<T, const N: usize> From<[T; N]> for FixedQueue<T, N> {
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T: Copy, const N: usize> From<&[T; N]> for FixedQueue<T, N> {
     /// Creates a FixedQueue from a fixed size slice.
     fn from(array: &[T; N]) -> Self {
@@ -175,6 +191,7 @@ impl<T: Copy, const N: usize> From<&[T; N]> for FixedQueue<T, N> {
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T: Copy, const N: usize> From<&[T]> for FixedQueue<T, N> {
     /// Creates a FixedQueue from an unsized slice. Copies a maximum of N
     /// elements of the slice, and a minimum of the slice length into the
@@ -189,6 +206,7 @@ impl<T: Copy, const N: usize> From<&[T]> for FixedQueue<T, N> {
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T: PartialEq, const N: usize> PartialEq for FixedQueue<T, N> {
     /// This method tests if a FixedQueue is equal to another FixedQueue.
     fn eq(&self, other: &FixedQueue<T, N>) -> bool {
@@ -199,6 +217,7 @@ impl<T: PartialEq, const N: usize> PartialEq for FixedQueue<T, N> {
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T: PartialEq, const N: usize, const M: usize> PartialEq<[T; M]> for FixedQueue<T, N> {
     /// This method tests if a FixedQueue is equal to a fixed size array.
     fn eq(&self, other: &[T; M]) -> bool {
@@ -209,6 +228,7 @@ impl<T: PartialEq, const N: usize, const M: usize> PartialEq<[T; M]> for FixedQu
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T, const N: usize> Index<usize> for FixedQueue<T, N> {
     type Output = Option<T>;
 
@@ -220,6 +240,7 @@ impl<T, const N: usize> Index<usize> for FixedQueue<T, N> {
     }
 }
 
+#[unstable(feature = "fixed_queue", issue = "126204")]
 impl<T, const N: usize> Index<Range<usize>> for FixedQueue<T, N>
 where
     T: Copy + Default,
@@ -245,14 +266,15 @@ where
 
         // Return a slice from the temporary array
         // SAFETY: This is safe because temp will live long enough within this function call.
-        let result = unsafe { std::slice::from_raw_parts(temp.as_ptr(), temp.len()) };
-        std::mem::forget(temp);
+        let result = unsafe { slice::from_raw_parts(temp.as_ptr(), temp.len()) };
+        mem::forget(temp);
         result
     }
 }
 
-impl<T: Display, const N: usize> Display for FixedQueue<T, N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+#[unstable(feature = "fixed_queue", issue = "126204")]
+impl<T: fmt::Display, const N: usize> fmt::Display for FixedQueue<T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.len == 0 {
             return write!(f, "{{}}");
         }
