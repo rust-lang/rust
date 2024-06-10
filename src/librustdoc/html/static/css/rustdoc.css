@@ -915,6 +915,10 @@ table,
 	display: table-cell;
 }
 
+.item-table > li > .item-name {
+	padding-right: 1.25rem;
+}
+
 .search-results-title {
 	margin-top: 0;
 	white-space: nowrap;
