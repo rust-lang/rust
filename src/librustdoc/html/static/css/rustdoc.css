@@ -898,6 +898,7 @@ because of the `[-]` element which would overlap with it. */
 	So, for table layouts, override the default with break-word, which does
 	_not_ affect min-content intrinsic sizes.
 */
+.item-table,
 table {
 	overflow-wrap: break-word;
 }
@@ -915,6 +916,7 @@ table {
 }
 .item-table > li > .item-name {
 	padding-right: 1.25rem;
+    max-width: 40vw;
 }
 
 .search-results-title {
@@ -2057,6 +2059,10 @@ in src-script.js and main.js
 	.sidebar-menu-toggle:hover {
 		background: var(--main-background-color);
 	}
+
+    .item-table>li>div {
+        max-width: unset !IMPORTANT;
+    }
 
 	/* Display an alternating layout on tablets and phones */
 	.item-table, .item-row, .item-table > li, .item-table > li > div,
