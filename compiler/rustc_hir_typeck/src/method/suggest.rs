@@ -3360,14 +3360,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .source_map()
                         .indentation_before(rcvr.span)
                         .unwrap_or_else(|| " ".to_string());
-                    err.multipart_suggestion(
-                        "consider pinning the expression",
-                        vec![
-                            (rcvr.span.shrink_to_lo(), format!("let mut pinned = std::pin::pin!(")),
-                            (rcvr.span.shrink_to_hi(), format!(");\n{indent}pinned.{pin_call}()")),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
+                    let mut expr = rcvr;
+                    while let Node::Expr(call_expr) = self.tcx.parent_hir_node(expr.hir_id)
+                        && let hir::ExprKind::MethodCall(hir::PathSegment { .. }, ..) =
+                            call_expr.kind
+                    {
+                        expr = call_expr;
+                    }
+                    match self.tcx.parent_hir_node(expr.hir_id) {
+                        Node::LetStmt(stmt)
+                            if let Some(init) = stmt.init
+                                && let Ok(code) =
+                                    self.tcx.sess.source_map().span_to_snippet(rcvr.span) =>
+                        {
+                            // We need to take care to account for the existing binding when we
+                            // suggest the code.
+                            err.multipart_suggestion(
+                                "consider pinning the expression",
+                                vec![
+                                    (
+                                        stmt.span.shrink_to_lo(),
+                                        format!(
+                                            "let mut pinned = std::pin::pin!({code});\n{indent}"
+                                        ),
+                                    ),
+                                    (
+                                        init.span.until(rcvr.span.shrink_to_hi()),
+                                        format!("pinned.{pin_call}()"),
+                                    ),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        Node::Block(_) | Node::Stmt(_) => {
+                            // There's no binding, so we can provide a slightly nicer looking
+                            // suggestion.
+                            err.multipart_suggestion(
+                                "consider pinning the expression",
+                                vec![
+                                    (
+                                        rcvr.span.shrink_to_lo(),
+                                        format!("let mut pinned = std::pin::pin!("),
+                                    ),
+                                    (
+                                        rcvr.span.shrink_to_hi(),
+                                        format!(");\n{indent}pinned.{pin_call}()"),
+                                    ),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        _ => {
+                            // We don't quite know what the users' code looks like, so we don't
+                            // provide a pinning suggestion.
+                            err.span_help(
+                                rcvr.span,
+                                "consider pinning the expression with `std::pin::pin!()` and \
+                                 assigning that to a new binding",
+                            );
+                        }
+                    }
                     // We don't care about the other suggestions.
                     alt_rcvr_sugg = true;
                 }

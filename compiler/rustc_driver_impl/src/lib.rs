@@ -52,7 +52,7 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind, PanicInfo};
+use std::panic::{self, catch_unwind, PanicHookInfo};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
@@ -1366,11 +1366,10 @@ pub fn install_ice_hook(
     let using_internal_features = Arc::new(std::sync::atomic::AtomicBool::default());
     let using_internal_features_hook = using_internal_features.clone();
     panic::update_hook(Box::new(
-        move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
-              info: &PanicInfo<'_>| {
+        move |default_hook: &(dyn Fn(&PanicHookInfo<'_>) + Send + Sync + 'static),
+              info: &PanicHookInfo<'_>| {
             // Lock stderr to prevent interleaving of concurrent panics.
             let _guard = io::stderr().lock();
-
             // If the error was caused by a broken pipe then this is not a bug.
             // Write the error and return immediately. See #98700.
             #[cfg(windows)]
@@ -1431,7 +1430,7 @@ pub fn install_ice_hook(
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
 fn report_ice(
-    info: &panic::PanicInfo<'_>,
+    info: &panic::PanicHookInfo<'_>,
     bug_report_url: &str,
     extra_info: fn(&DiagCtxt),
     using_internal_features: &AtomicBool,
