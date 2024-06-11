@@ -10,7 +10,7 @@ export const TASK_TYPE = "cargo";
 
 export const TASK_SOURCE = "rust";
 
-export interface CargoTaskDefinition extends vscode.TaskDefinition {
+export interface RustTargetDefinition extends vscode.TaskDefinition {
     // The cargo command, such as "run" or "check".
     command: string;
     // Additional arguments passed to the cargo command.
@@ -69,7 +69,7 @@ class RustTaskProvider implements vscode.TaskProvider {
         // we need to inform VSCode how to execute that command by creating
         // a ShellExecution for it.
 
-        const definition = task.definition as CargoTaskDefinition;
+        const definition = task.definition as RustTargetDefinition;
 
         if (definition.type === TASK_TYPE) {
             return await buildRustTask(
@@ -87,7 +87,7 @@ class RustTaskProvider implements vscode.TaskProvider {
 
 export async function buildRustTask(
     scope: vscode.WorkspaceFolder | vscode.TaskScope | undefined,
-    definition: CargoTaskDefinition,
+    definition: RustTargetDefinition,
     name: string,
     problemMatcher: string[],
     customRunner?: string,
@@ -108,7 +108,7 @@ export async function buildRustTask(
 }
 
 async function cargoToExecution(
-    definition: CargoTaskDefinition,
+    definition: RustTargetDefinition,
     customRunner: string | undefined,
     throwOnError: boolean,
 ): Promise<vscode.ProcessExecution | vscode.ShellExecution> {
@@ -138,20 +138,31 @@ async function cargoToExecution(
         }
     }
 
-    // Check whether we must use a user-defined substitute for cargo.
-    // Split on spaces to allow overrides like "wrapper cargo".
-    const cargoPath = await toolchain.cargoPath();
-    const cargoCommand = definition.overrideCargo?.split(" ") ?? [cargoPath];
+    // this is a cargo task; do Cargo-esque processing
+    if (definition.type === TASK_TYPE) {
+        // Check whether we must use a user-defined substitute for cargo.
+        // Split on spaces to allow overrides like "wrapper cargo".
+        const cargoPath = await toolchain.cargoPath();
+        const cargoCommand = definition.overrideCargo?.split(" ") ?? [cargoPath];
 
-    const args = [definition.command].concat(definition.args ?? []);
-    const fullCommand = [...cargoCommand, ...args];
+        const args = [definition.command].concat(definition.args ?? []);
+        const fullCommand = [...cargoCommand, ...args];
+        const processName = unwrapUndefinable(fullCommand[0]);
 
-    const processName = unwrapUndefinable(fullCommand[0]);
+        return new vscode.ProcessExecution(processName, fullCommand.slice(1), {
+            cwd: definition.cwd,
+            env: definition.env,
+        });
+    } else {
+        // we've been handed a process definition by rust-analyzer, trust all its inputs
+        // and make a shell execution.
+        const args = unwrapUndefinable(definition.args);
 
-    return new vscode.ProcessExecution(processName, fullCommand.slice(1), {
-        cwd: definition.cwd,
-        env: definition.env,
-    });
+        return new vscode.ProcessExecution(definition.command, args, {
+            cwd: definition.cwd,
+            env: definition.env,
+        });
+    }
 }
 
 export function activateTaskProvider(config: Config): vscode.Disposable {

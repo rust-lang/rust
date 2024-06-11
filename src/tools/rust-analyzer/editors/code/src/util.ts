@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { exec, type ExecOptions, spawnSync } from "child_process";
 import { inspect } from "util";
+import type { CargoRunnableArgs, ShellRunnableArgs } from "./lsp_ext";
 import type { Env } from "./client";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
@@ -75,6 +76,12 @@ export function isRustDocument(document: vscode.TextDocument): document is RustD
 export function isCargoTomlDocument(document: vscode.TextDocument): document is RustDocument {
     // ideally `document.languageId` should be 'toml' but user maybe not have toml extension installed
     return document.uri.scheme === "file" && document.fileName.endsWith("Cargo.toml");
+}
+
+export function isCargoRunnableArgs(
+    args: CargoRunnableArgs | ShellRunnableArgs,
+): args is CargoRunnableArgs {
+    return (args as CargoRunnableArgs).executableArgs !== undefined;
 }
 
 export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
