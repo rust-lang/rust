@@ -79,7 +79,6 @@ run-make/invalid-library/Makefile
 run-make/invalid-so/Makefile
 run-make/invalid-staticlib/Makefile
 run-make/issue-107094/Makefile
-run-make/issue-10971-temps-dir/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
