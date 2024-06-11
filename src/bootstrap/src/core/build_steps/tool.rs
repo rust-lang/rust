@@ -521,10 +521,7 @@ impl Step for Rustdoc {
         // If the rustdoc output is piped to e.g. `head -n1` we want the process
         // to be killed, rather than having an error bubble up and cause a
         // panic.
-        // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
-        if build_compiler.stage > 0 {
-            cargo.rustflag("-Zon-broken-pipe=kill");
-        }
+        cargo.rustflag("-Zon-broken-pipe=kill");
 
         let _guard = builder.msg_tool(
             Kind::Build,

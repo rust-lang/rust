@@ -145,8 +145,7 @@
 //! to `into_iter()` for boxed slices will defer to the slice implementation on editions before
 //! 2024:
 //!
-#![cfg_attr(bootstrap, doc = "```rust,edition2021,ignore")]
-#![cfg_attr(not(bootstrap), doc = "```rust,edition2021")]
+//! ```rust,edition2021
 //! // Rust 2015, 2018, and 2021:
 //!
 //! # #![allow(boxed_slice_into_iter)] // override our `deny(warnings)`

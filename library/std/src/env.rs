@@ -361,18 +361,10 @@ impl Error for VarError {
 /// }
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
-#[cfg(not(bootstrap))]
 #[rustc_deprecated_safe_2024]
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     _set_var(key.as_ref(), value.as_ref())
-}
-
-#[cfg(bootstrap)]
-#[allow(missing_docs)]
-#[stable(feature = "env", since = "1.0.0")]
-pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
-    unsafe { _set_var(key.as_ref(), value.as_ref()) }
 }
 
 unsafe fn _set_var(key: &OsStr, value: &OsStr) {
@@ -434,18 +426,10 @@ unsafe fn _set_var(key: &OsStr, value: &OsStr) {
 /// }
 /// assert!(env::var(key).is_err());
 /// ```
-#[cfg(not(bootstrap))]
 #[rustc_deprecated_safe_2024]
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn remove_var<K: AsRef<OsStr>>(key: K) {
     _remove_var(key.as_ref())
-}
-
-#[cfg(bootstrap)]
-#[allow(missing_docs)]
-#[stable(feature = "env", since = "1.0.0")]
-pub fn remove_var<K: AsRef<OsStr>>(key: K) {
-    unsafe { _remove_var(key.as_ref()) }
 }
 
 unsafe fn _remove_var(key: &OsStr) {

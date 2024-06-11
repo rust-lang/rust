@@ -1008,10 +1008,7 @@ pub fn rustc_cargo(
 
     // If the rustc output is piped to e.g. `head -n1` we want the process to be
     // killed, rather than having an error bubble up and cause a panic.
-    // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
-    if compiler.stage != 0 {
-        cargo.rustflag("-Zon-broken-pipe=kill");
-    }
+    cargo.rustflag("-Zon-broken-pipe=kill");
 
     // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
     // and may just be a time sink.

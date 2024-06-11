@@ -311,8 +311,7 @@ where
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
-#[cfg_attr(bootstrap, rustc_skip_array_during_method_dispatch)]
-#[cfg_attr(not(bootstrap), rustc_skip_during_method_dispatch(array, boxed_slice))]
+#[rustc_skip_during_method_dispatch(array, boxed_slice)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.

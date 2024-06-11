@@ -3,7 +3,6 @@
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics::aggregate_raw_ptr;
-#[cfg(not(bootstrap))]
 use crate::intrinsics::ptr_metadata;
 use crate::marker::Freeze;
 
@@ -96,17 +95,7 @@ pub trait Thin = Pointee<Metadata = ()>;
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]
 pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
-    #[cfg(bootstrap)]
-    {
-        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-        // and PtrComponents<T> have the same memory layouts. Only std can make this
-        // guarantee.
-        unsafe { PtrRepr { const_ptr: ptr }.components.metadata }
-    }
-    #[cfg(not(bootstrap))]
-    {
-        ptr_metadata(ptr)
-    }
+    ptr_metadata(ptr)
 }
 
 /// Forms a (possibly-wide) raw pointer from a data pointer and metadata.
@@ -138,33 +127,6 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
     metadata: <T as Pointee>::Metadata,
 ) -> *mut T {
     aggregate_raw_ptr(data_pointer, metadata)
-}
-
-#[repr(C)]
-#[cfg(bootstrap)]
-union PtrRepr<T: ?Sized> {
-    const_ptr: *const T,
-    mut_ptr: *mut T,
-    components: PtrComponents<T>,
-}
-
-#[repr(C)]
-#[cfg(bootstrap)]
-struct PtrComponents<T: ?Sized> {
-    data_pointer: *const (),
-    metadata: <T as Pointee>::Metadata,
-}
-
-// Manual impl needed to avoid `T: Copy` bound.
-#[cfg(bootstrap)]
-impl<T: ?Sized> Copy for PtrComponents<T> {}
-
-// Manual impl needed to avoid `T: Clone` bound.
-#[cfg(bootstrap)]
-impl<T: ?Sized> Clone for PtrComponents<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 /// The metadata for a `Dyn = dyn SomeTrait` trait object type.
