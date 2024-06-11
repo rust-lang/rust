@@ -323,8 +323,10 @@ impl Error for VarError {
 /// This function is also always safe to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, we strongly suggest
-/// not using `set_var` or `remove_var` at all. The exact requirement is: you
+/// In multi-threaded programs on other operating systems, the only safe option is
+/// to not use `set_var` or `remove_var` at all.
+///
+/// The exact requirement is: you
 /// must ensure that there are no other threads concurrently writing or
 /// *reading*(!) the environment through functions or global variables other
 /// than the ones in this module. The problem is that these operating systems
@@ -390,8 +392,10 @@ unsafe fn _set_var(key: &OsStr, value: &OsStr) {
 /// This function is also always safe to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, we strongly suggest
-/// not using `set_var` or `remove_var` at all. The exact requirement is: you
+/// In multi-threaded programs on other operating systems, the only safe option is
+/// to not use `set_var` or `remove_var` at all.
+///
+/// The exact requirement is: you
 /// must ensure that there are no other threads concurrently writing or
 /// *reading*(!) the environment through functions or global variables other
 /// than the ones in this module. The problem is that these operating systems
