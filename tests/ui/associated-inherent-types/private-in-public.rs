@@ -5,9 +5,9 @@
 #![crate_type = "lib"]
 
 pub type PubAlias0 = PubTy::PrivAssocTy;
-//~^ WARNING associated type `PubTy::PrivAssocTy` is more private than the item `PubAlias0`
+
 pub type PubAlias1 = PrivTy::PubAssocTy;
-//~^ WARNING type `PrivTy` is more private than the item `PubAlias1`
+
 pub type PubAlias2 = PubTy::PubAssocTy<PrivTy>;
 //~^ WARNING type `PrivTy` is more private than the item `PubAlias2`
 

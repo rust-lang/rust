@@ -623,7 +623,6 @@ ui/const-generics/issues/issue-80062.rs
 ui/const-generics/issues/issue-80375.rs
 ui/const-generics/issues/issue-82956.rs
 ui/const-generics/issues/issue-83249.rs
-ui/const-generics/issues/issue-83288.rs
 ui/const-generics/issues/issue-83466.rs
 ui/const-generics/issues/issue-83765.rs
 ui/const-generics/issues/issue-84659.rs

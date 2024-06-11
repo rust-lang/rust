@@ -40,6 +40,8 @@ use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 use {rustc_attr as attr, rustc_hir as hir};
 
@@ -1309,15 +1311,9 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         self.in_primary_interface = true;
         let ty = self.tcx.type_of(self.item_def_id).instantiate_identity();
 
-        // If `in_assoc_ty`, attempt to normalize `ty`.
-        // Ideally, we would normalize in all circumstances, but doing so
-        // currently causes some unexpected type errors.
-        let maybe_normalized_ty = if self.in_assoc_ty {
-            let param_env = self.tcx.param_env(self.item_def_id);
-            self.tcx.try_normalize_erasing_regions(param_env, ty).ok()
-        } else {
-            None
-        };
+        // Attempt to normalize `ty`
+        let param_env = self.tcx.param_env(self.item_def_id);
+        let maybe_normalized_ty = try_normalize(self.tcx, param_env, ty);
 
         self.visit(maybe_normalized_ty.unwrap_or(ty));
         self
@@ -1779,4 +1775,18 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     for id in tcx.hir().items() {
         checker.check_item(id);
     }
+}
+
+/// Attempts to deeply normalize `ty`.
+fn try_normalize<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Result<Ty<'tcx>, ()> {
+    let infcx = tcx.infer_ctxt().with_next_trait_solver(true).build();
+    let ocx = ObligationCtxt::new(&infcx);
+    let cause = ObligationCause::dummy();
+    let Ok(ty) = ocx.deeply_normalize(&cause, param_env, ty) else { return Err(()) };
+    let errors = ocx.select_all_or_error();
+    if errors.is_empty() { Ok(ty) } else { Err(()) }
 }
