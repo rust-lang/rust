@@ -82,6 +82,11 @@ pub fn htmldocck() -> Command {
     python
 }
 
+/// Returns the path for a local test file.
+pub fn path<P: AsRef<Path>>(p: P) -> PathBuf {
+    cwd().join(p.as_ref())
+}
+
 /// Path to the root rust-lang/rust source checkout.
 pub fn source_root() -> PathBuf {
     env_var("SOURCE_ROOT").into()
