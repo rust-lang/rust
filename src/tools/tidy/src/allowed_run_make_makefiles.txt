@@ -87,7 +87,6 @@ run-make/issue-88756-default-output/Makefile
 run-make/issue-97463-abi-param-passing/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
-run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
