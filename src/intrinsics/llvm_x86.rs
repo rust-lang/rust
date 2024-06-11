@@ -911,7 +911,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                         .span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
                 };
 
-            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+            let imm8 = imm8.to_u8();
 
             codegen_inline_asm_inner(
                 fx,
@@ -964,7 +964,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                         .span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
                 };
 
-            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+            let imm8 = imm8.to_u8();
 
             codegen_inline_asm_inner(
                 fx,
@@ -1012,7 +1012,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     );
                 };
 
-            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+            let imm8 = imm8.to_u8();
 
             codegen_inline_asm_inner(
                 fx,
@@ -1049,7 +1049,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     );
                 };
 
-            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+            let imm8 = imm8.to_u8();
 
             codegen_inline_asm_inner(
                 fx,
@@ -1204,7 +1204,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     .span_fatal(span, "Func argument for `_mm_sha1rnds4_epu32` is not a constant");
             };
 
-            let func = func.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", func));
+            let func = func.to_u8();
 
             codegen_inline_asm_inner(
                 fx,

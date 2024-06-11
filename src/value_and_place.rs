@@ -327,7 +327,7 @@ impl<'tcx> CValue<'tcx> {
 
         let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
-                let const_val = const_val.assert_bits(layout.size);
+                let const_val = const_val.to_bits(layout.size);
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
@@ -339,7 +339,7 @@ impl<'tcx> CValue<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnPtr(..) => {
-                let raw_val = const_val.size().truncate(const_val.assert_bits(layout.size));
+                let raw_val = const_val.size().truncate(const_val.to_bits(layout.size));
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F32) => {

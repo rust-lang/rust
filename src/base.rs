@@ -832,9 +832,10 @@ fn codegen_stmt<'tcx>(
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
-                        NullOp::OffsetOf(fields) => {
-                            layout.offset_of_subfield(fx, fields.iter()).bytes()
-                        }
+                        NullOp::OffsetOf(fields) => fx
+                            .tcx
+                            .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
+                            .bytes(),
                         NullOp::UbChecks => {
                             let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(
