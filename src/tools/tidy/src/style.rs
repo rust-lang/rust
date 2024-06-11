@@ -444,7 +444,9 @@ pub fn check(path: &Path, bad: &mut bool) {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
             if filename != "style.rs" {
-                if trimmed.contains("TODO") {
+                // Allow using TODO in diagnostic suggestions by marking the
+                // relevant line with `// ignore-tidy-todo`.
+                if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {
                     err(
                         "TODO is used for tasks that should be done before merging a PR; If you want to leave a message in the codebase use FIXME",
                     )
