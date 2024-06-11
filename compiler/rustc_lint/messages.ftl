@@ -233,6 +233,9 @@ lint_drop_trait_constraints =
 lint_dropping_copy_types = calls to `std::mem::drop` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`
 
+lint_dropping_mutable_references = calls to `std::mem::drop` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
+    .label = argument has type `{$arg_ty}`
+
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
 
@@ -268,6 +271,9 @@ lint_for_loops_over_fallibles =
     .use_question_mark = consider unwrapping the `Result` with `?` to iterate over its contents
 
 lint_forgetting_copy_types = calls to `std::mem::forget` with a value that implements `Copy` does nothing
+    .label = argument has type `{$arg_ty}`
+
+lint_forgetting_mutable_references = calls to `std::mem::forget` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
     .label = argument has type `{$arg_ty}`
 
 lint_forgetting_references = calls to `std::mem::forget` with a reference instead of an owned value does nothing

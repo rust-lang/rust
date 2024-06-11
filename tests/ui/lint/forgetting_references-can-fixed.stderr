@@ -45,7 +45,7 @@ LL -     forget(&&owned);
 LL +     let _ = &&owned;
    |
 
-error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+error: calls to `std::mem::forget` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
   --> $DIR/forgetting_references-can-fixed.rs:16:5
    |
 LL |     forget(&mut owned);
@@ -73,7 +73,7 @@ LL -     forget(&*reference1);
 LL +     let _ = &*reference1;
    |
 
-error: calls to `std::mem::forget` with a reference instead of an owned value does nothing
+error: calls to `std::mem::forget` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
   --> $DIR/forgetting_references-can-fixed.rs:23:5
    |
 LL |     forget(reference2);

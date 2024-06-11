@@ -685,6 +685,16 @@ pub struct DropRefDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_dropping_mutable_references)]
+pub struct DropMutRefDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_dropping_copy_types)]
 pub struct DropCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
@@ -697,6 +707,16 @@ pub struct DropCopyDiag<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_forgetting_references)]
 pub struct ForgetRefDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_forgetting_mutable_references)]
+pub struct ForgetMutRefDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
     pub label: Span,

@@ -1,12 +1,13 @@
-use rustc_hir::{Arm, Expr, ExprKind, Node, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, Mutability, Node, StmtKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::{
     lints::{
-        DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
-        UndroppedManuallyDropsSuggestion, UseLetUnderscoreIgnoreSuggestion,
+        DropCopyDiag, DropMutRefDiag, DropRefDiag, ForgetCopyDiag, ForgetMutRefDiag, ForgetRefDiag,
+        UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
+        UseLetUnderscoreIgnoreSuggestion,
     },
     LateContext, LateLintPass, LintContext,
 };
@@ -162,15 +163,26 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     UseLetUnderscoreIgnoreSuggestion::Note
                 }
             };
-            match fn_name {
-                sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
+            match (fn_name, arg_ty.ref_mutability()) {
+                (sym::mem_drop, Some(Mutability::Not)) if !drop_is_single_call_in_arm => {
                     cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
                         DropRefDiag { arg_ty, label: arg.span, sugg: let_underscore_ignore_sugg() },
                     );
                 }
-                sym::mem_forget if arg_ty.is_ref() => {
+                (sym::mem_drop, Some(Mutability::Mut)) if !drop_is_single_call_in_arm => {
+                    cx.emit_span_lint(
+                        DROPPING_REFERENCES,
+                        expr.span,
+                        DropMutRefDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
+                    );
+                }
+                (sym::mem_forget, Some(Mutability::Not)) => {
                     cx.emit_span_lint(
                         FORGETTING_REFERENCES,
                         expr.span,
@@ -181,7 +193,18 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         },
                     );
                 }
-                sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
+                (sym::mem_forget, Some(Mutability::Mut)) => {
+                    cx.emit_span_lint(
+                        FORGETTING_REFERENCES,
+                        expr.span,
+                        ForgetMutRefDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                        },
+                    );
+                }
+                (sym::mem_drop, _) if is_copy && !drop_is_single_call_in_arm => {
                     cx.emit_span_lint(
                         DROPPING_COPY_TYPES,
                         expr.span,
@@ -192,7 +215,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         },
                     );
                 }
-                sym::mem_forget if is_copy => {
+                (sym::mem_forget, _) if is_copy => {
                     cx.emit_span_lint(
                         FORGETTING_COPY_TYPES,
                         expr.span,
@@ -203,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         },
                     );
                 }
-                sym::mem_drop
+                (sym::mem_drop, _)
                     if let ty::Adt(adt, _) = arg_ty.kind()
                         && adt.is_manually_drop() =>
                 {

@@ -45,7 +45,7 @@ LL -     drop(&&owned1);
 LL +     let _ = &&owned1;
    |
 
-error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+error: calls to `std::mem::drop` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
   --> $DIR/dropping_references-can-fixed.rs:14:5
    |
 LL |     drop(&mut owned1);
@@ -73,7 +73,7 @@ LL -     drop(reference1);
 LL +     let _ = reference1;
    |
 
-error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+error: calls to `std::mem::drop` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
   --> $DIR/dropping_references-can-fixed.rs:21:5
    |
 LL |     drop(reference2);
