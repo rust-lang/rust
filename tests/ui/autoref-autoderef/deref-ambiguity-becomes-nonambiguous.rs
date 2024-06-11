@@ -29,7 +29,6 @@ impl<F> Deref for Value<Rc<F>> {
 
 fn main() {
     let var_fn = Value::wrap();
-    //~^ ERROR type annotations needed for `Value<Rc<_>>`
 
     // The combination of `Value: Wrap` obligation plus the autoderef steps
     // (caused by the `Deref` impl above) actually means that the self type
@@ -37,4 +36,5 @@ fn main() {
     // However, that's only known to us on the error path -- we still need
     // to emit an ambiguity error, though.
     let _ = var_fn.clone();
+    //~^ ERROR: the size for values of type `dyn Fn(_, _) -> _` cannot be known
 }

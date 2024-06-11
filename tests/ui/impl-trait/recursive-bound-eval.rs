@@ -3,6 +3,7 @@
 
 //@revisions: next current
 //@[next] compile-flags: -Znext-solver
+//@[current] check-pass
 
 pub trait Parser<E> {
     fn parse(&self) -> E;
@@ -15,10 +16,8 @@ impl<E, T: Fn() -> E> Parser<E> for T {
 }
 
 pub fn recursive_fn<E>() -> impl Parser<E> {
-    //[current]~^ ERROR: cycle detected
     move || recursive_fn().parse()
-    //~^ ERROR: type annotations needed
-    //[current]~^^ ERROR: no method named `parse` found for opaque type
+    //[next]~^ ERROR: type annotations needed
 }
 
 fn main() {}
