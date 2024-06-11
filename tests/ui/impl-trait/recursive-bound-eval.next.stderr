@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/recursive-bound-eval.rs:20:13
+   |
+LL |     move || recursive_fn().parse()
+   |             ^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.
