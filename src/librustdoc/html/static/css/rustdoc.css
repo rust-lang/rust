@@ -1444,7 +1444,8 @@ a.test-arrow:hover {
 	position: relative;
 }
 
-.code-header a.tooltip:hover {
+.code-header a.tooltip:hover,
+.search-results a.tooltip:hover {
 	color: var(--link-color);
 }
 
