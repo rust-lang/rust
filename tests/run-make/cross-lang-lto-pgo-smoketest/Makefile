@@ -1,4 +1,7 @@
-# needs-matching-clang
+# needs-force-clang-based-tests
+
+# FIXME(#126180): This test doesn't actually run anywhere, because the only
+# CI job that sets RUSTBUILD_FORCE_CLANG_BASED_TESTS runs very few tests.
 
 # This test makes sure that cross-language inlining can be used in conjunction
 # with profile-guided optimization. The test only tests that the whole workflow
