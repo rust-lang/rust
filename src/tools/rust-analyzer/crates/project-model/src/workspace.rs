@@ -76,7 +76,7 @@ pub enum ProjectWorkspaceKind {
         /// Environment variables set in the `.cargo/config` file.
         cargo_config_extra_env: FxHashMap<String, String>,
     },
-    /// Project workspace was manually specified using a `rust-project.json` file.
+    /// Project workspace was specified using a `rust-project.json` file.
     Json(ProjectJson),
     // FIXME: The primary limitation of this approach is that the set of detached files needs to be fixed at the beginning.
     // That's not the end user experience we should strive for.

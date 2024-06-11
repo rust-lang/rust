@@ -14,7 +14,6 @@
 pub mod cli;
 
 mod caps;
-mod cargo_target_spec;
 mod diagnostics;
 mod diff;
 mod dispatch;
@@ -24,6 +23,7 @@ mod main_loop;
 mod mem_docs;
 mod op_queue;
 mod reload;
+mod target_spec;
 mod task_pool;
 mod version;
 
