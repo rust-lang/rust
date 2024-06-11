@@ -557,8 +557,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // for the branching codepaths that aren't covered, to point at them.
         let map = self.infcx.tcx.hir();
         let body = map.body_owned_by(self.mir_def_id());
-
-        let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
+        let mut visitor =
+            ConditionVisitor { tcx: self.infcx.tcx, spans: &spans, name: &name, errors: vec![] };
         visitor.visit_body(&body);
 
         let mut show_assign_sugg = false;
@@ -4372,13 +4372,14 @@ impl<'hir> Visitor<'hir> for BreakFinder {
 
 /// Given a set of spans representing statements initializing the relevant binding, visit all the
 /// function expressions looking for branching code paths that *do not* initialize the binding.
-struct ConditionVisitor<'b> {
+struct ConditionVisitor<'b, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     spans: &'b [Span],
     name: &'b str,
     errors: Vec<(Span, String)>,
 }
 
-impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
+impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         match ex.kind {
             hir::ExprKind::If(cond, body, None) => {
@@ -4464,6 +4465,12 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                     ),
                                 ));
                             } else if let Some(guard) = &arm.guard {
+                                if matches!(
+                                    self.tcx.hir_node(arm.body.hir_id),
+                                    hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
+                                ) {
+                                    continue;
+                                }
                                 self.errors.push((
                                     arm.pat.span.to(guard.span),
                                     format!(
@@ -4473,6 +4480,12 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                     ),
                                 ));
                             } else {
+                                if matches!(
+                                    self.tcx.hir_node(arm.body.hir_id),
+                                    hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
+                                ) {
+                                    continue;
+                                }
                                 self.errors.push((
                                     arm.pat.span,
                                     format!(
