@@ -10,6 +10,8 @@
 
 use core::any::Any;
 use core::borrow;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -30,8 +32,6 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
@@ -2219,7 +2219,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
             let mut arc = Self::new_uninit_in(this.alloc.clone());
             unsafe {
                 let data = Arc::get_mut_unchecked(&mut arc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
+                (**this).clone_to_uninit(data.as_mut_ptr());
                 *this = arc.assume_init();
             }
         } else if this.inner().weak.load(Relaxed) != 1 {

@@ -249,6 +249,8 @@ use std::boxed::Box;
 use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -268,8 +270,6 @@ use core::slice::from_raw_parts_mut;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
@@ -1810,7 +1810,7 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
             let mut rc = Self::new_uninit_in(this.alloc.clone());
             unsafe {
                 let data = Rc::get_mut_unchecked(&mut rc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
+                (**this).clone_to_uninit(data.as_mut_ptr());
                 *this = rc.assume_init();
             }
         } else if Rc::weak_count(this) != 0 {
