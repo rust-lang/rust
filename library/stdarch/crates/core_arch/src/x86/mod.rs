@@ -845,6 +845,10 @@ mod avx512cd;
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512cd::*;
 
+mod avx512dq;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub use self::avx512dq::*;
+
 mod avx512ifma;
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512ifma::*;
@@ -894,5 +898,6 @@ mod f16c;
 pub use self::f16c::*;
 
 mod avx512bf16;
+
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512bf16::*;
