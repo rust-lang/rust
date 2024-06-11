@@ -1,4 +1,4 @@
-//@ build-pass
+//@ known-bug: rust-lang/rust#83288
 
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
