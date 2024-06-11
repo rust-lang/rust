@@ -274,9 +274,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
 
-        let v = scalar.to_bits(src_layout.size)?;
-        let v = if signed { self.sign_extend(v, src_layout) } else { v };
-        trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
+        let v = match src_layout.ty.kind() {
+            Uint(_) | RawPtr(..) | FnPtr(..) => scalar.to_uint(src_layout.size)?,
+            Int(_) => scalar.to_int(src_layout.size)? as u128, // we will cast back to `i128` below if the sign matters
+            Bool => scalar.to_bool()?.into(),
+            Char => scalar.to_char()?.into(),
+            _ => span_bug!(self.cur_span(), "invalid int-like cast from {}", src_layout.ty),
+        };
 
         Ok(match *cast_ty.kind() {
             // int -> int
