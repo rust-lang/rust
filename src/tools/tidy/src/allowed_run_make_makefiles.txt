@@ -156,7 +156,6 @@ run-make/optimization-remarks-dir/Makefile
 run-make/output-filename-conflicts-with-directory/Makefile
 run-make/output-filename-overwrites-input/Makefile
 run-make/output-type-permutations/Makefile
-run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
 run-make/overwrite-input/Makefile
 run-make/panic-abort-eh_frame/Makefile

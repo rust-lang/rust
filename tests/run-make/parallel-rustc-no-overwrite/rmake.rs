@@ -6,17 +6,19 @@
 // See https://github.com/rust-lang/rust/pull/83846
 
 use run_make_support::{fs_wrapper, rustc};
+use std::sync::{Arc, Barrier};
 use std::thread;
 
 fn main() {
-    fs_wrapper::create_file("lib.rs");
-    let handle1 = thread::spawn(move || {
-        rustc().crate_type("lib").arg("-Ztemps-dir=temp1").input("lib.rs");
-    });
-
-    let handle2 = thread::spawn(move || {
-        rustc().crate_type("staticlib").arg("-Ztemps-dir=temp2").input("lib.rs");
-    });
-    handle1.join().expect("lib thread panicked");
-    handle2.join().expect("staticlib thread panicked");
+    let barrier = Arc::new(Barrier::new(2));
+    let handle = {
+        let barrier = Arc::clone(&barrier);
+        thread::spawn(move || {
+            barrier.wait();
+            rustc().crate_type("lib").arg("-Ztemps-dir=temp1").input("lib.rs");
+        })
+    };
+    barrier.wait();
+    rustc().crate_type("staticlib").arg("-Ztemps-dir=temp2").input("lib.rs");
+    handle.join().expect("lib thread panicked");
 }
