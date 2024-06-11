@@ -1,3 +1,131 @@
+Version 1.79.0 (2024-06-13)
+==========================
+
+<a id="1.79.0-Language"></a>
+
+Language
+--------
+- [Stabilize inline `const {}` expressions.](https://github.com/rust-lang/rust/pull/104087/)
+- [Prevent opaque types being instantiated twice with different regions within the same function.](https://github.com/rust-lang/rust/pull/116935/)
+- [Stabilize WebAssembly target features that are in phase 4 and 5.](https://github.com/rust-lang/rust/pull/117457/)
+- [Add the `redundant_lifetimes` lint to detect lifetimes which are semantically redundant.](https://github.com/rust-lang/rust/pull/118391/)
+- [Stabilize the `unnameable_types` lint for public types that can't be named.](https://github.com/rust-lang/rust/pull/120144/)
+- [Enable debuginfo in macros, and stabilize `-C collapse-macro-debuginfo` and `#[collapse_debuginfo]`.](https://github.com/rust-lang/rust/pull/120845/)
+- [Propagate temporary lifetime extension into `if` and `match` expressions.](https://github.com/rust-lang/rust/pull/121346/)
+- [Restrict promotion of `const fn` calls.](https://github.com/rust-lang/rust/pull/121557/)
+- [Warn against refining impls of crate-private traits with `refining_impl_trait` lint.](https://github.com/rust-lang/rust/pull/121720/)
+- [Stabilize associated type bounds (RFC 2289).](https://github.com/rust-lang/rust/pull/122055/)
+- [Stabilize importing `main` from other modules or crates.](https://github.com/rust-lang/rust/pull/122060/)
+- [Check return types of function types for well-formedness](https://github.com/rust-lang/rust/pull/115538)
+- [Rework `impl Trait` lifetime inference](https://github.com/rust-lang/rust/pull/116891/)
+- [Change inductive trait solver cycles to be ambiguous](https://github.com/rust-lang/rust/pull/122791)
+
+<a id="1.79.0-Compiler"></a>
+
+Compiler
+--------
+- [Define `-C strip` to only affect binaries, not artifacts like `.pdb`.](https://github.com/rust-lang/rust/pull/115120/)
+- [Stabilize `-Crelro-level` for controlling runtime link hardening.](https://github.com/rust-lang/rust/pull/121694/)
+- [Stabilize checking of `cfg` names and values at compile-time with `--check-cfg`.](https://github.com/rust-lang/rust/pull/123501/)
+  *Note that this only stabilizes the compiler part, the Cargo part is still unstable in this release.*
+- [Add `aarch64-apple-visionos` and `aarch64-apple-visionos-sim` tier 3 targets.](https://github.com/rust-lang/rust/pull/121419/)
+- [Add `riscv32ima-unknown-none-elf` tier 3 target.](https://github.com/rust-lang/rust/pull/122696/)
+- [Promote several Windows targets to tier 2](https://github.com/rust-lang/rust/pull/121712): `aarch64-pc-windows-gnullvm`, `i686-pc-windows-gnullvm`, and `x86_64-pc-windows-gnullvm`.
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+<a id="1.79.0-Libraries"></a>
+
+Libraries
+---------
+
+- [Implement `FromIterator` for `(impl Default + Extend, impl Default + Extend)`.](https://github.com/rust-lang/rust/pull/107462/)
+- [Implement `{Div,Rem}Assign<NonZero<X>>` on `X`.](https://github.com/rust-lang/rust/pull/121952/)
+- [Document overrides of `clone_from()` in core/std.](https://github.com/rust-lang/rust/pull/122201/)
+- [Link MSVC default lib in core.](https://github.com/rust-lang/rust/pull/122268/)
+- [Caution against using `transmute` between pointers and integers.](https://github.com/rust-lang/rust/pull/122379/)
+- [Enable frame pointers for the standard library.](https://github.com/rust-lang/rust/pull/122646/)
+
+<a id="1.79.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`{integer}::unchecked_add`](https://doc.rust-lang.org/stable/core/primitive.i32.html#method.unchecked_add)
+- [`{integer}::unchecked_mul`](https://doc.rust-lang.org/stable/core/primitive.i32.html#method.unchecked_mul)
+- [`{integer}::unchecked_sub`](https://doc.rust-lang.org/stable/core/primitive.i32.html#method.unchecked_sub)
+- [`<[T]>::split_at_unchecked`](https://doc.rust-lang.org/stable/core/primitive.slice.html#method.split_at_unchecked)
+- [`<[T]>::split_at_mut_unchecked`](https://doc.rust-lang.org/stable/core/primitive.slice.html#method.split_at_mut_unchecked)
+- [`<[u8]>::utf8_chunks`](https://doc.rust-lang.org/stable/core/primitive.slice.html#method.utf8_chunks)
+- [`str::Utf8Chunks`](https://doc.rust-lang.org/stable/core/str/struct.Utf8Chunks.html)
+- [`str::Utf8Chunk`](https://doc.rust-lang.org/stable/core/str/struct.Utf8Chunk.html)
+- [`<*const T>::is_aligned`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.is_aligned)
+- [`<*mut T>::is_aligned`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.is_aligned-1)
+- [`NonNull::is_aligned`](https://doc.rust-lang.org/stable/core/ptr/struct.NonNull.html#method.is_aligned)
+- [`<*const [T]>::len`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.len)
+- [`<*mut [T]>::len`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.len-1)
+- [`<*const [T]>::is_empty`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.is_empty)
+- [`<*mut [T]>::is_empty`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.is_empty-1)
+- [`NonNull::<[T]>::is_empty`](https://doc.rust-lang.org/stable/core/ptr/struct.NonNull.html#method.is_empty)
+- [`CStr::count_bytes`](https://doc.rust-lang.org/stable/core/ffi/c_str/struct.CStr.html#method.count_bytes)
+- [`io::Error::downcast`](https://doc.rust-lang.org/stable/std/io/struct.Error.html#method.downcast)
+- [`num::NonZero<T>`](https://doc.rust-lang.org/stable/core/num/struct.NonZero.html)
+- [`path::absolute`](https://doc.rust-lang.org/stable/std/path/fn.absolute.html)
+- [`proc_macro::Literal::byte_character`](https://doc.rust-lang.org/stable/proc_macro/struct.Literal.html#method.byte_character)
+- [`proc_macro::Literal::c_string`](https://doc.rust-lang.org/stable/proc_macro/struct.Literal.html#method.c_string)
+
+These APIs are now stable in const contexts:
+
+- [`Atomic*::into_inner`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicUsize.html#method.into_inner)
+- [`io::Cursor::new`](https://doc.rust-lang.org/stable/std/io/struct.Cursor.html#method.new)
+- [`io::Cursor::get_ref`](https://doc.rust-lang.org/stable/std/io/struct.Cursor.html#method.get_ref)
+- [`io::Cursor::position`](https://doc.rust-lang.org/stable/std/io/struct.Cursor.html#method.position)
+- [`io::empty`](https://doc.rust-lang.org/stable/std/io/fn.empty.html)
+- [`io::repeat`](https://doc.rust-lang.org/stable/std/io/fn.repeat.html)
+- [`io::sink`](https://doc.rust-lang.org/stable/std/io/fn.sink.html)
+- [`panic::Location::caller`](https://doc.rust-lang.org/stable/std/panic/struct.Location.html#method.caller)
+- [`panic::Location::file`](https://doc.rust-lang.org/stable/std/panic/struct.Location.html#method.file)
+- [`panic::Location::line`](https://doc.rust-lang.org/stable/std/panic/struct.Location.html#method.line)
+- [`panic::Location::column`](https://doc.rust-lang.org/stable/std/panic/struct.Location.html#method.column)
+
+<a id="1.79.0-Cargo"></a>
+
+Cargo
+-----
+
+- [Prevent dashes in `lib.name`, always normalizing to `_`.](https://github.com/rust-lang/cargo/pull/12783/)
+- [Stabilize MSRV-aware version requirement selection in `cargo add`.](https://github.com/rust-lang/cargo/pull/13608/)
+- [Switch to using `gitoxide` by default for listing files.](https://github.com/rust-lang/cargo/pull/13696/)
+- [Error on `[project]` in Edition 2024; `cargo fix --edition` will change it to `[package]`.](https://github.com/rust-lang/cargo/pull/13747/)
+
+<a id="1.79.0-Rustdoc"></a>
+
+Rustdoc
+-----
+
+- [Always display stability version even if it's the same as the containing item.](https://github.com/rust-lang/rust/pull/118441/)
+- [Show a single search result for items with multiple paths.](https://github.com/rust-lang/rust/pull/119912/)
+- [Support typing `/` in docs to begin a search.](https://github.com/rust-lang/rust/pull/123355/)
+
+<a id="1.79.0-Misc"></a>
+
+Misc
+----
+
+<a id="1.79.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+
+- [Update the minimum external LLVM to 17.](https://github.com/rust-lang/rust/pull/122649/)
+- [`RustcEncodable` and `RustcDecodable` are soft-destabilized, to be removed
+  from the prelude in next edition.](https://github.com/rust-lang/rust/pull/116016/)
+- [The `wasm_c_abi` future-incompatibility lint will warn about use of the
+  non-spec-compliant C ABI.](https://github.com/rust-lang/rust/pull/117918/)
+  Use `wasm-bindgen v0.2.88` to generate forward-compatible bindings.
+- [Check return types of function types for well-formedness](https://github.com/rust-lang/rust/pull/115538)
+
 Version 1.78.0 (2024-05-02)
 ==========================
 

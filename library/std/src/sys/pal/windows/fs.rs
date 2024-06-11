@@ -18,7 +18,8 @@ use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
-use super::{api, to_u16s, IoResult};
+use super::api::{self, WinError};
+use super::{to_u16s, IoResult};
 use crate::sys::path::maybe_verbatim;
 
 pub struct File {
@@ -130,10 +131,11 @@ impl Iterator for ReadDir {
             let mut wfd = mem::zeroed();
             loop {
                 if c::FindNextFileW(self.handle.0, &mut wfd) == 0 {
-                    if api::get_last_error().code == c::ERROR_NO_MORE_FILES {
-                        return None;
-                    } else {
-                        return Some(Err(Error::last_os_error()));
+                    match api::get_last_error() {
+                        WinError::NO_MORE_FILES => return None,
+                        WinError { code } => {
+                            return Some(Err(Error::from_raw_os_error(code as i32)));
+                        }
                     }
                 }
                 if let Some(e) = DirEntry::new(&self.root, &wfd) {
@@ -244,8 +246,6 @@ impl OpenOptions {
     }
 
     fn get_access_mode(&self) -> io::Result<c::DWORD> {
-        const ERROR_INVALID_PARAMETER: i32 = 87;
-
         match (self.read, self.write, self.append, self.access_mode) {
             (.., Some(mode)) => Ok(mode),
             (true, false, false, None) => Ok(c::GENERIC_READ),
@@ -255,23 +255,23 @@ impl OpenOptions {
             (true, _, true, None) => {
                 Ok(c::GENERIC_READ | (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA))
             }
-            (false, false, false, None) => Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER)),
+            (false, false, false, None) => {
+                Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32))
+            }
         }
     }
 
     fn get_creation_mode(&self) -> io::Result<c::DWORD> {
-        const ERROR_INVALID_PARAMETER: i32 = 87;
-
         match (self.write, self.append) {
             (true, false) => {}
             (false, false) => {
                 if self.truncate || self.create || self.create_new {
-                    return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
+                    return Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32));
                 }
             }
             (_, true) => {
                 if self.truncate && !self.create_new {
-                    return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
+                    return Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32));
                 }
             }
         }
@@ -315,7 +315,7 @@ impl File {
             // Manual truncation. See #115745.
             if opts.truncate
                 && creation == c::OPEN_ALWAYS
-                && unsafe { c::GetLastError() } == c::ERROR_ALREADY_EXISTS
+                && api::get_last_error() == WinError::ALREADY_EXISTS
             {
                 unsafe {
                     // This originally used `FileAllocationInfo` instead of
@@ -845,7 +845,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
             // We make a special exception for `STATUS_DELETE_PENDING` because
             // otherwise this will be mapped to `ERROR_ACCESS_DENIED` which is
             // very unhelpful.
-            Err(io::Error::from_raw_os_error(c::ERROR_DELETE_PENDING as _))
+            Err(io::Error::from_raw_os_error(c::ERROR_DELETE_PENDING as i32))
         } else if status == c::STATUS_INVALID_PARAMETER
             && ATTRIBUTES.load(Ordering::Relaxed) == c::OBJ_DONT_REPARSE
         {
@@ -1097,7 +1097,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             //
             // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
             let last_error = api::get_last_error();
-            if last_error.code == c::ERROR_FILE_NOT_FOUND {
+            if last_error == WinError::FILE_NOT_FOUND {
                 return Ok(ReadDir {
                     handle: FindNextFileHandle(find_handle),
                     root: Arc::new(root),

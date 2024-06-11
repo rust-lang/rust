@@ -282,8 +282,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
-                let variant_index =
-                    VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
+                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
                 PatKind::Variant {
                     adt_def: *adt_def,
                     args,
@@ -371,8 +370,8 @@ impl<'tcx> ConstToPat<'tcx> {
                 let v = cv.unwrap_leaf();
                 let is_nan = match flt {
                     ty::FloatTy::F16 => unimplemented!("f16_f128"),
-                    ty::FloatTy::F32 => v.try_to_f32().unwrap().is_nan(),
-                    ty::FloatTy::F64 => v.try_to_f64().unwrap().is_nan(),
+                    ty::FloatTy::F32 => v.to_f32().is_nan(),
+                    ty::FloatTy::F64 => v.to_f64().is_nan(),
                     ty::FloatTy::F128 => unimplemented!("f16_f128"),
                 };
                 if is_nan {

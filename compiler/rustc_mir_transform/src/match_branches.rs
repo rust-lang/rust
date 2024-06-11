@@ -372,7 +372,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         }
 
         fn int_equal(l: ScalarInt, r: impl Into<u128>, size: Size) -> bool {
-            l.assert_int(l.size()) == ScalarInt::try_from_uint(r, size).unwrap().assert_int(size)
+            l.to_bits_unchecked() == ScalarInt::try_from_uint(r, size).unwrap().to_bits_unchecked()
         }
 
         // We first compare the two branches, and then the other branches need to fulfill the same conditions.

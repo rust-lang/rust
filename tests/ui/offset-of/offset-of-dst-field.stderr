@@ -81,6 +81,15 @@ LL - fn generic_with_maybe_sized<T: ?Sized>() -> usize {
 LL + fn generic_with_maybe_sized<T>() -> usize {
    |
 
-error: aborting due to 8 previous errors
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:54:16
+   |
+LL |     offset_of!(([u8], u8), 1);
+   |                ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

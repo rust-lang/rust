@@ -2385,11 +2385,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
         let len = match len.eval(self.tcx, self.param_env, span) {
-            // FIXME(BoxyUwU): Assert the `Ty` is a `usize`?
             Ok((_, val)) => val
                 .try_to_scalar()
-                .and_then(|scalar| scalar.try_to_int().ok())
-                .and_then(|int| int.try_to_target_usize(self.tcx).ok()),
+                .and_then(|scalar| scalar.try_to_scalar_int().ok())
+                .map(|int| int.to_target_usize(self.tcx)),
             Err(ErrorHandled::Reported(..)) => {
                 let guar = self.error_scrutinee_unfixed_length(span);
                 return (Some(Ty::new_error(self.tcx, guar)), arr_ty);

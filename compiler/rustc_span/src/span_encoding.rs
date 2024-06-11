@@ -87,6 +87,45 @@ pub struct Span {
     ctxt_or_parent_or_marker: u16,
 }
 
+impl Span {
+    #[inline]
+    fn data_inline_ctxt(self) -> SpanData {
+        let len = self.len_with_tag_or_marker as u32;
+        debug_assert!(len <= MAX_LEN);
+        SpanData {
+            lo: BytePos(self.lo_or_index),
+            hi: BytePos(self.lo_or_index.debug_strict_add(len)),
+            ctxt: SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32),
+            parent: None,
+        }
+    }
+    #[inline]
+    fn data_inline_parent(self) -> SpanData {
+        let len = (self.len_with_tag_or_marker & !PARENT_TAG) as u32;
+        debug_assert!(len <= MAX_LEN);
+        let parent = LocalDefId {
+            local_def_index: DefIndex::from_u32(self.ctxt_or_parent_or_marker as u32),
+        };
+        SpanData {
+            lo: BytePos(self.lo_or_index),
+            hi: BytePos(self.lo_or_index.debug_strict_add(len)),
+            ctxt: SyntaxContext::root(),
+            parent: Some(parent),
+        }
+    }
+    #[inline]
+    fn data_partially_interned(self) -> SpanData {
+        SpanData {
+            ctxt: SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32),
+            ..with_span_interner(|interner| interner.spans[self.lo_or_index as usize])
+        }
+    }
+    #[inline]
+    fn data_interned(self) -> SpanData {
+        with_span_interner(|interner| interner.spans[self.lo_or_index as usize])
+    }
+}
+
 // `MAX_LEN` is chosen so that `PARENT_TAG | MAX_LEN` is distinct from
 // `BASE_LEN_INTERNED_MARKER`. (If `MAX_LEN` was 1 higher, this wouldn't be true.)
 const MAX_LEN: u32 = 0b0111_1111_1111_1110;
@@ -111,42 +150,49 @@ impl Span {
             std::mem::swap(&mut lo, &mut hi);
         }
 
-        let (lo2, len, ctxt2) = (lo.0, hi.0 - lo.0, ctxt.as_u32());
-
+        // Small len may enable one of fully inline formats (or may not).
+        let (len, ctxt32) = (hi.0 - lo.0, ctxt.as_u32());
         if len <= MAX_LEN {
-            if ctxt2 <= MAX_CTXT && parent.is_none() {
+            if ctxt32 <= MAX_CTXT && parent.is_none() {
                 // Inline-context format.
                 return Span {
-                    lo_or_index: lo2,
+                    lo_or_index: lo.0,
                     len_with_tag_or_marker: len as u16,
-                    ctxt_or_parent_or_marker: ctxt2 as u16,
+                    ctxt_or_parent_or_marker: ctxt32 as u16,
                 };
-            } else if ctxt2 == SyntaxContext::root().as_u32()
+            } else if ctxt32 == 0
                 && let Some(parent) = parent
-                && let parent2 = parent.local_def_index.as_u32()
-                && parent2 <= MAX_CTXT
+                && let parent32 = parent.local_def_index.as_u32()
+                && parent32 <= MAX_CTXT
             {
                 // Inline-parent format.
                 return Span {
-                    lo_or_index: lo2,
+                    lo_or_index: lo.0,
                     len_with_tag_or_marker: PARENT_TAG | len as u16,
-                    ctxt_or_parent_or_marker: parent2 as u16,
+                    ctxt_or_parent_or_marker: parent32 as u16,
                 };
             }
         }
 
-        // Partially-interned or fully-interned format.
-        let index =
-            with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
-        let ctxt_or_parent_or_marker = if ctxt2 <= MAX_CTXT {
-            ctxt2 as u16 // partially-interned
-        } else {
-            CTXT_INTERNED_MARKER // fully-interned
+        // Otherwise small ctxt may enable the partially inline format.
+        let index = |ctxt| {
+            with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }))
         };
-        Span {
-            lo_or_index: index,
-            len_with_tag_or_marker: BASE_LEN_INTERNED_MARKER,
-            ctxt_or_parent_or_marker,
+        if ctxt32 <= MAX_CTXT {
+            // Partially-interned format.
+            Span {
+                // Interned ctxt should never be read, so it can use any value.
+                lo_or_index: index(SyntaxContext::from_u32(u32::MAX)),
+                len_with_tag_or_marker: BASE_LEN_INTERNED_MARKER,
+                ctxt_or_parent_or_marker: ctxt32 as u16,
+            }
+        } else {
+            // Interned format.
+            Span {
+                lo_or_index: index(ctxt),
+                len_with_tag_or_marker: BASE_LEN_INTERNED_MARKER,
+                ctxt_or_parent_or_marker: CTXT_INTERNED_MARKER,
+            }
         }
     }
 
@@ -166,34 +212,17 @@ impl Span {
         if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
             if self.len_with_tag_or_marker & PARENT_TAG == 0 {
                 // Inline-context format.
-                let len = self.len_with_tag_or_marker as u32;
-                debug_assert!(len <= MAX_LEN);
-                SpanData {
-                    lo: BytePos(self.lo_or_index),
-                    hi: BytePos(self.lo_or_index.debug_strict_add(len)),
-                    ctxt: SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32),
-                    parent: None,
-                }
+                self.data_inline_ctxt()
             } else {
                 // Inline-parent format.
-                let len = (self.len_with_tag_or_marker & !PARENT_TAG) as u32;
-                debug_assert!(len <= MAX_LEN);
-                let parent = LocalDefId {
-                    local_def_index: DefIndex::from_u32(self.ctxt_or_parent_or_marker as u32),
-                };
-                SpanData {
-                    lo: BytePos(self.lo_or_index),
-                    hi: BytePos(self.lo_or_index.debug_strict_add(len)),
-                    ctxt: SyntaxContext::root(),
-                    parent: Some(parent),
-                }
+                self.data_inline_parent()
             }
+        } else if self.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
+            // Partially-interned format.
+            self.data_partially_interned()
         } else {
-            // Fully-interned or partially-interned format. In either case,
-            // the interned value contains all the data, so we don't need to
-            // distinguish them.
-            let index = self.lo_or_index;
-            with_span_interner(|interner| interner.spans[index as usize])
+            // Interned format.
+            self.data_interned()
         }
     }
 
@@ -214,27 +243,73 @@ impl Span {
         }
     }
 
+    // For optimization we are interested in cases in which the context is inline and the context
+    // update doesn't change format. All non-inline or format changing scenarios require accessing
+    // interner and can fall back to `Span::new`.
+    #[inline]
+    pub fn update_ctxt(&mut self, update: impl FnOnce(SyntaxContext) -> SyntaxContext) {
+        let (updated_ctxt32, data);
+        if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
+            if self.len_with_tag_or_marker & PARENT_TAG == 0 {
+                // Inline-context format.
+                updated_ctxt32 =
+                    update(SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)).as_u32();
+                // Any small new context including zero will preserve the format.
+                if updated_ctxt32 <= MAX_CTXT {
+                    self.ctxt_or_parent_or_marker = updated_ctxt32 as u16;
+                    return;
+                }
+                data = self.data_inline_ctxt();
+            } else {
+                // Inline-parent format.
+                updated_ctxt32 = update(SyntaxContext::root()).as_u32();
+                // Only if the new context is zero the format will be preserved.
+                if updated_ctxt32 == 0 {
+                    // Do nothing.
+                    return;
+                }
+                data = self.data_inline_parent();
+            }
+        } else if self.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
+            // Partially-interned format.
+            updated_ctxt32 =
+                update(SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)).as_u32();
+            // Any small new context excluding zero will preserve the format.
+            // Zero may change the format to `InlineParent` if parent and len are small enough.
+            if updated_ctxt32 <= MAX_CTXT && updated_ctxt32 != 0 {
+                self.ctxt_or_parent_or_marker = updated_ctxt32 as u16;
+                return;
+            }
+            data = self.data_partially_interned();
+        } else {
+            // Interned format.
+            data = self.data_interned();
+            updated_ctxt32 = update(data.ctxt).as_u32();
+        }
+
+        // We could not keep the span in the same inline format, fall back to the complete logic.
+        *self = data.with_ctxt(SyntaxContext::from_u32(updated_ctxt32));
+    }
+
     // Returns either syntactic context, if it can be retrieved without taking the interner lock,
     // or an index into the interner if it cannot.
     #[inline]
     fn inline_ctxt(self) -> Result<SyntaxContext, usize> {
-        Ok(if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
+        if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
             if self.len_with_tag_or_marker & PARENT_TAG == 0 {
                 // Inline-context format.
-                SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)
+                Ok(SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32))
             } else {
-                // Inline-parent format. We know that the SyntaxContext is root.
-                SyntaxContext::root()
+                // Inline-parent format.
+                Ok(SyntaxContext::root())
             }
         } else if self.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
-            // Partially-interned format. This path avoids looking up the
-            // interned value, and is the whole point of the
-            // partially-interned format.
-            SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)
+            // Partially-interned format.
+            Ok(SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32))
         } else {
-            // Fully-interned format.
-            return Err(self.lo_or_index as usize);
-        })
+            // Interned format.
+            Err(self.lo_or_index as usize)
+        }
     }
 
     /// This function is used as a fast path when decoding the full `SpanData` is not necessary.

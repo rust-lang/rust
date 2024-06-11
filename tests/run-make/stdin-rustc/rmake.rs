@@ -21,7 +21,7 @@ fn main() {
     );
 
     // echo $NOT_UTF8 | rustc -
-    let output = rustc().arg("-").stdin(NOT_UTF8).run_fail();
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("error: couldn't read from stdin, as it did not contain valid UTF-8"));
+    rustc().arg("-").stdin(NOT_UTF8).run_fail().assert_stderr_contains(
+        "error: couldn't read from stdin, as it did not contain valid UTF-8",
+    );
 }

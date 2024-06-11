@@ -1,7 +1,9 @@
-use run_make_support::{diff, rustc};
+use run_make_support::rustc;
 
 fn main() {
-    let output = rustc().print("crate-name").run_fail_assert_exit_code(1);
-
-    diff().expected_file("no-input-file.stderr").actual_text("output", output.stderr).run();
+    rustc()
+        .print("crate-name")
+        .run_fail()
+        .assert_exit_code(1)
+        .assert_stderr_equals("error: no input filename given");
 }

@@ -10,14 +10,10 @@ use run_make_support::{aux_build, rustc, source_root};
 fn main() {
     aux_build().input("stable.rs").emit("metadata").run();
 
-    let output = rustc()
-        .input("main.rs")
-        .emit("metadata")
-        .extern_("stable", "libstable.rmeta")
-        .command_output();
+    let output =
+        rustc().input("main.rs").emit("metadata").extern_("stable", "libstable.rmeta").run();
 
-    let stderr = String::from_utf8_lossy(&output.stderr);
     let version = std::fs::read_to_string(source_root().join("src/version")).unwrap();
     let expected_string = format!("stable since {}", version.trim());
-    assert!(stderr.contains(&expected_string));
+    output.assert_stderr_contains(expected_string);
 }

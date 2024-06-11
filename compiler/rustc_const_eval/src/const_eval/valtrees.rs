@@ -95,10 +95,10 @@ fn const_to_valtree_inner<'tcx>(
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let val = ecx.read_immediate(place)?;
-            let val = val.to_scalar();
+            let val = val.to_scalar_int().unwrap();
             *num_nodes += 1;
 
-            Ok(ty::ValTree::Leaf(val.assert_int()))
+            Ok(ty::ValTree::Leaf(val))
         }
 
         ty::Pat(base, ..) => {
@@ -125,7 +125,7 @@ fn const_to_valtree_inner<'tcx>(
             let val = val.to_scalar();
             // We are in the CTFE machine, so ptr-to-int casts will fail.
             // This can only be `Ok` if `val` already is an integer.
-            let Ok(val) = val.try_to_int() else {
+            let Ok(val) = val.try_to_scalar_int() else {
                 return Err(ValTreeCreationError::NonSupportedType);
             };
             // It's just a ScalarInt!
@@ -411,7 +411,7 @@ fn valtree_into_mplace<'tcx>(
                 ty::Adt(def, _) if def.is_enum() => {
                     // First element of valtree corresponds to variant
                     let scalar_int = branches[0].unwrap_leaf();
-                    let variant_idx = VariantIdx::from_u32(scalar_int.try_to_u32().unwrap());
+                    let variant_idx = VariantIdx::from_u32(scalar_int.to_u32());
                     let variant = def.variant(variant_idx);
                     debug!(?variant);
 

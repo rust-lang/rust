@@ -420,7 +420,7 @@ pub(crate) mod rustc {
         fn from_tag(tag: ScalarInt, tcx: TyCtxt<'tcx>) -> Self {
             use rustc_target::abi::Endian;
             let size = tag.size();
-            let bits = tag.assert_bits(size);
+            let bits = tag.to_bits(size);
             let bytes: [u8; 16];
             let bytes = match tcx.data_layout.endian {
                 Endian::Little => {
