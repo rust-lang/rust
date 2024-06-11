@@ -2041,8 +2041,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
                         ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType,
                         ast::AssocItemKind::Delegation(..)
-                            if self.r.delegation_fn_sigs[&self.r.local_def_id(assoc_item.id)]
-                                .has_self =>
+                            if self
+                                .r
+                                .delegation_fn_sigs
+                                .get(&self.r.local_def_id(assoc_item.id))
+                                .map_or(false, |sig| sig.has_self) =>
                         {
                             AssocSuggestion::MethodWithSelf { called }
                         }
