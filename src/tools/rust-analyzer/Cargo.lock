@@ -512,6 +512,7 @@ dependencies = [
  "hir-def",
  "hir-expand",
  "hir-ty",
+ "intern",
  "itertools",
  "once_cell",
  "rustc-hash",

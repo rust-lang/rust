@@ -74,6 +74,8 @@ pub struct HirFormatter<'a> {
     /// When rendering something that has a concept of "children" (like fields in a struct), this limits
     /// how many should be rendered.
     pub entity_limit: Option<usize>,
+    /// When rendering functions, whether to show the constraint from the container
+    show_container_bounds: bool,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
@@ -101,6 +103,7 @@ pub trait HirDisplay {
         omit_verbose_types: bool,
         display_target: DisplayTarget,
         closure_style: ClosureStyle,
+        show_container_bounds: bool,
     ) -> HirDisplayWrapper<'a, Self>
     where
         Self: Sized,
@@ -117,6 +120,7 @@ pub trait HirDisplay {
             omit_verbose_types,
             display_target,
             closure_style,
+            show_container_bounds,
         }
     }
 
@@ -134,6 +138,7 @@ pub trait HirDisplay {
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
+            show_container_bounds: false,
         }
     }
 
@@ -155,6 +160,7 @@ pub trait HirDisplay {
             omit_verbose_types: true,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
+            show_container_bounds: false,
         }
     }
 
@@ -176,6 +182,7 @@ pub trait HirDisplay {
             omit_verbose_types: true,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
+            show_container_bounds: false,
         }
     }
 
@@ -198,6 +205,7 @@ pub trait HirDisplay {
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::SourceCode { module_id, allow_opaque },
+            show_container_bounds: false,
         }) {
             Ok(()) => {}
             Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
@@ -219,6 +227,29 @@ pub trait HirDisplay {
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Test,
+            show_container_bounds: false,
+        }
+    }
+
+    /// Returns a String representation of `self` that shows the constraint from
+    /// the container for functions
+    fn display_with_container_bounds<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        show_container_bounds: bool,
+    ) -> HirDisplayWrapper<'a, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size: None,
+            limited_size: None,
+            omit_verbose_types: false,
+            closure_style: ClosureStyle::ImplFn,
+            display_target: DisplayTarget::Diagnostics,
+            show_container_bounds,
         }
     }
 }
@@ -276,6 +307,10 @@ impl HirFormatter<'_> {
 
     pub fn omit_verbose_types(&self) -> bool {
         self.omit_verbose_types
+    }
+
+    pub fn show_container_bounds(&self) -> bool {
+        self.show_container_bounds
     }
 }
 
@@ -336,6 +371,7 @@ pub struct HirDisplayWrapper<'a, T> {
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
+    show_container_bounds: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -365,6 +401,7 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
             closure_style: self.closure_style,
+            show_container_bounds: self.show_container_bounds,
         })
     }
 
