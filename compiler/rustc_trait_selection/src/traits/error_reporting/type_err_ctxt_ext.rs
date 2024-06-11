@@ -2069,12 +2069,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .collect();
 
-            let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
+            let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
+                candidates.len()
+            } else {
+                8
+            };
             err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_trait_sugared(),
                 candidates[..end].join(""),
-                if candidates.len() > 9 {
+                if candidates.len() > 9 && !self.tcx.sess.opts.verbose {
                     format!("\nand {} others", candidates.len() - 8)
                 } else {
                     String::new()
