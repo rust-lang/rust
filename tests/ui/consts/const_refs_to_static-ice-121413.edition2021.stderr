@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `AtomicUsize`
-  --> $DIR/const_refs_to_static-ice-121413.rs:11:24
+  --> $DIR/const_refs_to_static-ice-121413.rs:12:24
    |
 LL |     static FOO: Sync = AtomicUsize::new(0);
    |                        ^^^^^^^^^^^ use of undeclared type `AtomicUsize`
@@ -12,7 +12,7 @@ LL + use std::sync::atomic::AtomicUsize;
    |
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/const_refs_to_static-ice-121413.rs:11:17
+  --> $DIR/const_refs_to_static-ice-121413.rs:12:17
    |
 LL |     static FOO: Sync = AtomicUsize::new(0);
    |                 ^^^^
