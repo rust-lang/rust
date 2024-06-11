@@ -40,9 +40,13 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     )?;
 
     for bb in &*body.basic_blocks {
-        check_terminator(tcx, body, bb.terminator(), msrv)?;
-        for stmt in &bb.statements {
-            check_statement(tcx, body, def_id, stmt, msrv)?;
+        // Cleanup blocks are ignored entirely by const eval, so we can too:
+        // https://github.com/rust-lang/rust/blob/1dea922ea6e74f99a0e97de5cdb8174e4dea0444/compiler/rustc_const_eval/src/transform/check_consts/check.rs#L382
+        if !bb.is_cleanup {
+            check_terminator(tcx, body, bb.terminator(), msrv)?;
+            for stmt in &bb.statements {
+                check_statement(tcx, body, def_id, stmt, msrv)?;
+            }
         }
     }
     Ok(())
