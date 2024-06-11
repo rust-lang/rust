@@ -520,10 +520,12 @@ impl Build {
             return;
         }
 
-        // check_submodule
-        let checked_out_hash =
-            output(helpers::git(Some(&absolute_path)).args(["rev-parse", "HEAD"]));
-        // update_submodules
+        let submodule_git = || helpers::git(Some(&absolute_path));
+
+        // Determine commit checked out in submodule.
+        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]));
+        let checked_out_hash = checked_out_hash.trim_end();
+        // Determine commit that the submodule *should* have.
         let recorded =
             output(helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path));
         let actual_hash = recorded
@@ -531,8 +533,7 @@ impl Build {
             .nth(2)
             .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
 
-        // update_submodule
-        if actual_hash == checked_out_hash.trim_end() {
+        if actual_hash == checked_out_hash {
             // already checked out
             return;
         }
@@ -581,26 +582,22 @@ impl Build {
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications = !self.run_cmd(
-            BootstrapCommand::from(helpers::git(Some(&absolute_path)).args([
-                "diff-index",
-                "--quiet",
-                "HEAD",
-            ]))
-            .allow_failure()
-            .output_mode(match self.is_verbose() {
-                true => OutputMode::PrintAll,
-                false => OutputMode::PrintOutput,
-            }),
+            BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
+                .allow_failure()
+                .output_mode(match self.is_verbose() {
+                    true => OutputMode::PrintAll,
+                    false => OutputMode::PrintOutput,
+                }),
         );
         if has_local_modifications {
-            self.run(helpers::git(Some(&absolute_path)).args(["stash", "push"]));
+            self.run(submodule_git().args(["stash", "push"]));
         }
 
-        self.run(helpers::git(Some(&absolute_path)).args(["reset", "-q", "--hard"]));
-        self.run(helpers::git(Some(&absolute_path)).args(["clean", "-qdfx"]));
+        self.run(submodule_git().args(["reset", "-q", "--hard"]));
+        self.run(submodule_git().args(["clean", "-qdfx"]));
 
         if has_local_modifications {
-            self.run(helpers::git(Some(&absolute_path)).args(["stash", "pop"]));
+            self.run(submodule_git().args(["stash", "pop"]));
         }
     }
 
