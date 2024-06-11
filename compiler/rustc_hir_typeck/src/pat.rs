@@ -1223,12 +1223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the tuple struct pattern against the expected type.
         let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, pat_info.top_info);
-        let had_err = if let Some(err) = diag {
-            err.emit();
-            true
-        } else {
-            false
-        };
+        let had_err = diag.map(|diag| diag.emit());
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
@@ -1249,6 +1244,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             }
+            if let Some(e) = had_err {
+                on_error(e);
+                return Ty::new_error(tcx, e);
+            }
         } else {
             let e = self.emit_err_pat_wrong_number_of_fields(
                 pat.span,
@@ -1257,7 +1256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 subpats,
                 &variant.fields.raw,
                 expected,
-                had_err,
+                had_err.is_some(),
             );
             on_error(e);
             return Ty::new_error(tcx, e);
