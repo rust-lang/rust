@@ -113,16 +113,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         sp: Span,
         expr: &'tcx hir::Expr<'tcx>,
-        method: Result<MethodCallee<'tcx>, ()>,
+        method: Result<MethodCallee<'tcx>, ErrorGuaranteed>,
         args_no_rcvr: &'tcx [hir::Expr<'tcx>],
         tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let has_error = match method {
-            Ok(method) => method.args.references_error() || method.sig.references_error(),
-            Err(_) => true,
+            Ok(method) => method.args.error_reported().and(method.sig.error_reported()),
+            Err(guar) => Err(guar),
         };
-        if has_error {
+        if let Err(guar) = has_error {
             let err_inputs = self.err_args(args_no_rcvr.len());
 
             let err_inputs = match tuple_arguments {
@@ -140,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
                 method.ok().map(|method| method.def_id),
             );
-            return Ty::new_misc_error(self.tcx);
+            return Ty::new_error(self.tcx, guar);
         }
 
         let method = method.unwrap();

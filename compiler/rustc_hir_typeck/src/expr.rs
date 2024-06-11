@@ -1341,16 +1341,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
                 Ok(method)
             }
-            Err(error) => {
-                if segment.ident.name != kw::Empty {
-                    if let Some(err) =
-                        self.report_method_error(expr.hir_id, rcvr_t, error, expected, false)
-                    {
-                        err.emit();
-                    }
+            Err(error) => Err(if segment.ident.name == kw::Empty {
+                self.dcx().span_delayed_bug(rcvr.span, "empty method name")
+            } else {
+                match self.report_method_error(expr.hir_id, rcvr_t, error, expected, false) {
+                    Ok(diag) => diag.emit(),
+                    Err(guar) => guar,
                 }
-                Err(())
-            }
+            }),
         };
 
         // Call the generic checker.
