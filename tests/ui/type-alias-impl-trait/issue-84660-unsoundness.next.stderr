@@ -1,0 +1,23 @@
+error[E0284]: type annotations needed: cannot satisfy `<Out as Trait<Bar, In>>::Out == ()`
+  --> $DIR/issue-84660-unsoundness.rs:22:37
+   |
+LL |       fn convert(_i: In) -> Self::Out {
+   |  _____________________________________^
+LL | |
+LL | |         unreachable!();
+LL | |     }
+   | |_____^ cannot satisfy `<Out as Trait<Bar, In>>::Out == ()`
+
+error[E0119]: conflicting implementations of trait `Trait<Bar, _>`
+  --> $DIR/issue-84660-unsoundness.rs:28:1
+   |
+LL | impl<In, Out> Trait<Bar, In> for Out {
+   | ------------------------------------ first implementation here
+...
+LL | impl<In, Out> Trait<(), In> for Out {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0284.
+For more information about an error, try `rustc --explain E0119`.
