@@ -1,0 +1,53 @@
+// Check the "About this Result" popover.
+// Try a complex result.
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=scroll_traits::Iterator<T>,(T->bool)->(Extend<T>,Extend<T>)"
+
+// These two commands are used to be sure the search will be run.
+focus: ".search-input"
+press-key: "Enter"
+
+wait-for: "#search-tabs"
+assert-count: ("#search-tabs button", 1)
+assert-count: (".search-results > li", 1)
+assert-count: (".tooltip:not(.popover)", 1)
+assert-count: (".tooltip.popover", 0)
+
+assert: "//div[@class='type-signature']/strong[text()='Iterator']"
+assert: "//div[@class='type-signature']/strong[text()='(']"
+assert: "//div[@class='type-signature']/strong[text()=')']"
+
+click: ".tooltip:not(.popover)"
+wait-for: ".tooltip.popover"
+assert-count: (".tooltip.popover", 1)
+
+assert: "//div[@class='tooltip popover']//strong[text()='FnMut']"
+assert: "//div[@class='tooltip popover']//strong[text()='Iterator::Item']"
+assert: "//div[@class='tooltip popover']//strong[text()='bool']"
+assert: "//div[@class='tooltip popover']//strong[text()='Extend']"
+
+assert-text: (".tooltip.popover h3", "About this result")
+assert-text: (".tooltip.popover pre code div:nth-child(1)", "Iterator::Item is T")
+assert-text: (".tooltip.popover pre code div:nth-child(2)", "F: FnMut (&Iterator::Item) -> bool")
+assert-text: (".tooltip.popover pre code div:nth-child(3)", "B: Default + Extend<Iterator::Item>")
+
+click: ".tooltip:not(.popover)"
+wait-for: 100 // wait-for-false does not exist
+assert-count: (".tooltip.popover", 0)
+
+// Try a simple result that *won't* give an info box.
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=F->lib2::WhereWhitespace<T>"
+
+// These two commands are used to be sure the search will be run.
+focus: ".search-input"
+press-key: "Enter"
+
+wait-for: "#search-tabs"
+assert-text: ("//div[@class='type-signature']", "F -> WhereWhitespace<T>")
+assert-count: ("#search-tabs button", 1)
+assert-count: (".search-results > li", 1)
+assert-count: (".tooltip:not(.popover)", 0)
+assert-count: (".tooltip.popover", 0)
+
+assert: "//div[@class='type-signature']/strong[text()='F']"
+assert: "//div[@class='type-signature']/strong[text()='WhereWhitespace']"
+assert: "//div[@class='type-signature']/strong[text()='T']"
