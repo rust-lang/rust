@@ -1,5 +1,5 @@
 error[E0152]: found duplicate lang item `panic_impl`
-  --> $DIR/duplicate_entry_error.rs:11:1
+  --> $DIR/duplicate_entry_error.rs:13:1
    |
 LL | / fn panic_impl(info: &PanicInfo) -> ! {
 LL | |
