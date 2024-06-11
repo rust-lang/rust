@@ -4,7 +4,7 @@
 
 use std::{
     fmt::{self, Debug},
-    mem::size_of,
+    mem::{self, size_of},
 };
 
 use base_db::CrateId;
@@ -423,7 +423,7 @@ impl HirDisplay for ProjectionTy {
         let proj_params_count =
             self.substitution.len(Interner) - trait_ref.substitution.len(Interner);
         let proj_params = &self.substitution.as_slice(Interner)[..proj_params_count];
-        hir_fmt_generics(f, proj_params, None)
+        hir_fmt_generics(f, proj_params, None, None)
     }
 }
 
@@ -468,6 +468,7 @@ impl HirDisplay for Const {
                         f,
                         parameters.as_slice(Interner),
                         c.generic_def(f.db.upcast()),
+                        None,
                     )?;
                     Ok(())
                 }
@@ -967,11 +968,11 @@ impl HirDisplay for Ty {
                         let fn_params = generic_args_sans_defaults(f, Some(def.into()), fn_params);
 
                         write!(f, "<")?;
-                        hir_fmt_generic_arguments(f, parent_params)?;
+                        hir_fmt_generic_arguments(f, parent_params, None)?;
                         if !parent_params.is_empty() && !fn_params.is_empty() {
                             write!(f, ", ")?;
                         }
-                        hir_fmt_generic_arguments(f, fn_params)?;
+                        hir_fmt_generic_arguments(f, fn_params, None)?;
                         write!(f, ">")?;
                     }
                 }
@@ -1016,7 +1017,7 @@ impl HirDisplay for Ty {
 
                 let generic_def = self.as_generic_def(db);
 
-                hir_fmt_generics(f, parameters.as_slice(Interner), generic_def)?;
+                hir_fmt_generics(f, parameters.as_slice(Interner), generic_def, None)?;
             }
             TyKind::AssociatedType(assoc_type_id, parameters) => {
                 let type_alias = from_assoc_type_id(*assoc_type_id);
@@ -1039,7 +1040,7 @@ impl HirDisplay for Ty {
                     f.end_location_link();
                     // Note that the generic args for the associated type come before those for the
                     // trait (including the self type).
-                    hir_fmt_generics(f, parameters.as_slice(Interner), None)
+                    hir_fmt_generics(f, parameters.as_slice(Interner), None, None)
                 } else {
                     let projection_ty = ProjectionTy {
                         associated_ty_id: to_assoc_type_id(type_alias),
@@ -1141,7 +1142,7 @@ impl HirDisplay for Ty {
                     }
                     ClosureStyle::ClosureWithSubst => {
                         write!(f, "{{closure#{:?}}}", id.0.as_u32())?;
-                        return hir_fmt_generics(f, substs.as_slice(Interner), None);
+                        return hir_fmt_generics(f, substs.as_slice(Interner), None, None);
                     }
                     _ => (),
                 }
@@ -1329,6 +1330,7 @@ fn hir_fmt_generics(
     f: &mut HirFormatter<'_>,
     parameters: &[GenericArg],
     generic_def: Option<hir_def::GenericDefId>,
+    self_: Option<&Ty>,
 ) -> Result<(), HirDisplayError> {
     if parameters.is_empty() {
         return Ok(());
@@ -1348,7 +1350,7 @@ fn hir_fmt_generics(
         });
     if !parameters_to_write.is_empty() && !only_err_lifetimes {
         write!(f, "<")?;
-        hir_fmt_generic_arguments(f, parameters_to_write)?;
+        hir_fmt_generic_arguments(f, parameters_to_write, self_)?;
         write!(f, ">")?;
     }
 
@@ -1410,6 +1412,7 @@ fn generic_args_sans_defaults<'ga>(
 fn hir_fmt_generic_arguments(
     f: &mut HirFormatter<'_>,
     parameters: &[GenericArg],
+    self_: Option<&Ty>,
 ) -> Result<(), HirDisplayError> {
     let mut first = true;
     let lifetime_offset = parameters.iter().position(|arg| arg.lifetime(Interner).is_some());
@@ -1431,11 +1434,13 @@ fn hir_fmt_generic_arguments(
             continue;
         }
 
-        if !first {
+        if !mem::take(&mut first) {
             write!(f, ", ")?;
         }
-        first = false;
-        generic_arg.hir_fmt(f)?;
+        match self_ {
+            self_ @ Some(_) if generic_arg.ty(Interner) == self_ => write!(f, "Self")?,
+            _ => generic_arg.hir_fmt(f)?,
+        }
     }
     Ok(())
 }
@@ -1558,12 +1563,16 @@ fn write_bounds_like_dyn_trait(
                 write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast()))?;
                 f.end_location_link();
                 if is_fn_trait {
-                    if let [_self, params @ ..] = trait_ref.substitution.as_slice(Interner) {
+                    if let [self_, params @ ..] = trait_ref.substitution.as_slice(Interner) {
                         if let Some(args) =
                             params.first().and_then(|it| it.assert_ty_ref(Interner).as_tuple())
                         {
                             write!(f, "(")?;
-                            hir_fmt_generic_arguments(f, args.as_slice(Interner))?;
+                            hir_fmt_generic_arguments(
+                                f,
+                                args.as_slice(Interner),
+                                self_.ty(Interner),
+                            )?;
                             write!(f, ")")?;
                         }
                     }
@@ -1573,10 +1582,10 @@ fn write_bounds_like_dyn_trait(
                         Some(trait_.into()),
                         trait_ref.substitution.as_slice(Interner),
                     );
-                    if let [_self, params @ ..] = params {
+                    if let [self_, params @ ..] = params {
                         if !params.is_empty() {
                             write!(f, "<")?;
-                            hir_fmt_generic_arguments(f, params)?;
+                            hir_fmt_generic_arguments(f, params, self_.ty(Interner))?;
                             // there might be assoc type bindings, so we leave the angle brackets open
                             angle_open = true;
                         }
@@ -1634,6 +1643,7 @@ fn write_bounds_like_dyn_trait(
                         hir_fmt_generic_arguments(
                             f,
                             &proj.substitution.as_slice(Interner)[..proj_arg_count],
+                            None,
                         )?;
                         write!(f, ">")?;
                     }
@@ -1690,7 +1700,8 @@ fn fmt_trait_ref(
     f.start_location_link(trait_.into());
     write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast()))?;
     f.end_location_link();
-    hir_fmt_generics(f, &tr.substitution.as_slice(Interner)[1..], None)
+    let substs = tr.substitution.as_slice(Interner);
+    hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
 }
 
 impl HirDisplay for TraitRef {
