@@ -768,7 +768,9 @@ fn rust_panic_with_hook(
                 // recursive panics. However if the message is just a string, no user-defined
                 // code is involved in printing it, so that is risk-free.
                 let message: &str = payload.as_str().unwrap_or_default();
-                rtprintpanic!("panicked at {location}:\n{message}\nthread panicked while processing panic. aborting.\n");
+                rtprintpanic!(
+                    "panicked at {location}:\n{message}\nthread panicked while processing panic. aborting.\n"
+                );
             }
             panic_count::MustAbort::AlwaysAbort => {
                 // Unfortunately, this does not print a backtrace, because creating
