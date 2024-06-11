@@ -320,7 +320,7 @@ fn install_requirements(
     }
 
     let stat = Command::new(py_path)
-        .args(["-m", "pip", "install", "--require-hashes", "-r"])
+        .args(["-m", "pip", "install", "--quiet", "--require-hashes", "-r"])
         .arg(src_reqs_path)
         .status()?;
     if !stat.success() {

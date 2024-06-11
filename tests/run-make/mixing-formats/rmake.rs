@@ -34,8 +34,8 @@ fn main() {
         rustc().crate_type("rlib").input("foo.rs").run();
         rustc().crate_type("dylib").input("bar1.rs").arg("-Cprefer-dynamic").run();
         rustc().crate_type("dylib").input("bar2.rs").arg("-Cprefer-dynamic").run();
-        rustc().crate_type("dylib").input("baz2.rs").run_fail_assert_exit_code(1);
-        rustc().crate_type("bin").input("baz2.rs").run_fail_assert_exit_code(1);
+        rustc().crate_type("dylib").input("baz2.rs").run_fail().assert_exit_code(1);
+        rustc().crate_type("bin").input("baz2.rs").run_fail().assert_exit_code(1);
     });
     run_in_tmpdir(|| {
         rustc().crate_type("rlib").input("foo.rs").run();

@@ -128,7 +128,6 @@ pub fn check(build: &mut Build) {
                     eprintln!(
                         "Consider upgrading libstdc++ or disabling the `llvm.download-ci-llvm` option."
                     );
-                    crate::exit!(1);
                 }
             }
             tool::LibcxxVersion::Llvm(_) => {

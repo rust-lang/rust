@@ -1,11 +1,13 @@
 // Test that `-Awarnings` suppresses warnings for unstable APIs.
 
-use run_make_support::{assert_not_contains, rustc};
+use run_make_support::rustc;
 
 fn main() {
     rustc().input("bar.rs").run();
-    let output = rustc().input("foo.rs").arg("-Awarnings").run();
-
-    assert_not_contains(&String::from_utf8(output.stdout).unwrap(), "warning");
-    assert_not_contains(&String::from_utf8(output.stderr).unwrap(), "warning");
+    rustc()
+        .input("foo.rs")
+        .arg("-Awarnings")
+        .run()
+        .assert_stdout_not_contains("warning")
+        .assert_stderr_not_contains("warning");
 }

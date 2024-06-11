@@ -1,4 +1,4 @@
-use super::api;
+use super::api::{self, WinError};
 use crate::sys::c;
 use crate::sys::dur2timeout;
 use core::ffi::c_void;
@@ -72,7 +72,7 @@ pub fn wake_by_address_all<T>(address: &T) {
 
 pub fn futex_wait<W: Waitable>(futex: &W::Atomic, expected: W, timeout: Option<Duration>) -> bool {
     // return false only on timeout
-    wait_on_address(futex, expected, timeout) || api::get_last_error().code != c::ERROR_TIMEOUT
+    wait_on_address(futex, expected, timeout) || api::get_last_error() != WinError::TIMEOUT
 }
 
 pub fn futex_wake<T>(futex: &T) -> bool {

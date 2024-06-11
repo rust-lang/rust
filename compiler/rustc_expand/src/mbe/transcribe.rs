@@ -30,11 +30,11 @@ impl MutVisitor for Marker {
         // it's some advanced case with macro-generated macros. So if we cache the marked version
         // of that context once, we'll typically have a 100% cache hit rate after that.
         let Marker(expn_id, transparency, ref mut cache) = *self;
-        let data = span.data();
-        let marked_ctxt = *cache
-            .entry(data.ctxt)
-            .or_insert_with(|| data.ctxt.apply_mark(expn_id.to_expn_id(), transparency));
-        *span = data.with_ctxt(marked_ctxt);
+        span.update_ctxt(|ctxt| {
+            *cache
+                .entry(ctxt)
+                .or_insert_with(|| ctxt.apply_mark(expn_id.to_expn_id(), transparency))
+        });
     }
 }
 

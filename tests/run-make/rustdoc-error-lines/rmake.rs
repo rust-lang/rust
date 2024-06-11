@@ -4,9 +4,7 @@
 use run_make_support::rustdoc;
 
 fn main() {
-    let output =
-        String::from_utf8(rustdoc().input("input.rs").arg("--test").command_output().stdout)
-            .unwrap();
+    let output = rustdoc().input("input.rs").arg("--test").run_fail().stdout_utf8();
 
     let should_contain = &[
         "input.rs - foo (line 5)",

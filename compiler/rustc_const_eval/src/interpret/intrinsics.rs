@@ -519,7 +519,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
         let rem = self.binary_op(BinOp::Rem, a, b)?;
-        if rem.to_scalar().assert_bits(a.layout.size) != 0 {
+        if rem.to_scalar().to_bits(a.layout.size)? != 0 {
             throw_ub_custom!(
                 fluent::const_eval_exact_div_has_remainder,
                 a = format!("{a}"),

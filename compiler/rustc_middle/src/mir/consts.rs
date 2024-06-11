@@ -84,11 +84,11 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
-        self.try_to_scalar()?.try_to_int().ok()
+        self.try_to_scalar()?.try_to_scalar_int().ok()
     }
 
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.try_to_bits(size).ok()
+        Some(self.try_to_scalar_int()?.to_bits(size))
     }
 
     pub fn try_to_bool(&self) -> Option<bool> {
@@ -96,7 +96,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     pub fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_scalar_int()?.try_to_target_usize(tcx).ok()
+        Some(self.try_to_scalar_int()?.to_target_usize(tcx))
     }
 
     pub fn try_to_bits_for_ty(
@@ -300,7 +300,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_to_bits(self, size: Size) -> Option<u128> {
-        self.try_to_scalar_int()?.try_to_bits(size).ok()
+        Some(self.try_to_scalar_int()?.to_bits(size))
     }
 
     #[inline]
@@ -367,7 +367,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<ScalarInt> {
-        self.try_eval_scalar(tcx, param_env)?.try_to_int().ok()
+        self.try_eval_scalar(tcx, param_env)?.try_to_scalar_int().ok()
     }
 
     #[inline]
@@ -375,7 +375,7 @@ impl<'tcx> Const<'tcx> {
         let int = self.try_eval_scalar_int(tcx, param_env)?;
         let size =
             tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
-        int.try_to_bits(size).ok()
+        Some(int.to_bits(size))
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
@@ -391,7 +391,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<u64> {
-        self.try_eval_scalar_int(tcx, param_env)?.try_to_target_usize(tcx).ok()
+        Some(self.try_eval_scalar_int(tcx, param_env)?.to_target_usize(tcx))
     }
 
     #[inline]

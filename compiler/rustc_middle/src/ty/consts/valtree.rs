@@ -79,7 +79,7 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_scalar_int().and_then(|s| s.try_to_target_usize(tcx).ok())
+        self.try_to_scalar_int().map(|s| s.to_target_usize(tcx))
     }
 
     /// Get the values inside the ValTree as a slice of bytes. This only works for
@@ -100,8 +100,9 @@ impl<'tcx> ValTree<'tcx> {
             _ => return None,
         }
 
-        Some(tcx.arena.alloc_from_iter(
-            self.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().try_to_u8().unwrap()),
-        ))
+        Some(
+            tcx.arena
+                .alloc_from_iter(self.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().to_u8())),
+        )
     }
 }

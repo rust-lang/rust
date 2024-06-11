@@ -123,15 +123,11 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
-    pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
-        ScalarInt::try_from_uint(i, size).map(Scalar::Int)
-    }
-
-    #[inline]
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i = i.into();
-        Self::try_from_uint(i, size)
+        ScalarInt::try_from_uint(i, size)
             .unwrap_or_else(|| bug!("Unsigned value {:#x} does not fit in {} bits", i, size.bits()))
+            .into()
     }
 
     #[inline]
@@ -165,15 +161,11 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
-    pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
-        ScalarInt::try_from_int(i, size).map(Scalar::Int)
-    }
-
-    #[inline]
     pub fn from_int(i: impl Into<i128>, size: Size) -> Self {
         let i = i.into();
-        Self::try_from_int(i, size)
+        ScalarInt::try_from_int(i, size)
             .unwrap_or_else(|| bug!("Signed value {:#x} does not fit in {} bits", i, size.bits()))
+            .into()
     }
 
     #[inline]
@@ -227,7 +219,7 @@ impl<Prov> Scalar<Prov> {
     }
 
     /// This is almost certainly not the method you want!  You should dispatch on the type
-    /// and use `to_{u8,u16,...}`/`scalar_to_ptr` to perform ptr-to-int / int-to-ptr casts as needed.
+    /// and use `to_{u8,u16,...}`/`to_pointer` to perform ptr-to-int / int-to-ptr casts as needed.
     ///
     /// This method only exists for the benefit of low-level operations that truly need to treat the
     /// scalar in whatever form it is.
@@ -289,7 +281,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     /// The error type is `AllocId`, not `CtfeProvenance`, since `AllocId` is the "minimal"
     /// component all provenance types must have.
     #[inline]
-    pub fn try_to_int(self) -> Result<ScalarInt, Scalar<AllocId>> {
+    pub fn try_to_scalar_int(self) -> Result<ScalarInt, Scalar<AllocId>> {
         match self {
             Scalar::Int(int) => Ok(int),
             Scalar::Ptr(ptr, sz) => {
@@ -307,13 +299,13 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
 
     #[inline(always)]
     pub fn to_scalar_int(self) -> InterpResult<'tcx, ScalarInt> {
-        self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsInt(None)).into())
+        self.try_to_scalar_int().map_err(|_| err_unsup!(ReadPointerAsInt(None)).into())
     }
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn assert_int(self) -> ScalarInt {
-        self.try_to_int().unwrap()
+    pub fn assert_scalar_int(self) -> ScalarInt {
+        self.try_to_scalar_int().expect("got a pointer where a ScalarInt was expected")
     }
 
     /// This throws UB (instead of ICEing) on a size mismatch since size mismatches can arise in
@@ -328,13 +320,6 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             }))
             .into()
         })
-    }
-
-    #[inline(always)]
-    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn assert_bits(self, target_size: Size) -> u128 {
-        self.to_bits(target_size)
-            .unwrap_or_else(|_| panic!("assertion failed: {self:?} fits {target_size:?}"))
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {

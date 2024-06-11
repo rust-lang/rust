@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
-use rustc_target::abi::{Size, VariantIdx};
+use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
@@ -865,22 +865,8 @@ impl core::ops::Add<u32> for EnumValue {
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
         match tcx.type_of(id).instantiate_identity().kind() {
-            ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
-                1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),
-                2 => i128::from(value.assert_bits(Size::from_bytes(2)) as u16 as i16),
-                4 => i128::from(value.assert_bits(Size::from_bytes(4)) as u32 as i32),
-                8 => i128::from(value.assert_bits(Size::from_bytes(8)) as u64 as i64),
-                16 => value.assert_bits(Size::from_bytes(16)) as i128,
-                _ => return None,
-            })),
-            ty::Uint(_) => Some(EnumValue::Unsigned(match value.size().bytes() {
-                1 => value.assert_bits(Size::from_bytes(1)),
-                2 => value.assert_bits(Size::from_bytes(2)),
-                4 => value.assert_bits(Size::from_bytes(4)),
-                8 => value.assert_bits(Size::from_bytes(8)),
-                16 => value.assert_bits(Size::from_bytes(16)),
-                _ => return None,
-            })),
+            ty::Int(_) => Some(EnumValue::Signed(value.to_int(value.size()))),
+            ty::Uint(_) => Some(EnumValue::Unsigned(value.to_uint(value.size()))),
             _ => None,
         }
     } else {

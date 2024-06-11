@@ -680,7 +680,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.cx().const_usize(val)
                     }
                     mir::NullOp::OffsetOf(fields) => {
-                        let val = layout.offset_of_subfield(bx.cx(), fields.iter()).bytes();
+                        let val = bx
+                            .tcx()
+                            .offset_of_subfield(bx.param_env(), layout, fields.iter())
+                            .bytes();
                         bx.cx().const_usize(val)
                     }
                     mir::NullOp::UbChecks => {
