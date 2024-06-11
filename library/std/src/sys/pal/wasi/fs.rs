@@ -17,7 +17,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-pub use crate::sys_common::fs::try_exists;
+pub use crate::sys_common::fs::exists;
 
 pub struct File {
     fd: WasiFd,

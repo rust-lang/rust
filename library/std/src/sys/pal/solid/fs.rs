@@ -12,7 +12,7 @@ use crate::{
     sys::unsupported,
 };
 
-pub use crate::sys_common::fs::try_exists;
+pub use crate::sys_common::fs::exists;
 
 /// A file descriptor.
 #[derive(Clone, Copy)]
