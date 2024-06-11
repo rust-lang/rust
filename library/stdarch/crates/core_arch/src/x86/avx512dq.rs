@@ -1936,7 +1936,6 @@ mod tests {
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
-    use crate::core_arch::x86_64::*;
     use crate::mem::transmute;
 
     const OPRND1_64: f64 = unsafe { transmute(0x3333333333333333_u64) };
