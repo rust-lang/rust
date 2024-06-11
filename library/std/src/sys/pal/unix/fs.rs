@@ -101,7 +101,7 @@ use libc::{
 ))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
-pub use crate::sys_common::fs::try_exists;
+pub use crate::sys_common::fs::exists;
 
 pub struct File(FileDesc);
 

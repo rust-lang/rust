@@ -1531,7 +1531,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
 }
 
 // Try to see if a file exists but, unlike `exists`, report I/O errors.
-pub fn try_exists(path: &Path) -> io::Result<bool> {
+pub fn exists(path: &Path) -> io::Result<bool> {
     // Open the file to ensure any symlinks are followed to their target.
     let mut opts = OpenOptions::new();
     // No read, write, etc access rights are needed.

@@ -291,7 +291,7 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn try_exists(_path: &Path) -> io::Result<bool> {
+pub fn exists(_path: &Path) -> io::Result<bool> {
     unsupported()
 }
 
