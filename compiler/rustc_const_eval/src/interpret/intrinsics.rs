@@ -432,12 +432,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::vtable_size => {
                 let ptr = self.read_pointer(&args[0])?;
-                let (size, _align) = self.get_vtable_size_and_align(ptr)?;
+                // `None` because we don't know which trait to expect here; any vtable is okay.
+                let (size, _align) = self.get_vtable_size_and_align(ptr, None)?;
                 self.write_scalar(Scalar::from_target_usize(size.bytes(), self), dest)?;
             }
             sym::vtable_align => {
                 let ptr = self.read_pointer(&args[0])?;
-                let (_size, align) = self.get_vtable_size_and_align(ptr)?;
+                // `None` because we don't know which trait to expect here; any vtable is okay.
+                let (_size, align) = self.get_vtable_size_and_align(ptr, None)?;
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 

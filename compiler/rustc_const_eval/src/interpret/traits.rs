@@ -36,8 +36,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn get_vtable_size_and_align(
         &self,
         vtable: Pointer<Option<M::Provenance>>,
+        expected_trait: Option<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let ty = self.get_ptr_vtable_ty(vtable, None)?;
+        let ty = self.get_ptr_vtable_ty(vtable, expected_trait)?;
         let layout = self.layout_of(ty)?;
         assert!(layout.is_sized(), "there are no vtables for unsized types");
         Ok((layout.size, layout.align.abi))
