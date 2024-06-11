@@ -195,8 +195,6 @@ late_lint_methods!(
             NonUpperCaseGlobals: NonUpperCaseGlobals,
             NonShorthandFieldPatterns: NonShorthandFieldPatterns,
             UnusedAllocation: UnusedAllocation,
-            // Depends on types used in type definitions
-            MissingCopyImplementations: MissingCopyImplementations,
             // Depends on referenced function signatures in expressions
             PtrNullChecks: PtrNullChecks,
             MutableTransmutes: MutableTransmutes,
@@ -548,6 +546,11 @@ fn register_builtins(store: &mut LintStore) {
         "pointer_structural_match",
         "converted into hard error, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "missing_copy_implementations",
+        "it existed mostly for historical reasons, \
+         and not implementing `Copy` is common and reasonable",
     );
 }
 

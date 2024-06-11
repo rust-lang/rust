@@ -110,8 +110,6 @@ lint_builtin_link_section_fn = declaration of a function with `link_section`
 
 lint_builtin_link_section_static = declaration of a static with `link_section`
 
-lint_builtin_missing_copy_impl = type could implement `Copy`; consider adding `impl Copy`
-
 lint_builtin_missing_debug_impl =
     type does not implement `{$debug}`; consider adding `#[derive(Debug)]` or a manual implementation
 

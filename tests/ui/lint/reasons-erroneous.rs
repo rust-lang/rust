@@ -23,7 +23,7 @@
 #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
 //~^ ERROR malformed lint attribute
 //~| NOTE reason in lint attribute must come last
-#![warn(missing_copy_implementations, reason)]
+#![warn(missing_debug_implementations, reason)]
 //~^ WARN unknown lint
 //~| NOTE `#[warn(unknown_lints)]` on by default
 

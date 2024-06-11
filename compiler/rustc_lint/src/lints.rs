@@ -133,10 +133,6 @@ pub struct BuiltinMissingDoc<'a> {
     pub desc: &'a str,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_missing_copy_impl)]
-pub struct BuiltinMissingCopyImpl;
-
 pub struct BuiltinMissingDebugImpl<'a> {
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
