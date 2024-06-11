@@ -8,7 +8,7 @@ use hir_def::{
     },
     lang_item::LangItem,
     type_ref::{TypeBound, TypeRef},
-    AdtId, GenericDefId, ItemContainerId, ItemTreeLoc, Lookup,
+    AdtId, GenericDefId,
 };
 use hir_ty::{
     display::{
@@ -34,26 +34,41 @@ impl HirDisplay for Function {
         let container = self.as_assoc_item(db).map(|it| it.container(db));
         let mut module = self.module(db);
 
-        match container {
+        // Write container (trait or impl)
+        let container_params = match container {
             Some(AssocItemContainer::Trait(trait_)) => {
-                if f.show_container_bounds() && !f.db.generic_params(trait_.id.into()).is_empty() {
+                let params = f.db.generic_params(trait_.id.into());
+                if f.show_container_bounds() && !params.is_empty() {
                     write_trait_header(&trait_, f)?;
-                    f.write_str("\n")?;
+                    f.write_char('\n')?;
+                    has_disaplayable_predicates(&params).then_some(params)
+                } else {
+                    None
                 }
             }
             Some(AssocItemContainer::Impl(impl_)) => {
-                if f.show_container_bounds() && !f.db.generic_params(impl_.id.into()).is_empty() {
+                let params = f.db.generic_params(impl_.id.into());
+                if f.show_container_bounds() && !params.is_empty() {
                     write_impl_header(&impl_, f)?;
-                    f.write_str("\n")?;
+                    f.write_char('\n')?;
+                    has_disaplayable_predicates(&params).then_some(params)
+                } else {
+                    None
                 }
-
-                // Block-local impls are "hoisted" to the nearest (non-block) module.
-                module = module.nearest_non_block_module(db);
             }
-            None => {}
+            None => None,
+        };
+
+        // Write signature of the function
+
+        // Block-local impls are "hoisted" to the nearest (non-block) module.
+        if let Some(AssocItemContainer::Impl(_)) = container {
+            module = module.nearest_non_block_module(db);
         }
         let module_id = module.id;
+
         write_visibility(module_id, self.visibility(db), f)?;
+
         if data.has_default_kw() {
             f.write_str("default ")?;
         }
@@ -134,8 +149,19 @@ impl HirDisplay for Function {
             }
         }
 
-        write_where_clause(GenericDefId::FunctionId(self.id), f)?;
-
+        // Write where clauses
+        let has_written_where = write_where_clause(GenericDefId::FunctionId(self.id), f)?;
+        if let Some(container_params) = container_params {
+            if !has_written_where {
+                f.write_str("\nwhere")?;
+            }
+            let container_name = match container.unwrap() {
+                AssocItemContainer::Trait(_) => "trait",
+                AssocItemContainer::Impl(_) => "impl",
+            };
+            write!(f, "\n    // Bounds from {container_name}:",)?;
+            write_where_predicates(&container_params, f)?;
+        }
         Ok(())
     }
 }
@@ -575,46 +601,24 @@ fn write_where_clause(
     f: &mut HirFormatter<'_>,
 ) -> Result<bool, HirDisplayError> {
     let params = f.db.generic_params(def);
-
-    let container = match def {
-        GenericDefId::FunctionId(id) if f.show_container_bounds() => {
-            match id.lookup(f.db.upcast()).container() {
-                ItemContainerId::ImplId(it) => Some(("impl", it.into())),
-                ItemContainerId::TraitId(it) => Some(("trait", it.into())),
-                _ => None,
-            }
-            .map(|(name, def)| (name, f.db.generic_params(def)))
-        }
-        _ => None,
-    };
-
-    let no_displayable_pred = |params: &Interned<GenericParams>| {
-        params.where_predicates.iter().all(|pred| {
-            matches!(
-                pred,
-                WherePredicate::TypeBound { target: WherePredicateTypeTarget::TypeOrConstParam(id), .. }
-                if params.type_or_consts[*id].name().is_none()
-            )
-        })
-    };
-
-    let container_bounds_no_displayable =
-        container.as_ref().map_or(true, |(_, p)| no_displayable_pred(p));
-    if no_displayable_pred(&params) && container_bounds_no_displayable {
+    if !has_disaplayable_predicates(&params) {
         return Ok(false);
     }
 
     f.write_str("\nwhere")?;
     write_where_predicates(&params, f)?;
 
-    if let Some((name, container_params)) = container {
-        if !container_bounds_no_displayable {
-            write!(f, "\n    // Bounds from {}:", name)?;
-            write_where_predicates(&container_params, f)?;
-        }
-    }
-
     Ok(true)
+}
+
+fn has_disaplayable_predicates(params: &Interned<GenericParams>) -> bool {
+    params.where_predicates.iter().any(|pred| {
+        !matches!(
+            pred,
+            WherePredicate::TypeBound { target: WherePredicateTypeTarget::TypeOrConstParam(id), .. }
+            if params.type_or_consts[*id].name().is_none()
+        )
+    })
 }
 
 fn write_where_predicates(
