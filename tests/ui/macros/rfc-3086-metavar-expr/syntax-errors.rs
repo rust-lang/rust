@@ -35,7 +35,7 @@ macro_rules! no_curly__no_rhs_dollar__no_round {
 #[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__rhs_dollar__round {
     ( $( $i:ident ),* ) => { count($i) };
-    //~^ ERROR variable 'i' is still repeating at this depth
+    //~^ ERROR variable `i` is still repeating at this depth
 }
 
 #[rustfmt::skip] // autoformatters can break a few of the error traces

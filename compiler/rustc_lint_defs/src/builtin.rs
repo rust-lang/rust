@@ -511,8 +511,9 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: external crate `regex` unused in `lint_example`: remove the dependency or add `use regex as _;`
+    /// error: extern crate `regex` is unused in crate `lint_example`
     ///   |
+    ///   = help: remove the dependency or add `use regex as _;` to the crate root
     /// note: the lint level is defined here
     ///  --> src/lib.rs:1:9
     ///   |
@@ -2160,8 +2161,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `macro_use_extern_crate` lint detects the use of the
-    /// [`macro_use` attribute].
+    /// The `macro_use_extern_crate` lint detects the use of the [`macro_use` attribute].
     ///
     /// ### Example
     ///
@@ -2179,12 +2179,13 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
+    /// error: applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
     ///  --> src/main.rs:3:1
     ///   |
     /// 3 | #[macro_use]
     ///   | ^^^^^^^^^^^^
     ///   |
+    ///   = help: remove it and import macros at use sites with a `use` item instead
     /// note: the lint level is defined here
     ///  --> src/main.rs:1:9
     ///   |
