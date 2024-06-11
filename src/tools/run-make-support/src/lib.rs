@@ -169,6 +169,38 @@ pub fn cwd() -> PathBuf {
     env::current_dir().unwrap()
 }
 
+// FIXME(Oneirical): This will no longer be required after compiletest receives the ability
+// to manipulate read-only files. See https://github.com/rust-lang/rust/issues/126334
+/// Ensure that the path P is read-only while the test runs, and restore original permissions
+/// at the end so compiletest can clean up.
+/// This will panic on Windows if the path is a directory (as it would otherwise do nothing)
+#[track_caller]
+pub fn test_while_readonly<P: AsRef<Path>, F: FnOnce() + std::panic::UnwindSafe>(
+    path: P,
+    closure: F,
+) {
+    let path = path.as_ref();
+    if is_windows() && path.is_dir() {
+        eprintln!("This helper function cannot be used on Windows to make directories readonly.");
+        eprintln!(
+            "See the official documentation:
+            https://doc.rust-lang.org/std/fs/struct.Permissions.html#method.set_readonly"
+        );
+        panic!("`test_while_readonly` on directory detected while on Windows.");
+    }
+    let metadata = fs_wrapper::metadata(&path);
+    let original_perms = metadata.permissions();
+
+    let mut new_perms = original_perms.clone();
+    new_perms.set_readonly(true);
+    fs_wrapper::set_permissions(&path, new_perms);
+
+    let success = std::panic::catch_unwind(closure);
+
+    fs_wrapper::set_permissions(&path, original_perms);
+    success.unwrap();
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]

@@ -10,15 +10,16 @@ use std::sync::{Arc, Barrier};
 use std::thread;
 
 fn main() {
+    fs_wrapper::create_file("lib.rs");
     let barrier = Arc::new(Barrier::new(2));
     let handle = {
         let barrier = Arc::clone(&barrier);
         thread::spawn(move || {
             barrier.wait();
-            rustc().crate_type("lib").arg("-Ztemps-dir=temp1").input("lib.rs");
+            rustc().crate_type("lib").arg("-Ztemps-dir=temp1").input("lib.rs").run();
         })
     };
     barrier.wait();
-    rustc().crate_type("staticlib").arg("-Ztemps-dir=temp2").input("lib.rs");
+    rustc().crate_type("staticlib").arg("-Ztemps-dir=temp2").input("lib.rs").run();
     handle.join().expect("lib thread panicked");
 }
