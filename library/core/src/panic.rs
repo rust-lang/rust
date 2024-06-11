@@ -144,7 +144,7 @@ pub macro unreachable_2021 {
 /// use.
 #[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
-pub unsafe trait PanicPayload {
+pub unsafe trait PanicPayload: crate::fmt::Display {
     /// Take full ownership of the contents.
     /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in core.
     ///
@@ -157,4 +157,9 @@ pub unsafe trait PanicPayload {
 
     /// Just borrow the contents.
     fn get(&mut self) -> &(dyn Any + Send);
+
+    /// Try to borrow the contents as `&str`, if possible without doing any allocations.
+    fn as_str(&mut self) -> Option<&str> {
+        None
+    }
 }
