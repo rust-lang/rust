@@ -102,7 +102,7 @@ rm -r tests/run-make/output-type-permutations
 rm -r tests/run-make/emit-to-stdout
 rm -r tests/run-make/compressed-debuginfo
 rm -r tests/run-make/symbols-include-type-name
-
+rm -r tests/run-make/notify-all-emit-artifacts
 
 # giving different but possibly correct results
 # =============================================
@@ -154,9 +154,9 @@ index 9607ff02f96..b7d97caf9a2 100644
      /// Construct a \`rustdoc\` invocation with \`-L \$(TARGET_RPATH_DIR)\` set.
      pub fn new() -> Self {
          let mut cmd = setup_common();
--        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
+-        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
 -        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-         Self { cmd, stdin: None }
+         Self { cmd }
      }
 
 EOF
