@@ -73,7 +73,7 @@ config_data! {
         /// Warm up caches on project load.
         cachePriming_enable: bool = true,
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
-        cachePriming_numThreads: ParallelCachePrimingNumThreads = 0u8,
+        cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
         /// Pass `--all-targets` to cargo invocation.
         cargo_allTargets: bool           = true,
@@ -583,7 +583,7 @@ config_data! {
         notifications_unindexedProject: bool      = false,
 
         /// How many worker threads in the main loop. The default `null` means to pick automatically.
-        numThreads: Option<usize> = None,
+        numThreads: Option<NumThreads> = None,
 
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = true,
@@ -967,8 +967,6 @@ macro_rules! try_or_def {
         try_!($expr).unwrap_or_default()
     };
 }
-
-type ParallelCachePrimingNumThreads = u8;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkedProject {
@@ -2095,15 +2093,22 @@ impl Config {
         }
     }
 
-    pub fn prime_caches_num_threads(&self) -> u8 {
-        match *self.cachePriming_numThreads() {
-            0 => num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
-            n => n,
+    pub fn prime_caches_num_threads(&self) -> usize {
+        match self.cachePriming_numThreads() {
+            NumThreads::Concrete(0) | NumThreads::Physical => num_cpus::get_physical(),
+            &NumThreads::Concrete(n) => n,
+            NumThreads::Logical => num_cpus::get(),
         }
     }
 
     pub fn main_loop_num_threads(&self) -> usize {
-        self.numThreads().unwrap_or(num_cpus::get_physical())
+        match self.numThreads() {
+            Some(NumThreads::Concrete(0)) | None | Some(NumThreads::Physical) => {
+                num_cpus::get_physical()
+            }
+            &Some(NumThreads::Concrete(n)) => n,
+            Some(NumThreads::Logical) => num_cpus::get(),
+        }
     }
 
     pub fn typing_autoclose_angle(&self) -> bool {
@@ -2197,51 +2202,6 @@ macro_rules! create_bool_or_string_serde {
 }
 create_bool_or_string_serde!(true_or_always<true, "always">);
 create_bool_or_string_serde!(false_or_never<false, "never">);
-
-macro_rules! named_unit_variant {
-    ($variant:ident) => {
-        pub(super) mod $variant {
-            pub(in super::super) fn deserialize<'de, D>(deserializer: D) -> Result<(), D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                struct V;
-                impl<'de> serde::de::Visitor<'de> for V {
-                    type Value = ();
-                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        f.write_str(concat!("\"", stringify!($variant), "\""))
-                    }
-                    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
-                        if value == stringify!($variant) {
-                            Ok(())
-                        } else {
-                            Err(E::invalid_value(serde::de::Unexpected::Str(value), &self))
-                        }
-                    }
-                }
-                deserializer.deserialize_str(V)
-            }
-            pub(in super::super) fn serialize<S>(serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                serializer.serialize_str(stringify!($variant))
-            }
-        }
-    };
-}
-
-mod unit_v {
-    named_unit_variant!(all);
-    named_unit_variant!(skip_trivial);
-    named_unit_variant!(mutable);
-    named_unit_variant!(reborrow);
-    named_unit_variant!(fieldless);
-    named_unit_variant!(with_block);
-    named_unit_variant!(decimal);
-    named_unit_variant!(hexadecimal);
-    named_unit_variant!(both);
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -2357,10 +2317,10 @@ pub(crate) enum CallableCompletionDef {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
 enum CargoFeaturesDef {
-    #[serde(with = "unit_v::all")]
     All,
+    #[serde(untagged)]
     Selected(Vec<String>),
 }
 
@@ -2382,25 +2342,27 @@ enum InvocationLocation {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
 enum LifetimeElisionDef {
+    SkipTrivial,
     #[serde(with = "true_or_always")]
+    #[serde(untagged)]
     Always,
     #[serde(with = "false_or_never")]
+    #[serde(untagged)]
     Never,
-    #[serde(with = "unit_v::skip_trivial")]
-    SkipTrivial,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
 enum ClosureReturnTypeHintsDef {
+    WithBlock,
     #[serde(with = "true_or_always")]
+    #[serde(untagged)]
     Always,
     #[serde(with = "false_or_never")]
+    #[serde(untagged)]
     Never,
-    #[serde(with = "unit_v::with_block")]
-    WithBlock,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -2413,36 +2375,39 @@ enum ClosureStyle {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
 enum ReborrowHintsDef {
-    #[serde(with = "true_or_always")]
-    Always,
-    #[serde(with = "false_or_never")]
-    Never,
-    #[serde(with = "unit_v::mutable")]
     Mutable,
+    #[serde(with = "true_or_always")]
+    #[serde(untagged)]
+    Always,
+    #[serde(with = "false_or_never")]
+    #[serde(untagged)]
+    Never,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
 enum AdjustmentHintsDef {
+    Reborrow,
     #[serde(with = "true_or_always")]
+    #[serde(untagged)]
     Always,
     #[serde(with = "false_or_never")]
+    #[serde(untagged)]
     Never,
-    #[serde(with = "unit_v::reborrow")]
-    Reborrow,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
 enum DiscriminantHintsDef {
+    Fieldless,
     #[serde(with = "true_or_always")]
+    #[serde(untagged)]
     Always,
     #[serde(with = "false_or_never")]
+    #[serde(untagged)]
     Never,
-    #[serde(with = "unit_v::fieldless")]
-    Fieldless,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -2466,9 +2431,11 @@ enum FilesWatcherDef {
 #[serde(rename_all = "snake_case")]
 enum ImportPrefixDef {
     Plain,
-    #[serde(alias = "self")]
+    #[serde(rename = "self")]
+    #[serde(alias = "by_self")]
     BySelf,
-    #[serde(alias = "crate")]
+    #[serde(rename = "crate")]
+    #[serde(alias = "by_crate")]
     ByCrate,
 }
 
@@ -2495,13 +2462,9 @@ enum WorkspaceSymbolSearchKindDef {
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
-#[serde(untagged)]
 enum MemoryLayoutHoverRenderKindDef {
-    #[serde(with = "unit_v::decimal")]
     Decimal,
-    #[serde(with = "unit_v::hexadecimal")]
     Hexadecimal,
-    #[serde(with = "unit_v::both")]
     Both,
 }
 
@@ -2522,6 +2485,15 @@ fn untagged_option_hover_render_kind() {
 pub enum TargetDirectory {
     UseSubdirectory(bool),
     Directory(Utf8PathBuf),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NumThreads {
+    Physical,
+    Logical,
+    #[serde(untagged)]
+    Concrete(usize),
 }
 
 macro_rules! _default_val {
@@ -2775,6 +2747,10 @@ impl FullConfigInput {
         LocalConfigInput::schema_fields(&mut fields);
         ClientConfigInput::schema_fields(&mut fields);
         fields.sort_by_key(|&(x, ..)| x);
+        fields
+            .iter()
+            .tuple_windows()
+            .for_each(|(a, b)| assert!(a.0 != b.0, "{a:?} duplicate field"));
         fields
     }
 
@@ -3034,11 +3010,6 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Search for all symbols kinds."
             ],
         },
-        "ParallelCachePrimingNumThreads" => set! {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 255
-        },
         "LifetimeElisionDef" => set! {
             "type": "string",
             "enum": [
@@ -3260,7 +3231,44 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
-        _ => panic!("missing entry for {ty}: {default}"),
+        "NumThreads" => set! {
+            "anyOf": [
+                {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                {
+                    "type": "string",
+                    "enum": ["physical", "logical", ],
+                    "enumDescriptions": [
+                        "Use the number of physical cores",
+                        "Use the number of logical cores",
+                    ],
+                },
+            ],
+        },
+        "Option<NumThreads>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                {
+                    "type": "string",
+                    "enum": ["physical", "logical", ],
+                    "enumDescriptions": [
+                        "Use the number of physical cores",
+                        "Use the number of logical cores",
+                    ],
+                },
+            ],
+        },
+        _ => panic!("missing entry for {ty}: {default} (field {field})"),
     }
 
     map.into()
@@ -3341,7 +3349,7 @@ mod tests {
             .trim_start_matches('[')
             .trim_end_matches(']')
             .replace("  ", "    ")
-            .replace('\n', "\n            ")
+            .replace('\n', "\n        ")
             .trim_start_matches('\n')
             .trim_end()
             .to_owned();
