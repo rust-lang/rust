@@ -1,13 +1,21 @@
-error[E0282]: type annotations needed
-  --> $DIR/incompat-call-after-qualified-path-0.rs:21:6
+error[E0034]: multiple applicable items in scope
+  --> $DIR/incompat-call-after-qualified-path-0.rs:21:14
    |
 LL |   f(|a, b| a.cmp(b));
-   |      ^       --- type must be known at this point
+   |              ^^^ multiple `cmp` found
    |
-help: consider giving this closure parameter an explicit type
+note: candidate #1 is defined in the trait `Iterator`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+note: candidate #2 is defined in the trait `Ord`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: disambiguate the method for candidate #1
    |
-LL |   f(|a: /* Type */, b| a.cmp(b));
-   |       ++++++++++++
+LL |   f(|a, b| Iterator::cmp(a, b));
+   |            ~~~~~~~~~~~~~~~~~~~
+help: disambiguate the method for candidate #2
+   |
+LL |   f(|a, b| Ord::cmp(&a, b));
+   |            ~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/incompat-call-after-qualified-path-0.rs:21:3
@@ -28,5 +36,5 @@ LL +   f();
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0061, E0282.
-For more information about an error, try `rustc --explain E0061`.
+Some errors have detailed explanations: E0034, E0061.
+For more information about an error, try `rustc --explain E0034`.

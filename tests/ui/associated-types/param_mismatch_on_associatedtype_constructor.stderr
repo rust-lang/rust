@@ -1,0 +1,22 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/param_mismatch_on_associatedtype_constructor.rs:10:36
+   |
+LL |     let <E>::V(..) = E::V(|a, b| a.cmp(b));
+   |                                    ^^^ multiple `cmp` found
+   |
+note: candidate #1 is defined in the trait `Iterator`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+note: candidate #2 is defined in the trait `Ord`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: disambiguate the method for candidate #1
+   |
+LL |     let <E>::V(..) = E::V(|a, b| Iterator::cmp(a, b));
+   |                                  ~~~~~~~~~~~~~~~~~~~
+help: disambiguate the method for candidate #2
+   |
+LL |     let <E>::V(..) = E::V(|a, b| Ord::cmp(&a, b));
+   |                                  ~~~~~~~~~~~~~~~
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

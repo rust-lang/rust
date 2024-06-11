@@ -540,6 +540,7 @@ fn method_autoderef_steps<'tcx>(
 
     let final_ty = autoderef.final_ty(true);
     let opt_bad_ty = match final_ty.kind() {
+        ty::Infer(ty::TyVar(_)) if !reached_raw_pointer => None,
         ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
             ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),

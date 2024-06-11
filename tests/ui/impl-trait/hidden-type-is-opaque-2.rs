@@ -8,8 +8,8 @@
 
 fn reify_as() -> Thunk<impl FnOnce(Continuation) -> Continuation> {
     Thunk::new(|mut cont| {
-        //~^ ERROR type annotations needed
         cont.reify_as();
+        //~^ ERROR: no method named `reify_as` found for type `_`
         cont
     })
 }
@@ -18,8 +18,8 @@ type Tait = impl FnOnce(Continuation) -> Continuation;
 
 fn reify_as_tait() -> Thunk<Tait> {
     Thunk::new(|mut cont| {
-        //~^ ERROR type annotations needed
         cont.reify_as();
+        //~^ ERROR: no method named `reify_as` found for type `_`
         cont
     })
 }
