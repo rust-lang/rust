@@ -103,7 +103,21 @@ LL +
    |
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types.rs:71:13
+  --> $DIR/dropping_copy_types.rs:55:5
+   |
+LL |     drop(drop(String::new()));
+   |     ^^^^^-------------------^
+   |          |
+   |          argument has type `()`
+   |
+help: remove the function call
+   |
+LL -     drop(drop(String::new()));
+LL +     drop(String::new());
+   |
+
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types.rs:73:13
    |
 LL |             drop(println_and(13));
    |             ^^^^^---------------^
@@ -117,7 +131,7 @@ LL +             let _ = println_and(13);
    |
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types.rs:74:14
+  --> $DIR/dropping_copy_types.rs:76:14
    |
 LL |         3 if drop(println_and(14)) == () => (),
    |              ^^^^^---------------^
@@ -127,7 +141,7 @@ LL |         3 if drop(println_and(14)) == () => (),
    = note: use `let _ = ...` to ignore the expression or result
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types.rs:76:14
+  --> $DIR/dropping_copy_types.rs:78:14
    |
 LL |         4 => drop(2),
    |              ^^^^^-^
@@ -136,5 +150,5 @@ LL |         4 => drop(2),
    |
    = note: use `let _ = ...` to ignore the expression or result
 
-warning: 10 warnings emitted
+warning: 11 warnings emitted
 
