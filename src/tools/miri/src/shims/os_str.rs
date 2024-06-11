@@ -142,7 +142,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         os_str: &OsStr,
         memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer> {
-        let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
+        let size = u64::try_from(os_str.len()).unwrap().strict_add(1); // Make space for `0` terminator.
         let this = self.eval_context_mut();
 
         let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u8, size);
@@ -158,7 +158,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         os_str: &OsStr,
         memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer> {
-        let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0x0000` terminator.
+        let size = u64::try_from(os_str.len()).unwrap().strict_add(1); // Make space for `0x0000` terminator.
         let this = self.eval_context_mut();
 
         let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u16, size);

@@ -45,7 +45,7 @@ macro_rules! declare_id {
                 // We use 0 as a sentinel value (see the comment above) and,
                 // therefore, need to shift by one when converting from an index
                 // into a vector.
-                let shifted_idx = u32::try_from(idx).unwrap().checked_add(1).unwrap();
+                let shifted_idx = u32::try_from(idx).unwrap().strict_add(1);
                 $name(std::num::NonZero::new(shifted_idx).unwrap())
             }
             fn index(self) -> usize {
@@ -350,7 +350,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             mutex.owner = Some(thread);
         }
-        mutex.lock_count = mutex.lock_count.checked_add(1).unwrap();
+        mutex.lock_count = mutex.lock_count.strict_add(1);
         if let Some(data_race) = &this.machine.data_race {
             data_race.acquire_clock(&mutex.clock, &this.machine.threads);
         }
@@ -370,9 +370,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(None);
             }
             let old_lock_count = mutex.lock_count;
-            mutex.lock_count = old_lock_count
-                .checked_sub(1)
-                .expect("invariant violation: lock_count == 0 iff the thread is unlocked");
+            mutex.lock_count = old_lock_count.strict_sub(1);
             if mutex.lock_count == 0 {
                 mutex.owner = None;
                 // The mutex is completely unlocked. Try transferring ownership
@@ -450,7 +448,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         trace!("rwlock_reader_lock: {:?} now also held (one more time) by {:?}", id, thread);
         let rwlock = &mut this.machine.sync.rwlocks[id];
         let count = rwlock.readers.entry(thread).or_insert(0);
-        *count = count.checked_add(1).expect("the reader counter overflowed");
+        *count = count.strict_add(1);
         if let Some(data_race) = &this.machine.data_race {
             data_race.acquire_clock(&rwlock.clock_unlocked, &this.machine.threads);
         }
