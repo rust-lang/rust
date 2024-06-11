@@ -410,8 +410,8 @@ mod sealed {
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorInsert {
-        type S;
-        unsafe fn vec_insert<const IDX: u32>(self, s: Self::S) -> Self;
+        type Scalar;
+        unsafe fn vec_insert<const IDX: u32>(self, s: Self::Scalar) -> Self;
     }
 
     const fn idx_in_vec<T, const IDX: u32>() -> u32 {
@@ -422,11 +422,11 @@ mod sealed {
         ($ty:ident) => {
             #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             impl VectorInsert for t_t_l!($ty) {
-                type S = $ty;
+                type Scalar = $ty;
                 #[inline]
                 #[target_feature(enable = "altivec")]
-                unsafe fn vec_insert<const IDX: u32>(self, s: Self::S) -> Self {
-                    simd_insert(self, const { idx_in_vec::<Self::S, IDX>() }, s)
+                unsafe fn vec_insert<const IDX: u32>(self, s: Self::Scalar) -> Self {
+                    simd_insert(self, const { idx_in_vec::<Self::Scalar, IDX>() }, s)
                 }
             }
         };
@@ -442,19 +442,19 @@ mod sealed {
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorExtract {
-        type S;
-        unsafe fn vec_extract<const IDX: u32>(self) -> Self::S;
+        type Scalar;
+        unsafe fn vec_extract<const IDX: u32>(self) -> Self::Scalar;
     }
 
     macro_rules! impl_vec_extract {
         ($ty:ident) => {
             #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             impl VectorExtract for t_t_l!($ty) {
-                type S = $ty;
+                type Scalar = $ty;
                 #[inline]
                 #[target_feature(enable = "altivec")]
-                unsafe fn vec_extract<const IDX: u32>(self) -> Self::S {
-                    simd_extract(self, const { idx_in_vec::<Self::S, IDX>() })
+                unsafe fn vec_extract<const IDX: u32>(self) -> Self::Scalar {
+                    simd_extract(self, const { idx_in_vec::<Self::Scalar, IDX>() })
                 }
             }
         };
@@ -3233,18 +3233,18 @@ mod sealed {
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorRl {
-        type B;
-        unsafe fn vec_rl(self, b: Self::B) -> Self;
+        type Shift;
+        unsafe fn vec_rl(self, b: Self::Shift) -> Self;
     }
 
     macro_rules! impl_vec_rl {
         ($fun:ident ($a:ident)) => {
             #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             impl VectorRl for $a {
-                type B = t_u!($a);
+                type Shift = t_u!($a);
                 #[inline]
                 #[target_feature(enable = "altivec")]
-                unsafe fn vec_rl(self, b: Self::B) -> Self {
+                unsafe fn vec_rl(self, b: Self::Shift) -> Self {
                     transmute($fun(transmute(self), b))
                 }
             }
@@ -3292,7 +3292,7 @@ mod sealed {
 #[inline]
 #[target_feature(enable = "altivec")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-pub unsafe fn vec_insert<T, const IDX: u32>(a: T, b: <T as sealed::VectorInsert>::S) -> T
+pub unsafe fn vec_insert<T, const IDX: u32>(a: T, b: <T as sealed::VectorInsert>::Scalar) -> T
 where
     T: sealed::VectorInsert,
 {
@@ -3310,7 +3310,7 @@ where
 #[inline]
 #[target_feature(enable = "altivec")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-pub unsafe fn vec_extract<T, const IDX: u32>(a: T) -> <T as sealed::VectorExtract>::S
+pub unsafe fn vec_extract<T, const IDX: u32>(a: T) -> <T as sealed::VectorExtract>::Scalar
 where
     T: sealed::VectorExtract,
 {
@@ -3949,7 +3949,7 @@ where
 #[inline]
 #[target_feature(enable = "altivec")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-pub unsafe fn vec_rl<T>(a: T, b: <T as sealed::VectorRl>::B) -> T
+pub unsafe fn vec_rl<T>(a: T, b: <T as sealed::VectorRl>::Shift) -> T
 where
     T: sealed::VectorRl,
 {
