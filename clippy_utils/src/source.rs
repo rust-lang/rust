@@ -2,6 +2,7 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+use rustc_ast::{LitKind, StrStyle};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
@@ -498,6 +499,50 @@ pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
 pub fn expand_past_previous_comma(cx: &LateContext<'_>, span: Span) -> Span {
     let extended = cx.sess().source_map().span_extend_to_prev_char(span, ',', true);
     extended.with_lo(extended.lo() - BytePos(1))
+}
+
+/// Converts `expr` to a `char` literal if it's a `str` literal containing a single
+/// character (or a single byte with `ascii_only`)
+pub fn str_literal_to_char_literal(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    applicability: &mut Applicability,
+    ascii_only: bool,
+) -> Option<String> {
+    if let ExprKind::Lit(lit) = &expr.kind
+        && let LitKind::Str(r, style) = lit.node
+        && let string = r.as_str()
+        && let len = if ascii_only {
+            string.len()
+        } else {
+            string.chars().count()
+        }
+        && len == 1
+    {
+        let snip = snippet_with_applicability(cx, expr.span, string, applicability);
+        let ch = if let StrStyle::Raw(nhash) = style {
+            let nhash = nhash as usize;
+            // for raw string: r##"a"##
+            &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
+        } else {
+            // for regular string: "a"
+            &snip[1..(snip.len() - 1)]
+        };
+
+        let hint = format!(
+            "'{}'",
+            match ch {
+                "'" => "\\'",
+                r"\" => "\\\\",
+                "\\\"" => "\"", // no need to escape `"` in `'"'`
+                _ => ch,
+            }
+        );
+
+        Some(hint)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

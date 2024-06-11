@@ -1,8 +1,5 @@
-use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, path_to_local_id, usage};
-use rustc_ast::ast;
-use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, QPath, Stmt, StmtKind};
 use rustc_lint::LateContext;
@@ -46,48 +43,6 @@ pub(super) fn derefs_to_slice<'tcx>(
             },
             _ => None,
         }
-    }
-}
-
-pub(super) fn get_hint_if_single_char_arg(
-    cx: &LateContext<'_>,
-    arg: &Expr<'_>,
-    applicability: &mut Applicability,
-    ascii_only: bool,
-) -> Option<String> {
-    if let ExprKind::Lit(lit) = &arg.kind
-        && let ast::LitKind::Str(r, style) = lit.node
-        && let string = r.as_str()
-        && let len = if ascii_only {
-            string.len()
-        } else {
-            string.chars().count()
-        }
-        && len == 1
-    {
-        let snip = snippet_with_applicability(cx, arg.span, string, applicability);
-        let ch = if let ast::StrStyle::Raw(nhash) = style {
-            let nhash = nhash as usize;
-            // for raw string: r##"a"##
-            &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
-        } else {
-            // for regular string: "a"
-            &snip[1..(snip.len() - 1)]
-        };
-
-        let hint = format!(
-            "'{}'",
-            match ch {
-                "'" => "\\'",
-                r"\" => "\\\\",
-                "\\\"" => "\"", // no need to escape `"` in `'"'`
-                _ => ch,
-            }
-        );
-
-        Some(hint)
-    } else {
-        None
     }
 }
 

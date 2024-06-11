@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 return;
             }
 
-            if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
+            if is_whole && !sym_str.contains(['e', 'E']) {
                 // Normalize the literal by stripping the fractional portion
                 if sym_str.split('.').next().unwrap() != float_str {
                     // If the type suffix is missing the suggestion would be
