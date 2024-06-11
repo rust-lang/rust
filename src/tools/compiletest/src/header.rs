@@ -129,6 +129,11 @@ pub struct TestProps {
     pub check_stdout: bool,
     // Check stdout & stderr for output of run-pass test
     pub check_run_results: bool,
+    /// Check that stdout from running the binary is legal JSON Lines
+    /// (i.e. each line is well-formed JSON).
+    ///
+    /// Has no effect in tests that don't run the compiled binary.
+    pub check_run_stdout_is_json_lines: bool,
     // For UI tests, allows compiler to generate arbitrary output to stdout
     pub dont_check_compiler_stdout: bool,
     // For UI tests, allows compiler to generate arbitrary output to stderr
@@ -226,6 +231,7 @@ mod directives {
     pub const FORCE_HOST: &'static str = "force-host";
     pub const CHECK_STDOUT: &'static str = "check-stdout";
     pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
+    pub const CHECK_RUN_STDOUT_IS_JSON_LINES: &'static str = "check-run-stdout-is-json-lines";
     pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
     pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
     pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
@@ -285,6 +291,7 @@ impl TestProps {
             force_host: false,
             check_stdout: false,
             check_run_results: false,
+            check_run_stdout_is_json_lines: false,
             dont_check_compiler_stdout: false,
             dont_check_compiler_stderr: false,
             compare_output_lines_by_subset: false,
@@ -422,6 +429,11 @@ impl TestProps {
                         ln,
                         DONT_CHECK_COMPILER_STDOUT,
                         &mut self.dont_check_compiler_stdout,
+                    );
+                    config.set_name_directive(
+                        ln,
+                        CHECK_RUN_STDOUT_IS_JSON_LINES,
+                        &mut self.check_run_stdout_is_json_lines,
                     );
                     config.set_name_directive(
                         ln,
@@ -739,6 +751,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "check-fail",
     "check-pass",
     "check-run-results",
+    "check-run-stdout-is-json-lines",
     "check-stdout",
     "check-test-line-numbers-match",
     "compare-output-lines-by-subset",

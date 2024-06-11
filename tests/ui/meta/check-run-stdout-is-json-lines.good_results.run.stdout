@@ -1,0 +1,3 @@
+true
+[ "this is valid json" ]
+{ "key": "this is valid json" }

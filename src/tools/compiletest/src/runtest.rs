@@ -3940,6 +3940,17 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run succeeded!", &proc_res);
             }
 
+            if self.props.check_run_stdout_is_json_lines {
+                for (line, n) in proc_res.stdout.lines().zip(1..) {
+                    if serde_json::Value::from_str(line).is_err() {
+                        self.fatal_proc_rec(
+                            &format!("invalid JSON on line {n} of stdout: {line:?}"),
+                            &proc_res,
+                        );
+                    }
+                }
+            }
+
             if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
             {
                 // "// error-pattern" comments
