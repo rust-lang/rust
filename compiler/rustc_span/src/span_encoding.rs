@@ -192,20 +192,20 @@ macro_rules! match_span_kind {
         if $span.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
             if $span.len_with_tag_or_marker & PARENT_TAG == 0 {
                 // Inline-context format.
-                let $span1: &mut InlineCtxt = unsafe { transmute(&mut *$span) };
+                let $span1: InlineCtxt = unsafe { transmute($span) };
                 $arm1
             } else {
                 // Inline-parent format.
-                let $span2: &mut InlineParent = unsafe { transmute(&mut *$span) };
+                let $span2: InlineParent = unsafe { transmute($span) };
                 $arm2
             }
         } else if $span.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
             // Partially-interned format.
-            let $span3: &mut PartiallyInterned = unsafe { transmute(&mut *$span) };
+            let $span3: PartiallyInterned = unsafe { transmute($span) };
             $arm3
         } else {
             // Interned format.
-            let $span4: &mut Interned = unsafe { transmute(&mut *$span) };
+            let $span4: Interned = unsafe { transmute($span) };
             $arm4
         }
     };
@@ -273,9 +273,9 @@ impl Span {
     /// Internal function to translate between an encoded span and the expanded representation.
     /// This function must not be used outside the incremental engine.
     #[inline]
-    pub fn data_untracked(mut self) -> SpanData {
+    pub fn data_untracked(self) -> SpanData {
         match_span_kind! {
-            &mut self,
+            self,
             InlineCtxt(span) => span.data(),
             InlineParent(span) => span.data(),
             PartiallyInterned(span) => span.data(),
@@ -304,7 +304,7 @@ impl Span {
     // update doesn't change format. All non-inline or format changing scenarios require accessing
     // interner and can fall back to `Span::new`.
     #[inline]
-    pub fn update_ctxt(&mut self, update: impl FnOnce(SyntaxContext) -> SyntaxContext) {
+    pub fn map_ctxt(self, update: impl FnOnce(SyntaxContext) -> SyntaxContext) -> Span {
         let (updated_ctxt32, data);
         match_span_kind! {
             self,
@@ -313,8 +313,7 @@ impl Span {
                     update(SyntaxContext::from_u32(span.ctxt as u32)).as_u32();
                 // Any small new context including zero will preserve the format.
                 if updated_ctxt32 <= MAX_CTXT {
-                    span.ctxt = updated_ctxt32 as u16;
-                    return;
+                    return InlineCtxt::span(span.lo, span.len, updated_ctxt32 as u16);
                 }
                 data = span.data();
             },
@@ -323,7 +322,7 @@ impl Span {
                 // Only if the new context is zero the format will be preserved.
                 if updated_ctxt32 == 0 {
                     // Do nothing.
-                    return;
+                    return self;
                 }
                 data = span.data();
             },
@@ -332,8 +331,7 @@ impl Span {
                 // Any small new context excluding zero will preserve the format.
                 // Zero may change the format to `InlineParent` if parent and len are small enough.
                 if updated_ctxt32 <= MAX_CTXT && updated_ctxt32 != 0 {
-                    span.ctxt = updated_ctxt32 as u16;
-                    return;
+                    return PartiallyInterned::span(span.index, updated_ctxt32 as u16);
                 }
                 data = span.data();
             },
@@ -344,15 +342,15 @@ impl Span {
         }
 
         // We could not keep the span in the same inline format, fall back to the complete logic.
-        *self = data.with_ctxt(SyntaxContext::from_u32(updated_ctxt32));
+        data.with_ctxt(SyntaxContext::from_u32(updated_ctxt32))
     }
 
     // Returns either syntactic context, if it can be retrieved without taking the interner lock,
     // or an index into the interner if it cannot.
     #[inline]
-    fn inline_ctxt(mut self) -> Result<SyntaxContext, usize> {
+    fn inline_ctxt(self) -> Result<SyntaxContext, usize> {
         match_span_kind! {
-            &mut self,
+            self,
             InlineCtxt(span) => Ok(SyntaxContext::from_u32(span.ctxt as u32)),
             InlineParent(_span) => Ok(SyntaxContext::root()),
             PartiallyInterned(span) => Ok(SyntaxContext::from_u32(span.ctxt as u32)),
