@@ -53,9 +53,9 @@ pub fn check(path: &Path, bad: &mut bool) {
             } else if directive.starts_with(COMPILE_FLAGS_HEADER) {
                 let compile_flags = &directive[COMPILE_FLAGS_HEADER.len()..];
                 if let Some((_, v)) = compile_flags.split_once("--target") {
-                    if let Some((arch, _)) =
-                        v.trim_start_matches(|c| c == ' ' || c == '=').split_once("-")
-                    {
+                    let v = v.trim_start_matches(|c| c == ' ' || c == '=');
+                    let v = if v == "{{target}}" { Some((v, v)) } else { v.split_once("-") };
+                    if let Some((arch, _)) = v {
                         let info = header_map.entry(revision).or_insert(RevisionInfo::default());
                         info.target_arch.replace(arch);
                     } else {
