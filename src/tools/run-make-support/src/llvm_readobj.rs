@@ -5,6 +5,7 @@ use crate::env_var;
 
 /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
 /// at `$LLVM_BIN_DIR/llvm-readobj`.
+#[track_caller]
 pub fn llvm_readobj() -> LlvmReadobj {
     LlvmReadobj::new()
 }
@@ -20,6 +21,7 @@ crate::impl_common_helpers!(LlvmReadobj);
 impl LlvmReadobj {
     /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
     /// at `$LLVM_BIN_DIR/llvm-readobj`.
+    #[track_caller]
     pub fn new() -> Self {
         let llvm_bin_dir = env_var("LLVM_BIN_DIR");
         let llvm_bin_dir = PathBuf::from(llvm_bin_dir);

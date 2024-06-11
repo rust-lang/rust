@@ -4,6 +4,7 @@ use crate::command::Command;
 use crate::{bin_name, env_var};
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
+#[track_caller]
 pub fn clang() -> Clang {
     Clang::new()
 }
@@ -18,6 +19,7 @@ crate::impl_common_helpers!(Clang);
 
 impl Clang {
     /// Construct a new `clang` invocation. `clang` is not always available for all targets.
+    #[track_caller]
     pub fn new() -> Self {
         let clang = env_var("CLANG");
         let cmd = Command::new(clang);

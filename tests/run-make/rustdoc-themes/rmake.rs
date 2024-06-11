@@ -28,5 +28,5 @@ fn main() {
     std::fs::write(&test_css, test_content).unwrap();
 
     rustdoc().output(&out_dir).input("foo.rs").arg("--theme").arg(&test_css).run();
-    assert!(htmldocck().arg(out_dir).arg("foo.rs").status().unwrap().success());
+    htmldocck().arg(out_dir).arg("foo.rs").run();
 }

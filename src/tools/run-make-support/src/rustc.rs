@@ -5,11 +5,13 @@ use std::path::Path;
 use crate::{command, cwd, env_var, set_host_rpath};
 
 /// Construct a new `rustc` invocation.
+#[track_caller]
 pub fn rustc() -> Rustc {
     Rustc::new()
 }
 
 /// Construct a new `rustc` aux-build invocation.
+#[track_caller]
 pub fn aux_build() -> Rustc {
     Rustc::new_aux_build()
 }
@@ -22,6 +24,7 @@ pub struct Rustc {
 
 crate::impl_common_helpers!(Rustc);
 
+#[track_caller]
 fn setup_common() -> Command {
     let rustc = env_var("RUSTC");
     let mut cmd = Command::new(rustc);
@@ -34,12 +37,14 @@ impl Rustc {
     // `rustc` invocation constructor methods
 
     /// Construct a new `rustc` invocation.
+    #[track_caller]
     pub fn new() -> Self {
         let cmd = setup_common();
         Self { cmd }
     }
 
     /// Construct a new `rustc` invocation with `aux_build` preset (setting `--crate-type=lib`).
+    #[track_caller]
     pub fn new_aux_build() -> Self {
         let mut cmd = setup_common();
         cmd.arg("--crate-type=lib");

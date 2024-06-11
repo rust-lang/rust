@@ -1,5 +1,6 @@
 use std::env;
 use std::ffi::OsStr;
+use std::panic;
 use std::path::{Path, PathBuf};
 
 use crate::command::{Command, CompletedProcess};
@@ -7,7 +8,8 @@ use crate::{cwd, env_var, is_windows, set_host_rpath};
 
 use super::handle_failed_output;
 
-fn run_common(name: &str) -> (Command, CompletedProcess) {
+#[track_caller]
+fn run_common(name: &str) -> Command {
     let mut bin_path = PathBuf::new();
     bin_path.push(cwd());
     bin_path.push(name);
@@ -34,19 +36,17 @@ fn run_common(name: &str) -> (Command, CompletedProcess) {
         cmd.env("PATH", env::join_paths(paths.iter()).unwrap());
     }
 
-    let output = cmd.command_output();
-    (cmd, output)
+    cmd
 }
 
 /// Run a built binary and make sure it succeeds.
 #[track_caller]
 pub fn run(name: &str) -> CompletedProcess {
-    let caller_location = std::panic::Location::caller();
-    let caller_line_number = caller_location.line();
-
-    let (cmd, output) = run_common(name);
+    let caller = panic::Location::caller();
+    let mut cmd = run_common(name);
+    let output = cmd.run();
     if !output.status().success() {
-        handle_failed_output(&cmd, output, caller_line_number);
+        handle_failed_output(&cmd, output, caller.line());
     }
     output
 }
@@ -54,18 +54,18 @@ pub fn run(name: &str) -> CompletedProcess {
 /// Run a built binary and make sure it fails.
 #[track_caller]
 pub fn run_fail(name: &str) -> CompletedProcess {
-    let caller_location = std::panic::Location::caller();
-    let caller_line_number = caller_location.line();
-
-    let (cmd, output) = run_common(name);
+    let caller = panic::Location::caller();
+    let mut cmd = run_common(name);
+    let output = cmd.run_fail();
     if output.status().success() {
-        handle_failed_output(&cmd, output, caller_line_number);
+        handle_failed_output(&cmd, output, caller.line());
     }
     output
 }
 
-/// Create a new custom Command.
-/// This should be preferred to creating `std::process::Command` directly.
+/// Create a new custom [`Command`]. This should be preferred to creating [`std::process::Command`]
+/// directly.
+#[track_caller]
 pub fn cmd<S: AsRef<OsStr>>(program: S) -> Command {
     let mut command = Command::new(program);
     set_host_rpath(&mut command);
