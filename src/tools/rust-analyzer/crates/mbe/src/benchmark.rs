@@ -215,7 +215,7 @@ fn invocation_fixtures(
 
                 token_trees.push(subtree.into());
             }
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Length { .. } => {}
+            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Len { .. } => {}
         };
 
         // Simple linear congruential generator for deterministic result
