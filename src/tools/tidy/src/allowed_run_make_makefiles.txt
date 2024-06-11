@@ -72,7 +72,6 @@ run-make/incremental-debugger-visualizer/Makefile
 run-make/incremental-session-fail/Makefile
 run-make/inline-always-many-cgu/Makefile
 run-make/interdependent-c-libraries/Makefile
-run-make/intrinsic-unreachable/Makefile
 run-make/invalid-library/Makefile
 run-make/invalid-so/Makefile
 run-make/invalid-staticlib/Makefile
