@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `&_`
-  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:14:13
+  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:15:13
    |
 LL |         let x = &my_foo();
    |             ^

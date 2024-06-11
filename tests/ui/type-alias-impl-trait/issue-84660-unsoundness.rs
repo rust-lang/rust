@@ -21,7 +21,6 @@ impl<In, Out> Trait<Bar, In> for Out {
     type Out = Out;
     fn convert(_i: In) -> Self::Out {
         //[next]~^  ERROR: cannot satisfy `Bar == _`
-        //[current]~^^ ERROR: item does not constrain `Bar::{opaque#0}`, but has it in its signature
         unreachable!();
     }
 }

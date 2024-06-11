@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait<Bar, _>`
-  --> $DIR/issue-84660-unsoundness.rs:29:1
+  --> $DIR/issue-84660-unsoundness.rs:28:1
    |
 LL | impl<In, Out> Trait<Bar, In> for Out {
    | ------------------------------------ first implementation here
@@ -7,19 +7,6 @@ LL | impl<In, Out> Trait<Bar, In> for Out {
 LL | impl<In, Out> Trait<(), In> for Out {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
-error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
-  --> $DIR/issue-84660-unsoundness.rs:22:8
-   |
-LL |     fn convert(_i: In) -> Self::Out {
-   |        ^^^^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/issue-84660-unsoundness.rs:12:12
-   |
-LL | type Bar = impl Foo;
-   |            ^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

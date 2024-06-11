@@ -22,7 +22,7 @@ fn sum_to(n: u32) -> impl Foo {
         0
     } else {
         n + sum_to(n - 1)
-        //~^ ERROR cannot add `impl Foo` to `u32`
+        //~^ ERROR cannot satisfy `<u32 as Add<impl Foo>>::Output == i32`
     }
 }
 
