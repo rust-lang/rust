@@ -1,6 +1,8 @@
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/issue-116434-2021.rs:5:17
    |
+LL |     type Clone;
+   |     ---------- you might have meant to use this associated type
 LL |     fn foo() -> Clone;
    |                 ^^^^^
    |
@@ -8,10 +10,16 @@ help: `Clone` is not object safe, use `impl Clone` to return an opaque type, as 
    |
 LL |     fn foo() -> impl Clone;
    |                 ++++
+help: there is an associated type with the same name
+   |
+LL |     fn foo() -> Self::Clone;
+   |                 ++++++
 
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/issue-116434-2021.rs:14:20
+  --> $DIR/issue-116434-2021.rs:15:20
    |
+LL |     type DbHandle;
+   |     ------------- you might have meant to use this associated type
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^
    |
@@ -19,6 +27,10 @@ help: `DbHandle` is not object safe, use `impl DbHandle` to return an opaque typ
    |
 LL |     fn handle() -> impl DbHandle;
    |                    ++++
+help: there is an associated type with the same name
+   |
+LL |     fn handle() -> Self::DbHandle;
+   |                    ++++++
 
 error: aborting due to 2 previous errors
 

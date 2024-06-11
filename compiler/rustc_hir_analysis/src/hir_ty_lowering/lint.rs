@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_infer::traits::error_reporting::suggest_path_on_bare_trait;
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
+use rustc_middle::ty;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
@@ -87,6 +88,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
+            self.maybe_suggest_assoc_type(&poly_trait_ref.trait_ref, &mut diag);
 
             if object_safe {
                 let parents = self.tcx().hir().parent_iter(self_ty.hir_id);
@@ -334,6 +336,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 lo.between(hi),
                 "you might have meant to write a bound here",
                 ": ",
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
+    /// Look for associated types with the same name as the `-> Trait` and suggest `-> Self::Trait`.
+    fn maybe_suggest_assoc_type(&self, trait_ref: &hir::TraitRef<'_>, diag: &mut Diag<'_>) {
+        let tcx = self.tcx();
+        let [segment] = trait_ref.path.segments else { return };
+        let mut trait_or_impl = None;
+        let mut iter = tcx.hir().parent_owner_iter(trait_ref.hir_ref_id);
+        while let Some((def_id, node)) = iter.next() {
+            if let hir::OwnerNode::Item(hir::Item {
+                kind: hir::ItemKind::Trait(..) | hir::ItemKind::Impl(..),
+                ..
+            }) = node
+            {
+                trait_or_impl = Some(def_id);
+                break;
+            }
+        }
+        let Some(parent_id) = trait_or_impl else { return };
+        let mut assocs = tcx
+            .associated_items(parent_id)
+            .filter_by_name_unhygienic(segment.ident.name)
+            .filter(|assoc| assoc.kind == ty::AssocKind::Type);
+        if let Some(assoc) = assocs.next() {
+            diag.span_label(
+                tcx.def_span(assoc.def_id),
+                "you might have meant to use this associated type",
+            );
+            diag.span_suggestion_verbose(
+                segment.ident.span.shrink_to_lo(),
+                "there is an associated type with the same name",
+                "Self::",
                 Applicability::MaybeIncorrect,
             );
         }
