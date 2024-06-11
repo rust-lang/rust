@@ -31,7 +31,7 @@ use std::io::{self, BufReader};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::str;
+use std::str::{self, FromStr};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -3783,7 +3783,7 @@ impl<'test> TestCx<'test> {
         } else if explicit_format {
             proc_res.stderr.clone()
         } else {
-            json::extract_rendered(&proc_res.stderr)
+            json::extract_rendered(&proc_res.stderr, json::OnUnknownJson::Error)
         };
 
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
@@ -4564,7 +4564,7 @@ pub struct ProcRes {
 impl ProcRes {
     pub fn print_info(&self) {
         fn render(name: &str, contents: &str) -> String {
-            let contents = json::extract_rendered(contents);
+            let contents = json::extract_rendered(contents, json::OnUnknownJson::Print);
             let contents = contents.trim_end();
             if contents.is_empty() {
                 format!("{name}: none")
