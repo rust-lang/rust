@@ -1569,7 +1569,13 @@ function initSearch(rawSearchIndex) {
                         highlighted: !!fnType.highlighted,
                     }, result);
                     const where = [];
+                    let first = true;
                     for (const nested of fnType.generics) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            pushText({ name: " + ", highlighted: false }, where);
+                        }
                         writeFn(nested, where);
                     }
                     if (where.length > 0) {
@@ -3080,13 +3086,18 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                         tooltip.href = `#${tooltip.id}`;
                         const tooltipCode = document.createElement("code");
                         for (const [name, qname] of mappedNames) {
+                            // don't care unless the generic name is different
+                            if (name === qname) {
+                                continue;
+                            }
                             const line = document.createElement("div");
                             line.className = "where";
                             line.appendChild(document.createTextNode(`${name} is ${qname}`));
                             tooltipCode.appendChild(line);
                         }
                         for (const [name, innerType] of whereClause) {
-                            if (innerType.length === 0) {
+                            // don't care unless there's at least one highlighted entry
+                            if (innerType.length <= 1) {
                                 continue;
                             }
                             const line = document.createElement("div");
@@ -3103,20 +3114,22 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                             });
                             tooltipCode.appendChild(line);
                         }
-                        tooltip.RUSTDOC_TOOLTIP_DOM = document.createElement("div");
-                        tooltip.RUSTDOC_TOOLTIP_DOM.className = "content";
-                        const tooltipH3 = document.createElement("h3");
-                        tooltipH3.innerHTML = "About this result";
-                        tooltip.RUSTDOC_TOOLTIP_DOM.appendChild(tooltipH3);
-                        const tooltipPre = document.createElement("pre");
-                        tooltipPre.appendChild(tooltipCode);
-                        tooltip.RUSTDOC_TOOLTIP_DOM.appendChild(tooltipPre);
-                        tooltip.typeWhereClause = whereClause;
-                        tooltip.innerText = "ⓘ";
-                        tooltip.className = "tooltip";
-                        window.rustdocConfigureTooltip(tooltip);
-                        displayType.appendChild(tooltip);
-                        displayType.appendChild(document.createTextNode(" "));
+                        if (tooltipCode.childNodes.length !== 0) {
+                            tooltip.RUSTDOC_TOOLTIP_DOM = document.createElement("div");
+                            tooltip.RUSTDOC_TOOLTIP_DOM.className = "content";
+                            const tooltipH3 = document.createElement("h3");
+                            tooltipH3.innerHTML = "About this result";
+                            tooltip.RUSTDOC_TOOLTIP_DOM.appendChild(tooltipH3);
+                            const tooltipPre = document.createElement("pre");
+                            tooltipPre.appendChild(tooltipCode);
+                            tooltip.RUSTDOC_TOOLTIP_DOM.appendChild(tooltipPre);
+                            tooltip.typeWhereClause = whereClause;
+                            tooltip.innerText = "ⓘ";
+                            tooltip.className = "tooltip";
+                            window.rustdocConfigureTooltip(tooltip);
+                            displayType.appendChild(tooltip);
+                            displayType.appendChild(document.createTextNode(" "));
+                        }
                     }
                     type.forEach((value, index) => {
                         if (index % 2 !== 0) {
