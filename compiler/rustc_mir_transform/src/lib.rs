@@ -1,3 +1,4 @@
+#![deny(unused_crate_dependencies)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]

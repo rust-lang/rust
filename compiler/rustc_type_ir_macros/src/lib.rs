@@ -1,3 +1,5 @@
+#![deny(unused_crate_dependencies)]
+
 use quote::quote;
 use syn::{parse_quote, visit_mut::VisitMut};
 use synstructure::decl_derive;

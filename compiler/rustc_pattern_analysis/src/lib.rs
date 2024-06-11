@@ -2,6 +2,9 @@
 
 #![allow(rustc::untranslatable_diagnostic)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+// FIXME(nnethercote) this should be `deny`, but we get some false positives
+// for crates used only within `compiler/rustc_pattern_analysis/tests/`.
+#![allow(unused_crate_dependencies)]
 
 pub mod constructor;
 #[cfg(feature = "rustc")]

@@ -1,6 +1,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(never_type)]
 #![allow(unused_variables)]
+#![deny(unused_crate_dependencies)]
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 

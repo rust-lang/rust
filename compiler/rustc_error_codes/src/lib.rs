@@ -5,6 +5,7 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![deny(rustdoc::invalid_codeblock_attributes)]
+#![deny(unused_crate_dependencies)]
 
 // This higher-order macro defines the error codes that are in use. It is used
 // in the `rustc_errors` crate. Removed error codes are listed in the comment

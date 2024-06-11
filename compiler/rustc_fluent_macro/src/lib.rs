@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]

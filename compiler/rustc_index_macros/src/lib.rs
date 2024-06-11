@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "nightly", feature(allow_internal_unstable))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+#![deny(unused_crate_dependencies)]
 
 use proc_macro::TokenStream;
 

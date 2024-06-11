@@ -12,6 +12,7 @@
 #![allow(rustc::potential_query_instability)]
 #![cfg_attr(not(parallel_compiler), feature(cell_leak))]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unused_crate_dependencies)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(allocator_api)]

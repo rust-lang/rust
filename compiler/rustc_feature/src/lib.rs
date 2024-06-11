@@ -12,6 +12,7 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 

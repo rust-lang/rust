@@ -4,6 +4,7 @@
 )]
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+#![deny(unused_crate_dependencies)]
 
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;

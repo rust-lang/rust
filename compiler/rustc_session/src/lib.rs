@@ -4,6 +4,7 @@
 #![feature(map_many_mut)]
 #![feature(iter_intersperse)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 pub mod errors;
 

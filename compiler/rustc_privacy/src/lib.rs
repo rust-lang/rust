@@ -2,6 +2,7 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(associated_type_defaults)]
 #![feature(try_blocks)]
 #![feature(let_chains)]

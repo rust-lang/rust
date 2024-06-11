@@ -7,6 +7,7 @@
 #![feature(proc_macro_tracked_env)]
 #![allow(rustc::default_hash_types)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 use synstructure::decl_derive;
 

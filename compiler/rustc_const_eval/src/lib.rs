@@ -1,5 +1,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![deny(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]

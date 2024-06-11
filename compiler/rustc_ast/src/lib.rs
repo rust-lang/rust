@@ -10,6 +10,7 @@
 )]
 #![doc(rust_logo)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]

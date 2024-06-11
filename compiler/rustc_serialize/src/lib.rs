@@ -7,6 +7,9 @@
 )]
 #![doc(rust_logo)]
 #![allow(internal_features)]
+// FIXME(nnethercote) this should be `deny`, but we get some false positives
+// for crates used only within `compiler/rustc_serialize/tests/`.
+#![allow(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![feature(const_option)]
 #![feature(core_intrinsics)]

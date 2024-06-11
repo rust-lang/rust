@@ -2,6 +2,7 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 // NOTE: This crate only exists to allow linking on mingw targets.
 

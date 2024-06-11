@@ -38,6 +38,7 @@
 #![feature(trait_upcasting)]
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 mod async_fn_in_trait;
 pub mod builtin;

@@ -1,6 +1,7 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![deny(missing_docs)]
+#![deny(unused_crate_dependencies)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]

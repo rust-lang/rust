@@ -1,6 +1,7 @@
 //! HIR pretty-printing is layered on top of AST pretty-printing. A number of
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
+#![deny(unused_crate_dependencies)]
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;

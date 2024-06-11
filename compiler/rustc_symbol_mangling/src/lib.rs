@@ -92,6 +92,7 @@
 #![feature(rustdoc_internals)]
 #![feature(let_chains)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};

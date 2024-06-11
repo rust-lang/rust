@@ -14,6 +14,7 @@
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![allow(rustc::usage_of_ty_tykind)]
+#![deny(unused_crate_dependencies)]
 
 pub mod rustc_internal;
 

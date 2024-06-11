@@ -12,6 +12,7 @@
 // We want to be able to build this crate with a stable compiler,
 // so no `#![feature]` attributes should be added.
 #![deny(unstable_features)]
+#![deny(unused_crate_dependencies)]
 
 use rustc_lexer::unescape;
 pub use Alignment::*;

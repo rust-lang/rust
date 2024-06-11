@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![deny(unused_crate_dependencies)]
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]

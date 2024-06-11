@@ -4,6 +4,7 @@
 #![feature(min_specialization)]
 #![feature(let_chains)]
 #![allow(rustc::potential_query_instability, internal_features)]
+#![deny(unused_crate_dependencies)]
 
 pub mod cache;
 pub mod dep_graph;

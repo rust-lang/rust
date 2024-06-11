@@ -5,17 +5,18 @@
 //! # Note
 //!
 //! This API is still completely unstable and subject to change.
+//!
+//! This crate shall contain all type definitions and APIs that we expect third-party tools to
+//! invoke to interact with the compiler.
+//!
+//! The goal is to eventually be published on
+//! [crates.io](https://crates.io).
 
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-//!
-//! This crate shall contain all type definitions and APIs that we expect third-party tools to invoke to
-//! interact with the compiler.
-//!
-//! The goal is to eventually be published on
-//! [crates.io](https://crates.io).
+#![deny(unused_crate_dependencies)]
 
 use std::fmt;
 use std::fmt::Debug;

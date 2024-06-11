@@ -1,3 +1,5 @@
+#![deny(unused_crate_dependencies)]
+
 pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};

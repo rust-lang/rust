@@ -276,6 +276,7 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 use LabelText::*;
 

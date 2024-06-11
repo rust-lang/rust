@@ -9,6 +9,7 @@
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 extern crate self as rustc_hir;
 

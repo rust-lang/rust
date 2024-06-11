@@ -9,6 +9,7 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(decl_macro)]
 #![feature(let_chains)]
 #![feature(panic_backtrace_config)]

@@ -1,5 +1,6 @@
 //! Queries that are independent from the main solver code.
 
+#![deny(unused_crate_dependencies)]
 #![recursion_limit = "256"]
 
 mod codegen;

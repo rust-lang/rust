@@ -3,6 +3,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![deny(unused_crate_dependencies)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]

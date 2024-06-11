@@ -7,6 +7,7 @@
 #![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability, unused_parens)]
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
 use crate::profiling_support::QueryKeyStringCache;

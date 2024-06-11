@@ -5,6 +5,7 @@
 //! to this crate.
 
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(let_chains)]

@@ -1,3 +1,4 @@
+#![deny(unused_crate_dependencies)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]

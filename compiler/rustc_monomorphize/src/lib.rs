@@ -1,3 +1,4 @@
+#![deny(unused_crate_dependencies)]
 #![feature(array_windows)]
 #![feature(is_sorted)]
 

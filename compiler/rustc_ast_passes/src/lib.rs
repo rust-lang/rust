@@ -5,6 +5,7 @@
 //! The crate also contains other misc AST visitors, e.g. `node_count` and `show_span`.
 
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![feature(box_patterns)]

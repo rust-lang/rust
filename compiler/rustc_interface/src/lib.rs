@@ -1,3 +1,4 @@
+#![deny(unused_crate_dependencies)]
 #![feature(decl_macro)]
 #![feature(let_chains)]
 #![feature(thread_spawn_unchecked)]

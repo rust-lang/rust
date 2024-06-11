@@ -1,6 +1,7 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 #![allow(internal_features)]
+#![deny(unused_crate_dependencies)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]

@@ -4,6 +4,7 @@
 )]
 #![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+#![deny(unused_crate_dependencies)]
 
 pub mod bit_set;
 #[cfg(feature = "nightly")]
