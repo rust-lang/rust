@@ -47,7 +47,7 @@ ENV RUST_CONFIGURE_ARGS \
 # This job appears to be checking two separate things:
 # - That we can build the compiler with `--enable-debug`
 #   (without necessarily testing the result).
-# - That the tests with `//@ needs-matching-clang` pass, since they
+# - That the tests with `//@ needs-force-clang-based-tests` pass, since they
 #   don't run by default unless RUSTBUILD_FORCE_CLANG_BASED_TESTS is set.
 #   - FIXME(https://github.com/rust-lang/rust/pull/126155#issuecomment-2156314273):
 #     Currently we only run the subset of tests with "clang" in their name.

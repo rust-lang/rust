@@ -4,7 +4,7 @@
 
 #![warn(macro_use_extern_crate, unused)]
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` item
+#[macro_use] //~ WARN applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
 extern crate macro_use_warned_against;
 #[macro_use] //~ WARN unused `#[macro_use]`
 extern crate macro_use_warned_against2;

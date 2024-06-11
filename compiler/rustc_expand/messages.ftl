@@ -157,7 +157,7 @@ expand_unsupported_key_value =
     key-value macro attributes are not supported
 
 expand_var_still_repeating =
-    variable '{$ident}' is still repeating at this depth
+    variable `{$ident}` is still repeating at this depth
 
 expand_wrong_fragment_kind =
     non-{$kind} macro in {$kind} position: {$name}

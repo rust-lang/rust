@@ -6,7 +6,7 @@
 //@ aux-crate:barbar=bar.rs
 
 #![warn(unused_crate_dependencies)]
-//~^ WARNING external crate `barbar` unused in
+//~^ WARNING extern crate `barbar` is unused in
 
 use bar as _;
 

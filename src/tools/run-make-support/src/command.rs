@@ -107,38 +107,38 @@ impl CompletedProcess {
 
     /// Checks that trimmed `stdout` matches trimmed `content`.
     #[track_caller]
-    pub fn assert_stdout_equals<S: AsRef<str>>(self, content: S) -> Self {
+    pub fn assert_stdout_equals<S: AsRef<str>>(&self, content: S) -> &Self {
         assert_eq!(self.stdout_utf8().trim(), content.as_ref().trim());
         self
     }
 
     #[track_caller]
-    pub fn assert_stdout_not_contains<S: AsRef<str>>(self, needle: S) -> Self {
+    pub fn assert_stdout_not_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
         assert_not_contains(&self.stdout_utf8(), needle.as_ref());
         self
     }
 
     /// Checks that trimmed `stderr` matches trimmed `content`.
     #[track_caller]
-    pub fn assert_stderr_equals<S: AsRef<str>>(self, content: S) -> Self {
+    pub fn assert_stderr_equals<S: AsRef<str>>(&self, content: S) -> &Self {
         assert_eq!(self.stderr_utf8().trim(), content.as_ref().trim());
         self
     }
 
     #[track_caller]
-    pub fn assert_stderr_contains<S: AsRef<str>>(self, needle: S) -> Self {
+    pub fn assert_stderr_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
         assert!(self.stderr_utf8().contains(needle.as_ref()));
         self
     }
 
     #[track_caller]
-    pub fn assert_stderr_not_contains<S: AsRef<str>>(self, needle: S) -> Self {
+    pub fn assert_stderr_not_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
         assert_not_contains(&self.stdout_utf8(), needle.as_ref());
         self
     }
 
     #[track_caller]
-    pub fn assert_exit_code(self, code: i32) -> Self {
+    pub fn assert_exit_code(&self, code: i32) -> &Self {
         assert!(self.output.status.code() == Some(code));
         self
     }
