@@ -36,12 +36,16 @@ impl HirDisplay for Function {
 
         match container {
             Some(AssocItemContainer::Trait(trait_)) => {
-                write_trait_header(&trait_, f)?;
-                f.write_str("\n")?;
+                if f.show_container_bounds() {
+                    write_trait_header(&trait_, f)?;
+                    f.write_str("\n")?;
+                }
             }
             Some(AssocItemContainer::Impl(impl_)) => {
-                write_impl_header(&impl_, f)?;
-                f.write_str("\n")?;
+                if f.show_container_bounds() {
+                    write_impl_header(&impl_, f)?;
+                    f.write_str("\n")?;
+                }
 
                 // Block-local impls are "hoisted" to the nearest (non-block) module.
                 module = module.nearest_non_block_module(db);
@@ -588,12 +592,14 @@ fn write_where_clause(
     let params = f.db.generic_params(def);
 
     let container = match def {
-        GenericDefId::FunctionId(id) => match id.lookup(f.db.upcast()).container() {
-            ItemContainerId::ImplId(it) => Some(("impl", it.into())),
-            ItemContainerId::TraitId(it) => Some(("trait", it.into())),
-            _ => None,
+        GenericDefId::FunctionId(id) if f.show_container_bounds() => {
+            match id.lookup(f.db.upcast()).container() {
+                ItemContainerId::ImplId(it) => Some(("impl", it.into())),
+                ItemContainerId::TraitId(it) => Some(("trait", it.into())),
+                _ => None,
+            }
+            .map(|(name, def)| (name, f.db.generic_params(def)))
         }
-        .map(|(name, def)| (name, f.db.generic_params(def))),
         _ => None,
     };
 
@@ -607,9 +613,9 @@ fn write_where_clause(
         })
     };
 
-    if no_displayable_pred(&params)
-        && container.as_ref().map_or(true, |(_, p)| no_displayable_pred(p))
-    {
+    let container_bounds_no_displayable =
+        container.as_ref().map_or(true, |(_, p)| no_displayable_pred(p));
+    if no_displayable_pred(&params) && container_bounds_no_displayable {
         return Ok(false);
     }
 
@@ -617,8 +623,10 @@ fn write_where_clause(
     write_where_predicates(&params, f)?;
 
     if let Some((name, container_params)) = container {
-        write!(f, "\n    // Bounds from {}:", name)?;
-        write_where_predicates(&container_params, f)?;
+        if !container_bounds_no_displayable {
+            write!(f, "\n    // Bounds from {}:", name)?;
+            write_where_predicates(&container_params, f)?;
+        }
     }
 
     Ok(true)
