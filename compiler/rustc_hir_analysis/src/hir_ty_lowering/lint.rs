@@ -64,6 +64,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ));
         }
 
+        let parent = tcx.parent_hir_node(self_ty.hir_id);
         if self_ty.span.edition().at_least_rust_2021() {
             let msg = "trait objects must include the `dyn` keyword";
             let label = "add `dyn` keyword before this trait";
@@ -71,17 +72,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions() {
                 if !self.maybe_suggest_impl_trait(self_ty, &mut diag) && object_safe {
-                    // Only emit this suggestion if the trait is object safe.
-                    diag.multipart_suggestion_verbose(
-                        label,
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
+                    if let hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::Static(..) | hir::ItemKind::Const(..),
+                        ..
+                    }) = parent
+                    {
+                        // Statics can't be unsized, so we suggest `Box<dyn Trait>` instead.
+                        diag.multipart_suggestion_verbose(
+                            "`static` can't be unsized; use a boxed trait object",
+                            vec![
+                                (self_ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
+                                (self_ty.span.shrink_to_hi(), ">".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        // Only emit this suggestion if the trait is object safe.
+                        diag.multipart_suggestion_verbose(
+                            label,
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
             }
 
             if !object_safe && self_ty.span.can_be_used_for_suggestions() {
-                let parent = tcx.parent_hir_node(self_ty.hir_id);
                 suggest_path_on_bare_trait(tcx, &mut diag, parent);
             }
 
@@ -112,8 +128,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
-                match (object_safe, self_ty.span.can_be_used_for_suggestions()) {
-                    (true, true) => {
+                match (object_safe, self_ty.span.can_be_used_for_suggestions(), parent) {
+                    (
+                        true,
+                        true,
+                        hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Static(..) | hir::ItemKind::Const(..),
+                            ..
+                        }),
+                    ) => {
+                        // Statics can't be unsized, so we suggest `Box<dyn Trait>` instead.
+                        lint.multipart_suggestion_verbose(
+                            "`static` can't be unsized; use a boxed trait object",
+                            vec![
+                                (self_ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
+                                (self_ty.span.shrink_to_hi(), ">".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    (true, true, _) => {
                         lint.multipart_suggestion_verbose(
                             "as this is an \"object safe\" trait, write `dyn` in front of the \
                              trait",
@@ -121,13 +155,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             Applicability::MachineApplicable,
                         );
                     }
-                    (true, false) => {
+                    (
+                        true,
+                        false,
+                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(..), .. }),
+                    ) => {
                         lint.note(
-                            "as this is an \"object safe\" trait, you can write `dyn` in front of \
-                             the trait",
+                            "as this is an \"object safe\" trait, you can write `Box<dyn Trait>`",
                         );
                     }
-                    (false, _) => {
+                    (true, false, _) => {
+                        lint.note("as this is an \"object safe\" trait, you can write `dyn Trait`");
+                    }
+                    (false, _, _) => {
                         lint.note(
                             "you can't use write a trait object here because the trait isn't \
                              \"object safe\"",

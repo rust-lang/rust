@@ -1,0 +1,28 @@
+error[E0433]: failed to resolve: use of undeclared type `AtomicUsize`
+  --> $DIR/const_refs_to_static-ice-121413.rs:11:24
+   |
+LL |     static FOO: Sync = AtomicUsize::new(0);
+   |                        ^^^^^^^^^^^ use of undeclared type `AtomicUsize`
+   |
+help: consider importing one of these items
+   |
+LL + use core::sync::atomic::AtomicUsize;
+   |
+LL + use std::sync::atomic::AtomicUsize;
+   |
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/const_refs_to_static-ice-121413.rs:11:17
+   |
+LL |     static FOO: Sync = AtomicUsize::new(0);
+   |                 ^^^^
+   |
+help: `static` can't be unsized; use a boxed trait object
+   |
+LL |     static FOO: Box<dyn Sync> = AtomicUsize::new(0);
+   |                 +++++++     +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0433, E0782.
+For more information about an error, try `rustc --explain E0433`.
