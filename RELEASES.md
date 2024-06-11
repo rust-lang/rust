@@ -97,7 +97,6 @@ Cargo
 - [Prevent dashes in `lib.name`, always normalizing to `_`.](https://github.com/rust-lang/cargo/pull/12783/)
 - [Stabilize MSRV-aware version requirement selection in `cargo add`.](https://github.com/rust-lang/cargo/pull/13608/)
 - [Switch to using `gitoxide` by default for listing files.](https://github.com/rust-lang/cargo/pull/13696/)
-- [Error on `[project]` in Edition 2024; `cargo fix --edition` will change it to `[package]`.](https://github.com/rust-lang/cargo/pull/13747/)
 
 <a id="1.79.0-Rustdoc"></a>
 
