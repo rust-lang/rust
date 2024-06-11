@@ -64,10 +64,6 @@ impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE) || !span_is_local(item.span) {
-            return;
-        }
-
         if let ItemKind::Impl(Impl {
             of_trait: Some(hir_trait_ref),
             self_ty,
@@ -77,6 +73,8 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
+            && self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE)
+            && span_is_local(item.span)
             && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
                                                   .map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
