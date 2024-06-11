@@ -15,6 +15,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, MultiSpan, StashKey,
+    SuggestionStyle,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -1949,11 +1950,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(span) = sugg_span
         {
             suggs.sort();
-            err.span_suggestions(
+            err.span_suggestions_with_style(
                 span.with_hi(item_name.span.lo()),
                 "use fully-qualified syntax to disambiguate",
                 suggs,
                 Applicability::MachineApplicable,
+                SuggestionStyle::ShowAlways,
             );
         }
         if sources.len() > limit {
