@@ -13,32 +13,23 @@
 // use a directory with non-existing parent like `/does-not-exist/output`.
 // See https://github.com/rust-lang/rust/issues/66530
 
-//@ only-linux
-// Reason: set_mode is only available on Unix
-
 //@ ignore-arm
 // Reason: linker error on `armhf-gnu`
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{fs_wrapper, rustc, test_while_readonly};
 
 fn main() {
     // Create an inaccessible directory.
     fs_wrapper::create_dir("inaccessible");
-    let meta = fs_wrapper::metadata("inaccessible");
-    let mut perms = meta.permissions();
-    perms.set_mode(0o000); // Lock down the directory.
-    fs_wrapper::set_permissions("inaccessible", perms);
-
-    // Run rustc with `-Z temps-dir` set to a directory *inside* the inaccessible one,
-    // so that it can't create `tmp`.
-    rustc()
-        .input("program.rs")
-        .arg("-Ztemps-dir=inaccessible/tmp")
-        .run_fail()
-        .assert_stderr_contains(
-            "failed to find or create the directory specified by `--temps-dir`",
-        );
-
-    perms.set_mode(0o666); // Unlock the directory, so that compiletest can delete it.
-    fs_wrapper::set_permissions("inaccessible", perms);
+    test_while_readonly("inaccessible", || {
+        // Run rustc with `-Z temps-dir` set to a directory *inside* the inaccessible one,
+        // so that it can't create `tmp`.
+        rustc()
+            .input("program.rs")
+            .arg("-Ztemps-dir=inaccessible/tmp")
+            .run_fail()
+            .assert_stderr_contains(
+                "failed to find or create the directory specified by `--temps-dir`",
+            );
+    });
 }

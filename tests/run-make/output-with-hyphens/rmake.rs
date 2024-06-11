@@ -7,11 +7,11 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{path, rustc};
+use run_make_support::{bin_name, path, rust_lib_name, rustc};
 
 fn main() {
     rustc().input("foo-bar.rs").crate_type("bin").run();
     assert!(path(bin_name("foo-bar")).exists());
     rustc().input("foo-bar.rs").crate_type("lib").run();
-    assert!(path(bin_name("libfoo_bar.rlib")).exists());
+    assert!(path(rust_lib_name("foo_bar")).exists());
 }
