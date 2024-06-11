@@ -1,6 +1,5 @@
-use super::utils::get_hint_if_single_char_arg;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{snippet_with_applicability, str_literal_to_char_literal};
 use rustc_ast::BorrowKind;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
@@ -11,7 +10,7 @@ use super::SINGLE_CHAR_ADD_STR;
 /// lint for length-1 `str`s as argument for `insert_str`
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
-    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability, false) {
+    if let Some(extension_string) = str_literal_to_char_literal(cx, &args[1], &mut applicability, false) {
         let base_string_snippet =
             snippet_with_applicability(cx, receiver.span.source_callsite(), "_", &mut applicability);
         let pos_arg = snippet_with_applicability(cx, args[0].span, "..", &mut applicability);

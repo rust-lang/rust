@@ -326,6 +326,7 @@ mod size_of_in_element_count;
 mod size_of_ref;
 mod slow_vector_initialization;
 mod std_instead_of_core;
+mod string_patterns;
 mod strings;
 mod strlen_on_c_strings;
 mod suspicious_operation_groupings;
@@ -1167,6 +1168,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             ..Default::default()
         })
     });
+    store.register_late_pass(|_| Box::new(string_patterns::StringPatterns));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

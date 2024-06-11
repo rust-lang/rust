@@ -94,7 +94,6 @@ mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
 mod single_char_add_str;
 mod single_char_insert_string;
-mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
 mod stable_sort_primitive;
@@ -1139,38 +1138,6 @@ declare_clippy_lint! {
     pub NEW_RET_NO_SELF,
     style,
     "not returning type containing `Self` in a `new` method"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for string methods that receive a single-character
-    /// `str` as an argument, e.g., `_.split("x")`.
-    ///
-    /// ### Why is this bad?
-    /// While this can make a perf difference on some systems,
-    /// benchmarks have proven inconclusive. But at least using a
-    /// char literal makes it clear that we are looking at a single
-    /// character.
-    ///
-    /// ### Known problems
-    /// Does not catch multi-byte unicode characters. This is by
-    /// design, on many machines, splitting by a non-ascii char is
-    /// actually slower. Please do your own measurements instead of
-    /// relying solely on the results of this lint.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// _.split("x");
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// _.split('x');
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub SINGLE_CHAR_PATTERN,
-    pedantic,
-    "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
 declare_clippy_lint! {
@@ -4169,7 +4136,6 @@ impl_lint_pass!(Methods => [
     FLAT_MAP_OPTION,
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
-    SINGLE_CHAR_PATTERN,
     SINGLE_CHAR_ADD_STR,
     SEARCH_IS_SOME,
     FILTER_NEXT,
@@ -4324,7 +4290,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
                 single_char_add_str::check(cx, expr, receiver, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                single_char_pattern::check(cx, expr, method_call.ident.name, receiver, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, &self.msrv);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
