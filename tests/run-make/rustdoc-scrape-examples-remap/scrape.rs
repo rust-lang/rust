@@ -1,12 +1,10 @@
-use run_make_support::{htmldocck, rustc, rustdoc, source_root};
-use std::fs::read_dir;
+use run_make_support::{fs_wrapper, htmldocck, rustc, rustdoc, source_root};
 use std::path::Path;
 
 pub fn scrape(extra_args: &[&str]) {
     let out_dir = Path::new("rustdoc");
     let crate_name = "foobar";
-    let deps = read_dir("examples")
-        .unwrap()
+    let deps = fs_wrapper::read_dir("examples")
         .filter_map(|entry| entry.ok().map(|e| e.path()))
         .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "rs"))
         .collect::<Vec<_>>();

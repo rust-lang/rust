@@ -10,7 +10,7 @@ use std::ffi::OsString;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use run_make_support::rustc;
+use run_make_support::{fs_wrapper, rustc};
 
 struct PrintCfg {
     target: &'static str,
@@ -96,7 +96,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
 
         rustc().target(target).arg(print_arg).run();
 
-        let output = std::fs::read_to_string(&tmp_path).unwrap();
+        let output = fs_wrapper::read_to_string(&tmp_path);
 
         check_(&output, includes, disallow);
     }

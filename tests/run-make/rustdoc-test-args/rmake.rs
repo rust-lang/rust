@@ -1,10 +1,10 @@
-use run_make_support::rustdoc;
+use run_make_support::{fs_wrapper, rustdoc};
+use std::iter;
 use std::path::Path;
-use std::{fs, iter};
 
 fn generate_a_lot_of_cfgs(path: &Path) {
     let content = iter::repeat("--cfg=a\n").take(100_000).collect::<String>();
-    fs::write(path, content.as_bytes()).expect("failed to create args file");
+    fs_wrapper::write(path, content.as_bytes());
 }
 
 fn main() {

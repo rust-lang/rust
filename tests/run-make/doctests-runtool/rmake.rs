@@ -1,12 +1,12 @@
 // Tests behavior of rustdoc `--runtool`.
 
+use run_make_support::fs_wrapper::{create_dir, remove_dir_all};
 use run_make_support::{rustc, rustdoc};
-use std::fs::{create_dir, remove_dir_all};
 use std::path::PathBuf;
 
 fn mkdir(name: &str) -> PathBuf {
     let dir = PathBuf::from(name);
-    create_dir(&dir).expect("failed to create doctests folder");
+    create_dir(&dir);
     dir
 }
 
