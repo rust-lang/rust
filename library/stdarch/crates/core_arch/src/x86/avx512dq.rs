@@ -13,7 +13,7 @@ use crate::{
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_and_pd&ig_expand=288)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_and_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let and = _mm_and_pd(a, b).as_f64x2();
@@ -26,7 +26,7 @@ pub unsafe fn _mm_mask_and_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d)
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_and_pd&ig_expand=289)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_and_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let and = _mm_and_pd(a, b).as_f64x2();
@@ -41,7 +41,7 @@ pub unsafe fn _mm_maskz_and_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_and_pd&ig_expand=291)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_and_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let and = _mm256_and_pd(a, b).as_f64x4();
@@ -54,7 +54,7 @@ pub unsafe fn _mm256_mask_and_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m25
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_and_pd&ig_expand=292)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_and_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let and = _mm256_and_pd(a, b).as_f64x4();
@@ -81,7 +81,7 @@ pub unsafe fn _mm512_and_pd(a: __m512d, b: __m512d) -> __m512d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_and_pd&ig_expand=294)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_and_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let and = _mm512_and_pd(a, b).as_f64x8();
@@ -94,7 +94,7 @@ pub unsafe fn _mm512_mask_and_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m51
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_and_pd&ig_expand=295)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_and_pd(k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let and = _mm512_and_pd(a, b).as_f64x8();
@@ -210,7 +210,7 @@ pub unsafe fn _mm512_maskz_and_ps(k: __mmask16, a: __m512, b: __m512) -> __m512 
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_andnot_pd&ig_expand=326)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_andnot_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let andnot = _mm_andnot_pd(a, b).as_f64x2();
@@ -224,7 +224,7 @@ pub unsafe fn _mm_mask_andnot_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m12
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_andnot_pd&ig_expand=327)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_andnot_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let andnot = _mm_andnot_pd(a, b).as_f64x2();
@@ -239,7 +239,7 @@ pub unsafe fn _mm_maskz_andnot_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_andnot_pd&ig_expand=329)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_andnot_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let andnot = _mm256_andnot_pd(a, b).as_f64x4();
@@ -253,7 +253,7 @@ pub unsafe fn _mm256_mask_andnot_pd(src: __m256d, k: __mmask8, a: __m256d, b: __
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_andnot_pd&ig_expand=330)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_andnot_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let andnot = _mm256_andnot_pd(a, b).as_f64x4();
@@ -280,7 +280,7 @@ pub unsafe fn _mm512_andnot_pd(a: __m512d, b: __m512d) -> __m512d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_andnot_pd&ig_expand=332)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_andnot_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let andnot = _mm512_andnot_pd(a, b).as_f64x8();
@@ -294,7 +294,7 @@ pub unsafe fn _mm512_mask_andnot_pd(src: __m512d, k: __mmask8, a: __m512d, b: __
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_andnot_pd&ig_expand=333)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_andnot_pd(k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let andnot = _mm512_andnot_pd(a, b).as_f64x8();
@@ -410,7 +410,7 @@ pub unsafe fn _mm512_maskz_andnot_ps(k: __mmask16, a: __m512, b: __m512) -> __m5
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_or_pd&ig_expand=4824)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_or_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let or = _mm_or_pd(a, b).as_f64x2();
@@ -423,7 +423,7 @@ pub unsafe fn _mm_mask_or_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) 
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_or_pd&ig_expand=4825)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_or_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let or = _mm_or_pd(a, b).as_f64x2();
@@ -438,7 +438,7 @@ pub unsafe fn _mm_maskz_or_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_or_pd&ig_expand=4827)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_or_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let or = _mm256_or_pd(a, b).as_f64x4();
@@ -451,7 +451,7 @@ pub unsafe fn _mm256_mask_or_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m256
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_or_pd&ig_expand=4828)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_or_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let or = _mm256_or_pd(a, b).as_f64x4();
@@ -478,7 +478,7 @@ pub unsafe fn _mm512_or_pd(a: __m512d, b: __m512d) -> __m512d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_or_pd&ig_expand=4830)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_or_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let or = _mm512_or_pd(a, b).as_f64x8();
@@ -491,7 +491,7 @@ pub unsafe fn _mm512_mask_or_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_or_pd&ig_expand=4831)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_or_pd(k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let or = _mm512_or_pd(a, b).as_f64x8();
@@ -607,7 +607,7 @@ pub unsafe fn _mm512_maskz_or_ps(k: __mmask16, a: __m512, b: __m512) -> __m512 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_xor_pd&ig_expand=7094)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_xor_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let xor = _mm_xor_pd(a, b).as_f64x2();
@@ -620,7 +620,7 @@ pub unsafe fn _mm_mask_xor_pd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d)
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_xor_pd&ig_expand=7095)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_xor_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
     let xor = _mm_xor_pd(a, b).as_f64x2();
@@ -635,7 +635,7 @@ pub unsafe fn _mm_maskz_xor_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_xor_pd&ig_expand=7097)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_xor_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let xor = _mm256_xor_pd(a, b).as_f64x4();
@@ -648,7 +648,7 @@ pub unsafe fn _mm256_mask_xor_pd(src: __m256d, k: __mmask8, a: __m256d, b: __m25
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_xor_pd&ig_expand=7098)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_xor_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d {
     let xor = _mm256_xor_pd(a, b).as_f64x4();
@@ -675,7 +675,7 @@ pub unsafe fn _mm512_xor_pd(a: __m512d, b: __m512d) -> __m512d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_xor_pd&ig_expand=7100)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_xor_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let xor = _mm512_xor_pd(a, b).as_f64x8();
@@ -688,7 +688,7 @@ pub unsafe fn _mm512_mask_xor_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m51
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_xor_pd&ig_expand=7101)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorpd))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_xor_pd(k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
     let xor = _mm512_xor_pd(a, b).as_f64x8();
@@ -803,7 +803,6 @@ pub unsafe fn _mm512_maskz_xor_ps(k: __mmask16, a: __m512, b: __m512) -> __m512 
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcast_f32x2&ig_expand=509)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vbroadcastf32x2))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_broadcast_f32x2(a: __m128) -> __m256 {
     let b: f32x8 = simd_shuffle!(a, a, [0, 1, 0, 1, 0, 1, 0, 1]);
@@ -843,7 +842,6 @@ pub unsafe fn _mm256_maskz_broadcast_f32x2(k: __mmask8, a: __m128) -> __m256 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcast_f32x2&ig_expand=512)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vbroadcastf32x2))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_broadcast_f32x2(a: __m128) -> __m512 {
     let b: f32x16 = simd_shuffle!(a, a, [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]);
@@ -993,7 +991,6 @@ pub unsafe fn _mm512_maskz_broadcast_f64x2(k: __mmask8, a: __m128d) -> __m512d {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcast_i32x2&ig_expand=533)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vbroadcasti32x2))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_broadcast_i32x2(a: __m128i) -> __m128i {
     let a = a.as_i32x4();
@@ -1033,7 +1030,6 @@ pub unsafe fn _mm_maskz_broadcast_i32x2(k: __mmask8, a: __m128i) -> __m128i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcast_i32x2&ig_expand=536)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vbroadcasti32x2))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_broadcast_i32x2(a: __m128i) -> __m256i {
     let a = a.as_i32x4();
@@ -1073,7 +1069,6 @@ pub unsafe fn _mm256_maskz_broadcast_i32x2(k: __mmask8, a: __m128i) -> __m256i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcast_i32x2&ig_expand=539)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vbroadcasti32x2))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_broadcast_i32x2(a: __m128i) -> __m512i {
     let a = a.as_i32x4();
@@ -1227,7 +1222,6 @@ pub unsafe fn _mm512_maskz_broadcast_i64x2(k: __mmask8, a: __m128i) -> __m512i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_extractf32x8_ps&ig_expand=2946)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vextractf32x8, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_extractf32x8_ps<const IMM8: i32>(a: __m512) -> __m256 {
@@ -1281,7 +1275,6 @@ pub unsafe fn _mm512_maskz_extractf32x8_ps<const IMM8: i32>(k: __mmask8, a: __m5
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extractf64x2_pd&ig_expand=2949)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vextractf64x2, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_extractf64x2_pd<const IMM8: i32>(a: __m256d) -> __m128d {
@@ -1335,7 +1328,6 @@ pub unsafe fn _mm256_maskz_extractf64x2_pd<const IMM8: i32>(k: __mmask8, a: __m2
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_extractf64x2_pd&ig_expand=2952)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vextractf64x2, IMM8 = 3))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_extractf64x2_pd<const IMM8: i32>(a: __m512d) -> __m128d {
@@ -1391,7 +1383,6 @@ pub unsafe fn _mm512_maskz_extractf64x2_pd<const IMM8: i32>(k: __mmask8, a: __m5
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_extracti32x8_epi32&ig_expand=2965)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vextracti32x8, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_extracti32x8_epi32<const IMM8: i32>(a: __m512i) -> __m256i {
@@ -1445,7 +1436,6 @@ pub unsafe fn _mm512_maskz_extracti32x8_epi32<const IMM8: i32>(k: __mmask8, a: _
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extracti64x2_epi64&ig_expand=2968)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vextracti64x2, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_extracti64x2_epi64<const IMM8: i32>(a: __m256i) -> __m128i {
@@ -1497,7 +1487,6 @@ pub unsafe fn _mm256_maskz_extracti64x2_epi64<const IMM8: i32>(k: __mmask8, a: _
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_extracti64x2_epi64&ig_expand=2971)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vextracti64x2, IMM8 = 3))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_extracti64x2_epi64<const IMM8: i32>(a: __m512i) -> __m128i {
@@ -1553,7 +1542,6 @@ pub unsafe fn _mm512_maskz_extracti64x2_epi64<const IMM8: i32>(k: __mmask8, a: _
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_insertf32x8&ig_expand=3850)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vinsertf32x8, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_insertf32x8<const IMM8: i32>(a: __m512, b: __m256) -> __m512 {
@@ -1621,7 +1609,6 @@ pub unsafe fn _mm512_maskz_insertf32x8<const IMM8: i32>(
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_insertf64x2&ig_expand=3853)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vinsertf64x2, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_insertf64x2<const IMM8: i32>(a: __m256d, b: __m128d) -> __m256d {
@@ -1681,7 +1668,6 @@ pub unsafe fn _mm256_maskz_insertf64x2<const IMM8: i32>(
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_insertf64x2&ig_expand=3856)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vinsertf64x2, IMM8 = 3))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_insertf64x2<const IMM8: i32>(a: __m512d, b: __m128d) -> __m512d {
@@ -1743,7 +1729,6 @@ pub unsafe fn _mm512_maskz_insertf64x2<const IMM8: i32>(
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_inserti32x8&ig_expand=3869)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vinserti32x8, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_inserti32x8<const IMM8: i32>(a: __m512i, b: __m256i) -> __m512i {
@@ -1813,7 +1798,6 @@ pub unsafe fn _mm512_maskz_inserti32x8<const IMM8: i32>(
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_inserti64x2&ig_expand=3872)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
-#[cfg_attr(test, assert_instr(vinserti64x2, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_inserti64x2<const IMM8: i32>(a: __m256i, b: __m128i) -> __m256i {
@@ -1873,7 +1857,6 @@ pub unsafe fn _mm256_maskz_inserti64x2<const IMM8: i32>(
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_inserti64x2&ig_expand=3875)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vinserti64x2, IMM8 = 3))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_inserti64x2<const IMM8: i32>(a: __m512i, b: __m128i) -> __m512i {
