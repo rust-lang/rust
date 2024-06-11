@@ -237,7 +237,7 @@
 //! pointer. For code which *does* cast a usize to a pointer, the scope of the change depends
 //! on exactly what you're doing.
 //!
-//! In general you just need to make sure that if you want to convert a usize address to a
+//! In general, you just need to make sure that if you want to convert a usize address to a
 //! pointer and then use that pointer to read/write memory, you need to keep around a pointer
 //! that has sufficient provenance to perform that read/write itself. In this way all of your
 //! casts from an address to a pointer are essentially just applying offsets/indexing.
@@ -309,7 +309,7 @@
 //!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
 //!   for actual forgery (integers cast to pointers). If you borrow some struct's field
 //!   that *happens* to be zero-sized, the resulting pointer will have provenance tied to
-//!   that allocation and it will still get invalidated if the allocation gets deallocated.
+//!   that allocation, and it will still get invalidated if the allocation gets deallocated.
 //!   In the future we may introduce an API to make such a forged allocation explicit.
 //!
 //! * [`wrapping_offset`][] a pointer outside its provenance. This includes pointers
@@ -698,7 +698,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 ///
 /// If there is no 'exposed' provenance that justifies the way this pointer will be used,
 /// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
-/// and references that have been invalidated due to aliasing accesses cannot be used any more,
+/// and references that have been invalidated due to aliasing accesses cannot be used anymore,
 /// even if they have been exposed!
 ///
 /// Note that there is no algorithm that decides which provenance will be used. You can think of this
@@ -1097,7 +1097,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
         // If we end up here, it's because we're using a simple type -- like
         // a small power-of-two-sized thing -- or a special type with particularly
         // large alignment, particularly SIMD types.
-        // Thus we're fine just reading-and-writing it, as either it's small
+        // Thus, we're fine just reading-and-writing it, as either it's small
         // and that works well anyway or it's special and the type's author
         // presumably wanted things to be done in the larger chunk.
 
@@ -1290,7 +1290,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // provides enough information to know that this is a typed operation.
 
     // However, as of March 2023 the compiler was not capable of taking advantage
-    // of that information.  Thus the implementation here switched to an intrinsic,
+    // of that information. Thus, the implementation here switched to an intrinsic,
     // which lowers to `_0 = *src` in MIR, to address a few issues:
     //
     // - Using `MaybeUninit::assume_init` after a `copy_nonoverlapping` was not
@@ -1570,7 +1570,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// Instead you must use the [`ptr::addr_of_mut!`](addr_of_mut)
+/// Instead, you must use the [`ptr::addr_of_mut!`](addr_of_mut)
 /// macro to create the pointer. You may use that returned pointer together with
 /// this function.
 ///
