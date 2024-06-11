@@ -1489,7 +1489,16 @@ function initSearch(rawSearchIndex) {
 
             const fnParamNames = (await searchState.loadParamNames(obj.crate))[obj.bitIndex - 1];
             const queryParamNames = [];
-            /** @param {QueryElement} queryElem */
+            /**
+             * Recursively writes a map of IDs to query generic names,
+             * which are later used to map query generic names to function generic names.
+             * For example, when the user writes `X -> Option<X>` and the function
+             * is actually written as `T -> Option<T>`, this function stores the
+             * mapping `(-1, "X")`, and the writeFn function looks up the entry
+             * for -1 to form the final, user-visible mapping of "X is T".
+             *
+             * @param {QueryElement} queryElem
+             */
             function remapQuery(queryElem) {
                 if (queryElem.id < 0) {
                     queryParamNames[-1 - queryElem.id] = queryElem.name;
@@ -1503,9 +1512,22 @@ function initSearch(rawSearchIndex) {
             }
             parsedQuery.elems.forEach(remapQuery);
             parsedQuery.returned.forEach(remapQuery);
+            /**
+             * Write text to a highlighting array.
+             * Index 0 is not highlighted, index 1 is highlighted,
+             * index 2 is not highlighted, etc.
+             *
+             * @param {{name: string, highlighted: bool|undefined}} fnType - input
+             * @param {[string]} result
+             */
             function pushText(fnType, result) {
                 // If !!(result.length % 2) == false, then pushing a new slot starts an even
                 // numbered slot. Even numbered slots are not highlighted.
+                //
+                // `highlighted` will not be defined if an entire subtree is not highlighted,
+                // so `!!` is used to coerce it to boolean. `result.length % 2` is used to
+                // check if the number is even, but it evaluates to a number, so it also
+                // needs coerced to a boolean.
                 if (!!(result.length % 2) === !!fnType.highlighted) {
                     result.push("");
                 } else if (result.length === 0 && !!fnType.highlighted) {
@@ -1514,6 +1536,13 @@ function initSearch(rawSearchIndex) {
                 }
                 result[result.length - 1] += fnType.name;
             }
+            /**
+             * Write a higher order function type: either a function pointer
+             * or a trait bound on Fn, FnMut, or FnOnce.
+             *
+             * @param {FunctionType} fnType - input
+             * @param {[string]} result
+             */
             function writeHof(fnType, result) {
                 const hofOutput = fnType.bindings.get(typeNameIdOfOutput) || [];
                 const hofInputs = fnType.generics;
@@ -1547,6 +1576,10 @@ function initSearch(rawSearchIndex) {
                 }
             }
             /**
+             * Write a type. This function checks for special types,
+             * like slices, with their own formatting. It also handles
+             * updating the where clause and generic type param map.
+             *
              * @param {FunctionType} fnType
              * @param {[string]} result
              */
@@ -2397,15 +2430,15 @@ function initSearch(rawSearchIndex) {
             if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
                 row.generics.length === 0 && elem.generics.length === 0 &&
                 row.bindings.size === 0 && elem.bindings.size === 0 &&
-                // special case
+                // special case for types that can be matched without actually
+                // using the heavyweight unification machinery
                 elem.id !== typeNameIdOfArrayOrSlice &&
                 elem.id !== typeNameIdOfHof &&
                 elem.id !== typeNameIdOfTupleOrUnit
             ) {
                 return row.id === elem.id && typePassesFilter(elem.typeFilter, row.ty);
-            } else {
-                return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
             }
+            return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
         }
 
         /**

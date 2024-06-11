@@ -358,18 +358,17 @@ function preLoadCss(cssUrl) {
         loadParamNames: async function(crate) {
             if (this.paramNameShards.has(crate)) {
                 return this.paramNameShards.get(crate);
-            } else {
-                const promise = new Promise((resolve, reject) => {
-                    this.paramNameResolvers.set(crate, resolve);
-                    const url = resourcePath(
-                        `search.desc/${crate}/${crate}-param-names`,
-                        ".js",
-                    );
-                    loadScript(url, reject);
-                });
-                this.paramNameShards.set(crate, promise);
-                return promise;
             }
+            const promise = new Promise((resolve, reject) => {
+                this.paramNameResolvers.set(crate, resolve);
+                const url = resourcePath(
+                    `search.desc/${crate}/${crate}-param-names`,
+                    ".js",
+                );
+                loadScript(url, reject);
+            });
+            this.paramNameShards.set(crate, promise);
+            return promise;
         },
         loadedParamNames: function(crate, data) {
             this.paramNameResolvers.get(crate)(JSON.parse(data));
