@@ -207,18 +207,21 @@ impl<'tcx> ReachableContext<'tcx> {
                     }
 
                     hir::ItemKind::Const(_, _, init) => {
-                        // Only things actually ending up in the final constant need to be reachable.
-                        // Everything else is either already available as `mir_for_ctfe`, or can't be used
-                        // by codegen anyway.
+                        // Only things actually ending up in the final constant value are reachable
+                        // for codegen. Everything else is only needed during const-eval, so even if
+                        // const-eval happens in a downstream crate, all they need is
+                        // `mir_for_ctfe`.
                         match self.tcx.const_eval_poly_to_alloc(item.owner_id.def_id.into()) {
                             Ok(alloc) => {
                                 let alloc = self.tcx.global_alloc(alloc.alloc_id).unwrap_memory();
                                 self.propagate_from_alloc(alloc);
                             }
-                            // Reachable generic constants will be inlined into other crates
-                            // unconditionally, so we need to make sure that their
-                            // contents are also reachable.
+                            // We can't figure out which value the constant will evaluate to. In
+                            // lieu of that, we have to consider everything mentioned in the const
+                            // initializer reachable, since it *may* end up in the final value.
                             Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
+                            // If there was an error evaluating the const, nothing can be reachable
+                            // via it, and anyway compilation will fail.
                             Err(ErrorHandled::Reported(..)) => {}
                         }
                     }
