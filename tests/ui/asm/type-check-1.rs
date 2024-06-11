@@ -55,11 +55,12 @@ fn main() {
         asm!("{}", const 0i32);
         asm!("{}", const 0i128);
         asm!("{}", const 0f32);
-        //~^ ERROR mismatched types
+        //~^ ERROR invalid type for `const` operand
         asm!("{}", const 0 as *mut u8);
-        //~^ ERROR mismatched types
-        asm!("{}", const &0);
-        //~^ ERROR mismatched types
+        //~^ ERROR invalid type for `const` operand
+
+        // FIXME: Currently ICEs due to #96304
+        //asm!("{}", const &0);
     }
 }
 
@@ -73,6 +74,6 @@ global_asm!("{}", const 0);
 global_asm!("{}", const 0i32);
 global_asm!("{}", const 0i128);
 global_asm!("{}", const 0f32);
-//~^ ERROR mismatched types
+//~^ ERROR invalid type for `const` operand
 global_asm!("{}", const 0 as *mut u8);
-//~^ ERROR mismatched types
+//~^ ERROR invalid type for `const` operand
