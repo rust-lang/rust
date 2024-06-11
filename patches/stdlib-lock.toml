@@ -200,9 +200,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.32.1"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cf5f9dd3933bd50a9e1f149ec995f39ae2c496d31fd772c1fd45ebc27e902b0"
+checksum = "576dfe1fc8f9df304abb159d767a29d0476f7750fbf8aa7ad07816004a207434"
 dependencies = [
  "compiler_builtins",
  "memchr",
@@ -407,8 +407,6 @@ dependencies = [
  "core",
  "getopts",
  "libc",
- "panic_abort",
- "panic_unwind",
  "std",
 ]
 
