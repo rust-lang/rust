@@ -144,7 +144,6 @@ run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
-run-make/multiple-emits/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-verbatim-linker/Makefile
 run-make/native-link-modifier-verbatim-rustc/Makefile
