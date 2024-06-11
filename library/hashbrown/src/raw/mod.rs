@@ -4439,11 +4439,13 @@ impl<T, A: Allocator> FusedIterator for RawDrain<'_, T, A> {}
 ///   created will be yielded by that iterator.
 /// - The order in which the iterator yields buckets is unspecified and may
 ///   change in the future.
+#[cfg(feature = "raw")]
 pub struct RawIterHash<T> {
     inner: RawIterHashInner,
     _marker: PhantomData<T>,
 }
 
+#[cfg(feature = "raw")]
 struct RawIterHashInner {
     // See `RawTableInner`'s corresponding fields for details.
     // We can't store a `*const RawTableInner` as it would get
@@ -4463,9 +4465,9 @@ struct RawIterHashInner {
     bitmask: BitMaskIter,
 }
 
+#[cfg(feature = "raw")]
 impl<T> RawIterHash<T> {
     #[cfg_attr(feature = "inline-more", inline)]
-    #[cfg(feature = "raw")]
     unsafe fn new<A: Allocator>(table: &RawTable<T, A>, hash: u64) -> Self {
         RawIterHash {
             inner: RawIterHashInner::new(&table.table, hash),
@@ -4473,9 +4475,10 @@ impl<T> RawIterHash<T> {
         }
     }
 }
+
+#[cfg(feature = "raw")]
 impl RawIterHashInner {
     #[cfg_attr(feature = "inline-more", inline)]
-    #[cfg(feature = "raw")]
     unsafe fn new(table: &RawTableInner, hash: u64) -> Self {
         let h2_hash = h2(hash);
         let probe_seq = table.probe_seq(hash);
@@ -4493,6 +4496,7 @@ impl RawIterHashInner {
     }
 }
 
+#[cfg(feature = "raw")]
 impl<T> Iterator for RawIterHash<T> {
     type Item = Bucket<T>;
 
@@ -4512,6 +4516,7 @@ impl<T> Iterator for RawIterHash<T> {
     }
 }
 
+#[cfg(feature = "raw")]
 impl Iterator for RawIterHashInner {
     type Item = usize;
 
