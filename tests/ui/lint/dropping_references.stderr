@@ -11,10 +11,10 @@ note: the lint level is defined here
    |
 LL | #![warn(dropping_references)]
    |         ^^^^^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(&SomeStruct);
-LL +     let _ = &SomeStruct;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
@@ -25,10 +25,10 @@ LL |     drop(&owned1);
    |          |
    |          argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(&owned1);
-LL +     let _ = &owned1;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
@@ -39,10 +39,10 @@ LL |     drop(&&owned1);
    |          |
    |          argument has type `&&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(&&owned1);
-LL +     let _ = &&owned1;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
@@ -53,10 +53,10 @@ LL |     drop(&mut owned1);
    |          |
    |          argument has type `&mut SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(&mut owned1);
-LL +     let _ = &mut owned1;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
@@ -67,10 +67,10 @@ LL |     drop(reference1);
    |          |
    |          argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(reference1);
-LL +     let _ = reference1;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
@@ -81,10 +81,10 @@ LL |     drop(reference2);
    |          |
    |          argument has type `&mut SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(reference2);
-LL +     let _ = reference2;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
@@ -95,10 +95,10 @@ LL |     drop(reference3);
    |          |
    |          argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(reference3);
-LL +     let _ = reference3;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
@@ -109,10 +109,10 @@ LL |     drop(&val);
    |          |
    |          argument has type `&T`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(&val);
-LL +     let _ = &val;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
@@ -123,10 +123,10 @@ LL |     std::mem::drop(&SomeStruct);
    |                    |
    |                    argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     std::mem::drop(&SomeStruct);
-LL +     let _ = &SomeStruct;
+LL +
    |
 
 warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing

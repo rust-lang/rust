@@ -11,6 +11,7 @@ use std::mem::forget;
 #[derive(Copy, Clone)]
 struct SomeStruct;
 
+#[allow(unused_variables)]
 fn main() {
     let s1 = SomeStruct {};
     let s2 = s1;

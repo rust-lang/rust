@@ -1,5 +1,5 @@
 error: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types-issue-125189.rs:8:5
+  --> $DIR/dropping_copy_types-issue-125189.rs:9:5
    |
 LL |     drop(3.2);
    |     ^^^^^---^
@@ -18,17 +18,17 @@ LL +     let _ = 3.2;
    |
 
 error: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types-issue-125189.rs:9:5
+  --> $DIR/dropping_copy_types-issue-125189.rs:10:5
    |
 LL |     drop(y);
    |     ^^^^^-^
    |          |
    |          argument has type `i32`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     drop(y);
-LL +     let _ = y;
+LL +
    |
 
 error: aborting due to 2 previous errors

@@ -7,6 +7,7 @@ use std::mem::forget;
 
 struct SomeStruct;
 
+#[allow(unused_mut, unused_variables)]
 fn main() {
     forget(&SomeStruct); //~ ERROR calls to `std::mem::forget`
 

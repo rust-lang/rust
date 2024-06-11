@@ -11,10 +11,10 @@ note: the lint level is defined here
    |
 LL | #![warn(forgetting_references)]
    |         ^^^^^^^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(&SomeStruct);
-LL +     let _ = &SomeStruct;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
@@ -25,10 +25,10 @@ LL |     forget(&owned);
    |            |
    |            argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(&owned);
-LL +     let _ = &owned;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
@@ -39,10 +39,10 @@ LL |     forget(&&owned);
    |            |
    |            argument has type `&&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(&&owned);
-LL +     let _ = &&owned;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a mutable reference instead of an owned value only makes the reference inaccessible, it does not drop the underlying value
@@ -53,10 +53,10 @@ LL |     forget(&mut owned);
    |            |
    |            argument has type `&mut SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(&mut owned);
-LL +     let _ = &mut owned;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
@@ -81,10 +81,10 @@ LL |     forget(reference2);
    |            |
    |            argument has type `&mut SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(reference2);
-LL +     let _ = reference2;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
@@ -95,10 +95,10 @@ LL |     forget(reference3);
    |            |
    |            argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(reference3);
-LL +     let _ = reference3;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
@@ -119,7 +119,7 @@ LL |         2 => forget(reference3),
    |                     |
    |                     argument has type `&SomeStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+   = note: remove the whole expression
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forgetting_references.rs:33:14
@@ -129,7 +129,7 @@ LL |         3 => forget(reference4),
    |                     |
    |                     argument has type `&SomeStruct`
    |
-   = note: use `let _ = ...` to ignore the expression or result
+   = note: remove the whole expression
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forgetting_references.rs:40:5
@@ -139,10 +139,10 @@ LL |     forget(&val);
    |            |
    |            argument has type `&T`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     forget(&val);
-LL +     let _ = &val;
+LL +
    |
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
@@ -153,10 +153,10 @@ LL |     std::mem::forget(&SomeStruct);
    |                      |
    |                      argument has type `&SomeStruct`
    |
-help: use `let _ = ...` to ignore the expression or result
+help: remove the whole expression
    |
 LL -     std::mem::forget(&SomeStruct);
-LL +     let _ = &SomeStruct;
+LL +
    |
 
 warning: 12 warnings emitted

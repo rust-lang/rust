@@ -689,6 +689,10 @@ lint_redundant_semicolons =
         *[false] this semicolon
     }
 
+lint_remove_entirely_suggestion = remove the whole expression
+
+lint_remove_function_call_suggestion = remove the function call
+
 lint_remove_mut_from_pattern = remove `mut` from the parameter
 
 lint_removed_lint = lint `{$name}` has been removed: {$reason}

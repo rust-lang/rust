@@ -1,13 +1,12 @@
 use rustc_hir::{Arm, Expr, ExprKind, Mutability, Node, StmtKind};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::{
     lints::{
         DropCopyDiag, DropMutRefDiag, DropRefDiag, ForgetCopyDiag, ForgetMutRefDiag, ForgetRefDiag,
-        UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
-        UseLetUnderscoreIgnoreSuggestion,
+        IgnoreSuggestion, UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
     },
     LateContext, LateLintPass, LintContext,
 };
@@ -141,6 +140,17 @@ declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFEREN
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        fn remove_entirely(expr: &Expr<'_>) -> bool {
+            match expr.kind {
+                ExprKind::Cast(inner, ..) => remove_entirely(inner),
+                ExprKind::Type(inner, ..) => remove_entirely(inner),
+                ExprKind::Field(inner, ..) => remove_entirely(inner),
+                ExprKind::Path(..) => true,
+                ExprKind::AddrOf(.., inner) => remove_entirely(inner),
+                _ => false,
+            }
+        }
+
         if let ExprKind::Call(path, [arg]) = expr.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
@@ -149,18 +159,47 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let arg_ty = cx.typeck_results().expr_ty(arg);
             let is_copy = arg_ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
-            let let_underscore_ignore_sugg = || {
-                if let Some((_, node)) = cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
+            let sugg = || {
+                let start_end = if let Some((_, node)) =
+                    cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
                     && let Node::Stmt(stmt) = node
                     && let StmtKind::Semi(e) = stmt.kind
                     && e.hir_id == expr.hir_id
                 {
-                    UseLetUnderscoreIgnoreSuggestion::Suggestion {
-                        start_span: expr.span.shrink_to_lo().until(arg.span),
-                        end_span: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
-                    }
+                    Some((
+                        expr.span.shrink_to_lo().until(arg.span),
+                        arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                        stmt.span,
+                    ))
                 } else {
-                    UseLetUnderscoreIgnoreSuggestion::Note
+                    None
+                };
+                fn is_uninteresting(ty: Ty<'_>) -> bool {
+                    match ty.kind() {
+                        ty::Never => true,
+                        ty::Tuple(list) if list.is_empty() => true,
+                        _ => false,
+                    }
+                }
+                match (remove_entirely(arg), is_uninteresting(arg_ty), start_end) {
+                    (true, _, Some((_, _, stmt))) => {
+                        IgnoreSuggestion::RemoveEntirelySuggestion { span: stmt }
+                    }
+                    (true, _, None) => IgnoreSuggestion::RemoveEntirelyNote,
+                    (false, true, Some((start, end, _))) => {
+                        IgnoreSuggestion::RemoveFunctionCallSuggestion {
+                            start_span: start,
+                            end_span: end,
+                        }
+                    }
+                    (false, true, None) => IgnoreSuggestion::RemoveFunctionCallNote,
+                    (false, false, Some((start, end, _))) => {
+                        IgnoreSuggestion::UseLetUnderscoreSuggestion {
+                            start_span: start,
+                            end_span: end,
+                        }
+                    }
+                    (false, false, None) => IgnoreSuggestion::UseLetUnderscoreNote,
                 }
             };
             match (fn_name, arg_ty.ref_mutability()) {
@@ -168,62 +207,42 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
-                        DropRefDiag { arg_ty, label: arg.span, sugg: let_underscore_ignore_sugg() },
+                        DropRefDiag { arg_ty, label: arg.span, sugg: sugg() },
                     );
                 }
                 (sym::mem_drop, Some(Mutability::Mut)) if !drop_is_single_call_in_arm => {
                     cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
-                        DropMutRefDiag {
-                            arg_ty,
-                            label: arg.span,
-                            sugg: let_underscore_ignore_sugg(),
-                        },
+                        DropMutRefDiag { arg_ty, label: arg.span, sugg: sugg() },
                     );
                 }
                 (sym::mem_forget, Some(Mutability::Not)) => {
                     cx.emit_span_lint(
                         FORGETTING_REFERENCES,
                         expr.span,
-                        ForgetRefDiag {
-                            arg_ty,
-                            label: arg.span,
-                            sugg: let_underscore_ignore_sugg(),
-                        },
+                        ForgetRefDiag { arg_ty, label: arg.span, sugg: sugg() },
                     );
                 }
                 (sym::mem_forget, Some(Mutability::Mut)) => {
                     cx.emit_span_lint(
                         FORGETTING_REFERENCES,
                         expr.span,
-                        ForgetMutRefDiag {
-                            arg_ty,
-                            label: arg.span,
-                            sugg: let_underscore_ignore_sugg(),
-                        },
+                        ForgetMutRefDiag { arg_ty, label: arg.span, sugg: sugg() },
                     );
                 }
                 (sym::mem_drop, _) if is_copy && !drop_is_single_call_in_arm => {
                     cx.emit_span_lint(
                         DROPPING_COPY_TYPES,
                         expr.span,
-                        DropCopyDiag {
-                            arg_ty,
-                            label: arg.span,
-                            sugg: let_underscore_ignore_sugg(),
-                        },
+                        DropCopyDiag { arg_ty, label: arg.span, sugg: sugg() },
                     );
                 }
                 (sym::mem_forget, _) if is_copy => {
                     cx.emit_span_lint(
                         FORGETTING_COPY_TYPES,
                         expr.span,
-                        ForgetCopyDiag {
-                            arg_ty,
-                            label: arg.span,
-                            sugg: let_underscore_ignore_sugg(),
-                        },
+                        ForgetCopyDiag { arg_ty, label: arg.span, sugg: sugg() },
                     );
                 }
                 (sym::mem_drop, _)
