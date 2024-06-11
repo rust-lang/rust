@@ -3588,6 +3588,7 @@ impl<'test> TestCx<'test> {
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
             .env("SOURCE_ROOT", &src_root)
+            .env("SYSROOT_BASE", &self.config.sysroot_base)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))

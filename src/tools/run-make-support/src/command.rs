@@ -117,6 +117,11 @@ impl Command {
     }
 
     #[track_caller]
+    pub fn run_unchecked(&mut self) -> CompletedProcess {
+        self.command_output()
+    }
+
+    #[track_caller]
     fn command_output(&mut self) -> CompletedProcess {
         self.drop_bomb.defuse();
         // let's make sure we piped all the input and outputs
