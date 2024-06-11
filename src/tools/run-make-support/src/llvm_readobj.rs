@@ -12,6 +12,7 @@ pub fn llvm_readobj() -> LlvmReadobj {
 
 /// A `llvm-readobj` invocation builder.
 #[derive(Debug)]
+#[must_use]
 pub struct LlvmReadobj {
     cmd: Command,
 }

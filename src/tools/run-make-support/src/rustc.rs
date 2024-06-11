@@ -18,6 +18,7 @@ pub fn aux_build() -> Rustc {
 
 /// A `rustc` invocation builder.
 #[derive(Debug)]
+#[must_use]
 pub struct Rustc {
     cmd: Command,
 }
