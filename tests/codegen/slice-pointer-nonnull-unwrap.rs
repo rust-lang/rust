@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 
 // CHECK-LABEL: @slice_ptr_len_1
 // CHECK-NEXT: {{.*}}:
-// CHECK-NEXT: ret i64 %ptr.1
+// CHECK-NEXT: ret {{i(32|64)}} %ptr.1
 #[no_mangle]
 pub fn slice_ptr_len_1(ptr: *const [u8]) -> usize {
     let ptr = ptr.cast_mut();

@@ -5,8 +5,8 @@
 // CHECK-LABEL: @foo
 // CHECK-NEXT: {{.*}}:
 // CHECK-NEXT: getelementptr inbounds
-// CHECK-NEXT: load i64
-// CHECK-NEXT: icmp eq i64
+// CHECK-NEXT: load [[TYPE:i(32|64)]]
+// CHECK-NEXT: icmp eq [[TYPE]]
 // CHECK-NEXT: br i1
 #[no_mangle]
 pub fn foo(input: &mut &[u64]) -> Option<u64> {

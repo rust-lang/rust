@@ -13,8 +13,8 @@ pub enum K {
 // CHECK-LABEL: @get_len
 // CHECK-NEXT: {{.*}}:
 // CHECK-NEXT: getelementptr inbounds
-// CHECK-NEXT: load
-// CHECK-NEXT: ret i64
+// CHECK-NEXT: load [[TYPE:i(32|64)]]
+// CHECK-NEXT: ret [[TYPE]]
 #[no_mangle]
 pub fn get_len(arg: &K) -> usize {
     match arg {
