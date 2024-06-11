@@ -25,7 +25,8 @@ impl Trait<u32> for Foo {
 
 fn bop(_: Bar) {
     let x = <Foo as Trait<Bar>>::Assoc::default();
-    //~^ ERROR: cannot satisfy `Foo: Trait<Bar>`
+    //[next]~^ ERROR: cannot satisfy `Foo: Trait<Bar>`
+    //[current]~^^ ERROR: `Foo: Trait<Bar>` is not satisfied
 }
 
 fn main() {}

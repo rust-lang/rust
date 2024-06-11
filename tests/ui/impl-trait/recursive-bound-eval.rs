@@ -1,3 +1,8 @@
+//! Test that we can evaluate nested obligations when invoking methods on recursive calls on
+//! an RPIT.
+
+//@ check-pass
+
 pub trait Parser<E> {
     fn parse(&self) -> E;
 }
@@ -9,10 +14,7 @@ impl<E, T: Fn() -> E> Parser<E> for T {
 }
 
 pub fn recursive_fn<E>() -> impl Parser<E> {
-    //~^ ERROR: cycle detected
     move || recursive_fn().parse()
-    //~^ ERROR: type annotations needed
-    //~| ERROR: no method named `parse` found for opaque type
 }
 
 fn main() {}
