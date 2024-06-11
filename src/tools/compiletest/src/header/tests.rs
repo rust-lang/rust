@@ -46,6 +46,11 @@ fn test_parse_normalize_rule() {
             "something (32 bits)",
             "something ($WORD bits)",
         ),
+        (
+            r#"normalize-stout-test: "\"json\"key\"" -> "\"json\"value\"""#,
+            r#"\"json\"key\""#,
+            r#""json"value""#,
+        ),
     ];
 
     for &(input, expected_regex, expected_replacement) in good_data {

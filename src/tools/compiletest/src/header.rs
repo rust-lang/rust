@@ -1317,20 +1317,21 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
     // FIXME(#126370): A colon after the header name should be mandatory, but
     // currently is not, and there are many tests that lack the colon.
-    // FIXME: Support escaped double-quotes in strings.
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        [^:\s]+:?\s*            # (header name followed by optional colon)
-        "(?<regex>[^"]*)"       # "REGEX"
-        \s+->\s+                # ->
-        "(?<replacement>[^"]*)" # "REPLACEMENT"
+        [^:\s]+:?\s*                    # (header name followed by optional colon)
+        "(?<regex>(?:\\"|[^"])*)"       # "REGEX"
+        \s+->\s+                        # ->
+        "(?<replacement>(?:\\"|[^"])*)" # "REPLACEMENT"
         $
         "#
     )
     .captures(header)?;
+    // The regex engine will unescape `\"` to `"`.
     let regex = captures["regex"].to_owned();
-    let replacement = captures["replacement"].to_owned();
+    // Unescape any escaped double-quotes in the replacement string.
+    let replacement = captures["replacement"].replace(r#"\""#, r#"""#);
     Some((regex, replacement))
 }
 
