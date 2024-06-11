@@ -1,6 +1,6 @@
 use regex::Regex;
 use similar::TextDiff;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::drop_bomb::DropBomb;
 
@@ -17,6 +17,7 @@ pub fn diff() -> Diff {
 pub struct Diff {
     expected: Option<String>,
     expected_name: Option<String>,
+    expected_file: Option<PathBuf>,
     actual: Option<String>,
     actual_name: Option<String>,
     normalizers: Vec<(String, String)>,
@@ -30,6 +31,7 @@ impl Diff {
         Self {
             expected: None,
             expected_name: None,
+            expected_file: None,
             actual: None,
             actual_name: None,
             normalizers: Vec::new(),
@@ -43,6 +45,7 @@ impl Diff {
         let content = std::fs::read_to_string(path).expect("failed to read file");
         let name = path.to_string_lossy().to_string();
 
+        self.expected_file = Some(path.into());
         self.expected = Some(content);
         self.expected_name = Some(name);
         self
@@ -104,6 +107,15 @@ impl Diff {
             .to_string();
 
         if !output.is_empty() {
+            // If we can bless (meaning we have a file to write into and the `RUSTC_BLESS_TEST`
+            // environment variable set), then we write into the file and return.
+            if let Some(ref expected_file) = self.expected_file {
+                if std::env::var("RUSTC_BLESS_TEST").is_ok() {
+                    println!("Blessing `{}`", expected_file.display());
+                    std::fs::write(expected_file, actual).unwrap();
+                    return;
+                }
+            }
             panic!(
                 "test failed: `{}` is different from `{}`\n\n{}",
                 expected_name, actual_name, output
