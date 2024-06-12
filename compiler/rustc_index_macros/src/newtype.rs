@@ -90,8 +90,8 @@ impl Parse for Newtype {
         let debug_format =
             debug_format.unwrap_or_else(|| Lit::Str(LitStr::new("{}", Span::call_site())));
 
-        // shave off 256 indices at the end to allow space for packing these indices into enums
-        let max = max.unwrap_or_else(|| Lit::Int(LitInt::new("0xFFFF_FF00", Span::call_site())));
+        // Use only the positive 2-billion so the check can be signed-less-than-zero.
+        let max = max.unwrap_or_else(|| Lit::Int(LitInt::new("0x7FFF_FFFF", Span::call_site())));
 
         let encodable_impls = if encodable {
             quote! {
