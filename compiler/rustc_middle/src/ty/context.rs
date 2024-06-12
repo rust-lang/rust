@@ -92,6 +92,8 @@ use std::ops::{Bound, Deref};
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
     type LocalDefId = LocalDefId;
+    type Span = Span;
+
     type GenericArgs = ty::GenericArgsRef<'tcx>;
 
     type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];

@@ -123,7 +123,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 
     }
 }
 
-impl<'tcx> PredicateEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for Lub<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
     }
