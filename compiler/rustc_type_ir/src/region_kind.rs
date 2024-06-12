@@ -4,7 +4,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use std::fmt;
 
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+use crate::{DebruijnIndex, Interner};
 
 use self::RegionKind::*;
 
@@ -16,18 +16,6 @@ rustc_index::newtype_index! {
     #[gate_rustc_only]
     #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     pub struct RegionVid {}
-}
-
-impl<I: Interner> DebugWithInfcx<I> for RegionVid {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match this.infcx.universe_of_lt(*this.data) {
-            Some(universe) => write!(f, "'?{}_{}", this.data.index(), universe.index()),
-            None => write!(f, "{:?}", this.data),
-        }
-    }
 }
 
 /// Representation of regions. Note that the NLL checker uses a distinct
@@ -230,12 +218,9 @@ impl<I: Interner> PartialEq for RegionKind<I> {
     }
 }
 
-impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match this.data {
+impl<I: Interner> fmt::Debug for RegionKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             ReEarlyParam(data) => write!(f, "{data:?}"),
 
             ReBound(binder_id, bound_region) => {
@@ -247,7 +232,7 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 
             ReStatic => f.write_str("'static"),
 
-            ReVar(vid) => write!(f, "{:?}", &this.wrap(vid)),
+            ReVar(vid) => write!(f, "{:?}", &vid),
 
             RePlaceholder(placeholder) => write!(f, "{placeholder:?}"),
 
@@ -258,11 +243,6 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 
             ReError(_) => f.write_str("'{region error}"),
         }
-    }
-}
-impl<I: Interner> fmt::Debug for RegionKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 

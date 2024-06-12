@@ -428,6 +428,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
+        --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths

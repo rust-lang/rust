@@ -9,7 +9,7 @@ use crate::ir_print::IrPrint;
 use crate::relate::Relate;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty, DebugWithInfcx};
+use crate::{self as ty};
 
 pub trait Interner:
     Sized
@@ -32,7 +32,7 @@ pub trait Interner:
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + Deref<Target = [Self::GenericArg]>;
     type GenericArg: Copy
-        + DebugWithInfcx<Self>
+        + Debug
         + Hash
         + Eq
         + IntoKind<Kind = ty::GenericArgKind<Self>>
@@ -74,9 +74,9 @@ pub trait Interner:
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
-    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq + Relate<Self>;
+    type BoundExistentialPredicates: Copy + Debug + Hash + Eq + Relate<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
-    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self> + Relate<Self>;
+    type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
     type Safety: Safety<Self> + TypeFoldable<Self> + Relate<Self>;
     type Abi: Abi<Self> + TypeFoldable<Self> + Relate<Self>;
 
@@ -86,7 +86,7 @@ pub trait Interner:
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
-    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq + Relate<Self>;
+    type ExprConst: Copy + Debug + Hash + Eq + Relate<Self>;
 
     // Kinds of regions
     type Region: Region<Self>;

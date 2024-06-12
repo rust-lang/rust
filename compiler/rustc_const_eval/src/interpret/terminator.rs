@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use either::Either;
+use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
 use rustc_middle::span_bug;
@@ -827,20 +828,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
+                let (dyn_trait, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {
-                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place, data)?;
-                    let (dyn_ty, _dyn_trait) = self.get_ptr_vtable(vptr)?;
+                    let recv = self.unpack_dyn_star(&receiver_place, data)?;
 
-                    (vptr, dyn_ty, recv.ptr())
+                    (data.principal(), recv.layout.ty, recv.ptr())
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
                     let receiver_tail = self
                         .tcx
                         .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
-                    let ty::Dynamic(data, _, ty::Dyn) = receiver_tail.kind() else {
+                    let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
                         span_bug!(
                             self.cur_span(),
                             "dynamic call on non-`dyn` type {}",
@@ -851,25 +851,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     // Get the required information from the vtable.
                     let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
-                    let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
-                    if dyn_trait != data.principal() {
-                        throw_ub!(InvalidVTableTrait {
-                            expected_trait: data,
-                            vtable_trait: dyn_trait,
-                        });
-                    }
+                    let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
 
                     // It might be surprising that we use a pointer as the receiver even if this
                     // is a by-val case; this works because by-val passing of an unsized `dyn
                     // Trait` to a function is actually desugared to a pointer.
-                    (vptr, dyn_ty, receiver_place.ptr())
+                    (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
                 };
 
                 // Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
-                let Some(ty::VtblEntry::Method(fn_inst)) =
-                    self.get_vtable_entries(vptr)?.get(idx).copied()
-                else {
+                let vtable_entries = if let Some(dyn_trait) = dyn_trait {
+                    let trait_ref = dyn_trait.with_self_ty(*self.tcx, dyn_ty);
+                    let trait_ref = self.tcx.erase_regions(trait_ref);
+                    self.tcx.vtable_entries(trait_ref)
+                } else {
+                    TyCtxt::COMMON_VTABLE_ENTRIES
+                };
+                let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
                 };
@@ -898,7 +897,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let receiver_ty = Ty::new_mut_ptr(self.tcx.tcx, dyn_ty);
                 args[0] = FnArg::Copy(
                     ImmTy::from_immediate(
-                        Scalar::from_maybe_pointer(adjusted_receiver, self).into(),
+                        Scalar::from_maybe_pointer(adjusted_recv, self).into(),
                         self.layout_of(receiver_ty)?,
                     )
                     .into(),
@@ -974,11 +973,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let place = match place.layout.ty.kind() {
             ty::Dynamic(data, _, ty::Dyn) => {
                 // Dropping a trait object. Need to find actual drop fn.
-                self.unpack_dyn_trait(&place, data)?.0
+                self.unpack_dyn_trait(&place, data)?
             }
             ty::Dynamic(data, _, ty::DynStar) => {
                 // Dropping a `dyn*`. Need to find actual drop fn.
-                self.unpack_dyn_star(&place, data)?.0
+                self.unpack_dyn_star(&place, data)?
             }
             _ => {
                 debug_assert_eq!(

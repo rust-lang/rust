@@ -202,10 +202,7 @@ impl fmt::Display for PanicHookInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
-        if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
-            formatter.write_str(":\n")?;
-            formatter.write_str(payload)?;
-        } else if let Some(payload) = self.payload.downcast_ref::<String>() {
+        if let Some(payload) = self.payload_as_str() {
             formatter.write_str(":\n")?;
             formatter.write_str(payload)?;
         }
