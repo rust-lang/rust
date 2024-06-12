@@ -29,9 +29,8 @@ impl<'a> PanicInfo<'a> {
         PanicInfo { location, message, can_unwind, force_no_backtrace }
     }
 
-    /// If the `panic!` macro from the `core` crate (not from `std`)
-    /// was used with a formatting string and some additional arguments,
-    /// returns that message ready to be used for example with [`fmt::write`]
+    /// The message that was given to the `panic!` macro,
+    /// ready to be formatted with e.g. [`fmt::write`].
     #[must_use]
     #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> fmt::Arguments<'_> {
@@ -72,7 +71,7 @@ impl<'a> PanicInfo<'a> {
 
     /// Returns the payload associated with the panic.
     ///
-    /// On `core::panic::PanicInfo`, this method never returns anything useful.
+    /// On this type, `core::panic::PanicInfo`, this method never returns anything useful.
     /// It only exists because of compatibility with [`std::panic::PanicHookInfo`],
     /// which used to be the same type.
     ///
@@ -80,7 +79,7 @@ impl<'a> PanicInfo<'a> {
     ///
     /// [`std::panic::PanicHookInfo`]: ../../std/panic/struct.PanicHookInfo.html
     /// [`std::panic::PanicHookInfo::payload`]: ../../std/panic/struct.PanicHookInfo.html#method.payload
-    #[deprecated(since = "1.77.0", note = "this never returns anything useful")]
+    #[deprecated(since = "1.81.0", note = "this never returns anything useful")]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[allow(deprecated, deprecated_in_future)]
     pub fn payload(&self) -> &(dyn crate::any::Any + Send) {
