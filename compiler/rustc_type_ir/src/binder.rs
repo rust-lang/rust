@@ -8,12 +8,11 @@ use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_serialize::Decodable;
 use tracing::debug;
 
-use crate::debug::{DebugWithInfcx, WithInfcx};
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, InferCtxtLike, Interner, SsoHashSet};
+use crate::{self as ty, Interner, SsoHashSet};
 
 /// Binder is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -53,18 +52,6 @@ where
             value: self.value.lift_to_tcx(tcx)?,
             bound_vars: self.bound_vars.lift_to_tcx(tcx)?,
         })
-    }
-}
-
-impl<I: Interner, T: DebugWithInfcx<I>> DebugWithInfcx<I> for ty::Binder<I, T> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        f.debug_tuple("Binder")
-            .field(&this.map(|data| data.as_ref().skip_binder()))
-            .field(&this.data.bound_vars())
-            .finish()
     }
 }
 
