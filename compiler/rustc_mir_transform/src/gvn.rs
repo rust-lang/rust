@@ -406,6 +406,24 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
+                } else if matches!(kind, AggregateTy::Array) {
+                    let mut mplace = None;
+                    let alloc_id = self.ecx.intern_with_temp_alloc(ty, |ecx, dest| {
+                        for (field_index, op) in fields.iter().copied().enumerate() {
+                            let field_dest = ecx.project_field(dest, field_index)?;
+                            ecx.copy_op(op, &field_dest)?;
+                        }
+
+                        let dest = dest.assert_mem_place().map_provenance(|prov| prov.as_immutable());
+                        mplace.replace(dest);
+                        Ok(())
+                    }).ok()?;
+                    let GlobalAlloc::Memory(_alloc) = self.tcx.global_alloc(alloc_id) else {
+                        bug!()
+                    };
+                    let mplace = mplace.unwrap();
+                    debug!(?mplace);
+                    return Some(mplace.into());
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
                     let variant_dest = if let Some(variant) = variant {
@@ -1232,6 +1250,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 }
 
+#[instrument(level = "trace", skip(ecx), ret)]
 fn op_to_prop_const<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
@@ -1312,10 +1331,6 @@ impl<'tcx> VnState<'_, 'tcx> {
         }
 
         let op = self.evaluated[index].as_ref()?;
-        if op.layout.is_unsized() {
-            // Do not attempt to propagate unsized locals.
-            return None;
-        }
 
         let value = op_to_prop_const(&mut self.ecx, op)?;
 
@@ -1365,6 +1380,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 .as_local()
                 .and_then(|local| self.locals[local])
                 .or_else(|| self.simplify_rvalue(rvalue, location));
+            debug!(?value);
             let Some(value) = value else { return };
 
             if let Some(const_) = self.try_as_constant(value) {
