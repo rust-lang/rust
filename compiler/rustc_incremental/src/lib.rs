@@ -1,10 +1,12 @@
 //! Support for serializing the dep-graph and reloading it.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![deny(missing_docs)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![allow(internal_features)]
+// tidy-alphabetical-end
 
 mod assert_dep_graph;
 mod errors;

@@ -55,21 +55,23 @@ This API is completely unstable and subject to change.
 
 */
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;

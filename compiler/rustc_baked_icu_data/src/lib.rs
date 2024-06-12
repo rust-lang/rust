@@ -20,10 +20,12 @@
 //! --cldr-tag latest --icuexport-tag latest -o src/data
 //! ```
 
-#![allow(internal_features)]
-#![feature(rustdoc_internals)]
-#![doc(rust_logo)]
+// tidy-alphabetical-start
 #![allow(elided_lifetimes_in_paths)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 mod data {
     include!("data/mod.rs");

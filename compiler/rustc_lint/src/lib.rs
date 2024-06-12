@@ -25,9 +25,10 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
@@ -35,9 +36,10 @@
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
-#![feature(trait_upcasting)]
 #![feature(rustc_attrs)]
-#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+#![feature(trait_upcasting)]
+// tidy-alphabetical-end
 
 mod async_fn_in_trait;
 pub mod builtin;

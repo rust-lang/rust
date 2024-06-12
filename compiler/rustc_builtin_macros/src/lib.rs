@@ -1,12 +1,12 @@
 //! This crate contains implementations of built-in macros and other code generating facilities
 //! injecting code into the crate before it is lowered to HIR.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(rustdoc_internals)]
-#![doc(rust_logo)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -15,7 +15,9 @@
 #![feature(lint_reasons)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
+#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 
 extern crate proc_macro;
 

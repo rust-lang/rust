@@ -1,12 +1,14 @@
 //! Support for serializing the dep-graph and reloading it.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![allow(rustc::potential_query_instability, unused_parens)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
-#![allow(rustc::potential_query_instability, unused_parens)]
-#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
 use crate::profiling_support::QueryKeyStringCache;

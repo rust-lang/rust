@@ -1,11 +1,13 @@
+// tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(if_let_guard)]
-#![feature(let_chains)]
-#![feature(try_blocks)]
-#![feature(never_type)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
+#![feature(never_type)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;

@@ -1,6 +1,8 @@
 //! Queries that are independent from the main solver code.
 
+// tidy-alphabetical-start
 #![recursion_limit = "256"]
+// tidy-alphabetical-end
 
 mod codegen;
 mod dropck_outlives;
