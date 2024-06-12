@@ -22,6 +22,9 @@ pub(crate) struct DocTest {
     pub(crate) already_has_extern_crate: bool,
     pub(crate) has_main_fn: bool,
     pub(crate) crate_attrs: String,
+    /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
+    /// put into `crate_attrs`.
+    pub(crate) maybe_crate_attrs: String,
     pub(crate) crates: String,
     pub(crate) everything_else: String,
     pub(crate) test_id: Option<String>,
@@ -38,7 +41,14 @@ impl DocTest {
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
         test_id: Option<String>,
     ) -> Self {
-        let (crate_attrs, everything_else, crates) = partition_source(source, edition);
+        let SourceInfo {
+            crate_attrs,
+            maybe_crate_attrs,
+            crates,
+            everything_else,
+            has_features,
+            has_no_std,
+        } = partition_source(source, edition);
         let mut supports_color = false;
 
         // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
@@ -56,10 +66,11 @@ impl DocTest {
         else {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
-            return DocTest {
+            return Self {
                 supports_color: false,
                 has_main_fn: false,
                 crate_attrs,
+                maybe_crate_attrs,
                 crates,
                 everything_else,
                 already_has_extern_crate: false,
@@ -72,14 +83,15 @@ impl DocTest {
             supports_color,
             has_main_fn,
             crate_attrs,
+            maybe_crate_attrs,
             crates,
             everything_else,
             already_has_extern_crate,
             test_id,
             failed_ast: false,
             // If the AST returned an error, we don't want this doctest to be merged with the
-            // others.
-            can_be_merged: !failed_ast,
+            // others. Same if it contains `#[feature]` or `#[no_std]`.
+            can_be_merged: !failed_ast && !has_no_std && !has_features,
         }
     }
 
@@ -118,6 +130,7 @@ impl DocTest {
         // Now push any outer attributes from the example, assuming they
         // are intended to be crate attributes.
         prog.push_str(&self.crate_attrs);
+        prog.push_str(&self.maybe_crate_attrs);
         prog.push_str(&self.crates);
 
         // Don't inject `extern crate std` because it's already injected by the
@@ -405,11 +418,22 @@ fn check_for_main_and_extern_crate(
     Ok((has_main_fn, already_has_extern_crate, parsing_result != ParsingResult::Ok))
 }
 
-fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
+enum AttrKind {
+    CrateAttr,
+    Attr,
+    Feature,
+    NoStd,
+}
+
+/// Returns `Some` if the attribute is complete and `Some(true)` if it is an attribute that can be
+/// placed at the crate root.
+fn check_if_attr_is_complete(source: &str, edition: Edition) -> Option<AttrKind> {
     if source.is_empty() {
         // Empty content so nothing to check in here...
-        return true;
+        return None;
     }
+    let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny];
+
     rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::HumanEmitter;
@@ -435,33 +459,77 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                     errs.into_iter().for_each(|err| err.cancel());
                     // If there is an unclosed delimiter, an error will be returned by the
                     // tokentrees.
-                    return false;
+                    return None;
                 }
             };
             // If a parsing error happened, it's very likely that the attribute is incomplete.
-            if let Err(e) = parser.parse_attribute(InnerAttrPolicy::Permitted) {
-                e.cancel();
-                return false;
-            }
-            true
+            let ret = match parser.parse_attribute(InnerAttrPolicy::Permitted) {
+                Ok(attr) => {
+                    let attr_name = attr.name_or_empty();
+
+                    if attr_name == sym::feature {
+                        Some(AttrKind::Feature)
+                    } else if attr_name == sym::no_std {
+                        Some(AttrKind::NoStd)
+                    } else if not_crate_attrs.contains(&attr_name) {
+                        Some(AttrKind::Attr)
+                    } else {
+                        Some(AttrKind::CrateAttr)
+                    }
+                }
+                Err(e) => {
+                    e.cancel();
+                    None
+                }
+            };
+            ret
         })
     })
-    .unwrap_or(false)
+    .unwrap_or(None)
 }
 
-/// Returns `(crate_attrs, content, crates)`.
-fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
+fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edition: Edition) {
+    if let Some(attr_kind) = check_if_attr_is_complete(mod_attr_pending, edition) {
+        let push_to = match attr_kind {
+            AttrKind::CrateAttr => &mut source_info.crate_attrs,
+            AttrKind::Attr => &mut source_info.maybe_crate_attrs,
+            AttrKind::Feature => {
+                source_info.has_features = true;
+                &mut source_info.crate_attrs
+            }
+            AttrKind::NoStd => {
+                source_info.has_no_std = true;
+                &mut source_info.crate_attrs
+            }
+        };
+        push_to.push_str(mod_attr_pending);
+        push_to.push('\n');
+        // If it's complete, then we can clear the pending content.
+        mod_attr_pending.clear();
+    } else if mod_attr_pending.ends_with('\\') {
+        mod_attr_pending.push('n');
+    }
+}
+
+#[derive(Default)]
+struct SourceInfo {
+    crate_attrs: String,
+    maybe_crate_attrs: String,
+    crates: String,
+    everything_else: String,
+    has_features: bool,
+    has_no_std: bool,
+}
+
+fn partition_source(s: &str, edition: Edition) -> SourceInfo {
     #[derive(Copy, Clone, PartialEq)]
     enum PartitionState {
         Attrs,
         Crates,
         Other,
     }
+    let mut source_info = SourceInfo::default();
     let mut state = PartitionState::Attrs;
-    let mut crate_attrs = String::new();
-    let mut crates = String::new();
-    let mut after = String::new();
-
     let mut mod_attr_pending = String::new();
 
     for line in s.lines() {
@@ -472,12 +540,9 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
         match state {
             PartitionState::Attrs => {
                 state = if trimline.starts_with("#![") {
-                    if !check_if_attr_is_complete(line, edition) {
-                        mod_attr_pending = line.to_owned();
-                    } else {
-                        mod_attr_pending.clear();
-                    }
-                    PartitionState::Attrs
+                    mod_attr_pending = line.to_owned();
+                    handle_attr(&mut mod_attr_pending, &mut source_info, edition);
+                    continue;
                 } else if trimline.chars().all(|c| c.is_whitespace())
                     || (trimline.starts_with("//") && !trimline.starts_with("///"))
                 {
@@ -492,15 +557,10 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
                         // If not, then we append the new line into the pending attribute to check
                         // if this time it's complete...
                         mod_attr_pending.push_str(line);
-                        if !trimline.is_empty()
-                            && check_if_attr_is_complete(&mod_attr_pending, edition)
-                        {
-                            // If it's complete, then we can clear the pending content.
-                            mod_attr_pending.clear();
+                        if !trimline.is_empty() {
+                            handle_attr(&mut mod_attr_pending, &mut source_info, edition);
                         }
-                        // In any case, this is considered as `PartitionState::Attrs` so it's
-                        // prepended before rustdoc's inserts.
-                        PartitionState::Attrs
+                        continue;
                     } else {
                         PartitionState::Other
                     }
@@ -522,23 +582,25 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
 
         match state {
             PartitionState::Attrs => {
-                crate_attrs.push_str(line);
-                crate_attrs.push('\n');
+                source_info.crate_attrs.push_str(line);
+                source_info.crate_attrs.push('\n');
             }
             PartitionState::Crates => {
-                crates.push_str(line);
-                crates.push('\n');
+                source_info.crates.push_str(line);
+                source_info.crates.push('\n');
             }
             PartitionState::Other => {
-                after.push_str(line);
-                after.push('\n');
+                source_info.everything_else.push_str(line);
+                source_info.everything_else.push('\n');
             }
         }
     }
 
-    debug!("before:\n{before}");
-    debug!("crates:\n{crates}");
-    debug!("after:\n{after}");
+    source_info.everything_else = source_info.everything_else.trim().to_string();
 
-    (before, after.trim().to_owned(), crates)
+    debug!("crate_attrs:\n{}{}", source_info.crate_attrs, source_info.maybe_crate_attrs);
+    debug!("crates:\n{}", source_info.crates);
+    debug!("after:\n{}", source_info.everything_else);
+
+    source_info
 }

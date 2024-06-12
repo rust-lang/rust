@@ -536,17 +536,15 @@ fn run_test(
         compiler.arg("--error-format=short");
         let input_file =
             doctest.test_opts.outdir.path().join(&format!("doctest_{}.rs", doctest.edition));
-            eprintln!("OUUUUUUUT>>>>>>> {input_file:?}");
         if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
             return Err(TestFailure::CompileError);
         }
         compiler.arg(input_file);
+        // FIXME: Remove once done fixing bugs.
+        // FIXME: Should this call only be done if `nocapture` is not set?
         // compiler.stderr(Stdio::null());
-        let mut buffer = String::new();
-        eprintln!("Press ENTER");
-        let _ = std::io::stdin().read_line(&mut buffer);
     } else {
         compiler.arg("-");
         compiler.stdin(Stdio::piped());
@@ -768,7 +766,7 @@ struct CreateRunnableDoctests {
 
 impl CreateRunnableDoctests {
     fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDoctests {
-        let can_merge_doctests = true;//rustdoc_options.edition >= Edition::Edition2024;
+        let can_merge_doctests = true; //rustdoc_options.edition >= Edition::Edition2024;
         CreateRunnableDoctests {
             standalone_tests: Vec::new(),
             mergeable_tests: FxHashMap::default(),
@@ -818,8 +816,7 @@ impl CreateRunnableDoctests {
             || scraped_test.langstr.test_harness
             || scraped_test.langstr.standalone
             || self.rustdoc_options.nocapture
-            || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output")
-            || doctest.crate_attrs.contains("#![no_std]");
+            || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output");
         if is_standalone {
             let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test);
             self.standalone_tests.push(test_desc);
