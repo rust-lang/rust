@@ -301,7 +301,7 @@ impl<HCX> ToStableHashKey<HCX> for WorkProductId {
         self.hash
     }
 }
-unsafe impl StableOrd for WorkProductId {
+impl StableOrd for WorkProductId {
     // Fingerprint can use unstable (just a tuple of `u64`s), so WorkProductId can as well
     const CAN_USE_UNSTABLE_SORT: bool = true;
 }

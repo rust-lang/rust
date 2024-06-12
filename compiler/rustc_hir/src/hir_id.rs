@@ -165,9 +165,9 @@ impl ItemLocalId {
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
-// Safety: Ord is implement as just comparing the ItemLocalId's numerical
+// Ord is implement as just comparing the ItemLocalId's numerical
 // values and these are not changed by (de-)serialization.
-unsafe impl StableOrd for ItemLocalId {
+impl StableOrd for ItemLocalId {
     const CAN_USE_UNSTABLE_SORT: bool = true;
 }
 

@@ -120,8 +120,8 @@ impl Default for DefPathHash {
     }
 }
 
-// Safety: `DefPathHash` sort order is not affected (de)serialization.
-unsafe impl StableOrd for DefPathHash {
+// `DefPathHash` sort order is not affected (de)serialization.
+impl StableOrd for DefPathHash {
     const CAN_USE_UNSTABLE_SORT: bool = true;
 }
 
