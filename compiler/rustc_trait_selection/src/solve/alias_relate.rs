@@ -55,8 +55,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         trace!(?lhs, ?rhs);
 
         let variance = match direction {
-            ty::AliasRelationDirection::Equate => ty::Variance::Invariant,
-            ty::AliasRelationDirection::Subtype => ty::Variance::Covariant,
+            ty::AliasRelationDirection::Equate => ty::Invariant,
+            ty::AliasRelationDirection::Subtype => ty::Covariant,
         };
         match (lhs.to_alias_term(), rhs.to_alias_term()) {
             (None, None) => {
@@ -72,7 +72,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 self.relate_rigid_alias_non_alias(
                     param_env,
                     alias,
-                    variance.xform(ty::Variance::Contravariant),
+                    variance.xform(ty::Contravariant),
                     lhs,
                 )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

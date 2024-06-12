@@ -40,7 +40,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             Ok(res) => Ok(res),
             Err(NoSolution) => {
                 let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
-                self.relate_rigid_alias_non_alias(param_env, alias, ty::Variance::Invariant, term)?;
+                self.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }
