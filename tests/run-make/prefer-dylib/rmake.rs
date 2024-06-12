@@ -2,7 +2,6 @@
 
 use run_make_support::{cwd, dynamic_lib_name, read_dir, run, run_fail, rustc};
 use std::fs::remove_file;
-use std::process::Command;
 
 fn main() {
     rustc().input("bar.rs").crate_type("dylib").crate_type("rlib").arg("-Cprefer-dynamic").run();
