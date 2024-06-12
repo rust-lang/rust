@@ -50,9 +50,7 @@ ENV SCRIPT \
            python3 ../x.py check --stage 0 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
            /scripts/check-default-config-profiles.sh && \
            python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
-           python3 ../x.py clippy bootstrap -Dwarnings && \
-           python3 ../x.py clippy library -Aclippy::all -Dclippy::correctness && \
-           python3 ../x.py clippy compiler -Aclippy::all -Dclippy::correctness -Dclippy::clone_on_ref_ptr && \
+           python3 ../x.py clippy ci && \
            python3 ../x.py build --stage 0 src/tools/build-manifest && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py test --stage 0 core alloc std test proc_macro && \
