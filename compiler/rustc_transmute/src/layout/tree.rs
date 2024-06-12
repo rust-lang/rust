@@ -331,30 +331,63 @@ pub(crate) mod rustc {
             assert!(def.is_enum());
             let layout = ty_and_layout.layout;
 
-            if let Variants::Multiple { tag_field, .. } = layout.variants() {
-                // For enums (but not coroutines), the tag field is
-                // currently always the first field of the layout.
-                assert_eq!(*tag_field, 0);
-            }
+            // Computes the variant of a given index.
+            let layout_of_variant = |index| {
+                let tag = cx.tcx.tag_for_variant((ty_and_layout.ty, index));
+                let variant_def = Def::Variant(def.variant(index));
+                let variant_ty_and_layout = ty_and_layout.for_variant(&cx, index);
+                Self::from_variant(variant_def, tag, variant_ty_and_layout, layout.size, cx)
+            };
 
-            let variants = def.discriminants(cx.tcx()).try_fold(
-                Self::uninhabited(),
-                |variants, (idx, ref discriminant)| {
-                    let tag = cx.tcx.tag_for_variant((ty_and_layout.ty, idx));
-                    let variant_def = Def::Variant(def.variant(idx));
-                    let variant_ty_and_layout = ty_and_layout.for_variant(&cx, idx);
-                    let variant = Self::from_variant(
-                        variant_def,
-                        tag,
-                        variant_ty_and_layout,
-                        layout.size,
-                        cx,
+            // We consider three kinds of enums, each demanding a different
+            // treatment of their layout computation:
+            // 1. enums that are uninhabited
+            // 2. enums for which all but one variant is uninhabited
+            // 3. enums with multiple inhabited variants
+            match layout.variants() {
+                _ if layout.abi.is_uninhabited() => {
+                    // Uninhabited enums are usually (always?) zero-sized. In
+                    // the (unlikely?) event that an uninhabited enum is
+                    // non-zero-sized, this assert will trigger an ICE, and this
+                    // code should be modified such that a `layout.size` amount
+                    // of uninhabited bytes is returned instead.
+                    //
+                    // Uninhabited enums are currently implemented such that
+                    // their layout is described with `Variants::Single`, even
+                    // though they don't necessarily have a 'single' variant to
+                    // defer to. That said, we don't bother specifically
+                    // matching on `Variants::Single` in this arm because the
+                    // behavioral principles here remain true even if, for
+                    // whatever reason, the compiler describes an uninhabited
+                    // enum with `Variants::Multiple`.
+                    assert_eq!(layout.size, Size::ZERO);
+                    Ok(Self::uninhabited())
+                }
+                Variants::Single { index } => {
+                    // `Variants::Single` on non-uninhabited enums denotes that
+                    // the enum delegates its layout to the variant at `index`.
+                    layout_of_variant(*index)
+                }
+                Variants::Multiple { tag_field, .. } => {
+                    // `Variants::Multiple` denotes an enum with multiple
+                    // inhabited variants. The layout of such an enum is the
+                    // disjunction of the layouts of its tagged variants.
+
+                    // For enums (but not coroutines), the tag field is
+                    // currently always the first field of the layout.
+                    assert_eq!(*tag_field, 0);
+
+                    let variants = def.discriminants(cx.tcx()).try_fold(
+                        Self::uninhabited(),
+                        |variants, (idx, ref discriminant)| {
+                            let variant = layout_of_variant(idx)?;
+                            Result::<Self, Err>::Ok(variants.or(variant))
+                        },
                     )?;
-                    Result::<Self, Err>::Ok(variants.or(variant))
-                },
-            )?;
 
-            return Ok(Self::def(Def::Adt(def)).then(variants));
+                    return Ok(Self::def(Def::Adt(def)).then(variants));
+                }
+            }
         }
 
         /// Constructs a `Tree` from a 'variant-like' layout.
