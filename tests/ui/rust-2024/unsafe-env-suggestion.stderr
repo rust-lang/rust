@@ -13,8 +13,9 @@ LL | #![deny(deprecated_safe)]
    |         ^^^^^^^^^^^^^^^
 help: you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
    |
-LL |     unsafe { env::set_var("FOO", "BAR") };
-   |     ++++++++                            +
+LL +     // TODO: Audit that the environment access only happens in single-threaded code.
+LL ~     unsafe { env::set_var("FOO", "BAR") };
+   |
 
 error: call to deprecated safe function `std::env::remove_var` is unsafe and requires unsafe block
   --> $DIR/unsafe-env-suggestion.rs:12:5
@@ -26,8 +27,9 @@ LL |     env::remove_var("FOO");
    = note: for more information, see issue #27970 <https://github.com/rust-lang/rust/issues/27970>
 help: you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
    |
-LL |     unsafe { env::remove_var("FOO") };
-   |     ++++++++                        +
+LL +     // TODO: Audit that the environment access only happens in single-threaded code.
+LL ~     unsafe { env::remove_var("FOO") };
+   |
 
 error: aborting due to 2 previous errors
 

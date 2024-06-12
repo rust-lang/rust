@@ -97,6 +97,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 if !span.at_least_rust_2024()
                     && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
             {
+                let sm = self.tcx.sess.source_map();
                 self.tcx.emit_node_span_lint(
                     DEPRECATED_SAFE,
                     self.hir_context,
@@ -105,6 +106,8 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
+                            indent: sm.indentation_before(span).unwrap_or_default(),
+                            start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),
                             left: span.shrink_to_lo(),
                             right: span.shrink_to_hi(),
                         },
