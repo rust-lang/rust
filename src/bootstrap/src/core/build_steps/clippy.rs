@@ -117,6 +117,19 @@ impl LintConfig {
             _ => unreachable!("LintConfig can only be called from `clippy` subcommands."),
         }
     }
+
+    fn merge(&self, other: &Self) -> Self {
+        let merged = |self_attr: &[String], other_attr: &[String]| -> Vec<String> {
+            self_attr.iter().cloned().chain(other_attr.iter().cloned()).collect()
+        };
+        // This is written this way to ensure we get a compiler error if we add a new field.
+        Self {
+            allow: merged(&self.allow, &other.allow),
+            warn: merged(&self.warn, &other.warn),
+            deny: merged(&self.deny, &other.deny),
+            forbid: merged(&self.forbid, &other.forbid),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -348,3 +361,52 @@ lint_any!(
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     Tidy, "src/tools/tidy", "tidy";
 );
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CI {
+    target: TargetSelection,
+    config: LintConfig,
+}
+
+impl Step for CI {
+    type Output = ();
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("ci")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let config = LintConfig::new(run.builder);
+        run.builder.ensure(CI { target: run.target, config });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        builder.ensure(Bootstrap {
+            target: self.target,
+            config: self.config.merge(&LintConfig {
+                allow: vec![],
+                warn: vec![],
+                deny: vec!["warnings".into()],
+                forbid: vec![],
+            }),
+        });
+
+        let correctness = LintConfig {
+            allow: vec!["clippy::all".into()],
+            warn: vec![],
+            deny: vec!["clippy::correctness".into()],
+            forbid: vec![],
+        };
+        builder.ensure(Std {
+            target: self.target,
+            config: self.config.merge(&correctness),
+            crates: vec![],
+        });
+        builder.ensure(Rustc {
+            target: self.target,
+            config: self.config.merge(&correctness),
+            crates: vec![],
+        });
+    }
+}
