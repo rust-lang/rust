@@ -192,7 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: MethodError<'tcx>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
-    ) -> Result<Diag<'_>, ErrorGuaranteed> {
+    ) -> ErrorGuaranteed {
         let (span, sugg_span, source, item_name, args) = match self.tcx.hir_node(call_id) {
             hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::MethodCall(segment, rcvr, args, _),
@@ -226,7 +226,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Avoid suggestions when we don't know what's going on.
-        rcvr_ty.error_reported()?;
+        if let Err(guar) = rcvr_ty.error_reported() {
+            return guar;
+        }
 
         match error {
             MethodError::NoMatch(mut no_match_data) => {
@@ -263,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &mut sources,
                     Some(sugg_span),
                 );
-                return Err(err.emit());
+                return err.emit();
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
@@ -284,7 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
-                return Err(err.emit());
+                return err.emit();
             }
 
             MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
@@ -341,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                return Err(err.emit());
+                return err.emit();
             }
 
             MethodError::BadReturnType => bug!("no return type expectations but got BadReturnType"),
@@ -561,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn report_no_match_method_error(
+    fn report_no_match_method_error(
         &self,
         mut span: Span,
         rcvr_ty: Ty<'tcx>,
@@ -573,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
-    ) -> Result<Diag<'_>, ErrorGuaranteed> {
+    ) -> ErrorGuaranteed {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
@@ -605,15 +607,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We could pass the file for long types into these two, but it isn't strictly necessary
         // given how targeted they are.
-        self.suggest_wrapping_range_with_parens(
+        if let Err(guar) = self.suggest_wrapping_range_with_parens(
             tcx,
             rcvr_ty,
             source,
             span,
             item_name,
             &short_ty_str,
-        )?;
-        self.suggest_constraining_numerical_ty(
+        ) {
+            return guar;
+        }
+        if let Err(guar) = self.suggest_constraining_numerical_ty(
             tcx,
             rcvr_ty,
             source,
@@ -621,7 +625,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             item_kind,
             item_name,
             &short_ty_str,
-        )?;
+        ) {
+            return guar;
+        }
         span = item_name.span;
 
         // Don't show generic arguments when the method can't be found in any implementation (#81576).
@@ -877,7 +883,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 vec![(span.shrink_to_lo(), format!("into_iter()."))],
                 Applicability::MaybeIncorrect,
             );
-            return Ok(err);
+            return err.emit();
         } else if !unsatisfied_predicates.is_empty() && matches!(rcvr_ty.kind(), ty::Param(_)) {
             // We special case the situation where we are looking for `_` in
             // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
@@ -1602,7 +1608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
-        Ok(err)
+        err.emit()
     }
 
     /// If an appropriate error source is not found, check method chain for possible candidates

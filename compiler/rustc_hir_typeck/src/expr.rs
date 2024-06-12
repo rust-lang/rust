@@ -1345,10 +1345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if segment.ident.name == kw::Empty {
                     span_bug!(rcvr.span, "empty method name")
                 } else {
-                    match self.report_method_error(expr.hir_id, rcvr_t, error, expected, false) {
-                        Ok(diag) => Err(diag.emit()),
-                        Err(guar) => Err(guar),
-                    }
+                    Err(self.report_method_error(expr.hir_id, rcvr_t, error, expected, false))
                 }
             }
         };
