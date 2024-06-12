@@ -1,9 +1,22 @@
 error[E0271]: type mismatch resolving `<dyn Trait<A = A, B = B> as SuperTrait>::A == B`
   --> $DIR/more-object-bound.rs:12:5
    |
+LL | fn transmute<A, B>(x: A) -> B {
+   |              -  -
+   |              |  |
+   |              |  expected type parameter
+   |              |  found type parameter
+   |              found type parameter
+   |              expected type parameter
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `A`, found type parameter `B`
    |
+   = note: expected type parameter `A`
+              found type parameter `B`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
    = note: required because it appears within the type `dyn Trait<A = A, B = B>`
 note: required by a bound in `foo`
   --> $DIR/more-object-bound.rs:18:8
