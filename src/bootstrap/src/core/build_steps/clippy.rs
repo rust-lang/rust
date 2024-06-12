@@ -20,14 +20,12 @@ const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
     "wrong_self_convention",
 ];
 
-fn lint_args(builder: &Builder<'_>, ignored_rules: &[&str]) -> Vec<String> {
+fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str]) -> Vec<String> {
     fn strings<'a>(arr: &'a [&str]) -> impl Iterator<Item = String> + 'a {
         arr.iter().copied().map(String::from)
     }
 
-    let Subcommand::Clippy { fix, allow_dirty, allow_staged, allow, deny, warn, forbid } =
-        &builder.config.cmd
-    else {
+    let Subcommand::Clippy { fix, allow_dirty, allow_staged, .. } = &builder.config.cmd else {
         unreachable!("clippy::lint_args can only be called from `clippy` subcommands.");
     };
 
@@ -53,12 +51,12 @@ fn lint_args(builder: &Builder<'_>, ignored_rules: &[&str]) -> Vec<String> {
 
     args.extend(strings(&["--"]));
 
-    if deny.is_empty() && forbid.is_empty() {
+    if config.deny.is_empty() && config.forbid.is_empty() {
         args.extend(strings(&["--cap-lints", "warn"]));
     }
 
     let all_args = std::env::args().collect::<Vec<_>>();
-    args.extend(get_clippy_rules_in_order(&all_args, allow, deny, warn, forbid));
+    args.extend(get_clippy_rules_in_order(&all_args, config));
 
     args.extend(ignored_rules.iter().map(|lint| format!("-Aclippy::{}", lint)));
     args.extend(builder.config.free_args.clone());
@@ -68,21 +66,17 @@ fn lint_args(builder: &Builder<'_>, ignored_rules: &[&str]) -> Vec<String> {
 /// We need to keep the order of the given clippy lint rules before passing them.
 /// Since clap doesn't offer any useful interface for this purpose out of the box,
 /// we have to handle it manually.
-pub(crate) fn get_clippy_rules_in_order(
-    all_args: &[String],
-    allow_rules: &[String],
-    deny_rules: &[String],
-    warn_rules: &[String],
-    forbid_rules: &[String],
-) -> Vec<String> {
+fn get_clippy_rules_in_order(all_args: &[String], config: &LintConfig) -> Vec<String> {
     let mut result = vec![];
 
     for (prefix, item) in
-        [("-A", allow_rules), ("-D", deny_rules), ("-W", warn_rules), ("-F", forbid_rules)]
+        [("-A", &config.allow), ("-D", &config.deny), ("-W", &config.warn), ("-F", &config.forbid)]
     {
         item.iter().for_each(|v| {
             let rule = format!("{prefix}{v}");
-            let position = all_args.iter().position(|t| t == &rule || t == v).unwrap();
+            // Arguments added by bootstrap in LintConfig won't show up in the all_args list, so
+            // put them at the end of the command line.
+            let position = all_args.iter().position(|t| t == &rule || t == v).unwrap_or(usize::MAX);
             result.push((position, rule));
         });
     }
@@ -92,8 +86,28 @@ pub(crate) fn get_clippy_rules_in_order(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct LintConfig {
+    allow: Vec<String>,
+    warn: Vec<String>,
+    deny: Vec<String>,
+    forbid: Vec<String>,
+}
+
+impl LintConfig {
+    fn new(builder: &Builder<'_>) -> Self {
+        match builder.config.cmd.clone() {
+            Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+                Self { allow, warn, deny, forbid }
+            }
+            _ => unreachable!("LintConfig can only be called from `clippy` subcommands."),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
+    config: LintConfig,
     /// Whether to lint only a subset of crates.
     crates: Vec<String>,
 }
@@ -108,7 +122,8 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
-        run.builder.ensure(Std { target: run.target, crates });
+        let config = LintConfig::new(run.builder);
+        run.builder.ensure(Std { target: run.target, config, crates });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -138,7 +153,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            lint_args(builder, IGNORED_RULES_FOR_STD_AND_RUSTC),
+            lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
             &libstd_stamp(builder, compiler, target),
             vec![],
             true,
@@ -150,6 +165,7 @@ impl Step for Std {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
+    config: LintConfig,
     /// Whether to lint only a subset of crates.
     crates: Vec<String>,
 }
@@ -165,7 +181,8 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc { target: run.target, crates });
+        let config = LintConfig::new(run.builder);
+        run.builder.ensure(Rustc { target: run.target, config, crates });
     }
 
     /// Lints the compiler.
@@ -212,7 +229,7 @@ impl Step for Rustc {
         run_cargo(
             builder,
             cargo,
-            lint_args(builder, IGNORED_RULES_FOR_STD_AND_RUSTC),
+            lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
             &librustc_stamp(builder, compiler, target),
             vec![],
             true,
@@ -232,6 +249,7 @@ macro_rules! lint_any {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub target: TargetSelection,
+            config: LintConfig,
         }
 
         impl Step for $name {
@@ -243,8 +261,10 @@ macro_rules! lint_any {
             }
 
             fn make_run(run: RunConfig<'_>) {
+                let config = LintConfig::new(run.builder);
                 run.builder.ensure($name {
                     target: run.target,
+                    config,
                 });
             }
 
@@ -281,7 +301,7 @@ macro_rules! lint_any {
                 run_cargo(
                     builder,
                     cargo,
-                    lint_args(builder, &[]),
+                    lint_args(builder, &self.config, &[]),
                     &stamp,
                     vec![],
                     true,
