@@ -80,7 +80,10 @@ struct SccDetails<A: Annotation> {
 
 // The name of this struct should discourage you from making it public and leaking
 // its representation. This message was left here by one who came before you,
-//  who learnt the hard way that making even small changes in representation is difficult when it's publicly inspectable. Obey the law of Demeter!
+// who learnt the hard way that making even small changes in representation
+// is difficult when it's publicly inspectable.
+//
+// Obey the law of Demeter!
 struct SccData<S: Idx, A: Annotation> {
     /// Maps SCC indices to their metadata, including
     /// offsets into `all_successors`.

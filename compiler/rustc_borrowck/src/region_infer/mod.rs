@@ -492,35 +492,35 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// This bit of logic also handles invalid universe relations
     /// for higher-kinded types.
     ///
-    // We Walk each SCC `A` and `B` such that `A: B`
-    // and ensure that universe(A) can see universe(B).
-    //
-    // This serves to enforce the 'empty/placeholder' hierarchy
-    // (described in more detail on `RegionKind`):
-    //
-    // ```
-    // static -----+
-    //   |         |
-    // empty(U0) placeholder(U1)
-    //   |      /
-    // empty(U1)
-    // ```
-    //
-    // In particular, imagine we have variables R0 in U0 and R1
-    // created in U1, and constraints like this;
-    //
-    // ```
-    // R1: !1 // R1 outlives the placeholder in U1
-    // R1: R0 // R1 outlives R0
-    // ```
-    //
-    // Here, we wish for R1 to be `'static`, because it
-    // cannot outlive `placeholder(U1)` and `empty(U0)` any other way.
-    //
-    // Thanks to this loop, what happens is that the `R1: R0`
-    // constraint has lowered the universe of `R1` to `U0`, which in turn
-    // means that the `R1: !1` constraint here will cause
-    // `R1` to become `'static`.
+    /// We Walk each SCC `A` and `B` such that `A: B`
+    /// and ensure that universe(A) can see universe(B).
+    ///
+    /// This serves to enforce the 'empty/placeholder' hierarchy
+    /// (described in more detail on `RegionKind`):
+    ///
+    /// ```ignore (illustrative)
+    /// static -----+
+    ///   |         |
+    /// empty(U0) placeholder(U1)
+    ///   |      /
+    /// empty(U1)
+    /// ```
+    ///
+    /// In particular, imagine we have variables R0 in U0 and R1
+    /// created in U1, and constraints like this;
+    ///
+    /// ```ignore (illustrative)
+    /// R1: !1 // R1 outlives the placeholder in U1
+    /// R1: R0 // R1 outlives R0
+    /// ```
+    ///
+    /// Here, we wish for R1 to be `'static`, because it
+    /// cannot outlive `placeholder(U1)` and `empty(U0)` any other way.
+    ///
+    /// Thanks to this loop, what happens is that the `R1: R0`
+    /// constraint has lowered the universe of `R1` to `U0`, which in turn
+    /// means that the `R1: !1` constraint here will cause
+    /// `R1` to become `'static`.
     fn init_free_and_bound_regions(&mut self) {
         // Update the names (if any)
         // This iterator has unstable order but we collect it all into an IndexVec
