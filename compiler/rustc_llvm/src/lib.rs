@@ -191,6 +191,13 @@ pub fn initialize_available_targets() {
         LLVMInitializeHexagonAsmParser
     );
     init_target!(
+        llvm_component = "xtensa",
+        LLVMInitializeXtensaTargetInfo,
+        LLVMInitializeXtensaTarget,
+        LLVMInitializeXtensaTargetMC,
+        LLVMInitializeXtensaAsmParser
+    );
+    init_target!(
         llvm_component = "webassembly",
         LLVMInitializeWebAssemblyTargetInfo,
         LLVMInitializeWebAssemblyTarget,
