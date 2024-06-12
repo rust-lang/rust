@@ -3,7 +3,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use crate::common::{Config, Debugger, Mode};
-use crate::header::{parse_normalization_string, EarlyProps, HeadersCache};
+use crate::header::{parse_normalize_rule, EarlyProps, HeadersCache};
 
 use super::iter_header;
 
@@ -32,35 +32,41 @@ fn make_test_description<R: Read>(
 }
 
 #[test]
-fn test_parse_normalization_string() {
-    let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, Some("something (32 bits)".to_owned()));
-    assert_eq!(s, " -> \"something ($WORD bits)\".");
+fn test_parse_normalize_rule() {
+    let good_data = &[
+        (
+            r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)""#,
+            "something (32 bits)",
+            "something ($WORD bits)",
+        ),
+        // FIXME(#126370): A colon after the header name should be mandatory,
+        // but currently is not, and there are many tests that lack the colon.
+        (
+            r#"normalize-stderr-32bit "something (32 bits)" -> "something ($WORD bits)""#,
+            "something (32 bits)",
+            "something ($WORD bits)",
+        ),
+    ];
 
-    // Nothing to normalize (No quotes)
-    let mut s = "normalize-stderr-32bit: something (32 bits) -> something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, None);
-    assert_eq!(s, r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)."#);
+    for &(input, expected_regex, expected_replacement) in good_data {
+        let parsed = parse_normalize_rule(input);
+        let parsed =
+            parsed.as_ref().map(|(regex, replacement)| (regex.as_str(), replacement.as_str()));
+        assert_eq!(parsed, Some((expected_regex, expected_replacement)));
+    }
 
-    // Nothing to normalize (Only a single quote)
-    let mut s = "normalize-stderr-32bit: \"something (32 bits) -> something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, None);
-    assert_eq!(s, "normalize-stderr-32bit: \"something (32 bits) -> something ($WORD bits).");
+    let bad_data = &[
+        r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)"#,
+        r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)"#,
+        r#"normalize-stderr-32bit: "something (32 bits) -> something ($WORD bits)"#,
+        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"#,
+        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"."#,
+    ];
 
-    // Nothing to normalize (Three quotes)
-    let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, Some("something (32 bits)".to_owned()));
-    assert_eq!(s, " -> \"something ($WORD bits).");
-
-    // Nothing to normalize (No quotes, 16-bit)
-    let mut s = "normalize-stderr-16bit: something (16 bits) -> something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, None);
-    assert_eq!(s, r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)."#);
+    for &input in bad_data {
+        let parsed = parse_normalize_rule(input);
+        assert_eq!(parsed, None);
+    }
 }
 
 #[derive(Default)]
