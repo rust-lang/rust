@@ -137,10 +137,10 @@ pub(super) fn derive_macro_as_call_id(
     derive_pos: u32,
     call_site: SyntaxContextId,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
+    resolver: impl Fn(&path::ModPath) -> Option<(MacroId, MacroDefId)>,
     derive_macro_id: MacroCallId,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
-    let (macro_id, def_id) = resolver(item_attr.path.clone())
+    let (macro_id, def_id) = resolver(&item_attr.path)
         .filter(|(_, def_id)| def_id.is_derive())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let call_id = def_id.make_call(

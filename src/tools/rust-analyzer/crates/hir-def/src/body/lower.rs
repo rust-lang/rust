@@ -965,7 +965,7 @@ impl ExprCollector<'_> {
                     .resolve_path(
                         self.db,
                         module,
-                        &path,
+                        path,
                         crate::item_scope::BuiltinShadowMode::Other,
                         Some(MacroSubNs::Bang),
                     )
