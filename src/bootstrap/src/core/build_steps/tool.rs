@@ -32,6 +32,8 @@ struct ToolBuild {
     extra_features: Vec<String>,
     /// Nightly-only features that are allowed (comma-separated list).
     allow_features: &'static str,
+    /// Additional arguments to pass to the `cargo` invocation.
+    cargo_args: Vec<String>,
 }
 
 impl Builder<'_> {
@@ -100,6 +102,7 @@ impl Step for ToolBuild {
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
+        cargo.args(self.cargo_args);
         let _guard = builder.msg_tool(
             Kind::Build,
             self.mode,
@@ -283,6 +286,7 @@ macro_rules! bootstrap_tool {
                     },
                     extra_features: vec![],
                     allow_features: concat!($($allow_features)*),
+                    cargo_args: vec![]
                 })
             }
         }
@@ -349,6 +353,7 @@ impl Step for OptimizedDist {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -403,6 +408,7 @@ impl Step for ErrorIndex {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -437,6 +443,7 @@ impl Step for RemoteTestServer {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -598,6 +605,7 @@ impl Step for Cargo {
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -625,6 +633,7 @@ impl Step for LldWrapper {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -673,6 +682,7 @@ impl Step for RustAnalyzer {
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -720,6 +730,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
+            cargo_args: Vec::new(),
         });
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
@@ -916,6 +927,7 @@ macro_rules! tool_extended {
                     extra_features: $sel.extra_features,
                     source_type: SourceType::InTree,
                     allow_features: concat!($($allow_features)*),
+                    cargo_args: vec![]
                 });
 
                 if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
