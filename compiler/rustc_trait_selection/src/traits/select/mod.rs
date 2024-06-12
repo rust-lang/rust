@@ -50,6 +50,7 @@ use rustc_middle::ty::{self, PolyProjectionPredicate, Upcast};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
+use rustc_type_ir::InferCtxtLike as _;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -1534,7 +1535,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         }
 
-        // Avoid using the master cache during coherence and just rely
+        // Avoid using the global cache during coherence and just rely
         // on the local cache. This effectively disables caching
         // during coherence. It is really just a simplification to
         // avoid us having to fear that coherence results "pollute"
@@ -1542,6 +1543,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // it's not worth going to more trouble to increase the
         // hit-rate, I don't think.
         if self.is_intercrate() {
+            return false;
+        }
+
+        // Avoid using the global cache when we're defining opaque types.
+        if !self.infcx.defining_opaque_types().is_empty() {
             return false;
         }
 
