@@ -29,9 +29,8 @@ impl<'a> PanicInfo<'a> {
         PanicInfo { location, message, can_unwind, force_no_backtrace }
     }
 
-    /// If the `panic!` macro from the `core` crate (not from `std`)
-    /// was used with a formatting string and some additional arguments,
-    /// returns that message ready to be used for example with [`fmt::write`]
+    /// The message that was given to the `panic!` macro,
+    /// ready to be formatted with e.g. [`fmt::write`].
     #[must_use]
     #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> fmt::Arguments<'_> {
