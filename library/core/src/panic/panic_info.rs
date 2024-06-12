@@ -79,7 +79,7 @@ impl<'a> PanicInfo<'a> {
     ///
     /// [`std::panic::PanicHookInfo`]: ../../std/panic/struct.PanicHookInfo.html
     /// [`std::panic::PanicHookInfo::payload`]: ../../std/panic/struct.PanicHookInfo.html#method.payload
-    #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "this never returns anything useful")]
+    #[deprecated(since = "1.81.0", note = "this never returns anything useful")]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[allow(deprecated, deprecated_in_future)]
     pub fn payload(&self) -> &(dyn crate::any::Any + Send) {
