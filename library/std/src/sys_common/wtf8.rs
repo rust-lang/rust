@@ -477,6 +477,9 @@ impl Wtf8Buf {
     /// Part of a hack to make PathBuf::push/pop more efficient.
     #[inline]
     pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
+        // FIXME: this function should not even exist, as it implies violating Wtf8Buf invariants
+        // For now, simply assume that is about to happen.
+        self.is_known_utf8 = false;
         &mut self.bytes
     }
 }
