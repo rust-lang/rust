@@ -86,15 +86,6 @@ impl<Ctx: Copy> SpanData<Ctx> {
     }
 }
 
-impl Span {
-    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
-    pub const DUMMY: Self = Self {
-        range: TextRange::empty(TextSize::new(0)),
-        anchor: SpanAnchor { file_id: FileId::BOGUS, ast_id: ROOT_ERASED_FILE_AST_ID },
-        ctx: SyntaxContextId::ROOT,
-    };
-}
-
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.anchor.file_id.index(), f)?;
@@ -178,6 +169,8 @@ impl salsa::InternKey for MacroCallId {
 }
 
 impl MacroCallId {
+    pub const MAX_ID: u32 = 0x7fff_ffff;
+
     pub fn as_file(self) -> HirFileId {
         MacroFileId { macro_call_id: self }.into()
     }

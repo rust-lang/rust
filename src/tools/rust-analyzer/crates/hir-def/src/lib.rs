@@ -90,7 +90,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::{AstIdNode, Edition, FileAstId, FileId, SyntaxContextId};
+use span::{AstIdNode, Edition, FileAstId, SyntaxContextId};
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 
@@ -958,15 +958,14 @@ impl GenericDefId {
         match self {
             GenericDefId::FunctionId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::TypeAliasId(it) => file_id_and_params_of_item_loc(db, it),
-            GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
             GenericDefId::AdtId(AdtId::StructId(it)) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::AdtId(AdtId::UnionId(it)) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::AdtId(AdtId::EnumId(it)) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::TraitId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
-            // We won't be using this ID anyway
-            GenericDefId::EnumVariantId(_) => (FileId::BOGUS.into(), None),
+            GenericDefId::ConstId(it) => (it.lookup(db).id.file_id(), None),
+            GenericDefId::EnumVariantId(it) => (it.lookup(db).id.file_id(), None),
         }
     }
 
