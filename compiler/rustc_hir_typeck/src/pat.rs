@@ -1582,21 +1582,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         match (inexistent_fields_err, unmentioned_err) {
             (Some(i), Some(u)) => {
-                if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+                if let Err(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     // We don't want to show the nonexistent fields error when this was
                     // `Foo { a, b }` when it should have been `Foo(a, b)`.
                     i.delay_as_bug();
                     u.delay_as_bug();
-                    Err(e.emit())
+                    Err(e)
                 } else {
                     i.emit();
                     Err(u.emit())
                 }
             }
             (None, Some(u)) => {
-                if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+                if let Err(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     u.delay_as_bug();
-                    Err(e.emit())
+                    Err(e)
                 } else {
                     Err(u.emit())
                 }
@@ -1795,14 +1795,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
-    ) -> Option<Diag<'tcx>> {
+    ) -> Result<(), ErrorGuaranteed> {
         if let (Some(CtorKind::Fn), PatKind::Struct(qpath, pattern_fields, ..)) =
             (variant.ctor_kind(), &pat.kind)
         {
             let is_tuple_struct_match = !pattern_fields.is_empty()
                 && pattern_fields.iter().map(|field| field.ident.name.as_str()).all(is_number);
             if is_tuple_struct_match {
-                return None;
+                return Ok(());
             }
 
             let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
@@ -1830,9 +1830,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("({sugg})"),
                 appl,
             );
-            return Some(err);
+            return Err(err.emit());
         }
-        None
+        Ok(())
     }
 
     fn get_suggested_tuple_struct_pattern(
