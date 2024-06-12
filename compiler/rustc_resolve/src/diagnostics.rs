@@ -2783,33 +2783,65 @@ fn show_candidates(
     // by iterating through a hash map, so make sure they are ordered:
     for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
         path_strings.sort_by(|a, b| a.0.cmp(&b.0));
+        path_strings.dedup_by(|a, b| a.0 == b.0);
         let core_path_strings =
             path_strings.extract_if(|p| p.0.starts_with("core::")).collect::<Vec<_>>();
-        path_strings.extend(core_path_strings);
-        path_strings.dedup_by(|a, b| a.0 == b.0);
+        let std_path_strings =
+            path_strings.extract_if(|p| p.0.starts_with("std::")).collect::<Vec<_>>();
+        let foreign_crate_path_strings =
+            path_strings.extract_if(|p| !p.0.starts_with("crate::")).collect::<Vec<_>>();
+
+        // We list the `crate` local paths first.
+        // Then we list the `std`/`core` paths.
+        if std_path_strings.len() == core_path_strings.len() {
+            // Do not list `core::` paths if we are already listing the `std::` ones.
+            path_strings.extend(std_path_strings);
+        } else {
+            path_strings.extend(std_path_strings);
+            path_strings.extend(core_path_strings);
+        }
+        // List all paths from foreign crates last.
+        path_strings.extend(foreign_crate_path_strings);
     }
-    accessible_path_strings.sort();
 
     if !accessible_path_strings.is_empty() {
-        let (determiner, kind, name, through) =
+        let (determiner, kind, s, name, through) =
             if let [(name, descr, _, _, via_import)] = &accessible_path_strings[..] {
                 (
                     "this",
                     *descr,
+                    "",
                     format!(" `{name}`"),
                     if *via_import { " through its public re-export" } else { "" },
                 )
             } else {
-                ("one of these", "items", String::new(), "")
+                // Get the unique item kinds and if there's only one, we use the right kind name
+                // instead of the more generic "items".
+                let mut kinds = accessible_path_strings
+                    .iter()
+                    .map(|(_, descr, _, _, _)| *descr)
+                    .collect::<FxHashSet<&str>>()
+                    .into_iter();
+                let kind = if let Some(kind) = kinds.next()
+                    && let None = kinds.next()
+                {
+                    kind
+                } else {
+                    "item"
+                };
+                let s = if kind.ends_with('s') { "es" } else { "s" };
+
+                ("one of these", kind, s, String::new(), "")
             };
 
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
         let mut msg = if let DiagMode::Pattern = mode {
             format!(
-                "if you meant to match on {kind}{instead}{name}, use the full path in the pattern",
+                "if you meant to match on {kind}{s}{instead}{name}, use the full path in the \
+                 pattern",
             )
         } else {
-            format!("consider importing {determiner} {kind}{through}{instead}")
+            format!("consider importing {determiner} {kind}{s}{through}{instead}")
         };
 
         for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {

@@ -1,14 +1,12 @@
 error[E0433]: failed to resolve: use of undeclared type `NonZero`
-  --> $DIR/core-std-import-order-issue-83564.rs:8:14
+  --> $DIR/core-std-import-order-issue-83564.rs:12:14
    |
 LL |     let _x = NonZero::new(5u32).unwrap();
    |              ^^^^^^^ use of undeclared type `NonZero`
    |
-help: consider importing one of these items
+help: consider importing this struct
    |
 LL + use core::num::NonZero;
-   |
-LL + use std::num::NonZero;
    |
 
 error: aborting due to 1 previous error
