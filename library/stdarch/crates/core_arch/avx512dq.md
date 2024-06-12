@@ -70,7 +70,7 @@
     * [x] _mm512_maskz_xor_ps
 
 
-- Broadcast
+- Broadcast:
     * [x] _mm256_broadcast_f32x2
     * [x] _mm256_mask_broadcast_f32x2
     * [x] _mm256_maskz_broadcast_f32x2
@@ -107,150 +107,150 @@
 
 
 - Convert:
-    * _mm512_cvt_roundepi64_pd (not in LLVM)
-    * _mm512_mask_cvt_roundepi64_pd (not in LLVM)
-    * _mm512_maskz_cvt_roundepi64_pd (not in LLVM)
-    * _mm_cvtepi64_pd (not in LLVM)
-    * _mm_mask_cvtepi64_pd (not in LLVM)
-    * _mm_maskz_cvtepi64_pd (not in LLVM)
-    * _mm256_cvtepi64_pd (not in LLVM)
-    * _mm256_mask_cvtepi64_pd (not in LLVM)
-    * _mm256_maskz_cvtepi64_pd (not in LLVM)
-    * _mm512_cvtepi64_pd (not in LLVM)
-    * _mm512_mask_cvtepi64_pd (not in LLVM)
-    * _mm512_maskz_cvtepi64_pd (not in LLVM)
-    * _mm512_cvt_roundepi64_ps (not in LLVM)
-    * _mm512_mask_cvt_roundepi64_ps (not in LLVM)
-    * _mm512_maskz_cvt_roundepi64_ps (not in LLVM)
-    * [ ] _mm_cvtepi64_ps
-    * [ ] _mm_mask_cvtepi64_ps
-    * [ ] _mm_maskz_cvtepi64_ps
-    * _mm256_cvtepi64_ps (not in LLVM)
-    * _mm256_mask_cvtepi64_ps (not in LLVM)
-    * _mm256_maskz_cvtepi64_ps (not in LLVM)
-    * _mm512_cvtepi64_ps (not in LLVM)
-    * _mm512_mask_cvtepi64_ps (not in LLVM)
-    * _mm512_maskz_cvtepi64_ps (not in LLVM)
-    * _mm512_cvt_roundepu64_pd (not in LLVM)
-    * _mm512_mask_cvt_roundepu64_pd (not in LLVM)
-    * _mm512_maskz_cvt_roundepu64_pd (not in LLVM)
-    * _mm_cvtepu64_pd (not in LLVM)
-    * _mm_mask_cvtepu64_pd (not in LLVM)
-    * _mm_maskz_cvtepu64_pd (not in LLVM)
-    * _mm256_cvtepu64_pd (not in LLVM)
-    * _mm256_mask_cvtepu64_pd (not in LLVM)
-    * _mm256_maskz_cvtepu64_pd (not in LLVM)
-    * _mm512_cvtepu64_pd (not in LLVM)
-    * _mm512_mask_cvtepu64_pd (not in LLVM)
-    * _mm512_maskz_cvtepu64_pd (not in LLVM)
-    * _mm512_cvt_roundepu64_ps (not in LLVM)
-    * _mm512_mask_cvt_roundepu64_ps (not in LLVM)
-    * _mm512_maskz_cvt_roundepu64_ps (not in LLVM)
-    * [ ] _mm_cvtepu64_ps
-    * [ ] _mm_mask_cvtepu64_ps
-    * [ ] _mm_maskz_cvtepu64_ps
-    * _mm256_cvtepu64_ps (not in LLVM)
-    * _mm256_mask_cvtepu64_ps (not in LLVM)
-    * _mm256_maskz_cvtepu64_ps (not in LLVM)
-    * _mm512_cvtepu64_ps (not in LLVM)
-    * _mm512_mask_cvtepu64_ps (not in LLVM)
-    * _mm512_maskz_cvtepu64_ps (not in LLVM)
-    * [ ] _mm512_cvt_roundpd_epi64
-    * [ ] _mm512_mask_cvt_roundpd_epi64
-    * [ ] _mm512_maskz_cvt_roundpd_epi64
-    * [ ] _mm_cvtpd_epi64
-    * [ ] _mm_mask_cvtpd_epi64
-    * [ ] _mm_maskz_cvtpd_epi64
-    * [ ] _mm256_cvtpd_epi64
-    * [ ] _mm256_mask_cvtpd_epi64
-    * [ ] _mm256_maskz_cvtpd_epi64
-    * [ ] _mm512_cvtpd_epi64
-    * [ ] _mm512_mask_cvtpd_epi64
-    * [ ] _mm512_maskz_cvtpd_epi64
-    * [ ] _mm512_cvt_roundpd_epu64
-    * [ ] _mm512_mask_cvt_roundpd_epu64
-    * [ ] _mm512_maskz_cvt_roundpd_epu64
-    * [ ] _mm_cvtpd_epu64
-    * [ ] _mm_mask_cvtpd_epu64
-    * [ ] _mm_maskz_cvtpd_epu64
-    * [ ] _mm256_cvtpd_epu64
-    * [ ] _mm256_mask_cvtpd_epu64
-    * [ ] _mm256_maskz_cvtpd_epu64
-    * [ ] _mm512_cvtpd_epu64
-    * [ ] _mm512_mask_cvtpd_epu64
-    * [ ] _mm512_maskz_cvtpd_epu64
-    * [ ] _mm512_cvt_roundps_epi64
-    * [ ] _mm512_mask_cvt_roundps_epi64
-    * [ ] _mm512_maskz_cvt_roundps_epi64
-    * [ ] _mm_cvtps_epi64
-    * [ ] _mm_mask_cvtps_epi64
-    * [ ] _mm_maskz_cvtps_epi64
-    * [ ] _mm256_cvtps_epi64
-    * [ ] _mm256_mask_cvtps_epi64
-    * [ ] _mm256_maskz_cvtps_epi64
-    * [ ] _mm512_cvtps_epi64
-    * [ ] _mm512_mask_cvtps_epi64
-    * [ ] _mm512_maskz_cvtps_epi64
-    * [ ] _mm512_cvt_roundps_epu64
-    * [ ] _mm512_mask_cvt_roundps_epu64
-    * [ ] _mm512_maskz_cvt_roundps_epu64
-    * [ ] _mm_cvtps_epu64
-    * [ ] _mm_mask_cvtps_epu64
-    * [ ] _mm_maskz_cvtps_epu64
-    * [ ] _mm256_cvtps_epu64
-    * [ ] _mm256_mask_cvtps_epu64
-    * [ ] _mm256_maskz_cvtps_epu64
-    * [ ] _mm512_cvtps_epu64
-    * [ ] _mm512_mask_cvtps_epu64
-    * [ ] _mm512_maskz_cvtps_epu64
-    * [ ] _mm512_cvtt_roundpd_epi64
-    * [ ] _mm512_mask_cvtt_roundpd_epi64
-    * [ ] _mm512_maskz_cvtt_roundpd_epi64
-    * [ ] _mm_cvttpd_epi64
-    * [ ] _mm_mask_cvttpd_epi64
-    * [ ] _mm_maskz_cvttpd_epi64
-    * [ ] _mm256_cvttpd_epi64
-    * [ ] _mm256_mask_cvttpd_epi64
-    * [ ] _mm256_maskz_cvttpd_epi64
-    * [ ] _mm512_cvttpd_epi64
-    * [ ] _mm512_mask_cvttpd_epi64
-    * [ ] _mm512_maskz_cvttpd_epi64
-    * [ ] _mm512_cvtt_roundpd_epu64
-    * [ ] _mm512_mask_cvtt_roundpd_epu64
-    * [ ] _mm512_maskz_cvtt_roundpd_epu64
-    * [ ] _mm_cvttpd_epu64
-    * [ ] _mm_mask_cvttpd_epu64
-    * [ ] _mm_maskz_cvttpd_epu64
-    * [ ] _mm256_cvttpd_epu64
-    * [ ] _mm256_mask_cvttpd_epu64
-    * [ ] _mm256_maskz_cvttpd_epu64
-    * [ ] _mm512_cvttpd_epu64
-    * [ ] _mm512_mask_cvttpd_epu64
-    * [ ] _mm512_maskz_cvttpd_epu64
-    * [ ] _mm512_cvtt_roundps_epi64
-    * [ ] _mm512_mask_cvtt_roundps_epi64
-    * [ ] _mm512_maskz_cvtt_roundps_epi64
-    * [ ] _mm_cvttps_epi64
-    * [ ] _mm_mask_cvttps_epi64
-    * [ ] _mm_maskz_cvttps_epi64
-    * [ ] _mm256_cvttps_epi64
-    * [ ] _mm256_mask_cvttps_epi64
-    * [ ] _mm256_maskz_cvttps_epi64
-    * [ ] _mm512_cvttps_epi64
-    * [ ] _mm512_mask_cvttps_epi64
-    * [ ] _mm512_maskz_cvttps_epi64
-    * [ ] _mm512_cvtt_roundps_epu64
-    * [ ] _mm512_mask_cvtt_roundps_epu64
-    * [ ] _mm512_maskz_cvtt_roundps_epu64
-    * [ ] _mm_cvttps_epu64
-    * [ ] _mm_mask_cvttps_epu64
-    * [ ] _mm_maskz_cvttps_epu64
-    * [ ] _mm256_cvttps_epu64
-    * [ ] _mm256_mask_cvttps_epu64
-    * [ ] _mm256_maskz_cvttps_epu64
-    * [ ] _mm512_cvttps_epu64
-    * [ ] _mm512_mask_cvttps_epu64
-    * [ ] _mm512_maskz_cvttps_epu64
+    * [x] _mm512_cvt_roundepi64_pd
+    * [x] _mm512_mask_cvt_roundepi64_pd
+    * [x] _mm512_maskz_cvt_roundepi64_pd
+    * [x] _mm_cvtepi64_pd
+    * [x] _mm_mask_cvtepi64_pd
+    * [x] _mm_maskz_cvtepi64_pd
+    * [x] _mm256_cvtepi64_pd
+    * [x] _mm256_mask_cvtepi64_pd
+    * [x] _mm256_maskz_cvtepi64_pd
+    * [x] _mm512_cvtepi64_pd
+    * [x] _mm512_mask_cvtepi64_pd
+    * [x] _mm512_maskz_cvtepi64_pd
+    * [x] _mm512_cvt_roundepi64_ps
+    * [x] _mm512_mask_cvt_roundepi64_ps
+    * [x] _mm512_maskz_cvt_roundepi64_ps
+    * [x] _mm_cvtepi64_ps
+    * [x] _mm_mask_cvtepi64_ps
+    * [x] _mm_maskz_cvtepi64_ps
+    * [x] _mm256_cvtepi64_ps
+    * [x] _mm256_mask_cvtepi64_ps
+    * [x] _mm256_maskz_cvtepi64_ps
+    * [x] _mm512_cvtepi64_ps
+    * [x] _mm512_mask_cvtepi64_ps
+    * [x] _mm512_maskz_cvtepi64_ps
+    * [x] _mm512_cvt_roundepu64_pd
+    * [x] _mm512_mask_cvt_roundepu64_pd
+    * [x] _mm512_maskz_cvt_roundepu64_pd
+    * [x] _mm_cvtepu64_pd
+    * [x] _mm_mask_cvtepu64_pd
+    * [x] _mm_maskz_cvtepu64_pd
+    * [x] _mm256_cvtepu64_pd
+    * [x] _mm256_mask_cvtepu64_pd
+    * [x] _mm256_maskz_cvtepu64_pd
+    * [x] _mm512_cvtepu64_pd
+    * [x] _mm512_mask_cvtepu64_pd
+    * [x] _mm512_maskz_cvtepu64_pd
+    * [x] _mm512_cvt_roundepu64_ps
+    * [x] _mm512_mask_cvt_roundepu64_ps
+    * [x] _mm512_maskz_cvt_roundepu64_ps
+    * [x] _mm_cvtepu64_ps
+    * [x] _mm_mask_cvtepu64_ps
+    * [x] _mm_maskz_cvtepu64_ps
+    * [x] _mm256_cvtepu64_ps
+    * [x] _mm256_mask_cvtepu64_ps
+    * [x] _mm256_maskz_cvtepu64_ps
+    * [x] _mm512_cvtepu64_ps
+    * [x] _mm512_mask_cvtepu64_ps
+    * [x] _mm512_maskz_cvtepu64_ps
+    * [x] _mm512_cvt_roundpd_epi64
+    * [x] _mm512_mask_cvt_roundpd_epi64
+    * [x] _mm512_maskz_cvt_roundpd_epi64
+    * [x] _mm_cvtpd_epi64
+    * [x] _mm_mask_cvtpd_epi64
+    * [x] _mm_maskz_cvtpd_epi64
+    * [x] _mm256_cvtpd_epi64
+    * [x] _mm256_mask_cvtpd_epi64
+    * [x] _mm256_maskz_cvtpd_epi64
+    * [x] _mm512_cvtpd_epi64
+    * [x] _mm512_mask_cvtpd_epi64
+    * [x] _mm512_maskz_cvtpd_epi64
+    * [x] _mm512_cvt_roundps_epi64
+    * [x] _mm512_mask_cvt_roundps_epi64
+    * [x] _mm512_maskz_cvt_roundps_epi64
+    * [x] _mm_cvtps_epi64
+    * [x] _mm_mask_cvtps_epi64
+    * [x] _mm_maskz_cvtps_epi64
+    * [x] _mm256_cvtps_epi64
+    * [x] _mm256_mask_cvtps_epi64
+    * [x] _mm256_maskz_cvtps_epi64
+    * [x] _mm512_cvtps_epi64
+    * [x] _mm512_mask_cvtps_epi64
+    * [x] _mm512_maskz_cvtps_epi64
+    * [x] _mm512_cvt_roundpd_epu64
+    * [x] _mm512_mask_cvt_roundpd_epu64
+    * [x] _mm512_maskz_cvt_roundpd_epu64
+    * [x] _mm_cvtpd_epu64
+    * [x] _mm_mask_cvtpd_epu64
+    * [x] _mm_maskz_cvtpd_epu64
+    * [x] _mm256_cvtpd_epu64
+    * [x] _mm256_mask_cvtpd_epu64
+    * [x] _mm256_maskz_cvtpd_epu64
+    * [x] _mm512_cvtpd_epu64
+    * [x] _mm512_mask_cvtpd_epu64
+    * [x] _mm512_maskz_cvtpd_epu64
+    * [x] _mm512_cvt_roundps_epu64
+    * [x] _mm512_mask_cvt_roundps_epu64
+    * [x] _mm512_maskz_cvt_roundps_epu64
+    * [x] _mm_cvtps_epu64
+    * [x] _mm_mask_cvtps_epu64
+    * [x] _mm_maskz_cvtps_epu64
+    * [x] _mm256_cvtps_epu64
+    * [x] _mm256_mask_cvtps_epu64
+    * [x] _mm256_maskz_cvtps_epu64
+    * [x] _mm512_cvtps_epu64
+    * [x] _mm512_mask_cvtps_epu64
+    * [x] _mm512_maskz_cvtps_epu64
+    * [x] _mm512_cvtt_roundpd_epi64
+    * [x] _mm512_mask_cvtt_roundpd_epi64
+    * [x] _mm512_maskz_cvtt_roundpd_epi64
+    * [x] _mm_cvttpd_epi64
+    * [x] _mm_mask_cvttpd_epi64
+    * [x] _mm_maskz_cvttpd_epi64
+    * [x] _mm256_cvttpd_epi64
+    * [x] _mm256_mask_cvttpd_epi64
+    * [x] _mm256_maskz_cvttpd_epi64
+    * [x] _mm512_cvttpd_epi64
+    * [x] _mm512_mask_cvttpd_epi64
+    * [x] _mm512_maskz_cvttpd_epi64
+    * [x] _mm512_cvtt_roundps_epi64
+    * [x] _mm512_mask_cvtt_roundps_epi64
+    * [x] _mm512_maskz_cvtt_roundps_epi64
+    * [x] _mm_cvttps_epi64
+    * [x] _mm_mask_cvttps_epi64
+    * [x] _mm_maskz_cvttps_epi64
+    * [x] _mm256_cvttps_epi64
+    * [x] _mm256_mask_cvttps_epi64
+    * [x] _mm256_maskz_cvttps_epi64
+    * [x] _mm512_cvttps_epi64
+    * [x] _mm512_mask_cvttps_epi64
+    * [x] _mm512_maskz_cvttps_epi64
+    * [x] _mm512_cvtt_roundpd_epu64
+    * [x] _mm512_mask_cvtt_roundpd_epu64
+    * [x] _mm512_maskz_cvtt_roundpd_epu64
+    * [x] _mm_cvttpd_epu64
+    * [x] _mm_mask_cvttpd_epu64
+    * [x] _mm_maskz_cvttpd_epu64
+    * [x] _mm256_cvttpd_epu64
+    * [x] _mm256_mask_cvttpd_epu64
+    * [x] _mm256_maskz_cvttpd_epu64
+    * [x] _mm512_cvttpd_epu64
+    * [x] _mm512_mask_cvttpd_epu64
+    * [x] _mm512_maskz_cvttpd_epu64
+    * [x] _mm512_cvtt_roundps_epu64
+    * [x] _mm512_mask_cvtt_roundps_epu64
+    * [x] _mm512_maskz_cvtt_roundps_epu64
+    * [x] _mm_cvttps_epu64
+    * [x] _mm_mask_cvttps_epu64
+    * [x] _mm_maskz_cvttps_epu64
+    * [x] _mm256_cvttps_epu64
+    * [x] _mm256_mask_cvttps_epu64
+    * [x] _mm256_maskz_cvttps_epu64
+    * [x] _mm512_cvttps_epu64
+    * [x] _mm512_mask_cvttps_epu64
+    * [x] _mm512_maskz_cvttps_epu64
 
 
 - Element Extract:
@@ -295,7 +295,7 @@
     * [x] _mm512_maskz_inserti64x2
 
 
-- FP-Class
+- FP-Class:
     * [ ] _mm_fpclass_pd_mask
     * [ ] _mm_mask_fpclass_pd_mask
     * [ ] _mm256_fpclass_pd_mask
@@ -314,7 +314,7 @@
     * [ ] _mm_mask_fpclass_ss_mask
 
 
-- Mask Registers
+- Mask Registers:
     * [ ] _cvtmask8_u32
     * [ ] _cvtu32_mask8
     * [ ] _kadd_mask16
@@ -339,7 +339,7 @@
     * [ ] _load_mask8
 
 
-- Mask register for Bit patterns
+- Mask register for Bit patterns:
     * [ ] _mm_movepi32_mask
     * [ ] _mm256_movepi32_mask
     * [ ] _mm512_movepi32_mask
@@ -354,19 +354,19 @@
     * [ ] _mm512_movm_epi64
 
 
-- Multiply Low
-    * _mm_mullo_epi64 (not in LLVM)
-    * _mm_mask_mullo_epi64 (not in LLVM)
-    * _mm_maskz_mullo_epi64 (not in LLVM)
-    * _mm256_mullo_epi64 (not in LLVM)
-    * _mm256_mask_mullo_epi64 (not in LLVM)
-    * _mm256_maskz_mullo_epi64 (not in LLVM)
-    * _mm512_mullo_epi64 (not in LLVM)
-    * _mm512_mask_mullo_epi64 (not in LLVM)
-    * _mm512_maskz_mullo_epi64 (not in LLVM)
+- Multiply Low:
+    * [ ] _mm_mullo_epi64
+    * [ ] _mm_mask_mullo_epi64
+    * [ ] _mm_maskz_mullo_epi64
+    * [ ] _mm256_mullo_epi64
+    * [ ] _mm256_mask_mullo_epi64
+    * [ ] _mm256_maskz_mullo_epi64
+    * [ ] _mm512_mullo_epi64
+    * [ ] _mm512_mask_mullo_epi64
+    * [ ] _mm512_maskz_mullo_epi64
 
 
-- Range
+- Range:
     * [ ] _mm512_range_round_pd
     * [ ] _mm512_mask_range_round_pd
     * [ ] _mm512_maskz_range_round_pd
@@ -403,7 +403,7 @@
     * [ ] _mm_maskz_range_ss
 
 
-- Range
+- Reduce:
     * [ ] _mm512_reduce_round_pd
     * [ ] _mm512_mask_reduce_round_pd
     * [ ] _mm512_maskz_reduce_round_pd
@@ -440,4 +440,5 @@
     * [ ] _mm_reduce_ss
     * [ ] _mm_mask_reduce_ss
     * [ ] _mm_maskz_reduce_ss
+
 </p>
