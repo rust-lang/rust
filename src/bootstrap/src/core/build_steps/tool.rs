@@ -129,10 +129,7 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            let cargo_out = builder.cargo_out(compiler, self.mode, target).join(exe(tool, target));
-            let bin = builder.tools_dir(compiler).join(exe(tool, target));
-            builder.copy_link(&cargo_out, &bin);
-            bin
+            copy_tool_bin(builder, self.compiler, self.target, self.mode, tool)
         }
     }
 }
@@ -215,6 +212,21 @@ pub fn prepare_tool_cargo(
     cargo.rustflag("-Zunstable-options");
 
     cargo
+}
+
+/// Copies a built tool binary with the given `name` from the build directory to the
+/// tools directory.
+fn copy_tool_bin(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    mode: Mode,
+    name: &str,
+) -> PathBuf {
+    let cargo_out = builder.cargo_out(compiler, mode, target).join(exe(name, target));
+    let bin = builder.tools_dir(compiler).join(exe(name, target));
+    builder.copy_link(&cargo_out, &bin);
+    bin
 }
 
 macro_rules! bootstrap_tool {
@@ -385,7 +397,7 @@ impl Step for RustcPerf {
         // We need to ensure the rustc-perf submodule is initialized.
         builder.update_submodule(Path::new("src/tools/rustc-perf"));
 
-        let target = builder.ensure(ToolBuild {
+        let tool = ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "collector",
@@ -397,8 +409,13 @@ impl Step for RustcPerf {
             // Only build the collector package, which is used for benchmarking through
             // a CLI.
             cargo_args: vec!["-p".to_string(), "collector".to_string()],
-        });
-        target
+        };
+        let collector_bin = builder.ensure(tool.clone());
+        // We also need to symlink the `rustc-fake` binary to the corresponding directory,
+        // because `collector` expects it in the same directory.
+        copy_tool_bin(builder, tool.compiler, tool.target, tool.mode, "rustc-fake");
+
+        collector_bin
     }
 }
 
