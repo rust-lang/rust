@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 subpats,
                 &variant.fields.raw,
                 expected,
-                had_err.is_err(),
+                had_err,
             );
             on_error(e);
             return Ty::new_error(tcx, e);
@@ -1272,7 +1272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         subpats: &'tcx [Pat<'tcx>],
         fields: &'tcx [ty::FieldDef],
         expected: Ty<'tcx>,
-        had_err: bool,
+        had_err: Result<(), ErrorGuaranteed>,
     ) -> ErrorGuaranteed {
         let subpats_ending = pluralize!(subpats.len());
         let fields_ending = pluralize!(fields.len());
@@ -1329,7 +1329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
-            (ty::Adt(_, args), [field], false) => {
+            (ty::Adt(_, args), [field], Ok(())) => {
                 let field_ty = self.field_ty(pat_span, field, args);
                 match field_ty.kind() {
                     ty::Tuple(fields) => fields.len() == subpats.len(),
