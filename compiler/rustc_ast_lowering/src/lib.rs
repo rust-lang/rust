@@ -2452,8 +2452,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
+        // Some ast::AnonConst's turn into ConstArgKind::Path's, so we create their def
+        // only when we're sure they're going to stay as an AnonConst.
+        let def_id = self.create_def(
+            self.current_hir_id_owner.def_id,
+            c.id,
+            kw::Empty,
+            DefKind::AnonConst,
+            c.value.span,
+        );
         self.arena.alloc(self.with_new_scopes(c.value.span, |this| hir::AnonConst {
-            def_id: this.local_def_id(c.id),
+            def_id,
             hir_id: this.lower_node_id(c.id),
             body: this.lower_const_body(c.value.span, Some(&c.value)),
             span: this.lower_span(c.value.span),
