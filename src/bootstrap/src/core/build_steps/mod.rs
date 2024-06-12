@@ -7,6 +7,7 @@ pub(crate) mod doc;
 pub(crate) mod format;
 pub(crate) mod install;
 pub(crate) mod llvm;
+pub(crate) mod perf;
 pub(crate) mod run;
 pub(crate) mod setup;
 pub(crate) mod suggest;

@@ -672,6 +672,9 @@ impl Build {
             Subcommand::Suggest { run } => {
                 return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
             }
+            Subcommand::Perf { .. } => {
+                return core::build_steps::perf::perf(&builder::Builder::new(self));
+            }
             _ => (),
         }
 

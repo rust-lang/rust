@@ -469,6 +469,9 @@ Arguments:
         #[arg(long)]
         versioned_dirs: bool,
     },
+    /// Perform profiling and benchmarking of the compiler using the
+    /// `rustc-perf` benchmark suite.
+    Perf {},
 }
 
 impl Subcommand {
@@ -490,6 +493,7 @@ impl Subcommand {
             Subcommand::Setup { .. } => Kind::Setup,
             Subcommand::Suggest { .. } => Kind::Suggest,
             Subcommand::Vendor { .. } => Kind::Vendor,
+            Subcommand::Perf { .. } => Kind::Perf,
         }
     }
 
