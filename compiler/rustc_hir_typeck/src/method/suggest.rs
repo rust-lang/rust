@@ -33,7 +33,7 @@ use rustc_middle::ty::IsSuggestable;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{edit_distance, ExpnKind, FileName, MacroKind, Span};
+use rustc_span::{edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span};
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
@@ -192,7 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: MethodError<'tcx>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
-    ) -> Option<Diag<'_>> {
+    ) -> ErrorGuaranteed {
         let (span, sugg_span, source, item_name, args) = match self.tcx.hir_node(call_id) {
             hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::MethodCall(segment, rcvr, args, _),
@@ -226,8 +226,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Avoid suggestions when we don't know what's going on.
-        if rcvr_ty.references_error() {
-            return None;
+        if let Err(guar) = rcvr_ty.error_reported() {
+            return guar;
         }
 
         match error {
@@ -265,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &mut sources,
                     Some(sugg_span),
                 );
-                err.emit();
+                return err.emit();
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
@@ -286,7 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
-                err.emit();
+                return err.emit();
             }
 
             MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
@@ -343,12 +343,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                err.emit();
+                return err.emit();
             }
 
             MethodError::BadReturnType => bug!("no return type expectations but got BadReturnType"),
         }
-        None
     }
 
     fn suggest_missing_writer(&self, rcvr_ty: Ty<'tcx>, rcvr_expr: &hir::Expr<'tcx>) -> Diag<'_> {
@@ -564,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn report_no_match_method_error(
+    fn report_no_match_method_error(
         &self,
         mut span: Span,
         rcvr_ty: Ty<'tcx>,
@@ -576,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
-    ) -> Option<Diag<'_>> {
+    ) -> ErrorGuaranteed {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
@@ -608,14 +607,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We could pass the file for long types into these two, but it isn't strictly necessary
         // given how targeted they are.
-        if self.suggest_wrapping_range_with_parens(
+        if let Err(guar) = self.report_failed_method_call_on_range_end(
             tcx,
             rcvr_ty,
             source,
             span,
             item_name,
             &short_ty_str,
-        ) || self.suggest_constraining_numerical_ty(
+        ) {
+            return guar;
+        }
+        if let Err(guar) = self.report_failed_method_call_on_numerical_infer_var(
             tcx,
             rcvr_ty,
             source,
@@ -624,7 +626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             item_name,
             &short_ty_str,
         ) {
-            return None;
+            return guar;
         }
         span = item_name.span;
 
@@ -881,7 +883,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 vec![(span.shrink_to_lo(), format!("into_iter()."))],
                 Applicability::MaybeIncorrect,
             );
-            return Some(err);
+            return err.emit();
         } else if !unsatisfied_predicates.is_empty() && matches!(rcvr_ty.kind(), ty::Param(_)) {
             // We special case the situation where we are looking for `_` in
             // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
@@ -1606,7 +1608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
-        Some(err)
+        err.emit()
     }
 
     /// If an appropriate error source is not found, check method chain for possible candidates
@@ -2251,7 +2253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Suggest possible range with adding parentheses, for example:
     /// when encountering `0..1.map(|i| i + 1)` suggest `(0..1).map(|i| i + 1)`.
-    fn suggest_wrapping_range_with_parens(
+    fn report_failed_method_call_on_range_end(
         &self,
         tcx: TyCtxt<'tcx>,
         actual: Ty<'tcx>,
@@ -2259,7 +2261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         item_name: Ident,
         ty_str: &str,
-    ) -> bool {
+    ) -> Result<(), ErrorGuaranteed> {
         if let SelfSource::MethodCall(expr) = source {
             for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
                 if let Node::Expr(parent_expr) = parent {
@@ -2316,7 +2318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
-                        tcx.dcx().emit_err(errors::MissingParenthesesInRange {
+                        return Err(tcx.dcx().emit_err(errors::MissingParenthesesInRange {
                             span,
                             ty_str: ty_str.to_string(),
                             method_name: item_name.as_str().to_string(),
@@ -2325,16 +2327,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 left: range_span.shrink_to_lo(),
                                 right: range_span.shrink_to_hi(),
                             }),
-                        });
-                        return true;
+                        }));
                     }
                 }
             }
         }
-        false
+        Ok(())
     }
 
-    fn suggest_constraining_numerical_ty(
+    fn report_failed_method_call_on_numerical_infer_var(
         &self,
         tcx: TyCtxt<'tcx>,
         actual: Ty<'tcx>,
@@ -2343,7 +2344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_kind: &str,
         item_name: Ident,
         ty_str: &str,
-    ) -> bool {
+    ) -> Result<(), ErrorGuaranteed> {
         let found_candidate = all_traits(self.tcx)
             .into_iter()
             .any(|info| self.associated_value(info.def_id, item_name).is_some());
@@ -2447,10 +2448,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             }
-            err.emit();
-            return true;
+            return Err(err.emit());
         }
-        false
+        Ok(())
     }
 
     /// For code `rect::area(...)`,

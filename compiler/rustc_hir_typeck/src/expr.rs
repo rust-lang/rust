@@ -1342,14 +1342,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if segment.ident.name != kw::Empty {
-                    if let Some(err) =
-                        self.report_method_error(expr.hir_id, rcvr_t, error, expected, false)
-                    {
-                        err.emit();
-                    }
+                if segment.ident.name == kw::Empty {
+                    span_bug!(rcvr.span, "empty method name")
+                } else {
+                    Err(self.report_method_error(expr.hir_id, rcvr_t, error, expected, false))
                 }
-                Err(())
             }
         };
 

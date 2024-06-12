@@ -13,6 +13,7 @@ pub fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
+    options.env = "p1".into();
 
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::No),

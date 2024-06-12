@@ -113,17 +113,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         sp: Span,
         expr: &'tcx hir::Expr<'tcx>,
-        method: Result<MethodCallee<'tcx>, ()>,
+        method: Result<MethodCallee<'tcx>, ErrorGuaranteed>,
         args_no_rcvr: &'tcx [hir::Expr<'tcx>],
         tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let has_error = match method {
-            Ok(method) => method.args.references_error() || method.sig.references_error(),
-            Err(_) => true,
+            Ok(method) => method.args.error_reported().and(method.sig.error_reported()),
+            Err(guar) => Err(guar),
         };
-        if has_error {
-            let err_inputs = self.err_args(args_no_rcvr.len());
+        if let Err(guar) = has_error {
+            let err_inputs = self.err_args(args_no_rcvr.len(), guar);
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
@@ -140,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
                 method.ok().map(|method| method.def_id),
             );
-            return Ty::new_misc_error(self.tcx);
+            return Ty::new_error(self.tcx, guar);
         }
 
         let method = method.unwrap();
@@ -237,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    struct_span_code_err!(
+                    let guar = struct_span_code_err!(
                         tcx.dcx(),
                         call_span,
                         E0059,
@@ -245,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          for the function trait is neither a tuple nor unit"
                     )
                     .emit();
-                    (self.err_args(provided_args.len()), None)
+                    (self.err_args(provided_args.len(), guar), None)
                 }
             }
         } else {
