@@ -175,7 +175,6 @@ run-make/pgo-gen/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
 run-make/pgo-use/Makefile
 run-make/pointer-auth-link-with-c/Makefile
-run-make/prefer-rlib/Makefile
 run-make/pretty-print-to-file/Makefile
 run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
