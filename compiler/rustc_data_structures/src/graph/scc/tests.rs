@@ -3,10 +3,53 @@ extern crate test;
 use super::*;
 use crate::graph::tests::TestGraph;
 
+#[derive(Copy, Clone, Debug)]
+struct MaxReached(usize);
+type UsizeSccs = Sccs<usize, usize, ()>;
+type MaxReachedSccs = Sccs<usize, usize, MaxReached>;
+
+impl Annotation for MaxReached {
+    fn merge_scc(self, other: Self) -> Self {
+        Self(std::cmp::max(other.0, self.0))
+    }
+
+    fn merge_reached(self, other: Self) -> Self {
+        self.merge_scc(other)
+    }
+}
+
+impl PartialEq<usize> for MaxReached {
+    fn eq(&self, other: &usize) -> bool {
+        &self.0 == other
+    }
+}
+
+impl MaxReached {
+    fn from_usize(nr: usize) -> Self {
+        Self(nr)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct MinMaxIn {
+    min: usize,
+    max: usize,
+}
+
+impl Annotation for MinMaxIn {
+    fn merge_scc(self, other: Self) -> Self {
+        Self { min: std::cmp::min(self.min, other.min), max: std::cmp::max(self.max, other.max) }
+    }
+
+    fn merge_reached(self, _other: Self) -> Self {
+        self
+    }
+}
+
 #[test]
 fn diamond() {
     let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3)]);
-    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    let sccs: UsizeSccs = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 4);
     assert_eq!(sccs.num_sccs(), 4);
 }
@@ -34,7 +77,7 @@ fn test_big_scc() {
     +-- 2 <--+
          */
     let graph = TestGraph::new(0, &[(0, 1), (1, 2), (1, 3), (2, 0), (3, 2)]);
-    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    let sccs: UsizeSccs = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 1);
 }
 
@@ -50,7 +93,7 @@ fn test_three_sccs() {
     +-- 2 <--+
          */
     let graph = TestGraph::new(0, &[(0, 1), (1, 2), (2, 1), (3, 2)]);
-    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    let sccs: UsizeSccs = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 3);
     assert_eq!(sccs.scc(0), 1);
     assert_eq!(sccs.scc(1), 0);
@@ -106,7 +149,7 @@ fn test_find_state_2() {
     // 2 InCycleWith { 1 }
     // 3 InCycleWith { 0 }
 
-    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    let sccs: UsizeSccs = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 1);
     assert_eq!(sccs.scc(0), 0);
     assert_eq!(sccs.scc(1), 0);
@@ -130,7 +173,7 @@ fn test_find_state_3() {
          */
     let graph =
         TestGraph::new(0, &[(0, 1), (0, 4), (1, 2), (1, 3), (2, 1), (3, 0), (4, 2), (5, 2)]);
-    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    let sccs: UsizeSccs = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 2);
     assert_eq!(sccs.scc(0), 0);
     assert_eq!(sccs.scc(1), 0);
@@ -165,7 +208,7 @@ fn test_deep_linear() {
         nodes.push((i - 1, i));
     }
     let graph = TestGraph::new(0, nodes.as_slice());
-    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    let sccs: UsizeSccs = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), NR_NODES);
     assert_eq!(sccs.scc(0), NR_NODES - 1);
     assert_eq!(sccs.scc(NR_NODES - 1), 0);
@@ -210,7 +253,164 @@ fn bench_sccc(b: &mut test::Bencher) {
     graph[21] = (7, 4);
     let graph = TestGraph::new(0, &graph[..]);
     b.iter(|| {
-        let sccs: Sccs<_, usize> = Sccs::new(&graph);
+        let sccs: UsizeSccs = Sccs::new(&graph);
         assert_eq!(sccs.num_sccs(), 3);
     });
+}
+
+#[test]
+fn test_max_self_loop() {
+    let graph = TestGraph::new(0, &[(0, 0)]);
+    let sccs: MaxReachedSccs =
+        Sccs::new_with_annotation(&graph, |n| if n == 0 { MaxReached(17) } else { MaxReached(0) });
+    assert_eq!(sccs.annotation(0), 17);
+}
+
+#[test]
+fn test_max_branch() {
+    let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 4)]);
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, MaxReached::from_usize);
+    assert_eq!(sccs.annotation(sccs.scc(0)), 4);
+    assert_eq!(sccs.annotation(sccs.scc(1)), 3);
+    assert_eq!(sccs.annotation(sccs.scc(2)), 4);
+}
+#[test]
+fn test_single_cycle_max() {
+    let graph = TestGraph::new(0, &[(0, 2), (2, 3), (2, 4), (4, 1), (1, 2)]);
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, MaxReached::from_usize);
+    assert_eq!(sccs.annotation(sccs.scc(2)), 4);
+    assert_eq!(sccs.annotation(sccs.scc(0)), 4);
+}
+
+#[test]
+fn test_simple_cycle_max() {
+    let graph = TestGraph::new(0, &[(0, 1), (1, 2), (2, 0)]);
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, MaxReached::from_usize);
+    assert_eq!(sccs.num_sccs(), 1);
+}
+
+#[test]
+fn test_double_cycle_max() {
+    let graph =
+        TestGraph::new(0, &[(0, 1), (1, 2), (1, 4), (2, 3), (2, 4), (3, 5), (4, 1), (5, 4)]);
+    let sccs: MaxReachedSccs =
+        Sccs::new_with_annotation(&graph, |n| if n == 5 { MaxReached(2) } else { MaxReached(1) });
+
+    assert_eq!(sccs.annotation(sccs.scc(0)).0, 2);
+}
+
+#[test]
+fn test_bug_minimised() {
+    let graph = TestGraph::new(0, &[(0, 3), (0, 1), (3, 2), (2, 3), (1, 4), (4, 5), (5, 4)]);
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, |n| match n {
+        3 => MaxReached(1),
+        _ => MaxReached(0),
+    });
+    assert_eq!(sccs.annotation(sccs.scc(2)), 1);
+    assert_eq!(sccs.annotation(sccs.scc(1)), 0);
+    assert_eq!(sccs.annotation(sccs.scc(4)), 0);
+}
+
+#[test]
+fn test_bug_max_leak_minimised() {
+    let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (3, 0), (3, 4), (4, 3)]);
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, |w| match w {
+        4 => MaxReached(1),
+        _ => MaxReached(0),
+    });
+
+    assert_eq!(sccs.annotation(sccs.scc(2)), 0);
+    assert_eq!(sccs.annotation(sccs.scc(3)), 1);
+    assert_eq!(sccs.annotation(sccs.scc(0)), 1);
+}
+
+#[test]
+fn test_bug_max_leak() {
+    let graph = TestGraph::new(
+        8,
+        &[
+            (0, 0),
+            (0, 18),
+            (0, 19),
+            (0, 1),
+            (0, 2),
+            (0, 7),
+            (0, 8),
+            (0, 23),
+            (18, 0),
+            (18, 12),
+            (19, 0),
+            (19, 25),
+            (12, 18),
+            (12, 3),
+            (12, 5),
+            (3, 12),
+            (3, 21),
+            (3, 22),
+            (5, 13),
+            (21, 3),
+            (22, 3),
+            (13, 5),
+            (13, 4),
+            (4, 13),
+            (4, 0),
+            (2, 11),
+            (7, 6),
+            (6, 20),
+            (20, 6),
+            (8, 17),
+            (17, 9),
+            (9, 16),
+            (16, 26),
+            (26, 15),
+            (15, 10),
+            (10, 14),
+            (14, 27),
+            (23, 24),
+        ],
+    );
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, |w| match w {
+        22 => MaxReached(1),
+        24 => MaxReached(2),
+        27 => MaxReached(2),
+        _ => MaxReached(0),
+    });
+
+    assert_eq!(sccs.annotation(sccs.scc(2)), 0);
+    assert_eq!(sccs.annotation(sccs.scc(7)), 0);
+    assert_eq!(sccs.annotation(sccs.scc(8)), 2);
+    assert_eq!(sccs.annotation(sccs.scc(23)), 2);
+    assert_eq!(sccs.annotation(sccs.scc(3)), 2);
+    assert_eq!(sccs.annotation(sccs.scc(0)), 2);
+}
+
+#[test]
+fn test_bug_max_zero_stick_shape() {
+    let graph = TestGraph::new(0, &[(0, 1), (1, 2), (2, 3), (3, 2), (3, 4)]);
+
+    let sccs: MaxReachedSccs = Sccs::new_with_annotation(&graph, |w| match w {
+        4 => MaxReached(1),
+        _ => MaxReached(0),
+    });
+
+    assert_eq!(sccs.annotation(sccs.scc(0)), 1);
+    assert_eq!(sccs.annotation(sccs.scc(1)), 1);
+    assert_eq!(sccs.annotation(sccs.scc(2)), 1);
+    assert_eq!(sccs.annotation(sccs.scc(3)), 1);
+    assert_eq!(sccs.annotation(sccs.scc(4)), 1);
+}
+
+#[test]
+fn test_min_max_in() {
+    let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (3, 0), (3, 4), (4, 3), (3, 5)]);
+    let sccs: Sccs<usize, usize, MinMaxIn> =
+        Sccs::new_with_annotation(&graph, |w| MinMaxIn { min: w, max: w });
+
+    assert_eq!(sccs.annotation(sccs.scc(2)).min, 2);
+    assert_eq!(sccs.annotation(sccs.scc(2)).max, 2);
+    assert_eq!(sccs.annotation(sccs.scc(0)).min, 0);
+    assert_eq!(sccs.annotation(sccs.scc(0)).max, 4);
+    assert_eq!(sccs.annotation(sccs.scc(3)).min, 0);
+    assert_eq!(sccs.annotation(sccs.scc(3)).max, 4);
+    assert_eq!(sccs.annotation(sccs.scc(5)).min, 5);
 }
