@@ -14,6 +14,9 @@ whether to check conditions and how to check them.
 > **Note:** No implicit expectation is added when using `--cfg`. Users are expected to
 pass all expected names and values using the _check cfg specification_.
 
+> **Note:** For interacting with this through Cargo,
+see [Cargo Specifics](check-cfg/cargo-specifics.md) page.
+
 [^reachable]: `rustc` promises to at least check reachable `#[cfg]`, and while non-reachable
 `#[cfg]` are not currently checked, they may well be checked in the future without it being a
 breaking change.
