@@ -47,7 +47,7 @@ pub(crate) mod dummy_test_span_utils {
     pub const DUMMY: Span = Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: span::SpanAnchor {
-            file_id: span::FileId::BOGUS,
+            file_id: span::FileId::from_raw(0xe4e4e),
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContextId::ROOT,
@@ -60,7 +60,7 @@ pub(crate) mod dummy_test_span_utils {
             Span {
                 range,
                 anchor: span::SpanAnchor {
-                    file_id: span::FileId::BOGUS,
+                    file_id: span::FileId::from_raw(0xe4e4e),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
                 ctx: SyntaxContextId::ROOT,

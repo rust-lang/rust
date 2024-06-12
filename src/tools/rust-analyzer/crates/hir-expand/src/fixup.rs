@@ -4,7 +4,10 @@
 use mbe::DocCommentDesugarMode;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
-use span::{ErasedFileAstId, Span, SpanAnchor, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use span::{
+    ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, FIXUP_ERASED_FILE_AST_ID_MARKER,
+    ROOT_ERASED_FILE_AST_ID,
+};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
@@ -307,8 +310,13 @@ pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) 
         tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
             || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
     ) {
-        tt.delimiter.close = Span::DUMMY;
-        tt.delimiter.open = Span::DUMMY;
+        let span = |file_id| Span {
+            range: TextRange::empty(TextSize::new(0)),
+            anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
+            ctx: SyntaxContextId::ROOT,
+        };
+        tt.delimiter.open = span(tt.delimiter.open.anchor.file_id);
+        tt.delimiter.close = span(tt.delimiter.close.anchor.file_id);
     }
     reverse_fixups_(tt, undo_info);
 }

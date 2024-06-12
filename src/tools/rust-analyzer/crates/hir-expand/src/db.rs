@@ -146,12 +146,10 @@ pub fn expand_speculative(
     token_to_map: SyntaxToken,
 ) -> Option<(SyntaxNode, SyntaxToken)> {
     let loc = db.lookup_intern_macro_call(actual_macro_call);
-
-    // FIXME: This BOGUS here is dangerous once the proc-macro server can call back into the database!
-    let span_map = RealSpanMap::absolute(FileId::BOGUS);
-    let span_map = SpanMapRef::RealSpanMap(&span_map);
-
     let (_, _, span) = db.macro_arg_considering_derives(actual_macro_call, &loc.kind);
+
+    let span_map = RealSpanMap::absolute(span.anchor.file_id);
+    let span_map = SpanMapRef::RealSpanMap(&span_map);
 
     // Build the subtree and token mapping for the speculative args
     let (mut tt, undo_info) = match loc.kind {

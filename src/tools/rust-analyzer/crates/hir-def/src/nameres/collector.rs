@@ -21,7 +21,7 @@ use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContextId};
+use span::{Edition, ErasedFileAstId, FileAstId, SyntaxContextId};
 use syntax::ast;
 use triomphe::Arc;
 
@@ -75,36 +75,23 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
 
     let proc_macros = if krate.is_proc_macro {
         match db.proc_macros().get(&def_map.krate) {
-            Some(Ok(proc_macros)) => {
-                Ok(proc_macros
-                    .iter()
-                    .enumerate()
-                    .map(|(idx, it)| {
-                        // FIXME: a hacky way to create a Name from string.
-                        let name = tt::Ident {
-                            text: it.name.clone(),
-                            span: Span {
-                                range: syntax::TextRange::empty(syntax::TextSize::new(0)),
-                                anchor: span::SpanAnchor {
-                                    file_id: FileId::BOGUS,
-                                    ast_id: span::ROOT_ERASED_FILE_AST_ID,
-                                },
-                                ctx: SyntaxContextId::ROOT,
-                            },
-                        };
-                        (
-                            name.as_name(),
-                            if it.disabled {
-                                CustomProcMacroExpander::disabled()
-                            } else {
-                                CustomProcMacroExpander::new(
-                                    hir_expand::proc_macro::ProcMacroId::new(idx as u32),
-                                )
-                            },
-                        )
-                    })
-                    .collect())
-            }
+            Some(Ok(proc_macros)) => Ok(proc_macros
+                .iter()
+                .enumerate()
+                .map(|(idx, it)| {
+                    let name = Name::new_text_dont_use(it.name.clone());
+                    (
+                        name,
+                        if it.disabled {
+                            CustomProcMacroExpander::disabled()
+                        } else {
+                            CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId::new(
+                                idx as u32,
+                            ))
+                        },
+                    )
+                })
+                .collect()),
             Some(Err(e)) => Err(e.clone().into_boxed_str()),
             None => Err("No proc-macros present for crate".to_owned().into_boxed_str()),
         }
@@ -2154,19 +2141,7 @@ impl ModCollector<'_, '_> {
             let name;
             let name = match attrs.by_key("rustc_builtin_macro").string_value() {
                 Some(it) => {
-                    // FIXME: a hacky way to create a Name from string.
-                    name = tt::Ident {
-                        text: it.into(),
-                        span: Span {
-                            range: syntax::TextRange::empty(syntax::TextSize::new(0)),
-                            anchor: span::SpanAnchor {
-                                file_id: FileId::BOGUS,
-                                ast_id: span::ROOT_ERASED_FILE_AST_ID,
-                            },
-                            ctx: SyntaxContextId::ROOT,
-                        },
-                    }
-                    .as_name();
+                    name = Name::new_text_dont_use(it.into());
                     &name
                 }
                 None => {
