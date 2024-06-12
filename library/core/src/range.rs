@@ -92,6 +92,29 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     }
 }
 
+impl<Idx: Step> Range<Idx> {
+    /// Create an iterator over the elements within this range.
+    ///
+    /// Shorthand for `.clone().into_iter()`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_range_api)]
+    /// use core::range::Range;
+    ///
+    /// let mut i = Range::from(3..9).iter().map(|n| n*n);
+    /// assert_eq!(i.next(), Some(9));
+    /// assert_eq!(i.next(), Some(16));
+    /// assert_eq!(i.next(), Some(25));
+    /// ```
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[inline]
+    pub fn iter(&self) -> IterRange<Idx> {
+        self.clone().into_iter()
+    }
+}
+
 impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -289,6 +312,29 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     }
 }
 
+impl<Idx: Step> RangeInclusive<Idx> {
+    /// Create an iterator over the elements within this range.
+    ///
+    /// Shorthand for `.clone().into_iter()`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_range_api)]
+    /// use core::range::RangeInclusive;
+    ///
+    /// let mut i = RangeInclusive::from(3..=8).iter().map(|n| n*n);
+    /// assert_eq!(i.next(), Some(9));
+    /// assert_eq!(i.next(), Some(16));
+    /// assert_eq!(i.next(), Some(25));
+    /// ```
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[inline]
+    pub fn iter(&self) -> IterRangeInclusive<Idx> {
+        self.clone().into_iter()
+    }
+}
+
 impl RangeInclusive<usize> {
     /// Converts to an exclusive `Range` for `SliceIndex` implementations.
     /// The caller is responsible for dealing with `end == usize::MAX`.
@@ -379,6 +425,29 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
         self.start.fmt(fmt)?;
         write!(fmt, "..")?;
         Ok(())
+    }
+}
+
+impl<Idx: Step> RangeFrom<Idx> {
+    /// Create an iterator over the elements within this range.
+    ///
+    /// Shorthand for `.clone().into_iter()`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_range_api)]
+    /// use core::range::RangeFrom;
+    ///
+    /// let mut i = RangeFrom::from(3..).iter().map(|n| n*n);
+    /// assert_eq!(i.next(), Some(9));
+    /// assert_eq!(i.next(), Some(16));
+    /// assert_eq!(i.next(), Some(25));
+    /// ```
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[inline]
+    pub fn iter(&self) -> IterRangeFrom<Idx> {
+        self.clone().into_iter()
     }
 }
 
