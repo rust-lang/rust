@@ -358,6 +358,50 @@ impl Step for OptimizedDist {
     }
 }
 
+/// The [rustc-perf](https://github.com/rust-lang/rustc-perf) benchmark suite, which is added
+/// as a submodule at `src/tools/rustc-perf`.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct RustcPerf {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustcPerf {
+    /// Path to the built `collector` binary.
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rustc-perf")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustcPerf {
+            compiler: run.builder.compiler(0, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        // We need to ensure the rustc-perf submodule is initialized.
+        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+
+        let target = builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "collector",
+            mode: Mode::ToolBootstrap,
+            path: "src/tools/rustc-perf",
+            source_type: SourceType::Submodule,
+            extra_features: Vec::new(),
+            allow_features: "",
+            // Only build the collector package, which is used for benchmarking through
+            // a CLI.
+            cargo_args: vec!["-p".to_string(), "collector".to_string()],
+        });
+        target
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
     pub compiler: Compiler,
