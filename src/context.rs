@@ -479,6 +479,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     def_id,
                     ty::List::empty(),
+                    None,
                 );
 
                 let symbol_name = tcx.symbol_name(instance).name;
