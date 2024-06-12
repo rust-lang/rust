@@ -765,10 +765,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 Ok(Some((full_size, full_align)))
             }
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(expected_trait, _, ty::Dyn) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
-                Ok(Some(self.get_vtable_size_and_align(vtable)?))
+                Ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
             }
 
             ty::Slice(_) | ty::Str => {
