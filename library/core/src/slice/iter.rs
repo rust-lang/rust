@@ -16,7 +16,7 @@ use crate::ptr::{self, without_provenance, without_provenance_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
 
-#[stable(feature = "boxed_slice_into_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<T> !Iterator for [T] {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

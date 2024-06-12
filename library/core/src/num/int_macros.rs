@@ -1165,17 +1165,13 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_neg(self) -> Self {
-            // ICE resolved by #125184 isn't in bootstrap compiler
-            #[cfg(not(bootstrap))]
-            {
-                assert_unsafe_precondition!(
-                    check_language_ub,
-                    concat!(stringify!($SelfT), "::unchecked_neg cannot overflow"),
-                    (
-                        lhs: $SelfT = self,
-                    ) => !lhs.overflowing_neg().1,
-                );
-            }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_neg cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                ) => !lhs.overflowing_neg().1,
+            );
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {

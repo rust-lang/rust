@@ -986,7 +986,7 @@ pub const unsafe fn assume(b: bool) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn likely(b: bool) -> bool {
     b
 }
@@ -1006,7 +1006,7 @@ pub const fn likely(b: bool) -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn unlikely(b: bool) -> bool {
     b
 }
@@ -2482,7 +2482,7 @@ extern "rust-intrinsic" {
 #[rustc_nounwind]
 #[rustc_do_not_const_check]
 #[inline]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
     (ptr == other) as u8
 }
@@ -2747,7 +2747,7 @@ pub const fn ub_checks() -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code for now just returns null pointers.
     // See <https://github.com/rust-lang/rust/issues/93935>.
@@ -2768,7 +2768,7 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
     // Runtime NOP
 }
@@ -2828,7 +2828,6 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {
     // To implement a fallback we'd have to assume the layout of the pointer,
     // but the whole point of this intrinsic is that we shouldn't do that.

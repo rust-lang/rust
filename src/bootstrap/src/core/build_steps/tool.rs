@@ -199,7 +199,7 @@ pub fn prepare_tool_cargo(
         cargo.env("CFG_COMMIT_DATE", date);
     }
     if !features.is_empty() {
-        cargo.arg("--features").arg(&features.join(", "));
+        cargo.arg("--features").arg(features.join(", "));
     }
 
     // Enable internal lints for clippy and rustdoc
@@ -521,10 +521,7 @@ impl Step for Rustdoc {
         // If the rustdoc output is piped to e.g. `head -n1` we want the process
         // to be killed, rather than having an error bubble up and cause a
         // panic.
-        // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
-        if build_compiler.stage > 0 {
-            cargo.rustflag("-Zon-broken-pipe=kill");
-        }
+        cargo.rustflag("-Zon-broken-pipe=kill");
 
         let _guard = builder.msg_tool(
             Kind::Build,
