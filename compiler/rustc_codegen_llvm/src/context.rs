@@ -580,6 +580,7 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 ty::ParamEnv::reveal_all(),
                 def_id,
                 ty::List::empty(),
+                None,
             )),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
