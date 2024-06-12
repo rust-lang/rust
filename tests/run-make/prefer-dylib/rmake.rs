@@ -1,7 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{cwd, dynamic_lib_name, read_dir, run, run_fail, rustc};
-use std::fs::remove_file;
+use run_make_support::{cwd, dynamic_lib_name, fs_wrapper, read_dir, run, run_fail, rustc};
 
 fn main() {
     rustc().input("bar.rs").crate_type("dylib").crate_type("rlib").arg("-Cprefer-dynamic").run();
@@ -9,7 +8,7 @@ fn main() {
 
     run("foo");
 
-    remove_file(dynamic_lib_name("bar")).unwrap();
+    fs_wrapper::remove_file(dynamic_lib_name("bar"));
     // This time the command should fail.
     run_fail("foo");
 }
