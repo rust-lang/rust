@@ -1187,6 +1187,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "CastKind::{kind:?} output must be a raw const pointer, not {:?}",
                             ty::RawPtr(_, Mutability::Not)
                         );
+                        if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
+                            self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
+                        }
                     }
                     CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
                         // FIXME: Check pointee types
@@ -1200,6 +1203,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "CastKind::{kind:?} output must be a raw pointer, not {:?}",
                             ty::RawPtr(..)
                         );
+                        if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
+                            self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
+                        }
                     }
                     CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         // This is used for all `CoerceUnsized` types,
@@ -1211,7 +1217,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         if !input_valid || !target_valid {
                             self.fail(
                                 location,
-                                format!("Wrong cast kind {kind:?} for the type {op_ty}",),
+                                format!("Wrong cast kind {kind:?} for the type {op_ty}"),
                             );
                         }
                     }

@@ -80,7 +80,7 @@
   
       bb4: {
           StorageDead(_8);
--         _11 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
+-         _11 = _6 as *const [bool; 0] (PtrToPtr);
 -         _5 = NonNull::<[bool; 0]> { pointer: _11 };
 +         _11 = const {0x1 as *const [bool; 0]};
 +         _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
