@@ -78,6 +78,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin \
+      --set rust.debuginfo=1 \
       --set rust.codegen-units=1
 
 ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
