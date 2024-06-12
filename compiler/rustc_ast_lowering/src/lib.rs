@@ -30,12 +30,14 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 use rustc_ast::node_id::NodeMap;

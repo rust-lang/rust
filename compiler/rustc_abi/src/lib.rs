@@ -1,7 +1,9 @@
-#![cfg_attr(feature = "nightly", feature(step_trait))]
+// tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
+#![cfg_attr(feature = "nightly", feature(step_trait))]
+// tidy-alphabetical-end
 
 use std::fmt;
 use std::num::{NonZeroUsize, ParseIntError};

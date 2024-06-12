@@ -1,7 +1,9 @@
 //! HIR pretty-printing is layered on top of AST pretty-printing. A number of
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
+// tidy-alphabetical-start
 #![recursion_limit = "256"]
+// tidy-alphabetical-end
 
 use rustc_ast as ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};

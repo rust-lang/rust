@@ -1,9 +1,11 @@
+// tidy-alphabetical-start
+#![allow(rustc::potential_query_instability, internal_features)]
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
-#![feature(min_specialization)]
 #![feature(let_chains)]
-#![allow(rustc::potential_query_instability, internal_features)]
+#![feature(min_specialization)]
+// tidy-alphabetical-end
 
 pub mod cache;
 pub mod dep_graph;

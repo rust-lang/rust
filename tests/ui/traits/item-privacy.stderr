@@ -196,14 +196,17 @@ error[E0624]: associated type `A` is private
   --> $DIR/item-privacy.rs:119:12
    |
 LL |         type A = u8;
-   |         ------ associated type defined here
+   |         ------ the associated type is defined here
 ...
 LL |     let _: T::A;
    |            ^^^^ private associated type
 
-error: associated type `A` is private
+error[E0624]: associated type `A` is private
   --> $DIR/item-privacy.rs:128:9
    |
+LL |         type A = u8;
+   |         ------ the associated type is defined here
+...
 LL |         A = u8,
    |         ^^^^^^ private associated type
 

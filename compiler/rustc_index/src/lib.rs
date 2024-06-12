@@ -1,9 +1,11 @@
+// tidy-alphabetical-start
+#![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(
     feature = "nightly",
     feature(extend_one, min_specialization, new_uninit, step_trait, test)
 )]
-#![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+// tidy-alphabetical-end
 
 pub mod bit_set;
 #[cfg(feature = "nightly")]

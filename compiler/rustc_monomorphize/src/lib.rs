@@ -1,5 +1,7 @@
+// tidy-alphabetical-start
 #![feature(array_windows)]
 #![feature(is_sorted)]
+// tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;

@@ -1,5 +1,6 @@
 //! The main parser interface.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
@@ -9,6 +10,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+// tidy-alphabetical-end
 
 use rustc_ast as ast;
 use rustc_ast::token;

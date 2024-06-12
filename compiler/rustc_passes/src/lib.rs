@@ -4,13 +4,15 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
+#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 
 use rustc_middle::query::Providers;
 

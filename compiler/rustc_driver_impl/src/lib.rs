@@ -4,16 +4,18 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(decl_macro)]
 #![feature(let_chains)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
