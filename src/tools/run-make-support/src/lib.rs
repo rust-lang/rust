@@ -22,6 +22,7 @@ use std::panic;
 use std::path::{Path, PathBuf};
 
 pub use gimli;
+pub use glob;
 pub use object;
 pub use regex;
 pub use wasmparser;

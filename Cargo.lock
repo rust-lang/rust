@@ -3461,6 +3461,7 @@ name = "run_make_support"
 version = "0.2.0"
 dependencies = [
  "gimli 0.28.1",
+ "glob",
  "object 0.34.0",
  "regex",
  "similar",
