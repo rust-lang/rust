@@ -533,11 +533,9 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(c, Some(a));
     /// ```
     #[unstable(feature = "array_try_map", issue = "79711")]
-    pub fn try_map<F, R>(self, f: F) -> ChangeOutputType<R, [R::Output; N]>
+    pub fn try_map<R>(self, f: impl FnMut(T) -> R) -> ChangeOutputType<R, [R::Output; N]>
     where
-        F: FnMut(T) -> R,
-        R: Try,
-        R::Residual: Residual<[R::Output; N]>,
+        R: Try<Residual: Residual<[R::Output; N]>>,
     {
         drain_array_with(self, |iter| try_from_trusted_iterator(iter.map(f)))
     }
