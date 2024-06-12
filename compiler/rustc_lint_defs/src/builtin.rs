@@ -3256,7 +3256,11 @@ declare_lint! {
     /// See the [Checking Conditional Configurations][check-cfg] section for more
     /// details.
     ///
+    /// See the [Cargo Specifics][unexpected_cfgs_lint_config] section for configuring this lint in
+    /// `Cargo.toml`.
+    ///
     /// [check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
+    /// [unexpected_cfgs_lint_config]: https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html#check-cfg-in-lintsrust-table
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
