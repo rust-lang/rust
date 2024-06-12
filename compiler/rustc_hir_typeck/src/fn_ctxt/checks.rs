@@ -123,7 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(guar) => Err(guar),
         };
         if let Err(guar) = has_error {
-            let err_inputs = self.err_args(args_no_rcvr.len());
+            let err_inputs = self.err_args(args_no_rcvr.len(), guar);
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
@@ -237,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    struct_span_code_err!(
+                    let guar = struct_span_code_err!(
                         tcx.dcx(),
                         call_span,
                         E0059,
@@ -245,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          for the function trait is neither a tuple nor unit"
                     )
                     .emit();
-                    (self.err_args(provided_args.len()), None)
+                    (self.err_args(provided_args.len(), guar), None)
                 }
             }
         } else {

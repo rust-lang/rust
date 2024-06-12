@@ -660,8 +660,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    pub(crate) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        let ty_error = Ty::new_misc_error(self.tcx);
+    pub(crate) fn err_args(&self, len: usize, guar: ErrorGuaranteed) -> Vec<Ty<'tcx>> {
+        let ty_error = Ty::new_error(self.tcx, guar);
         vec![ty_error; len]
     }
 
