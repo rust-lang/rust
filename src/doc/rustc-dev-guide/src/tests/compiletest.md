@@ -516,11 +516,12 @@ only running the main `coverage` suite.
 ## Building auxiliary crates
 
 It is common that some tests require additional auxiliary crates to be compiled.
-There are three [headers](headers.md) to assist with that:
+There are multiple [headers](headers.md) to assist with that:
 
 * `aux-build`
 * `aux-crate`
 * `aux-bin`
+* `aux-codegen-backend`
 
 `aux-build` will build a separate crate from the named source file.
 The source file should be in a directory called `auxiliary` beside the test file.
@@ -548,6 +549,10 @@ This is similar to how Cargo does dependency renaming.
 `aux-bin` is similar to `aux-build` but will build a binary instead of a
 library. The binary will be available in `auxiliary/bin` relative to the working
 directory of the test.
+
+`aux-codegen-backend` is similar to `aux-build`, but will then pass the compiled
+dylib to `-Zcodegen-backend` when building the main file. This will only work
+for tests in `tests/ui-fulldeps`, since it requires the use of compiler crates.
 
 ### Auxiliary proc-macro
 
