@@ -472,7 +472,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             && let ItemKind::Impl(impl_ref) =
                                 self.tcx.hir().expect_item(local_impl_id).kind
                         {
-                            if matches!(trait_item.kind, hir::TraitItemKind::Fn(..))
+                            if !matches!(trait_item.kind, hir::TraitItemKind::Type(..))
                                 && !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
                                     .ty_and_all_fields_are_public
                             {
@@ -802,7 +802,7 @@ fn check_item<'tcx>(
             // And we access the Map here to get HirId from LocalDefId
             for local_def_id in local_def_ids {
                 // check the function may construct Self
-                let mut may_construct_self = true;
+                let mut may_construct_self = false;
                 if let Some(fn_sig) =
                     tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
