@@ -17,7 +17,7 @@ use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeVisitableExt, Upcast};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 
 mod anon_const;
 mod inherent;
@@ -719,13 +719,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let coroutine = args.as_coroutine();
 
-        let name = tcx.associated_item(goal.predicate.def_id()).name;
-        let term = if name == sym::Return {
+        let lang_items = tcx.lang_items();
+        let term = if Some(goal.predicate.def_id()) == lang_items.coroutine_return() {
             coroutine.return_ty().into()
-        } else if name == sym::Yield {
+        } else if Some(goal.predicate.def_id()) == lang_items.coroutine_yield() {
             coroutine.yield_ty().into()
         } else {
-            bug!("unexpected associated item `<{self_ty} as Coroutine>::{name}`")
+            bug!(
+                "unexpected associated item `<{self_ty} as Coroutine>::{}`",
+                tcx.item_name(goal.predicate.def_id())
+            )
         };
 
         Self::probe_and_consider_implied_clause(

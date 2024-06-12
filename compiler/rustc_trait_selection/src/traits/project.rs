@@ -1373,15 +1373,16 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
         coroutine_sig,
     );
 
-    let name = tcx.associated_item(obligation.predicate.def_id).name;
-    let ty = if name == sym::Return {
+    let lang_items = tcx.lang_items();
+    let ty = if Some(obligation.predicate.def_id) == lang_items.coroutine_return() {
         return_ty
-    } else if name == sym::Yield {
+    } else if Some(obligation.predicate.def_id) == lang_items.coroutine_yield() {
         yield_ty
     } else {
         span_bug!(
             tcx.def_span(obligation.predicate.def_id),
-            "unexpected associated type: `Coroutine::{name}`"
+            "unexpected associated type: `Coroutine::{}`",
+            tcx.item_name(obligation.predicate.def_id),
         );
     };
 
