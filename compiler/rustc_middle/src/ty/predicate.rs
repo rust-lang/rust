@@ -51,6 +51,14 @@ impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> 
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
+    type Kind = ty::Binder<'tcx, ty::PredicateKind<'tcx>>;
+
+    fn kind(self) -> Self::Kind {
+        self.kind()
+    }
+}
+
 impl<'tcx> rustc_type_ir::visit::Flags for Predicate<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
@@ -120,6 +128,7 @@ impl<'tcx> Predicate<'tcx> {
     /// unsoundly accept some programs. See #91068.
     #[inline]
     pub fn allow_normalization(self) -> bool {
+        // Keep this in sync with the one in `rustc_type_ir::inherent`!
         match self.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::WellFormed(_))
             | PredicateKind::AliasRelate(..)

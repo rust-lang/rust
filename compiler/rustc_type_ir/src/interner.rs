@@ -7,6 +7,7 @@ use std::ops::Deref;
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
+use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
@@ -175,6 +176,10 @@ pub trait Interner:
     ) -> ty::EarlyBinder<Self, impl Iterator<Item = Self::Clause>>;
 
     fn has_target_features(self, def_id: Self::DefId) -> bool;
+
+    fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
+
+    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl Iterator<Item = Self::DefId>;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

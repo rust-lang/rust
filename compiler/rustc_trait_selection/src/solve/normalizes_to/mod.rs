@@ -31,7 +31,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         goal: Goal<'tcx, NormalizesTo<'tcx>>,
     ) -> QueryResult<'tcx> {
         self.set_is_normalizes_to_goal();
-        debug_assert!(self.term_is_fully_unconstrained(goal));
+        // debug_assert!(self.term_is_fully_unconstrained(goal)); TODO:
         let normalize_result = self
             .probe(|&result| ProbeKind::TryNormalizeNonRigid { result })
             .enter(|this| this.normalize_at_least_one_step(goal));

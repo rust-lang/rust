@@ -1,7 +1,9 @@
 use crate::fold::TypeFoldable;
+use crate::relate::Relate;
+use crate::solve::{Goal, NoSolution};
 use crate::{self as ty, Interner};
 
-pub trait InferCtxtLike {
+pub trait InferCtxtLike: Sized {
     type Interner: Interner;
 
     fn interner(&self) -> Self::Interner;
@@ -31,6 +33,13 @@ pub trait InferCtxtLike {
 
     fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes;
 
+    fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
+    fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
+    fn fresh_args_for_item(
+        &self,
+        def_id: <Self::Interner as Interner>::DefId,
+    ) -> <Self::Interner as Interner>::GenericArgs;
+
     fn instantiate_binder_with_infer<T: TypeFoldable<Self::Interner> + Copy>(
         &self,
         value: ty::Binder<Self::Interner, T>,
@@ -41,4 +50,23 @@ pub trait InferCtxtLike {
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
     ) -> U;
+
+    fn relate<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+
+    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+
+    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<Self::Interner>;
 }

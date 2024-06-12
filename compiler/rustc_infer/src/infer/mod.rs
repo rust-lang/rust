@@ -11,7 +11,7 @@ pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 pub use ValuePairs::*;
 
-use crate::infer::relate::RelateResult;
+use crate::infer::relate::{Relate, RelateResult};
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;
@@ -35,6 +35,7 @@ use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
+use rustc_middle::traits::solve::{Goal, NoSolution};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -352,14 +353,6 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn universe_of_ct(&self, ct: ConstVid) -> Option<ty::UniverseIndex> {
-        // Same issue as with `universe_of_ty`
-        match self.probe_const_var(ct) {
-            Err(universe) => Some(universe),
-            Ok(_) => None,
-        }
-    }
-
     fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
         match self.inner.borrow_mut().unwrap_region_constraints().probe_value(lt) {
             Err(universe) => Some(universe),
@@ -367,12 +360,12 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
-        self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
-    }
-
-    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.defining_opaque_types
+    fn universe_of_ct(&self, ct: ConstVid) -> Option<ty::UniverseIndex> {
+        // Same issue as with `universe_of_ty`
+        match self.probe_const_var(ct) {
+            Err(universe) => Some(universe),
+            Ok(_) => None,
+        }
     }
 
     fn opportunistic_resolve_ty_var(&self, vid: TyVid) -> Ty<'tcx> {
@@ -406,6 +399,26 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
+    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
+        self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
+    }
+
+    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
+        self.defining_opaque_types
+    }
+
+    fn next_ty_infer(&self) -> Ty<'tcx> {
+        self.next_ty_var(DUMMY_SP)
+    }
+
+    fn next_const_infer(&self) -> ty::Const<'tcx> {
+        self.next_const_var(DUMMY_SP)
+    }
+
+    fn fresh_args_for_item(&self, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+        self.fresh_args_for_item(DUMMY_SP, def_id)
+    }
+
     fn instantiate_binder_with_infer<T: TypeFoldable<Self::Interner> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
@@ -417,12 +430,39 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
-    fn enter_forall<T: TypeFoldable<Self::Interner> + Copy, U>(
+    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>> + Copy, U>(
         &self,
         value: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,
     ) -> U {
         self.enter_forall(value, f)
+    }
+
+    fn relate<T: Relate<TyCtxt<'tcx>>>(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
+        self.at(&ObligationCause::dummy(), param_env).relate_no_trace(lhs, variance, rhs)
+    }
+
+    fn eq_structurally_relating_aliases<T: Relate<TyCtxt<'tcx>>>(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
+        self.at(&ObligationCause::dummy(), param_env)
+            .eq_structurally_relating_aliases_no_trace(lhs, rhs)
+    }
+
+    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.resolve_vars_if_possible(value)
     }
 }
 
@@ -436,6 +476,7 @@ pub enum ValuePairs<'tcx> {
     PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),
     ExistentialProjection(ExpectedFound<ty::PolyExistentialProjection<'tcx>>),
+    DummyPair,
 }
 
 impl<'tcx> ValuePairs<'tcx> {
@@ -1857,6 +1898,10 @@ impl<'tcx> TypeTrace<'tcx> {
             cause: cause.clone(),
             values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
+    }
+
+    fn dummy(cause: &ObligationCause<'tcx>) -> TypeTrace<'tcx> {
+        TypeTrace { cause: cause.clone(), values: ValuePairs::DummyPair }
     }
 }
 

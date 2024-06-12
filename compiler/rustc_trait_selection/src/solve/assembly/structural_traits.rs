@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_next_trait_solver::solve::{Goal, NoSolution};
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, Upcast};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
@@ -428,7 +429,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 nested.push(
                     ty::TraitRef::new(
                         tcx,
-                        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None),
+                        tcx.require_lang_item(TraitSolverLangItem::AsyncFnKindHelper),
                         [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
                     )
                     .upcast(tcx),
@@ -452,7 +453,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         ty::FnDef(..) | ty::FnPtr(..) => {
             let bound_sig = self_ty.fn_sig(tcx);
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+            let future_trait_def_id = tcx.require_lang_item(TraitSolverLangItem::Future);
             // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
             // return type implements `Future`.
             let nested = vec![
@@ -460,7 +461,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
                     .upcast(tcx),
             ];
-            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
+            let future_output_def_id = tcx.require_lang_item(TraitSolverLangItem::FutureOutput);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -475,7 +476,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let args = args.as_closure();
             let bound_sig = args.sig();
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+            let future_trait_def_id = tcx.require_lang_item(TraitSolverLangItem::Future);
             // `Closure`s only implement `AsyncFn*` when their return type
             // implements `Future`.
             let mut nested = vec![
@@ -493,7 +494,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 }
             } else {
                 let async_fn_kind_trait_def_id =
-                    tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                    tcx.require_lang_item(TraitSolverLangItem::AsyncFnKindHelper);
                 // When we don't know the closure kind (and therefore also the closure's upvars,
                 // which are computed at the same time), we must delay the computation of the
                 // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
@@ -511,7 +512,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 );
             }
 
-            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
+            let future_output_def_id = tcx.require_lang_item(TraitSolverLangItem::FutureOutput);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -588,7 +589,7 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
 ) -> I::Ty {
-    let upvars_projection_def_id = tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
+    let upvars_projection_def_id = tcx.require_lang_item(TraitSolverLangItem::AsyncFnKindUpvars);
     let tupled_upvars_ty = Ty::new_projection(
         tcx,
         upvars_projection_def_id,
@@ -663,19 +664,19 @@ pub(in crate::solve) fn predicates_for_object_candidate<
     let mut requirements = vec![];
     requirements
         .extend(tcx.super_predicates_of(trait_ref.def_id).iter_instantiated(tcx, &trait_ref.args));
-    for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
-        // FIXME(associated_const_equality): Also add associated consts to
-        // the requirements here.
-        if item.kind == ty::AssocKind::Type {
-            // associated types that require `Self: Sized` do not show up in the built-in
-            // implementation of `Trait for dyn Trait`, and can be dropped here.
-            if tcx.generics_require_sized_self(item.def_id) {
-                continue;
-            }
 
-            requirements
-                .extend(tcx.item_bounds(item.def_id).iter_instantiated(tcx, &trait_ref.args));
+    // FIXME(associated_const_equality): Also add associated consts to
+    // the requirements here.
+    for associated_type_def_id in tcx.associated_type_def_ids(trait_ref.def_id) {
+        // associated types that require `Self: Sized` do not show up in the built-in
+        // implementation of `Trait for dyn Trait`, and can be dropped here.
+        if tcx.generics_require_sized_self(associated_type_def_id) {
+            continue;
         }
+
+        requirements.extend(
+            tcx.item_bounds(associated_type_def_id).iter_instantiated(tcx, &trait_ref.args),
+        );
     }
 
     let mut replace_projection_with = FxHashMap::default();

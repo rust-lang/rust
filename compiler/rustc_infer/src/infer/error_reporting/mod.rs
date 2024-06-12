@@ -1707,6 +1707,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ValuePairs::ExistentialProjection(_) => {
                         (false, Mismatch::Fixed("existential projection"))
                     }
+                    infer::DummyPair => (false, Mismatch::Fixed("values")),
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -2275,6 +2276,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
                 Some((exp, fnd, None))
             }
+            infer::DummyPair => None,
         }
     }
 

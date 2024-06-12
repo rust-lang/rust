@@ -183,6 +183,10 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
+
+    fn is_ct_var(self) -> bool {
+        matches!(self.kind(), ty::ConstKind::Infer(ty::InferConst::Var(_)))
+    }
 }
 
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
@@ -206,6 +210,28 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
 pub trait Term<I: Interner<Term = Self>>:
     Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<I>> + TypeFoldable<I> + Relate<I>
 {
+    fn as_type(&self) -> Option<I::Ty> {
+        if let ty::TermKind::Ty(ty) = self.kind() { Some(ty) } else { None }
+    }
+
+    fn expect_type(&self) -> I::Ty {
+        self.as_type().expect("expected a type, but found a const")
+    }
+
+    fn as_const(&self) -> Option<I::Const> {
+        if let ty::TermKind::Const(c) = self.kind() { Some(c) } else { None }
+    }
+
+    fn expect_const(&self) -> I::Const {
+        self.as_const().expect("expected a const, but found a type")
+    }
+
+    fn is_infer(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => ty.is_ty_var(),
+            ty::TermKind::Const(ct) => ct.is_ct_var(),
+        }
+    }
 }
 
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
@@ -251,12 +277,36 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + TypeSuperVisitable<I>
     + TypeSuperFoldable<I>
     + Flags
+    + UpcastFrom<I, ty::PredicateKind<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::PredicateKind<I>>>
+    + UpcastFrom<I, ty::ClauseKind<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, I::Clause>
     + UpcastFrom<I, ty::NormalizesTo<I>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
 {
     fn is_coinductive(self, interner: I) -> bool;
+
+    fn allow_normalization(self) -> bool {
+        match self.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
+            | ty::PredicateKind::AliasRelate(..)
+            | ty::PredicateKind::NormalizesTo(..) => false,
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
+            | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))
+            | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(_))
+            | ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
+            | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
+            | ty::PredicateKind::ObjectSafe(_)
+            | ty::PredicateKind::Subtype(_)
+            | ty::PredicateKind::Coerce(_)
+            | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_))
+            | ty::PredicateKind::ConstEquate(_, _)
+            | ty::PredicateKind::Ambiguous => true,
+        }
+    }
 }
 
 pub trait Clause<I: Interner<Clause = Self>>:

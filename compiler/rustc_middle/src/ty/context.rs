@@ -70,9 +70,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::fold::TypeFoldable;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::WithCachedTypeInfo;
-use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
+use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
@@ -301,6 +301,25 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn has_target_features(self, def_id: DefId) -> bool {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
+    }
+
+    fn require_lang_item(self, lang_item: TraitSolverLangItem) -> DefId {
+        self.require_lang_item(
+            match lang_item {
+                TraitSolverLangItem::Future => hir::LangItem::Future,
+                TraitSolverLangItem::FutureOutput => hir::LangItem::FutureOutput,
+                TraitSolverLangItem::AsyncFnKindHelper => hir::LangItem::AsyncFnKindHelper,
+                TraitSolverLangItem::AsyncFnKindUpvars => hir::LangItem::AsyncFnKindUpvars,
+            },
+            None,
+        )
+    }
+
+    fn associated_type_def_ids(self, def_id: DefId) -> impl Iterator<Item = DefId> {
+        self.associated_items(def_id)
+            .in_definition_order()
+            .filter(|assoc_item| matches!(assoc_item.kind, ty::AssocKind::Type))
+            .map(|assoc_item| assoc_item.def_id)
     }
 }
 

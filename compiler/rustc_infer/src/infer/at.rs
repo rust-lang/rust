@@ -225,6 +225,50 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         }
     }
 
+    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
+    pub fn relate_no_trace<T>(
+        self,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        let mut fields = CombineFields::new(
+            self.infcx,
+            TypeTrace::dummy(self.cause),
+            self.param_env,
+            DefineOpaqueTypes::Yes,
+        );
+        fields.sub().relate_with_variance(
+            variance,
+            ty::VarianceDiagInfo::default(),
+            expected,
+            actual,
+        )?;
+        Ok(fields.goals)
+    }
+
+    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
+    pub fn eq_structurally_relating_aliases_no_trace<T>(
+        self,
+        expected: T,
+        actual: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        let mut fields = CombineFields::new(
+            self.infcx,
+            TypeTrace::dummy(self.cause),
+            self.param_env,
+            DefineOpaqueTypes::Yes,
+        );
+        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
+        Ok(fields.goals)
+    }
+
     /// Computes the least-upper-bound, or mutual supertype, of two
     /// values. The order of the arguments doesn't matter, but since
     /// this can result in an error (e.g., if asked to compute LUB of
