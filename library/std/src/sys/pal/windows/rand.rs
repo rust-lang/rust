@@ -1,6 +1,6 @@
+use core::{mem, ptr};
+
 use crate::sys::c;
-use core::mem;
-use core::ptr;
 
 #[cfg(not(target_vendor = "win7"))]
 #[inline]
