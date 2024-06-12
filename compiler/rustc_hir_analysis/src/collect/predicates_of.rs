@@ -169,12 +169,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.insert((trait_ref.upcast(tcx), tcx.def_span(def_id)));
     }
 
-    // Collect the predicates that were written inline by the user on each
-    // type parameter (e.g., `<T: Foo>`). Also add `ConstArgHasType` predicates
-    // for each const parameter.
+    // Add implicit predicates that should be treated as if the user has written them,
+    // including the implicit `T: Sized` for all generic parameters, and `ConstArgHasType`
+    // for const params.
     for param in hir_generics.params {
         match param.kind {
-            // We already dealt with early bound lifetimes above.
             GenericParamKind::Lifetime { .. } => (),
             GenericParamKind::Type { .. } => {
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
@@ -204,7 +203,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     }
 
     trace!(?predicates);
-    // Add in the bounds that appear in the where-clause.
+    // Add inline `<T: Foo>` bounds and bounds in the where clause.
     for predicate in hir_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
