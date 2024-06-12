@@ -1,13 +1,16 @@
-#![cfg_attr(doc, allow(internal_features))]
-#![cfg_attr(doc, feature(rustdoc_internals))]
-#![cfg_attr(doc, doc(rust_logo))]
-#![feature(rustc_private)]
-// Note: please avoid adding other feature gates where possible
+// tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(doc, allow(internal_features))]
+#![cfg_attr(doc, doc(rust_logo))]
+#![cfg_attr(doc, feature(rustdoc_internals))]
+// Note: please avoid adding other feature gates where possible
+#![feature(rustc_private)]
+// Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
-#![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
+#![warn(unused_lifetimes)]
+// tidy-alphabetical-end
 
 extern crate jobserver;
 #[macro_use]
