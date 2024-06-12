@@ -1,7 +1,7 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -10,8 +10,10 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;

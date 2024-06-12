@@ -4,16 +4,18 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(rustdoc_internals)]
-#![doc(rust_logo)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![doc(rust_logo)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(hash_raw_entry)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(impl_trait_in_assoc_type)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};

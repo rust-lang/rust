@@ -4,14 +4,16 @@
 //! Parsing does not happen at runtime: structures of `std::fmt::rt` are
 //! generated instead.
 
+// tidy-alphabetical-start
+// We want to be able to build this crate with a stable compiler,
+// so no `#![feature]` attributes should be added.
+#![deny(unstable_features)]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
-// We want to be able to build this crate with a stable compiler,
-// so no `#![feature]` attributes should be added.
-#![deny(unstable_features)]
+// tidy-alphabetical-end
 
 use rustc_lexer::unescape;
 pub use Alignment::*;
