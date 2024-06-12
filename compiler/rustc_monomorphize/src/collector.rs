@@ -916,7 +916,13 @@ fn visit_fn_use<'tcx>(
 ) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
         let instance = if is_direct_call {
-            ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+            ty::Instance::expect_resolve(
+                tcx,
+                ty::ParamEnv::reveal_all(),
+                def_id,
+                args,
+                Some(source),
+            )
         } else {
             match ty::Instance::resolve_for_fn_ptr(tcx, ty::ParamEnv::reveal_all(), def_id, args) {
                 Some(instance) => instance,
@@ -1318,8 +1324,13 @@ fn visit_mentioned_item<'tcx>(
     match *item {
         MentionedItem::Fn(ty) => {
             if let ty::FnDef(def_id, args) = *ty.kind() {
-                let instance =
-                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
+                let instance = Instance::expect_resolve(
+                    tcx,
+                    ty::ParamEnv::reveal_all(),
+                    def_id,
+                    args,
+                    Some(span),
+                );
                 // `visit_instance_use` was written for "used" item collection but works just as well
                 // for "mentioned" item collection.
                 // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
@@ -1544,6 +1555,7 @@ impl<'v> RootCollector<'_, 'v> {
             ty::ParamEnv::reveal_all(),
             start_def_id,
             self.tcx.mk_args(&[main_ret_ty.into()]),
+            None,
         );
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
@@ -1614,7 +1626,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         // As mentioned above, the method is legal to eagerly instantiate if it
         // only has lifetime generic parameters. This is validated by
         let args = trait_ref.args.extend_to(tcx, method.def_id, only_region_params);
-        let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, args);
+        let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, args, None);
 
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
         if mono_item.node.is_instantiable(tcx) && should_codegen_locally(tcx, instance) {

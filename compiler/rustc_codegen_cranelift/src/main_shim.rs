@@ -119,6 +119,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     ParamEnv::reveal_all(),
                     report.def_id,
                     tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
+                    None,
                 )
                 .polymorphize(tcx);
 
@@ -144,6 +145,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     ParamEnv::reveal_all(),
                     start_def_id,
                     tcx.mk_args(&[main_ret_ty.into()]),
+                    None,
                 )
                 .polymorphize(tcx);
                 let start_func_id = import_function(tcx, m, start_instance);

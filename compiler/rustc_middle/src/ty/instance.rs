@@ -13,7 +13,7 @@ use rustc_macros::{
 };
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
@@ -513,10 +513,12 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
+        span: Option<Span>,
     ) -> Instance<'tcx> {
         match ty::Instance::resolve(tcx, param_env, def_id, args) {
             Ok(Some(instance)) => instance,
-            instance => bug!(
+            instance => span_bug!(
+                span.unwrap_or(tcx.def_span(def_id)),
                 "failed to resolve instance for {}: {instance:#?}",
                 tcx.def_path_str_with_args(def_id, args)
             ),
@@ -588,7 +590,7 @@ impl<'tcx> Instance<'tcx> {
             return Instance { def: InstanceKind::VTableShim(def_id), args };
         }
 
-        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args);
+        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args, None);
 
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
         match resolved.def {
@@ -665,13 +667,13 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, None)
     }
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, None)
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]
