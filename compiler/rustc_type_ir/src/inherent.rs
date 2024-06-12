@@ -111,7 +111,19 @@ pub trait Ty<I: Interner<Ty = Self>>:
         match self.kind() {
             ty::FnPtr(sig) => sig,
             ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, &args),
-            _ => todo!("TODO:"),
+            ty::Error(_) => {
+                // ignore errors (#54954)
+                ty::Binder::dummy(ty::FnSig {
+                    inputs_and_output: Default::default(),
+                    c_variadic: false,
+                    safety: I::Safety::safe(),
+                    abi: I::Abi::rust(),
+                })
+            }
+            ty::Closure(..) => panic!(
+                "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
+            ),
+            _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self),
         }
     }
 }
@@ -129,12 +141,16 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
 }
 
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq + TypeVisitable<I> {
+pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+    fn rust() -> Self;
+
     /// Whether this ABI is `extern "Rust"`.
     fn is_rust(self) -> bool;
 }
 
-pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq + TypeVisitable<I> {
+pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+    fn safe() -> Self;
+
     fn is_safe(self) -> bool;
 
     fn prefix_str(self) -> &'static str;

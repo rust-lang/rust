@@ -72,8 +72,8 @@ pub trait Interner:
         + IntoIterator<Item = ty::Binder<Self, ty::ExistentialPredicate<Self>>>;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
-    type Safety: Safety<Self> + TypeFoldable<Self> + Relate<Self>;
-    type Abi: Abi<Self> + TypeFoldable<Self> + Relate<Self>;
+    type Safety: Safety<Self>;
+    type Abi: Abi<Self>;
 
     // Kinds of consts
     type Const: Const<Self>;

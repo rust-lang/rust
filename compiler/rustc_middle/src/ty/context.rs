@@ -324,12 +324,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for abi::Abi {
+    fn rust() -> Self {
+        abi::Abi::Rust
+    }
+
     fn is_rust(self) -> bool {
         matches!(self, abi::Abi::Rust)
     }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
+    fn safe() -> Self {
+        hir::Safety::Safe
+    }
+
     fn is_safe(self) -> bool {
         matches!(self, hir::Safety::Safe)
     }

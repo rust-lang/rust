@@ -368,6 +368,14 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
+    fn root_ty_var(&self, var: TyVid) -> TyVid {
+        self.root_var(var)
+    }
+
+    fn root_const_var(&self, var: ConstVid) -> ConstVid {
+        self.root_const_var(var)
+    }
+
     fn opportunistic_resolve_ty_var(&self, vid: TyVid) -> Ty<'tcx> {
         match self.probe_ty_var(vid) {
             Ok(ty) => ty,

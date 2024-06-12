@@ -18,6 +18,7 @@ use rustc_span::DUMMY_SP;
 use rustc_type_ir::fold::TypeSuperFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
+use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_type_ir::{self as ir, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::ops::ControlFlow;
@@ -634,7 +635,6 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
         }
     }
 
-    /* TODO:
     /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
     ///
     /// This is the case if the `term` does not occur in any other part of the predicate
@@ -685,8 +685,8 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
                 match t.kind() {
                     ir::Infer(ir::TyVar(vid)) => {
                         if let ir::TermKind::Ty(term) = self.term.kind()
-                            && let Some(term_vid) = term.ty_vid()
-                            && self.infcx.root_var(vid) == self.infcx.root_var(term_vid)
+                            && let ir::Infer(ir::TyVar(term_vid)) = term.kind()
+                            && self.infcx.root_ty_var(vid) == self.infcx.root_ty_var(term_vid)
                         {
                             ControlFlow::Break(())
                         } else {
@@ -736,7 +736,6 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
         goal.predicate.alias.visit_with(&mut visitor).is_continue()
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
-    */
 
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq<T: Relate<I>>(
