@@ -11,6 +11,7 @@ use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
+#[instrument(level = "debug", skip(tcx))]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
@@ -66,7 +67,22 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         // FIXME(#43408) always enable this once `lazy_normalization` is
         // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
-            let parent_def_id = tcx.hir().get_parent_item(hir_id);
+            let parent_did = tcx.parent(def_id.to_def_id());
+
+            // We don't do this unconditionally because the `DefId` parent of an anon const
+            // might be an implicitly created closure during `async fn` desugaring. This would
+            // have the wrong generics.
+            //
+            // i.e. `async fn foo<'a>() { let a = [(); { 1 + 2 }]; bar().await() }`
+            // would implicitly have a closure in its body that would be the parent of
+            // the `{ 1 + 2 }` anon const. This closure's generics is simply a witness
+            // instead of `['a]`.
+            let parent_did = if let DefKind::AnonConst = tcx.def_kind(parent_did) {
+                parent_did
+            } else {
+                tcx.hir().get_parent_item(hir_id).to_def_id()
+            };
+            debug!(?parent_did);
 
             let mut in_param_ty = false;
             for (_parent, node) in tcx.hir().parent_iter(hir_id) {
@@ -121,7 +137,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // This has some implications for how we get the predicates available to the anon const
                     // see `explicit_predicates_of` for more information on this
-                    let generics = tcx.generics_of(parent_def_id.to_def_id());
+                    let generics = tcx.generics_of(parent_did);
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
@@ -147,7 +163,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // Note that we do not supply the parent generics when using
                     // `min_const_generics`.
-                    Some(parent_def_id.to_def_id())
+                    Some(parent_did)
                 }
             } else {
                 let parent_node = tcx.parent_hir_node(hir_id);
@@ -159,7 +175,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
                         if constant.hir_id() == hir_id =>
                     {
-                        Some(parent_def_id.to_def_id())
+                        Some(parent_did)
                     }
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
@@ -171,7 +187,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                             _ => false,
                         }) =>
                     {
-                        Some(parent_def_id.to_def_id())
+                        Some(parent_did)
                     }
                     _ => None,
                 }
