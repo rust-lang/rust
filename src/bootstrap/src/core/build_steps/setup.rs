@@ -8,7 +8,7 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::t;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
-use crate::utils::helpers::hex_encode;
+use crate::utils::helpers::{self, hex_encode};
 use crate::Config;
 use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
@@ -482,10 +482,13 @@ impl Step for Hook {
 
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
-    let git = config.git().args(["rev-parse", "--git-common-dir"]).output().map(|output| {
-        assert!(output.status.success(), "failed to run `git`");
-        PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-    })?;
+    let git = helpers::git(Some(&config.src))
+        .args(["rev-parse", "--git-common-dir"])
+        .output()
+        .map(|output| {
+            assert!(output.status.success(), "failed to run `git`");
+            PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
+        })?;
     let hooks_dir = git.join("hooks");
     let dst = hooks_dir.join("pre-push");
     if dst.exists() {
