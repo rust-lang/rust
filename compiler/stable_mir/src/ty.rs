@@ -658,6 +658,11 @@ impl FnDef {
         with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
     }
 
+    // Check if the function body is available.
+    pub fn has_body(&self) -> bool {
+        with(|ctx| ctx.has_body(self.0))
+    }
+
     /// Get the information of the intrinsic if this function is a definition of one.
     pub fn as_intrinsic(&self) -> Option<IntrinsicDef> {
         with(|cx| cx.intrinsic(self.def_id()))
@@ -684,7 +689,7 @@ impl IntrinsicDef {
     /// Returns whether the intrinsic has no meaningful body and all backends
     /// need to shim all calls to it.
     pub fn must_be_overridden(&self) -> bool {
-        with(|cx| cx.intrinsic_must_be_overridden(*self))
+        with(|cx| !cx.has_body(self.0))
     }
 }
 
