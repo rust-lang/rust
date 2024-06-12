@@ -285,13 +285,13 @@ fn vtable_entries<'tcx>(
                         return VtblEntry::Vacant;
                     }
 
-                    let instance = ty::Instance::resolve_for_vtable(
+                    let instance = ty::Instance::expect_resolve_for_vtable(
                         tcx,
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         args,
-                    )
-                    .expect("resolution failed during building vtable representation");
+                    );
+
                     VtblEntry::Method(instance)
                 });
 

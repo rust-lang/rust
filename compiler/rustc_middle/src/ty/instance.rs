@@ -505,7 +505,7 @@ impl<'tcx> Instance<'tcx> {
         // below is more likely to ignore the bounds in scope (e.g. if the only
         // generic parameters mentioned by `args` were lifetime ones).
         let args = tcx.erase_regions(args);
-        tcx.resolve_instance(tcx.erase_regions(param_env.and((def_id, args))))
+        tcx.resolve_instance_raw(tcx.erase_regions(param_env.and((def_id, args))))
     }
 
     pub fn expect_resolve(
@@ -571,77 +571,81 @@ impl<'tcx> Instance<'tcx> {
         })
     }
 
-    pub fn resolve_for_vtable(
+    pub fn expect_resolve_for_vtable(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
         let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
         let is_vtable_shim = !fn_sig.inputs().skip_binder().is_empty()
             && fn_sig.input(0).skip_binder().is_param(0)
             && tcx.generics_of(def_id).has_self;
+
         if is_vtable_shim {
             debug!(" => associated item with unsizeable self: Self");
-            Some(Instance { def: InstanceKind::VTableShim(def_id), args })
-        } else {
-            let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
-            Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
-                match resolved.def {
-                    InstanceKind::Item(def) => {
-                        // We need to generate a shim when we cannot guarantee that
-                        // the caller of a trait object method will be aware of
-                        // `#[track_caller]` - this ensures that the caller
-                        // and callee ABI will always match.
-                        //
-                        // The shim is generated when all of these conditions are met:
-                        //
-                        // 1) The underlying method expects a caller location parameter
-                        // in the ABI
-                        if resolved.def.requires_caller_location(tcx)
-                            // 2) The caller location parameter comes from having `#[track_caller]`
-                            // on the implementation, and *not* on the trait method.
-                            && !tcx.should_inherit_track_caller(def)
-                            // If the method implementation comes from the trait definition itself
-                            // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
-                            // then we don't need to generate a shim. This check is needed because
-                            // `should_inherit_track_caller` returns `false` if our method
-                            // implementation comes from the trait block, and not an impl block
-                            && !matches!(
-                                tcx.opt_associated_item(def),
-                                Some(ty::AssocItem {
-                                    container: ty::AssocItemContainer::TraitContainer,
-                                    ..
-                                })
-                            )
-                        {
-                            if tcx.is_closure_like(def) {
-                                debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
-                                       def, def_id, args);
-
-                                // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
-                                // - unlike functions, invoking a closure always goes through a
-                                // trait.
-                                resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args };
-                            } else {
-                                debug!(
-                                    " => vtable fn pointer created for function with #[track_caller]: {:?}", def
-                                );
-                                resolved.def = InstanceKind::ReifyShim(def, reason);
-                            }
-                        }
-                    }
-                    InstanceKind::Virtual(def_id, _) => {
-                        debug!(" => vtable fn pointer created for virtual call");
-                        resolved.def = InstanceKind::ReifyShim(def_id, reason)
-                    }
-                    _ => {}
-                }
-
-                resolved
-            })
+            return Instance { def: InstanceKind::VTableShim(def_id), args };
         }
+
+        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args);
+
+        let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
+        match resolved.def {
+            InstanceKind::Item(def) => {
+                // We need to generate a shim when we cannot guarantee that
+                // the caller of a trait object method will be aware of
+                // `#[track_caller]` - this ensures that the caller
+                // and callee ABI will always match.
+                //
+                // The shim is generated when all of these conditions are met:
+                //
+                // 1) The underlying method expects a caller location parameter
+                // in the ABI
+                if resolved.def.requires_caller_location(tcx)
+                        // 2) The caller location parameter comes from having `#[track_caller]`
+                        // on the implementation, and *not* on the trait method.
+                        && !tcx.should_inherit_track_caller(def)
+                        // If the method implementation comes from the trait definition itself
+                        // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
+                        // then we don't need to generate a shim. This check is needed because
+                        // `should_inherit_track_caller` returns `false` if our method
+                        // implementation comes from the trait block, and not an impl block
+                        && !matches!(
+                            tcx.opt_associated_item(def),
+                            Some(ty::AssocItem {
+                                container: ty::AssocItemContainer::TraitContainer,
+                                ..
+                            })
+                        )
+                {
+                    if tcx.is_closure_like(def) {
+                        debug!(
+                            " => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
+                            def, def_id, args
+                        );
+
+                        // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
+                        // - unlike functions, invoking a closure always goes through a
+                        // trait.
+                        resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args };
+                    } else {
+                        debug!(
+                            " => vtable fn pointer created for function with #[track_caller]: {:?}",
+                            def
+                        );
+                        resolved.def = InstanceKind::ReifyShim(def, reason);
+                    }
+                }
+            }
+            InstanceKind::Virtual(def_id, _) => {
+                debug!(" => vtable fn pointer created for virtual call");
+                resolved.def = InstanceKind::ReifyShim(def_id, reason)
+            }
+            _ => {}
+        }
+
+        resolved
     }
 
     pub fn resolve_closure(

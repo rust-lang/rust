@@ -16,7 +16,7 @@ use traits::{translate_args, Reveal};
 
 use crate::errors::UnexpectedFnPtrAssociatedItem;
 
-fn resolve_instance<'tcx>(
+fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, GenericArgsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
@@ -364,5 +364,5 @@ fn resolve_associated_item<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { resolve_instance, ..*providers };
+    *providers = Providers { resolve_instance_raw, ..*providers };
 }

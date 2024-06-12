@@ -2197,8 +2197,8 @@ rustc_queries! {
     ///  * `Err(ErrorGuaranteed)` when the `Instance` resolution process
     ///    couldn't complete due to errors elsewhere - this is distinct
     ///    from `Ok(None)` to avoid misleading diagnostics when an error
-    ///    has already been/will be emitted, for the original cause
-    query resolve_instance(
+    ///    has already been/will be emitted, for the original cause.
+    query resolve_instance_raw(
         key: ty::ParamEnvAnd<'tcx, (DefId, GenericArgsRef<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
