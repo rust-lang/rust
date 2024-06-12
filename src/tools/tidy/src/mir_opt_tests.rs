@@ -1,8 +1,9 @@
 //! Tidy check to ensure that mir opt directories do not have stale files or dashes in file names
 
-use miropt_test_tools::PanicStrategy;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use miropt_test_tools::PanicStrategy;
 
 use crate::walk::walk_no_read;
 

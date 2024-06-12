@@ -1,12 +1,12 @@
-use std::{borrow::Cow, io, io::prelude::Write};
+use std::borrow::Cow;
+use std::io;
+use std::io::prelude::Write;
 
 use super::OutputFormatter;
-use crate::{
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
-    test_result::TestResult,
-    time,
-    types::TestDesc,
-};
+use crate::console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation};
+use crate::test_result::TestResult;
+use crate::time;
+use crate::types::TestDesc;
 
 pub(crate) struct JsonFormatter<T> {
     out: OutputLocation<T>,

@@ -1,5 +1,5 @@
-use crate::spec::Target;
-use crate::{abi::Endian, spec::base};
+use crate::abi::Endian;
+use crate::spec::{base, Target};
 
 pub fn target() -> Target {
     Target {

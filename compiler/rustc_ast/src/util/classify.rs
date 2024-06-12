@@ -1,7 +1,8 @@
 //! Routines the parser and pretty-printer use to classify AST nodes.
 
+use crate::ast;
 use crate::ast::ExprKind::*;
-use crate::{ast, token::Delimiter};
+use crate::token::Delimiter;
 
 /// This classification determines whether various syntactic positions break out
 /// of parsing the current expression (true) or continue parsing more of the

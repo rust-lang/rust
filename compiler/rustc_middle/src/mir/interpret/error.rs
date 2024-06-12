@@ -1,19 +1,19 @@
+use std::any::Any;
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
-use std::{any::Any, backtrace::Backtrace, fmt};
+use std::fmt;
 
 use either::Either;
-
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
-use rustc_span::Symbol;
-use rustc_span::{def_id::DefId, Span, DUMMY_SP};
+use rustc_span::def_id::DefId;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};

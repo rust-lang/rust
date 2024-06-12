@@ -1,9 +1,10 @@
-use crate::config::Config;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
 use fs_err as fs;
+use serde_json::Value;
+
+use crate::config::Config;
 
 #[derive(Debug)]
 pub struct Cache {

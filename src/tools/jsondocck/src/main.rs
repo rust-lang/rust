@@ -1,9 +1,10 @@
-use jsonpath_lib::select;
-use regex::{Regex, RegexBuilder};
-use serde_json::Value;
 use std::borrow::Cow;
 use std::sync::OnceLock;
 use std::{env, fmt, fs};
+
+use jsonpath_lib::select;
+use regex::{Regex, RegexBuilder};
+use serde_json::Value;
 
 mod cache;
 mod config;

@@ -1,11 +1,12 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::expr::category::Category;
-use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
+
+use crate::build::expr::category::Category;
+use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an operand suitable for use until the end of the current

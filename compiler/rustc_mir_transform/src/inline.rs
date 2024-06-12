@@ -1,5 +1,7 @@
 //! Inlining pass for MIR functions
-use crate::deref_separator::deref_finder;
+use std::iter;
+use std::ops::{Range, RangeFrom};
+
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -9,8 +11,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -18,11 +19,10 @@ use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::cost_checker::CostChecker;
+use crate::deref_separator::deref_finder;
 use crate::simplify::simplify_cfg;
 use crate::util;
 use crate::validate::validate_types;
-use std::iter;
-use std::ops::{Range, RangeFrom};
 
 pub(crate) mod cycle;
 

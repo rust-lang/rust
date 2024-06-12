@@ -1,10 +1,11 @@
 use core::iter::{FusedIterator, TrustedLen};
+use core::mem::MaybeUninit;
 use core::num::NonZero;
-use core::{array, fmt, mem::MaybeUninit, ops::Try, ptr};
-
-use crate::alloc::{Allocator, Global};
+use core::ops::Try;
+use core::{array, fmt, ptr};
 
 use super::VecDeque;
+use crate::alloc::{Allocator, Global};
 
 /// An owning iterator over the elements of a `VecDeque`.
 ///

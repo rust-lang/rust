@@ -1,26 +1,6 @@
-use super::pat::Expected;
-use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
-    TokenExpectType, TokenType,
-};
-use crate::errors::{
-    AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, BadQPathStage2, BadTypePlus,
-    BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
-    ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
-    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
-    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
-};
-use crate::fluent_generated as fluent;
-use crate::parser;
-use crate::parser::attr::InnerAttrPolicy;
+use std::mem::take;
+use std::ops::{Deref, DerefMut};
+
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
@@ -42,10 +22,31 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, SpanSnippetError, Symbol, DUMMY_SP};
-use std::mem::take;
-use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::{debug, trace};
+
+use super::pat::Expected;
+use super::{
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
+    TokenExpectType, TokenType,
+};
+use crate::errors::{
+    AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, BadQPathStage2, BadTypePlus,
+    BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
+    ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
+    ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
+    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
+    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
+    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+};
+use crate::parser::attr::InnerAttrPolicy;
+use crate::{fluent_generated as fluent, parser};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {

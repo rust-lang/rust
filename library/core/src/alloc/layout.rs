@@ -4,11 +4,9 @@
 // collections, resulting in having to optimize down excess IR multiple times.
 // Your performance intuition is useless. Run perf.
 
-use crate::cmp;
 use crate::error::Error;
-use crate::fmt;
-use crate::mem;
 use crate::ptr::{Alignment, NonNull};
+use crate::{cmp, fmt, mem};
 
 // While this function is used in one place and its implementation
 // could be inlined, the previous attempts to do so made rustc

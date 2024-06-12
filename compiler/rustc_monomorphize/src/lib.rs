@@ -4,15 +4,11 @@
 // tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::bug;
 use rustc_middle::query::{Providers, TyCtxtAt};
-use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{self, Ty};
-use rustc_span::def_id::DefId;
-use rustc_span::def_id::LOCAL_CRATE;
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, traits};
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::ErrorGuaranteed;
 
 mod collector;

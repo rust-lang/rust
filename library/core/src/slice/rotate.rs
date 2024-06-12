@@ -1,6 +1,5 @@
-use crate::cmp;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
-use crate::ptr;
+use crate::{cmp, ptr};
 
 /// Rotates the range `[mid-left, mid+right)` such that the element at `mid` becomes the first
 /// element. Equivalently, rotates the range `left` elements to the left or `right` elements to the

@@ -1,20 +1,12 @@
-use super::FnCtxt;
-
-use crate::errors;
-use crate::fluent_generated as fluent;
-use crate::fn_ctxt::rustc_span::BytePos;
-use crate::hir::is_range_literal;
-use crate::method::probe;
-use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use core::cmp::min;
 use core::iter;
+
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
@@ -39,6 +31,13 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+
+use super::FnCtxt;
+use crate::fn_ctxt::rustc_span::BytePos;
+use crate::hir::is_range_literal;
+use crate::method::probe;
+use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
+use crate::{errors, fluent_generated as fluent};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {

@@ -1,7 +1,8 @@
+use std::fmt;
+
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
-use std::fmt;
 
 use crate::{self as ty, Interner};
 

@@ -1,7 +1,8 @@
-use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::env;
 use std::path::Path;
 use std::process::{Command, Output};
+
+use rayon::iter::{ParallelBridge, ParallelIterator};
 
 fn check_html_file(file: &Path) -> usize {
     let to_mute = &[

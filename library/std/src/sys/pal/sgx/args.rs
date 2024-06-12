@@ -1,10 +1,10 @@
-use super::abi::usercalls::{alloc, raw::ByteBuffer};
+use super::abi::usercalls::alloc;
+use super::abi::usercalls::raw::ByteBuffer;
 use crate::ffi::OsString;
-use crate::fmt;
-use crate::slice;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::os_str::Buf;
 use crate::sys_common::FromInner;
+use crate::{fmt, slice};
 
 #[cfg_attr(test, linkage = "available_externally")]
 #[export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE"]

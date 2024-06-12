@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -16,8 +18,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
 use crate::errors;
-
-use std::path::PathBuf;
 
 pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
     let formats = if verbatim {

@@ -9,20 +9,18 @@
 //! practice that's likely not true!
 
 use std::collections::HashMap;
-use std::env;
+#[cfg(not(feature = "bootstrap-self-test"))]
+use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
-use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::{env, fs};
 
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
+use crate::builder::Kind;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::core::build_steps::tool;
-#[cfg(not(feature = "bootstrap-self-test"))]
-use std::collections::HashSet;
-
-use crate::builder::Kind;
 use crate::core::config::Target;
 use crate::utils::helpers::output;
 use crate::Build;

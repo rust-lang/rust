@@ -31,12 +31,12 @@ pub mod unescape;
 #[cfg(test)]
 mod tests;
 
-pub use crate::cursor::Cursor;
+use unicode_properties::UnicodeEmoji;
 
 use self::LiteralKind::*;
 use self::TokenKind::*;
+pub use crate::cursor::Cursor;
 use crate::cursor::EOF_CHAR;
-use unicode_properties::UnicodeEmoji;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,

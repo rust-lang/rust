@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 
-use crate::Optimization;
-use crate::Target;
+use crate::{Optimization, Target};
 
 #[derive(Debug)]
 pub struct Session {

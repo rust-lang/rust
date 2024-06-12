@@ -5,7 +5,6 @@ use rustc_middle::ty::{self, Upcast};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-
 use thin_vec::ThinVec;
 
 use crate::clean;

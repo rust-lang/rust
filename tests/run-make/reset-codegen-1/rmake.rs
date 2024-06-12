@@ -7,8 +7,9 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{bin_name, fs_wrapper, rustc};
 use std::path::Path;
+
+use run_make_support::{bin_name, fs_wrapper, rustc};
 
 fn compile(output_file: &str, emit: Option<&str>) {
     let mut rustc = rustc();

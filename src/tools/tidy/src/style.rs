@@ -17,10 +17,13 @@
 //! `// ignore-tidy-CHECK-NAME`.
 // ignore-tidy-dbg
 
-use crate::walk::{filter_dirs, walk};
+use std::ffi::OsStr;
+use std::path::Path;
+
 use regex::RegexSet;
 use rustc_hash::FxHashMap;
-use std::{ffi::OsStr, path::Path};
+
+use crate::walk::{filter_dirs, walk};
 
 #[cfg(test)]
 mod tests;

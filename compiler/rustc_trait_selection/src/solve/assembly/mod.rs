@@ -1,5 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
+use std::fmt::Debug;
+
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
@@ -10,14 +12,10 @@ use rustc_middle::traits::solve::{
 };
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{fast_reject, TypeFoldable};
-use rustc_middle::ty::{TypeVisitableExt, Upcast};
+use rustc_middle::ty::{self, fast_reject, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
-use std::fmt::Debug;
 
-use crate::solve::GoalSource;
-use crate::solve::{EvalCtxt, SolverMode};
+use crate::solve::{EvalCtxt, GoalSource, SolverMode};
 
 pub(super) mod structural_traits;
 

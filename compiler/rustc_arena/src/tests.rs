@@ -1,7 +1,9 @@
 extern crate test;
-use super::TypedArena;
 use std::cell::Cell;
+
 use test::Bencher;
+
+use super::TypedArena;
 
 #[allow(dead_code)]
 #[derive(Debug, Eq, PartialEq)]

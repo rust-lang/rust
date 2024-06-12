@@ -1,13 +1,12 @@
-use std::{
-    ffi::{c_char, CStr},
-    marker::PhantomData,
-    ops::Deref,
-    ptr::NonNull,
-};
+use std::ffi::{c_char, CStr};
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::ptr::NonNull;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 
-use crate::{errors::LlvmError, llvm};
+use crate::errors::LlvmError;
+use crate::llvm;
 
 /// Responsible for safely creating and disposing llvm::TargetMachine via ffi functions.
 /// Not cloneable as there is no clone function for llvm::TargetMachine.

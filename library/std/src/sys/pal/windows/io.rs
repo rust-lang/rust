@@ -1,9 +1,10 @@
+use core::ffi::c_void;
+
 use crate::marker::PhantomData;
 use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::slice;
 use crate::sys::c;
-use core::ffi::c_void;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]

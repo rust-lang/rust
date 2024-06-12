@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 
-use crate::infer::InferCtxt;
-use crate::traits::Obligation;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, Upcast};
 
 use super::{ObligationCause, PredicateObligation};
+use crate::infer::InferCtxt;
+use crate::traits::Obligation;
 
 /// A trait error with most of its information removed. This is the error
 /// returned by an `ObligationCtxt` by default, and suitable if you just

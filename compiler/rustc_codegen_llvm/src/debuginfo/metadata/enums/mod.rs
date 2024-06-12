@@ -1,45 +1,29 @@
-use rustc_codegen_ssa::debuginfo::{
-    type_names::{compute_debuginfo_type_name, cpp_like_debuginfo},
-    wants_c_like_enum_debuginfo,
-};
+use std::borrow::Cow;
+
+use rustc_codegen_ssa::debuginfo::type_names::{compute_debuginfo_type_name, cpp_like_debuginfo};
+use rustc_codegen_ssa::debuginfo::wants_c_like_enum_debuginfo;
 use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
-use rustc_middle::{
-    bug,
-    mir::CoroutineLayout,
-    ty::{
-        self,
-        layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef,
-    },
-};
+use rustc_middle::bug;
+use rustc_middle::mir::CoroutineLayout;
+use rustc_middle::ty::layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef};
 use rustc_span::Symbol;
 use rustc_target::abi::{
     FieldIdx, HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants,
 };
-use std::borrow::Cow;
 
-use crate::{
-    common::CodegenCx,
-    debuginfo::{
-        metadata::{
-            build_field_di_node, build_generic_type_param_di_nodes, type_di_node,
-            type_map::{self, Stub},
-            unknown_file_metadata, UNKNOWN_LINE_NUMBER,
-        },
-        utils::{create_DIArray, get_namespace_for_item, DIB},
-    },
-    llvm::{
-        self,
-        debuginfo::{DIFlags, DIType},
-    },
+use super::type_map::{DINodeCreationResult, UniqueTypeId};
+use super::{size_and_align_of, SmallVec};
+use crate::common::CodegenCx;
+use crate::debuginfo::metadata::type_map::{self, Stub};
+use crate::debuginfo::metadata::{
+    build_field_di_node, build_generic_type_param_di_nodes, type_di_node, unknown_file_metadata,
+    UNKNOWN_LINE_NUMBER,
 };
-
-use super::{
-    size_and_align_of,
-    type_map::{DINodeCreationResult, UniqueTypeId},
-    SmallVec,
-};
+use crate::debuginfo::utils::{create_DIArray, get_namespace_for_item, DIB};
+use crate::llvm::debuginfo::{DIFlags, DIType};
+use crate::llvm::{self};
 
 mod cpp_like;
 mod native;

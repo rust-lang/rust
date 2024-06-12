@@ -1,9 +1,8 @@
 //! Buffer management for same-process client<->server communication.
 
 use std::io::{self, Write};
-use std::mem;
 use std::ops::{Deref, DerefMut};
-use std::slice;
+use std::{mem, slice};
 
 #[repr(C)]
 pub struct Buffer {

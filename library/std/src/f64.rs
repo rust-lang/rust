@@ -15,17 +15,17 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(test))]
-use crate::intrinsics;
-#[cfg(not(test))]
-use crate::sys::cmath;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
     consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
     MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
 };
+
+#[cfg(not(test))]
+use crate::intrinsics;
+#[cfg(not(test))]
+use crate::sys::cmath;
 
 #[cfg(not(test))]
 impl f64 {

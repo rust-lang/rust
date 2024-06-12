@@ -1,9 +1,10 @@
 //! The various pretty-printing routines.
 
-use rustc_ast as ast;
+use std::cell::Cell;
+use std::fmt::Write;
+
 use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_errors::FatalError;
-use rustc_hir_pretty as pprust_hir;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
@@ -12,9 +13,8 @@ use rustc_session::Session;
 use rustc_smir::rustc_internal::pretty::write_smir_pretty;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
-use std::cell::Cell;
-use std::fmt::Write;
 use tracing::debug;
+use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;

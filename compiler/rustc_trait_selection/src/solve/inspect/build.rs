@@ -6,13 +6,14 @@
 use std::marker::PhantomData;
 use std::mem;
 
-use crate::solve::eval_ctxt::canonical;
-use crate::solve::{self, inspect, GenerateProofTree};
 use rustc_middle::bug;
 use rustc_next_trait_solver::solve::{
     CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
 };
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
+
+use crate::solve::eval_ctxt::canonical;
+use crate::solve::{self, inspect, GenerateProofTree};
 
 /// The core data structure when building proof trees.
 ///

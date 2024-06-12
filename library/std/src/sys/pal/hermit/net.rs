@@ -1,17 +1,16 @@
 #![allow(dead_code)]
 
+use core::ffi::c_int;
+
 use super::fd::FileDesc;
-use crate::cmp;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, RawFd};
 use crate::sys::time::Instant;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
-
-use core::ffi::c_int;
+use crate::{cmp, mem};
 
 #[allow(unused_extern_crates)]
 pub extern crate hermit_abi as netc;

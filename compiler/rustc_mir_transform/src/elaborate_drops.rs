@@ -1,20 +1,22 @@
-use crate::deref_separator::deref_finder;
+use std::fmt;
+
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
-use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
+use rustc_mir_dataflow::elaborate_drops::{
+    elaborate_drop, DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind,
+};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::on_all_children_bits;
-use rustc_mir_dataflow::on_lookup_result_bits;
-use rustc_mir_dataflow::MoveDataParamEnv;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{
+    on_all_children_bits, on_lookup_result_bits, Analysis, MoveDataParamEnv, ResultsCursor,
+};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
-use std::fmt;
+
+use crate::deref_separator::deref_finder;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
 /// However, in this phase, the presence of these terminators does not guarantee that a destructor will run,

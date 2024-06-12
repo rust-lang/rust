@@ -1,15 +1,16 @@
-use super::ObjectSafetyViolation;
+use std::{fmt, iter};
 
-use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
-use std::fmt;
-use std::iter;
+
+use super::ObjectSafetyViolation;
+use crate::infer::InferCtxt;
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn report_extra_impl_obligation(

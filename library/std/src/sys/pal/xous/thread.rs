@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
@@ -7,7 +9,6 @@ use crate::os::xous::ffi::{
 };
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
 use crate::time::Duration;
-use core::arch::asm;
 
 pub struct Thread {
     tid: ThreadId,

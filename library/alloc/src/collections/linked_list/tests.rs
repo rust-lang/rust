@@ -1,11 +1,11 @@
-use super::*;
-use crate::testing::crash_test::{CrashTestDummy, Panic};
-use crate::vec::Vec;
-
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::thread;
 
 use rand::RngCore;
+
+use super::*;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
+use crate::vec::Vec;
 
 #[test]
 fn test_basic() {
@@ -1167,9 +1167,7 @@ fn test_drop_panic() {
 
 #[test]
 fn test_allocator() {
-    use core::alloc::AllocError;
-    use core::alloc::Allocator;
-    use core::alloc::Layout;
+    use core::alloc::{AllocError, Allocator, Layout};
     use core::cell::Cell;
 
     struct A {

@@ -4,14 +4,14 @@ mod init_mask;
 mod provenance_map;
 
 use std::borrow::Cow;
-use std::fmt;
-use std::hash;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut, Range};
-use std::ptr;
+use std::{fmt, hash, ptr};
 
 use either::{Left, Right};
-
+use init_mask::*;
+pub use init_mask::{InitChunk, InitChunkIter};
+use provenance_map::*;
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -23,10 +23,6 @@ use super::{
     ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 use crate::ty;
-use init_mask::*;
-use provenance_map::*;
-
-pub use init_mask::{InitChunk, InitChunkIter};
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {

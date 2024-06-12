@@ -36,9 +36,10 @@
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
 
+use unwind as uw;
+
 use super::dwarf::eh::{self, EHAction, EHContext};
 use crate::ffi::c_int;
-use unwind as uw;
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
 // and TargetLowering::getExceptionSelectorRegister() for each architecture,

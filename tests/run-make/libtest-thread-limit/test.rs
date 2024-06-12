@@ -1,8 +1,6 @@
-use std::{
-    io::ErrorKind,
-    sync::OnceLock,
-    thread::{self, Builder, ThreadId},
-};
+use std::io::ErrorKind;
+use std::sync::OnceLock;
+use std::thread::{self, Builder, ThreadId};
 
 static THREAD_ID: OnceLock<ThreadId> = OnceLock::new();
 

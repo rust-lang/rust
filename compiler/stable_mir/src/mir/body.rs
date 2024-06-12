@@ -1,3 +1,5 @@
+use std::io;
+
 use crate::compiler_interface::with;
 use crate::mir::pretty::function_body;
 use crate::ty::{
@@ -5,7 +7,6 @@ use crate::ty::{
     TyConst, TyKind, VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
-use std::io;
 
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug)]

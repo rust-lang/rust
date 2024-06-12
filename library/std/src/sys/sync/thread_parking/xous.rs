@@ -2,10 +2,8 @@ use crate::os::xous::ffi::{blocking_scalar, scalar};
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
 use crate::pin::Pin;
 use crate::ptr;
-use crate::sync::atomic::{
-    AtomicI8,
-    Ordering::{Acquire, Release},
-};
+use crate::sync::atomic::AtomicI8;
+use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::time::Duration;
 
 const NOTIFIED: i8 = 1;

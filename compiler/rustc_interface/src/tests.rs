@@ -1,7 +1,12 @@
 #![allow(rustc::bad_opt_access)]
-use crate::interface::{initialize_checked_jobserver, parse_cfg};
+use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZero;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
 use rustc_data_structures::profiling::TimePassesFormat;
-use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
     CollapseMacroDebuginfo, CoverageLevel, CoverageOptions, DebugInfo, DumpMonoStatsFormat,
@@ -20,13 +25,11 @@ use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
-    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
+    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
+    RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel, WasmCAbi,
 };
-use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
-use std::collections::{BTreeMap, BTreeSet};
-use std::num::NonZero;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
+use crate::interface::{initialize_checked_jobserver, parse_cfg};
 
 fn sess_and_cfg<F>(args: &[&'static str], f: F)
 where

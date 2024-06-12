@@ -1,6 +1,5 @@
 use crate::error::Error;
 use crate::fmt;
-
 #[cfg(panic = "unwind")]
 use crate::sync::atomic::{AtomicBool, Ordering};
 #[cfg(panic = "unwind")]

@@ -8,16 +8,14 @@ mod linewritershim;
 #[cfg(test)]
 mod tests;
 
-use crate::error;
-use crate::fmt;
-use crate::io::Error;
+#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
+pub use bufwriter::WriterPanicked;
+use linewritershim::LineWriterShim;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{bufreader::BufReader, bufwriter::BufWriter, linewriter::LineWriter};
-use linewritershim::LineWriterShim;
-
-#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
-pub use bufwriter::WriterPanicked;
+use crate::io::Error;
+use crate::{error, fmt};
 
 /// An error returned by [`BufWriter::into_inner`] which combines an error that
 /// happened while writing out the buffer, and the buffered writer object

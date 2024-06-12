@@ -1,14 +1,14 @@
-use super::{
-    mir::{Body, Mutability, Safety},
-    with, DefId, Error, Symbol,
-};
-use crate::abi::Layout;
-use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
-use crate::target::MachineInfo;
-use crate::{crate_def::CrateDef, mir::mono::StaticDef};
-use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
+
+use super::mir::{Body, Mutability, Safety};
+use super::{with, DefId, Error, Symbol};
+use crate::abi::Layout;
+use crate::crate_def::CrateDef;
+use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::mir::mono::StaticDef;
+use crate::target::MachineInfo;
+use crate::{Filename, Opaque};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(usize);

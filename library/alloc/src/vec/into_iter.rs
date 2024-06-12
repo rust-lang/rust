@@ -1,11 +1,3 @@
-#[cfg(not(no_global_oom_handling))]
-use super::AsVecIntoIter;
-use crate::alloc::{Allocator, Global};
-#[cfg(not(no_global_oom_handling))]
-use crate::collections::VecDeque;
-use crate::raw_vec::RawVec;
-use core::array;
-use core::fmt;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen,
     TrustedRandomAccessNoCoerce,
@@ -17,6 +9,14 @@ use core::num::NonZero;
 use core::ops::Deref;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
+use core::{array, fmt};
+
+#[cfg(not(no_global_oom_handling))]
+use super::AsVecIntoIter;
+use crate::alloc::{Allocator, Global};
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::VecDeque;
+use crate::raw_vec::RawVec;
 
 macro non_null {
     (mut $place:expr, $t:ident) => {{

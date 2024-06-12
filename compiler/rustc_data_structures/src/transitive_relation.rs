@@ -1,10 +1,12 @@
-use crate::frozen::Frozen;
-use crate::fx::{FxHashSet, FxIndexSet};
-use rustc_index::bit_set::BitMatrix;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use std::ops::Deref;
+
+use rustc_index::bit_set::BitMatrix;
+
+use crate::frozen::Frozen;
+use crate::fx::{FxHashSet, FxIndexSet};
 
 #[cfg(test)]
 mod tests;

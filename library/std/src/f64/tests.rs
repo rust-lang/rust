@@ -1,6 +1,5 @@
 use crate::f64::consts;
-use crate::num::FpCategory as Fp;
-use crate::num::*;
+use crate::num::{FpCategory as Fp, *};
 
 #[test]
 fn test_num_f64() {

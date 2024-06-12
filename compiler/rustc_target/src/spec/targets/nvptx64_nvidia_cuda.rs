@@ -1,5 +1,6 @@
-use crate::spec::LinkSelfContainedDefault;
-use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions};
+use crate::spec::{
+    LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {

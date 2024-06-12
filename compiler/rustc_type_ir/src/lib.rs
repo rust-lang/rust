@@ -10,18 +10,19 @@
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
-#[cfg(feature = "nightly")]
-use rustc_data_structures::sso::SsoHashSet;
-#[cfg(feature = "nightly")]
-use rustc_data_structures::sync::Lrc;
-#[cfg(feature = "nightly")]
-use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 #[cfg(not(feature = "nightly"))]
 use std::collections::HashSet as SsoHashSet;
 use std::fmt;
 use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
 use std::sync::Arc as Lrc;
+
+#[cfg(feature = "nightly")]
+use rustc_data_structures::sso::SsoHashSet;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::sync::Lrc;
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 // These modules are `pub` since they are not glob-imported.
 #[macro_use]

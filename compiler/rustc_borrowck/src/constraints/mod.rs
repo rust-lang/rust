@@ -1,10 +1,11 @@
+use std::fmt;
+use std::ops::Index;
+
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
-use std::fmt;
-use std::ops::Index;
 
 use crate::type_check::Locations;
 

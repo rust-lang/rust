@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
-use crate::fluent_generated as fluent;
 use rustc_errors::{Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::{Span, Symbol};
+
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_recursion_limit)]

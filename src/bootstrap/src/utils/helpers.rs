@@ -3,22 +3,19 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
-use build_helper::util::fail;
-use std::env;
 use std::ffi::OsStr;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::str;
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::{env, fs, io, str};
+
+use build_helper::util::fail;
 
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
-use crate::LldMode;
-
 pub use crate::utils::dylib::{dylib_path, dylib_path_var};
+use crate::LldMode;
 
 #[cfg(test)]
 mod tests;

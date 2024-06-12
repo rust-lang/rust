@@ -2,12 +2,9 @@
 
 use super::hermit_abi;
 use crate::io::{self, Read};
-use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd};
-use crate::sys::cvt;
-use crate::sys::unsupported;
+use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd, *};
+use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-
-use crate::os::hermit::io::*;
 
 #[derive(Debug)]
 pub struct FileDesc {

@@ -1,11 +1,8 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::{errors, parse_in};
-
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::MetaItemKind;
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem};
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemKind};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::errors::report_lit_error;
@@ -13,6 +10,8 @@ use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, Symbol};
+
+use crate::{errors, parse_in};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {

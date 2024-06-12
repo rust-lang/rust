@@ -6,12 +6,11 @@
 #![allow(clippy::style)]
 
 use crate::ffi::CStr;
-use crate::mem;
 use crate::num::NonZero;
 pub use crate::os::raw::c_int;
 use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
-use crate::ptr;
+use crate::{mem, ptr};
 
 mod windows_sys;
 pub use windows_sys::*;
@@ -40,9 +39,7 @@ pub type PSRWLOCK = *mut SRWLOCK;
 
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = USHORT;
-pub use FD_SET as fd_set;
-pub use LINGER as linger;
-pub use TIMEVAL as timeval;
+pub use {FD_SET as fd_set, LINGER as linger, TIMEVAL as timeval};
 
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 

@@ -1,11 +1,10 @@
 use core::borrow::Borrow;
-use core::hint;
 use core::ops::RangeBounds;
-use core::ptr;
+use core::{hint, ptr};
 
-use super::node::{marker, ForceResult::*, Handle, NodeRef};
+use super::node::ForceResult::*;
+use super::node::{marker, Handle, NodeRef};
 use super::search::SearchBound;
-
 use crate::alloc::Allocator;
 // `front` and `back` are always both `None` or both `Some`.
 pub struct LeafRange<BorrowType, K, V> {

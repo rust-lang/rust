@@ -1,7 +1,5 @@
-use crate::{
-    alloc::{GlobalAlloc, Layout, System},
-    sys::common::alloc::{realloc_fallback, MIN_ALIGN},
-};
+use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::sys::common::alloc::{realloc_fallback, MIN_ALIGN};
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {

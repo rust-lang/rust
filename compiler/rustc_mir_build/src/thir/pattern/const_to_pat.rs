@@ -1,19 +1,18 @@
+use std::cell::Cell;
+
 use rustc_apfloat::Float;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
-use rustc_middle::mir;
-use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
+use rustc_middle::{mir, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use tracing::{debug, instrument, trace};
-
-use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{

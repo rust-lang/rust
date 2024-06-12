@@ -212,9 +212,11 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use crate::creader::{Library, MetadataLoader};
-use crate::errors;
-use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
+use std::borrow::Cow;
+use std::io::{Read, Result as IoResult, Write};
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
+use std::{cmp, fmt};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
@@ -230,14 +232,12 @@ use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
+use snap::read::FrameDecoder;
 use tracing::{debug, info};
 
-use snap::read::FrameDecoder;
-use std::borrow::Cow;
-use std::io::{Read, Result as IoResult, Write};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
-use std::{cmp, fmt};
+use crate::creader::{Library, MetadataLoader};
+use crate::errors;
+use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {

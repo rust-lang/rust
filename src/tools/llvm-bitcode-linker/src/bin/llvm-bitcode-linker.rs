@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-
 use llvm_bitcode_linker::{Optimization, Session, Target};
 
 #[derive(Debug, Parser)]

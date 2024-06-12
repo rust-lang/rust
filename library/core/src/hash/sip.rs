@@ -2,10 +2,8 @@
 
 #![allow(deprecated)] // the types in this module are deprecated
 
-use crate::cmp;
 use crate::marker::PhantomData;
-use crate::mem;
-use crate::ptr;
+use crate::{cmp, mem, ptr};
 
 /// An implementation of SipHash 1-3.
 ///

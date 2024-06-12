@@ -31,21 +31,17 @@ pub use self::convert::CharTryFromError;
 pub use self::convert::ParseCharError;
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 pub use self::decode::{DecodeUtf16, DecodeUtf16Error};
-
 // perma-unstable re-exports
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
-
-use crate::ascii;
+pub(crate) use self::methods::EscapeDebugExtArgs;
 use crate::error::Error;
-use crate::escape;
 use crate::fmt::{self, Write};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
-
-pub(crate) use self::methods::EscapeDebugExtArgs;
+use crate::{ascii, escape};
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8 = 0b1000_0000;

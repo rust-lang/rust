@@ -2,7 +2,6 @@
 
 use super::context::Context;
 use super::select::{Operation, Selected};
-
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Mutex;

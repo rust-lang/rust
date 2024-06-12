@@ -1,14 +1,16 @@
-use crate::fluent_generated as fluent;
-use rustc_errors::DiagArgValue;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Applicability, Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
-use rustc_pattern_analysis::{errors::Uncovered, rustc::RustcPatCtxt};
+use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+
+use crate::fluent_generated as fluent;
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unconditional_recursion)]

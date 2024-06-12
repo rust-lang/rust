@@ -1,7 +1,8 @@
 //! List of the accepted feature gates.
 
-use super::{to_nonzero, Feature};
 use rustc_span::symbol::sym;
+
+use super::{to_nonzero, Feature};
 
 macro_rules! declare_features {
     ($(

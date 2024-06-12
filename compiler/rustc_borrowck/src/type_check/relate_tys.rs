@@ -1,7 +1,8 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
-use rustc_infer::infer::relate::{Relate, RelateResult, TypeRelation};
+use rustc_infer::infer::relate::{
+    PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
+};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::Obligation;

@@ -1,10 +1,11 @@
+use std::fmt::{Debug, Formatter};
+use std::io;
+
 use crate::abi::FnAbi;
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
 use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, ItemKind, Opaque, Symbol};
-use std::fmt::{Debug, Formatter};
-use std::io;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MonoItem {

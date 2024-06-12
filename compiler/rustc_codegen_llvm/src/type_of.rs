@@ -1,16 +1,15 @@
-use crate::common::*;
-use crate::type_::Type;
+use std::fmt::Write;
+
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
-use rustc_target::abi::{Abi, Align, FieldsShape};
-use rustc_target::abi::{Float, Int, Pointer};
-use rustc_target::abi::{Scalar, Size, Variants};
+use rustc_target::abi::{Abi, Align, FieldsShape, Float, Int, Pointer, Scalar, Size, Variants};
 use tracing::debug;
 
-use std::fmt::Write;
+use crate::common::*;
+use crate::type_::Type;
 
 fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,

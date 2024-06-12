@@ -1,6 +1,7 @@
+use std::str::Lines;
+
 use regex::Regex;
 use rustc_demangle::demangle;
-use std::str::Lines;
 
 const REPLACE_COLONS: &str = "::";
 

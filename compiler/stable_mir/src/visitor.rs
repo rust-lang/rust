@@ -1,11 +1,11 @@
 use std::ops::ControlFlow;
 
-use crate::{ty::TyConst, Opaque};
-
 use super::ty::{
     Allocation, Binder, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
     MirConst, Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
+use crate::ty::TyConst;
+use crate::Opaque;
 
 pub trait Visitor: Sized {
     type Break;

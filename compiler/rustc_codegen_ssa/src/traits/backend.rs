@@ -1,9 +1,5 @@
 use std::any::Any;
-
-use super::write::WriteBackendMethods;
-use super::CodegenObject;
-use crate::back::write::TargetMachineFactoryFn;
-use crate::{CodegenResults, ModuleCodegen};
+use std::fmt;
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
@@ -15,14 +11,15 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::{
-    config::{self, OutputFilenames, PrintRequest},
-    Session,
-};
+use rustc_session::config::{self, OutputFilenames, PrintRequest};
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::call::FnAbi;
 
-use std::fmt;
+use super::write::WriteBackendMethods;
+use super::CodegenObject;
+use crate::back::write::TargetMachineFactoryFn;
+use crate::{CodegenResults, ModuleCodegen};
 
 pub trait BackendTypes {
     type Value: CodegenObject;

@@ -1,22 +1,19 @@
-use super::place::{PlaceRef, PlaceValue};
-use super::{FunctionCx, LocalRef};
+use std::fmt;
 
-use crate::size_of_val;
-use crate::traits::*;
-use crate::MemFlags;
-
+use arrayvec::ArrayVec;
+use either::Either;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, Size};
-
-use std::fmt;
-
-use arrayvec::ArrayVec;
-use either::Either;
 use tracing::debug;
+
+use super::place::{PlaceRef, PlaceValue};
+use super::{FunctionCx, LocalRef};
+use crate::traits::*;
+use crate::{size_of_val, MemFlags};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a

@@ -557,13 +557,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FusedIterator, TrustedLen};
+use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
-use crate::{
-    cmp, convert, hint, mem,
-    ops::{self, ControlFlow, Deref, DerefMut},
-    slice,
-};
+use crate::{cmp, convert, hint, mem, slice};
 
 /// The `Option` type. See [the module level documentation](self) for more.
 #[derive(Copy, Eq, Debug, Hash)]

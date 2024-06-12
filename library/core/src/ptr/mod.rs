@@ -409,13 +409,9 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
 use crate::marker::FnPtr;
-use crate::ub_checks;
-
 use crate::mem::{self, MaybeUninit};
+use crate::{fmt, hash, intrinsics, ub_checks};
 
 mod alignment;
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
@@ -423,12 +419,10 @@ pub use alignment::Alignment;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
-pub use crate::intrinsics::copy_nonoverlapping;
-
+pub use crate::intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
-pub use crate::intrinsics::copy;
-
+pub use crate::intrinsics::copy_nonoverlapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
@@ -1809,10 +1803,9 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
-        wrapping_add, wrapping_mul, wrapping_sub,
+        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl,
+        unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
-    use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///

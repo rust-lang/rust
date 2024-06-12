@@ -1,9 +1,8 @@
-use std::ffi;
 use std::ffi::OsStr;
 use std::io::Write;
-use std::panic;
 use std::path::Path;
 use std::process::{Command as StdCommand, ExitStatus, Output, Stdio};
+use std::{ffi, panic};
 
 use crate::drop_bomb::DropBomb;
 use crate::{assert_not_contains, handle_failed_output};

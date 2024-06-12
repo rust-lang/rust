@@ -1,14 +1,13 @@
+use std::fmt;
+use std::ops::Deref;
+
 use rustc_data_structures::intern::Interned;
+use rustc_macros::HashStable_Generic;
 pub use Float::*;
 pub use Integer::*;
 pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
-
-use std::fmt;
-use std::ops::Deref;
-
-use rustc_macros::HashStable_Generic;
 
 pub mod call;
 

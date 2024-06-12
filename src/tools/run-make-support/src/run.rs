@@ -1,12 +1,10 @@
-use std::env;
 use std::ffi::OsStr;
-use std::panic;
 use std::path::{Path, PathBuf};
-
-use crate::command::{Command, CompletedProcess};
-use crate::{cwd, env_var, is_windows, set_host_rpath};
+use std::{env, panic};
 
 use super::handle_failed_output;
+use crate::command::{Command, CompletedProcess};
+use crate::{cwd, env_var, is_windows, set_host_rpath};
 
 #[track_caller]
 fn run_common(name: &str) -> Command {

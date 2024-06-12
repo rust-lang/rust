@@ -1,5 +1,8 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
+use std::mem;
+use std::ops::Deref;
+
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -9,17 +12,13 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
-use rustc_middle::ty::{Instance, InstanceDef, TypeVisitableExt};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{self, Instance, InstanceDef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
-
-use std::mem;
-use std::ops::Deref;
-
 use tracing::{debug, instrument, trace};
 
 use super::ops::{self, NonConstOp, Status};

@@ -1,8 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::ConstParamTy;
-use crate::marker::StructuralPartialEq;
+use crate::marker::{ConstParamTy, StructuralPartialEq};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //

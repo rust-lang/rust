@@ -5,10 +5,8 @@
 use crate::marker::PhantomData;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::null_mut;
-use crate::sync::atomic::{
-    AtomicPtr,
-    Ordering::{AcqRel, Acquire},
-};
+use crate::sync::atomic::AtomicPtr;
+use crate::sync::atomic::Ordering::{AcqRel, Acquire};
 
 pub(crate) struct LazyBox<T: LazyInit> {
     ptr: AtomicPtr<T>,

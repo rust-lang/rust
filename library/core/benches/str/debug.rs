@@ -4,6 +4,7 @@
 //! we should still try to minimize those calls over time rather than regress them.
 
 use std::fmt::{self, Write};
+
 use test::{black_box, Bencher};
 
 #[derive(Default)]

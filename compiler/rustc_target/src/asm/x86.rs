@@ -1,8 +1,10 @@
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use crate::spec::{RelocModel, Target};
+use std::fmt;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::Symbol;
-use std::fmt;
+
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use crate::spec::{RelocModel, Target};
 
 def_reg_class! {
     X86 X86InlineAsmRegClass {

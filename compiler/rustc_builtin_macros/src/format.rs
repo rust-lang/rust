@@ -1,13 +1,10 @@
-use crate::errors;
-use crate::util::expr_to_spanned_string;
 use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{token, StmtKind};
 use rustc_ast::{
-    Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
+    token, Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
-    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, Recovered,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, Recovered, StmtKind,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
@@ -17,6 +14,9 @@ use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
+
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,

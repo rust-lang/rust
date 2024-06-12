@@ -15,10 +15,11 @@
 //! (3.) Otherwise, if we end with two rigid (non-projection) or infer types,
 //! relate them structurally.
 
-use super::EvalCtxt;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
+
+use super::EvalCtxt;
 
 impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]

@@ -1805,7 +1805,9 @@ fn brute_force_rotate_test_1() {
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{seq::SliceRandom, Rng};
+
+    use rand::seq::SliceRandom;
+    use rand::Rng;
 
     // Miri is too slow (but still need to `chain` to make the types match)
     let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
@@ -1879,6 +1881,7 @@ fn sort_unstable() {
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
+
     use rand::seq::SliceRandom;
     use rand::Rng;
 

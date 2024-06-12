@@ -1,12 +1,10 @@
-use crate::{
-    errors::PlaceholderRelationLfNotSatisfied,
-    infer::{
-        error_reporting::nice_region_error::NiceRegionError, RegionResolutionError, SubregionOrigin,
-    },
-};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::Diag;
 use rustc_middle::ty::{self, RePlaceholder, Region};
+
+use crate::errors::PlaceholderRelationLfNotSatisfied;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::{RegionResolutionError, SubregionOrigin};
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// Emitted wwhen given a `ConcreteFailure` when relating two placeholders.

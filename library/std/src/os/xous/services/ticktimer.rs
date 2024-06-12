@@ -1,5 +1,6 @@
-use crate::os::xous::ffi::Connection;
 use core::sync::atomic::{AtomicU32, Ordering};
+
+use crate::os::xous::ffi::Connection;
 
 pub(crate) enum TicktimerScalar {
     ElapsedMs,

@@ -10,9 +10,8 @@
 #![feature(proc_macro_tracked_env)]
 // tidy-alphabetical-end
 
-use synstructure::decl_derive;
-
 use proc_macro::TokenStream;
+use synstructure::decl_derive;
 
 mod current_version;
 mod diagnostics;

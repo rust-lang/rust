@@ -1,7 +1,8 @@
-use crate::solve::EvalCtxt;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
+
+use crate::solve::EvalCtxt;
 
 impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]

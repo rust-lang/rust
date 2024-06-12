@@ -35,8 +35,9 @@
 //! These disambiguators seem to have more analytical value (for instance, in coverage analysis), so
 //! they are not removed.
 
-use rust_demangler::*;
 use std::io::{self, Read, Write};
+
+use rust_demangler::*;
 
 fn main() -> io::Result<()> {
     // FIXME(richkadel): In Issue #77615 discussed updating the `rustc-demangle` library, to provide

@@ -1,8 +1,7 @@
 #![feature(rustc_attrs)]
 #![deny(warnings)]
 
-use std::env;
-use std::thread;
+use std::{env, thread};
 
 fn main() {
     let should_fail = env::args().nth(1) == Some("bad".to_string());

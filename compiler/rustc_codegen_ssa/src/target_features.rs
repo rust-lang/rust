@@ -1,20 +1,18 @@
-use crate::errors;
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+
+use crate::errors;
 
 pub fn from_target_feature(
     tcx: TyCtxt<'_>,

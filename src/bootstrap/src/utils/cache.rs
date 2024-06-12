@@ -3,13 +3,12 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::{fmt, mem};
 
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
 use once_cell::sync::Lazy;

@@ -1,11 +1,12 @@
+use rand::Rng;
+use realstd::collections::TryReserveErrorKind::*;
+
 use super::Entry::{Occupied, Vacant};
 use super::HashMap;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
 use crate::hash::RandomState;
 use crate::test_helpers::test_rng;
-use rand::Rng;
-use realstd::collections::TryReserveErrorKind::*;
 
 // https://github.com/rust-lang/rust/issues/62301
 fn _assert_hashmap_is_unwind_safe() {
@@ -946,7 +947,6 @@ fn test_raw_entry() {
 
 mod test_extract_if {
     use super::*;
-
     use crate::panic::{catch_unwind, AssertUnwindSafe};
     use crate::sync::atomic::{AtomicUsize, Ordering};
 

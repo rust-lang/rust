@@ -1,20 +1,18 @@
-use crate::common::CodegenCx;
-use crate::coverageinfo;
-use crate::coverageinfo::ffi::CounterMappingRegion;
-use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
-use crate::llvm;
-
 use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{bug, mir};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
 use tracing::debug;
+
+use crate::common::CodegenCx;
+use crate::coverageinfo::ffi::CounterMappingRegion;
+use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
+use crate::{coverageinfo, llvm};
 
 /// Generates and exports the Coverage Map.
 ///

@@ -15,6 +15,9 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::cell::Cell;
+use std::iter;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -25,13 +28,12 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{
+    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ErrorGuaranteed, Symbol};
-use std::cell::Cell;
-use std::iter;
 
 use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;

@@ -7,8 +7,9 @@
 //! named `tests.rs` or `benches.rs`, or directories named `tests` or `benches` unconfigured
 //! during normal build.
 
-use crate::walk::{filter_dirs, walk};
 use std::path::Path;
+
+use crate::walk::{filter_dirs, walk};
 
 pub fn check(root_path: &Path, bad: &mut bool) {
     let core = root_path.join("core");

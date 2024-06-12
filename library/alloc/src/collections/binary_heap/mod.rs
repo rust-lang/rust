@@ -144,12 +144,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::alloc::Allocator;
-use core::fmt;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
-use core::ptr;
+use core::{fmt, ptr};
 
 use crate::alloc::Global;
 use crate::collections::TryReserveError;

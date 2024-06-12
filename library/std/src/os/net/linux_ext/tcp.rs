@@ -2,10 +2,9 @@
 //!
 //! [`std::net`]: crate::net
 
-use crate::io;
-use crate::net;
 use crate::sealed::Sealed;
 use crate::sys_common::AsInner;
+use crate::{io, net};
 
 /// Os-specific extensions for [`TcpStream`]
 ///

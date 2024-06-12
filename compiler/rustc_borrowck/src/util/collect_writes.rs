@@ -1,5 +1,4 @@
-use rustc_middle::mir::visit::PlaceContext;
-use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 
 pub trait FindAssignments {

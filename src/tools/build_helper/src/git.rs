@@ -1,5 +1,5 @@
-use std::process::Stdio;
-use std::{path::Path, process::Command};
+use std::path::Path;
+use std::process::{Command, Stdio};
 
 pub struct GitConfig<'a> {
     pub git_repository: &'a str,

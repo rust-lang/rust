@@ -1,3 +1,18 @@
+use std::assert_matches::debug_assert_matches;
+use std::fmt::Write as _;
+use std::mem;
+use std::sync::LazyLock as Lazy;
+
+use rustc_ast::tokenstream::TokenTree;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_metadata::rendered_const;
+use rustc_middle::mir;
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_span::symbol::{kw, sym, Symbol};
+use thin_vec::{thin_vec, ThinVec};
+use {rustc_ast as ast, rustc_hir as hir};
+
 use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
@@ -9,22 +24,6 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::html::format::visibility_to_src_with_space;
-
-use rustc_ast as ast;
-use rustc_ast::tokenstream::TokenTree;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
-use rustc_metadata::rendered_const;
-use rustc_middle::mir;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
-use rustc_span::symbol::{kw, sym, Symbol};
-use std::assert_matches::debug_assert_matches;
-use std::fmt::Write as _;
-use std::mem;
-use std::sync::LazyLock as Lazy;
-use thin_vec::{thin_vec, ThinVec};
 
 #[cfg(test)]
 mod tests;

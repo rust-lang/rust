@@ -1,13 +1,10 @@
 use core::convert::TryInto;
 
-use crate::cmp;
 use crate::ffi::CStr;
-use crate::io;
-use crate::mem;
 use crate::num::NonZero;
-use crate::ptr;
 use crate::sys::os;
 use crate::time::Duration;
+use crate::{cmp, io, mem, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 8 * 1024;
 

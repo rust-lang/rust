@@ -1,9 +1,7 @@
 use super::*;
-
 use crate::ffi::OsStr;
-use crate::mem;
-use crate::ptr;
 use crate::sys::{cvt, cvt_nz};
+use crate::{mem, ptr};
 
 macro_rules! t {
     ($e:expr) => {

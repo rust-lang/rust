@@ -18,12 +18,11 @@ mod unicode_data;
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
 
 // For use in alloc, not re-exported in std.
-pub use unicode_data::{
-    case_ignorable::lookup as Case_Ignorable, cased::lookup as Cased, conversions,
-};
-
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
+pub use unicode_data::case_ignorable::lookup as Case_Ignorable;
+pub use unicode_data::cased::lookup as Cased;
 pub(crate) use unicode_data::cc::lookup as Cc;
+pub use unicode_data::conversions;
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
 pub(crate) use unicode_data::n::lookup as N;

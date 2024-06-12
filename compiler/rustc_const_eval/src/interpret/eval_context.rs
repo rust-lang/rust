@@ -2,13 +2,12 @@ use std::cell::Cell;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
-use tracing::{debug, info, info_span, instrument, trace};
-
 use hir::CRATE_HIR_ID;
 use rustc_errors::DiagCtxt;
-use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
+use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
+use rustc_hir::{self as hir};
 use rustc_index::IndexVec;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
     CtfeProvenance, ErrorHandled, InvalidMetaKind, ReportedErrorInfo,
 };
@@ -18,11 +17,13 @@ use rustc_middle::ty::layout::{
     TyAndLayout,
 };
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, Variance};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use tracing::{debug, info, info_span, instrument, trace};
 
 use super::{
     err_inval, throw_inval, throw_ub, throw_ub_custom, throw_unsup, GlobalId, Immediate,
@@ -30,9 +31,7 @@ use super::{
     OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar,
     StackPopJump,
 };
-use crate::errors;
-use crate::util;
-use crate::{fluent_generated as fluent, ReportErrorExt};
+use crate::{errors, fluent_generated as fluent, util, ReportErrorExt};
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.

@@ -1,7 +1,6 @@
 #![allow(deprecated)]
 
-use core::hash::{Hash, Hasher};
-use core::hash::{SipHasher, SipHasher13};
+use core::hash::{Hash, Hasher, SipHasher, SipHasher13};
 use core::{mem, slice};
 
 // Hash just the bytes of the slice, without length prefix

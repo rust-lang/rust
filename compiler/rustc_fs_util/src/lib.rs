@@ -1,8 +1,7 @@
 // tidy-alphabetical-start
 use std::ffi::CString;
-use std::fs;
-use std::io;
 use std::path::{absolute, Path, PathBuf};
+use std::{fs, io};
 // tidy-alphabetical-end
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating

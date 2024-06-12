@@ -5,8 +5,7 @@
 pub use rustc_middle::ty::relate::*;
 
 pub use self::_match::MatchAgainstFreshVars;
-pub use self::combine::CombineFields;
-pub use self::combine::PredicateEmittingRelation;
+pub use self::combine::{CombineFields, PredicateEmittingRelation};
 
 pub mod _match;
 pub(super) mod combine;

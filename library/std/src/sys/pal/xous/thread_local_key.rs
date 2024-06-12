@@ -1,11 +1,10 @@
-use crate::mem::ManuallyDrop;
-use crate::ptr;
-use crate::sync::atomic::AtomicPtr;
-use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::arch::asm;
 
+use crate::mem::ManuallyDrop;
 use crate::os::xous::ffi::{map_memory, unmap_memory, MemoryFlags};
+use crate::ptr;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{AtomicPtr, AtomicUsize};
 
 /// Thread Local Storage
 ///

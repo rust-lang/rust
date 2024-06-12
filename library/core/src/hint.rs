@@ -3,8 +3,7 @@
 //! Hints to compiler that affects how code should be emitted or optimized.
 //! Hints may be compile time or runtime.
 
-use crate::intrinsics;
-use crate::ub_checks;
+use crate::{intrinsics, ub_checks};
 
 /// Informs the compiler that the site which is calling this function is not
 /// reachable, possibly enabling further optimizations.

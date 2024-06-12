@@ -1,11 +1,11 @@
-use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
-use tracing::{debug, instrument};
-
 pub use rustc_type_ir::fold::{
     shift_region, shift_vars, FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
+use tracing::{debug, instrument};
+
+use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
 
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders

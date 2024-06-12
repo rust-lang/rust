@@ -1,8 +1,9 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 
 fn main() {
     test_file("foo.rs", &[("a", &["foo"]), ("b", &["foo"])]);

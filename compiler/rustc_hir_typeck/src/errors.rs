@@ -1,18 +1,18 @@
 //! Errors emitted by `rustc_hir_typeck`.
 use std::borrow::Cow;
 
-use crate::fluent_generated as fluent;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagArgValue, EmissionGuarantee, IntoDiagArg, MultiSpan,
-    SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagArgValue, EmissionGuarantee, IntoDiagArg, MultiSpan, SubdiagMessageOp,
+    Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_span::{
-    edition::{Edition, LATEST_STABLE_EDITION},
-    symbol::Ident,
-    Span, Symbol,
-};
+use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
+
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]

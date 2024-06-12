@@ -3,7 +3,8 @@
 
 // Simplify dtor registration by using a list of destructors.
 
-use super::{abi, itron::task};
+use super::abi;
+use super::itron::task;
 use crate::cell::{Cell, RefCell};
 
 #[thread_local]

@@ -1,15 +1,16 @@
+use std::iter;
+
+use hir::def_id::LOCAL_CRATE;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_macros::{Decodable, Encodable, HashStable};
+use tracing::debug;
+
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use crate::ty::{Ident, Ty, TyCtxt};
-use hir::def_id::LOCAL_CRATE;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use std::iter;
-use tracing::debug;
-
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::ErrorGuaranteed;
-use rustc_macros::{Decodable, Encodable, HashStable};
 
 /// A trait's definition with type information.
 #[derive(HashStable, Encodable, Decodable)]

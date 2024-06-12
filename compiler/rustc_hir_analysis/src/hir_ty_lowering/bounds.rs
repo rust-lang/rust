@@ -1,7 +1,8 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::codes::*;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -14,11 +15,10 @@ use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
 
+use super::RegionInferReason;
 use crate::bounds::Bounds;
 use crate::errors;
 use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
-
-use super::RegionInferReason;
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.

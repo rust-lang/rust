@@ -1,6 +1,7 @@
-use command::Command;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
+
+use command::Command;
 
 use crate::{command, cwd, env_var, set_host_rpath};
 

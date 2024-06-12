@@ -3,13 +3,11 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::{
-    lints::{
-        DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
-        UndroppedManuallyDropsSuggestion, UseLetUnderscoreIgnoreSuggestion,
-    },
-    LateContext, LateLintPass, LintContext,
+use crate::lints::{
+    DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
+    UndroppedManuallyDropsSuggestion, UseLetUnderscoreIgnoreSuggestion,
 };
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `dropping_references` lint checks for calls to `std::mem::drop` with a reference

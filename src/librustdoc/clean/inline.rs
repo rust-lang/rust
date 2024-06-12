@@ -3,11 +3,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use thin_vec::{thin_vec, ThinVec};
-
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalModDefId};
 use rustc_hir::Mutability;
@@ -17,7 +13,10 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
+use thin_vec::{thin_vec, ThinVec};
+use {rustc_ast as ast, rustc_hir as hir};
 
+use super::Item;
 use crate::clean::{
     self, clean_bound_vars, clean_generics, clean_impl_item, clean_middle_assoc_item,
     clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_constraints,
@@ -26,8 +25,6 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
-
-use super::Item;
 
 /// Attempt to inline a definition into this AST.
 ///

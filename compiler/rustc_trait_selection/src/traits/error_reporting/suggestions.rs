@@ -1,35 +1,36 @@
 // ignore-tidy-filelength
 
-use super::{
-    DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
-    PredicateObligation,
-};
-
-use crate::errors;
-use crate::infer::InferCtxt;
-use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
 
 use hir::def::CtorOf;
+use itertools::{EitherOrBoth, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, MultiSpan,
-    Style, SuggestionStyle,
+    pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, MultiSpan, Style,
+    SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
+use rustc_hir::{
+    is_range_literal, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
+};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_macros::extension;
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::print::PrintPolyTraitRefExt;
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, with_no_trimmed_paths, PrintPolyTraitPredicateExt as _,
+    PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
+};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
     InferTy, IsSuggestable, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -40,20 +41,16 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
 
-use crate::infer::InferCtxtExt as _;
+use super::{
+    DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
+};
+use crate::errors;
+use crate::infer::{InferCtxt, InferCtxtExt as _};
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, with_no_trimmed_paths, PrintPolyTraitPredicateExt as _,
-    PrintTraitPredicateExt as _,
-};
-
-use itertools::EitherOrBoth;
-use itertools::Itertools;
+use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
 
 #[derive(Debug)]
 pub enum CoroutineInteriorOrUpvar {

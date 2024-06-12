@@ -1,4 +1,3 @@
-use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::error::Error;
@@ -10,20 +9,21 @@ use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
-use crate::alloc::{Allocator, Global};
-
 use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
-use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
-use super::search::{SearchBound, SearchResult::*};
+use super::node::ForceResult::*;
+use super::node::{self, marker, Handle, NodeRef, Root};
+use super::search::SearchBound;
+use super::search::SearchResult::*;
 use super::set_val::SetValZST;
+use crate::alloc::{Allocator, Global};
+use crate::vec::Vec;
 
 mod entry;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
-
 use Entry::*;
 
 /// Minimum number of elements in a node that is not a root.

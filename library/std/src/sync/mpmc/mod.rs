@@ -40,10 +40,11 @@ mod utils;
 mod waker;
 mod zero;
 
+pub use error::*;
+
 use crate::fmt;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::time::{Duration, Instant};
-pub use error::*;
 
 /// Creates a channel of unbounded capacity.
 ///

@@ -1,7 +1,8 @@
+use std::hash::Hash;
+
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
-use std::hash::Hash;
 
 use crate::ty;
 

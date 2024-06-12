@@ -1,4 +1,6 @@
-use crate::un_derefer::UnDerefer;
+use std::fmt;
+use std::ops::{Index, IndexMut};
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
@@ -6,10 +8,8 @@ use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-use std::fmt;
-use std::ops::{Index, IndexMut};
-
 use self::abs_domain::{AbstractElem, Lift};
+use crate::un_derefer::UnDerefer;
 
 mod abs_domain;
 

@@ -1,29 +1,16 @@
 // ignore-tidy-filelength :(
 
-use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
-use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
-use crate::errors::{
-    AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
-};
-use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
-use crate::infer::InferCtxtExt as _;
-use crate::infer::{self, InferCtxt};
-use crate::traits::error_reporting::infer_ctxt_ext::InferCtxtExt;
-use crate::traits::error_reporting::{ambiguity, ambiguity::CandidateSource::*};
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::specialize::to_pretty_impl_header;
-use crate::traits::NormalizeExt;
-use crate::traits::{
-    elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation,
-    SelectionError, SignatureMismatch, TraitNotObjectSafe,
-};
 use core::ops::ControlFlow;
+use std::borrow::Cow;
+use std::{fmt, iter};
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan, StringPart};
-use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, StashKey};
+use rustc_errors::{
+    pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, ErrorGuaranteed,
+    FatalError, MultiSpan, StashKey, StringPart,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -31,6 +18,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
+pub use rustc_infer::traits::error_reporting::*;
 use rustc_macros::extension;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::SignatureMismatchData;
@@ -50,16 +38,28 @@ use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, ExpnKind, Span, Symbol, DUMMY_SP};
-use std::borrow::Cow;
-use std::fmt;
-use std::iter;
 
+use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
+use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
 use super::{
     ArgKind, CandidateSimilarity, FindExprBySpan, FindTypeParam, GetSafeTransmuteErrorAndReason,
     HasNumericInferVisitor, ImplCandidate, UnsatisfiedConst,
 };
-
-pub use rustc_infer::traits::error_reporting::*;
+use crate::errors::{
+    AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
+};
+use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
+use crate::infer::{self, InferCtxt, InferCtxtExt as _};
+use crate::traits::error_reporting::ambiguity;
+use crate::traits::error_reporting::ambiguity::CandidateSource::*;
+use crate::traits::error_reporting::infer_ctxt_ext::InferCtxtExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::specialize::to_pretty_impl_header;
+use crate::traits::{
+    elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, NormalizeExt,
+    Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow,
+    PredicateObligation, SelectionError, SignatureMismatch, TraitNotObjectSafe,
+};
 
 pub enum OverflowCause<'tcx> {
     DeeplyNormalize(ty::AliasTerm<'tcx>),

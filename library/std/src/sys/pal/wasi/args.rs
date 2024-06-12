@@ -1,9 +1,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
 use crate::os::wasi::ffi::OsStrExt;
-use crate::vec;
+use crate::{fmt, vec};
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,

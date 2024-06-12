@@ -1,4 +1,6 @@
 use core::ops::ControlFlow;
+
+pub use opaque::test_opaque_hidden_types;
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -11,11 +13,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
+use super::{bad_placeholder, ItemCtxt};
 use crate::errors::TypeofReservedKeywordUsed;
-
-use super::bad_placeholder;
-use super::ItemCtxt;
-pub use opaque::test_opaque_hidden_types;
 
 mod opaque;
 

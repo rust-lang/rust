@@ -4,17 +4,19 @@
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
 
-pub use crate::def_id::DefPathHash;
-use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use crate::def_path_hash_map::DefPathHashMap;
+use std::fmt::{self, Write};
+use std::hash::Hash;
+
 use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::symbol::{kw, sym, Symbol};
-use std::fmt::{self, Write};
-use std::hash::Hash;
 use tracing::{debug, instrument};
+
+pub use crate::def_id::DefPathHash;
+use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_path_hash_map::DefPathHashMap;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`

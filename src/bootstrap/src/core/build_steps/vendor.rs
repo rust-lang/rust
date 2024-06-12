@@ -1,6 +1,7 @@
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use std::path::PathBuf;
 use std::process::Command;
+
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {

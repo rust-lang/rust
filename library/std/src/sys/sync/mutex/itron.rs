@@ -1,10 +1,8 @@
 //! Mutex implementation backed by μITRON mutexes. Assumes `acre_mtx` and
 //! `TA_INHERIT` are available.
-use crate::sys::pal::itron::{
-    abi,
-    error::{expect_success, expect_success_aborting, fail, ItronError},
-    spin::SpinIdOnceCell,
-};
+use crate::sys::pal::itron::abi;
+use crate::sys::pal::itron::error::{expect_success, expect_success_aborting, fail, ItronError};
+use crate::sys::pal::itron::spin::SpinIdOnceCell;
 
 pub struct Mutex {
     /// The ID of the underlying mutex object

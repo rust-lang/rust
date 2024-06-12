@@ -1,6 +1,7 @@
-use crate::Command;
 use std::error::Error;
 use std::fmt;
+
+use crate::Command;
 
 #[derive(Debug)]
 pub enum CkError {

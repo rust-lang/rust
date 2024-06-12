@@ -1,9 +1,8 @@
 use rustc_hash::FxHashMap;
 use rustdoc_json_types::{Item, ItemKind, Visibility, FORMAT_VERSION};
 
-use crate::json_find::SelectorPart;
-
 use super::*;
+use crate::json_find::SelectorPart;
 
 #[track_caller]
 fn check(krate: &Crate, errs: &[Error]) {

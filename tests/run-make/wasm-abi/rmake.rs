@@ -1,9 +1,10 @@
 //@ only-wasm32-wasip1
 //@ needs-wasmtime
 
-use run_make_support::rustc;
 use std::path::Path;
 use std::process::Command;
+
+use run_make_support::rustc;
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();

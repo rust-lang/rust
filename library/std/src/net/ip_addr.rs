@@ -2,17 +2,15 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-use crate::sys::net::netc as c;
-use crate::sys_common::{FromInner, IntoInner};
-
 #[stable(feature = "ip_addr", since = "1.7.0")]
 pub use core::net::IpAddr;
-
+#[unstable(feature = "ip", issue = "27709")]
+pub use core::net::Ipv6MulticastScope;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::net::{Ipv4Addr, Ipv6Addr};
 
-#[unstable(feature = "ip", issue = "27709")]
-pub use core::net::Ipv6MulticastScope;
+use crate::sys::net::netc as c;
+use crate::sys_common::{FromInner, IntoInner};
 
 impl IntoInner<c::in_addr> for Ipv4Addr {
     #[inline]

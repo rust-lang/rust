@@ -1,9 +1,10 @@
-use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
+
+use crate::ty::{self, Ty, TyCtxt};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum PointerCoercion {

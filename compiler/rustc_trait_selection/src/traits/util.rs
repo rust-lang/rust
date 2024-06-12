@@ -1,19 +1,19 @@
 use std::collections::BTreeMap;
 
-use super::NormalizeExt;
-use super::{ObligationCause, PredicateObligation, SelectionContext};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, InferOk};
+pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt, Upcast};
-use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, GenericArgsRef, ImplSubject, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast,
+};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
-pub use rustc_infer::traits::util::*;
+use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator

@@ -1,5 +1,6 @@
-use super::super::*;
 use std::assert_matches::assert_matches;
+
+use super::super::*;
 
 // Test target self-consistency and JSON encoding/decoding roundtrip.
 pub(super) fn test_target(mut target: Target) {

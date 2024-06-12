@@ -1,4 +1,5 @@
 use std::iter::repeat;
+
 use test::{black_box, Bencher};
 
 #[bench]

@@ -13,24 +13,25 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+use clap::ValueEnum;
+// FIXME: replace with std::lazy after it gets stabilized and reaches beta
+use once_cell::sync::Lazy;
+
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, install, llvm, run, setup, test, vendor,
 };
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
-use crate::prepare_behaviour_dump_dir;
 use crate::utils::cache::Cache;
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
-use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, output, t, LldThreads};
-use crate::EXTRA_CHECK_CFGS;
-use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
-
+use crate::utils::helpers::{
+    self, add_dylib_path, add_link_lib_path, check_cfg_arg, exe, libdir, linker_args, linker_flags,
+    output, t, LldThreads,
+};
 pub use crate::Compiler;
-
-use clap::ValueEnum;
-// FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
+use crate::{
+    prepare_behaviour_dump_dir, Build, CLang, Crate, DocTests, GitRepo, Mode, EXTRA_CHECK_CFGS,
+};
 
 #[cfg(test)]
 mod tests;

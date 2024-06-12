@@ -1,11 +1,7 @@
 //! A readers-writer lock implementation backed by the SOLID kernel extension.
-use crate::sys::pal::{
-    abi,
-    itron::{
-        error::{expect_success, expect_success_aborting, fail, ItronError},
-        spin::SpinIdOnceCell,
-    },
-};
+use crate::sys::pal::abi;
+use crate::sys::pal::itron::error::{expect_success, expect_success_aborting, fail, ItronError};
+use crate::sys::pal::itron::spin::SpinIdOnceCell;
 
 pub struct RwLock {
     /// The ID of the underlying mutex object

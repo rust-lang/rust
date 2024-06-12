@@ -1,8 +1,5 @@
 use std::cell::RefCell;
 
-use crate::coercion::CoerceMany;
-use crate::gather_locals::GatherLocalsVisitor;
-use crate::{CoroutineTypes, Diverges, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -15,6 +12,10 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+
+use crate::coercion::CoerceMany;
+use crate::gather_locals::GatherLocalsVisitor;
+use crate::{CoroutineTypes, Diverges, FnCtxt};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item

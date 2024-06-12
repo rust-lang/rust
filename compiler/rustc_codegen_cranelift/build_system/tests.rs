@@ -3,14 +3,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::build_sysroot;
-use crate::config;
 use crate::path::{Dirs, RelPath};
 use crate::prepare::{apply_patches, GitRepo};
 use crate::rustc_info::get_default_sysroot;
 use crate::shared_utils::rustflags_from_env;
 use crate::utils::{spawn_and_wait, CargoProject, Compiler, LogGroup};
-use crate::{CodegenBackend, SysrootKind};
+use crate::{build_sysroot, config, CodegenBackend, SysrootKind};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 

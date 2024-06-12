@@ -1,11 +1,11 @@
-use crate::error::ConstNotUsedTraitAlias;
-use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
-use crate::ty::{GenericArg, GenericArgKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
+
+use crate::error::ConstNotUsedTraitAlias;
+use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
+use crate::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 
 /// Converts generic params of a TypeFoldable from one
 /// item's generics to another. Usually from a function's generics

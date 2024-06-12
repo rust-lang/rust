@@ -45,23 +45,15 @@
 //! ported to this system, and which relies on string concatenation at the
 //! time of error detection.
 
-use super::lexical_region_resolve::RegionResolutionError;
-use super::region_constraints::GenericKind;
-use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
+use std::borrow::Cow;
+use std::ops::{ControlFlow, Deref};
+use std::path::PathBuf;
+use std::{cmp, fmt, iter};
 
-use crate::errors::{self, ObligationCauseFailureCode, TypeErrorAdditionalDiags};
-use crate::infer;
-use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
-use crate::infer::ExpectedFound;
-use crate::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    PredicateObligation,
-};
-
-use crate::infer::relate::{self, RelateResult, TypeRelation};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
+    pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
     ErrorGuaranteed, IntoDiagArg, StringPart,
 };
 use rustc_hir as hir;
@@ -72,19 +64,28 @@ use rustc_hir::lang_items::LangItem;
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::error::TypeErrorToStringExt;
+use rustc_middle::ty::error::{TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
-use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{
-    self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    self, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, Upcast,
 };
-use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
-use std::borrow::Cow;
-use std::ops::{ControlFlow, Deref};
-use std::path::PathBuf;
-use std::{cmp, fmt, iter};
+
+use super::lexical_region_resolve::RegionResolutionError;
+use super::region_constraints::GenericKind;
+use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
+use crate::errors::{self, ObligationCauseFailureCode, TypeErrorAdditionalDiags};
+use crate::infer;
+use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
+use crate::infer::relate::{self, RelateResult, TypeRelation};
+use crate::infer::ExpectedFound;
+use crate::traits::{
+    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
+};
 
 mod note;
 mod note_and_explain;

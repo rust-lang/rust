@@ -1,7 +1,5 @@
-use std::{
-    fmt::{self, Display},
-    path::Path,
-};
+use std::fmt::{self, Display};
+use std::path::Path;
 
 use dynamic_suggestions::DYNAMIC_SUGGESTIONS;
 use glob::Pattern;

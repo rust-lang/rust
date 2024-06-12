@@ -1,9 +1,7 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
-use crate::sync::atomic::{
-    AtomicPtr, AtomicU32,
-    Ordering::{AcqRel, Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
+use crate::sync::atomic::{AtomicPtr, AtomicU32};
 use crate::sys::c;
 
 #[cfg(test)]

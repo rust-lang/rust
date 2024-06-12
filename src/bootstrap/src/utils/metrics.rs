@@ -4,18 +4,20 @@
 //! As this module requires additional dependencies not present during local builds, it's cfg'd
 //! away whenever the `build.metrics` config option is not set to `true`.
 
-use crate::core::builder::{Builder, Step};
-use crate::utils::helpers::t;
-use crate::Build;
-use build_helper::metrics::{
-    JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
-    TestOutcome, TestSuite, TestSuiteMetadata,
-};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
 use std::time::{Duration, Instant, SystemTime};
+
+use build_helper::metrics::{
+    JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
+    TestOutcome, TestSuite, TestSuiteMetadata,
+};
 use sysinfo::System;
+
+use crate::core::builder::{Builder, Step};
+use crate::utils::helpers::t;
+use crate::Build;
 
 // Update this number whenever a breaking change is made to the build metrics.
 //

@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 use std::ops::RangeBounds;
 
-use rand::{seq::SliceRandom, Rng};
+use rand::seq::SliceRandom;
+use rand::Rng;
 use test::{black_box, Bencher};
 
 macro_rules! map_insert_rand_bench {

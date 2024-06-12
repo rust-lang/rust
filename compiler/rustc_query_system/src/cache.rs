@@ -1,11 +1,11 @@
 //! Cache for candidate selection.
 
-use crate::dep_graph::{DepContext, DepNodeIndex};
+use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 
-use std::hash::Hash;
+use crate::dep_graph::{DepContext, DepNodeIndex};
 
 pub struct Cache<Key, Value> {
     hashmap: Lock<FxHashMap<Key, WithDepNode<Value>>>,

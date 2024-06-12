@@ -1,23 +1,20 @@
 //! Iterators for `str` methods.
 
-use crate::char as char_mod;
+use super::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
+use super::validations::{next_code_point, next_code_point_reverse};
+use super::{
+    from_utf8_unchecked, BytesIsNotEmpty, CharEscapeDebugContinue, CharEscapeDefault,
+    CharEscapeUnicode, IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr,
+};
 use crate::fmt::{self, Write};
-use crate::iter::{Chain, FlatMap, Flatten};
-use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
-use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
+use crate::iter::{
+    Chain, Copied, Filter, FlatMap, Flatten, FusedIterator, Map, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNoCoerce,
+};
 use crate::num::NonZero;
 use crate::ops::Try;
-use crate::option;
 use crate::slice::{self, Split as SliceSplit};
-
-use super::from_utf8_unchecked;
-use super::pattern::Pattern;
-use super::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
-use super::validations::{next_code_point, next_code_point_reverse};
-use super::LinesMap;
-use super::{BytesIsNotEmpty, UnsafeBytesToStr};
-use super::{CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode};
-use super::{IsAsciiWhitespace, IsNotEmpty, IsWhitespace};
+use crate::{char as char_mod, option};
 
 /// An iterator over the [`char`]s of a string slice.
 ///

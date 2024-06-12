@@ -1,8 +1,8 @@
-use crate::source_map::SourceMap;
-
 use std::borrow::Borrow;
 
 use rustc_data_structures::profiling::EventArgRecorder;
+
+use crate::source_map::SourceMap;
 
 /// Extension trait for self-profiling purposes: allows to record spans within a generic activity's
 /// event arguments.

@@ -1,7 +1,8 @@
 //! Tidy check to prevent creation of unnecessary debug artifacts while running tests.
 
-use crate::walk::{filter_dirs, filter_not_rust, walk};
 use std::path::Path;
+
+use crate::walk::{filter_dirs, filter_not_rust, walk};
 
 const GRAPHVIZ_POSTFLOW_MSG: &str = "`borrowck_graphviz_postflow` attribute in test";
 

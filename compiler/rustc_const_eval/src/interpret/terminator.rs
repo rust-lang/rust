@@ -1,25 +1,15 @@
 use std::borrow::Cow;
 
 use either::Either;
-use rustc_middle::ty::TyCtxt;
-use tracing::trace;
-
-use rustc_middle::span_bug;
-use rustc_middle::{
-    mir,
-    ty::{
-        self,
-        layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
-        AdtDef, Instance, Ty,
-    },
-};
-use rustc_span::{source_map::Spanned, sym};
-use rustc_target::abi::{self, FieldIdx};
-use rustc_target::abi::{
-    call::{ArgAbi, FnAbi, PassMode},
-    Integer,
-};
+use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, AdtDef, Instance, Ty, TyCtxt};
+use rustc_middle::{mir, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::sym;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::{self, FieldIdx, Integer};
 use rustc_target::spec::abi::Abi;
+use tracing::trace;
 
 use super::{
     throw_ub, throw_ub_custom, throw_unsup_format, CtfeProvenance, FnVal, ImmTy, InterpCx,

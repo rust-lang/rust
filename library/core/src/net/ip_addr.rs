@@ -1,10 +1,9 @@
+use super::display_buffer::DisplayBuffer;
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
 use crate::iter;
 use crate::mem::transmute;
 use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
-
-use super::display_buffer::DisplayBuffer;
 
 /// An IP address, either IPv4 or IPv6.
 ///

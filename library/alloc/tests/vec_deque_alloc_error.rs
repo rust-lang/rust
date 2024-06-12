@@ -1,11 +1,9 @@
 #![feature(alloc_error_hook, allocator_api)]
 
-use std::{
-    alloc::{set_alloc_error_hook, AllocError, Allocator, Layout, System},
-    collections::VecDeque,
-    panic::{catch_unwind, AssertUnwindSafe},
-    ptr::NonNull,
-};
+use std::alloc::{set_alloc_error_hook, AllocError, Allocator, Layout, System};
+use std::collections::VecDeque;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::ptr::NonNull;
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]

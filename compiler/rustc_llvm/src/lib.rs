@@ -7,9 +7,10 @@
 
 // NOTE: This crate only exists to allow linking on mingw targets.
 
-use libc::{c_char, size_t};
 use std::cell::RefCell;
 use std::slice;
+
+use libc::{c_char, size_t};
 
 #[repr(C)]
 pub struct RustString {

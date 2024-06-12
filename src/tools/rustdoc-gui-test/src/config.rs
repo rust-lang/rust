@@ -1,5 +1,7 @@
+use std::env;
+use std::path::PathBuf;
+
 use getopts::Options;
-use std::{env, path::PathBuf};
 
 pub(crate) struct Config {
     pub(crate) nodejs: PathBuf,

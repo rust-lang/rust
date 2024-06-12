@@ -4,7 +4,6 @@
 //! due to incomplete stable coverage.
 
 // Prefer importing stable_mir over internal rustc constructs to make this file more readable.
-use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy, TyCtxt};
 use rustc_span::Symbol;
 use stable_mir::abi::Layout;
@@ -20,6 +19,7 @@ use stable_mir::ty::{
 use stable_mir::{CrateItem, CrateNum, DefId};
 
 use super::RustcInternal;
+use crate::rustc_smir::Tables;
 
 impl RustcInternal for CrateItem {
     type T<'tcx> = rustc_span::def_id::DefId;

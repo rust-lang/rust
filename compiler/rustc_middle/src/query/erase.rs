@@ -1,10 +1,10 @@
-use crate::mir;
-use crate::query::CyclePlaceholder;
-use crate::traits;
-use crate::ty::adjustment::CoerceUnsizedInfo;
-use crate::ty::{self, Ty};
 use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
+
+use crate::query::CyclePlaceholder;
+use crate::ty::adjustment::CoerceUnsizedInfo;
+use crate::ty::{self, Ty};
+use crate::{mir, traits};
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {

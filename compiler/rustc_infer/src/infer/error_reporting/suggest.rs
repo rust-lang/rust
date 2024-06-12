@@ -1,5 +1,5 @@
-use crate::infer::error_reporting::hir::Path;
 use core::ops::ControlFlow;
+
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use hir::{LetStmt, QPath};
@@ -7,8 +7,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::MatchSource;
-use rustc_hir::Node;
+use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     StatementAsExpression,
@@ -17,13 +16,13 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, Span};
 
+use super::TypeErrCtxt;
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
-
-use super::TypeErrCtxt;
+use crate::infer::error_reporting::hir::Path;
 
 #[derive(Clone, Copy)]
 pub enum SuggestAsRefKind {

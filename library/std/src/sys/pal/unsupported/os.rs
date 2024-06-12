@@ -1,10 +1,9 @@
 use super::unsupported;
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
+use crate::{fmt, io};
 
 pub fn errno() -> i32 {
     0

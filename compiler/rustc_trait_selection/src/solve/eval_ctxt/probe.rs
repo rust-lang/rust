@@ -1,12 +1,13 @@
-use crate::solve::assembly::Candidate;
+use std::marker::PhantomData;
 
-use super::EvalCtxt;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::BuiltinImplSource;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, CandidateSource, QueryResult};
 use rustc_middle::ty::TyCtxt;
-use std::marker::PhantomData;
+
+use super::EvalCtxt;
+use crate::solve::assembly::Candidate;
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, 'tcx, F, T> {
     ecx: &'me mut EvalCtxt<'a, InferCtxt<'tcx>>,

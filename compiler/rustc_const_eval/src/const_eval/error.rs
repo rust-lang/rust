@@ -5,14 +5,15 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{layout::LayoutError, ConstInt};
+use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::{ConstInt, TyCtxt};
 use rustc_span::{Span, Symbol};
 
 use super::CompileTimeInterpreter;
 use crate::errors::{self, FrameNote, ReportErrorExt};
-use crate::interpret::{err_inval, err_machine_stop};
-use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
+use crate::interpret::{
+    err_inval, err_machine_stop, ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType,
+};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -26,8 +27,9 @@ pub enum ConstEvalErrKind {
 
 impl MachineStopType for ConstEvalErrKind {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use ConstEvalErrKind::*;
+
+        use crate::fluent_generated::*;
         match self {
             ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,

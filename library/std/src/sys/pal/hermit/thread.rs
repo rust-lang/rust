@@ -3,11 +3,9 @@
 use super::hermit_abi;
 use super::thread_local_dtor::run_dtors;
 use crate::ffi::CStr;
-use crate::io;
-use crate::mem;
 use crate::num::NonZero;
-use crate::ptr;
 use crate::time::Duration;
+use crate::{io, mem, ptr};
 
 pub type Tid = hermit_abi::Tid;
 

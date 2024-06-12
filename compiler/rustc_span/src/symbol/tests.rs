@@ -1,5 +1,4 @@
 use super::*;
-
 use crate::create_default_session_globals_then;
 
 #[test]

@@ -1,6 +1,6 @@
-use run_make_support::fs_wrapper::copy;
 use std::path::{Path, PathBuf};
 
+use run_make_support::fs_wrapper::copy;
 use run_make_support::{copy_dir_all, recursive_diff, rustdoc};
 
 #[derive(PartialEq)]

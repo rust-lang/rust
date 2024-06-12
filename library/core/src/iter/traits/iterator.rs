@@ -1,18 +1,13 @@
+use super::super::{
+    try_process, ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter,
+    FilterMap, FlatMap, Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile,
+    MapWindows, Peekable, Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile,
+    TrustedRandomAccessNoCoerce, Zip,
+};
 use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
-
-use super::super::try_process;
-use super::super::ByRefSized;
-use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
-use super::super::{FlatMap, Flatten};
-use super::super::{
-    Inspect, Map, MapWhile, MapWindows, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take,
-    TakeWhile,
-};
-use super::super::{Intersperse, IntersperseWith, Product, Sum, Zip};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 

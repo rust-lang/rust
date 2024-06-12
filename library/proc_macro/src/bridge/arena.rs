@@ -5,12 +5,9 @@
 //! being built at the same time as `std`.
 
 use std::cell::{Cell, RefCell};
-use std::cmp;
 use std::mem::MaybeUninit;
 use std::ops::Range;
-use std::ptr;
-use std::slice;
-use std::str;
+use std::{cmp, ptr, slice, str};
 
 // The arenas start with PAGE-sized chunks, and then each new chunk is twice as
 // big as its predecessor, up until we reach HUGE_PAGE-sized chunks, whereupon

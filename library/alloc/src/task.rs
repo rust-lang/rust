@@ -7,14 +7,14 @@
 //! This may be detected at compile time using
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
-use crate::rc::Rc;
 use core::mem::ManuallyDrop;
-use core::task::{LocalWaker, RawWaker, RawWakerVTable};
-
-#[cfg(target_has_atomic = "ptr")]
-use crate::sync::Arc;
 #[cfg(target_has_atomic = "ptr")]
 use core::task::Waker;
+use core::task::{LocalWaker, RawWaker, RawWakerVTable};
+
+use crate::rc::Rc;
+#[cfg(target_has_atomic = "ptr")]
+use crate::sync::Arc;
 
 /// The implementation of waking a task on an executor.
 ///

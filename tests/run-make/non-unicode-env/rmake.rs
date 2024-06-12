@@ -1,5 +1,4 @@
-use run_make_support::fs_wrapper;
-use run_make_support::rustc;
+use run_make_support::{fs_wrapper, rustc};
 
 fn main() {
     #[cfg(unix)]

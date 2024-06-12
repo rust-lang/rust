@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
@@ -12,26 +14,21 @@ use rustc_middle::bug;
 use rustc_middle::traits::solve::{
     inspect, CanonicalInput, CanonicalResponse, Certainty, PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::ty::AliasRelationDirection;
-use rustc_middle::ty::TypeFolder;
 use rustc_middle::ty::{
-    self, InferCtxtLike, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AliasRelationDirection, InferCtxtLike, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::DUMMY_SP;
 use rustc_type_ir::fold::TypeSuperFoldable;
 use rustc_type_ir::{self as ir, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
-use std::ops::ControlFlow;
-
-use crate::traits::coherence;
-use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
+pub use select::InferCtxtSelectExt;
 
 use super::inspect::ProofTreeBuilder;
-use super::{search_graph, GoalEvaluationKind, FIXPOINT_STEP_LIMIT};
-use super::{search_graph::SearchGraph, Goal};
-use super::{GoalSource, SolverMode};
-pub use select::InferCtxtSelectExt;
+use super::search_graph::SearchGraph;
+use super::{search_graph, Goal, GoalEvaluationKind, GoalSource, SolverMode, FIXPOINT_STEP_LIMIT};
+use crate::traits::coherence;
+use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 pub(super) mod canonical;
 mod probe;

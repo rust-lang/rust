@@ -6,16 +6,18 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
-use crate::{errors, path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
-use crate::{BindingKey, Used};
-use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
-use crate::{ResolutionError, Resolver, Segment, TyCtxt, UseError};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::collections::hash_map::Entry;
+use std::collections::BTreeSet;
+use std::mem::{replace, swap, take};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::{codes::*, Applicability, DiagArgValue, IntoDiagArg, StashKey};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -32,10 +34,11 @@ use rustc_span::{BytePos, Span, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 use tracing::{debug, instrument, trace};
 
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::collections::{hash_map::Entry, BTreeSet};
-use std::mem::{replace, swap, take};
+use crate::{
+    errors, path_names_to_string, rustdoc, BindingError, BindingKey, Finalize, LexicalScopeBinding,
+    Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult, ResolutionError, Resolver,
+    Segment, TyCtxt, UseError, Used,
+};
 
 mod diagnostics;
 

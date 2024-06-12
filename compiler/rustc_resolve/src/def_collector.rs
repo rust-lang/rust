@@ -1,4 +1,3 @@
-use crate::{ImplTraitContext, Resolver};
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
 use rustc_expand::expand::AstFragment;
@@ -9,6 +8,8 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use tracing::debug;
+
+use crate::{ImplTraitContext, Resolver};
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_, '_>,

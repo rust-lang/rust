@@ -64,8 +64,8 @@ macro_rules! benches {
 }
 
 use std::fmt::Write;
-use test::black_box;
-use test::Bencher;
+
+use test::{black_box, Bencher};
 
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 

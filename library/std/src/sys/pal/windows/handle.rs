@@ -3,16 +3,13 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
-use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::ptr;
-use crate::sys::c;
-use crate::sys::cvt;
+use crate::sys::{c, cvt};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{cmp, mem, ptr};
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
