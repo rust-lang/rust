@@ -72,7 +72,7 @@ impl<'a> PanicInfo<'a> {
 
     /// Returns the payload associated with the panic.
     ///
-    /// On `core::panic::PanicInfo`, this method never returns anything useful.
+    /// On this type, `core::panic::PanicInfo`, this method never returns anything useful.
     /// It only exists because of compatibility with [`std::panic::PanicHookInfo`],
     /// which used to be the same type.
     ///
