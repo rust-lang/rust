@@ -147,7 +147,7 @@ Language
 - [Split `refining_impl_trait` lint into `_reachable`, `_internal` variants](https://github.com/rust-lang/rust/pull/121720/)
 - [Remove unnecessary type inference when using associated types inside of higher ranked `where`-bounds](https://github.com/rust-lang/rust/pull/119849)
 - [Weaken eager detection of cyclic types during type inference](https://github.com/rust-lang/rust/pull/119989)
-- [`trait Trait: Auto {}`: allow upcasting from `dyn Trait` to `dyn Auto`](https://github.com/rust-lang/rust/pull/119338)
+- [`trait Trait: Auto {}`: allow upcasting from `dyn Trait` to `dyn Trait + Auto`](https://github.com/rust-lang/rust/pull/119338)
 
 <a id="1.78.0-Compiler"></a>
 
