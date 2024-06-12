@@ -1,11 +1,4 @@
-use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
-use crate::builder::Builder;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
-use crate::va_arg::emit_va_arg;
-use crate::value::Value;
+use std::cmp::Ordering;
 
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -23,7 +16,14 @@ use rustc_target::abi::{self, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
 
-use std::cmp::Ordering;
+use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
+use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::llvm;
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::va_arg::emit_va_arg;
+use crate::value::Value;
 
 fn get_simple_intrinsic<'ll>(
     cx: &CodegenCx<'ll, '_>,

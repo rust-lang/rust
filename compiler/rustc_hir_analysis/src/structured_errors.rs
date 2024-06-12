@@ -2,12 +2,12 @@ mod missing_cast_for_variadic_arg;
 mod sized_unsized_cast;
 mod wrong_number_of_generic_args;
 
-pub use self::{
-    missing_cast_for_variadic_arg::*, sized_unsized_cast::*, wrong_number_of_generic_args::*,
-};
-
 use rustc_errors::{Diag, ErrCode};
 use rustc_session::Session;
+
+pub use self::missing_cast_for_variadic_arg::*;
+pub use self::sized_unsized_cast::*;
+pub use self::wrong_number_of_generic_args::*;
 
 pub trait StructuredDiag<'tcx> {
     fn session(&self) -> &Session;

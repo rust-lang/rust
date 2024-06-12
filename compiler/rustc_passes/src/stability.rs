@@ -1,7 +1,9 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use crate::errors;
+use std::mem::replace;
+use std::num::NonZero;
+
 use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     Unstable, UnstableReason, VERSION_PLACEHOLDER,
@@ -25,9 +27,9 @@ use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPR
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use std::mem::replace;
-use std::num::NonZero;
 use tracing::{debug, info};
+
+use crate::errors;
 
 #[derive(PartialEq)]
 enum AnnotationKind {

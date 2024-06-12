@@ -3,11 +3,10 @@ use crate::borrow::Cow;
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
 use crate::env;
-use crate::fmt;
-use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sync::{Mutex, PoisonError};
+use crate::{fmt, io};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;

@@ -1,5 +1,6 @@
-use super::*;
 use unicode_width::UnicodeWidthChar;
+
+use super::*;
 
 #[cfg(test)]
 mod tests;

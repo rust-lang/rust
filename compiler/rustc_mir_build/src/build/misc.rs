@@ -1,13 +1,13 @@
 //! Miscellaneous builder routines that are not specific to building any particular
 //! kind of thing.
 
-use crate::build::Builder;
-
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
+
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of

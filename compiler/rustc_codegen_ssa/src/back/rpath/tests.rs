@@ -1,7 +1,7 @@
-use super::RPathConfig;
-use super::{get_rpath_relative_to_output, minimize_rpaths, rpaths_to_flags};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+
+use super::{get_rpath_relative_to_output, minimize_rpaths, rpaths_to_flags, RPathConfig};
 
 #[test]
 fn test_rpaths_to_flags() {

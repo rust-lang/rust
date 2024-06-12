@@ -14,8 +14,6 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use crate::context::{EarlyContext, LintStore};
-use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, walk_list, Visitor};
 use rustc_ast::{self as ast, HasAttrs};
@@ -27,6 +25,9 @@ use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use tracing::debug;
+
+use crate::context::{EarlyContext, LintStore};
+use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);

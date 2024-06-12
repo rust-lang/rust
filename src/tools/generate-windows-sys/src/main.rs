@@ -1,8 +1,7 @@
-use std::env;
 use std::error::Error;
-use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::{env, fs};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut path: PathBuf =

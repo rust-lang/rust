@@ -34,8 +34,9 @@ pub(crate) mod test {
 
 #[cfg(feature = "rustc")]
 mod rustc {
-    use super::*;
     use rustc_middle::ty::{Ty, TyCtxt};
+
+    use super::*;
 
     impl<'tcx> super::QueryContext for TyCtxt<'tcx> {
         type Def = layout::rustc::Def<'tcx>;

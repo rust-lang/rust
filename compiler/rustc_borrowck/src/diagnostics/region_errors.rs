@@ -10,40 +10,31 @@ use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicate::BoundPredicate;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
-use rustc_infer::infer::{
-    error_reporting::nice_region_error::{
-        self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
-        HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
-    },
-    error_reporting::unexpected_hidden_region_diagnostic,
-    NllRegionVariableOrigin, RelateParamBound,
+use rustc_infer::infer::error_reporting::nice_region_error::{
+    self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
+    HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
 };
+use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
+use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::TypeVisitor;
-use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_middle::ty::{Region, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 
-use crate::borrowck_errors;
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
+use crate::nll::ConstraintDescription;
+use crate::region_infer::values::RegionElement;
+use crate::region_infer::{BlameConstraint, ExtraConstraintInfo, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
-
-use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
-use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
-use crate::{
-    nll::ConstraintDescription,
-    region_infer::{values::RegionElement, TypeTest},
-    universal_regions::DefiningTy,
-    MirBorrowckCtxt,
-};
+use crate::universal_regions::DefiningTy;
+use crate::{borrowck_errors, MirBorrowckCtxt};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {

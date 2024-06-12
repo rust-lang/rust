@@ -9,16 +9,15 @@ use std::slice::from_ref;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use hir::Expr;
-use rustc_lint::LateContext;
-// Export these here so that Clippy can use them.
-pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
-
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, PatKind};
+use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
+// Export these here so that Clippy can use them.
+pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
     self, adjustment, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _,

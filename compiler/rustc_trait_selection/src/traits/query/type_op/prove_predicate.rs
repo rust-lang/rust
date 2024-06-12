@@ -1,11 +1,11 @@
-use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::ObligationCtxt;
 use rustc_infer::traits::Obligation;
+pub use rustc_middle::traits::query::type_op::ProvePredicate;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 
-pub use rustc_middle::traits::query::type_op::ProvePredicate;
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
+use crate::traits::ObligationCtxt;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     type QueryResponse = ();

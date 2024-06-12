@@ -1,6 +1,3 @@
-use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
@@ -10,6 +7,9 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
+
+use crate::mir::traversal::Postorder;
+use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {

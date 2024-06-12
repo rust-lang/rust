@@ -1,21 +1,18 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::Idx;
-use rustc_index::IndexVec;
+use rustc_index::{Idx, IndexVec};
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::dep_graph::dep_kinds;
-use rustc_middle::traits::solve::CacheData;
-use rustc_middle::traits::solve::EvaluationCache;
+use rustc_middle::traits::solve::{CacheData, EvaluationCache};
 use rustc_middle::ty::TyCtxt;
 use rustc_next_trait_solver::solve::{CanonicalInput, Certainty, QueryResult};
 use rustc_session::Limit;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::Interner;
 
-use super::inspect;
 use super::inspect::ProofTreeBuilder;
-use super::SolverMode;
+use super::{inspect, SolverMode};
 use crate::solve::FIXPOINT_STEP_LIMIT;
 
 rustc_index::newtype_index! {

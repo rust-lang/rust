@@ -2,7 +2,8 @@ use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
-use crate::{lint::lint_body, validate, MirPass};
+use crate::lint::lint_body;
+use crate::{validate, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {

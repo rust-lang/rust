@@ -1,5 +1,6 @@
-use rustc_span::LocalExpnId;
 use std::fmt;
+
+use rustc_span::LocalExpnId;
 
 rustc_index::newtype_index! {
     /// Identifies an AST node.

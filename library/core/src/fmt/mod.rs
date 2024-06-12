@@ -4,13 +4,10 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
-use crate::iter;
 use crate::marker::PhantomData;
-use crate::mem;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
-use crate::result;
-use crate::str;
+use crate::{iter, mem, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -36,11 +33,10 @@ pub enum Alignment {
     Center,
 }
 
-#[stable(feature = "debug_builders", since = "1.2.0")]
-pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
 pub use self::builders::FormatterFn;
+#[stable(feature = "debug_builders", since = "1.2.0")]
+pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
 /// The type returned by formatter methods.
 ///

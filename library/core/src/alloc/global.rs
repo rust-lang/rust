@@ -1,6 +1,5 @@
 use crate::alloc::Layout;
-use crate::cmp;
-use crate::ptr;
+use crate::{cmp, ptr};
 
 /// A memory allocator that can be registered as the standard library’s default
 /// through the `#[global_allocator]` attribute.

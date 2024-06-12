@@ -1,5 +1,4 @@
-use std::fmt::Display;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Copy, Default, Hash, Eq, PartialEq, clap::ValueEnum)]
 pub enum Optimization {

@@ -27,33 +27,30 @@ pub mod btree_set {
     pub use super::btree::set::*;
 }
 
+use core::fmt::Display;
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use binary_heap::BinaryHeap;
-
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use btree_map::BTreeMap;
-
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use btree_set::BTreeSet;
-
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use linked_list::LinkedList;
-
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use vec_deque::VecDeque;
 
 use crate::alloc::{Layout, LayoutError};
-use core::fmt::Display;
 
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]

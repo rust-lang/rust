@@ -1,8 +1,3 @@
-use crate::traits::specialization_graph::{self, LeafDef, Node};
-
-use super::assembly::structural_traits::AsyncCallableRelevantTypes;
-use super::assembly::{self, structural_traits, Candidate};
-use super::{EvalCtxt, GoalSource};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
@@ -13,11 +8,14 @@ use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::NormalizesTo;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{TypeVisitableExt, Upcast};
+use rustc_middle::ty::{self, NormalizesTo, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
+
+use super::assembly::structural_traits::AsyncCallableRelevantTypes;
+use super::assembly::{self, structural_traits, Candidate};
+use super::{EvalCtxt, GoalSource};
+use crate::traits::specialization_graph::{self, LeafDef, Node};
 
 mod anon_const;
 mod inherent;

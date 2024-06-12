@@ -17,9 +17,9 @@
 #![allow(unused_macros)]
 
 // Re-export some of our utilities which are expected by other crates.
-pub use crate::panicking::{begin_panic, panic_count};
 pub use core::panicking::{panic_display, panic_fmt};
 
+pub use crate::panicking::{begin_panic, panic_count};
 use crate::sync::Once;
 use crate::sys;
 use crate::thread::{self, Thread};

@@ -8,17 +8,15 @@
 //! section of the [rustc-dev-guide][c].
 //!
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
-use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
-use crate::solve::eval_ctxt::NestedGoals;
-use crate::solve::{
-    inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
-};
+use std::assert_matches::assert_matches;
+use std::iter;
+use std::ops::Deref;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
-use rustc_infer::infer::RegionVariableOrigin;
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::solve::NestedNormalizationGoals;
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::Canonical;
@@ -31,11 +29,13 @@ use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable}
 use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_type_ir::CanonicalVarValues;
-use rustc_type_ir::{InferCtxtLike, Interner};
-use std::assert_matches::assert_matches;
-use std::iter;
-use std::ops::Deref;
+use rustc_type_ir::{CanonicalVarValues, InferCtxtLike, Interner};
+
+use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
+use crate::solve::eval_ctxt::NestedGoals;
+use crate::solve::{
+    inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
+};
 
 trait ResponseT<'tcx> {
     fn var_values(&self) -> CanonicalVarValues<TyCtxt<'tcx>>;

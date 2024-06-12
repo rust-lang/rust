@@ -1,6 +1,7 @@
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{symbol::sym, ErrorGuaranteed};
+use rustc_span::symbol::sym;
+use rustc_span::ErrorGuaranteed;
 
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let mut res = Ok(());

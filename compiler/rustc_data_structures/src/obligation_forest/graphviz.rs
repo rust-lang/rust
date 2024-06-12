@@ -1,11 +1,12 @@
-use crate::obligation_forest::{ForestObligation, ObligationForest};
-use rustc_graphviz as dot;
 use std::env::var_os;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use rustc_graphviz as dot;
+
+use crate::obligation_forest::{ForestObligation, ObligationForest};
 
 impl<O: ForestObligation> ObligationForest<O> {
     /// Creates a graphviz representation of the obligation forest. Given a directory this will

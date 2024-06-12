@@ -1,7 +1,6 @@
+use super::UnsafeCell;
 use crate::ops::Deref;
 use crate::{fmt, mem};
-
-use super::UnsafeCell;
 
 enum State<T, F> {
     Uninit(F),

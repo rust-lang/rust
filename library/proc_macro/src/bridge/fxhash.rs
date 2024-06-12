@@ -5,8 +5,7 @@
 //! on the `rustc_hash` crate.
 
 use std::collections::HashMap;
-use std::hash::BuildHasherDefault;
-use std::hash::Hasher;
+use std::hash::{BuildHasherDefault, Hasher};
 use std::ops::BitXor;
 
 /// Type alias for a hashmap using the `fx` hash algorithm.

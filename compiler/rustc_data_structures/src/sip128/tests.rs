@@ -1,6 +1,6 @@
-use super::*;
-
 use std::hash::Hash;
+
+use super::*;
 
 // Hash just the bytes of the slice, without length prefix
 struct Bytes<'a>(&'a [u8]);

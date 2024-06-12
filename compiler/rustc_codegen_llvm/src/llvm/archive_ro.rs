@@ -1,9 +1,9 @@
 //! A wrapper around LLVM's archive (.a) code
 
-use rustc_fs_util::path_to_c_string;
 use std::path::Path;
-use std::slice;
-use std::str;
+use std::{slice, str};
+
+use rustc_fs_util::path_to_c_string;
 
 pub struct ArchiveRO {
     pub raw: &'static mut super::Archive,

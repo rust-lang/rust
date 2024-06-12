@@ -14,17 +14,9 @@ pub mod run;
 pub mod rustc;
 pub mod rustdoc;
 
-use std::env;
 use std::ffi::OsString;
-use std::fs;
-use std::io;
-use std::panic;
 use std::path::{Path, PathBuf};
-
-pub use gimli;
-pub use object;
-pub use regex;
-pub use wasmparser;
+use std::{env, fs, io, panic};
 
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
@@ -33,6 +25,7 @@ pub use llvm_readobj::{llvm_readobj, LlvmReadobj};
 pub use run::{cmd, run, run_fail};
 pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
+pub use {gimli, object, regex, wasmparser};
 
 #[track_caller]
 pub fn env_var(name: &str) -> String {
@@ -418,5 +411,6 @@ macro_rules! impl_common_helpers {
     };
 }
 
-use crate::command::{Command, CompletedProcess};
 pub(crate) use impl_common_helpers;
+
+use crate::command::{Command, CompletedProcess};

@@ -1,10 +1,11 @@
-use crate::abi::{self, Abi, Align, FieldsShape, Size};
-use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
-use rustc_macros::HashStable_Generic;
-use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
+
+use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
+
+use crate::abi::{self, Abi, Align, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
 
 mod aarch64;
 mod amdgpu;
@@ -961,8 +962,9 @@ impl FromStr for Conv {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
     static_assert_size!(FnAbi<'_, usize>, 80);

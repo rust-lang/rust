@@ -1,17 +1,16 @@
-use anyhow::{format_err, Context, Result};
 use std::fs;
-use std::path::Path;
-use walkdir::WalkDir;
-
+// FIXME: what about Windows? Are default ACLs executable?
+#[cfg(unix)]
+use std::os::unix::fs::symlink as symlink_file;
 // Needed to set the script mode to executable.
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
-// FIXME: what about Windows? Are default ACLs executable?
-
-#[cfg(unix)]
-use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
+use std::path::Path;
+
+use anyhow::{format_err, Context, Result};
+use walkdir::WalkDir;
 
 /// Converts a `&Path` to a UTF-8 `&str`.
 pub fn path_to_str(path: &Path) -> Result<&str> {

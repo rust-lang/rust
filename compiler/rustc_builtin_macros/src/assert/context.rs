@@ -1,17 +1,15 @@
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, Delimiter, IdentIsRaw};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
-    ptr::P,
-    token::{self, Delimiter, IdentIsRaw},
-    tokenstream::{DelimSpan, TokenStream, TokenTree},
     BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall, Mutability,
     Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{
-    symbol::{sym, Ident, Symbol},
-    Span,
-};
+use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
 pub(super) struct Context<'cx, 'a> {

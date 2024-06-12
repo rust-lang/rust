@@ -1,5 +1,6 @@
-use super::StaticKey;
 use core::ptr;
+
+use super::StaticKey;
 
 #[test]
 fn statik() {

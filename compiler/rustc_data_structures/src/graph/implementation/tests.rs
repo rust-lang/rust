@@ -1,5 +1,6 @@
-use crate::graph::implementation::*;
 use tracing::debug;
+
+use crate::graph::implementation::*;
 
 type TestGraph = Graph<&'static str, &'static str>;
 

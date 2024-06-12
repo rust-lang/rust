@@ -1,7 +1,8 @@
 extern crate rand;
 
-use rand::{IsaacRng, Rng, SeedableRng};
 use std::mem::transmute;
+
+use rand::{IsaacRng, Rng, SeedableRng};
 use test_float_parse::{validate, SEED};
 
 fn main() {

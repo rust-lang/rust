@@ -1,9 +1,8 @@
 use rustc_hir::LangItem;
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Mutability};
+use rustc_middle::{bug, mir};
 use rustc_span::symbol::Symbol;
 use tracing::trace;
 

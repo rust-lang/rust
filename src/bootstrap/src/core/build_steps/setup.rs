@@ -5,12 +5,6 @@
 //! allows setting up things that cannot be simply captured inside the config.toml, in addition to
 //! leading people away from manually editing most of the config.toml values.
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::t;
-use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
-use crate::utils::helpers::hex_encode;
-use crate::Config;
-use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
@@ -19,6 +13,13 @@ use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
+
+use sha2::Digest;
+
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
+use crate::utils::helpers::hex_encode;
+use crate::{t, Config};
 
 #[cfg(test)]
 mod tests;

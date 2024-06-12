@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use regex::Regex;
 use similar::TextDiff;
-use std::path::Path;
 
 use crate::drop_bomb::DropBomb;
 

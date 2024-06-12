@@ -1,7 +1,9 @@
+use std::ops::Range;
+
+use rustc_data_structures::sync::Lrc;
+
 use crate::source_map::SourceMap;
 use crate::{BytePos, Pos, RelativeBytePos, SourceFile, SpanData};
-use rustc_data_structures::sync::Lrc;
-use std::ops::Range;
 
 #[derive(Clone)]
 struct CacheEntry {

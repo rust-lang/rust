@@ -1,11 +1,6 @@
 //! Borrow checker diagnostics.
 
-use crate::session_diagnostics::{
-    CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
-    CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
-};
-use rustc_errors::{Applicability, Diag};
-use rustc_errors::{DiagCtxt, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagCtxt, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
@@ -25,7 +20,8 @@ use rustc_middle::util::{call_kind, CallDesugaringKind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
@@ -33,10 +29,13 @@ use rustc_trait_selection::traits::{
     type_known_to_meet_bound_modulo_regions, FulfillmentErrorCode,
 };
 
-use crate::fluent_generated as fluent;
-
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
+use crate::fluent_generated as fluent;
+use crate::session_diagnostics::{
+    CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
+    CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
+};
 
 mod find_all_local_uses;
 mod find_use;
@@ -611,8 +610,9 @@ impl UseSpans<'_> {
         err: &mut Diag<'_>,
         action: crate::InitializationRequiringAction,
     ) {
-        use crate::InitializationRequiringAction::*;
         use CaptureVarPathUseCause::*;
+
+        use crate::InitializationRequiringAction::*;
         if let UseSpans::ClosureUse { closure_kind, path_span, .. } = self {
             match closure_kind {
                 hir::ClosureKind::Coroutine(_) => {

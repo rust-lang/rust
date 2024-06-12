@@ -1,5 +1,6 @@
-use rustc_span::{Span, DUMMY_SP};
 use std::{cmp, ops};
+
+use rustc_span::{Span, DUMMY_SP};
 
 /// Tracks whether executing a node may exit normally (versus
 /// return/break/panic, which "diverge", leaving dead code in their

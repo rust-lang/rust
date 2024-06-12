@@ -1,12 +1,13 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use core::mem::MaybeUninit;
+
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys::c;
 use crate::sys::common::alloc::{realloc_fallback, MIN_ALIGN};
-use core::mem::MaybeUninit;
 
 #[cfg(test)]
 mod tests;

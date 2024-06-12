@@ -1,11 +1,14 @@
-use crate::fluent_generated as fluent;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level,
-    SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, SubdiagMessageOp,
+    Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{self, print::PrintTraitRefExt as _, ClosureKind, PolyTraitRef, Ty};
+use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::{self, ClosureKind, PolyTraitRef, Ty};
 use rustc_span::{Span, Symbol};
+
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(trait_selection_dump_vtable_entries)]

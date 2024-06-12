@@ -1,26 +1,21 @@
 use core::ptr::addr_of;
 
-use crate::os::windows::prelude::*;
-
+use super::api::{self, WinError};
+use super::{to_u16s, IoResult};
 use crate::borrow::Cow;
 use crate::ffi::{c_void, OsStr, OsString};
-use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
+use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
-use crate::ptr;
-use crate::slice;
 use crate::sync::Arc;
 use crate::sys::handle::Handle;
+use crate::sys::path::maybe_verbatim;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-use crate::thread;
-
-use super::api::{self, WinError};
-use super::{to_u16s, IoResult};
-use crate::sys::path::maybe_verbatim;
+use crate::{fmt, ptr, slice, thread};
 
 pub struct File {
     handle: Handle,

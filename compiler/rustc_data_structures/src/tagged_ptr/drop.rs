@@ -2,8 +2,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
-use super::CopyTaggedPtr;
-use super::{Pointer, Tag};
+use super::{CopyTaggedPtr, Pointer, Tag};
 use crate::stable_hasher::{HashStable, StableHasher};
 
 /// A tagged pointer that supports pointers that implement [`Drop`].

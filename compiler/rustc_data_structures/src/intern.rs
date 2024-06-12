@@ -1,9 +1,10 @@
-use crate::stable_hasher::{HashStable, StableHasher};
 use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::ptr;
+
+use crate::stable_hasher::{HashStable, StableHasher};
 
 mod private {
     #[derive(Clone, Copy, Debug)]

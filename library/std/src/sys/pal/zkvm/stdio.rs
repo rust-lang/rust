@@ -1,4 +1,5 @@
-use super::{abi, abi::fileno};
+use super::abi;
+use super::abi::fileno;
 use crate::io;
 
 pub struct Stdin;

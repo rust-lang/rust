@@ -1,5 +1,4 @@
-use super::make_command_line;
-use super::Arg;
+use super::{make_command_line, Arg};
 use crate::env;
 use crate::ffi::{OsStr, OsString};
 use crate::process::Command;

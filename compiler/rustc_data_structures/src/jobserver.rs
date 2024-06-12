@@ -1,8 +1,7 @@
-pub use jobserver_crate::Client;
-
-use jobserver_crate::{FromEnv, FromEnvErrorKind};
-
 use std::sync::{LazyLock, OnceLock};
+
+pub use jobserver_crate::Client;
+use jobserver_crate::{FromEnv, FromEnvErrorKind};
 
 // We can only call `from_env_ext` once per process
 

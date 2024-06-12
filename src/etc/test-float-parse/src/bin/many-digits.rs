@@ -1,8 +1,9 @@
 extern crate rand;
 
+use std::char;
+
 use rand::distributions::{Range, Sample};
 use rand::{IsaacRng, Rng, SeedableRng};
-use std::char;
 use test_float_parse::{validate, SEED};
 
 fn main() {

@@ -1,8 +1,9 @@
 //! Checks the licenses of third-party dependencies.
 
-use cargo_metadata::{Metadata, Package, PackageId};
 use std::collections::HashSet;
 use std::path::Path;
+
+use cargo_metadata::{Metadata, Package, PackageId};
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.

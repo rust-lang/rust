@@ -1,8 +1,9 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use std::ops::ControlFlow;
 
 /// This method traverses the structure of `ty`, trying to find an
 /// instance of an ADT (i.e. struct or enum) that doesn't implement

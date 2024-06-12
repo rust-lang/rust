@@ -1,13 +1,34 @@
 #![doc = include_str!("doc.md")]
 
-use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
-use rustc_data_structures::unord::UnordMap;
+use std::cell::{OnceCell, RefCell};
+use std::iter;
+use std::ops::Range;
 
-use self::metadata::{file_metadata, type_di_node};
-use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
+use libc::c_uint;
+use rustc_codegen_ssa::debuginfo::type_names;
+use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
+use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
+use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordMap;
+use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_index::IndexVec;
+use rustc_middle::mir;
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, GenericArgsRef, Instance, ParamEnv, Ty, TypeVisitableExt};
+use rustc_session::config::{self, DebugInfo};
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
+use rustc_span::{
+    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
+};
+use rustc_target::abi::Size;
+use smallvec::SmallVec;
+use tracing::debug;
+
+use self::metadata::{file_metadata, type_di_node, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
-
 use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -17,32 +38,6 @@ use crate::llvm::debuginfo::{
     DIVariable,
 };
 use crate::value::Value;
-
-use rustc_codegen_ssa::debuginfo::type_names;
-use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
-use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::sync::Lrc;
-use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_index::IndexVec;
-use rustc_middle::mir;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
-use rustc_session::config::{self, DebugInfo};
-use rustc_session::Session;
-use rustc_span::symbol::Symbol;
-use rustc_span::{
-    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
-};
-use rustc_target::abi::Size;
-
-use libc::c_uint;
-use smallvec::SmallVec;
-use std::cell::OnceCell;
-use std::cell::RefCell;
-use std::iter;
-use std::ops::Range;
-use tracing::debug;
 
 mod create_scope_map;
 pub mod gdb;

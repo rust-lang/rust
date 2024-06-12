@@ -1,20 +1,19 @@
-use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 
+use crate::ty::{self, TyCtxt};
+
 #[macro_use]
 mod dep_node;
 
-pub use rustc_query_system::dep_graph::debug::EdgeFilter;
-pub use rustc_query_system::dep_graph::{
-    debug::DepNodeFilter, hash_result, DepContext, DepGraphQuery, DepNodeIndex, Deps,
-    SerializedDepGraph, SerializedDepNodeIndex, TaskDepsRef, WorkProduct, WorkProductId,
-    WorkProductMap,
-};
-
 pub use dep_node::{dep_kinds, label_strs, DepKind, DepNode, DepNodeExt};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
+pub use rustc_query_system::dep_graph::debug::{DepNodeFilter, EdgeFilter};
+pub use rustc_query_system::dep_graph::{
+    hash_result, DepContext, DepGraphQuery, DepNodeIndex, Deps, SerializedDepGraph,
+    SerializedDepNodeIndex, TaskDepsRef, WorkProduct, WorkProductId, WorkProductMap,
+};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 

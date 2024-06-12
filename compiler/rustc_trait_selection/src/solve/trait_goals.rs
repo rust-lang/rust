@@ -1,8 +1,5 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use super::assembly::structural_traits::AsyncCallableRelevantTypes;
-use super::assembly::{self, structural_traits, Candidate};
-use super::{EvalCtxt, GoalSource, SolverMode};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
@@ -14,9 +11,12 @@ use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
-use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
+use rustc_middle::ty::{self, TraitPredicate, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_span::ErrorGuaranteed;
+
+use super::assembly::structural_traits::AsyncCallableRelevantTypes;
+use super::assembly::{self, structural_traits, Candidate};
+use super::{EvalCtxt, GoalSource, SolverMode};
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {

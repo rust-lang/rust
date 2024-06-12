@@ -47,12 +47,10 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "solid_ext", issue = "none")]
 
-use crate::fmt;
 use crate::marker::PhantomData;
 use crate::mem::forget;
-use crate::net;
-use crate::sys;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::{fmt, net, sys};
 
 /// Raw file descriptors.
 pub type RawFd = i32;

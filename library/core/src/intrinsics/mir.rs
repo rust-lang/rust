@@ -276,8 +276,7 @@ pub enum UnwindTerminateReason {
     InCleanup,
 }
 
-pub use UnwindTerminateReason::Abi as ReasonAbi;
-pub use UnwindTerminateReason::InCleanup as ReasonInCleanup;
+pub use UnwindTerminateReason::{Abi as ReasonAbi, InCleanup as ReasonInCleanup};
 
 macro_rules! define {
     ($name:literal, $( #[ $meta:meta ] )* fn $($sig:tt)*) => {

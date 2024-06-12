@@ -1,7 +1,8 @@
-use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
+
+use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;

@@ -1,13 +1,12 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::{
-    errors::ExplicitLifetimeRequired,
-    infer::error_reporting::nice_region_error::find_anon_type::find_anon_type,
-};
 use rustc_errors::Diag;
 use rustc_middle::ty;
 use rustc_span::symbol::kw;
+
+use crate::errors::ExplicitLifetimeRequired;
+use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and

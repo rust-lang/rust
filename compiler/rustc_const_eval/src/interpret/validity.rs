@@ -5,19 +5,19 @@
 //! to be const-safe.
 
 use std::fmt::Write;
+use std::hash::Hash;
 use std::num::NonZero;
 
 use either::{Left, Right};
-use tracing::trace;
-
 use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
+use rustc_middle::mir::interpret::ValidationErrorKind::*;
 use rustc_middle::mir::interpret::{
     ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
-    ValidationErrorInfo, ValidationErrorKind, ValidationErrorKind::*,
+    ValidationErrorInfo, ValidationErrorKind,
 };
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -25,20 +25,19 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
+use tracing::trace;
 
-use std::hash::Hash;
-
-use super::{
-    err_ub, format_interp_error, machine::AllocMap, throw_ub, AllocId, CheckInAllocMsg,
-    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
-    Pointer, Projectable, Scalar, ValueVisitor,
-};
-
+use super::machine::AllocMap;
 // for the validation errors
 use super::InterpError::UndefinedBehavior as Ub;
 use super::InterpError::Unsupported as Unsup;
 use super::UndefinedBehaviorInfo::*;
 use super::UnsupportedOpInfo::*;
+use super::{
+    err_ub, format_interp_error, throw_ub, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate,
+    InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar,
+    ValueVisitor,
+};
 
 macro_rules! throw_validation_failure {
     ($where:expr, $kind: expr) => {{

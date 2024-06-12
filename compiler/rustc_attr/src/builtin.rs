@@ -1,8 +1,12 @@
 //! Parsing and validation of builtin attributes
 
+use std::num::NonZero;
+
 use rustc_abi::Align;
-use rustc_ast::{self as ast, attr};
-use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
+use rustc_ast::{
+    self as ast, attr, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem,
+    NodeId,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
@@ -13,8 +17,8 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
-use rustc_span::{symbol::sym, symbol::Symbol, Span};
-use std::num::NonZero;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 

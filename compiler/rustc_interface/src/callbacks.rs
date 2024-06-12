@@ -9,12 +9,13 @@
 //! The functions in this file should fall back to the default set in their
 //! origin crate when the `TyCtxt` is not present in TLS.
 
+use std::fmt;
+
 use rustc_errors::{DiagInner, TRACK_DIAGNOSTIC};
 use rustc_middle::dep_graph::{DepNodeExt, TaskDepsRef};
 use rustc_middle::ty::tls;
 use rustc_query_system::dep_graph::dep_node::default_dep_kind_debug;
 use rustc_query_system::dep_graph::{DepContext, DepKind, DepNode};
-use std::fmt;
 
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
     tls::with_opt(|tcx| {

@@ -1,5 +1,6 @@
 use rustc_middle::bug;
-use rustc_session::{config::ExpectedValues, Session};
+use rustc_session::config::ExpectedValues;
+use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{sym, Span, Symbol};
 

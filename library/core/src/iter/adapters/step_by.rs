@@ -1,9 +1,7 @@
-use crate::{
-    intrinsics,
-    iter::{from_fn, TrustedLen, TrustedRandomAccess},
-    num::NonZero,
-    ops::{Range, Try},
-};
+use crate::intrinsics;
+use crate::iter::{from_fn, TrustedLen, TrustedRandomAccess};
+use crate::num::NonZero;
+use crate::ops::{Range, Try};
 
 /// An iterator for stepping iterators by a custom amount.
 ///

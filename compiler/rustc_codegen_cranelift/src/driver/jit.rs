@@ -14,8 +14,8 @@ use rustc_session::Session;
 use rustc_span::Symbol;
 
 use crate::debuginfo::TypeDebugContext;
-use crate::{prelude::*, BackendConfig};
-use crate::{CodegenCx, CodegenMode};
+use crate::prelude::*;
+use crate::{BackendConfig, CodegenCx, CodegenMode};
 
 struct JitState {
     backend_config: BackendConfig,

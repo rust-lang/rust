@@ -1,4 +1,5 @@
-use rustc_errors::{codes::*, Diag, LintDiagnostic};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, LintDiagnostic};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;

@@ -1,11 +1,12 @@
 //! This pass eliminates casting of arrays into slices when their length
 //! is taken using `.len()` method. Handy to preserve information in MIR for const prop
 
-use crate::ssa::SsaLocals;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
+
+use crate::ssa::SsaLocals;
 
 pub struct NormalizeArrayLen;
 

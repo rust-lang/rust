@@ -7,11 +7,12 @@
 //! `normalize_generic_arg_after_erasing_regions` query for each type
 //! or constant found within. (This underlying query is what is cached.)
 
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use tracing::{debug, instrument};
+
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use tracing::{debug, instrument};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {

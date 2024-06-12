@@ -1,8 +1,10 @@
-use std::{borrow::Cow, env};
+use std::borrow::Cow;
+use std::env;
 
-use crate::spec::{add_link_args, add_link_args_iter};
-use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs, LinkerFlavor, Lld};
-use crate::spec::{SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions};
+use crate::spec::{
+    add_link_args, add_link_args_iter, cvs, Cc, DebuginfoKind, FramePointer, LinkArgs,
+    LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions,
+};
 
 #[cfg(test)]
 mod tests;

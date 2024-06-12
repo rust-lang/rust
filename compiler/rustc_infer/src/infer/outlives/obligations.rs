@@ -59,6 +59,18 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
+use rustc_data_structures::undo_log::UndoLogs;
+use rustc_middle::bug;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
+    TypeFoldable as _, TypeVisitableExt,
+};
+use rustc_span::DUMMY_SP;
+use smallvec::smallvec;
+
+use super::env::OutlivesEnvironment;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
@@ -66,18 +78,6 @@ use crate::infer::resolve::OpportunisticRegionResolver;
 use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::bug;
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{
-    self, GenericArgsRef, Region, Ty, TyCtxt, TypeFoldable as _, TypeVisitableExt,
-};
-use rustc_middle::ty::{GenericArgKind, PolyTypeOutlivesPredicate};
-use rustc_span::DUMMY_SP;
-use smallvec::smallvec;
-
-use super::env::OutlivesEnvironment;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Registers that the given region obligation must be resolved

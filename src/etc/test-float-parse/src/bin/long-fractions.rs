@@ -1,4 +1,5 @@
 use std::char;
+
 use test_float_parse::validate;
 
 fn main() {

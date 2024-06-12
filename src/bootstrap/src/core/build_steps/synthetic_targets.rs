@@ -7,10 +7,11 @@
 //! one of the target specs already defined in this module, or create new ones by adding a new step
 //! that calls create_synthetic_target.
 
+use std::process::{Command, Stdio};
+
 use crate::core::builder::{Builder, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::Compiler;
-use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MirOptPanicAbortSyntheticTarget {

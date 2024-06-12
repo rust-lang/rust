@@ -1,7 +1,6 @@
+use super::display_buffer::DisplayBuffer;
 use crate::fmt::{self, Write};
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-
-use super::display_buffer::DisplayBuffer;
 
 /// An internet socket address, either IPv4 or IPv6.
 ///

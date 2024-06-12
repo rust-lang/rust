@@ -8,12 +8,11 @@
 //! the ones that call `x.py`. We use `sh -c` on Unix, because it is a standard.
 //! We also don't use `pwsh` on Windows, because it is not installed by default;
 
-use std::{
-    env::{self, consts::EXE_EXTENSION},
-    io,
-    path::Path,
-    process::{self, Command, ExitStatus},
-};
+use std::env::consts::EXE_EXTENSION;
+use std::env::{self};
+use std::io;
+use std::path::Path;
+use std::process::{self, Command, ExitStatus};
 
 const PYTHON: &str = "python";
 const PYTHON2: &str = "python2";

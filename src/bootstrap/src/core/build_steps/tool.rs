@@ -1,7 +1,6 @@
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -9,11 +8,8 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
-use crate::utils::helpers::output;
-use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::Compiler;
-use crate::Mode;
-use crate::{gha, Kind};
+use crate::utils::helpers::{add_dylib_path, exe, output, t};
+use crate::{gha, Compiler, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {

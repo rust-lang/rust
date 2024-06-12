@@ -2,29 +2,25 @@
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
-use crate::errors::RequestedLevel;
-use crate::fluent_generated as fluent;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString,
-    ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp,
-    Subdiagnostic, SuggestionStyle,
+    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
+    EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
-use rustc_hir::{def::Namespace, def_id::DefId};
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{
-    inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
-};
-use rustc_session::{lint::AmbiguityErrorDiag, Session};
-use rustc_span::{
-    edition::Edition,
-    sym,
-    symbol::{Ident, MacroRulesNormalizedIdent},
-    Span, Symbol,
-};
+use rustc_middle::ty::inhabitedness::InhabitedPredicate;
+use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_session::lint::AmbiguityErrorDiag;
+use rustc_session::Session;
+use rustc_span::edition::Edition;
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_span::{sym, Span, Symbol};
 
-use crate::{
-    builtin::InitError, builtin::TypeAliasBounds, errors::OverruledAttributeSub, LateContext,
-};
+use crate::builtin::{InitError, TypeAliasBounds};
+use crate::errors::{OverruledAttributeSub, RequestedLevel};
+use crate::{fluent_generated as fluent, LateContext};
 
 // array_into_iter.rs
 #[derive(LintDiagnostic)]

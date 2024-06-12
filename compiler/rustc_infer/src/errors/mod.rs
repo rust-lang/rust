@@ -1,8 +1,11 @@
+use std::path::PathBuf;
+
 use hir::GenericParamKind;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee, IntoDiagArg,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee, IntoDiagArg, MultiSpan,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -11,17 +14,13 @@ use rustc_hir::FnRetTy;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::TraitRefPrintOnlyTraitPath;
 use rustc_middle::ty::{Binder, FnSig, Region, Ty, TyCtxt};
-use rustc_span::symbol::kw;
-use rustc_span::Symbol;
-use rustc_span::{symbol::Ident, BytePos, Span};
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::{BytePos, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-use crate::infer::error_reporting::{
-    need_type_info::UnderspecifiedArgKind, nice_region_error::placeholder_error::Highlighted,
-    ObligationCauseAsDiagArg,
-};
-
-use std::path::PathBuf;
+use crate::infer::error_reporting::need_type_info::UnderspecifiedArgKind;
+use crate::infer::error_reporting::nice_region_error::placeholder_error::Highlighted;
+use crate::infer::error_reporting::ObligationCauseAsDiagArg;
 
 pub mod note_and_explain;
 

@@ -1,10 +1,10 @@
-use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
+use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_type_ir::fold::TypeFoldable;
-use std::ops::ControlFlow;
-
 pub use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+
+use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 ///////////////////////////////////////////////////////////////////////////
 // Region folder

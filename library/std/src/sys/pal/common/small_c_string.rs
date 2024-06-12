@@ -1,8 +1,7 @@
 use crate::ffi::{CStr, CString};
 use crate::mem::MaybeUninit;
 use crate::path::Path;
-use crate::slice;
-use crate::{io, ptr};
+use crate::{io, ptr, slice};
 
 // Make sure to stay under 4096 so the compiler doesn't insert a probe frame:
 // https://docs.rs/compiler_builtins/latest/compiler_builtins/probestack/index.html

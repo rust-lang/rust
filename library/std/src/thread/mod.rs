@@ -160,24 +160,19 @@ mod tests;
 
 use crate::any::Any;
 use crate::cell::{OnceCell, UnsafeCell};
-use crate::env;
 use crate::ffi::{CStr, CString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::{self, forget};
 use crate::num::NonZero;
-use crate::panic;
-use crate::panicking;
 use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
-use crate::str;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::Arc;
 use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::{Duration, Instant};
+use crate::{env, fmt, io, panic, panicking, str};
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 mod scoped;

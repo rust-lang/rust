@@ -10,29 +10,6 @@
 
 mod errors;
 
-use rustc_ast::visit::{try_visit, VisitorResult};
-use rustc_ast::MacroDef;
-use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::intern::Interned;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
-use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
-use rustc_middle::query::Providers;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Const, GenericParamDefKind};
-use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
-use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
-use tracing::debug;
-
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
@@ -42,6 +19,28 @@ use errors::{
     ItemIsPrivate, PrivateInterfacesOrBoundsLint, ReportEffectiveVisibility, UnnameableTypesLint,
     UnnamedItemIsPrivate,
 };
+use rustc_ast::visit::{try_visit, VisitorResult};
+use rustc_ast::MacroDef;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::intern::Interned;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
+use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
+use rustc_middle::query::Providers;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::{
+    self, Const, GenericArgs, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
+};
+use rustc_middle::{bug, span_bug};
+use rustc_session::lint;
+use rustc_span::hygiene::Transparency;
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Span;
+use tracing::debug;
+use {rustc_attr as attr, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

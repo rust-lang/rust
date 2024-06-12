@@ -1,12 +1,11 @@
-use crate::fmt;
+use libc::{self, c_char, c_int, RTP_ID};
+
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
-use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 use crate::sys_common::thread;
-use libc::RTP_ID;
-use libc::{self, c_char, c_int};
+use crate::{fmt, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

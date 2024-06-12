@@ -4,6 +4,7 @@ mod int_log;
 mod int_pow;
 
 use std::str::FromStr;
+
 use test::{black_box, Bencher};
 
 const ASCII_NUMBERS: [&str; 19] = [

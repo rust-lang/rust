@@ -1,6 +1,7 @@
 //! Helper module which helps to determine amount of threads to be used
 //! during tests execution.
-use std::{env, num::NonZero, thread};
+use std::num::NonZero;
+use std::{env, thread};
 
 pub fn get_concurrency() -> usize {
     if let Ok(value) = env::var("RUST_TEST_THREADS") {

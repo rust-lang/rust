@@ -3,8 +3,7 @@
 // RFC for reference.
 
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]

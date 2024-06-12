@@ -4,17 +4,16 @@
 //!
 //! [Toolstate]: https://forge.rust-lang.org/infra/toolstate.html
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::utils::helpers::t;
-use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::env;
-use std::fmt;
-use std::fs;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time;
+use std::{env, fmt, fs, time};
+
+use serde_derive::{Deserialize, Serialize};
+
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::utils::helpers::t;
 
 // Each cycle is 42 days long (6 weeks); the last week is 35..=42 then.
 const BETA_WEEK_START: u64 = 35;

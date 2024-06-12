@@ -18,11 +18,9 @@
 //!    is set, rerun the tool to print a suggestion diff (for e.g. CI)
 
 use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{fmt, fs, io};
 
 /// Minimum python revision is 3.7 for ruff
 const MIN_PY_REV: (u32, u32) = (3, 7);

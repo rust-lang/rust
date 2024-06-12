@@ -73,6 +73,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
+
 use ucd_parse::Codepoints;
 
 mod cascading_map;

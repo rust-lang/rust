@@ -1,30 +1,25 @@
 #![unstable(issue = "none", feature = "windows_net")]
 
-use crate::cmp;
+use core::ffi::{c_int, c_long, c_ulong, c_ushort};
+
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut, Read};
-use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
-use crate::ptr;
 use crate::sync::OnceLock;
-use crate::sys;
 use crate::sys::c;
-use crate::sys_common::net;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{net, AsInner, FromInner, IntoInner};
 use crate::time::Duration;
-
-use core::ffi::{c_int, c_long, c_ulong, c_ushort};
+use crate::{cmp, mem, ptr, sys};
 
 pub type wrlen_t = i32;
 
 pub mod netc {
-    pub use crate::sys::c::ADDRESS_FAMILY as sa_family_t;
-    pub use crate::sys::c::ADDRINFOA as addrinfo;
-    pub use crate::sys::c::SOCKADDR as sockaddr;
-    pub use crate::sys::c::SOCKADDR_STORAGE_LH as sockaddr_storage;
-    pub use crate::sys::c::*;
+    pub use crate::sys::c::{
+        ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, SOCKADDR as sockaddr,
+        SOCKADDR_STORAGE_LH as sockaddr_storage, *,
+    };
 }
 
 pub struct Socket(OwnedSocket);

@@ -69,13 +69,15 @@
 //! step, we compress the vector to remove completed and error nodes, which
 //! aren't needed anymore.
 
-use crate::fx::{FxHashMap, FxHashSet};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash;
 use std::marker::PhantomData;
+
 use tracing::debug;
+
+use crate::fx::{FxHashMap, FxHashSet};
 
 mod graphviz;
 

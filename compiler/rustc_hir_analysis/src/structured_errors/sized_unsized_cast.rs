@@ -1,8 +1,11 @@
-use crate::{errors, structured_errors::StructuredDiag};
-use rustc_errors::{codes::*, Diag};
+use rustc_errors::codes::*;
+use rustc_errors::Diag;
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
+
+use crate::errors;
+use crate::structured_errors::StructuredDiag;
 
 pub struct SizedUnsizedCast<'tcx> {
     pub sess: &'tcx Session,

@@ -2,10 +2,11 @@
 
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
-use rustc_serialize::int_overflow::{DebugStrictAdd, DebugStrictSub};
 use std::hash::Hasher;
 use std::mem::{self, MaybeUninit};
 use std::ptr;
+
+use rustc_serialize::int_overflow::{DebugStrictAdd, DebugStrictSub};
 
 #[cfg(test)]
 mod tests;

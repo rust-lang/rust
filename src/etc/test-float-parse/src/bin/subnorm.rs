@@ -1,4 +1,5 @@
 use std::mem::transmute;
+
 use test_float_parse::validate;
 
 fn main() {

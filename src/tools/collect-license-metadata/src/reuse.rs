@@ -1,8 +1,10 @@
-use crate::licenses::{License, LicenseId, LicensesInterner};
-use anyhow::Error;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Instant;
+
+use anyhow::Error;
+
+use crate::licenses::{License, LicenseId, LicensesInterner};
 
 pub(crate) fn collect(
     reuse_exe: &Path,

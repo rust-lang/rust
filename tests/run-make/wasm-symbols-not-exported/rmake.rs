@@ -1,7 +1,8 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::path::Path;
+
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();

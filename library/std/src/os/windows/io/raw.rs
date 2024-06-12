@@ -2,16 +2,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fs;
-use crate::io;
-use crate::net;
 #[cfg(doc)]
 use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
-use crate::ptr;
-use crate::sys;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::{fs, io, net, ptr, sys};
 
 /// Raw HANDLEs.
 #[stable(feature = "rust1", since = "1.0.0")]

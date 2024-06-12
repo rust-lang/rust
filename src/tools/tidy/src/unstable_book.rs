@@ -1,7 +1,8 @@
-use crate::features::{CollectedFeatures, Features, Status};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use crate::features::{CollectedFeatures, Features, Status};
 
 pub const PATH_STR: &str = "doc/unstable-book";
 

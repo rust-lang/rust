@@ -1,7 +1,9 @@
-use crate::dep_graph::DepNodeIndex;
-use smallvec::SmallVec;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+
+use smallvec::SmallVec;
+
+use crate::dep_graph::DepNodeIndex;
 
 #[derive(Default, Debug)]
 pub(crate) struct EdgesVec {

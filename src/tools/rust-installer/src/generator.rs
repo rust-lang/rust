@@ -1,11 +1,12 @@
-use super::Scripter;
-use super::Tarballer;
-use crate::compression::{CompressionFormats, CompressionProfile};
-use crate::util::*;
-use anyhow::{bail, format_err, Context, Result};
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
+
+use anyhow::{bail, format_err, Context, Result};
+
+use super::{Scripter, Tarballer};
+use crate::compression::{CompressionFormats, CompressionProfile};
+use crate::util::*;
 
 actor! {
     #[derive(Debug)]

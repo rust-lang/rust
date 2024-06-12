@@ -9,9 +9,9 @@ use crate::environment::Environment;
 use crate::utils::io::get_files_from_dir;
 
 pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
-    use humansize::format_size;
-    use humansize::BINARY;
     use std::fmt::Write;
+
+    use humansize::{format_size, BINARY};
 
     let root = env.build_artifacts().join("stage2");
 

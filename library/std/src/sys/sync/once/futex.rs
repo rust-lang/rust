@@ -1,9 +1,7 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::atomic::{
-    AtomicU32,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::once::ExclusiveState;
 use crate::sys::futex::{futex_wait, futex_wake_all};
 

@@ -1,4 +1,5 @@
-use crate::base::ExtCtxt;
+use std::ops::{Bound, Range};
+
 use ast::token::IdentIsRaw;
 use pm::bridge::{
     server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
@@ -20,7 +21,8 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
-use std::ops::{Bound, Range};
+
+use crate::base::ExtCtxt;
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;

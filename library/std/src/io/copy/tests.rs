@@ -119,12 +119,11 @@ fn copy_specializes_from_slice() {
 
 #[cfg(unix)]
 mod io_benches {
-    use crate::fs::File;
-    use crate::fs::OpenOptions;
+    use test::Bencher;
+
+    use crate::fs::{File, OpenOptions};
     use crate::io::prelude::*;
     use crate::io::BufReader;
-
-    use test::Bencher;
 
     #[bench]
     fn bench_copy_buf_reader(b: &mut Bencher) {

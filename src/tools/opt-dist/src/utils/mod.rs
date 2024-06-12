@@ -1,10 +1,11 @@
+use std::time::Duration;
+
+use humansize::BINARY;
 use sysinfo::Disks;
 
 use crate::environment::Environment;
 use crate::timer::Timer;
 use crate::utils::io::delete_directory;
-use humansize::BINARY;
-use std::time::Duration;
 
 pub mod artifact_size;
 pub mod io;

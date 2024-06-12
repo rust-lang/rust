@@ -15,15 +15,13 @@
 )]
 // tidy-alphabetical-end
 
+use std::{iter, str, string};
+
 use rustc_lexer::unescape;
 pub use Alignment::*;
 pub use Count::*;
 pub use Piece::*;
 pub use Position::*;
-
-use std::iter;
-use std::str;
-use std::string;
 
 // Note: copied from rustc_span
 /// Range inside of a `Span` used for diagnostics when we only have access to relative positions.

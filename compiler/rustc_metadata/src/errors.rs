@@ -1,9 +1,8 @@
-use std::{
-    io::Error,
-    path::{Path, PathBuf},
-};
+use std::io::Error;
+use std::path::{Path, PathBuf};
 
-use rustc_errors::{codes::*, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};

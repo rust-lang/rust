@@ -5,13 +5,11 @@
 //! In uplifting, a tarball from Stage N captures essential components
 //! to assemble Stage N + 1 compiler.
 
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use crate::core::builder::Builder;
-use crate::core::{build_steps::dist::distdir, builder::Kind};
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::{Builder, Kind};
 use crate::utils::channel;
 use crate::utils::helpers::{move_file, t};
 

@@ -1,9 +1,9 @@
-use crate::solve::GoalSource;
-
-use super::EvalCtxt;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty::{self, ProjectionPredicate};
+
+use super::EvalCtxt;
+use crate::solve::GoalSource;
 
 impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]

@@ -1,6 +1,5 @@
 use rustc_serialize::leb128::*;
-use rustc_serialize::opaque::MemDecoder;
-use rustc_serialize::opaque::MAGIC_END_BYTES;
+use rustc_serialize::opaque::{MemDecoder, MAGIC_END_BYTES};
 use rustc_serialize::Decoder;
 
 macro_rules! impl_test_unsigned_leb128 {

@@ -1,7 +1,9 @@
-use crate::errors;
-use crate::interface::{Compiler, Result};
-use crate::proc_macro_decls;
-use crate::util;
+use std::any::Any;
+use std::ffi::OsString;
+use std::io::{self, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
+use std::{env, fs, iter};
 
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -34,14 +36,10 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
-
-use std::any::Any;
-use std::ffi::OsString;
-use std::io::{self, BufWriter, Write};
-use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
-use std::{env, fs, iter};
 use tracing::{info, instrument};
+
+use crate::interface::{Compiler, Result};
+use crate::{errors, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || {

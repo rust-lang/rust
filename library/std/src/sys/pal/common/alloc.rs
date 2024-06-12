@@ -1,6 +1,5 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
-use crate::cmp;
-use crate::ptr;
+use crate::{cmp, ptr};
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.

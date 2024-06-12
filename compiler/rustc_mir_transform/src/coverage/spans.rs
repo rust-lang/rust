@@ -2,9 +2,8 @@ use rustc_middle::mir;
 use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
-use crate::coverage::mappings;
 use crate::coverage::spans::from_mir::SpanFromMir;
-use crate::coverage::ExtractedHirInfo;
+use crate::coverage::{mappings, ExtractedHirInfo};
 
 mod from_mir;
 

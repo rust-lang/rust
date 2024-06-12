@@ -11,10 +11,7 @@ mod repr_unpacked;
 #[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 use repr_unpacked::Repr;
 
-use crate::error;
-use crate::fmt;
-use crate::result;
-use crate::sys;
+use crate::{error, fmt, result, sys};
 
 /// A specialized [`Result`] type for I/O operations.
 ///

@@ -2,15 +2,13 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-#[cfg(not(test))]
-use core::hint;
-
-#[cfg(not(test))]
-use core::ptr::{self, NonNull};
-
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
+#[cfg(not(test))]
+use core::hint;
+#[cfg(not(test))]
+use core::ptr::{self, NonNull};
 
 #[cfg(test)]
 mod tests;

@@ -80,22 +80,23 @@ mod types;
 mod unit_bindings;
 mod unused;
 
-pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
-
-use rustc_hir::def_id::LocalModDefId;
-use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
-
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
+/// Useful for other parts of the compiler / Clippy.
+pub use builtin::{MissingDoc, SoftLints};
+pub use context::{
+    CheckLintNameResult, EarlyContext, FindLintError, LateContext, LintContext, LintStore,
+};
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
+pub use early::{check_ast_node, EarlyCheckNode};
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
 use invalid_from_utf8::*;
+pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 use let_underscore::*;
 use map_unit_fn::*;
 use methods::*;
@@ -107,25 +108,23 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
+pub use passes::{EarlyLintPass, LateLintPass};
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use rustc_hir::def_id::LocalModDefId;
+use rustc_middle::query::Providers;
+use rustc_middle::ty::TyCtxt;
+pub use rustc_session::lint::Level::{self, *};
+pub use rustc_session::lint::{
+    BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec,
+};
 use shadowed_into_iter::ShadowedIntoIter;
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use traits::*;
 use types::*;
 use unit_bindings::*;
 use unused::*;
-
-/// Useful for other parts of the compiler / Clippy.
-pub use builtin::{MissingDoc, SoftLints};
-pub use context::{CheckLintNameResult, FindLintError, LintStore};
-pub use context::{EarlyContext, LateContext, LintContext};
-pub use early::{check_ast_node, EarlyCheckNode};
-pub use late::{check_crate, late_lint_mod, unerased_lint_store};
-pub use passes::{EarlyLintPass, LateLintPass};
-pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
-pub use rustc_session::lint::{LintPass, LintVec};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

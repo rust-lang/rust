@@ -1,13 +1,13 @@
-use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
-use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::debug;
+
+use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
+use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn field_match_pairs<'pat>(

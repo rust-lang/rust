@@ -1,9 +1,8 @@
 use anyhow::Context;
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::exec::cmd;
 use crate::training::BoltProfile;
-use camino::{Utf8Path, Utf8PathBuf};
-
 use crate::utils::io::copy_file;
 
 /// Instruments an artifact at the given `path` (in-place) with BOLT and then calls `func`.

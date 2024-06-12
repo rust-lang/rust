@@ -1,11 +1,12 @@
-use crate::traits;
-use crate::traits::project::Normalized;
+use std::fmt;
+
 use rustc_ast_ir::try_visit;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, TyCtxt};
 
-use std::fmt;
+use crate::traits;
+use crate::traits::project::Normalized;
 
 // Structural impls for the structs in `traits`.
 

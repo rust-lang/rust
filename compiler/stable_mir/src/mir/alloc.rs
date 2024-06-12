@@ -1,9 +1,10 @@
 //! This module provides methods to retrieve allocation information, such as static variables.
+use std::io::Read;
+
 use crate::mir::mono::{Instance, StaticDef};
 use crate::target::{Endian, MachineInfo};
 use crate::ty::{Allocation, Binder, ExistentialTraitRef, IndexedVal, Ty};
 use crate::{with, Error};
-use std::io::Read;
 
 /// An allocation in the SMIR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.

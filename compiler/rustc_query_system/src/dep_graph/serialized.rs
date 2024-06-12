@@ -35,11 +35,11 @@
 //! If the number of edges in this node does not fit in the bits available in the header, we
 //! store it directly after the header with leb128.
 
-use super::query::DepGraphQuery;
-use super::{DepKind, DepNode, DepNodeIndex, Deps};
-use crate::dep_graph::edges::EdgesVec;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fingerprint::PackedFingerprint;
+use std::iter;
+use std::marker::PhantomData;
+use std::sync::Arc;
+
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -48,10 +48,11 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::iter;
-use std::marker::PhantomData;
-use std::sync::Arc;
 use tracing::{debug, instrument};
+
+use super::query::DepGraphQuery;
+use super::{DepKind, DepNode, DepNodeIndex, Deps};
+use crate::dep_graph::edges::EdgesVec;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,

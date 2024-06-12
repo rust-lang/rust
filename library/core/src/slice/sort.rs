@@ -9,9 +9,8 @@
 //! In addition it also contains the core logic of the stable sort used by `slice::sort` based on
 //! TimSort.
 
-use crate::cmp;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
-use crate::ptr;
+use crate::{cmp, ptr};
 
 // When dropped, copies from `src` into `dest`.
 struct InsertionHole<T> {

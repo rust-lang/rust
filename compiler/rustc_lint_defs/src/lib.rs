@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -8,16 +7,16 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::HashStableContext;
-use rustc_hir::HirId;
+use rustc_hir::{HashStableContext, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::MacroRulesNormalizedIdent;
-use rustc_span::{sym, symbol::Ident, Span, Symbol};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 // tidy-alphabetical-end
-
 use serde::{Deserialize, Serialize};
+
+pub use self::Level::*;
 
 pub mod builtin;
 

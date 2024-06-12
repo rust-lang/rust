@@ -1,6 +1,7 @@
 use rustc_index::IndexSlice;
+use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{mir::*, thir::*};
 use rustc_span::Span;
 
 use super::{PResult, ParseCtxt, ParseError};

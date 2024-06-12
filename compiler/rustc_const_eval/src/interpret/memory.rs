@@ -10,8 +10,7 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::VecDeque;
-use std::fmt;
-use std::ptr;
+use std::{fmt, ptr};
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -20,10 +19,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
-
 use tracing::{debug, instrument, trace};
-
-use crate::fluent_generated as fluent;
 
 use super::{
     alloc_range, err_ub, err_ub_custom, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
@@ -31,6 +27,7 @@ use super::{
     CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
     PointerArithmetic, Provenance, Scalar,
 };
+use crate::fluent_generated as fluent;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {

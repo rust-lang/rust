@@ -23,43 +23,9 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
-use rustc_arena::{DroplessArena, TypedArena};
-use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
-use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::intern::Interned;
-use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
-use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
-use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::NonMacroAttrKind;
-use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_index::IndexVec;
-use rustc_metadata::creader::{CStore, CrateLoader};
-use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DelegationFnSig, Feed, MainDefinition, RegisteredTools};
-use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs, TyCtxt, TyCtxtFeed};
-use rustc_query_system::ich::StableHashingContext;
-use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
-use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::fmt;
-use tracing::debug;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -69,6 +35,44 @@ use errors::{
 use imports::{Import, ImportData, ImportKind, NameResolution};
 use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use rustc_arena::{DroplessArena, TypedArena};
+use rustc_ast::expand::StrippedCfgItem;
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::{
+    self as ast, attr, AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind,
+    NodeId, Path, CRATE_NODE_ID,
+};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::intern::Interned;
+use rustc_data_structures::steal::Steal;
+use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
+use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
+use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
+use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{
+    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
+};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_index::IndexVec;
+use rustc_metadata::creader::{CStore, CrateLoader};
+use rustc_middle::metadata::ModChild;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
+use rustc_middle::ty::{
+    self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverGlobalCtxt,
+    ResolverOutputs, TyCtxt, TyCtxtFeed,
+};
+use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
+use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
+use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{Span, DUMMY_SP};
+use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 type Res = def::Res<NodeId>;
 

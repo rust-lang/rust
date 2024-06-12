@@ -1,10 +1,11 @@
-use std::{borrow::Borrow, ops::Deref};
+use std::borrow::Borrow;
+use std::ops::Deref;
 
-use crate::sync::Lrc;
 // Use our fake Send/Sync traits when on not parallel compiler,
 // so that `OwnedSlice` only implements/requires Send/Sync
 // for parallel compiler builds.
 use crate::sync;
+use crate::sync::Lrc;
 
 /// An owned slice.
 ///

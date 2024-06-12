@@ -1,15 +1,15 @@
-use crate::errors;
-use crate::fluent_generated as fluent;
-use crate::maybe_whole;
-
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter};
-use rustc_errors::{codes::*, Diag, PResult};
-use rustc_span::{sym, symbol::kw, BytePos, Span};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, PResult};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
+
+use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
+use crate::{errors, fluent_generated as fluent, maybe_whole};
 
 // Public for rustfmt usage
 #[derive(Debug)]

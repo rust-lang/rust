@@ -1,22 +1,7 @@
-use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
-use crate::mem;
-use crate::num::NonZero;
-use crate::sys;
-use crate::sys::cvt;
-use crate::sys::process::process_common::*;
-
-#[cfg(target_os = "linux")]
-use crate::os::linux::process::PidFd;
-#[cfg(target_os = "linux")]
-use crate::os::unix::io::AsRawFd;
-
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
-
 #[cfg(not(target_os = "vxworks"))]
 use libc::{c_int, pid_t};
-
 #[cfg(not(any(
     target_os = "vxworks",
     target_os = "l4re",
@@ -24,6 +9,16 @@ use libc::{c_int, pid_t};
     target_os = "watchos",
 )))]
 use libc::{gid_t, uid_t};
+
+use crate::io::{self, Error, ErrorKind};
+use crate::num::NonZero;
+#[cfg(target_os = "linux")]
+use crate::os::linux::process::PidFd;
+#[cfg(target_os = "linux")]
+use crate::os::unix::io::AsRawFd;
+use crate::sys::cvt;
+use crate::sys::process::process_common::*;
+use crate::{fmt, mem, sys};
 
 cfg_if::cfg_if! {
     if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
@@ -661,10 +656,11 @@ impl Command {
 
     #[cfg(target_os = "linux")]
     fn send_pidfd(&self, sock: &crate::sys::net::Socket) {
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
         use crate::io::IoSlice;
         use crate::os::fd::RawFd;
         use crate::sys::cvt_r;
-        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
 
         unsafe {
             let child_pid = libc::getpid();
@@ -718,10 +714,10 @@ impl Command {
 
     #[cfg(target_os = "linux")]
     fn recv_pidfd(&self, sock: &crate::sys::net::Socket) -> pid_t {
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
         use crate::io::IoSliceMut;
         use crate::sys::cvt_r;
-
-        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
 
         unsafe {
             const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();

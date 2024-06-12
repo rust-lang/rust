@@ -14,6 +14,10 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+use std::cell::Cell;
+use std::iter;
+use std::ops::Bound;
+
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -22,8 +26,7 @@ use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, S
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, walk_generics, Visitor};
-use rustc_hir::{self as hir};
-use rustc_hir::{GenericParamKind, Node};
+use rustc_hir::{self as hir, GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
@@ -38,14 +41,11 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits::ObligationCtxt;
-use std::cell::Cell;
-use std::iter;
-use std::ops::Bound;
+pub use type_of::test_opaque_hidden_types;
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
 use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
-pub use type_of::test_opaque_hidden_types;
 
 mod generics_of;
 mod item_bounds;

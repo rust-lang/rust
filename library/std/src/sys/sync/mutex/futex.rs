@@ -1,7 +1,5 @@
-use crate::sync::atomic::{
-    self,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{self};
 use crate::sys::futex::{futex_wait, futex_wake};
 
 cfg_if::cfg_if! {

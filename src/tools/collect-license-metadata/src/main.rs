@@ -2,9 +2,11 @@ mod licenses;
 mod path_tree;
 mod reuse;
 
-use crate::licenses::LicensesInterner;
-use anyhow::Error;
 use std::path::PathBuf;
+
+use anyhow::Error;
+
+use crate::licenses::LicensesInterner;
 
 // Some directories have too many slight license differences that'd result in a
 // huge report, and could be considered a standalone project anyway. Those

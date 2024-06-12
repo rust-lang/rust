@@ -5,14 +5,11 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
+use std::cell::{Cell, RefCell};
+use std::ops::Deref;
 
-use crate::coercion::DynamicCoerceMany;
-use crate::fallback::DivergingFallbackBehavior;
-use crate::fn_ctxt::checks::DivergingBlockBehavior;
-use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 use hir::def_id::CRATE_DEF_ID;
-use rustc_errors::DiagCtxt;
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
@@ -25,8 +22,10 @@ use rustc_span::symbol::Ident;
 use rustc_span::{self, sym, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
-use std::cell::{Cell, RefCell};
-use std::ops::Deref;
+use crate::coercion::DynamicCoerceMany;
+use crate::fallback::DivergingFallbackBehavior;
+use crate::fn_ctxt::checks::DivergingBlockBehavior;
+use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 
 /// The `FnCtxt` stores type-checking context needed to type-check bodies of
 /// functions, closures, and `const`s, including performing type inference

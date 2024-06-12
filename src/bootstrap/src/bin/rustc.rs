@@ -316,14 +316,12 @@ fn format_rusage_data(_child: Child) -> Option<String> {
 fn format_rusage_data(child: Child) -> Option<String> {
     use std::os::windows::io::AsRawHandle;
 
-    use windows::{
-        Win32::Foundation::HANDLE,
-        Win32::System::ProcessStatus::{
-            K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX,
-        },
-        Win32::System::Threading::GetProcessTimes,
-        Win32::System::Time::FileTimeToSystemTime,
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::ProcessStatus::{
+        K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX,
     };
+    use windows::Win32::System::Threading::GetProcessTimes;
+    use windows::Win32::System::Time::FileTimeToSystemTime;
 
     let handle = HANDLE(child.as_raw_handle() as isize);
 

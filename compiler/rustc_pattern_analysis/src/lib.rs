@@ -24,7 +24,6 @@ use std::fmt;
 // Re-exports to avoid rustc_index version issues.
 pub use rustc_index::Idx;
 pub use rustc_index::IndexVec;
-
 #[cfg(feature = "rustc")]
 use rustc_middle::ty::Ty;
 #[cfg(feature = "rustc")]

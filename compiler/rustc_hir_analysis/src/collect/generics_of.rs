@@ -1,8 +1,5 @@
-use crate::middle::resolve_bound_vars as rbv;
-use hir::{
-    intravisit::{self, Visitor},
-    GenericParamKind, HirId, Node,
-};
+use hir::intravisit::{self, Visitor};
+use hir::{GenericParamKind, HirId, Node};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -10,6 +7,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+
+use crate::middle::resolve_bound_vars as rbv;
 
 #[instrument(level = "debug", skip(tcx))]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {

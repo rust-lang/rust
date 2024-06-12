@@ -1,15 +1,13 @@
 use std::any::Any;
-use std::process::ExitStatus;
-
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
+use std::process::ExitStatus;
 
+pub use self::TestResult::*;
 use super::bench::BenchSamples;
 use super::options::ShouldPanic;
 use super::time;
 use super::types::TestDesc;
-
-pub use self::TestResult::*;
 
 // Return code for secondary process.
 // Start somewhere other than 0 so we know the return code means what we think

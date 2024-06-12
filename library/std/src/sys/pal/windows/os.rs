@@ -5,20 +5,15 @@
 #[cfg(test)]
 mod tests;
 
-use crate::os::windows::prelude::*;
-
-use crate::error::Error as StdError;
-use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
-use crate::os::windows::ffi::EncodeWide;
-use crate::path::{self, PathBuf};
-use crate::ptr;
-use crate::slice;
-use crate::sys::{c, cvt};
-
 use super::api::{self, WinError};
 use super::to_u16s;
+use crate::error::Error as StdError;
+use crate::ffi::{OsStr, OsString};
+use crate::os::windows::ffi::EncodeWide;
+use crate::os::windows::prelude::*;
+use crate::path::{self, PathBuf};
+use crate::sys::{c, cvt};
+use crate::{fmt, io, ptr, slice};
 
 pub fn errno() -> i32 {
     api::get_last_error().code as i32

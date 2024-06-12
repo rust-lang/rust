@@ -56,12 +56,10 @@
 //   allowed, so no need for `SeqCst`.
 
 use crate::cell::Cell;
-use crate::fmt;
-use crate::ptr;
-use crate::sync as public;
 use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 use crate::sync::once::ExclusiveState;
 use crate::thread::{self, Thread};
+use crate::{fmt, ptr, sync as public};
 
 type Masked = ();
 

@@ -1,5 +1,6 @@
-use crate::markdown::{MdStream, MdTree};
 use std::{iter, mem, str};
+
+use crate::markdown::{MdStream, MdTree};
 
 /// Short aliases that we can use in match patterns. If an end pattern is not
 /// included, this type may be variable

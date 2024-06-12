@@ -1,5 +1,6 @@
-use super::super::*;
 use core::num::flt2dec::strategy::grisu::*;
+
+use super::super::*;
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow

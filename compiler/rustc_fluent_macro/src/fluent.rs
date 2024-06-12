@@ -1,20 +1,16 @@
+use std::collections::{HashMap, HashSet};
+use std::fs::read_to_string;
+use std::path::{Path, PathBuf};
+
 use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
 use fluent_bundle::{FluentBundle, FluentError, FluentResource};
-use fluent_syntax::{
-    ast::{
-        Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern,
-        PatternElement,
-    },
-    parser::ParserError,
+use fluent_syntax::ast::{
+    Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern, PatternElement,
 };
+use fluent_syntax::parser::ParserError;
 use proc_macro::{Diagnostic, Level, Span};
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::{
-    collections::{HashMap, HashSet},
-    fs::read_to_string,
-    path::{Path, PathBuf},
-};
 use syn::{parse_macro_input, Ident, LitStr};
 use unic_langid::langid;
 

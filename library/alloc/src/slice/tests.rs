@@ -1,17 +1,20 @@
+use core::cell::Cell;
+use core::cmp::Ordering::{self, Equal, Greater, Less};
+use core::convert::identity;
+use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::Ordering::Relaxed;
+use core::{fmt, mem};
+use std::panic;
+
+use rand::distributions::Standard;
+use rand::prelude::*;
+use rand::{Rng, RngCore};
+
 use crate::borrow::ToOwned;
 use crate::rc::Rc;
 use crate::string::ToString;
 use crate::test_helpers::test_rng;
 use crate::vec::Vec;
-
-use core::cell::Cell;
-use core::cmp::Ordering::{self, Equal, Greater, Less};
-use core::convert::identity;
-use core::fmt;
-use core::mem;
-use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use rand::{distributions::Standard, prelude::*, Rng, RngCore};
-use std::panic;
 
 macro_rules! do_test {
     ($input:ident, $func:ident) => {

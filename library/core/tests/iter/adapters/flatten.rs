@@ -1,7 +1,8 @@
-use super::*;
 use core::assert_eq;
 use core::iter::*;
 use core::num::NonZero;
+
+use super::*;
 
 #[test]
 fn test_iterator_flatten() {

@@ -1,20 +1,11 @@
-use crate::io::prelude::*;
-
-use crate::env;
-use crate::fs::{self, File, FileTimes, OpenOptions};
-use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
-use crate::mem::MaybeUninit;
-use crate::path::Path;
-use crate::str;
-use crate::sync::Arc;
-use crate::sys_common::io::test::{tmpdir, TempDir};
-use crate::thread;
-use crate::time::{Duration, Instant, SystemTime};
-
 use rand::RngCore;
 
 #[cfg(target_os = "macos")]
 use crate::ffi::{c_char, c_int};
+use crate::fs::{self, File, FileTimes, OpenOptions};
+use crate::io::prelude::*;
+use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
+use crate::mem::MaybeUninit;
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_dir;
 #[cfg(unix)]
@@ -23,8 +14,13 @@ use crate::os::unix::fs::symlink as symlink_file;
 use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
 use crate::os::windows::fs::{junction_point, symlink_dir, symlink_file, OpenOptionsExt};
+use crate::path::Path;
+use crate::sync::Arc;
 #[cfg(target_os = "macos")]
 use crate::sys::weak::weak;
+use crate::sys_common::io::test::{tmpdir, TempDir};
+use crate::time::{Duration, Instant, SystemTime};
+use crate::{env, str, thread};
 
 macro_rules! check {
     ($e:expr) => {
@@ -1514,7 +1510,9 @@ fn symlink_hard_link() {
 #[test]
 #[cfg(windows)]
 fn create_dir_long_paths() {
-    use crate::{ffi::OsStr, iter, os::windows::ffi::OsStrExt};
+    use crate::ffi::OsStr;
+    use crate::iter;
+    use crate::os::windows::ffi::OsStrExt;
     const PATH_LEN: usize = 247;
 
     let tmpdir = tmpdir();

@@ -1,10 +1,5 @@
 use std::mem;
 
-use super::StructurallyRelateAliases;
-use super::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
-use crate::infer::relate;
-use crate::infer::type_variable::TypeVariableValue;
-use crate::infer::{InferCtxt, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
@@ -12,9 +7,16 @@ use rustc_middle::bug;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::MaxUniverse;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{AliasRelationDirection, InferConst, Term, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
+};
 use rustc_span::Span;
+
+use super::{
+    PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
+};
+use crate::infer::type_variable::TypeVariableValue;
+use crate::infer::{relate, InferCtxt, RegionVariableOrigin};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// The idea is that we should ensure that the type variable `target_vid`

@@ -1,17 +1,18 @@
-use crate::infer::InferCtxt;
-use crate::traits;
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{Span, DUMMY_SP};
 
-use std::iter;
+use crate::infer::InferCtxt;
+use crate::traits;
 /// Returns the set of obligations needed to make `arg` well-formed.
 /// If `arg` contains unresolved inference variables, this may include
 /// further WF obligations. However, if `arg` IS an unresolved

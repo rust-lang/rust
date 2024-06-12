@@ -1,10 +1,11 @@
-use super::{inspect, CanonicalInput, QueryResult};
-use crate::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lock;
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_session::Limit;
+
+use super::{inspect, CanonicalInput, QueryResult};
+use crate::ty::TyCtxt;
 /// The trait solver cache used by `-Znext-solver`.
 ///
 /// FIXME(@lcnr): link to some official documentation of how

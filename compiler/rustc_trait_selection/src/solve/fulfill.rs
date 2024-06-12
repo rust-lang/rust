@@ -14,11 +14,10 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 
-use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
-
 use super::eval_ctxt::GenerateProofTree;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::{Certainty, InferCtxtEvalExt};
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
 /// A trait engine using the new trait solver.
 ///

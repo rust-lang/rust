@@ -3,11 +3,10 @@
 #[cfg(test)]
 mod tests;
 
-use crate::io::prelude::*;
-
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
 use crate::fs::File;
+use crate::io::prelude::*;
 use crate::io::{
     self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines, SpecReadByte,
 };

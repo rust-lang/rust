@@ -1,8 +1,10 @@
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+
 use super::Const;
 use crate::mir;
 use crate::ty::abstract_const::CastKind;
-use crate::ty::{self, visit::TypeVisitableExt as _, Ty, TyCtxt};
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use crate::ty::visit::TypeVisitableExt as _;
+use crate::ty::{self, Ty, TyCtxt};
 
 #[extension(pub(crate) trait UnevaluatedConstEvalExt<'tcx>)]
 impl<'tcx> ty::UnevaluatedConst<'tcx> {

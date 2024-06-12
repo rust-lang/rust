@@ -1,12 +1,9 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use core::num::flt2dec::strategy::grisu::{format_exact_opt, format_shortest_opt};
+use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS};
 use std::mem::MaybeUninit;
 use std::str;
-
-use core::num::flt2dec::strategy::grisu::format_exact_opt;
-use core::num::flt2dec::strategy::grisu::format_shortest_opt;
-use core::num::flt2dec::MAX_SIG_DIGITS;
-use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
 
 use rand::distributions::{Distribution, Uniform};
 

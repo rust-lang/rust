@@ -1,5 +1,8 @@
-use crate::errors::{FailCreateFileEncoder, FailWriteFile};
-use crate::rmeta::*;
+use std::borrow::Borrow;
+use std::collections::hash_map::Entry;
+use std::fs::File;
+use std::io::{Read, Seek, Write};
+use std::path::{Path, PathBuf};
 
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxIndexSet;
@@ -13,8 +16,7 @@ use rustc_hir_pretty::id_to_string;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
-use rustc_middle::query::LocalCrate;
-use rustc_middle::query::Providers;
+use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
@@ -28,12 +30,10 @@ use rustc_span::symbol::sym;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
 };
-use std::borrow::Borrow;
-use std::collections::hash_map::Entry;
-use std::fs::File;
-use std::io::{Read, Seek, Write};
-use std::path::{Path, PathBuf};
 use tracing::{debug, instrument, trace};
+
+use crate::errors::{FailCreateFileEncoder, FailWriteFile};
+use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,

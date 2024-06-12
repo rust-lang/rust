@@ -1,7 +1,8 @@
 //! This test checks rustdoc `-` (stdin) handling
 
-use run_make_support::rustdoc;
 use std::path::PathBuf;
+
+use run_make_support::rustdoc;
 
 static INPUT: &str = r#"
 //! ```

@@ -23,7 +23,6 @@ mod equality;
 mod iter;
 
 pub(crate) use drain::drain_array_with;
-
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 

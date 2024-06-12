@@ -1,8 +1,5 @@
-use crate::errors;
-use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
 use lint::BuiltinLintDiag;
-use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
@@ -11,13 +8,15 @@ use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
-use rustc_parse_format as parse;
 use rustc_session::lint;
-use rustc_span::symbol::Ident;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
+use {rustc_ast as ast, rustc_parse_format as parse};
+
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,

@@ -1,9 +1,7 @@
-use crate::method::probe::{self, Pick};
-use crate::FnCtxt;
+use std::fmt::Write;
 
 use hir::def_id::DefId;
-use hir::HirId;
-use hir::ItemKind;
+use hir::{HirId, ItemKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
@@ -14,7 +12,9 @@ use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
-use std::fmt::Write;
+
+use crate::method::probe::{self, Pick};
+use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_edition_dependent_dot_call(
