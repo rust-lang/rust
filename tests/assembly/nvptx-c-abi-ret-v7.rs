@@ -1,7 +1,6 @@
 //@ assembly-output: ptx-linker
 //@ compile-flags: --crate-type cdylib -C target-cpu=sm_86 -Z unstable-options -Clinker-flavor=llbc
 //@ only-nvptx64
-//@ ignore-nvptx64
 
 // The PTX ABI stability is tied to major versions of the PTX ISA
 // These tests assume major version 7
@@ -39,6 +38,11 @@ pub struct TripleU16 {
     f: u16,
     g: u16,
     h: u16,
+}
+#[repr(C)]
+pub struct DoubleI32 {
+    f: i32,
+    g: i32,
 }
 #[repr(C)]
 pub struct TripleU32 {
@@ -185,6 +189,12 @@ pub unsafe extern "C" fn f_triple_u8_ret() -> TripleU8 {
 #[no_mangle]
 pub unsafe extern "C" fn f_triple_u16_ret() -> TripleU16 {
     TripleU16 { f: 18, g: 19, h: 20 }
+}
+
+// CHECK: .visible .func (.param .align 4 .b8 func_retval0[8]) f_double_i32_ret(
+#[no_mangle]
+pub unsafe extern "C" fn f_double_i32_ret() -> DoubleI32 {
+    DoubleI32 { f: 1, g: 2 }
 }
 
 // CHECK: .visible .func (.param .align 4 .b8 func_retval0[12]) f_triple_u32_ret(
