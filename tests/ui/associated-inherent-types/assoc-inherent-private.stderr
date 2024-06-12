@@ -2,7 +2,7 @@ error[E0624]: associated type `P` is private
   --> $DIR/assoc-inherent-private.rs:10:10
    |
 LL |         type P = ();
-   |         ------ associated type defined here
+   |         ------ the associated type is defined here
 ...
 LL | type U = m::T::P;
    |          ^^^^^^^ private associated type
@@ -11,7 +11,7 @@ error[E0624]: associated type `P` is private
   --> $DIR/assoc-inherent-private.rs:21:10
    |
 LL |             pub(super) type P = bool;
-   |             ----------------- associated type defined here
+   |             ----------------- the associated type is defined here
 ...
 LL | type V = n::n::T::P;
    |          ^^^^^^^^^^ private associated type

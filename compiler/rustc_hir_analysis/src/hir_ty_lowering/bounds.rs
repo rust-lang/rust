@@ -294,30 +294,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             )?
         };
 
-        let (assoc_ident, def_scope) =
-            tcx.adjust_ident_and_get_scope(constraint.ident, candidate.def_id(), hir_ref_id);
-
-        // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
-        // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
-        // `assoc_ident` again and again.
-        let assoc_item = tcx
-            .associated_items(candidate.def_id())
-            .filter_by_name_unhygienic(assoc_ident.name)
-            .find(|i| i.kind == assoc_kind && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident)
-            .expect("missing associated item");
-
-        if !assoc_item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            let reported = tcx
-                .dcx()
-                .struct_span_err(
-                    constraint.span,
-                    format!("{} `{}` is private", assoc_item.kind, constraint.ident),
-                )
-                .with_span_label(constraint.span, format!("private {}", assoc_item.kind))
-                .emit();
-            self.set_tainted_by_errors(reported);
-        }
-        tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), constraint.span, None);
+        let assoc_item = self
+            .probe_assoc_item(
+                constraint.ident,
+                assoc_kind,
+                hir_ref_id,
+                constraint.span,
+                candidate.def_id(),
+            )
+            .expect("failed to find associated item");
 
         duplicates
             .entry(assoc_item.def_id)
@@ -404,10 +389,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Create the generic arguments for the associated type or constant by joining the
             // parent arguments (the arguments of the trait) and the own arguments (the ones of
             // the associated item itself) and construct an alias type using them.
-            let alias_ty = candidate.map_bound(|trait_ref| {
-                let ident = Ident::new(assoc_item.name, constraint.ident.span);
+            let alias_term = candidate.map_bound(|trait_ref| {
                 let item_segment = hir::PathSegment {
-                    ident,
+                    ident: constraint.ident,
                     hir_id: constraint.hir_id,
                     res: Res::Err,
                     args: Some(constraint.gen_args),
@@ -426,15 +410,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             });
 
             // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
-            if let hir::AssocItemConstraintKind::Equality { term: hir::Term::Const(anon_const) } =
-                constraint.kind
-            {
-                let ty = alias_ty.map_bound(|ty| tcx.type_of(ty.def_id).instantiate(tcx, ty.args));
-                let ty = check_assoc_const_binding_type(tcx, assoc_ident, ty, constraint.hir_id);
+            if let Some(anon_const) = constraint.ct() {
+                let ty = alias_term
+                    .map_bound(|alias| tcx.type_of(alias.def_id).instantiate(tcx, alias.args));
+                let ty =
+                    check_assoc_const_binding_type(tcx, constraint.ident, ty, constraint.hir_id);
                 tcx.feed_anon_const_type(anon_const.def_id, ty::EarlyBinder::bind(ty));
             }
 
-            alias_ty
+            alias_term
         };
 
         match constraint.kind {

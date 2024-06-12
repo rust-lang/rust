@@ -1151,8 +1151,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let trait_did = bound.def_id();
-        let assoc_ty_did = self.probe_assoc_ty(assoc_ident, hir_ref_id, span, trait_did).unwrap();
-        let ty = self.lower_assoc_ty(span, assoc_ty_did, assoc_segment, bound);
+        let assoc_ty = self
+            .probe_assoc_item(assoc_ident, ty::AssocKind::Type, hir_ref_id, span, trait_did)
+            .expect("failed to find associated type");
+        let ty = self.lower_assoc_ty(span, assoc_ty.def_id, assoc_segment, bound);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span, |lint| {
@@ -1168,7 +1170,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 };
 
                 could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(DefKind::AssocTy, assoc_ty_did, " also");
+                could_refer_to(DefKind::AssocTy, assoc_ty.def_id, " also");
 
                 lint.span_suggestion(
                     span,
@@ -1178,7 +1180,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
             });
         }
-        Ok((ty, DefKind::AssocTy, assoc_ty_did))
+        Ok((ty, DefKind::AssocTy, assoc_ty.def_id))
     }
 
     fn probe_inherent_assoc_ty(
@@ -1205,7 +1207,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let candidates: Vec<_> = tcx
             .inherent_impls(adt_did)?
             .iter()
-            .filter_map(|&impl_| Some((impl_, self.probe_assoc_ty_unchecked(name, block, impl_)?)))
+            .filter_map(|&impl_| {
+                let (item, scope) =
+                    self.probe_assoc_item_unchecked(name, ty::AssocKind::Type, block, impl_)?;
+                Some((impl_, (item.def_id, scope)))
+            })
             .collect();
 
         if candidates.is_empty() {
@@ -1249,7 +1255,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             },
         )?;
 
-        self.check_assoc_ty(assoc_item, name, def_scope, block, span);
+        self.check_assoc_item(assoc_item, name, def_scope, block, span);
 
         // FIXME(fmease): Currently creating throwaway `parent_args` to please
         // `lower_generic_args_of_assoc_item`. Modify the latter instead (or sth. similar) to
@@ -1336,50 +1342,69 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    fn probe_assoc_ty(&self, name: Ident, block: HirId, span: Span, scope: DefId) -> Option<DefId> {
-        let (item, def_scope) = self.probe_assoc_ty_unchecked(name, block, scope)?;
-        self.check_assoc_ty(item, name, def_scope, block, span);
+    /// Given name and kind search for the assoc item in the provided scope and check if it's accessible[^1].
+    ///
+    /// [^1]: I.e., accessible in the provided scope wrt. visibility and stability.
+    fn probe_assoc_item(
+        &self,
+        ident: Ident,
+        kind: ty::AssocKind,
+        block: HirId,
+        span: Span,
+        scope: DefId,
+    ) -> Option<ty::AssocItem> {
+        let (item, scope) = self.probe_assoc_item_unchecked(ident, kind, block, scope)?;
+        self.check_assoc_item(item.def_id, ident, scope, block, span);
         Some(item)
     }
 
-    fn probe_assoc_ty_unchecked(
+    /// Given name and kind search for the assoc item in the provided scope
+    /// *without* checking if it's accessible[^1].
+    ///
+    /// [^1]: I.e., accessible in the provided scope wrt. visibility and stability.
+    fn probe_assoc_item_unchecked(
         &self,
-        name: Ident,
+        ident: Ident,
+        kind: ty::AssocKind,
         block: HirId,
         scope: DefId,
-    ) -> Option<(DefId, DefId)> {
+    ) -> Option<(ty::AssocItem, /*scope*/ DefId)> {
         let tcx = self.tcx();
-        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(name, scope, block);
 
+        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, block);
         // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
         // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
         // `ident` again and again.
-        let item = tcx.associated_items(scope).in_definition_order().find(|i| {
-            i.kind.namespace() == Namespace::TypeNS
-                && i.ident(tcx).normalize_to_macros_2_0() == ident
-        })?;
+        let item = tcx
+            .associated_items(scope)
+            .filter_by_name_unhygienic(ident.name)
+            .find(|i| i.kind == kind && i.ident(tcx).normalize_to_macros_2_0() == ident)?;
 
-        Some((item.def_id, def_scope))
+        Some((*item, def_scope))
     }
 
-    fn check_assoc_ty(&self, item: DefId, name: Ident, def_scope: DefId, block: HirId, span: Span) {
+    /// Check if the given assoc item is accessible in the provided scope wrt. visibility and stability.
+    fn check_assoc_item(
+        &self,
+        item_def_id: DefId,
+        ident: Ident,
+        scope: DefId,
+        block: HirId,
+        span: Span,
+    ) {
         let tcx = self.tcx();
-        let kind = DefKind::AssocTy;
 
-        if !tcx.visibility(item).is_accessible_from(def_scope, tcx) {
-            let kind = tcx.def_kind_descr(kind, item);
-            let msg = format!("{kind} `{name}` is private");
-            let def_span = tcx.def_span(item);
-            let reported = tcx
-                .dcx()
-                .struct_span_err(span, msg)
-                .with_code(E0624)
-                .with_span_label(span, format!("private {kind}"))
-                .with_span_label(def_span, format!("{kind} defined here"))
-                .emit();
+        if !tcx.visibility(item_def_id).is_accessible_from(scope, tcx) {
+            let reported = tcx.dcx().emit_err(crate::errors::AssocItemIsPrivate {
+                span,
+                kind: tcx.def_descr(item_def_id),
+                name: ident,
+                defined_here_label: tcx.def_span(item_def_id),
+            });
             self.set_tainted_by_errors(reported);
         }
-        tcx.check_stability(item, Some(block), span, None);
+
+        tcx.check_stability(item_def_id, Some(block), span, None);
     }
 
     fn probe_traits_that_match_assoc_ty(
