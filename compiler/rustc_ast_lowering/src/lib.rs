@@ -1240,24 +1240,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self))]
     fn lower_anon_const_as_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
-        let maybe_res = self
-            .resolver
-            .get_partial_res(anon.value.id)
-            .and_then(|partial_res| partial_res.full_res());
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        let expr = if let ExprKind::Block(block, _) = &anon.value.kind
+            && let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
+            && let ExprKind::Path(..) = &expr.kind
+        {
+            expr
+        } else {
+            &anon.value
+        };
+        let maybe_res =
+            self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
         debug!("res={:?}", maybe_res);
-        if let ExprKind::Path(qself, path) = &anon.value.kind
-            && let Some(res) = maybe_res
-            // FIXME(min_generic_const_exprs): for now we only lower params to ConstArgKind::Path
+        // FIXME(min_generic_const_exprs): for now we only lower params to ConstArgKind::Path
+        if let Some(res) = maybe_res
             && let Res::Def(DefKind::ConstParam, _) = res
+            && let ExprKind::Path(qself, path) = &expr.kind
         {
             let qpath = self.lower_qpath(
-                anon.value.id,
+                expr.id,
                 qself,
                 path,
                 ParamMode::Optional,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
+
             return ConstArg {
                 hir_id: self.next_id(),
                 kind: ConstArgKind::Path(qpath),
