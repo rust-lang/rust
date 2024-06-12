@@ -607,7 +607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We could pass the file for long types into these two, but it isn't strictly necessary
         // given how targeted they are.
-        if let Err(guar) = self.suggest_wrapping_range_with_parens(
+        if let Err(guar) = self.report_failed_method_call_on_range_end(
             tcx,
             rcvr_ty,
             source,
@@ -617,7 +617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) {
             return guar;
         }
-        if let Err(guar) = self.suggest_constraining_numerical_ty(
+        if let Err(guar) = self.report_failed_method_call_on_numerical_infer_var(
             tcx,
             rcvr_ty,
             source,
@@ -2253,7 +2253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Suggest possible range with adding parentheses, for example:
     /// when encountering `0..1.map(|i| i + 1)` suggest `(0..1).map(|i| i + 1)`.
-    fn suggest_wrapping_range_with_parens(
+    fn report_failed_method_call_on_range_end(
         &self,
         tcx: TyCtxt<'tcx>,
         actual: Ty<'tcx>,
@@ -2335,7 +2335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(())
     }
 
-    fn suggest_constraining_numerical_ty(
+    fn report_failed_method_call_on_numerical_infer_var(
         &self,
         tcx: TyCtxt<'tcx>,
         actual: Ty<'tcx>,
