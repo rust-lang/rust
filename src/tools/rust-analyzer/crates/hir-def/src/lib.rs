@@ -1369,7 +1369,7 @@ pub trait AsMacroCall {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
+        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Option<MacroCallId> {
         self.as_call_id_with_errors(db, krate, resolver).ok()?.value
     }
@@ -1378,7 +1378,7 @@ pub trait AsMacroCall {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
+        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
 
@@ -1387,7 +1387,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
+        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
@@ -1436,7 +1436,7 @@ fn macro_call_as_call_id(
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
+    resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
     macro_call_as_call_id_with_eager(db, call, call_site, expand_to, krate, resolver, resolver)
         .map(|res| res.value)
@@ -1448,11 +1448,10 @@ fn macro_call_as_call_id_with_eager(
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
-    resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
-    eager_resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    resolver: impl FnOnce(&path::ModPath) -> Option<MacroDefId>,
+    eager_resolver: impl Fn(&path::ModPath) -> Option<MacroDefId>,
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
-    let def =
-        resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
+    let def = resolver(&call.path).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
     let res = match def.kind {
         MacroDefKind::BuiltInEager(..) => expand_eager_macro_input(

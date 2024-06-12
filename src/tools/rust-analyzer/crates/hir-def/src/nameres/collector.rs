@@ -1124,18 +1124,18 @@ impl DefCollector<'_> {
                     MacroSubNs::Attr
                 }
             };
-            let resolver = |path| {
+            let resolver = |path: &_| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
                     self.db,
                     ResolveMode::Other,
                     directive.module_id,
-                    &path,
+                    path,
                     BuiltinShadowMode::Module,
                     Some(subns),
                 );
                 resolved_res.resolved_def.take_macros().map(|it| (it, self.db.macro_def(it)))
             };
-            let resolver_def_id = |path| resolver(path).map(|(_, it)| it);
+            let resolver_def_id = |path: &_| resolver(path).map(|(_, it)| it);
 
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt: call_site } => {
@@ -1238,7 +1238,7 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    let def = match resolver_def_id(path.clone()) {
+                    let def = match resolver_def_id(path) {
                         Some(def) if def.is_attribute() => def,
                         _ => return Resolved::No,
                     };
@@ -1426,7 +1426,7 @@ impl DefCollector<'_> {
                                 self.db,
                                 ResolveMode::Other,
                                 directive.module_id,
-                                &path,
+                                path,
                                 BuiltinShadowMode::Module,
                                 Some(MacroSubNs::Bang),
                             );
@@ -2314,7 +2314,7 @@ impl ModCollector<'_, '_> {
                     db,
                     ResolveMode::Other,
                     self.module_id,
-                    &path,
+                    path,
                     BuiltinShadowMode::Module,
                     Some(MacroSubNs::Bang),
                 );

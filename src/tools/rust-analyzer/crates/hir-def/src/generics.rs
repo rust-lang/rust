@@ -403,12 +403,12 @@ impl GenericParamsCollector {
                 let (def_map, expander) = &mut **exp;
 
                 let module = expander.module.local_id;
-                let resolver = |path| {
+                let resolver = |path: &_| {
                     def_map
                         .resolve_path(
                             db,
                             module,
-                            &path,
+                            path,
                             crate::item_scope::BuiltinShadowMode::Other,
                             Some(MacroSubNs::Bang),
                         )

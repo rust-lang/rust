@@ -719,12 +719,12 @@ impl<'a> AssocItemCollector<'a> {
                 let MacroCall { ast_id, expand_to, ctxt, ref path } = item_tree[call];
                 let module = self.expander.module.local_id;
 
-                let resolver = |path| {
+                let resolver = |path: &_| {
                     self.def_map
                         .resolve_path(
                             self.db,
                             module,
-                            &path,
+                            path,
                             crate::item_scope::BuiltinShadowMode::Other,
                             Some(MacroSubNs::Bang),
                         )

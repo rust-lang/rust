@@ -56,7 +56,7 @@ impl Expander {
         &mut self,
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
-        resolver: impl Fn(ModPath) -> Option<MacroId>,
+        resolver: impl Fn(&ModPath) -> Option<MacroId>,
     ) -> Result<ExpandResult<Option<(Mark, Parse<T>)>>, UnresolvedMacro> {
         // FIXME: within_limit should support this, instead of us having to extract the error
         let mut unresolved_macro_err = None;
