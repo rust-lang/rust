@@ -32,6 +32,10 @@ runners:
     os: windows-2022-16core-64gb
     <<: *base-job
 
+  - &job-windows-aarch64
+    os: windows-11-arm64-8core-32gb
+    <<: *base-job
+
   - &job-aarch64-linux
     os: ubuntu-22.04-arm64-8core-32gb
 
@@ -80,17 +84,11 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: mingw-check
-    <<: *job-linux-4c
-  - image: mingw-check-tidy
-    continue_on_error: true
-    <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-17
+  - image: aarch64-msvc
     env:
-      ENABLE_GCC_CODEGEN: "1"
-    <<: *job-linux-16c
-  - image: x86_64-gnu-tools
-    <<: *job-linux-16c
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc
+    <<: *job-windows-aarch64
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating

@@ -81,10 +81,12 @@ jobs:
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
       - if: contains(matrix.os, 'windows')
-        uses: msys2/setup-msys2@v2.22.0
+        uses: msys2/setup-msys2@v2.21.0
         with:
-          # i686 jobs use mingw32. x86_64 and cross-compile jobs use mingw64.
-          msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}
+          # i686 jobs use mingw32.
+          # aarch64 runners use clangarm64.
+          # x86_64 and cross-compile jobs use mingw64.
+          msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || contains(matrix.os, 'arm64') && 'clangarm64' || 'mingw64' }}
           # don't try to download updates for already installed packages
           update: false
           # don't try to use the msys that comes built-in to the github runner,
@@ -98,8 +100,32 @@ jobs:
             dos2unix
             diffutils
 
+      - if: contains(matrix.os, 'windows') && contains(matrix.os, 'arm64')
+        name: install Git on Windows Arm64
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri https://github.com/git-for-windows/git/releases/download/v2.45.2.windows.1/Git-2.45.2-64-bit.exe -OutFile '${{ runner.temp }}\gitinstaller.exe'
+          &'${{ runner.temp }}\gitinstaller.exe' /SP- /VERYSILENT /SUPPRESSMSGBOXES /NOCANCEL /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /o:PathOption=CmdTools /o:BashTerminalOption=ConHost /o:EnableSymlinks=Enabled
+          $currentPath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+          $newPath = 'C:\Program Files\Git\bin;' + $currentPath
+          [Environment]::SetEnvironmentVariable("PATH", $newPath, "Machine")
+
+      - if: contains(matrix.os, 'windows') && contains(matrix.os, 'arm64')
+        name: add git to bath PATH
+        run: export PATH="/c/Program Files/Git/bin":$PATH
+
+      # - if: contains(matrix.os, 'windows') && contains(matrix.os, 'arm64')
+      #   name: install VS on Windows Arm64
+      #   shell: powershell
+      #   run: |
+      #     Invoke-WebRequest -Uri https://aka.ms/vs/17/release/vs_buildtools.exe -OutFile '${{ runner.temp }}\vs_buildtools.exe'
+      #     cmd /c "${{ runner.temp }}\vs_buildtools.exe --quiet --norestart --wait --nocache --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621"
+
       - name: disable git crlf conversion
-        run: git config --global core.autocrlf false
+        run: |
+          echo $PATH
+          ls "/c/Program Files/Git/bin"
+          git config --global core.autocrlf false
 
       - name: checkout the source code
         uses: actions/checkout@v4
