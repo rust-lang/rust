@@ -2888,7 +2888,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ..
         } = explanation
         {
-            if let Some(diag) = self.try_report_cannot_return_reference_to_local(
+            if let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 borrow_span,
                 span,
@@ -3075,7 +3075,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {
-            if let Some(diag) = self.try_report_cannot_return_reference_to_local(
+            if let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 proper_span,
                 span,
@@ -3237,11 +3237,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         return_span: Span,
         category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
-    ) -> Option<Diag<'tcx>> {
+    ) -> Result<(), Diag<'tcx>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
             ConstraintCategory::Yield => "yield",
-            _ => return None,
+            _ => return Ok(()),
         };
 
         // FIXME use a better heuristic than Spans
@@ -3317,7 +3317,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        Some(err)
+        Err(err)
     }
 
     #[instrument(level = "debug", skip(self))]

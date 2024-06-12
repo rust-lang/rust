@@ -87,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty = adj_ty;
         }
 
-        if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
+        if let Err(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
             let _ = self.emit_type_mismatch_suggestions(
                 &mut err,
                 expr.peel_drop_temps(),
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
             // The likely cause of this is `if foo = bar { .. }`.
             let actual_ty = self.tcx.types.unit;
-            let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
+            let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap_err();
             let lhs_ty = self.check_expr(lhs);
             let rhs_ty = self.check_expr(rhs);
             let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
@@ -1236,7 +1236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is (basically) inlined `check_expr_coercible_to_type`, but we want
         // to suggest an additional fixup here in `suggest_deref_binop`.
         let rhs_ty = self.check_expr_with_hint(rhs, lhs_ty);
-        if let (_, Some(mut diag)) =
+        if let Err(mut diag) =
             self.demand_coerce_diag(rhs, rhs_ty, lhs_ty, Some(lhs), AllowTwoPhase::No)
         {
             suggest_deref_binop(&mut diag, rhs_ty);
@@ -1741,10 +1741,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
             let ty = self.check_expr_with_hint(field.expr, field_type);
-            let (_, diag) =
-                self.demand_coerce_diag(field.expr, ty, field_type, None, AllowTwoPhase::No);
+            let diag = self.demand_coerce_diag(field.expr, ty, field_type, None, AllowTwoPhase::No);
 
-            if let Some(diag) = diag {
+            if let Err(diag) = diag {
                 if idx == hir_fields.len() - 1 {
                     if remaining_fields.is_empty() {
                         self.suggest_fru_from_range_and_emit(field, variant, args, diag);

@@ -105,15 +105,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
-    ) -> Option<Diag<'tcx>> {
-        let mut diag =
-            self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
-        if let Some(expr) = ti.origin_expr {
-            self.suggest_fn_call(&mut diag, expr, expected, |output| {
-                self.can_eq(self.param_env, output, actual)
-            });
-        }
-        Some(diag)
+    ) -> Result<(), Diag<'tcx>> {
+        self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
+            .map_err(|mut diag| {
+                if let Some(expr) = ti.origin_expr {
+                    self.suggest_fn_call(&mut diag, expr, expected, |output| {
+                        self.can_eq(self.param_env, output, actual)
+                    });
+                }
+                diag
+            })
     }
 
     fn demand_eqtype_pat(
@@ -122,10 +123,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
-    ) {
-        if let Some(err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
-            err.emit();
-        }
+    ) -> Result<(), ErrorGuaranteed> {
+        self.demand_eqtype_pat_diag(cause_span, expected, actual, ti).map_err(|err| err.emit())
     }
 }
 
@@ -509,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
-        if let Some(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+        if let Err(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             err.emit_unless(
                 ti.span
                     .filter(|&s| {
@@ -562,7 +561,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let demand_eqtype = |x: &mut _, y| {
             if let Some((ref mut fail, x_ty, x_span)) = *x
-                && let Some(mut err) = self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti)
+                && let Err(mut err) = self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti)
             {
                 if let Some((_, y_ty, y_span)) = y {
                     self.endpoint_has_type(&mut err, y_span, y_ty);
@@ -736,7 +735,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Otherwise, the type of x is the expected type `T`.
             ByRef::No => expected, // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
         };
-        self.demand_eqtype_pat(pat.span, eq_ty, local_ty, ti);
+
+        // We have a concrete type for the local, so we do not need to taint it and hide follow up errors *using* the local.
+        let _ = self.demand_eqtype_pat(pat.span, eq_ty, local_ty, ti);
 
         // If there are multiple arms, make sure they all agree on
         // what the type of the binding `x` ought to be.
@@ -763,7 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: &TopInfo<'tcx>,
     ) {
         let var_ty = self.local_ty(span, var_id);
-        if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
+        if let Err(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
             let hir = self.tcx.hir();
             let var_ty = self.resolve_vars_if_possible(var_ty);
             let msg = format!("first introduced with type `{var_ty}` here");
@@ -986,7 +987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type-check the path.
-        self.demand_eqtype_pat(pat.span, expected, pat_ty, pat_info.top_info);
+        let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, pat_info.top_info);
 
         // Type-check subpatterns.
         if self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
@@ -1050,7 +1051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type-check the path.
         let (pat_ty, pat_res) =
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
-        if let Some(err) =
+        if let Err(err) =
             self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
         {
             self.emit_bad_pat_path(err, pat, res, pat_res, pat_ty, segments);
@@ -1223,7 +1224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the tuple struct pattern against the expected type.
         let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, pat_info.top_info);
-        let had_err = diag.map(|diag| diag.emit());
+        let had_err = diag.map_err(|diag| diag.emit());
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
@@ -1244,7 +1245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             }
-            if let Some(e) = had_err {
+            if let Err(e) = had_err {
                 on_error(e);
                 return Ty::new_error(tcx, e);
             }
@@ -1256,7 +1257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 subpats,
                 &variant.fields.raw,
                 expected,
-                had_err.is_some(),
+                had_err.is_err(),
             );
             on_error(e);
             return Ty::new_error(tcx, e);
@@ -1444,8 +1445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(span));
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
-        if let Some(err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info) {
-            let reported = err.emit();
+        if let Err(reported) = self.demand_eqtype_pat(span, expected, pat_ty, pat_info.top_info) {
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
             let element_tys_iter = (0..max_len).map(|_| Ty::new_error(tcx, reported));
@@ -2064,20 +2064,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let (box_ty, inner_ty) = match self.check_dereferenceable(span, expected, inner) {
-            Ok(()) => {
+        let (box_ty, inner_ty) = self
+            .check_dereferenceable(span, expected, inner)
+            .and_then(|()| {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using `demand::eqtype`.
                 let inner_ty = self.next_ty_var(inner.span);
                 let box_ty = Ty::new_box(tcx, inner_ty);
-                self.demand_eqtype_pat(span, expected, box_ty, pat_info.top_info);
-                (box_ty, inner_ty)
-            }
-            Err(guar) => {
+                self.demand_eqtype_pat(span, expected, box_ty, pat_info.top_info)?;
+                Ok((box_ty, inner_ty))
+            })
+            .unwrap_or_else(|guar| {
                 let err = Ty::new_error(tcx, guar);
                 (err, err)
-            }
-        };
+            });
         self.check_pat(inner, inner_ty, pat_info);
         box_ty
     }
@@ -2221,7 +2221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // Look for a case like `fn foo(&foo: u32)` and suggest
                         // `fn foo(foo: &u32)`
-                        if let Some(mut err) = err {
+                        if let Err(mut err) = err {
                             self.borrow_pat_suggestion(&mut err, pat);
                             err.emit();
                         }
@@ -2326,7 +2326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.try_resolve_slice_ty_to_array_ty(before, slice, span)
             {
                 debug!(?resolved_arr_ty);
-                self.demand_eqtype(span, expected, resolved_arr_ty);
+                let _ = self.demand_eqtype(span, expected, resolved_arr_ty);
             }
         }
 
