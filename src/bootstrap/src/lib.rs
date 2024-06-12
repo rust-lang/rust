@@ -624,7 +624,7 @@ impl Build {
             self.config
                 .git()
                 .args(["config", "--file"])
-                .arg(&self.config.src.join(".gitmodules"))
+                .arg(self.config.src.join(".gitmodules"))
                 .args(["--get-regexp", "path"]),
         );
         for line in output.lines() {

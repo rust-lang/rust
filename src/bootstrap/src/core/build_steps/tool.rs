@@ -199,7 +199,7 @@ pub fn prepare_tool_cargo(
         cargo.env("CFG_COMMIT_DATE", date);
     }
     if !features.is_empty() {
-        cargo.arg("--features").arg(&features.join(", "));
+        cargo.arg("--features").arg(features.join(", "));
     }
 
     // Enable internal lints for clippy and rustdoc
