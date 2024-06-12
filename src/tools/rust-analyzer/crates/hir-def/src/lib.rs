@@ -56,6 +56,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
+use intern::Interned;
 pub use rustc_abi as layout;
 use triomphe::Arc;
 
@@ -1408,7 +1409,8 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
 
         macro_call_as_call_id_with_eager(
             db,
-            &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
+            ast_id,
+            &path,
             call_site.ctx,
             expands_to,
             krate,
@@ -1422,11 +1424,15 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct AstIdWithPath<T: AstIdNode> {
     ast_id: AstId<T>,
-    path: path::ModPath,
+    path: Interned<path::ModPath>,
 }
 
 impl<T: AstIdNode> AstIdWithPath<T> {
-    fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: path::ModPath) -> AstIdWithPath<T> {
+    fn new(
+        file_id: HirFileId,
+        ast_id: FileAstId<T>,
+        path: Interned<path::ModPath>,
+    ) -> AstIdWithPath<T> {
         AstIdWithPath { ast_id: AstId::new(file_id, ast_id), path }
     }
 }
@@ -1439,27 +1445,37 @@ fn macro_call_as_call_id(
     krate: CrateId,
     resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
-    macro_call_as_call_id_with_eager(db, call, call_site, expand_to, krate, resolver, resolver)
-        .map(|res| res.value)
+    macro_call_as_call_id_with_eager(
+        db,
+        call.ast_id,
+        &call.path,
+        call_site,
+        expand_to,
+        krate,
+        resolver,
+        resolver,
+    )
+    .map(|res| res.value)
 }
 
 fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
-    call: &AstIdWithPath<ast::MacroCall>,
+    ast_id: AstId<ast::MacroCall>,
+    path: &path::ModPath,
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl FnOnce(&path::ModPath) -> Option<MacroDefId>,
     eager_resolver: impl Fn(&path::ModPath) -> Option<MacroDefId>,
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
-    let def = resolver(&call.path).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
+    let def = resolver(path).ok_or_else(|| UnresolvedMacro { path: path.clone() })?;
 
     let res = match def.kind {
         MacroDefKind::BuiltInEager(..) => expand_eager_macro_input(
             db,
             krate,
-            &call.ast_id.to_node(db),
-            call.ast_id,
+            &ast_id.to_node(db),
+            ast_id,
             def,
             call_site,
             &|path| eager_resolver(path).filter(MacroDefId::is_fn_like),
@@ -1468,12 +1484,12 @@ fn macro_call_as_call_id_with_eager(
             value: Some(def.make_call(
                 db,
                 krate,
-                MacroCallKind::FnLike { ast_id: call.ast_id, expand_to, eager: None },
+                MacroCallKind::FnLike { ast_id, expand_to, eager: None },
                 call_site,
             )),
             err: None,
         },
-        _ => return Err(UnresolvedMacro { path: call.path.clone() }),
+        _ => return Err(UnresolvedMacro { path: path.clone() }),
     };
     Ok(res)
 }

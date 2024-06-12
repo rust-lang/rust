@@ -17,6 +17,7 @@ use hir_expand::{
     proc_macro::CustomProcMacroExpander,
     ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
+use intern::Interned;
 use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
@@ -1300,7 +1301,11 @@ impl DefCollector<'_> {
                                 let call_id = call_id();
                                 let mut len = 0;
                                 for (idx, (path, call_site)) in derive_macros.enumerate() {
-                                    let ast_id = AstIdWithPath::new(file_id, ast_id.value, path);
+                                    let ast_id = AstIdWithPath::new(
+                                        file_id,
+                                        ast_id.value,
+                                        Interned::new(path),
+                                    );
                                     self.unresolved_macros.push(MacroDirective {
                                         module_id: directive.module_id,
                                         depth: directive.depth + 1,
@@ -1473,7 +1478,7 @@ impl DefCollector<'_> {
                             derive_index: *derive_pos as u32,
                             derive_macro_id: *derive_macro_id,
                         },
-                        ast_id.path.clone(),
+                        ast_id.path.as_ref().clone(),
                     ));
                 }
                 // These are diagnosed by `reseed_with_unresolved_attribute`, as that function consumes them
@@ -2108,7 +2113,7 @@ impl ModCollector<'_, '_> {
             let ast_id = AstIdWithPath::new(
                 self.file_id(),
                 mod_item.ast_id(self.item_tree),
-                attr.path.as_ref().clone(),
+                attr.path.clone(),
             );
             self.def_collector.unresolved_macros.push(MacroDirective {
                 module_id: self.module_id,
@@ -2302,7 +2307,7 @@ impl ModCollector<'_, '_> {
         &MacroCall { ref path, ast_id, expand_to, ctxt }: &MacroCall,
         container: ItemContainerId,
     ) {
-        let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(path));
+        let ast_id = AstIdWithPath::new(self.file_id(), ast_id, path.clone());
         let db = self.def_collector.db;
 
         // FIXME: Immediately expanding in "Case 1" is insufficient since "Case 2" may also define
@@ -2312,7 +2317,8 @@ impl ModCollector<'_, '_> {
         // Case 1: try to resolve macro calls with single-segment name and expand macro_rules
         if let Ok(res) = macro_call_as_call_id_with_eager(
             db.upcast(),
-            &ast_id,
+            ast_id.ast_id,
+            &ast_id.path,
             ctxt,
             expand_to,
             self.def_collector.def_map.krate,

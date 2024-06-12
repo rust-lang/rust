@@ -628,7 +628,7 @@ impl<'a> AssocItemCollector<'a> {
             'attrs: for attr in &*attrs {
                 let ast_id =
                     AstId::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast());
-                let ast_id_with_path = AstIdWithPath { path: (*attr.path).clone(), ast_id };
+                let ast_id_with_path = AstIdWithPath { path: attr.path.clone(), ast_id };
 
                 match self.def_map.resolve_attr_macro(
                     self.db,
