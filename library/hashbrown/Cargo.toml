@@ -50,7 +50,7 @@ bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
 rkyv = { version = "0.7.42", features = ["validation"] }
 
 [features]
-default = ["ahash", "inline-more", "allocator-api2"]
+default = ["ahash", "inline-more", "allocator-api2", "equivalent"]
 
 nightly = ["allocator-api2?/nightly", "bumpalo/allocator_api"]
 
