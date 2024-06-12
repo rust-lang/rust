@@ -990,10 +990,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, pat_info.top_info);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
-            pat_ty
-        } else {
-            Ty::new_misc_error(self.tcx)
+        match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
+            Ok(()) => pat_ty,
+            Err(guar) => Ty::new_error(self.tcx, guar),
         }
     }
 
@@ -1469,7 +1468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         pat_info: PatInfo<'tcx, '_>,
-    ) -> bool {
+    ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx;
 
         let ty::Adt(adt, args) = adt_ty.kind() else {
@@ -1485,7 +1484,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Keep track of which fields have already appeared in the pattern.
         let mut used_fields = FxHashMap::default();
-        let mut no_field_errors = true;
+        let mut result = Ok(());
 
         let mut inexistent_fields = vec![];
         // Typecheck each field.
@@ -1494,8 +1493,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
-                    no_field_errors = false;
                     let guar = self.error_field_already_bound(span, field.ident, *occupied.get());
+                    result = Err(guar);
                     Ty::new_error(tcx, guar)
                 }
                 Vacant(vacant) => {
@@ -1510,7 +1509,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
-                            no_field_errors = false;
                             Ty::new_misc_error(tcx)
                         })
                 }
@@ -1589,32 +1587,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `Foo { a, b }` when it should have been `Foo(a, b)`.
                     i.delay_as_bug();
                     u.delay_as_bug();
-                    e.emit();
+                    Err(e.emit())
                 } else {
                     i.emit();
-                    u.emit();
+                    Err(u.emit())
                 }
             }
             (None, Some(u)) => {
                 if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     u.delay_as_bug();
-                    e.emit();
+                    Err(e.emit())
                 } else {
-                    u.emit();
+                    Err(u.emit())
                 }
             }
-            (Some(err), None) => {
-                err.emit();
+            (Some(err), None) => Err(err.emit()),
+            (None, None) => {
+                self.error_tuple_variant_index_shorthand(variant, pat, fields)?;
+                result
             }
-            (None, None)
-                if let Some(err) =
-                    self.error_tuple_variant_index_shorthand(variant, pat, fields) =>
-            {
-                err.emit();
-            }
-            (None, None) => {}
         }
-        no_field_errors
     }
 
     fn error_tuple_variant_index_shorthand(
@@ -1622,7 +1614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
         fields: &[hir::PatField<'_>],
-    ) -> Option<Diag<'_>> {
+    ) -> Result<(), ErrorGuaranteed> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
@@ -1644,10 +1636,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!("({})", self.get_suggested_tuple_struct_pattern(fields, variant)),
                     Applicability::MaybeIncorrect,
                 );
-                return Some(err);
+                return Err(err.emit());
             }
         }
-        None
+        Ok(())
     }
 
     fn error_foreign_non_exhaustive_spat(&self, pat: &Pat<'_>, descr: &str, no_fields: bool) {
