@@ -19,8 +19,12 @@ use hir_def::{
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    attrs::collect_attrs, db::ExpandDatabase, files::InRealFile, name::AsName, InMacroFile,
-    MacroCallId, MacroFileId, MacroFileIdExt,
+    attrs::collect_attrs,
+    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    db::ExpandDatabase,
+    files::InRealFile,
+    name::AsName,
+    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -319,6 +323,30 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             sa.expand(self.db, macro_call)?
         };
+        let macro_call = self.db.lookup_intern_macro_call(file_id.macro_call_id);
+
+        match macro_call.def.kind {
+            hir_expand::MacroDefKind::BuiltIn(
+                _,
+                BuiltinFnLikeExpander::Cfg
+                | BuiltinFnLikeExpander::StdPanic
+                | BuiltinFnLikeExpander::Stringify
+                | BuiltinFnLikeExpander::CorePanic,
+            )
+            | hir_expand::MacroDefKind::BuiltInEager(
+                _,
+                EagerExpander::Env
+                | EagerExpander::Concat
+                | EagerExpander::Include
+                | EagerExpander::OptionEnv
+                | EagerExpander::IncludeStr
+                | EagerExpander::ConcatBytes
+                | EagerExpander::IncludeBytes,
+            ) => {
+                // Do nothing and allow matching macros to be expanded
+            }
+            _ => return None,
+        }
 
         let node = self.parse_or_expand(file_id.into());
         Some(node)
