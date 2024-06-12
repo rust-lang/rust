@@ -80,6 +80,47 @@ macro_rules! forward_ref_op_assign {
     }
 }
 
+/// Create a zero-size type similar to a closure type, but named.
+macro_rules! impl_fn_for_zst {
+    ($(
+        $( #[$attr: meta] )*
+        struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
+            |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty
+            $body: block;
+    )+) => {
+        $(
+            $( #[$attr] )*
+            struct $Name;
+
+            impl $( <$( $lifetime ),+> )? Fn<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call(&self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    $body
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )? FnMut<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call_mut(
+                    &mut self,
+                    ($( $arg, )*): ($( $ArgTy, )*)
+                ) -> $ReturnTy {
+                    Fn::call(&*self, ($( $arg, )*))
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )? FnOnce<($( $ArgTy, )*)> for $Name {
+                type Output = $ReturnTy;
+
+                #[inline]
+                extern "rust-call" fn call_once(self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    Fn::call(&self, ($( $arg, )*))
+                }
+            }
+        )+
+    }
+}
+
 /// A macro for defining `#[cfg]` if-else statements.
 ///
 /// `cfg_if` is similar to the `if/elif` C preprocessor macro by allowing definition of a cascade

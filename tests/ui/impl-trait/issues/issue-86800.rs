@@ -26,6 +26,7 @@ type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>
 //~^ ERROR unconstrained opaque type
 
 fn execute_transaction_fut<'f, F, O>(
+    //~^ ERROR: item does not constrain
     f: F,
 ) -> impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>
 where
@@ -37,10 +38,12 @@ where
 
 impl Context {
     async fn do_transaction<O>(
+        //~^ ERROR: item does not constrain
         &self, f: impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>
     ) -> TransactionResult<O>
     {
         //~^ ERROR expected generic lifetime parameter, found `'_`
+        //~| ERROR: item does not constrain
         let mut conn = Connection {};
         let mut transaction = TestTransaction { conn: &mut conn };
         f(&mut transaction).await
