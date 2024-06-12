@@ -15,7 +15,8 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = [const 0_u32, const 1_u32, const 2_u32, const 3_u32];
+-         _2 = [const 0_u32, const 1_u32, const 2_u32, const 3_u32];
++         _2 = const [0_u32, 1_u32, 2_u32, 3_u32];
           StorageLive(_3);
           _3 = const 2_usize;
 -         _4 = Len(_2);
@@ -36,4 +37,6 @@
           return;
       }
   }
++ 
++ ALLOC0 (size: 16, align: 4) { .. }
   

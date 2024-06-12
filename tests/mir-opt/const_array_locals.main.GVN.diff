@@ -37,18 +37,21 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
-          _1 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32];
+          StorageLive(_1);
+-         _1 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32];
++         _1 = const [255_i32, 105_i32, 15_i32, 39_i32, 62_i32];
           StorageLive(_2);
 -         _2 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32];
-+         _2 = _1;
++         _2 = const [255_i32, 105_i32, 15_i32, 39_i32, 62_i32];
           StorageLive(_3);
           StorageLive(_4);
-          _4 = [const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32];
+-         _4 = [const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32];
++         _4 = const [178_i32, 9_i32, 4_i32, 56_i32, 221_i32];
           StorageLive(_5);
-          _5 = [const 193_i32, const 164_i32, const 194_i32, const 197_i32, const 6_i32];
-          _3 = [move _4, move _5];
+-         _5 = [const 193_i32, const 164_i32, const 194_i32, const 197_i32, const 6_i32];
+-         _3 = [move _4, move _5];
++         _5 = const [193_i32, 164_i32, 194_i32, 197_i32, 6_i32];
++         _3 = const [[178_i32, 9_i32, 4_i32, 56_i32, 221_i32], [193_i32, 164_i32, 194_i32, 197_i32, 6_i32]];
           StorageDead(_5);
           StorageDead(_4);
           StorageLive(_6);
@@ -56,12 +59,14 @@
           _17 = const main::promoted[0];
           _7 = &(*_17);
 -         _6 = (*_7);
-+         _6 = (*_17);
++         _6 = const [254_i32, 42_i32, 15_i32, 39_i32, 62_i32];
           StorageDead(_7);
           StorageLive(_9);
           StorageLive(_10);
-          _10 = [const 31_u32, const 96_u32, const 173_u32, const 50_u32, const 1_u32];
-          _9 = consume(move _10) -> [return: bb1, unwind continue];
+-         _10 = [const 31_u32, const 96_u32, const 173_u32, const 50_u32, const 1_u32];
+-         _9 = consume(move _10) -> [return: bb1, unwind continue];
++         _10 = const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32];
++         _9 = consume(const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32]) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -69,17 +74,23 @@
           StorageDead(_9);
           StorageLive(_11);
           StorageLive(_12);
-          _12 = [const 1f32, const 2f32, const 3f32, const 1f32, const 1f32, const 1f32, const 1f32, const 42f32];
-          _11 = F32x8(move _12);
+-         _12 = [const 1f32, const 2f32, const 3f32, const 1f32, const 1f32, const 1f32, const 1f32, const 42f32];
+-         _11 = F32x8(move _12);
++         _12 = const [1f32, 2f32, 3f32, 1f32, 1f32, 1f32, 1f32, 42f32];
++         _11 = F32x8(const [1f32, 2f32, 3f32, 1f32, 1f32, 1f32, 1f32, 42f32]);
           StorageDead(_12);
           StorageLive(_13);
           StorageLive(_14);
-          _14 = [const 1_i32, const 0_i32, const 0_i32];
+-         _14 = [const 1_i32, const 0_i32, const 0_i32];
++         _14 = const [1_i32, 0_i32, 0_i32];
           StorageLive(_15);
-          _15 = [const 0_i32, const 1_i32, const 0_i32];
+-         _15 = [const 0_i32, const 1_i32, const 0_i32];
++         _15 = const [0_i32, 1_i32, 0_i32];
           StorageLive(_16);
-          _16 = [const 0_i32, const 0_i32, const 1_i32];
-          _13 = [move _14, move _15, move _16];
+-         _16 = [const 0_i32, const 0_i32, const 1_i32];
+-         _13 = [move _14, move _15, move _16];
++         _16 = const [0_i32, 0_i32, 1_i32];
++         _13 = const [[1_i32, 0_i32, 0_i32], [0_i32, 1_i32, 0_i32], [0_i32, 0_i32, 1_i32]];
           StorageDead(_16);
           StorageDead(_15);
           StorageDead(_14);
@@ -89,9 +100,30 @@
           StorageDead(_6);
           StorageDead(_3);
           StorageDead(_2);
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   }
++ 
++ ALLOC0 (size: 36, align: 4) { .. }
++ 
++ ALLOC1 (size: 12, align: 4) { .. }
++ 
++ ALLOC2 (size: 12, align: 4) { .. }
++ 
++ ALLOC3 (size: 12, align: 4) { .. }
++ 
++ ALLOC4 (size: 32, align: 4) { .. }
++ 
++ ALLOC5 (size: 20, align: 4) { .. }
++ 
++ ALLOC6 (size: 40, align: 4) { .. }
++ 
++ ALLOC7 (size: 20, align: 4) { .. }
++ 
++ ALLOC8 (size: 20, align: 4) { .. }
++ 
++ ALLOC9 (size: 20, align: 4) { .. }
++ 
++ ALLOC10 (size: 20, align: 4) { .. }
   

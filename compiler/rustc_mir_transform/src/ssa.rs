@@ -147,6 +147,7 @@ impl SsaLocals {
         })
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn for_each_assignment_mut<'tcx>(
         &self,
         basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
