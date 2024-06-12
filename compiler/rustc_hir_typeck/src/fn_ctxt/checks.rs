@@ -2240,7 +2240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (idx, (generic_param, param)) in
                 params_with_generics.iter().enumerate().filter(|(idx, _)| {
                     check_for_matched_generics
-                        || expected_idx.map_or(true, |expected_idx| expected_idx == *idx)
+                        || expected_idx.is_none_or(|expected_idx| expected_idx == *idx)
                 })
             {
                 let Some(generic_param) = generic_param else {

@@ -446,7 +446,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (alloc_size, _alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
                 // Test bounds.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
-                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
+                if offset.checked_add(size, &self.tcx).is_none_or(|end| end > alloc_size) {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,

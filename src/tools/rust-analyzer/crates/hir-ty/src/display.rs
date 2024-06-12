@@ -1387,6 +1387,7 @@ fn generic_args_sans_defaults<'ga>(
                     }
                     // otherwise, if the arg is equal to the param default, hide it (unless the
                     // default is an error which can happen for the trait Self type)
+                    #[allow(unstable_name_collisions)]
                     default_parameters.get(i).is_none_or(|default_parameter| {
                         // !is_err(default_parameter.skip_binders())
                         //     &&
