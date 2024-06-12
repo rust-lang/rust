@@ -107,7 +107,11 @@ impl DocTestRunner {
 #[rustc_main]
 #[coverage(off)]
 fn main() {{
-test::test_main(&[{test_args}], vec![{ids}], None);
+test::test_main_static_with_args(
+    &[{test_args}],
+    &mut [{ids}],
+    None,
+);
 }}",
             output = self.output,
             ids = self.ids,
@@ -148,7 +152,8 @@ fn generate_mergeable_doctest(
         // We generate nothing else.
         writeln!(output, "mod {test_id} {{\n").unwrap();
     } else {
-        writeln!(output, "mod {test_id} {{\n{}", doctest.crates).unwrap();
+        writeln!(output, "mod {test_id} {{\n{}{}", doctest.crates, doctest.maybe_crate_attrs)
+            .unwrap();
         if doctest.has_main_fn {
             output.push_str(&doctest.everything_else);
         } else {
