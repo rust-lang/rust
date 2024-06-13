@@ -50,14 +50,13 @@ fn test_pidfd() {
         return;
     }
 
-    let mut child = Command::new("sleep")
+    let child = Command::new("sleep")
         .arg("1000")
         .create_pidfd(true)
         .spawn()
         .expect("executing 'sleep' failed");
 
-    let fd = child.take_pidfd().unwrap();
-    drop(child);
+    let fd = child.into_pidfd().unwrap();
 
     assert_matches!(fd.try_wait(), Ok(None));
     fd.kill().expect("kill failed");
