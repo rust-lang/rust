@@ -1098,12 +1098,12 @@ mod linux_child_ext {
                 .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
         }
 
-        fn take_pidfd(&mut self) -> io::Result<os::PidFd> {
+        fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
             self.handle
                 .pidfd
                 .take()
                 .map(|fd| <os::PidFd as FromInner<imp::PidFd>>::from_inner(fd))
-                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+                .ok_or_else(|| self)
         }
     }
 }

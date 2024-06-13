@@ -20,7 +20,7 @@ struct InnerPidFd;
 ///
 /// A `PidFd` can be obtained by setting the corresponding option on [`Command`]
 /// with [`create_pidfd`]. Subsequently, the created pidfd can be retrieved
-/// from the [`Child`] by calling [`pidfd`] or [`take_pidfd`].
+/// from the [`Child`] by calling [`pidfd`] or [`into_pidfd`].
 ///
 /// Example:
 /// ```no_run
@@ -34,7 +34,7 @@ struct InnerPidFd;
 ///     .expect("Failed to spawn child");
 ///
 /// let pidfd = child
-///     .take_pidfd()
+///     .into_pidfd()
 ///     .expect("Failed to retrieve pidfd");
 ///
 /// // The file descriptor will be closed when `pidfd` is dropped.
@@ -45,7 +45,7 @@ struct InnerPidFd;
 /// [`create_pidfd`]: CommandExt::create_pidfd
 /// [`Child`]: process::Child
 /// [`pidfd`]: fn@ChildExt::pidfd
-/// [`take_pidfd`]: ChildExt::take_pidfd
+/// [`into_pidfd`]: ChildExt::into_pidfd
 /// [`pidfd_open(2)`]: https://man7.org/linux/man-pages/man2/pidfd_open.2.html
 #[derive(Debug)]
 #[repr(transparent)]
@@ -160,18 +160,26 @@ pub trait ChildExt: Sealed {
     /// [`Child`]: process::Child
     fn pidfd(&self) -> Result<&PidFd>;
 
-    /// Takes ownership of the [`PidFd`] created for this [`Child`], if available.
+    /// Returns the [`PidFd`] created for this [`Child`], if available.
+    /// Otherwise self is returned.
     ///
     /// A pidfd will only be available if its creation was requested with
     /// [`create_pidfd`] when the corresponding [`Command`] was created.
+    ///
+    /// Taking ownership of the PidFd consumes the Child to avoid pid reuse
+    /// races. Use [`pidfd`] and [`BorrowedFd::try_clone_to_owned`] if
+    /// you don't want to disassemble the Child yet.
     ///
     /// Even if requested, a pidfd may not be available due to an older
     /// version of Linux being in use, or if some other error occurred.
     ///
     /// [`Command`]: process::Command
     /// [`create_pidfd`]: CommandExt::create_pidfd
+    /// [`pidfd`]: ChildExt::pidfd
     /// [`Child`]: process::Child
-    fn take_pidfd(&mut self) -> Result<PidFd>;
+    fn into_pidfd(self) -> crate::result::Result<PidFd, Self>
+    where
+        Self: Sized;
 }
 
 /// Os-specific extensions for [`Command`]
@@ -182,7 +190,7 @@ pub trait CommandExt: Sealed {
     /// spawned by this [`Command`].
     /// By default, no pidfd will be created.
     ///
-    /// The pidfd can be retrieved from the child with [`pidfd`] or [`take_pidfd`].
+    /// The pidfd can be retrieved from the child with [`pidfd`] or [`into_pidfd`].
     ///
     /// A pidfd will only be created if it is possible to do so
     /// in a guaranteed race-free manner. Otherwise, [`pidfd`] will return an error.
@@ -196,7 +204,7 @@ pub trait CommandExt: Sealed {
     /// [`Command`]: process::Command
     /// [`Child`]: process::Child
     /// [`pidfd`]: fn@ChildExt::pidfd
-    /// [`take_pidfd`]: ChildExt::take_pidfd
+    /// [`into_pidfd`]: ChildExt::into_pidfd
     fn create_pidfd(&mut self, val: bool) -> &mut process::Command;
 }
 
