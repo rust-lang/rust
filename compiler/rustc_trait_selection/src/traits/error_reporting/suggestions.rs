@@ -4592,7 +4592,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         if ObligationCauseCode::QuestionMark != *obligation.cause.code().peel_derives() {
             return;
@@ -4602,10 +4602,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if let hir::Node::Item(item) = node
             && let hir::ItemKind::Fn(sig, _, body_id) = item.kind
             && let hir::FnRetTy::DefaultReturn(ret_span) = sig.decl.output
-            && self.tcx.is_diagnostic_item(sym::FromResidual, trait_ref.def_id())
-            && let ty::Tuple(l) = trait_ref.skip_binder().args.type_at(0).kind()
-            && l.len() == 0
-            && let ty::Adt(def, _) = trait_ref.skip_binder().args.type_at(1).kind()
+            && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())
+            && trait_pred.skip_binder().trait_ref.args.type_at(0).is_unit()
+            && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
             && self.tcx.is_diagnostic_item(sym::Result, def.did())
         {
             let body = self.tcx.hir().body(body_id);

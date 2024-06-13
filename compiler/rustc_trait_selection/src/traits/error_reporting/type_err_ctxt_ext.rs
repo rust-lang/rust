@@ -612,9 +612,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             &mut err,
                             leaf_trait_predicate,
                         );
-                        self.suggest_add_result_as_return_type(&obligation,
+                        self.suggest_add_result_as_return_type(
+                            &obligation,
                             &mut err,
-                            trait_ref);
+                            leaf_trait_predicate,
+                        );
 
                         if self.suggest_add_reference_to_arg(
                             &obligation,
