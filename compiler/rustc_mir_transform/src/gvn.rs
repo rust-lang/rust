@@ -410,6 +410,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let mut mplace = None;
                     let alloc_id = self.ecx.intern_with_temp_alloc(ty, |ecx, dest| {
                         for (field_index, op) in fields.iter().copied().enumerate() {
+                            // ignore nested arrays
+                            if let Either::Left(_) = op.as_mplace_or_imm() {
+                                interpret::throw_inval!(TooGeneric);
+                            }
                             let field_dest = ecx.project_field(dest, field_index)?;
                             ecx.copy_op(op, &field_dest)?;
                         }
@@ -726,7 +730,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             place.projection = self.tcx.mk_place_elems(&projection);
         }
 
-        trace!(?place);
+        trace!(after_place = ?place);
     }
 
     /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
@@ -1266,7 +1270,7 @@ fn op_to_prop_const<'tcx>(
     }
 
     // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
-    if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+    if !(op.layout.ty.is_array() || matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..))) {
         return None;
     }
 
@@ -1320,14 +1324,37 @@ fn op_to_prop_const<'tcx>(
 
 impl<'tcx> VnState<'_, 'tcx> {
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
+    #[instrument(level = "trace", skip(self, index), ret)]
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it.
-        if let Value::Constant { value, disambiguator: _ } = *self.get(index)
+        let value = self.get(index);
+        debug!(?index, ?value);
+        match value {
             // If the constant is not deterministic, adding an additional mention of it in MIR will
             // not give the same value as the former mention.
-            && value.is_deterministic()
-        {
-            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
+            Value::Constant { value, disambiguator: _ } if value.is_deterministic() => {
+                return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: *value });
+            }
+            // ignore nested arrays
+            Value::Aggregate(AggregateTy::Array, _, fields) => {
+                for f in fields {
+                    if let Value::Constant { value: Const::Val(const_, _), .. } = self.get(*f)
+                        && let ConstValue::Indirect { .. } = const_ {
+                        return None;
+                    }
+                }
+            }
+            // ignore promoted arrays
+            Value::Projection(index, ProjectionElem::Deref) => {
+                if let Value::Constant { value: Const::Val(const_, ty), .. } = self.get(*index)
+                    && let ConstValue::Scalar(Scalar::Ptr(..)) = const_
+                    && let ty::Ref(region, ty, _mutability) = ty.kind()
+                    && region.is_erased()
+                    && ty.is_array() {
+                    return None;
+                }
+            }
+            _ => {}
         }
 
         let op = self.evaluated[index].as_ref()?;
@@ -1367,6 +1394,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         self.simplify_operand(operand, location);
     }
 
+    #[instrument(level = "trace", skip(self, stmt))]
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
             self.simplify_place_projection(lhs, location);
@@ -1383,6 +1411,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             debug!(?value);
             let Some(value) = value else { return };
 
+            debug!(before_rvalue = ?rvalue);
             if let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
             } else if let Some(local) = self.try_as_local(value, location)
@@ -1391,6 +1420,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 *rvalue = Rvalue::Use(Operand::Copy(local.into()));
                 self.reused_locals.insert(local);
             }
+            debug!(after_rvalue = ?rvalue);
 
             return;
         }
