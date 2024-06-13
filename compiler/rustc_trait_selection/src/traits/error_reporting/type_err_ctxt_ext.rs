@@ -2705,6 +2705,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ),
                 );
             }
+
+            ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
+                if term.is_infer() =>
+            {
+                if let Some(e) = self.tainted_by_errors() {
+                    return e;
+                }
+                struct_span_code_err!(
+                    self.dcx(),
+                    span,
+                    E0284,
+                    "type annotations needed: cannot normalize `{alias}`",
+                )
+                .with_span_label(span, format!("cannot normalize `{alias}`"))
+            }
+
             _ => {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;

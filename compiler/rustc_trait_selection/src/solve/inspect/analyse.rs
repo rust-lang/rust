@@ -15,7 +15,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
-use rustc_middle::traits::solve::{Certainty, Goal};
+use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_middle::{bug, ty};
@@ -291,7 +291,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     steps.push(step)
                 }
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
-                    assert_eq!(shallow_certainty.replace(c), None);
+                    assert!(matches!(
+                        shallow_certainty.replace(c),
+                        None | Some(Certainty::Maybe(MaybeCause::Ambiguity))
+                    ));
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     match probe.kind {
