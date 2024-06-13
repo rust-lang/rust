@@ -3,9 +3,10 @@ use super::{
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
+use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
-use crate::{crate_def::CrateDef, mir::mono::StaticDef};
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
@@ -504,6 +505,15 @@ impl TyKind {
     pub fn discriminant_ty(&self) -> Option<Ty> {
         self.rigid().map(|ty| with(|cx| cx.rigid_ty_discriminant_ty(ty)))
     }
+
+    /// Deconstruct a function type if this is one.
+    pub fn fn_def(&self) -> Option<(FnDef, &GenericArgs)> {
+        if let TyKind::RigidTy(RigidTy::FnDef(def, args)) = self {
+            Some((*def, args))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct TypeAndMut {
@@ -629,7 +639,7 @@ impl ForeignModule {
     }
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// Hold information about a ForeignItem in a crate.
     pub ForeignDef;
 }
@@ -647,7 +657,7 @@ pub enum ForeignItemKind {
     Type(Ty),
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// Hold information about a function definition in a crate.
     pub FnDef;
 }
@@ -668,9 +678,15 @@ impl FnDef {
     pub fn is_intrinsic(&self) -> bool {
         self.as_intrinsic().is_some()
     }
+
+    /// Get the function signature for this function definition.
+    pub fn fn_sig(&self) -> PolyFnSig {
+        let kind = self.ty().kind();
+        kind.fn_sig().unwrap()
+    }
 }
 
-crate_def! {
+crate_def_with_ty! {
     pub IntrinsicDef;
 }
 
@@ -710,7 +726,7 @@ crate_def! {
     pub BrNamedDef;
 }
 
-crate_def! {
+crate_def_with_ty! {
     pub AdtDef;
 }
 
@@ -866,7 +882,7 @@ crate_def! {
     pub GenericDef;
 }
 
-crate_def! {
+crate_def_with_ty! {
     pub ConstDef;
 }
 
