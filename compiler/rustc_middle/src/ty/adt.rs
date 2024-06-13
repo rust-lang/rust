@@ -204,6 +204,23 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     fn def_id(self) -> DefId {
         self.did()
     }
+
+    fn is_phantom_data(self) -> bool {
+        self.is_phantom_data()
+    }
+
+    fn all_field_tys(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = Ty<'tcx>>> {
+        ty::EarlyBinder::bind(
+            self.all_fields().map(move |field| tcx.type_of(field.did).skip_binder()),
+        )
+    }
+
+    fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.sized_constraint(tcx)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]

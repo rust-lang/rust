@@ -1,14 +1,14 @@
 //! Code which is used by built-in goals that match "structurally", such a auto
 //! traits, `Copy`/`Clone`.
+
+use rustc_ast_ir::{Movability, Mutability};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::LangItem;
-use rustc_hir::{def_id::DefId, Movability, Mutability};
-use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::query::NoSolution;
-use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::bug;
-use rustc_middle::traits::solve::Goal;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, Upcast};
+use rustc_next_trait_solver::solve::{Goal, NoSolution};
+use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::{self as ty, InferCtxtLike, Interner, Upcast};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::EvalCtxt;
 
@@ -17,12 +17,16 @@ use crate::solve::EvalCtxt;
 // For types with an "existential" binder, i.e. coroutine witnesses, we also
 // instantiate the binder with placeholders eagerly.
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
-    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
-    ty: Ty<'tcx>,
-) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
+pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<Infcx, I>(
+    ecx: &EvalCtxt<'_, Infcx>,
+    ty: I::Ty,
+) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
     let tcx = ecx.interner();
-    match *ty.kind() {
+    match ty.kind() {
         ty::Uint(_)
         | ty::Int(_)
         | ty::Bool
@@ -34,7 +38,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Char => Ok(vec![]),
 
         // Treat `str` like it's defined as `struct str([u8]);`
-        ty::Str => Ok(vec![ty::Binder::dummy(Ty::new_slice(tcx, tcx.types.u8))]),
+        ty::Str => Ok(vec![ty::Binder::dummy(Ty::new_slice(tcx, Ty::new_u8(tcx)))]),
 
         ty::Dynamic(..)
         | ty::Param(..)
@@ -43,7 +47,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Infer(_) => {
-            bug!("unexpected type `{ty}`")
+            panic!("unexpected type `{ty:?}`")
         }
 
         ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
@@ -56,7 +60,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            Ok(tys.iter().map(ty::Binder::dummy).collect())
+            Ok(tys.into_iter().map(ty::Binder::dummy).collect())
         }
 
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
@@ -76,31 +80,38 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .interner()
             .bound_coroutine_hidden_types(def_id)
-            .map(|bty| bty.instantiate(tcx, args))
+            .into_iter()
+            .map(|bty| bty.instantiate(tcx, &args))
             .collect()),
 
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
 
-        ty::Adt(def, args) => {
-            Ok(def.all_fields().map(|f| ty::Binder::dummy(f.ty(tcx, args))).collect())
-        }
+        ty::Adt(def, args) => Ok(def
+            .all_field_tys(tcx)
+            .iter_instantiated(tcx, &args)
+            .map(ty::Binder::dummy)
+            .collect()),
 
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![ty::Binder::dummy(tcx.type_of(def_id).instantiate(tcx, args))])
+            Ok(vec![ty::Binder::dummy(tcx.type_of(def_id).instantiate(tcx, &args))])
         }
     }
 }
 
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
-    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
-    ty: Ty<'tcx>,
-) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
-    match *ty.kind() {
+pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<Infcx, I>(
+    ecx: &EvalCtxt<'_, Infcx>,
+    ty: I::Ty,
+) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    match ty.kind() {
         // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
         // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -133,7 +144,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-            bug!("unexpected type `{ty}`")
+            panic!("unexpected type `{ty:?}`")
         }
 
         // impl Sized for ()
@@ -151,7 +162,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
             if let Some(sized_crit) = def.sized_constraint(ecx.interner()) {
-                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.interner(), args))])
+                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.interner(), &args))])
             } else {
                 Ok(vec![])
             }
@@ -160,11 +171,15 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 }
 
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
-    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
-    ty: Ty<'tcx>,
-) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
-    match *ty.kind() {
+pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<Infcx, I>(
+    ecx: &EvalCtxt<'_, Infcx>,
+    ty: I::Ty,
+) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
         ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
 
@@ -196,11 +211,11 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-            bug!("unexpected type `{ty}`")
+            panic!("unexpected type `{ty:?}`")
         }
 
         // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
-        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
+        ty::Tuple(tys) => Ok(tys.into_iter().map(ty::Binder::dummy).collect()),
 
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
@@ -212,7 +227,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Coroutine(def_id, args) => match ecx.interner().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
-                if ecx.interner().features().coroutine_clone {
+                if ecx.interner().features().coroutine_clone() {
                     let coroutine = args.as_coroutine();
                     Ok(vec![
                         ty::Binder::dummy(coroutine.tupled_upvars_ty()),
@@ -228,27 +243,26 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .interner()
             .bound_coroutine_hidden_types(def_id)
-            .map(|bty| bty.instantiate(ecx.interner(), args))
+            .into_iter()
+            .map(|bty| bty.instantiate(ecx.interner(), &args))
             .collect()),
     }
 }
 
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
-pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    self_ty: Ty<'tcx>,
+pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Interner>(
+    tcx: I,
+    self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
-) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
-    match *self_ty.kind() {
+) -> Result<Option<ty::Binder<I, (I::Ty, I::Ty)>>, NoSolution> {
+    match self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, args) => {
             let sig = tcx.fn_sig(def_id);
-            if sig.skip_binder().is_fn_trait_compatible()
-                && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
-            {
+            if sig.skip_binder().is_fn_trait_compatible() && !tcx.has_target_features(def_id) {
                 Ok(Some(
-                    sig.instantiate(tcx, args)
-                        .map_bound(|sig| (Ty::new_tup(tcx, sig.inputs()), sig.output())),
+                    sig.instantiate(tcx, &args)
+                        .map_bound(|sig| (Ty::new_tup(tcx, &sig.inputs()), sig.output())),
                 ))
             } else {
                 Err(NoSolution)
@@ -257,7 +271,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnPtr(sig) => {
             if sig.is_fn_trait_compatible() {
-                Ok(Some(sig.map_bound(|sig| (Ty::new_tup(tcx, sig.inputs()), sig.output()))))
+                Ok(Some(sig.map_bound(|sig| (Ty::new_tup(tcx, &sig.inputs()), sig.output()))))
             } else {
                 Err(NoSolution)
             }
@@ -311,7 +325,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
                     tcx,
                     goal_kind,
                     // No captures by ref, so this doesn't matter.
-                    tcx.lifetimes.re_static,
+                    Region::new_static(tcx),
                     def_id,
                     args,
                     sig,
@@ -326,7 +340,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
                 coroutine_closure_to_ambiguous_coroutine(
                     tcx,
                     goal_kind, // No captures by ref, so this doesn't matter.
-                    tcx.lifetimes.re_static,
+                    Region::new_static(tcx),
                     def_id,
                     args,
                     sig,
@@ -362,22 +376,24 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-            bug!("unexpected type `{self_ty}`")
+            panic!("unexpected type `{self_ty:?}`")
         }
     }
 }
 
 /// Relevant types for an async callable, including its inputs, output,
 /// and the return type you get from awaiting the output.
-#[derive(Copy, Clone, Debug, TypeVisitable, TypeFoldable)]
-pub(in crate::solve) struct AsyncCallableRelevantTypes<'tcx> {
-    pub tupled_inputs_ty: Ty<'tcx>,
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Copy(bound = ""), Debug(bound = ""))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+pub(in crate::solve) struct AsyncCallableRelevantTypes<I: Interner> {
+    pub tupled_inputs_ty: I::Ty,
     /// Type returned by calling the closure
     /// i.e. `f()`.
-    pub output_coroutine_ty: Ty<'tcx>,
+    pub output_coroutine_ty: I::Ty,
     /// Type returned by `await`ing the output
     /// i.e. `f().await`.
-    pub coroutine_return_ty: Ty<'tcx>,
+    pub coroutine_return_ty: I::Ty,
 }
 
 // Returns a binder of the tupled inputs types, output type, and coroutine type
@@ -385,16 +401,13 @@ pub(in crate::solve) struct AsyncCallableRelevantTypes<'tcx> {
 // the coroutine-closure, emit an additional trait predicate for `AsyncFnKindHelper`
 // which enforces the closure is actually callable with the given trait. When we
 // know the kind already, we can short-circuit this check.
-pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    self_ty: Ty<'tcx>,
+pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: Interner>(
+    tcx: I,
+    self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
-    env_region: ty::Region<'tcx>,
-) -> Result<
-    (ty::Binder<'tcx, AsyncCallableRelevantTypes<'tcx>>, Vec<ty::Predicate<'tcx>>),
-    NoSolution,
-> {
-    match *self_ty.kind() {
+    env_region: I::Region,
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
+    match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
             let kind_ty = args.kind_ty();
@@ -421,7 +434,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 nested.push(
                     ty::TraitRef::new(
                         tcx,
-                        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None),
+                        tcx.require_lang_item(TraitSolverLangItem::AsyncFnKindHelper),
                         [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
                     )
                     .upcast(tcx),
@@ -445,7 +458,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
         ty::FnDef(..) | ty::FnPtr(..) => {
             let bound_sig = self_ty.fn_sig(tcx);
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+            let future_trait_def_id = tcx.require_lang_item(TraitSolverLangItem::Future);
             // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
             // return type implements `Future`.
             let nested = vec![
@@ -453,11 +466,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
                     .upcast(tcx),
             ];
-            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
+            let future_output_def_id = tcx.require_lang_item(TraitSolverLangItem::FutureOutput);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
-                    tupled_inputs_ty: Ty::new_tup(tcx, sig.inputs()),
+                    tupled_inputs_ty: Ty::new_tup(tcx, &sig.inputs()),
                     output_coroutine_ty: sig.output(),
                     coroutine_return_ty: future_output_ty,
                 }),
@@ -468,7 +481,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
             let args = args.as_closure();
             let bound_sig = args.sig();
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+            let future_trait_def_id = tcx.require_lang_item(TraitSolverLangItem::Future);
             // `Closure`s only implement `AsyncFn*` when their return type
             // implements `Future`.
             let mut nested = vec![
@@ -486,7 +499,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 }
             } else {
                 let async_fn_kind_trait_def_id =
-                    tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                    tcx.require_lang_item(TraitSolverLangItem::AsyncFnKindHelper);
                 // When we don't know the closure kind (and therefore also the closure's upvars,
                 // which are computed at the same time), we must delay the computation of the
                 // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
@@ -504,7 +517,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 );
             }
 
-            let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
+            let future_output_def_id = tcx.require_lang_item(TraitSolverLangItem::FutureOutput);
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -542,21 +555,21 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-            bug!("unexpected type `{self_ty}`")
+            panic!("unexpected type `{self_ty:?}`")
         }
     }
 }
 
 /// Given a coroutine-closure, project to its returned coroutine when we are *certain*
 /// that the closure's kind is compatible with the goal.
-fn coroutine_closure_to_certain_coroutine<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn coroutine_closure_to_certain_coroutine<I: Interner>(
+    tcx: I,
     goal_kind: ty::ClosureKind,
-    goal_region: ty::Region<'tcx>,
-    def_id: DefId,
-    args: ty::CoroutineClosureArgs<TyCtxt<'tcx>>,
-    sig: ty::CoroutineClosureSignature<TyCtxt<'tcx>>,
-) -> Ty<'tcx> {
+    goal_region: I::Region,
+    def_id: I::DefId,
+    args: ty::CoroutineClosureArgs<I>,
+    sig: ty::CoroutineClosureSignature<I>,
+) -> I::Ty {
     sig.to_coroutine_given_kind_and_upvars(
         tcx,
         args.parent_args(),
@@ -573,20 +586,20 @@ fn coroutine_closure_to_certain_coroutine<'tcx>(
 /// yet what the closure's upvars are.
 ///
 /// Note that we do not also push a `AsyncFnKindHelper` goal here.
-fn coroutine_closure_to_ambiguous_coroutine<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
+    tcx: I,
     goal_kind: ty::ClosureKind,
-    goal_region: ty::Region<'tcx>,
-    def_id: DefId,
-    args: ty::CoroutineClosureArgs<TyCtxt<'tcx>>,
-    sig: ty::CoroutineClosureSignature<TyCtxt<'tcx>>,
-) -> Ty<'tcx> {
-    let upvars_projection_def_id = tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
+    goal_region: I::Region,
+    def_id: I::DefId,
+    args: ty::CoroutineClosureArgs<I>,
+    sig: ty::CoroutineClosureSignature<I>,
+) -> I::Ty {
+    let upvars_projection_def_id = tcx.require_lang_item(TraitSolverLangItem::AsyncFnKindUpvars);
     let tupled_upvars_ty = Ty::new_projection(
         tcx,
         upvars_projection_def_id,
         [
-            ty::GenericArg::from(args.kind_ty()),
+            I::GenericArg::from(args.kind_ty()),
             Ty::from_closure_kind(tcx, goal_kind).into(),
             goal_region.into(),
             sig.tupled_inputs_ty.into(),
@@ -643,41 +656,44 @@ fn coroutine_closure_to_ambiguous_coroutine<'tcx>(
 // This is unsound in general and once that is fixed, we don't need to
 // normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
 // for more details.
-pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
-    ecx: &EvalCtxt<'_, InferCtxt<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
-    object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> Vec<Goal<'tcx, ty::Predicate<'tcx>>> {
+pub(in crate::solve) fn predicates_for_object_candidate<Infcx, I>(
+    ecx: &EvalCtxt<'_, Infcx>,
+    param_env: I::ParamEnv,
+    trait_ref: ty::TraitRef<I>,
+    object_bounds: I::BoundExistentialPredicates,
+) -> Vec<Goal<I, I::Predicate>>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
     let tcx = ecx.interner();
     let mut requirements = vec![];
-    requirements.extend(
-        tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.args).predicates,
-    );
-    for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
-        // FIXME(associated_const_equality): Also add associated consts to
-        // the requirements here.
-        if item.kind == ty::AssocKind::Type {
-            // associated types that require `Self: Sized` do not show up in the built-in
-            // implementation of `Trait for dyn Trait`, and can be dropped here.
-            if tcx.generics_require_sized_self(item.def_id) {
-                continue;
-            }
+    requirements
+        .extend(tcx.super_predicates_of(trait_ref.def_id).iter_instantiated(tcx, &trait_ref.args));
 
-            requirements
-                .extend(tcx.item_bounds(item.def_id).iter_instantiated(tcx, trait_ref.args));
+    // FIXME(associated_const_equality): Also add associated consts to
+    // the requirements here.
+    for associated_type_def_id in tcx.associated_type_def_ids(trait_ref.def_id) {
+        // associated types that require `Self: Sized` do not show up in the built-in
+        // implementation of `Trait for dyn Trait`, and can be dropped here.
+        if tcx.generics_require_sized_self(associated_type_def_id) {
+            continue;
         }
+
+        requirements.extend(
+            tcx.item_bounds(associated_type_def_id).iter_instantiated(tcx, &trait_ref.args),
+        );
     }
 
     let mut replace_projection_with = FxHashMap::default();
-    for bound in object_bound {
+    for bound in object_bounds {
         if let ty::ExistentialPredicate::Projection(proj) = bound.skip_binder() {
             let proj = proj.with_self_ty(tcx, trait_ref.self_ty());
             let old_ty = replace_projection_with.insert(proj.def_id(), bound.rebind(proj));
             assert_eq!(
                 old_ty,
                 None,
-                "{} has two generic parameters: {} and {}",
+                "{:?} has two generic parameters: {:?} and {:?}",
                 proj.projection_term,
                 proj.term,
                 old_ty.unwrap()
@@ -696,20 +712,22 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         .collect()
 }
 
-struct ReplaceProjectionWith<'a, 'tcx> {
-    ecx: &'a EvalCtxt<'a, InferCtxt<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
-    mapping: FxHashMap<DefId, ty::PolyProjectionPredicate<'tcx>>,
-    nested: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+struct ReplaceProjectionWith<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
+    ecx: &'a EvalCtxt<'a, Infcx>,
+    param_env: I::ParamEnv,
+    mapping: FxHashMap<I::DefId, ty::Binder<I, ty::ProjectionPredicate<I>>>,
+    nested: Vec<Goal<I, I::Predicate>>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+    for ReplaceProjectionWith<'_, Infcx, I>
+{
+    fn interner(&self) -> I {
         self.ecx.interner()
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
             && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
         {
             // We may have a case where our object type's projection bound is higher-ranked,
