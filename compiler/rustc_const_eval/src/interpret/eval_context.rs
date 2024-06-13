@@ -4,7 +4,6 @@ use std::{fmt, mem};
 use either::{Either, Left, Right};
 use tracing::{debug, info, info_span, instrument, trace};
 
-use hir::CRATE_HIR_ID;
 use rustc_errors::DiagCtxt;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
@@ -271,13 +270,18 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
         }
     }
 
-    pub fn lint_root(&self) -> Option<hir::HirId> {
-        self.current_source_info().and_then(|source_info| {
-            match &self.body.source_scopes[source_info.scope].local_data {
+    pub fn lint_root(&self, tcx: TyCtxt<'tcx>) -> Option<hir::HirId> {
+        // We first try to get a HirId via the current source scope,
+        // and fall back to `body.source`.
+        self.current_source_info()
+            .and_then(|source_info| match &self.body.source_scopes[source_info.scope].local_data {
                 mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                 mir::ClearCrossCrate::Clear => None,
-            }
-        })
+            })
+            .or_else(|| {
+                let def_id = self.body.source.def_id().as_local();
+                def_id.map(|def_id| tcx.local_def_id_to_hir_id(def_id))
+            })
     }
 
     /// Returns the address of the buffer where the locals are stored. This is used by `Place` as a
@@ -509,17 +513,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
-    /// Find the first stack frame that is within the current crate, if any;
-    /// otherwise return the crate's HirId.
-    #[inline(always)]
-    pub fn best_lint_scope(&self) -> hir::HirId {
-        self.stack()
-            .iter()
-            .find_map(|frame| frame.body.source.def_id().as_local())
-            .map_or(CRATE_HIR_ID, |def_id| self.tcx.local_def_id_to_hir_id(def_id))
-    }
-
-    #[inline(always)]
     pub(crate) fn stack(&self) -> &[Frame<'tcx, M::Provenance, M::FrameExtra>] {
         M::stack(self)
     }

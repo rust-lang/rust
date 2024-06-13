@@ -1,7 +1,6 @@
 use std::mem;
 
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
-use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
@@ -156,7 +155,7 @@ where
     }
 }
 
-/// Emit a lint from a const-eval situation.
+/// Emit a lint from a const-eval situation, with a backtrace.
 // Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
 pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
@@ -168,12 +167,5 @@ pub(super) fn lint<'tcx, L>(
 {
     let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 
-    tcx.emit_node_span_lint(
-        lint,
-        // We use the root frame for this so the crate that defines the const defines whether the
-        // lint is emitted.
-        machine.stack.first().and_then(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
-        span,
-        decorator(frames),
-    );
+    tcx.emit_node_span_lint(lint, machine.best_lint_scope(*tcx), span, decorator(frames));
 }

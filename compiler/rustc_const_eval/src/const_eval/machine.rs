@@ -9,12 +9,13 @@ use rustc_data_structures::fx::IndexEntry;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
+use rustc_hir::{self as hir, CRATE_HIR_ID};
 use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -369,6 +370,15 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     }
 }
 
+impl<'tcx> CompileTimeMachine<'tcx> {
+    #[inline(always)]
+    /// Find the first stack frame that is within the current crate, if any.
+    /// Otherwise, return the crate's HirId
+    pub fn best_lint_scope(&self, tcx: TyCtxt<'tcx>) -> hir::HirId {
+        self.stack.iter().find_map(|frame| frame.lint_root(tcx)).unwrap_or(CRATE_HIR_ID)
+    }
+}
+
 impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     compile_time_machine!(<'tcx>);
 
@@ -600,7 +610,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 // By default, we stop after a million steps, but the user can disable this lint
                 // to be able to run until the heat death of the universe or power loss, whichever
                 // comes first.
-                let hir_id = ecx.best_lint_scope();
+                let hir_id = ecx.machine.best_lint_scope(*ecx.tcx);
                 let is_error = ecx
                     .tcx
                     .lint_level_at_node(

@@ -114,7 +114,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
             let err_diag = errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };
             ecx.tcx.emit_node_span_lint(
                 lint::builtin::CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
-                ecx.best_lint_scope(),
+                ecx.machine.best_lint_scope(*ecx.tcx),
                 err_diag.span,
                 err_diag,
             )
