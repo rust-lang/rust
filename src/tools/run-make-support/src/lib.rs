@@ -95,6 +95,34 @@ pub fn source_root() -> PathBuf {
     env_var("SOURCE_ROOT").into()
 }
 
+/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
+#[cfg(target_family = "windows")]
+pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    if link.as_ref().exists() {
+        std::fs::remove_dir(link.as_ref()).unwrap();
+    }
+    use std::os::windows::fs;
+    fs::symlink_file(original.as_ref(), link.as_ref()).expect(&format!(
+        "failed to create symlink {:?} for {:?}",
+        link.as_ref().display(),
+        original.as_ref().display(),
+    ));
+}
+
+/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
+#[cfg(target_family = "unix")]
+pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    if link.as_ref().exists() {
+        std::fs::remove_dir(link.as_ref()).unwrap();
+    }
+    use std::os::unix::fs;
+    fs::symlink(original.as_ref(), link.as_ref()).expect(&format!(
+        "failed to create symlink {:?} for {:?}",
+        link.as_ref().display(),
+        original.as_ref().display(),
+    ));
+}
+
 /// Construct the static library name based on the platform.
 pub fn static_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
