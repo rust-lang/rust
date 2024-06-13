@@ -1,4 +1,4 @@
-# `xtensa-*`
+# `xtensa-*-none-elf`
 
 **Tier: 3**
 
@@ -13,22 +13,14 @@ Targets for Xtensa CPUs.
 
 The target names follow this format: `xtensa-$CPU`, where `$CPU` specifies the target chip. The following targets are currently defined:
 
-
-### `no_std`
-
 | Target name               | Target CPU(s)                                                   |
 | ------------------------- | --------------------------------------------------------------- |
 | `xtensa-esp32-none-elf`   | [ESP32](https://www.espressif.com/en/products/socs/esp32)       |
 | `xtensa-esp32s2-none-elf` | [ESP32-S2](https://www.espressif.com/en/products/socs/esp32-s2) |
 | `xtensa-esp32s3-none-elf` | [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) |
 
-### `std`
 
-| Target name             | Target CPU(s)                                                   |
-| ----------------------- | --------------------------------------------------------------- |
-| `xtensa-esp32-espidf`   | [ESP32](https://www.espressif.com/en/products/socs/esp32)       |
-| `xtensa-esp32s2-espidf` | [ESP32-S2](https://www.espressif.com/en/products/socs/esp32-s2) |
-| `xtensa-esp32s3-espidf` | [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) |
+Xtensa targets that support `std` are documented in the [ESP-IDF platform support document](esp-idf.md)
 
 ## Building the targets
 
