@@ -49,20 +49,26 @@ impl DocTest {
             has_features,
             has_no_std,
         } = partition_source(source, edition);
-        let mut supports_color = false;
 
         // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
         // crate already is included.
-        let Ok((has_main_fn, already_has_extern_crate, failed_ast)) =
-            check_for_main_and_extern_crate(
-                crate_name,
-                source,
-                &everything_else,
-                &crates,
-                edition,
-                &mut supports_color,
-                can_merge_doctests,
-            )
+        let Ok((
+            ParseSourceInfo {
+                has_main_fn,
+                found_extern_crate,
+                supports_color,
+                has_global_allocator,
+                ..
+            },
+            failed_ast,
+        )) = check_for_main_and_extern_crate(
+            crate_name,
+            source,
+            &everything_else,
+            &crates,
+            edition,
+            can_merge_doctests,
+        )
         else {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
@@ -86,12 +92,12 @@ impl DocTest {
             maybe_crate_attrs,
             crates,
             everything_else,
-            already_has_extern_crate,
+            already_has_extern_crate: found_extern_crate,
             test_id,
             failed_ast: false,
             // If the AST returned an error, we don't want this doctest to be merged with the
             // others. Same if it contains `#[feature]` or `#[no_std]`.
-            can_be_merged: !failed_ast && !has_no_std && !has_features,
+            can_be_merged: !failed_ast && !has_no_std && !has_features && !has_global_allocator,
         }
     }
 
@@ -231,11 +237,8 @@ fn cancel_error_count(psess: &ParseSess) {
 
 fn parse_source(
     source: String,
-    has_main_fn: &mut bool,
-    found_extern_crate: &mut bool,
-    found_macro: &mut bool,
+    info: &mut ParseSourceInfo,
     crate_name: &Option<&str>,
-    supports_color: &mut bool,
 ) -> ParsingResult {
     use rustc_errors::emitter::{Emitter, HumanEmitter};
     use rustc_errors::DiagCtxt;
@@ -251,7 +254,7 @@ fn parse_source(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         false,
     );
-    *supports_color =
+    info.supports_color =
         HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
             .supports_color();
 
@@ -274,43 +277,38 @@ fn parse_source(
     // Recurse through functions body. It is necessary because the doctest source code is
     // wrapped in a function to limit the number of AST errors. If we don't recurse into
     // functions, we would thing all top-level items (so basically nothing).
-    fn check_item(
-        item: &ast::Item,
-        has_main_fn: &mut bool,
-        found_extern_crate: &mut bool,
-        found_macro: &mut bool,
-        crate_name: &Option<&str>,
-    ) {
+    fn check_item(item: &ast::Item, info: &mut ParseSourceInfo, crate_name: &Option<&str>) {
+        if !info.has_global_allocator
+            && item.attrs.iter().any(|attr| attr.name_or_empty() == sym::global_allocator)
+        {
+            info.has_global_allocator = true;
+        }
         match item.kind {
-            ast::ItemKind::Fn(ref fn_item) if !*has_main_fn => {
+            ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
                 if item.ident.name == sym::main {
-                    *has_main_fn = true;
+                    info.has_main_fn = true;
                 }
                 if let Some(ref body) = fn_item.body {
                     for stmt in &body.stmts {
                         match stmt.kind {
-                            ast::StmtKind::Item(ref item) => check_item(
-                                item,
-                                has_main_fn,
-                                found_extern_crate,
-                                found_macro,
-                                crate_name,
-                            ),
-                            ast::StmtKind::MacCall(..) => *found_macro = true,
+                            ast::StmtKind::Item(ref item) => check_item(item, info, crate_name),
+                            ast::StmtKind::MacCall(..) => info.found_macro = true,
                             _ => {}
                         }
                     }
                 }
             }
             ast::ItemKind::ExternCrate(original) => {
-                if !*found_extern_crate && let Some(ref crate_name) = crate_name {
-                    *found_extern_crate = match original {
+                if !info.found_extern_crate
+                    && let Some(ref crate_name) = crate_name
+                {
+                    info.found_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
                         None => item.ident.as_str() == *crate_name,
                     };
                 }
             }
-            ast::ItemKind::MacCall(..) => *found_macro = true,
+            ast::ItemKind::MacCall(..) => info.found_macro = true,
             _ => {}
         }
     }
@@ -318,9 +316,9 @@ fn parse_source(
     loop {
         match parser.parse_item(ForceCollect::No) {
             Ok(Some(item)) => {
-                check_item(&item, has_main_fn, found_extern_crate, found_macro, crate_name);
+                check_item(&item, info, crate_name);
 
-                if *has_main_fn && *found_extern_crate {
+                if info.has_main_fn && info.found_extern_crate {
                     break;
                 }
             }
@@ -341,30 +339,30 @@ fn parse_source(
     parsing_result
 }
 
-/// Returns `(has_main_fn, already_has_extern_crate, failed_ast)`.
+#[derive(Default)]
+struct ParseSourceInfo {
+    has_main_fn: bool,
+    found_extern_crate: bool,
+    found_macro: bool,
+    supports_color: bool,
+    has_global_allocator: bool,
+}
+
 fn check_for_main_and_extern_crate(
     crate_name: Option<&str>,
     original_source_code: &str,
     everything_else: &str,
     crates: &str,
     edition: Edition,
-    supports_color: &mut bool,
     can_merge_doctests: bool,
-) -> Result<(bool, bool, bool), FatalError> {
+) -> Result<(ParseSourceInfo, bool), FatalError> {
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            let mut has_main_fn = false;
-            let mut found_extern_crate = crate_name.is_none();
-            let mut found_macro = false;
+            let mut info =
+                ParseSourceInfo { found_extern_crate: crate_name.is_none(), ..Default::default() };
 
-            let mut parsing_result = parse_source(
-                format!("{crates}{everything_else}"),
-                &mut has_main_fn,
-                &mut found_extern_crate,
-                &mut found_macro,
-                &crate_name,
-                supports_color,
-            );
+            let mut parsing_result =
+                parse_source(format!("{crates}{everything_else}"), &mut info, &crate_name);
             // No need to double-check this if the "merged doctests" feature isn't enabled (so
             // before the 2024 edition).
             if can_merge_doctests && parsing_result != ParsingResult::Ok {
@@ -380,30 +378,25 @@ fn check_for_main_and_extern_crate(
                 // faster doctests run time.
                 parsing_result = parse_source(
                     format!("{crates}\nfn __doctest_wrap(){{{everything_else}\n}}"),
-                    &mut has_main_fn,
-                    &mut found_extern_crate,
-                    &mut found_macro,
+                    &mut info,
                     &crate_name,
-                    supports_color,
                 );
             }
 
-            (has_main_fn, found_extern_crate, found_macro, parsing_result)
+            (info, parsing_result)
         })
     });
-    let (mut has_main_fn, already_has_extern_crate, found_macro, parsing_result) = match result {
-        Err(..) | Ok((_, _, _, ParsingResult::Failed)) => return Err(FatalError),
-        Ok((has_main_fn, already_has_extern_crate, found_macro, parsing_result)) => {
-            (has_main_fn, already_has_extern_crate, found_macro, parsing_result)
-        }
+    let (mut info, parsing_result) = match result {
+        Err(..) | Ok((_, ParsingResult::Failed)) => return Err(FatalError),
+        Ok((info, parsing_result)) => (info, parsing_result),
     };
 
     // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
     // see it. In that case, run the old text-based scan to see if they at least have a main
     // function written inside a macro invocation. See
     // https://github.com/rust-lang/rust/issues/56898
-    if found_macro
-        && !has_main_fn
+    if info.found_macro
+        && !info.has_main_fn
         && original_source_code
             .lines()
             .map(|line| {
@@ -412,10 +405,10 @@ fn check_for_main_and_extern_crate(
             })
             .any(|code| code.contains("fn main"))
     {
-        has_main_fn = true;
+        info.has_main_fn = true;
     }
 
-    Ok((has_main_fn, already_has_extern_crate, parsing_result != ParsingResult::Ok))
+    Ok((info, parsing_result != ParsingResult::Ok))
 }
 
 enum AttrKind {

@@ -45,11 +45,11 @@ impl DocTestRunner {
                 self.crate_attrs.insert(line.to_string());
             }
         }
-        if !self.ids.is_empty() {
-            self.ids.push(',');
-        }
+        // if !self.ids.is_empty() {
+        //     self.ids.push(',');
+        // }
         self.ids.push_str(&format!(
-            "{}::TEST",
+            "tests.push({}::TEST);\n",
             generate_mergeable_doctest(
                 doctest,
                 scraped_test,
@@ -107,9 +107,11 @@ impl DocTestRunner {
 #[rustc_main]
 #[coverage(off)]
 fn main() {{
-test::test_main_static_with_args(
+let mut tests = Vec::new();
+{ids}
+test::test_main(
     &[{test_args}],
-    &mut [{ids}],
+    tests,
     None,
 );
 }}",
