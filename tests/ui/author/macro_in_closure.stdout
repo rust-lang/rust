@@ -1,4 +1,4 @@
-if let StmtKind::Local(local) = stmt.kind
+if let StmtKind::Let(local) = stmt.kind
     && let Some(init) = local.init
     && let ExprKind::Closure { capture_clause: CaptureBy::Ref, fn_decl: fn_decl, body: body_id, closure_kind: ClosureKind::Closure, .. } = init.kind
     && let FnRetTy::DefaultReturn(_) = fn_decl.output

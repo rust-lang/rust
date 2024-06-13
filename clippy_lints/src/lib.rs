@@ -251,6 +251,7 @@ mod needless_else;
 mod needless_for_each;
 mod needless_if;
 mod needless_late_init;
+mod needless_maybe_sized;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_ref_mut;
 mod needless_pass_by_value;
@@ -325,6 +326,7 @@ mod size_of_in_element_count;
 mod size_of_ref;
 mod slow_vector_initialization;
 mod std_instead_of_core;
+mod string_patterns;
 mod strings;
 mod strlen_on_c_strings;
 mod suspicious_operation_groupings;
@@ -1058,6 +1060,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
     store.register_late_pass(|_| Box::new(collection_is_never_read::CollectionIsNeverRead));
     store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
+    store.register_late_pass(|_| Box::new(needless_maybe_sized::NeedlessMaybeSized));
     store.register_late_pass(|_| Box::new(redundant_async_block::RedundantAsyncBlock));
     store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
     store.register_late_pass(|_| Box::new(allow_attributes::AllowAttribute));
@@ -1165,6 +1168,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             ..Default::default()
         })
     });
+    store.register_late_pass(|_| Box::new(string_patterns::StringPatterns));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

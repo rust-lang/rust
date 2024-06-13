@@ -12,7 +12,7 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
     && let ExprKind::Block(block, None) = body.kind
     && block.stmts.len() == 1
-    && let StmtKind::Local(local) = block.stmts[0].kind
+    && let StmtKind::Let(local) = block.stmts[0].kind
     && let Some(init) = local.init
     && let ExprKind::Path(ref qpath1) = init.kind
     && match_qpath(qpath1, &["y"])

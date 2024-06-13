@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::needs_ordered_drop;
-use clippy_utils::visitors::{for_each_expr, for_each_expr_with_closures, is_local_used};
+use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
 use core::ops::ControlFlow;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{
@@ -63,7 +63,7 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessLateInit => [NEEDLESS_LATE_INIT]);
 
 fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> bool {
-    for_each_expr_with_closures(cx, stmt, |e| {
+    for_each_expr(cx, stmt, |e| {
         if matches!(e.kind, ExprKind::Assign(..)) {
             ControlFlow::Break(())
         } else {
@@ -74,7 +74,7 @@ fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) ->
 }
 
 fn contains_let(cond: &Expr<'_>) -> bool {
-    for_each_expr(cond, |e| {
+    for_each_expr_without_closures(cond, |e| {
         if matches!(e.kind, ExprKind::Let(_)) {
             ControlFlow::Break(())
         } else {

@@ -206,8 +206,18 @@ fn path_segment_certainty(
             // Checking `res_generics_def_id(..)` before calling `generics_of` avoids an ICE.
             if cx.tcx.res_generics_def_id(path_segment.res).is_some() {
                 let generics = cx.tcx.generics_of(def_id);
-                let count = generics.own_params.len() - usize::from(generics.host_effect_index.is_some());
-                let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && count == 0 {
+
+                let own_count = generics.own_params.len()
+                    - usize::from(generics.host_effect_index.is_some_and(|index| {
+                        // Check that the host index actually belongs to this resolution.
+                        // E.g. for `Add::add`, host_effect_index is `Some(2)`, but it's part of the parent `Add`
+                        // trait's generics.
+                        // Add params:      [Self#0, Rhs#1, host#2]   parent_count=0, count=3
+                        // Add::add params: []                        parent_count=3, count=3
+                        // (3..3).contains(&host_effect_index) => false
+                        (generics.parent_count..generics.count()).contains(&index)
+                    }));
+                let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && own_count == 0 {
                     Certainty::Certain(None)
                 } else {
                     Certainty::Uncertain

@@ -424,14 +424,14 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+            && let Some(receiver_snippet) = snippet_opt(cx, receiver.span.source_callsite())
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {
                 span_lint_and_sugg(
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
-                    to_string_span.with_lo(receiver.span.hi()),
+                    to_string_span.with_lo(receiver.span.source_callsite().hi()),
                     format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                     "remove this",
                     String::new(),

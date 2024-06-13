@@ -546,7 +546,7 @@ declare_clippy_lint! {
     /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
     /// # }
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.79.0"]
     pub MISSING_TRANSMUTE_ANNOTATIONS,
     suspicious,
     "warns if a transmute call doesn't have all generics specified"

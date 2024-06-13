@@ -191,5 +191,23 @@ error: this if-then-else expression returns a bool literal
 LL |         if unsafe { no(4) } & 1 != 0 { true } else { false }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(unsafe { no(4) } & 1 != 0)`
 
-error: aborting due to 21 previous errors
+error: this if-then-else expression returns a bool literal
+  --> tests/ui/needless_bool/fixable.rs:200:14
+   |
+LL |     let _x = if a && b { true } else { false }.then(|| todo!());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(a && b)`
+
+error: this if-then-else expression returns a bool literal
+  --> tests/ui/needless_bool/fixable.rs:201:14
+   |
+LL |     let _x = if a && b { true } else { false } as u8;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(a && b)`
+
+error: this if-then-else expression returns a bool literal
+  --> tests/ui/needless_bool/fixable.rs:204:14
+   |
+LL |     let _x = if a { true } else { false }.then(|| todo!());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `a`
+
+error: aborting due to 24 previous errors
 

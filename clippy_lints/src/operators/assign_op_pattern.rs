@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
         };
 
         let mut found = false;
-        let found_multiple = for_each_expr(e, |e| {
+        let found_multiple = for_each_expr_without_closures(e, |e| {
             if eq_expr_value(cx, assignee, e) {
                 if found {
                     return ControlFlow::Break(());

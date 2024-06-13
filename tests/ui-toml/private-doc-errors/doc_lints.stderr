@@ -51,7 +51,7 @@ note: the lint level is defined here
 LL |     clippy::missing_panics_doc
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unsafe function's docs miss `# Safety` section
+error: unsafe function's docs are missing a `# Safety` section
   --> tests/ui-toml/private-doc-errors/doc_lints.rs:49:9
    |
 LL |         pub unsafe fn f() {}

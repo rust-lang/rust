@@ -66,6 +66,7 @@ mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
 mod mut_mutex_lock;
+mod needless_character_iteration;
 mod needless_collect;
 mod needless_option_as_deref;
 mod needless_option_take;
@@ -93,7 +94,6 @@ mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
 mod single_char_add_str;
 mod single_char_insert_string;
-mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
 mod stable_sort_primitive;
@@ -1138,38 +1138,6 @@ declare_clippy_lint! {
     pub NEW_RET_NO_SELF,
     style,
     "not returning type containing `Self` in a `new` method"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for string methods that receive a single-character
-    /// `str` as an argument, e.g., `_.split("x")`.
-    ///
-    /// ### Why is this bad?
-    /// While this can make a perf difference on some systems,
-    /// benchmarks have proven inconclusive. But at least using a
-    /// char literal makes it clear that we are looking at a single
-    /// character.
-    ///
-    /// ### Known problems
-    /// Does not catch multi-byte unicode characters. This is by
-    /// design, on many machines, splitting by a non-ascii char is
-    /// actually slower. Please do your own measurements instead of
-    /// relying solely on the results of this lint.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// _.split("x");
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// _.split('x');
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub SINGLE_CHAR_PATTERN,
-    pedantic,
-    "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
 declare_clippy_lint! {
@@ -4084,10 +4052,31 @@ declare_clippy_lint! {
     /// ```no_run
     /// println!("the string is empty");
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub CONST_IS_EMPTY,
     suspicious,
     "is_empty() called on strings known at compile time"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if an iterator is used to check if a string is ascii.
+    ///
+    /// ### Why is this bad?
+    /// The `str` type already implements the `is_ascii` method.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "foo".chars().all(|c| c.is_ascii());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// "foo".is_ascii();
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub NEEDLESS_CHARACTER_ITERATION,
+    suspicious,
+    "is_ascii() called on a char iterator"
 }
 
 pub struct Methods {
@@ -4147,7 +4136,6 @@ impl_lint_pass!(Methods => [
     FLAT_MAP_OPTION,
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
-    SINGLE_CHAR_PATTERN,
     SINGLE_CHAR_ADD_STR,
     SEARCH_IS_SOME,
     FILTER_NEXT,
@@ -4255,6 +4243,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_RESULT_MAP_OR_ELSE,
     MANUAL_C_STR_LITERALS,
     UNNECESSARY_GET_THEN_CHECK,
+    NEEDLESS_CHARACTER_ITERATION,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4301,7 +4290,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
                 single_char_add_str::check(cx, expr, receiver, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                single_char_pattern::check(cx, expr, method_call.ident.name, receiver, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, &self.msrv);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
@@ -4462,6 +4450,7 @@ impl Methods {
                 },
                 ("all", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg, true);
                     if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
@@ -4482,6 +4471,7 @@ impl Methods {
                 },
                 ("any", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg, false);
                     match method_call(recv) {
                         Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
                             cx,
