@@ -15,6 +15,7 @@ pub fn cc() -> Cc {
 /// A platform-specific C compiler invocation builder. The specific C compiler used is
 /// passed down from compiletest.
 #[derive(Debug)]
+#[must_use]
 pub struct Cc {
     cmd: Command,
 }

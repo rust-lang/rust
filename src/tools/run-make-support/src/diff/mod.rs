@@ -13,6 +13,7 @@ pub fn diff() -> Diff {
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Diff {
     expected: Option<String>,
     expected_name: Option<String>,
