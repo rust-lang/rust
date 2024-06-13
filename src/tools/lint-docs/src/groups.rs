@@ -121,13 +121,13 @@ impl<'a> LintExtractor<'a> {
             };
             to_link.extend(group_lints);
             let brackets: Vec<_> = group_lints.iter().map(|l| format!("[{}]", l)).collect();
-            write!(result, "| {} | {} | {} |\n", group_name, description, brackets.join(", "))
+            writeln!(result, "| {} | {} | {} |", group_name, description, brackets.join(", "))
                 .unwrap();
         }
         result.push('\n');
         result.push_str("[warn-by-default]: listing/warn-by-default.md\n");
         for lint_name in to_link {
-            let lint_def = match lints.iter().find(|l| l.name == lint_name.replace("-", "_")) {
+            let lint_def = match lints.iter().find(|l| l.name == lint_name.replace('-', "_")) {
                 Some(def) => def,
                 None => {
                     let msg = format!(
@@ -144,9 +144,9 @@ impl<'a> LintExtractor<'a> {
                     }
                 }
             };
-            write!(
+            writeln!(
                 result,
-                "[{}]: listing/{}#{}\n",
+                "[{}]: listing/{}#{}",
                 lint_name,
                 lint_def.level.doc_filename(),
                 lint_name

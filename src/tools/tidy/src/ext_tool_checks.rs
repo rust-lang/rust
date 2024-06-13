@@ -78,9 +78,9 @@ fn check_impl(
     let mut py_path = None;
 
     let (cfg_args, file_args): (Vec<_>, Vec<_>) = pos_args
-        .into_iter()
+        .iter()
         .map(OsStr::new)
-        .partition(|arg| arg.to_str().is_some_and(|s| s.starts_with("-")));
+        .partition(|arg| arg.to_str().is_some_and(|s| s.starts_with('-')));
 
     if python_lint || python_fmt {
         let venv_path = outdir.join("venv");
@@ -277,10 +277,11 @@ fn create_venv_at_path(path: &Path) -> Result<(), Error> {
 
     let stderr = String::from_utf8_lossy(&out.stderr);
     let err = if stderr.contains("No module named virtualenv") {
-        Error::Generic(format!(
+        Error::Generic(
             "virtualenv not found: you may need to install it \
                                (`python3 -m pip install venv`)"
-        ))
+                .to_owned(),
+        )
     } else {
         Error::Generic(format!(
             "failed to create venv at '{}' using {sys_py}: {stderr}",
