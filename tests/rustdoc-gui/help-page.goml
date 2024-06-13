@@ -20,6 +20,7 @@ define-function: (
     "check-colors",
     [theme, color, background, box_shadow],
     block {
+        debug: true
         call-function: ("switch-theme", {"theme": |theme|})
         assert-css: ("#help kbd", {
             "color": |color|,
