@@ -47,13 +47,13 @@ impl_lint_pass!(ManualMainSeparatorStr => [MANUAL_MAIN_SEPARATOR_STR]);
 
 impl LateLintPass<'_> for ManualMainSeparatorStr {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if self.msrv.meets(msrvs::PATH_MAIN_SEPARATOR_STR)
-            && let (target, _) = peel_hir_expr_refs(expr)
-            && is_trait_method(cx, target, sym::ToString)
-            && let ExprKind::MethodCall(path, receiver, &[], _) = target.kind
+        let (target, _) = peel_hir_expr_refs(expr);
+        if let ExprKind::MethodCall(path, receiver, &[], _) = target.kind
             && path.ident.name == sym::to_string
             && let ExprKind::Path(QPath::Resolved(None, path)) = receiver.kind
             && let Res::Def(DefKind::Const, receiver_def_id) = path.res
+            && is_trait_method(cx, target, sym::ToString)
+            && self.msrv.meets(msrvs::PATH_MAIN_SEPARATOR_STR)
             && match_def_path(cx, receiver_def_id, &paths::PATH_MAIN_SEPARATOR)
             && let ty::Ref(_, ty, Mutability::Not) = cx.typeck_results().expr_ty_adjusted(expr).kind()
             && ty.is_str()
