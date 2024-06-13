@@ -32,6 +32,7 @@ jobs:
           - i686-unknown-linux-gnu
           - i586-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
+          - arm64ec-pc-windows-msvc
           - armv7-unknown-linux-gnueabihf
           # non-nightly since https://github.com/rust-lang/rust/pull/113274
           # - mips-unknown-linux-gnu
