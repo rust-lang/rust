@@ -4,10 +4,10 @@ use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
+
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
 use rustc_serialize::int_overflow::DebugStrictAdd;
-use std::mem::transmute;
 
 /// A compressed span.
 ///
@@ -105,15 +105,12 @@ struct InlineParent {
 #[derive(Clone, Copy)]
 struct PartiallyInterned {
     index: u32,
-    _marker1: u16,
     ctxt: u16,
 }
 
 #[derive(Clone, Copy)]
 struct Interned {
     index: u32,
-    _marker1: u16,
-    _marker2: u16,
 }
 
 impl InlineCtxt {
@@ -130,7 +127,13 @@ impl InlineCtxt {
     }
     #[inline]
     fn span(lo: u32, len: u16, ctxt: u16) -> Span {
-        unsafe { transmute(InlineCtxt { lo, len, ctxt }) }
+        Span { lo_or_index: lo, len_with_tag_or_marker: len, ctxt_or_parent_or_marker: ctxt }
+    }
+    #[inline]
+    fn from_span(span: Span) -> InlineCtxt {
+        let (lo, len, ctxt) =
+            (span.lo_or_index, span.len_with_tag_or_marker, span.ctxt_or_parent_or_marker);
+        InlineCtxt { lo, len, ctxt }
     }
 }
 
@@ -147,8 +150,16 @@ impl InlineParent {
         }
     }
     #[inline]
-    fn span(lo: u32, len_with_tag: u16, parent: u16) -> Span {
-        unsafe { transmute(InlineParent { lo, len_with_tag, parent }) }
+    fn span(lo: u32, len: u16, parent: u16) -> Span {
+        let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
+            (lo, PARENT_TAG | len, parent);
+        Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
+    }
+    #[inline]
+    fn from_span(span: Span) -> InlineParent {
+        let (lo, len_with_tag, parent) =
+            (span.lo_or_index, span.len_with_tag_or_marker, span.ctxt_or_parent_or_marker);
+        InlineParent { lo, len_with_tag, parent }
     }
 }
 
@@ -162,7 +173,13 @@ impl PartiallyInterned {
     }
     #[inline]
     fn span(index: u32, ctxt: u16) -> Span {
-        unsafe { transmute(PartiallyInterned { index, _marker1: BASE_LEN_INTERNED_MARKER, ctxt }) }
+        let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
+            (index, BASE_LEN_INTERNED_MARKER, ctxt);
+        Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
+    }
+    #[inline]
+    fn from_span(span: Span) -> PartiallyInterned {
+        PartiallyInterned { index: span.lo_or_index, ctxt: span.ctxt_or_parent_or_marker }
     }
 }
 
@@ -173,8 +190,13 @@ impl Interned {
     }
     #[inline]
     fn span(index: u32) -> Span {
-        let _marker1 = BASE_LEN_INTERNED_MARKER;
-        unsafe { transmute(Interned { index, _marker1, _marker2: CTXT_INTERNED_MARKER }) }
+        let (lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker) =
+            (index, BASE_LEN_INTERNED_MARKER, CTXT_INTERNED_MARKER);
+        Span { lo_or_index, len_with_tag_or_marker, ctxt_or_parent_or_marker }
+    }
+    #[inline]
+    fn from_span(span: Span) -> Interned {
+        Interned { index: span.lo_or_index }
     }
 }
 
@@ -192,20 +214,20 @@ macro_rules! match_span_kind {
         if $span.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
             if $span.len_with_tag_or_marker & PARENT_TAG == 0 {
                 // Inline-context format.
-                let $span1: InlineCtxt = unsafe { transmute($span) };
+                let $span1 = InlineCtxt::from_span($span);
                 $arm1
             } else {
                 // Inline-parent format.
-                let $span2: InlineParent = unsafe { transmute($span) };
+                let $span2 = InlineParent::from_span($span);
                 $arm2
             }
         } else if $span.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
             // Partially-interned format.
-            let $span3: PartiallyInterned = unsafe { transmute($span) };
+            let $span3 = PartiallyInterned::from_span($span);
             $arm3
         } else {
             // Interned format.
-            let $span4: Interned = unsafe { transmute($span) };
+            let $span4 = Interned::from_span($span);
             $arm4
         }
     };
@@ -245,7 +267,7 @@ impl Span {
                 && let parent32 = parent.local_def_index.as_u32()
                 && parent32 <= MAX_CTXT
             {
-                return InlineParent::span(lo.0, PARENT_TAG | len as u16, parent32 as u16);
+                return InlineParent::span(lo.0, len as u16, parent32 as u16);
             }
         }
 
