@@ -629,6 +629,25 @@ impl Command {
     ///     .spawn()
     ///     .expect("sh command failed to start");
     /// ```
+    ///
+    /// # Caveats
+    ///
+    /// [`Command::new`] is only intended to accept the path of the program. If you pass a program
+    /// path along with arguments like `Command::new("ls -l").spawn()`, it will try to search for
+    /// `ls -l` literally. The arguments need to be passed separately, such as via [`arg`] or
+    /// [`args`].
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///     .arg("-l") // arg passed separately
+    ///     .spawn()
+    ///     .expect("ls command failed to start");
+    /// ```
+    ///
+    /// [`arg`]: Self::arg
+    /// [`args`]: Self::args
     #[stable(feature = "process", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Command {
         Command { inner: imp::Command::new(program.as_ref()) }
