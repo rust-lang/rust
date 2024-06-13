@@ -7,8 +7,8 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rustc;
-use std::fs;
+use run_make_support::{bin_name, fs_wrapper, rustc};
+use std::path::Path;
 
 fn compile(output_file: &str, emit: Option<&str>) {
     let mut rustc = rustc();
@@ -28,11 +28,15 @@ fn main() {
         ("link-output", Some("link")),
         ("obj-output", Some("obj")),
         ("dep-output", Some("dep-info")),
-        ("multi-output", Some("asm,obj")),
     ];
     for (output_file, emit) in flags {
-        fs::remove_file(output_file).unwrap_or_default();
+        // In the None case, bin_name is required for successful Windows compilation.
+        let output_file = &bin_name(output_file);
         compile(output_file, emit);
-        fs::remove_file(output_file);
+        assert!(Path::new(output_file).is_file());
     }
+
+    compile("multi-output", Some("asm,obj"));
+    assert!(Path::new("multi-output.s").is_file());
+    assert!(Path::new("multi-output.o").is_file());
 }

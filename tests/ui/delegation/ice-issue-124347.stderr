@@ -1,0 +1,14 @@
+error: recursive delegation is not supported yet
+  --> $DIR/ice-issue-124347.rs:5:18
+   |
+LL |     reuse Trait::foo { &self.0 }
+   |                  ^^^ callee defined here
+
+error: recursive delegation is not supported yet
+  --> $DIR/ice-issue-124347.rs:9:7
+   |
+LL | reuse foo;
+   |       ^^^ callee defined here
+
+error: aborting due to 2 previous errors
+

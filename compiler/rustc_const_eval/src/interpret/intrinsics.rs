@@ -197,7 +197,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout_val = self.layout_of(instance_args.type_at(0))?;
                 let val = self.read_scalar(&args[0])?;
-                let val_bits = val.to_bits(layout_val.size)?;
+                let val_bits = val.to_bits(layout_val.size)?; // sign is ignored here
 
                 let layout_raw_shift = self.layout_of(self.tcx.types.u32)?;
                 let raw_shift = self.read_scalar(&args[1])?;
@@ -432,12 +432,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::vtable_size => {
                 let ptr = self.read_pointer(&args[0])?;
-                let (size, _align) = self.get_vtable_size_and_align(ptr)?;
+                // `None` because we don't know which trait to expect here; any vtable is okay.
+                let (size, _align) = self.get_vtable_size_and_align(ptr, None)?;
                 self.write_scalar(Scalar::from_target_usize(size.bytes(), self), dest)?;
             }
             sym::vtable_align => {
                 let ptr = self.read_pointer(&args[0])?;
-                let (_size, align) = self.get_vtable_size_and_align(ptr)?;
+                // `None` because we don't know which trait to expect here; any vtable is okay.
+                let (_size, align) = self.get_vtable_size_and_align(ptr, None)?;
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
@@ -484,7 +486,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert!(layout.ty.is_integral(), "invalid type for numeric intrinsic: {}", layout.ty);
-        let bits = val.to_bits(layout.size)?;
+        let bits = val.to_bits(layout.size)?; // these operations all ignore the sign
         let extra = 128 - u128::from(layout.size.bits());
         let bits_out = match name {
             sym::ctpop => u128::from(bits.count_ones()),
@@ -519,6 +521,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
         let rem = self.binary_op(BinOp::Rem, a, b)?;
+        // sign does not matter for 0 test, so `to_bits` is fine
         if rem.to_scalar().to_bits(a.layout.size)? != 0 {
             throw_ub_custom!(
                 fluent::const_eval_exact_div_has_remainder,
@@ -545,22 +548,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.binary_op(mir_op.wrapping_to_overflowing().unwrap(), l, r)?.to_scalar_pair();
         Ok(if overflowed.to_bool()? {
             let size = l.layout.size;
-            let num_bits = size.bits();
             if l.layout.abi.is_signed() {
                 // For signed ints the saturated value depends on the sign of the first
                 // term since the sign of the second term can be inferred from this and
                 // the fact that the operation has overflowed (if either is 0 no
                 // overflow can occur)
-                let first_term: u128 = l.to_scalar().to_bits(l.layout.size)?;
-                let first_term_positive = first_term & (1 << (num_bits - 1)) == 0;
-                if first_term_positive {
+                let first_term: i128 = l.to_scalar().to_int(l.layout.size)?;
+                if first_term >= 0 {
                     // Negative overflow not possible since the positive first term
                     // can only increase an (in range) negative term for addition
-                    // or corresponding negated positive term for subtraction
+                    // or corresponding negated positive term for subtraction.
                     Scalar::from_int(size.signed_int_max(), size)
                 } else {
-                    // Positive overflow not possible for similar reason
-                    // max negative
+                    // Positive overflow not possible for similar reason.
                     Scalar::from_int(size.signed_int_min(), size)
                 }
             } else {

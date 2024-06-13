@@ -56,6 +56,18 @@ pub struct AssocKindMismatchWrapInBracesSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_assoc_item_is_private, code = E0624)]
+pub struct AssocItemIsPrivate {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub kind: &'static str,
+    pub name: Ident,
+    #[label(hir_analysis_defined_here_label)]
+    pub defined_here_label: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_assoc_item_not_found, code = E0220)]
 pub struct AssocItemNotFound<'a> {
     #[primary_span]
@@ -388,6 +400,17 @@ pub struct TaitForwardCompat {
     pub span: Span,
     #[note]
     pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_tait_forward_compat2)]
+#[note]
+pub struct TaitForwardCompat2 {
+    #[primary_span]
+    pub span: Span,
+    #[note(hir_analysis_opaque)]
+    pub opaque_type_span: Span,
+    pub opaque_type: String,
 }
 
 pub struct MissingTypeParams {

@@ -1,8 +1,10 @@
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![feature(rustc_attrs)]
-#![feature(type_alias_impl_trait)]
+// tidy-alphabetical-start
 #![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
+#![feature(type_alias_impl_trait)]
+// tidy-alphabetical-end
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;

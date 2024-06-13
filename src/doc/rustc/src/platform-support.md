@@ -146,6 +146,7 @@ target | std | notes
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | Armv6 Android
 `arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.3
 `arm-unknown-linux-musleabihf` | ✓ | Armv6 Linux with musl 1.2.3, hardfloat
+[`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ✓ | Arm64EC Windows MSVC
 [`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
 [`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | Armv5TE Linux (kernel 4.4, glibc 2.23)
@@ -240,7 +241,6 @@ target | std | host | notes
 -------|:---:|:----:|-------
 [`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
 [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
-[`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ? | | Arm64EC Windows MSVC
 [`aarch64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ |  | Apple Catalyst on ARM64
 [`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | ARM64 tvOS
 [`aarch64-apple-tvos-sim`](platform-support/apple-tvos.md) | ✓ |  | ARM64 tvOS Simulator
@@ -383,5 +383,8 @@ target | std | host | notes
 `x86_64-wrs-vxworks` | ? |  |
 [`x86_64h-apple-darwin`](platform-support/x86_64h-apple-darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
+`xtensa-esp32-none-elf` |  |  | Xtensa ESP32
+`xtensa-esp32s2-none-elf` |  |  | Xtensa ESP32-S2
+`xtensa-esp32s3-none-elf` |  |  | Xtensa ESP32-S3
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets

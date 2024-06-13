@@ -660,8 +660,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    pub(crate) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        let ty_error = Ty::new_misc_error(self.tcx);
+    pub(crate) fn err_args(&self, len: usize, guar: ErrorGuaranteed) -> Vec<Ty<'tcx>> {
+        let ty_error = Ty::new_error(self.tcx, guar);
         vec![ty_error; len]
     }
 
@@ -846,15 +846,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if item_name.name != kw::Empty {
-                    if let Some(e) = self.report_method_error(
+                    self.report_method_error(
                         hir_id,
                         ty.normalized,
                         error,
                         Expectation::NoExpectation,
                         trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
-                    ) {
-                        e.emit();
-                    }
+                    );
                 }
 
                 result

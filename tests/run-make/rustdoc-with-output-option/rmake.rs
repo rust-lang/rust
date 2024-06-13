@@ -12,5 +12,5 @@ fn main() {
         .arg(&out_dir)
         .run();
 
-    assert!(htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success());
+    htmldocck().arg(out_dir).arg("src/lib.rs").run();
 }

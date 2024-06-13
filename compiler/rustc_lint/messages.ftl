@@ -445,7 +445,8 @@ lint_macro_is_private = macro `{$ident}` is private
 lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 lint_macro_use_deprecated =
-    deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
+    applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
+    .help = remove it and import macros at use sites with a `use` item instead
 
 lint_malformed_attribute = malformed lint attribute input
 
@@ -456,7 +457,7 @@ lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
     .map_label = after this call to map, the resulting iterator is `impl Iterator<Item = ()>`, which means the only information carried by the iterator is the number of items
     .suggestion = you might have meant to use `Iterator::for_each`
 
-lint_metavariable_still_repeating = variable '{$name}' is still repeating at this depth
+lint_metavariable_still_repeating = variable `{$name}` is still repeating at this depth
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
@@ -635,8 +636,8 @@ lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
 lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function
 
-lint_private_extern_crate_reexport =
-    extern crate `{$ident}` is private, and cannot be re-exported, consider declaring with `pub`
+lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
+    .suggestion = consider making the `extern crate` item publicly accessible
 
 lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}` in this scope
     .label = names from parent modules are not accessible without an explicit import
@@ -847,7 +848,8 @@ lint_unused_coroutine =
     }{$post} that must be used
     .note = coroutines are lazy and do nothing unless resumed
 
-lint_unused_crate_dependency = external crate `{$extern_crate}` unused in `{$local_crate}`: remove the dependency or add `use {$extern_crate} as _;`
+lint_unused_crate_dependency = extern crate `{$extern_crate}` is unused in crate `{$local_crate}`
+    .help = remove the dependency or add `use {$extern_crate} as _;` to the crate root
 
 lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value

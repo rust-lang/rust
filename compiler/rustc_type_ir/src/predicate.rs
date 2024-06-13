@@ -9,7 +9,7 @@ use crate::inherent::*;
 use crate::lift::Lift;
 use crate::upcast::Upcast;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+use crate::{self as ty, Interner};
 
 /// `A: 'region`
 #[derive(derivative::Derivative)]
@@ -248,16 +248,6 @@ pub enum ExistentialPredicate<I: Interner> {
     AutoTrait(I::DefId),
 }
 
-// FIXME: Implement this the right way after
-impl<I: Interner> DebugWithInfcx<I> for ExistentialPredicate<I> {
-    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = I>>(
-        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        fmt::Debug::fmt(&this.data, f)
-    }
-}
-
 impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
     /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
     /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
@@ -459,7 +449,8 @@ impl AliasTermKind {
     Copy(bound = ""),
     Hash(bound = ""),
     PartialEq(bound = ""),
-    Eq(bound = "")
+    Eq(bound = ""),
+    Debug(bound = "")
 )]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
@@ -491,23 +482,6 @@ pub struct AliasTerm<I: Interner> {
     /// This field exists to prevent the creation of `AliasTerm` without using
     /// [AliasTerm::new].
     _use_alias_term_new_instead: (),
-}
-
-impl<I: Interner> std::fmt::Debug for AliasTerm<I> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<I: Interner> DebugWithInfcx<I> for AliasTerm<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("AliasTerm")
-            .field("args", &this.map(|data| data.args))
-            .field("def_id", &this.data.def_id)
-            .finish()
-    }
 }
 
 impl<I: Interner> AliasTerm<I> {

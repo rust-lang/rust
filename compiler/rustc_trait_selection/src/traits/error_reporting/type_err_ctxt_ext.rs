@@ -611,6 +611,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             &mut err,
                             trait_predicate,
                         );
+                        self.suggest_add_result_as_return_type(&obligation,
+                            &mut err,
+                            trait_ref);
+
                         if self.suggest_add_reference_to_arg(
                             &obligation,
                             &mut err,
@@ -2069,12 +2073,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .collect();
 
-            let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
+            let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
+                candidates.len()
+            } else {
+                8
+            };
             err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_trait_sugared(),
                 candidates[..end].join(""),
-                if candidates.len() > 9 {
+                if candidates.len() > 9 && !self.tcx.sess.opts.verbose {
                     format!("\nand {} others", candidates.len() - 8)
                 } else {
                     String::new()

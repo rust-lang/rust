@@ -31,6 +31,8 @@ use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
 use rustc_middle::bug;
 use rustc_middle::ty::{Const, ImplSubject};
 
+use crate::traits::Obligation;
+
 /// Whether we should define opaque types or just treat them opaquely.
 ///
 /// Currently only used to prevent predicate matching from matching anything
@@ -119,10 +121,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             define_opaque_types,
         );
-        fields
-            .sup()
-            .relate(expected, actual)
-            .map(|_| InferOk { value: (), obligations: fields.obligations })
+        fields.sup().relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
     /// Makes `expected <: actual`.
@@ -141,10 +141,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             define_opaque_types,
         );
-        fields
-            .sub()
-            .relate(expected, actual)
-            .map(|_| InferOk { value: (), obligations: fields.obligations })
+        fields.sub().relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
     /// Makes `expected == actual`.
@@ -163,10 +161,22 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             define_opaque_types,
         );
-        fields
-            .equate(StructurallyRelateAliases::No)
-            .relate(expected, actual)
-            .map(|_| InferOk { value: (), obligations: fields.obligations })
+        fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
+        Ok(InferOk {
+            value: (),
+            obligations: fields
+                .goals
+                .into_iter()
+                .map(|goal| {
+                    Obligation::new(
+                        self.infcx.tcx,
+                        fields.trace.cause.clone(),
+                        goal.param_env,
+                        goal.predicate,
+                    )
+                })
+                .collect(),
+        })
     }
 
     /// Equates `expected` and `found` while structurally relating aliases.
@@ -187,10 +197,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             DefineOpaqueTypes::Yes,
         );
-        fields
-            .equate(StructurallyRelateAliases::Yes)
-            .relate(expected, actual)
-            .map(|_| InferOk { value: (), obligations: fields.obligations })
+        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
     pub fn relate<T>(
@@ -237,10 +245,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             define_opaque_types,
         );
-        fields
-            .lub()
-            .relate(expected, actual)
-            .map(|value| InferOk { value, obligations: fields.obligations })
+        let value = fields.lub().relate(expected, actual)?;
+        Ok(InferOk { value, obligations: fields.into_obligations() })
     }
 
     /// Computes the greatest-lower-bound, or mutual subtype, of two
@@ -261,10 +267,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             define_opaque_types,
         );
-        fields
-            .glb()
-            .relate(expected, actual)
-            .map(|value| InferOk { value, obligations: fields.obligations })
+        let value = fields.glb().relate(expected, actual)?;
+        Ok(InferOk { value, obligations: fields.into_obligations() })
     }
 }
 

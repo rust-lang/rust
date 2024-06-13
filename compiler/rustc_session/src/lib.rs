@@ -1,9 +1,11 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(map_many_mut)]
 #![feature(option_get_or_insert_default)]
 #![feature(rustc_attrs)]
-#![feature(map_many_mut)]
-#![feature(iter_intersperse)]
-#![allow(internal_features)]
+// tidy-alphabetical-end
 
 pub mod errors;
 

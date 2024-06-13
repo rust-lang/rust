@@ -61,7 +61,6 @@ use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
 use tracing::{debug, instrument};
 pub use vtable::*;
 

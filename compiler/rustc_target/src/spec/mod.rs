@@ -1766,6 +1766,10 @@ supported_targets! {
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
 
+    ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),
+    ("xtensa-esp32s2-none-elf", xtensa_esp32s2_none_elf),
+    ("xtensa-esp32s3-none-elf", xtensa_esp32s3_none_elf),
+
     ("i686-wrs-vxworks", i686_wrs_vxworks),
     ("x86_64-wrs-vxworks", x86_64_wrs_vxworks),
     ("armv7-wrs-vxworks-eabihf", armv7_wrs_vxworks_eabihf),

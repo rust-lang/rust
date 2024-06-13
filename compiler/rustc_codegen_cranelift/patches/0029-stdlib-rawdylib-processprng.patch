@@ -12,7 +12,7 @@ diff --git a/library/std/src/sys/pal/windows/c.rs b/library/std/src/sys/pal/wind
 index ad8e01bfa9b..9ca8e4c16ce 100644
 --- a/library/std/src/sys/pal/windows/c.rs
 +++ b/library/std/src/sys/pal/windows/c.rs
-@@ -323,7 +323,7 @@ pub unsafe fn NtWriteFile(
+@@ -312,7 +312,7 @@ pub unsafe fn NtWriteFile(
  
  // Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
  cfg_if::cfg_if! {
@@ -26,8 +26,8 @@ index e427546222a..f2fe42a4d51 100644
 --- a/library/std/src/sys/pal/windows/rand.rs
 +++ b/library/std/src/sys/pal/windows/rand.rs
 @@ -2,7 +2,7 @@
- use core::mem;
- use core::ptr;
+ 
+ use crate::sys::c;
  
 -#[cfg(not(target_vendor = "win7"))]
 +#[cfg(any())]

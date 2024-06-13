@@ -2,9 +2,12 @@ use regex::Regex;
 use similar::TextDiff;
 use std::path::Path;
 
+use crate::drop_bomb::DropBomb;
+
 #[cfg(test)]
 mod tests;
 
+#[track_caller]
 pub fn diff() -> Diff {
     Diff::new()
 }
@@ -16,10 +19,12 @@ pub struct Diff {
     actual: Option<String>,
     actual_name: Option<String>,
     normalizers: Vec<(String, String)>,
+    drop_bomb: DropBomb,
 }
 
 impl Diff {
     /// Construct a bare `diff` invocation.
+    #[track_caller]
     pub fn new() -> Self {
         Self {
             expected: None,
@@ -27,6 +32,7 @@ impl Diff {
             actual: None,
             actual_name: None,
             normalizers: Vec::new(),
+            drop_bomb: DropBomb::arm("diff"),
         }
     }
 
@@ -79,9 +85,9 @@ impl Diff {
         self
     }
 
-    /// Executes the diff process, prints any differences to the standard error.
     #[track_caller]
-    pub fn run(&self) {
+    pub fn run(&mut self) {
+        self.drop_bomb.defuse();
         let expected = self.expected.as_ref().expect("expected text not set");
         let mut actual = self.actual.as_ref().expect("actual text not set").to_string();
         let expected_name = self.expected_name.as_ref().unwrap();

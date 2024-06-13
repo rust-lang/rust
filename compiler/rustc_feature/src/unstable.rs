@@ -457,7 +457,7 @@ declare_features! (
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Uses 2024 rules for matching `expr` fragments in macros. Also enables `expr_2021` fragment.
-    (incomplete, expr_fragment_specifier_2024, "CURRENT_RUSTC_VERSION", Some(123742)),
+    (incomplete, expr_fragment_specifier_2024, "1.80.0", Some(123742)),
     /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
     /// for functions with varargs.
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
@@ -488,7 +488,7 @@ declare_features! (
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
-    (unstable, global_registration, "CURRENT_RUSTC_VERSION", Some(125119)),
+    (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using `..=X` as a patterns in slices.
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Allows `if let` guard in match arms.
@@ -581,7 +581,7 @@ declare_features! (
     (unstable, repr_simd, "1.4.0", Some(27731)),
     /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
     /// be used to describe E or vise-versa.
-    (unstable, result_ffi_guarantees, "CURRENT_RUSTC_VERSION", Some(110503)),
+    (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
     (incomplete, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
@@ -623,9 +623,9 @@ declare_features! (
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows unsafe attributes.
-    (unstable, unsafe_attributes, "CURRENT_RUSTC_VERSION", Some(123757)),
+    (unstable, unsafe_attributes, "1.80.0", Some(123757)),
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.
-    (unstable, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
+    (unstable, unsafe_extern_blocks, "1.80.0", Some(123743)),
     /// Allows unsized fn parameters.
     (unstable, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

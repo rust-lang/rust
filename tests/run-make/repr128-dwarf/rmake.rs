@@ -3,7 +3,7 @@
 
 use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
 use object::{Object, ObjectSection};
-use run_make_support::{gimli, object, rustc};
+use run_make_support::{fs_wrapper, gimli, object, rustc};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -19,8 +19,7 @@ fn main() {
         .join("DWARF")
         .join("repr128");
     let output =
-        std::fs::read(if dsym_location.try_exists().unwrap() { dsym_location } else { output })
-            .unwrap();
+        fs_wrapper::read(if dsym_location.try_exists().unwrap() { dsym_location } else { output });
     let obj = object::File::parse(output.as_slice()).unwrap();
     let endian = if obj.is_little_endian() { RunTimeEndian::Little } else { RunTimeEndian::Big };
     let dwarf = gimli::Dwarf::load(|section| -> Result<_, ()> {

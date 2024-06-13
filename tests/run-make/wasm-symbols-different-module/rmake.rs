@@ -1,6 +1,6 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{rustc, wasmparser};
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -23,7 +23,7 @@ fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
 
     rustc().input(file).target("wasm32-wasip1").args(args).run();
 
-    let file = std::fs::read(Path::new(file).with_extension("wasm")).unwrap();
+    let file = fs_wrapper::read(Path::new(file).with_extension("wasm"));
 
     let mut imports = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {

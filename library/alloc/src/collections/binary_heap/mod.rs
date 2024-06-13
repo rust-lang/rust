@@ -440,10 +440,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(
-        feature = "const_binary_heap_constructor",
-        since = "CURRENT_RUSTC_VERSION"
-    )]
+    #[rustc_const_stable(feature = "const_binary_heap_constructor", since = "1.80.0")]
     #[must_use]
     pub const fn new() -> BinaryHeap<T> {
         BinaryHeap { data: vec![] }
@@ -1224,7 +1221,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// io::sink().write(heap.as_slice()).unwrap();
     /// ```
     #[must_use]
-    #[stable(feature = "binary_heap_as_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "binary_heap_as_slice", since = "1.80.0")]
     pub fn as_slice(&self) -> &[T] {
         self.data.as_slice()
     }

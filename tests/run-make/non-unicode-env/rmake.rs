@@ -1,3 +1,4 @@
+use run_make_support::fs_wrapper;
 use run_make_support::rustc;
 
 fn main() {
@@ -6,6 +7,6 @@ fn main() {
     #[cfg(windows)]
     let non_unicode: std::ffi::OsString = std::os::windows::ffi::OsStringExt::from_wide(&[0xD800]);
     let output = rustc().input("non_unicode_env.rs").env("NON_UNICODE_VAR", non_unicode).run_fail();
-    let expected = std::fs::read_to_string("non_unicode_env.stderr").unwrap();
+    let expected = fs_wrapper::read_to_string("non_unicode_env.stderr");
     output.assert_stderr_equals(expected);
 }

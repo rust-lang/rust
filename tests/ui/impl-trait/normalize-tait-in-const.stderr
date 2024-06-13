@@ -1,11 +1,11 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:24:42
+  --> $DIR/normalize-tait-in-const.rs:27:42
    |
 LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                          ^^^^^^^^^^^^^^^^^
 
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/normalize-tait-in-const.rs:25:5
+  --> $DIR/normalize-tait-in-const.rs:28:5
    |
 LL |     fun(filter_positive());
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -13,15 +13,15 @@ LL |     fun(filter_positive());
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider further restricting this bound
    |
-LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct + ~const Fn(&Alias<'_>)>(fun: F) {
-   |                                                                              +++++++++++++++++++++++
+LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct + ~const Fn(&foo::Alias<'_>)>(fun: F) {
+   |                                                                              ++++++++++++++++++++++++++++
 help: add `#![feature(effects)]` to the crate attributes to enable
    |
 LL + #![feature(effects)]
    |
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
-  --> $DIR/normalize-tait-in-const.rs:24:79
+  --> $DIR/normalize-tait-in-const.rs:27:79
    |
 LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                                                               ^^^ the destructor for this type cannot be evaluated in constant functions

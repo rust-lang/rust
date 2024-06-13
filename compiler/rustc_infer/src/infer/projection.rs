@@ -21,11 +21,12 @@ impl<'tcx> InferCtxt<'tcx> {
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Ty<'tcx> {
         debug_assert!(!self.next_trait_solver());
-        let def_id = projection_ty.def_id;
-        let ty_var = self.next_ty_var(self.tcx.def_span(def_id));
-        let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-            ty::ProjectionPredicate { projection_term: projection_ty.into(), term: ty_var.into() },
-        )));
+        let ty_var = self.next_ty_var(self.tcx.def_span(projection_ty.def_id));
+        let projection =
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                projection_term: projection_ty.into(),
+                term: ty_var.into(),
+            }));
         let obligation =
             Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
         obligations.push(obligation);

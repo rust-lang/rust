@@ -209,8 +209,8 @@ impl ScalarInt {
 
     #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
-        let data = i.into();
-        if size.truncate(data) == data { Some(Self::raw(data, size)) } else { None }
+        let (r, overflow) = Self::truncate_from_uint(i, size);
+        if overflow { None } else { Some(r) }
     }
 
     /// Returns the truncated result, and whether truncation changed the value.
@@ -223,20 +223,15 @@ impl ScalarInt {
 
     #[inline]
     pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
-        let i = i.into();
-        // `into` performed sign extension, we have to truncate
-        let truncated = size.truncate(i as u128);
-        if size.sign_extend(truncated) as i128 == i {
-            Some(Self::raw(truncated, size))
-        } else {
-            None
-        }
+        let (r, overflow) = Self::truncate_from_int(i, size);
+        if overflow { None } else { Some(r) }
     }
 
     /// Returns the truncated result, and whether truncation changed the value.
     #[inline]
     pub fn truncate_from_int(i: impl Into<i128>, size: Size) -> (Self, bool) {
         let data = i.into();
+        // `into` performed sign extension, we have to truncate
         let r = Self::raw(size.truncate(data as u128), size);
         (r, size.sign_extend(r.data) as i128 != data)
     }

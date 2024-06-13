@@ -22,7 +22,7 @@ fn sum_to(n: u32) -> impl Foo {
         0
     } else {
         n + sum_to(n - 1)
-        //~^ ERROR cannot satisfy `<u32 as Add<impl Foo>>::Output == i32`
+        //~^ ERROR cannot add `impl Foo` to `u32`
     }
 }
 
@@ -32,15 +32,12 @@ trait Leak: Sized {
 }
 impl<T> Leak for T {
     default type T = ();
-    default fn leak(self) -> Self::T {
-        panic!()
-    }
+    default fn leak(self) -> Self::T { panic!() }
 }
 impl Leak for i32 {
     type T = i32;
-    fn leak(self) -> i32 {
-        self
-    }
+    fn leak(self) -> i32 { self }
 }
 
-fn main() {}
+fn main() {
+}

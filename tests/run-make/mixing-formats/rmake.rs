@@ -13,7 +13,6 @@
 //@ ignore-cross-compile
 
 use run_make_support::{run_in_tmpdir, rustc};
-use std::fs;
 
 fn main() {
     run_in_tmpdir(|| {

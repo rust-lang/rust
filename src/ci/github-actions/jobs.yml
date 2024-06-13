@@ -33,7 +33,7 @@ runners:
     <<: *base-job
 
   - &job-aarch64-linux
-    os: [ self-hosted, ARM64, linux ]
+    os: ubuntu-22.04-arm64-8core-32gb
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
@@ -428,6 +428,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
+        --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths

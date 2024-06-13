@@ -1,3 +1,4 @@
+// tidy-alphabetical-start
 pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
@@ -14,6 +15,7 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
+// tidy-alphabetical-end
 
 use serde::{Deserialize, Serialize};
 
@@ -706,7 +708,10 @@ pub enum BuiltinLintDiag {
     },
     MacroUseDeprecated,
     UnusedMacroUse,
-    PrivateExternCrateReexport(Ident),
+    PrivateExternCrateReexport {
+        source: Ident,
+        extern_crate_span: Span,
+    },
     UnusedLabel,
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),

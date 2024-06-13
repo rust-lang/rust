@@ -14,6 +14,7 @@
 
 #![deny(warnings)]
 
+use run_make_support::fs_wrapper::{read, read_dir};
 use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::read::Object;
 use run_make_support::object::ObjectSection;
@@ -35,7 +36,7 @@ fn main() {
     let rustc = env_var("RUSTC");
     let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
     let mut cmd = cmd(bootstrap_cargo);
-    cmd.args([
+    cmd.args(&[
         "build",
         "--manifest-path",
         manifest_path.to_str().unwrap(),
@@ -55,8 +56,7 @@ fn main() {
     cmd.run();
 
     let rlibs_path = target_dir.join(target).join("debug").join("deps");
-    let compiler_builtins_rlib = std::fs::read_dir(rlibs_path)
-        .unwrap()
+    let compiler_builtins_rlib = read_dir(rlibs_path)
         .find_map(|e| {
             let path = e.unwrap().path();
             let file_name = path.file_name().unwrap().to_str().unwrap();
@@ -70,7 +70,7 @@ fn main() {
 
     // rlib files are archives, where the archive members each a CGU, and we also have one called
     // lib.rmeta which is the encoded metadata. Each of the CGUs is an object file.
-    let data = std::fs::read(compiler_builtins_rlib).unwrap();
+    let data = read(compiler_builtins_rlib);
 
     let mut defined_symbols = HashSet::new();
     let mut undefined_relocations = HashSet::new();

@@ -1,7 +1,10 @@
 //! Make sure that cross-language LTO works on riscv targets,
 //! which requires extra `target-abi` metadata to be emitted.
-//@ needs-matching-clang
+//@ needs-force-clang-based-tests
 //@ needs-llvm-components riscv
+
+// FIXME(#126180): This test doesn't actually run anywhere, because the only
+// CI job that sets RUSTBUILD_FORCE_CLANG_BASED_TESTS runs very few tests.
 
 use run_make_support::{bin_name, clang, llvm_readobj, rustc};
 use std::{

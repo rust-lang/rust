@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(type_alias_impl_trait)]
 
 // Regression test for issue #61863
@@ -18,6 +16,7 @@ fn bla() -> TE {
 }
 
 fn bla2() -> TE {
+    //~^ ERROR: item does not constrain `TE::{opaque#0}`, but has it in its signature
     bla()
 }
 

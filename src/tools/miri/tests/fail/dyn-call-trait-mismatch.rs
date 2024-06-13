@@ -1,5 +1,5 @@
-// Validation stops this too early.
-//@compile-flags: -Zmiri-disable-validation
+// Validation and SB stop this too early.
+//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
 trait T1 {
     #[allow(dead_code)]

@@ -1,6 +1,6 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{rustc, wasmparser};
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::collections::HashMap;
 
 fn main() {
@@ -13,7 +13,7 @@ fn main() {
         .arg("-Copt-level=z")
         .run();
 
-    let file = std::fs::read("main.wasm").unwrap();
+    let file = fs_wrapper::read("main.wasm");
 
     let mut imports = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {

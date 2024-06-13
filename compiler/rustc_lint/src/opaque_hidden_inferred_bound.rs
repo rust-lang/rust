@@ -46,6 +46,8 @@ declare_lint! {
     /// fn test() -> impl Trait<Assoc = Tait> {
     ///     42
     /// }
+    ///
+    /// fn main() {}
     /// ```
     ///
     /// {{produces}}

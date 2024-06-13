@@ -1,12 +1,10 @@
-use rustc_data_structures::graph::scc::Sccs;
+use crate::type_check::Locations;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
 use std::fmt;
 use std::ops::Index;
-
-use crate::type_check::Locations;
 
 pub(crate) mod graph;
 
@@ -43,18 +41,6 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// represents an edge `R2 -> R1`.
     pub(crate) fn reverse_graph(&self, num_region_vars: usize) -> graph::ReverseConstraintGraph {
         graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
-    }
-
-    /// Computes cycles (SCCs) in the graph of regions. In particular,
-    /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
-    /// them into an SCC, and find the relationships between SCCs.
-    pub(crate) fn compute_sccs(
-        &self,
-        constraint_graph: &graph::NormalConstraintGraph,
-        static_region: RegionVid,
-    ) -> Sccs<RegionVid, ConstraintSccIndex> {
-        let region_graph = &constraint_graph.region_graph(self, static_region);
-        Sccs::new(region_graph)
     }
 
     pub(crate) fn outlives(
