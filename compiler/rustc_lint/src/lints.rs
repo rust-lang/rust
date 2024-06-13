@@ -1358,6 +1358,7 @@ pub enum NonLocalDefinitionsDiag {
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         const_anon: Option<Option<Span>>,
         move_to: Option<(Span, Vec<Span>)>,
+        doctest: bool,
         may_remove: Option<(Span, String)>,
         has_trait: bool,
         self_ty_str: String,
@@ -1383,6 +1384,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 cargo_update,
                 const_anon,
                 move_to,
+                doctest,
                 may_remove,
                 has_trait,
                 self_ty_str,
@@ -1410,6 +1412,9 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                         ms.push_span_label(sp, fluent::lint_non_local_definitions_may_move);
                     }
                     diag.span_help(ms, fluent::lint_non_local_definitions_impl_move_help);
+                }
+                if doctest {
+                    diag.help(fluent::lint_doctest);
                 }
 
                 if let Some((span, part)) = may_remove {
