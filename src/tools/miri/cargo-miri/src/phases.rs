@@ -34,6 +34,8 @@ Examples:
 
 ";
 
+const DEFAULT_MANY_SEEDS: &str = "0..64";
+
 fn show_help() {
     println!("{CARGO_MIRI_HELP}");
 }
@@ -171,7 +173,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
         ArgSplitFlagValue::from_string_iter(&mut args, "--target-dir").filter_map(Result::err)
     {
         if arg == "--many-seeds" {
-            many_seeds = Some(format!("0..256"));
+            many_seeds = Some(DEFAULT_MANY_SEEDS.to_owned());
         } else if let Some(val) = arg.strip_prefix("--many-seeds=") {
             many_seeds = Some(val.to_owned());
         } else {

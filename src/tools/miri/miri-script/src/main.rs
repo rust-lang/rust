@@ -98,7 +98,7 @@ Build miri, set up a sysroot and then run the test suite.
 Build miri, set up a sysroot and then run the driver with the given <flags>.
 (Also respects MIRIFLAGS environment variable.)
 If `--many-seeds` is present, Miri is run many times in parallel with different seeds.
-The range defaults to `0..256`.
+The range defaults to `0..64`.
 
 ./miri fmt <flags>:
 Format all sources and tests. <flags> are passed to `rustfmt`.
@@ -180,7 +180,7 @@ fn main() -> Result<()> {
                     dep = true;
                 } else if args.get_long_flag("verbose")? || args.get_short_flag('v')? {
                     verbose = true;
-                } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..256")? {
+                } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..64")? {
                     let (from, to) = val.split_once("..").ok_or_else(|| {
                         anyhow!("invalid format for `--many-seeds`: expected `from..to`")
                     })?;
