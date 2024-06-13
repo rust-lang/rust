@@ -471,3 +471,14 @@ mod issue_10854 {
         }
     }
 }
+
+mod issue_12853 {
+    fn f_by_value<F: Fn(u32)>(f: F) {
+        let x = Box::new(|| None.map(|x| f(x)));
+        x();
+    }
+    fn f_by_ref<F: Fn(u32)>(f: &F) {
+        let x = Box::new(|| None.map(|x| f(x)));
+        x();
+    }
+}

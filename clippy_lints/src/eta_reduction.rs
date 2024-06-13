@@ -9,8 +9,8 @@ use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Saf
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, Binder, ClosureArgs, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, RegionKind, Ty,
-    TypeVisitableExt, TypeckResults, TyCtxt,
+    self, Binder, ClosureArgs, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, RegionKind, Ty, TyCtxt,
+    TypeVisitableExt, TypeckResults,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -123,7 +123,8 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     ExprKind::Path(QPath::Resolved(..) | QPath::TypeRelative(..))
                 ) =>
             {
-                let callee_ty = typeck.expr_ty(callee).peel_refs();
+                let callee_ty_raw = typeck.expr_ty(callee);
+                let callee_ty = callee_ty_raw.peel_refs();
                 if matches!(type_diagnostic_name(cx, callee_ty), Some(sym::Arc | sym::Rc))
                     || !check_inputs(typeck, body.params, None, args)
                 {
@@ -170,15 +171,25 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                 {
                     span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                         if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                            if let Ok((ClosureKind::FnMut, _)) = cx.tcx.infer_ctxt().build().type_implements_fn_trait(
-                                cx.param_env,
-                                Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                ty::PredicatePolarity::Positive,
-                            ) && path_to_local(callee).map_or(false, |l| {
+                            if path_to_local(callee).map_or(false, |l| {
+                                // FIXME: Do we really need this `local_used_in` check?
+                                // Isn't it checking something like... `callee(callee)`?
+                                // If somehow this check is needed, add some test for it,
+                                // 'cuz currently nothing changes after deleting this check.
                                 local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
                             }) {
-                                // Mutable closure is used after current expr; we cannot consume it.
-                                snippet = format!("&mut {snippet}");
+                                match cx.tcx.infer_ctxt().build().type_implements_fn_trait(
+                                    cx.param_env,
+                                    Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
+                                    ty::PredicatePolarity::Positive,
+                                ) {
+                                    // Mutable closure is used after current expr; we cannot consume it.
+                                    Ok((ClosureKind::FnMut, _)) => snippet = format!("&mut {snippet}"),
+                                    Ok((ClosureKind::Fn, _)) if !callee_ty_raw.is_ref() => {
+                                        snippet = format!("&{snippet}");
+                                    },
+                                    _ => (),
+                                }
                             }
                             diag.span_suggestion(
                                 expr.span,

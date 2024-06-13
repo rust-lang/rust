@@ -1,6 +1,6 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
-use crate::visitors::{for_each_expr, Descend};
+use crate::visitors::{for_each_expr_without_closures, Descend};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
@@ -323,7 +323,7 @@ fn find_assert_args_inner<'a, const N: usize>(
         Some(inner_name) => find_assert_within_debug_assert(cx, expr, expn, Symbol::intern(inner_name))?,
     };
     let mut args = ArrayVec::new();
-    let panic_expn = for_each_expr(expr, |e| {
+    let panic_expn = for_each_expr_without_closures(expr, |e| {
         if args.is_full() {
             match PanicExpn::parse(e) {
                 Some(expn) => ControlFlow::Break(expn),
@@ -349,7 +349,7 @@ fn find_assert_within_debug_assert<'a>(
     expn: ExpnId,
     assert_name: Symbol,
 ) -> Option<(&'a Expr<'a>, ExpnId)> {
-    for_each_expr(expr, |e| {
+    for_each_expr_without_closures(expr, |e| {
         if !e.span.from_expansion() {
             return ControlFlow::Continue(Descend::No);
         }
@@ -397,7 +397,7 @@ impl FormatArgsStorage {
     ///
     /// See also [`find_format_arg_expr`]
     pub fn get(&self, cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId) -> Option<&FormatArgs> {
-        let format_args_expr = for_each_expr(start, |expr| {
+        let format_args_expr = for_each_expr_without_closures(start, |expr| {
             let ctxt = expr.span.ctxt();
             if ctxt.outer_expn().is_descendant_of(expn_id) {
                 if macro_backtrace(expr.span)
@@ -439,7 +439,7 @@ pub fn find_format_arg_expr<'hir, 'ast>(
         parent: _,
     } = target.expr.span.data();
 
-    for_each_expr(start, |expr| {
+    for_each_expr_without_closures(start, |expr| {
         // When incremental compilation is enabled spans gain a parent during AST to HIR lowering,
         // since we're comparing an AST span to a HIR one we need to ignore the parent field
         let data = expr.span.data();

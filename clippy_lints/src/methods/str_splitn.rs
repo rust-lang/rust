@@ -3,7 +3,7 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
+use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{is_diag_item_method, match_def_path, path_to_local_id, paths};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -209,7 +209,7 @@ fn indirect_usage<'tcx>(
     }) = stmt.kind
     {
         let mut path_to_binding = None;
-        let _: Option<!> = for_each_expr_with_closures(cx, init_expr, |e| {
+        let _: Option<!> = for_each_expr(cx, init_expr, |e| {
             if path_to_local_id(e, binding) {
                 path_to_binding = Some(e);
             }
