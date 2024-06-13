@@ -408,20 +408,24 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     ImmTy::from_immediate(ptr_imm, ty).into()
                 } else if matches!(kind, AggregateTy::Array) {
                     let mut mplace = None;
-                    let alloc_id = self.ecx.intern_with_temp_alloc(ty, |ecx, dest| {
-                        for (field_index, op) in fields.iter().copied().enumerate() {
-                            // ignore nested arrays
-                            if let Either::Left(_) = op.as_mplace_or_imm() {
-                                interpret::throw_inval!(TooGeneric);
+                    let alloc_id = self
+                        .ecx
+                        .intern_with_temp_alloc(ty, |ecx, dest| {
+                            for (field_index, op) in fields.iter().copied().enumerate() {
+                                // ignore nested arrays
+                                if let Either::Left(_) = op.as_mplace_or_imm() {
+                                    interpret::throw_inval!(TooGeneric);
+                                }
+                                let field_dest = ecx.project_field(dest, field_index)?;
+                                ecx.copy_op(op, &field_dest)?;
                             }
-                            let field_dest = ecx.project_field(dest, field_index)?;
-                            ecx.copy_op(op, &field_dest)?;
-                        }
 
-                        let dest = dest.assert_mem_place().map_provenance(|prov| prov.as_immutable());
-                        mplace.replace(dest);
-                        Ok(())
-                    }).ok()?;
+                            let dest =
+                                dest.assert_mem_place().map_provenance(|prov| prov.as_immutable());
+                            mplace.replace(dest);
+                            Ok(())
+                        })
+                        .ok()?;
                     let GlobalAlloc::Memory(_alloc) = self.tcx.global_alloc(alloc_id) else {
                         bug!()
                     };
@@ -1270,7 +1274,8 @@ fn op_to_prop_const<'tcx>(
     }
 
     // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
-    if !(op.layout.ty.is_array() || matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..))) {
+    if !(op.layout.ty.is_array() || matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)))
+    {
         return None;
     }
 
@@ -1339,7 +1344,8 @@ impl<'tcx> VnState<'_, 'tcx> {
             Value::Aggregate(AggregateTy::Array, _, fields) => {
                 for f in fields {
                     if let Value::Constant { value: Const::Val(const_, _), .. } = self.get(*f)
-                        && let ConstValue::Indirect { .. } = const_ {
+                        && let ConstValue::Indirect { .. } = const_
+                    {
                         return None;
                     }
                 }
@@ -1350,7 +1356,8 @@ impl<'tcx> VnState<'_, 'tcx> {
                     && let ConstValue::Scalar(Scalar::Ptr(..)) = const_
                     && let ty::Ref(region, ty, _mutability) = ty.kind()
                     && region.is_erased()
-                    && ty.is_array() {
+                    && ty.is_array()
+                {
                     return None;
                 }
             }
