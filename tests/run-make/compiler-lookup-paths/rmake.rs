@@ -5,13 +5,18 @@
 // fail to be used by the compiler.
 // See https://github.com/rust-lang/rust/pull/19941
 
-use run_make_support::{build_native_static_lib, fs_wrapper, path, rustc};
+//@ ignore-wasm32
+//@ ignore-wasm64
+// Reason: a C compiler is required for build_native_static_lib
+
+use run_make_support::{build_native_static_lib, fs_wrapper, rustc, static_lib_name};
 
 fn main() {
     build_native_static_lib("native");
+    let lib_native = static_lib_name("native");
     fs_wrapper::create_dir_all("crate");
     fs_wrapper::create_dir_all("native");
-    fs_wrapper::rename("libnative.a", "native/libnative.a");
+    fs_wrapper::rename(&lib_native, format!("native/{}", &lib_native));
     rustc().input("a.rs").run();
     fs_wrapper::rename("liba.rlib", "crate/liba.rlib");
     rustc().input("b.rs").specific_library_search_path("native", "crate").run_fail();

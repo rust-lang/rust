@@ -7,10 +7,11 @@
 use run_make_support::{cwd, fs_wrapper, rustc};
 
 fn main() {
+    let path = cwd().display().to_string();
     rustc()
         .crate_type("lib")
         .input("foo.rs")
-        .dump_mono_stats(cwd())
+        .arg(format!("-Zdump-mono-stats={path}"))
         .arg("-Zdump-mono-stats-format=json")
         .run();
     assert!(fs_wrapper::read_to_string("foo.mono_items.json").contains(r#""name":"bar""#));

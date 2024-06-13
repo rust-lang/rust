@@ -114,6 +114,9 @@ impl Rustc {
         self.cmd.arg("--remap-path-prefix");
         self.cmd.arg(format!("{from}={to}"));
 
+        self
+    }
+
     /// Specify path to the input file.
     pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg(path.as_ref());
