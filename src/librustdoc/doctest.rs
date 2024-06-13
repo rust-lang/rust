@@ -629,9 +629,13 @@ fn run_test(
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
         cmd.args(&rustdoc_options.runtool_args);
-        cmd.arg(output_file);
+        cmd.arg(&output_file);
     } else {
-        cmd = Command::new(output_file);
+        cmd = Command::new(&output_file);
+        if is_multiple_tests {
+            cmd.arg("*doctest-bin-path");
+            cmd.arg(&output_file);
+        }
     }
     if let Some(run_directory) = &rustdoc_options.test_run_directory {
         cmd.current_dir(run_directory);
