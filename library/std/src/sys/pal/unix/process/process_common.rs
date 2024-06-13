@@ -96,6 +96,7 @@ pub struct Command {
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     saw_nul: bool,
+    saw_invalid_env_key: bool,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     groups: Option<Box<[gid_t]>>,
     stdin: Option<Stdio>,
@@ -190,6 +191,7 @@ impl Command {
             uid: None,
             gid: None,
             saw_nul,
+            saw_invalid_env_key: false,
             closures: Vec::new(),
             groups: None,
             stdin: None,
@@ -214,6 +216,7 @@ impl Command {
             uid: None,
             gid: None,
             saw_nul,
+            saw_invalid_env_key: false,
             closures: Vec::new(),
             groups: None,
             stdin: None,
@@ -276,8 +279,17 @@ impl Command {
         self.create_pidfd
     }
 
-    pub fn saw_nul(&self) -> bool {
-        self.saw_nul
+    pub fn validate_input(&self) -> io::Result<()> {
+        if self.saw_invalid_env_key {
+            Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "env key empty or equals sign found in env key",
+            ))
+        } else if self.saw_nul {
+            Err(io::const_io_error!(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
+        } else {
+            Ok(())
+        }
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -358,7 +370,7 @@ impl Command {
 
     pub fn capture_env(&mut self) -> Option<CStringArray> {
         let maybe_env = self.env.capture_if_changed();
-        maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
+        maybe_env.map(|env| construct_envp(env, &mut self.saw_nul, &mut self.saw_invalid_env_key))
     }
 
     #[allow(dead_code)]
@@ -423,9 +435,18 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
+fn construct_envp(
+    env: BTreeMap<OsString, OsString>,
+    saw_nul: &mut bool,
+    saw_invalid_env_key: &mut bool,
+) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (mut k, v) in env {
+        if k.is_empty() || k.as_bytes()[1..].contains(&b'=') {
+            *saw_invalid_env_key = true;
+            continue;
+        }
+
         // Reserve additional space for '=' and null terminator
         k.reserve_exact(v.len() + 2);
         k.push("=");

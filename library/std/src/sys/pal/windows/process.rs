@@ -142,12 +142,40 @@ impl AsRef<OsStr> for EnvKey {
     }
 }
 
-pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
-    if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
-    } else {
-        Ok(str)
+/// Returns an error if the provided string has a NUL byte anywhere or a `=`
+/// after the first character.
+fn ensure_env_var_name<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
+    fn inner(s: &OsStr) -> io::Result<()> {
+        let err = || {
+            Err(io::const_io_error!(
+                ErrorKind::InvalidInput,
+                "nul or '=' byte found in provided data",
+            ))
+        };
+        let mut iter = s.as_encoded_bytes().iter();
+        if iter.next() == Some(&0) {
+            return err();
+        }
+        if iter.any(|&b| b == 0 || b == b'=') {
+            return err();
+        }
+        Ok(())
     }
+    inner(s.as_ref())?;
+    Ok(s)
+}
+
+/// Returns an error if the provided string has a NUL byte anywhere.
+pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
+    fn inner(s: &OsStr) -> io::Result<()> {
+        if s.as_encoded_bytes().iter().any(|&b| b == 0) {
+            Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
+        } else {
+            Ok(())
+        }
+    }
+    inner(s.as_ref())?;
+    Ok(s)
 }
 
 pub struct Command {
@@ -873,7 +901,7 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut 
         }
 
         for (k, v) in env {
-            ensure_no_nuls(k.os_string)?;
+            ensure_env_var_name(k.os_string)?;
             blk.extend(k.utf16);
             blk.push('=' as u16);
             blk.extend(ensure_no_nuls(v)?.encode_wide());

@@ -10,13 +10,12 @@ use libc::{c_int, pid_t};
 )))]
 use libc::{gid_t, uid_t};
 
-use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
 use crate::sys::cvt;
 #[cfg(target_os = "linux")]
 use crate::sys::pal::unix::linux::pidfd::PidFd;
 use crate::sys::process::process_common::*;
-use crate::{fmt, mem, sys};
+use crate::{fmt, io, mem, sys};
 
 cfg_if::cfg_if! {
     // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
@@ -60,12 +59,7 @@ impl Command {
 
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return Err(io::const_io_error!(
-                ErrorKind::InvalidInput,
-                "nul byte found in provided data",
-            ));
-        }
+        self.validate_input()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
@@ -146,7 +140,7 @@ impl Command {
                     );
                     let errno = i32::from_be_bytes(errno.try_into().unwrap());
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
-                    return Err(Error::from_raw_os_error(errno));
+                    return Err(io::Error::from_raw_os_error(errno));
                 }
                 Err(ref e) if e.is_interrupted() => {}
                 Err(e) => {
@@ -175,8 +169,8 @@ impl Command {
     // allowed to exist in dead code), but it sounds bad, so we go out of our
     // way to avoid that all-together.
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
-    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
-        ErrorKind::Unsupported,
+    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: io::Error = io::const_io_error!(
+        io::ErrorKind::Unsupported,
         "`fork`+`exec`-based process spawning is not supported on this target",
     );
 
@@ -219,7 +213,7 @@ impl Command {
                     thread::sleep(delay);
                 } else {
                     return Err(io::const_io_error!(
-                        ErrorKind::WouldBlock,
+                        io::ErrorKind::WouldBlock,
                         "forking returned EBADF too often",
                     ));
                 }
@@ -234,8 +228,8 @@ impl Command {
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+        if let Err(err) = self.validate_input() {
+            return err;
         }
 
         match self.setup_io(default, true) {
@@ -561,7 +555,7 @@ impl Command {
                             thread::sleep(delay);
                         } else {
                             return Err(io::const_io_error!(
-                                ErrorKind::WouldBlock,
+                                io::ErrorKind::WouldBlock,
                                 "posix_spawnp returned EBADF too often",
                             ));
                         }
@@ -729,7 +723,7 @@ impl Command {
                         // But we cannot obtain its pid even though pidfd_getpid support was verified earlier.
                         // This might happen if libc can't open procfs because the file descriptor limit has been reached.
                         libc::close(pidfd);
-                        return Err(Error::new(
+                        return Err(io::Error::new(
                             e.kind(),
                             "pidfd_spawnp succeeded but the child's PID could not be obtained",
                         ));
@@ -1190,7 +1184,6 @@ impl ExitStatusError {
 mod linux_child_ext {
 
     use crate::os::linux::process as os;
-    use crate::sys::pal::unix::ErrorKind;
     use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys_common::FromInner;
     use crate::{io, mem};
@@ -1203,7 +1196,9 @@ mod linux_child_ext {
                 .as_ref()
                 // SAFETY: The os type is a transparent wrapper, therefore we can transmute references
                 .map(|fd| unsafe { mem::transmute::<&imp::PidFd, &os::PidFd>(fd) })
-                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+                .ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::Uncategorized, "No pidfd was created.")
+                })
         }
 
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
