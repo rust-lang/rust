@@ -61,7 +61,7 @@ mod os_impl {
                     fs::remove_file(&path).expect("Deleted temp file");
                     // If the file is executable, then we assume that this
                     // filesystem does not track executability, so skip this check.
-                    return if exec { Unsupported } else { Supported };
+                    if exec { Unsupported } else { Supported }
                 }
                 Err(e) => {
                     // If the directory is read-only or we otherwise don't have rights,
@@ -76,7 +76,7 @@ mod os_impl {
 
                     panic!("unable to create temporary file `{:?}`: {:?}", path, e);
                 }
-            };
+            }
         }
 
         for &source_dir in sources {
@@ -92,7 +92,7 @@ mod os_impl {
             }
         }
 
-        return true;
+        true
     }
 
     // FIXME: check when rust-installer test sh files will be removed,

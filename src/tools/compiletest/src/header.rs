@@ -81,7 +81,7 @@ impl EarlyProps {
             panic!("errors encountered during EarlyProps parsing");
         }
 
-        return props;
+        props
     }
 }
 
@@ -381,7 +381,7 @@ impl TestProps {
                         // Individual flags can be single-quoted to preserve spaces; see
                         // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
                         flags
-                            .split("'")
+                            .split('\'')
                             .enumerate()
                             .flat_map(|(i, f)| {
                                 if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() }
@@ -612,7 +612,7 @@ impl TestProps {
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
-                if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
+                if !self.exec_env.iter().any(|&(ref x, _)| x == key) {
                     self.exec_env.push(((*key).to_owned(), val))
                 }
             }
@@ -990,7 +990,7 @@ pub(crate) fn check_directive(directive_ln: &str) -> CheckDirectiveResult<'_> {
     let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
     let trailing_directive = {
         // 1. is the directive name followed by a space? (to exclude `:`)
-        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(" "))
+        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(' '))
             // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
             && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
     }
@@ -1354,7 +1354,7 @@ pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<u32> {
     }
     let version = String::from_utf8(output.stdout).ok()?;
     for line in version.lines() {
-        if let Some(version) = line.split("LLVM version ").skip(1).next() {
+        if let Some(version) = line.split("LLVM version ").nth(1) {
             return extract_llvm_version(version);
         }
     }
@@ -1385,7 +1385,7 @@ where
 
     let min = parse(min)?;
     let max = match max {
-        Some(max) if max.is_empty() => return None,
+        Some("") => return None,
         Some(max) => parse(max)?,
         _ => min,
     };
@@ -1457,12 +1457,12 @@ pub fn make_test_description<R: Read>(
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
 
-            if config.target == "wasm32-unknown-unknown" {
-                if config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS) {
-                    decision!(IgnoreDecision::Ignore {
-                        reason: "ignored on WASM as the run results cannot be checked there".into(),
-                    });
-                }
+            if config.target == "wasm32-unknown-unknown"
+                && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
+            {
+                decision!(IgnoreDecision::Ignore {
+                    reason: "ignored on WASM as the run results cannot be checked there".into(),
+                });
             }
 
             should_fail |= config.parse_name_directive(ln, "should-fail");
