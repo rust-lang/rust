@@ -49,6 +49,18 @@ impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> 
     fn is_coinductive(self, interner: TyCtxt<'tcx>) -> bool {
         self.is_coinductive(interner)
     }
+
+    fn allow_normalization(self) -> bool {
+        self.allow_normalization()
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
+    type Kind = ty::Binder<'tcx, ty::PredicateKind<'tcx>>;
+
+    fn kind(self) -> Self::Kind {
+        self.kind()
+    }
 }
 
 impl<'tcx> rustc_type_ir::visit::Flags for Predicate<'tcx> {
@@ -120,6 +132,7 @@ impl<'tcx> Predicate<'tcx> {
     /// unsoundly accept some programs. See #91068.
     #[inline]
     pub fn allow_normalization(self) -> bool {
+        // Keep this in sync with the one in `rustc_type_ir::inherent`!
         match self.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::WellFormed(_))
             | PredicateKind::AliasRelate(..)

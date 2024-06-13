@@ -32,6 +32,7 @@ pub mod error;
 pub mod fold;
 pub mod inherent;
 pub mod ir_print;
+pub mod lang_items;
 pub mod lift;
 pub mod relate;
 pub mod solve;
