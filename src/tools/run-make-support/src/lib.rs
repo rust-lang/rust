@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 
 pub use bstr;
 pub use gimli;
-pub use glob;
 pub use object;
 pub use regex;
 pub use wasmparser;
@@ -302,6 +301,20 @@ pub fn filename_not_in_denylist<P: AsRef<Path>, V: AsRef<[String]>>(path: P, exp
     path.as_ref()
         .file_name()
         .is_some_and(|name| !expected.contains(&name.to_str().unwrap().to_owned()))
+}
+
+/// Gathers all files in the current working directory that have the extension `ext`, and counts
+/// the number of lines within that contain a match with the regex pattern `re`.
+pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str) -> usize {
+    let fetched_files = shallow_find_files(cwd(), |path| has_extension(path, ext));
+
+    let mut count = 0;
+    for file in fetched_files {
+        let content = fs_wrapper::read_to_string(file);
+        count += content.lines().filter(|line| re.is_match(&line)).count();
+    }
+
+    count
 }
 
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is

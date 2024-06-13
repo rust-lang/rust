@@ -25,13 +25,6 @@ pub fn create_file<P: AsRef<Path>>(path: P) {
         .expect(&format!("the file in path \"{}\" could not be created", path.as_ref().display()));
 }
 
-/// A wrapper around [`std::fs::File::open`] which includes the file path in the panic message.
-#[track_caller]
-pub fn open_file<P: AsRef<Path>>(path: P) -> fs::File {
-    fs::File::open(path.as_ref())
-        .expect(&format!("the file in path \"{}\" could not be opened", path.as_ref().display()))
-}
-
 /// A wrapper around [`std::fs::read`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read<P: AsRef<Path>>(path: P) -> Vec<u8> {
