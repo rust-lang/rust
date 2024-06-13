@@ -1,6 +1,9 @@
+#[cfg(feature = "master")]
 use std::convert::TryInto;
 
-use gccjit::{CType, RValue, Struct, Type};
+#[cfg(feature = "master")]
+use gccjit::CType;
+use gccjit::{RValue, Struct, Type};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -124,7 +127,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     #[cfg(feature = "master")]
     fn type_f16(&self) -> Type<'gcc> {
-        if self.context.get_target_info().supports_target_dependent_type(CType::Float16) {
+        if self.supports_f16_type {
             return self.context.new_c_type(CType::Float16);
         }
         unimplemented!("f16")
@@ -137,9 +140,9 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     #[cfg(feature = "master")]
     fn type_f32(&self) -> Type<'gcc> {
-        // if self.context.get_target_info().supports_target_dependent_type(CType::Float32) {
-        // return self.context.new_c_type(CType::Float32);
-        // }
+        if self.supports_f32_type {
+            return self.context.new_c_type(CType::Float32);
+        }
         self.float_type
     }
 
@@ -154,7 +157,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     #[cfg(feature = "master")]
     fn type_f128(&self) -> Type<'gcc> {
-        if self.context.get_target_info().supports_target_dependent_type(CType::Float128) {
+        if self.supports_f128_type {
             return self.context.new_c_type(CType::Float128);
         }
         unimplemented!("f128")
