@@ -250,7 +250,7 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
 impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
-    /// If this is `Left`, we are not currently executing any particular statement in
+    /// If this is `Right`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     ///
@@ -500,6 +500,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
+    /// Returns the span of the currently executed statement/terminator.
+    /// This is the span typically used for error reporting.
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
@@ -507,8 +509,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
+    /// Find the first stack frame that is within the current crate, if any;
+    /// otherwise return the crate's HirId.
     #[inline(always)]
-    /// Find the first stack frame that is within the current crate, if any, otherwise return the crate's HirId
     pub fn best_lint_scope(&self) -> hir::HirId {
         self.stack()
             .iter()
@@ -632,7 +635,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. This is the fancy version of `cur_span`.
+    /// frame which is not `#[track_caller]`. This matches the `caller_location` intrinsic,
+    /// and is primarily intended for the panic machinery.
     pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
         for frame in self.stack().iter().rev() {
             debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
