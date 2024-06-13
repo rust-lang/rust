@@ -1059,7 +1059,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             unsafe { Self::new_unchecked(self.get().unchecked_add(other)) }
         }
 
-        /// Returns the smallest power of two greater than or equal to n.
+        /// Returns the smallest power of two greater than or equal to `self`.
         /// Checks for overflow and returns [`None`]
         /// if the next power of two is greater than the type’s maximum value.
         /// As a consequence, the result cannot wrap to zero.

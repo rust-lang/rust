@@ -2830,7 +2830,7 @@ macro_rules! uint_impl {
         ///
         /// When return value overflows (i.e., `self > (1 << (N-1))` for type
         /// `uN`), it panics in debug mode and the return value is wrapped to 0 in
-        /// release mode (the only situation in which method can return 0).
+        /// release mode (the only situation in which this method can return 0).
         ///
         /// # Examples
         ///
@@ -2851,7 +2851,7 @@ macro_rules! uint_impl {
             self.one_less_than_next_power_of_two() + 1
         }
 
-        /// Returns the smallest power of two greater than or equal to `n`. If
+        /// Returns the smallest power of two greater than or equal to `self`. If
         /// the next power of two is greater than the type's maximum value,
         /// `None` is returned, otherwise the power of two is wrapped in `Some`.
         ///
