@@ -8,7 +8,7 @@ use compiler_builtins::float::Float;
 use rustc_apfloat::{Float as _, FloatConvert as _};
 use testcrate::*;
 
-mod int_to_float {
+mod i_to_f {
     use super::*;
 
     macro_rules! i_to_f {

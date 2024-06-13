@@ -83,6 +83,7 @@ pub(crate) trait Int: MinInt
 
     fn unsigned(self) -> Self::UnsignedInt;
     fn from_unsigned(unsigned: Self::UnsignedInt) -> Self;
+    fn unsigned_abs(self) -> Self::UnsignedInt;
 
     fn from_bool(b: bool) -> Self;
 
@@ -178,7 +179,6 @@ macro_rules! int_impl_common {
         fn wrapping_mul(self, other: Self) -> Self {
             <Self>::wrapping_mul(self, other)
         }
-
         fn wrapping_sub(self, other: Self) -> Self {
             <Self>::wrapping_sub(self, other)
         }
@@ -235,6 +235,10 @@ macro_rules! int_impl {
                 me
             }
 
+            fn unsigned_abs(self) -> Self {
+                self
+            }
+
             fn abs_diff(self, other: Self) -> Self {
                 if self < other {
                     other.wrapping_sub(self)
@@ -266,6 +270,10 @@ macro_rules! int_impl {
 
             fn from_unsigned(me: $uty) -> Self {
                 me as $ity
+            }
+
+            fn unsigned_abs(self) -> Self::UnsignedInt {
+                self.unsigned_abs()
             }
 
             fn abs_diff(self, other: Self) -> $uty {
