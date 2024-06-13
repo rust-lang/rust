@@ -1,0 +1,15 @@
+error[E0271]: type mismatch resolving `Foo == u32`
+  --> $DIR/method_resolution3.rs:16:18
+   |
+LL |     fn bar(self: Bar<u32>) {
+   |                  ^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `Foo == u32`
+  --> $DIR/method_resolution3.rs:21:18
+   |
+LL |     fn baz(self: &Bar<u32>) {
+   |                  ^^^^^^^^^ types differ
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
