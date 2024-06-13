@@ -14,6 +14,7 @@ use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::header::cfg::parse_cfg_name_directive;
 use crate::header::cfg::MatchOutcome;
 use crate::header::needs::CachedNeedsConditions;
+use crate::util::static_regex;
 use crate::{extract_cdb_version, extract_gdb_version};
 
 mod cfg;
@@ -1186,11 +1187,11 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
+    fn parse_custom_normalization(&self, line: &str, prefix: &str) -> Option<(String, String)> {
         if parse_cfg_name_directive(self, line, prefix).outcome == MatchOutcome::Match {
-            let from = parse_normalization_string(&mut line)?;
-            let to = parse_normalization_string(&mut line)?;
-            Some((from, to))
+            let (regex, replacement) = parse_normalize_rule(line)
+                .unwrap_or_else(|| panic!("couldn't parse custom normalization rule: `{line}`"));
+            Some((regex, replacement))
         } else {
             None
         }
@@ -1311,24 +1312,29 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     value
 }
 
-/// Finds the next quoted string `"..."` in `line`, and extract the content from it. Move the `line`
-/// variable after the end of the quoted string.
-///
-/// # Examples
-///
+/// Parses the regex and replacement values of a `//@ normalize-*` header,
+/// in the format:
+/// ```text
+/// normalize-*: "REGEX" -> "REPLACEMENT"
 /// ```
-/// let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
-/// let first = parse_normalization_string(&mut s);
-/// assert_eq!(first, Some("something (32 bits)".to_owned()));
-/// assert_eq!(s, " -> \"something ($WORD bits)\".");
-/// ```
-fn parse_normalization_string(line: &mut &str) -> Option<String> {
-    // FIXME support escapes in strings.
-    let begin = line.find('"')? + 1;
-    let end = line[begin..].find('"')? + begin;
-    let result = line[begin..end].to_owned();
-    *line = &line[end + 1..];
-    Some(result)
+fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
+    // FIXME(#126370): A colon after the header name should be mandatory, but
+    // currently is not, and there are many tests that lack the colon.
+    // FIXME: Support escaped double-quotes in strings.
+    let captures = static_regex!(
+        r#"(?x) # (verbose mode regex)
+        ^
+        [^:\s]+:?\s*            # (header name followed by optional colon)
+        "(?<regex>[^"]*)"       # "REGEX"
+        \s+->\s+                # ->
+        "(?<replacement>[^"]*)" # "REPLACEMENT"
+        $
+        "#
+    )
+    .captures(header)?;
+    let regex = captures["regex"].to_owned();
+    let replacement = captures["replacement"].to_owned();
+    Some((regex, replacement))
 }
 
 pub fn extract_llvm_version(version: &str) -> Option<u32> {
