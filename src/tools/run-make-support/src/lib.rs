@@ -245,6 +245,23 @@ pub fn uname() -> String {
     output.stdout_utf8()
 }
 
+/// Inside a glob pattern of files (paths), read their contents and count the
+/// number of regex matches with a given expression (re).
+#[track_caller]
+pub fn count_regex_matches_in_file_glob(re: &str, paths: &str) -> usize {
+    let re = regex::Regex::new(re).expect(format!("Regex expression {re} is not valid.").as_str());
+    let paths = glob::glob(paths).expect(format!("Glob expression {paths} is not valid.").as_str());
+    use io::BufRead;
+    paths
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.as_path().is_file())
+        .filter_map(|path| fs::File::open(&path).ok())
+        .map(|file| io::BufReader::new(file))
+        .flat_map(|reader| reader.lines().filter_map(|entry| entry.ok()))
+        .filter(|line| re.is_match(line))
+        .count()
+}
+
 fn handle_failed_output(cmd: &Command, output: CompletedProcess, caller_line_number: u32) -> ! {
     if output.status().success() {
         eprintln!("command unexpectedly succeeded at line {caller_line_number}");

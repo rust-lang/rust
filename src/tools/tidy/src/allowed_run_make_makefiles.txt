@@ -206,8 +206,6 @@ run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
 run-make/separate-link-fail/Makefile
 run-make/separate-link/Makefile
-run-make/sepcomp-cci-copies/Makefile
-run-make/sepcomp-inlining/Makefile
 run-make/share-generics-dylib/Makefile
 run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
