@@ -36,6 +36,13 @@
 //!   operations for both destructors and overloading `()`.
 //! * <code>[std::mem]::[drop]</code>, a convenience function for explicitly
 //!   dropping a value.
+//! * <code>[std::mem]::[replace]</code>, a convenience function for replacing
+//!   one value with another while returning the previous value.
+//! * <code>[std::mem]::[take]</code>, a convenience function for replacing a
+//!   value with the default value for its type while returning the previous
+//!   value.
+//! * <code>[std::mem]::[swap]</code>, a convenience function for swapping
+//!   two values.
 //! * <code>[std::mem]::{[size_of], [size_of_val]}</code>, to get the size of
 //!   a type or value.
 //! * <code>[std::mem]::{[align_of], [align_of_val]}</code>, to get the

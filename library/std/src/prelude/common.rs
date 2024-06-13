@@ -17,6 +17,9 @@ pub use crate::mem::drop;
 #[stable(feature = "size_of_prelude", since = "1.80.0")]
 #[doc(no_inline)]
 pub use crate::mem::{align_of, align_of_val, size_of, size_of_val};
+#[stable(feature = "mem_prelude", since = "CURRENT_RUSTC_VERSION")]
+#[doc(no_inline)]
+pub use crate::mem::{replace, swap, take};
 
 // Re-exported types and traits
 #[stable(feature = "rust1", since = "1.0.0")]
