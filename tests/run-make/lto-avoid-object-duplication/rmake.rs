@@ -1,3 +1,4 @@
+// ignore-tidy-tab
 // Staticlibs don't include Rust object files from upstream crates if the same
 // code was already pulled into the lib via LTO. However, the bug described in
 // https://github.com/rust-lang/rust/issues/64153 lead to this exclusion not
@@ -10,6 +11,8 @@
 //@ ignore-windows
 // Reason: `llvm-objdump`'s output looks different on windows than on other platforms.
 // Only checking on Unix platforms should suffice.
+//FIXME(Oneirical): This could be adapted to work on Windows by checking how
+// that output differs.
 
 use run_make_support::{llvm_objdump, regex, rust_lib_name, rustc, static_lib_name};
 
@@ -28,7 +31,7 @@ fn main() {
         .codegen_units(1)
         .run();
     let syms = llvm_objdump().arg("-t").input(static_lib_name("downstream")).run().stdout_utf8();
-    let re = regex::Regex::new(r#"(?m)\s*g\s*F\s.*issue64153_test_function"#).unwrap();
+    let re = regex::Regex::new(r#"\s*g\s*F\s.*issue64153_test_function"#).unwrap();
     // Count the global instances of `issue64153_test_function`. There'll be 2
     // if the `upstream` object file got erroneously included twice.
     // The line we are testing for with the regex looks something like:
