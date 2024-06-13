@@ -98,26 +98,27 @@ impl<A: InternValue + Eq + Hash + Debug + Clone, B: InternValue + Eq + Hash + De
     }
 }
 
-/// Implement [`InternValue`] trivially, that is without actually mapping at all.
-#[macro_export]
-macro_rules! impl_intern_value_trivial {
-    ($($ty:ty),*) => {
-        $(
-            impl $crate::InternValue for $ty {
-                type Key = $ty;
-                #[inline]
-                fn into_key(&self) -> Self::Key {
-                    self.clone()
-                }
-                #[inline]
-                fn with_key<F: FnOnce(&Self::Key) -> T, T>(&self, f: F) -> T {
-                    f(self)
-                }
-            }
-        )*
-    };
+pub trait InternValueTrivial
+where
+    Self: Eq + Hash + Debug + Clone,
+{
 }
-impl_intern_value_trivial!(String);
+
+/// Implement [`InternValue`] trivially, that is without actually mapping at all.
+impl<V: InternValueTrivial> InternValue for V {
+    type Key = Self;
+    #[inline]
+    fn into_key(&self) -> Self::Key {
+        self.clone()
+    }
+    #[inline]
+    fn with_key<F: FnOnce(&Self::Key) -> T, T>(&self, f: F) -> T {
+        f(self)
+    }
+}
+
+impl InternValueTrivial for String {}
+
 #[derive(Debug)]
 struct Slot<V> {
     /// DatabaseKeyIndex for this slot.

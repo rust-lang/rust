@@ -5,7 +5,7 @@ use std::sync;
 
 use base_db::{
     impl_intern_key,
-    salsa::{self, impl_intern_value_trivial},
+    salsa::{self, InternValueTrivial},
     CrateId, Upcast,
 };
 use hir_def::{
@@ -298,7 +298,8 @@ impl_intern_key!(InternedClosureId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
-impl_intern_value_trivial!(InternedClosure);
+
+impl InternValueTrivial for InternedClosure {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedCoroutineId(salsa::InternId);
@@ -306,7 +307,7 @@ impl_intern_key!(InternedCoroutineId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
-impl_intern_value_trivial!(InternedCoroutine);
+impl InternValueTrivial for InternedCoroutine {}
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

@@ -73,7 +73,7 @@ use std::{
 
 use base_db::{
     impl_intern_key,
-    salsa::{self, impl_intern_value_trivial},
+    salsa::{self, InternValueTrivial},
     CrateId,
 };
 use hir_expand::{
@@ -187,7 +187,7 @@ pub trait ItemTreeLoc {
 macro_rules! impl_intern {
     ($id:ident, $loc:ident, $intern:ident, $lookup:ident) => {
         impl_intern_key!($id);
-        impl_intern_value_trivial!($loc);
+        impl InternValueTrivial for $loc {}
         impl_intern_lookup!(DefDatabase, $id, $loc, $intern, $lookup);
     };
 }
@@ -535,7 +535,7 @@ pub struct TypeOrConstParamId {
     pub parent: GenericDefId,
     pub local_id: LocalTypeOrConstParamId,
 }
-impl_intern_value_trivial!(TypeOrConstParamId);
+impl InternValueTrivial for TypeOrConstParamId {}
 
 /// A TypeOrConstParamId with an invariant that it actually belongs to a type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -597,7 +597,7 @@ pub struct LifetimeParamId {
     pub local_id: LocalLifetimeParamId,
 }
 pub type LocalLifetimeParamId = Idx<generics::LifetimeParamData>;
-impl_intern_value_trivial!(LifetimeParamId);
+impl InternValueTrivial for LifetimeParamId {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItemContainerId {
