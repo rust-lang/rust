@@ -24,6 +24,7 @@
 // __cxa_thread_atexit_impl) and its metadata from LLVM IR.
 #[no_sanitize(cfi, kcfi)]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+    use super::weak::weak;
     use crate::mem;
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
 
@@ -37,33 +38,28 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     #[repr(transparent)]
     pub struct c_int(#[allow(dead_code)] pub libc::c_int);
 
-    extern "C" {
-        #[linkage = "extern_weak"]
-        static __dso_handle: *mut u8;
-        #[linkage = "extern_weak"]
-        static __cxa_thread_atexit_impl: Option<
-            extern "C" fn(
-                unsafe extern "C" fn(*mut libc::c_void),
-                *mut libc::c_void,
-                *mut libc::c_void,
-            ) -> c_int,
-        >;
+    weak! {
+        fn __cxa_thread_atexit_impl(
+            unsafe extern "C" fn(*mut libc::c_void),
+            *mut libc::c_void,
+            *mut libc::c_void
+        ) -> c_int
     }
 
-    if let Some(f) = __cxa_thread_atexit_impl {
+    if let Some(at_exit) = __cxa_thread_atexit_impl.get() {
         unsafe {
-            f(
+            at_exit(
                 mem::transmute::<
                     unsafe extern "C" fn(*mut u8),
                     unsafe extern "C" fn(*mut libc::c_void),
                 >(dtor),
                 t.cast(),
-                core::ptr::addr_of!(__dso_handle) as *mut _,
+                t.cast(),
             );
         }
-        return;
+    } else {
+        register_dtor_fallback(t, dtor);
     }
-    register_dtor_fallback(t, dtor);
 }
 
 // This implementation is very similar to register_dtor_fallback in
