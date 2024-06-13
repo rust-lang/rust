@@ -88,7 +88,7 @@ fn check_section<'a>(
         let trimmed_line = line.trim_start_matches(' ');
 
         if trimmed_line.starts_with("//")
-            || (trimmed_line.starts_with("#") && !trimmed_line.starts_with("#!"))
+            || (trimmed_line.starts_with('#') && !trimmed_line.starts_with("#!"))
             || trimmed_line.starts_with(is_close_bracket)
         {
             continue;

@@ -58,7 +58,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
 
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
-    if name == "" {
+    if name.is_empty() {
         return ParsedNameDirective::not_a_directive();
     }
 

@@ -1147,7 +1147,7 @@ fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
 }
 
 fn not_a_digit(c: char) -> bool {
-    !c.is_digit(10)
+    !c.is_ascii_digit()
 }
 
 fn check_overlapping_tests(found_paths: &HashSet<PathBuf>) {

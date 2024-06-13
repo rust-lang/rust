@@ -699,11 +699,9 @@ fn check_permitted_dependencies(
     for dep in deps {
         let dep = pkg_from_id(metadata, dep);
         // If this path is in-tree, we don't require it to be explicitly permitted.
-        if dep.source.is_some() {
-            if !permitted_dependencies.contains(dep.name.as_str()) {
-                tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
-                has_permitted_dep_error = true;
-            }
+        if dep.source.is_some() && !permitted_dependencies.contains(dep.name.as_str()) {
+            tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+            has_permitted_dep_error = true;
         }
     }
 
