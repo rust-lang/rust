@@ -300,7 +300,7 @@ where
     ) -> InterpResult<'tcx, P> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
-            if from.checked_add(to).map_or(true, |to| to > len) {
+            if from.checked_add(to).is_none_or(|to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
                 throw_ub!(BoundsCheckFailed { len: len, index: from.saturating_add(to) });
             }

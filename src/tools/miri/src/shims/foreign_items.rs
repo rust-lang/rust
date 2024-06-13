@@ -396,12 +396,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
                     if align > alloc_align
-                        && !this
+                        && this
                             .machine
                             .symbolic_alignment
                             .get_mut()
                             .get(&alloc_id)
-                            .is_some_and(|&(_, old_align)| align <= old_align)
+                            .is_none_or(|&(_, old_align)| align > old_align)
                     {
                         this.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
                     }
