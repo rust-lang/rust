@@ -22,16 +22,12 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[cfg(any(all(target_os = "linux", target_env = "gnu"), target_vendor = "apple"))]
 use crate::sys::weak::syscall;
-#[cfg(any(target_os = "android", target_os = "macos", target_os = "solaris"))]
+#[cfg(target_os = "android")]
 use crate::sys::weak::weak;
 
 use libc::{c_int, mode_t};
 
-#[cfg(any(
-    target_os = "solaris",
-    all(target_os = "linux", target_env = "gnu"),
-    target_vendor = "apple",
-))]
+#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_vendor = "apple"))]
 use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -1753,19 +1749,6 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
                     // Android has `linkat` on newer versions, but we happen to know `link`
                     // always has the correct behavior, so it's here as well.
                     cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
-                } else if #[cfg(any(target_os = "macos", target_os = "solaris"))] {
-                    // MacOS (<=10.9) and Solaris 10 lack support for linkat while newer
-                    // versions have it. We want to use linkat if it is available, so we use weak!
-                    // to check. `linkat` is preferable to `link` because it gives us a flag to
-                    // specify how symlinks should be handled. We pass 0 as the flags argument,
-                    // meaning it shouldn't follow symlinks.
-                    weak!(fn linkat(c_int, *const c_char, c_int, *const c_char, c_int) -> c_int);
-
-                    if let Some(f) = linkat.get() {
-                        cvt(unsafe { f(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
-                    } else {
-                        cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
-                    };
                 } else {
                     // Where we can, use `linkat` instead of `link`; see the comment above
                     // this one for details on why.
