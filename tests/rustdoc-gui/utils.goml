@@ -10,9 +10,11 @@ define-function: (
         wait-for: "#settings"
         // Change the setting.
         click: "#theme-"+ |theme|
+        // We wait for the radio button to be updated.
+        wait-for: "#theme-"+ |theme| + ":checked"
         // Close the popover.
         click: "#settings-menu"
         // Ensure that the local storage was correctly updated.
-        assert-local-storage: {"rustdoc-theme": |theme|}
+        wait-for-local-storage: {"rustdoc-theme": |theme|}
     },
 )
