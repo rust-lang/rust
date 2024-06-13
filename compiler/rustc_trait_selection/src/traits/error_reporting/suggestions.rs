@@ -3597,7 +3597,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         let rhs_span = match obligation.cause.code() {
             ObligationCauseCode::BinOp { rhs_span: Some(span), rhs_is_lit, .. } if *rhs_is_lit => {
@@ -4863,14 +4863,13 @@ impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
 pub(super) fn get_explanation_based_on_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-    trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+    trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
 ) -> String {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
         "consider using `()`, or a `Result`".to_owned()
     } else {
-        let ty_desc = match trait_ref.skip_binder().self_ty().kind() {
+        let ty_desc = match trait_predicate.self_ty().skip_binder().kind() {
             ty::FnDef(_, _) => Some("fn item"),
             ty::Closure(_, _) => Some("closure"),
             _ => None,
@@ -4895,7 +4894,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
                 trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
+                tcx.short_ty_string(trait_predicate.self_ty().skip_binder(), &mut None),
             )
         } else {
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is
