@@ -1,9 +1,9 @@
+use rustc_infer::infer::relate::{
+    self, structurally_relate_tys, Relate, RelateResult, TypeRelation,
+};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use tracing::{debug, instrument};
-
-use super::{structurally_relate_tys, Relate, RelateResult, TypeRelation};
-use crate::infer::relate;
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// instantiated with values so as to make it equal to A. Matching is
