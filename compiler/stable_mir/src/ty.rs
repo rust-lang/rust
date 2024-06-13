@@ -122,7 +122,7 @@ impl TyConst {
     }
 
     /// Creates an interned usize constant.
-    fn try_from_target_usize(val: u64) -> Result<Self, Error> {
+    pub fn try_from_target_usize(val: u64) -> Result<Self, Error> {
         with(|cx| cx.try_new_ty_const_uint(val.into(), UintTy::Usize))
     }
 
