@@ -55,9 +55,8 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
             inner_check(cx, expr, inner_expr, true);
         } else if let ExprKind::Repeat(inner_expr, _) = expr.kind
             && let ty::Array(_, cst) = cx.typeck_results().expr_ty(expr).kind()
-            && let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind()
-            && let Ok(element_count) = element_count.try_to_target_usize(cx.tcx)
-            && element_count == 0
+            && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
+            && element_count.to_target_usize(cx.tcx) == 0
         {
             inner_check(cx, expr, inner_expr, false);
         }

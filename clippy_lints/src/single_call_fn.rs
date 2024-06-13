@@ -86,7 +86,6 @@ impl SingleCallFn {
                 .tcx
                 .hir()
                 .maybe_body_owned_by(fn_def_id)
-                .map(|body| cx.tcx.hir().body(body))
                 .map_or(true, |body| is_in_test_function(cx.tcx, body.value.hir_id))
             || match cx.tcx.hir_node(fn_hir_id) {
                 Node::Item(item) => is_from_proc_macro(cx, item),

@@ -186,7 +186,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
         if is_lint_allowed(cx, MACRO_METAVARS_IN_UNSAFE, body.value.hir_id) {
             return;
         }

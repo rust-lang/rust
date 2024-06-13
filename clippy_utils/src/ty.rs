@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
-use rustc_target::abi::{Size, VariantIdx};
+use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
@@ -750,7 +750,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                     let output = bounds
                         .projection_bounds()
                         .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
-                        .map(|p| p.map_bound(|p| p.term.ty().unwrap()));
+                        .map(|p| p.map_bound(|p| p.term.expect_type()));
                     Some(ExprFnSig::Trait(bound.map_bound(|b| b.args.type_at(0)), output, None))
                 },
                 _ => None,
@@ -798,7 +798,7 @@ fn sig_from_bounds<'tcx>(
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(pred.kind().rebind(p.term.ty().unwrap()));
+                output = Some(pred.kind().rebind(p.term.expect_type()));
             },
             _ => (),
         }
@@ -836,7 +836,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = pred.kind().rebind(p.term.ty()).transpose();
+                output = pred.kind().rebind(p.term.as_type()).transpose();
             },
             _ => (),
         }
@@ -861,26 +861,11 @@ impl core::ops::Add<u32> for EnumValue {
 }
 
 /// Attempts to read the given constant as though it were an enum value.
-#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
         match tcx.type_of(id).instantiate_identity().kind() {
-            ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
-                1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),
-                2 => i128::from(value.assert_bits(Size::from_bytes(2)) as u16 as i16),
-                4 => i128::from(value.assert_bits(Size::from_bytes(4)) as u32 as i32),
-                8 => i128::from(value.assert_bits(Size::from_bytes(8)) as u64 as i64),
-                16 => value.assert_bits(Size::from_bytes(16)) as i128,
-                _ => return None,
-            })),
-            ty::Uint(_) => Some(EnumValue::Unsigned(match value.size().bytes() {
-                1 => value.assert_bits(Size::from_bytes(1)),
-                2 => value.assert_bits(Size::from_bytes(2)),
-                4 => value.assert_bits(Size::from_bytes(4)),
-                8 => value.assert_bits(Size::from_bytes(8)),
-                16 => value.assert_bits(Size::from_bytes(16)),
-                _ => return None,
-            })),
+            ty::Int(_) => Some(EnumValue::Signed(value.to_int(value.size()))),
+            ty::Uint(_) => Some(EnumValue::Unsigned(value.to_uint(value.size()))),
             _ => None,
         }
     } else {

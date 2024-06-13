@@ -207,7 +207,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                 .any(|field| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Adt(def, args) if def.is_enum() => {
                 let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
-                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
+                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
                 fields
                     .iter()
                     .copied()

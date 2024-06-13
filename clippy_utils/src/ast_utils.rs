@@ -108,7 +108,7 @@ pub fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
 pub fn eq_angle_arg(l: &AngleBracketedArg, r: &AngleBracketedArg) -> bool {
     match (l, r) {
         (AngleBracketedArg::Arg(l), AngleBracketedArg::Arg(r)) => eq_generic_arg(l, r),
-        (AngleBracketedArg::Constraint(l), AngleBracketedArg::Constraint(r)) => eq_assoc_constraint(l, r),
+        (AngleBracketedArg::Constraint(l), AngleBracketedArg::Constraint(r)) => eq_assoc_item_constraint(l, r),
         _ => false,
     }
 }
@@ -308,13 +308,15 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ty: lt,
                 mutability: lm,
                 expr: le,
+                safety: ls,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
+                safety: rs,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Const(box ConstItem {
                 defaultness: ld,
@@ -451,13 +453,15 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 ty: lt,
                 mutability: lm,
                 expr: le,
+                safety: ls,
             }),
             Static(box StaticForeignItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
+                safety: rs,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re) && ls == rs,
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -802,8 +806,8 @@ fn eq_term(l: &Term, r: &Term) -> bool {
     }
 }
 
-pub fn eq_assoc_constraint(l: &AssocConstraint, r: &AssocConstraint) -> bool {
-    use AssocConstraintKind::*;
+pub fn eq_assoc_item_constraint(l: &AssocItemConstraint, r: &AssocItemConstraint) -> bool {
+    use AssocItemConstraintKind::*;
     eq_id(l.ident, r.ident)
         && match (&l.kind, &r.kind) {
             (Equality { term: l }, Equality { term: r }) => eq_term(l, r),

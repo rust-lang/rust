@@ -6,7 +6,7 @@ use crate::{clip, is_direct_expn_of, sext, unsext};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
+use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{alloc_range, Scalar};
@@ -412,7 +412,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
-            ExprKind::ConstBlock(e) | ExprKind::DropTemps(e) => self.expr(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.lcx.tcx.hir().body(body).value),
+            ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => {
                 self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |this, result| {
                     let result = mir_to_const(this.lcx, result)?;
@@ -490,7 +491,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// leaves the local crate.
     pub fn expr_is_empty(&mut self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(e) | ExprKind::DropTemps(e) => self.expr_is_empty(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr_is_empty(self.lcx.tcx.hir().body(body).value),
+            ExprKind::DropTemps(e) => self.expr_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
                     .typeck_results
@@ -810,14 +812,10 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
         (ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
-            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
-            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                int.try_into().expect("invalid f32 bit representation"),
-            ))),
-            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                int.try_into().expect("invalid f64 bit representation"),
-            ))),
-            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
+            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),
+            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(int.into()))),
+            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(int.into()))),
+            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.to_bits(int.size()))),
             _ => None,
         },
         (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
