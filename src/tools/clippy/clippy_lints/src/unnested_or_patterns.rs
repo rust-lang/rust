@@ -14,7 +14,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 use std::cell::Cell;
-use std::mem;
 use thin_vec::{thin_vec, ThinVec};
 
 declare_clippy_lint! {
@@ -123,7 +122,7 @@ fn remove_all_parens(pat: &mut P<Pat>) {
         fn visit_pat(&mut self, pat: &mut P<Pat>) {
             noop_visit_pat(pat, self);
             let inner = match &mut pat.kind {
-                Paren(i) => mem::replace(&mut i.kind, Wild),
+                Paren(i) => replace(&mut i.kind, Wild),
                 _ => return,
             };
             pat.kind = inner;
@@ -170,7 +169,7 @@ fn unnest_or_patterns(pat: &mut P<Pat>) -> bool {
             let mut this_level_changed = false;
             while idx < alternatives.len() {
                 let inner = if let Or(ps) = &mut alternatives[idx].kind {
-                    mem::take(ps)
+                    take(ps)
                 } else {
                     idx += 1;
                     continue;
@@ -215,7 +214,7 @@ macro_rules! always_pat {
 /// in `alternatives[focus_idx + 1..]`.
 fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: usize) -> bool {
     // Extract the kind; we'll need to make some changes in it.
-    let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, Wild);
+    let mut focus_kind = replace(&mut alternatives[focus_idx].kind, Wild);
     // We'll focus on `alternatives[focus_idx]`,
     // so we're draining from `alternatives[focus_idx + 1..]`.
     let start = focus_idx + 1;
@@ -359,7 +358,7 @@ fn take_pat(from: &mut Pat) -> Pat {
         span: DUMMY_SP,
         tokens: None,
     };
-    mem::replace(from, dummy)
+    replace(from, dummy)
 }
 
 /// Extend `target` as an or-pattern with the alternatives

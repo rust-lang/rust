@@ -208,7 +208,7 @@ where
 
     impl<F> RetFinder<F> {
         fn inside_stmt(&mut self, in_stmt: bool) -> WithStmtGuard<'_, F> {
-            let prev_in_stmt = std::mem::replace(&mut self.in_stmt, in_stmt);
+            let prev_in_stmt = replace(&mut self.in_stmt, in_stmt);
             WithStmtGuard {
                 val: self,
                 prev_in_stmt,

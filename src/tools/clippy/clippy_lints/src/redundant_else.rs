@@ -123,7 +123,7 @@ impl<'ast> Visitor<'ast> for BreakVisitor {
 impl BreakVisitor {
     fn check<T>(&mut self, item: T, visit: fn(&mut Self, T)) -> bool {
         visit(self, item);
-        std::mem::replace(&mut self.is_break, false)
+        replace(&mut self.is_break, false)
     }
 
     fn check_block(&mut self, block: &Block) -> bool {

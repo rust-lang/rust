@@ -222,7 +222,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
     fn find_sig_drop(&mut self, match_expr: &'tcx Expr<'_>) -> Vec<FoundSigDrop> {
         self.visit_expr(match_expr);
 
-        core::mem::take(&mut self.sig_drop_spans)
+        take(&mut self.sig_drop_spans)
     }
 
     fn replace_current_sig_drop(&mut self, found_span: Span, is_unit_return_val: bool, peel_ref_times: usize) {
@@ -376,8 +376,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
 
         // These states are of neighborhood expressions. We save and clear them here, and we'll later merge
         // the states of the current expression with them at the end of the method.
-        let sig_drop_holder_before = core::mem::take(&mut self.sig_drop_holder);
-        let sig_drop_spans_before = core::mem::take(&mut self.sig_drop_spans);
+        let sig_drop_holder_before = take(&mut self.sig_drop_holder);
+        let sig_drop_spans_before = take(&mut self.sig_drop_spans);
         let parent_expr_before = self.parent_expr.replace(ex);
 
         match ex.kind {

@@ -1,4 +1,3 @@
-use std::mem;
 use std::ops::ControlFlow;
 
 use clippy_utils::comparisons::{normalize_comparison, Rel};
@@ -290,7 +289,7 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
             {
                 *entry = IndexEntry::AssertWithIndex {
                     highest_index: *highest_index,
-                    indexes: mem::take(indexes),
+                    indexes: take(indexes),
                     slice,
                     assert_span: expr.span,
                     comparison,

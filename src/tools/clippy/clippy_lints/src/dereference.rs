@@ -5,7 +5,6 @@ use clippy_utils::ty::{implements_trait, is_manually_drop, peel_mid_ty_refs};
 use clippy_utils::{
     expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
 };
-use core::mem;
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -714,7 +713,7 @@ fn try_parse_ref_op<'tcx>(
 // Checks if the adjustments contains a deref of `ManuallyDrop<_>`
 fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
     adjustments.iter().any(|a| {
-        let ty = mem::replace(&mut ty, a.target);
+        let ty = replace(&mut ty, a.target);
         matches!(a.kind, Adjust::Deref(Some(ref op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
     })
 }

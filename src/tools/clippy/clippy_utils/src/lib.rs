@@ -81,7 +81,6 @@ pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };
 
-use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
@@ -3108,7 +3107,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                     self.is_never = true;
                 },
                 ExprKind::If(cond, then, else_) => {
-                    let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                    let in_final_expr = replace(&mut self.in_final_expr, false);
                     self.visit_expr(cond);
                     self.in_final_expr = in_final_expr;
 
@@ -3119,7 +3118,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                         }
                     } else {
                         self.visit_expr(then);
-                        let is_never = mem::replace(&mut self.is_never, false);
+                        let is_never = replace(&mut self.is_never, false);
                         if let Some(else_) = else_ {
                             self.visit_expr(else_);
                             self.is_never &= is_never;
@@ -3127,7 +3126,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                     }
                 },
                 ExprKind::Match(scrutinee, arms, _) => {
-                    let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                    let in_final_expr = replace(&mut self.in_final_expr, false);
                     self.visit_expr(scrutinee);
                     self.in_final_expr = in_final_expr;
 
@@ -3140,7 +3139,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                         for arm in arms {
                             self.is_never = false;
                             if let Some(guard) = arm.guard {
-                                let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                                let in_final_expr = replace(&mut self.in_final_expr, false);
                                 self.visit_expr(guard);
                                 self.in_final_expr = in_final_expr;
                                 // The compiler doesn't consider diverging guards as causing the arm to diverge.
@@ -3176,7 +3175,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
         }
 
         fn visit_block(&mut self, b: &'tcx Block<'_>) {
-            let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+            let in_final_expr = replace(&mut self.in_final_expr, false);
             for s in b.stmts {
                 self.visit_stmt(s);
             }
@@ -3199,7 +3198,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
 
         fn visit_arm(&mut self, arm: &Arm<'tcx>) {
             if let Some(guard) = arm.guard {
-                let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                let in_final_expr = replace(&mut self.in_final_expr, false);
                 self.visit_expr(guard);
                 self.in_final_expr = in_final_expr;
             }

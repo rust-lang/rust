@@ -13,7 +13,7 @@ use rustc_lint::LateContext;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
-use std::{iter, mem};
+use std::iter;
 
 /// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
@@ -135,7 +135,7 @@ pub(super) fn check<'tcx>(
                 let mut method_2 = skip;
 
                 if end_is_start_plus_val {
-                    mem::swap(&mut method_1, &mut method_2);
+                    swap(&mut method_1, &mut method_2);
                 }
 
                 if visitor.nonindex {

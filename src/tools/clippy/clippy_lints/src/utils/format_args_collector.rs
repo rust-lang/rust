@@ -8,7 +8,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{hygiene, Span};
 use std::iter::once;
-use std::mem;
 
 /// Populates [`FormatArgsStorage`] with AST [`FormatArgs`] nodes
 pub struct FormatArgsCollector {
@@ -39,7 +38,7 @@ impl EarlyLintPass for FormatArgsCollector {
     }
 
     fn check_crate_post(&mut self, _: &EarlyContext<'_>, _: &Crate) {
-        self.storage.set(mem::take(&mut self.format_args));
+        self.storage.set(take(&mut self.format_args));
     }
 }
 
