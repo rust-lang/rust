@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::visitors::{for_each_expr_with_closures, Visitable};
+use clippy_utils::visitors::{for_each_expr, Visitable};
 use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_hir::{Body, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
@@ -82,7 +82,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
     let mut has_read_access = false;
 
     // Inspect all expressions and sub-expressions in the block.
-    for_each_expr_with_closures(cx, block, |expr| {
+    for_each_expr(cx, block, |expr| {
         // Ignore expressions that are not simply `id`.
         if !path_to_local_id(expr, id) {
             return ControlFlow::Continue(());

@@ -131,3 +131,15 @@ fn needless_bool_condition() -> bool {
 
     foo()
 }
+
+fn issue12846() {
+    let a = true;
+    let b = false;
+
+    // parentheses are needed here
+    let _x = (a && b).then(|| todo!());
+    let _x = (a && b) as u8;
+
+    // parentheses are not needed here
+    let _x = a.then(|| todo!());
+}

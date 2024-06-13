@@ -2,9 +2,8 @@ error: `to_string()` called on a `&str`
   --> tests/ui/str_to_string.rs:4:17
    |
 LL |     let hello = "hello world".to_string();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"hello world".to_owned()`
    |
-   = help: consider using `.to_owned()`
    = note: `-D clippy::str-to-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::str_to_string)]`
 
@@ -12,9 +11,7 @@ error: `to_string()` called on a `&str`
   --> tests/ui/str_to_string.rs:7:5
    |
 LL |     msg.to_string();
-   |     ^^^^^^^^^^^^^^^
-   |
-   = help: consider using `.to_owned()`
+   |     ^^^^^^^^^^^^^^^ help: try: `msg.to_owned()`
 
 error: aborting due to 2 previous errors
 

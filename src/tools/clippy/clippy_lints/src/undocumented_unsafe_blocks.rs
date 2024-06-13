@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
+use clippy_utils::visitors::{for_each_expr, Descend};
 use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -296,7 +296,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     }
 
     // this should roughly be the reverse of `block_parents_have_safety_comment`
-    if for_each_expr_with_closures(cx, expr, |expr| match expr.kind {
+    if for_each_expr(cx, expr, |expr| match expr.kind {
         hir::ExprKind::Block(
             Block {
                 rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),

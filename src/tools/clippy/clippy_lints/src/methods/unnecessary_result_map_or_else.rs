@@ -4,10 +4,11 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{Closure, Expr, ExprKind, HirId, QPath, Stmt, StmtKind};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, QPath};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
+use super::utils::get_last_chain_binding_hir_id;
 use super::UNNECESSARY_RESULT_MAP_OR_ELSE;
 
 fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_arg: &Expr<'_>) {
@@ -23,22 +24,6 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_arg: &E
         format!("{self_snippet}.unwrap_or_else({err_snippet})"),
         Applicability::MachineApplicable,
     );
-}
-
-fn get_last_chain_binding_hir_id(mut hir_id: HirId, statements: &[Stmt<'_>]) -> Option<HirId> {
-    for stmt in statements {
-        if let StmtKind::Let(local) = stmt.kind
-            && let Some(init) = local.init
-            && let ExprKind::Path(QPath::Resolved(_, path)) = init.kind
-            && let hir::def::Res::Local(local_hir_id) = path.res
-            && local_hir_id == hir_id
-        {
-            hir_id = local.pat.hir_id;
-        } else {
-            return None;
-        }
-    }
-    Some(hir_id)
 }
 
 fn handle_qpath(

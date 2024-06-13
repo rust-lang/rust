@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Node};
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// side_effect();
     /// let a: [i32; 0] = [];
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.79.0"]
     pub ZERO_REPEAT_SIDE_EFFECTS,
     suspicious,
     "usage of zero-sized initializations of arrays or vecs causing side effects"
@@ -65,7 +65,7 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
 
 fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: &'_ rustc_hir::Expr<'_>, is_vec: bool) {
     // check if expr is a call or has a call inside it
-    if for_each_expr(inner_expr, |x| {
+    if for_each_expr_without_closures(inner_expr, |x| {
         if let ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) = x.kind {
             std::ops::ControlFlow::Break(())
         } else {
