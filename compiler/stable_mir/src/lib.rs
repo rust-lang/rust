@@ -22,8 +22,7 @@ use std::fmt::Debug;
 use std::io;
 
 use crate::compiler_interface::with;
-pub use crate::crate_def::CrateDef;
-pub use crate::crate_def::DefId;
+pub use crate::crate_def::{CrateDef, CrateDefType, DefId};
 pub use crate::error::*;
 use crate::mir::Body;
 use crate::mir::Mutability;
@@ -115,12 +114,15 @@ pub enum CtorKind {
 
 pub type Filename = String;
 
-crate_def! {
+crate_def_with_ty! {
     /// Holds information about an item in a crate.
     pub CrateItem;
 }
 
 impl CrateItem {
+    /// This will return the body of an item.
+    ///
+    /// This will panic if no body is available.
     pub fn body(&self) -> mir::Body {
         with(|cx| cx.mir_body(self.0))
     }
