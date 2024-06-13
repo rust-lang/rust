@@ -1,8 +1,7 @@
 import * as vscode from "vscode";
-import * as toolchain from "./toolchain";
 import type { Config } from "./config";
 import { log } from "./util";
-import { unwrapUndefinable } from "./undefinable";
+import { expectNotUndefined, unwrapUndefinable } from "./undefinable";
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
@@ -142,14 +141,16 @@ async function cargoToExecution(
     if (definition.type === TASK_TYPE) {
         // Check whether we must use a user-defined substitute for cargo.
         // Split on spaces to allow overrides like "wrapper cargo".
-        const cargoPath = await toolchain.cargoPath();
-        const cargoCommand = definition.overrideCargo?.split(" ") ?? [cargoPath];
+        const cargoCommand = definition.overrideCargo?.split(" ") ?? [definition.command];
 
-        const args = [definition.command].concat(definition.args ?? []);
-        const fullCommand = [...cargoCommand, ...args];
-        const processName = unwrapUndefinable(fullCommand[0]);
+        const definitionArgs = expectNotUndefined(
+            definition.args,
+            "args were not provided via runnables; this is a bug.",
+        );
+        const args = [...cargoCommand.slice(1), ...definitionArgs];
+        const processName = unwrapUndefinable(cargoCommand[0]);
 
-        return new vscode.ProcessExecution(processName, fullCommand.slice(1), {
+        return new vscode.ProcessExecution(processName, args, {
             cwd: definition.cwd,
             env: definition.env,
         });
