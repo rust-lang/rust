@@ -58,8 +58,27 @@ macro_rules! float_to_int {
     };
 }
 
-float_to_int!(f32 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+// FIXME(f16_f128): this is just used while we don't have `to_int_unchecked` on `f16` and `f128`.
+// Just use `float_to_int` once available.
+macro_rules! float_to_int_fallback {
+    ($fty:ty => $($ity:ty),+ $(,)?) => {
+        $(
+            impl FloatToInt<$ity> for $fty {
+                fn cast(self) -> $ity {
+                    self as _
+                }
+                unsafe fn cast_unchecked(self) -> $ity {
+                    self as _
+                }
+            }
+        )*
+    };
+}
+
+float_to_int_fallback!(f16 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+float_to_int!(f32=> i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 float_to_int!(f64 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+float_to_int_fallback!(f128 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 
 /// Test this cast both via `as` and via `approx_unchecked` (i.e., it must not saturate).
 #[track_caller]
@@ -151,6 +170,73 @@ fn basic() {
 /// Many of these test values are taken from
 /// https://github.com/WebAssembly/testsuite/blob/master/conversions.wast.
 fn casts() {
+    /* f16 -> int */
+
+    // f16 -> i8
+    test_both_cast::<f16, i8>(127.99, 127);
+    test_both_cast::<f16, i8>(-128.99, -128);
+
+    // f16 -> i16
+    test_both_cast::<f16, i16>(0.0, 0);
+    test_both_cast::<f16, i16>(-0.0, 0);
+    test_both_cast::<f16, i16>(/*0x1p-149*/ f16::from_bits(0x0001), 0);
+    test_both_cast::<f16, i16>(/*-0x1p-149*/ f16::from_bits(0x8001), 0);
+    test_both_cast::<f16, i16>(/*0x1.19999ap+0*/ f16::from_bits(0x3f8c), 1);
+    test_both_cast::<f16, i16>(/*-0x1.19999ap+0*/ f16::from_bits(0xbf8d), -1);
+    test_both_cast::<f16, i16>(1.9, 1);
+    test_both_cast::<f16, i16>(-1.9, -1);
+    test_both_cast::<f16, i16>(5.0, 5);
+    test_both_cast::<f16, i16>(-5.0, -5);
+    test_both_cast::<f16, i16>(32767.0, i16::MAX);
+    test_both_cast::<f16, i16>(-32768.0, i16::MIN);
+    // unrepresentable casts
+    assert_eq::<i16>(32767.0f16 as i16, i16::MAX);
+    assert_eq::<i16>(-32768.0f16 as i16, i16::MIN);
+    assert_eq::<i16>(32780.0f16 as i16, i16::MAX);
+    assert_eq::<i16>(-32780.0f16 as i16, i16::MIN);
+    // FIXME(f16_f128): enable once constants are available
+    // assert_eq::<i16>(f16::INFINITY as i16, i16::MAX);
+    // assert_eq::<i16>(f16::NEG_INFINITY as i16, i16::MIN);
+    // assert_eq::<i16>(f16::NAN as i16, 0);
+    // assert_eq::<i16>((-f16::NAN) as i16, 0);
+
+    // f16 -> u16
+    test_both_cast::<f16, u16>(0.0, 0);
+    test_both_cast::<f16, u16>(-0.0, 0);
+    test_both_cast::<f16, u16>(-0.9999999, 0);
+    test_both_cast::<f16, u16>(/*0x1p-149*/ f16::from_bits(0x1), 0);
+    test_both_cast::<f16, u16>(/*-0x1p-149*/ f16::from_bits(0x8001), 0);
+    test_both_cast::<f16, u16>(/*0x1.19999ap+0*/ f16::from_bits(0x3f8d), 1);
+    test_both_cast::<f16, u16>(1.9, 1);
+    test_both_cast::<f16, u16>(5.0, 5);
+    test_both_cast::<f16, u16>(32768.0, 0x8000);
+    test_both_cast::<f16, u16>(65408.0, 0u16.wrapping_sub(128));
+    test_both_cast::<f16, u16>(/*-0x1.ccccccp-1*/ f16::from_bits(0xbb33), 0);
+    test_both_cast::<f16, u16>(/*-0x1.fffffep-1*/ f16::from_bits(0xbbff), 0);
+    // TODO
+    // test_both_cast::<f16, u16>((u16::MAX - 16) as f16, u16::MAX - 31); // rounding loss
+    // unrepresentable casts
+    assert_eq::<u16>((u16::MAX - 8) as f16 as u16, u16::MAX); // rounds up and then becomes unrepresentable
+    assert_eq::<u16>(65536.0f16 as u16, u16::MAX);
+    assert_eq::<u16>(-5.0f16 as u16, 0);
+    assert_eq::<u16>(f16::MAX as u16, 65504);
+    assert_eq::<u16>(f16::MIN as u16, 0);
+    // FIXME(f16_f128): enable once constants are available
+    // assert_eq::<u16>(f16::INFINITY as u16, u16::MAX);
+    // assert_eq::<u16>(f16::NEG_INFINITY as u16, 0);
+    // assert_eq::<u16>(f16::NAN as u16, 0);
+    // assert_eq::<u16>((-f16::NAN) as u16, 0);
+
+    // f16 -> i32
+    assert_eq::<i32>(f16::MAX as i32, 65504);
+    assert_eq::<i32>(f16::MIN as i32, -65504);
+
+    // f16 -> u32
+    assert_eq::<u32>(f16::MAX as u32, 65504);
+    assert_eq::<u32>(f16::MIN as u32, 0);
+
+    /* f32 -> int */
+
     // f32 -> i8
     test_both_cast::<f32, i8>(127.99, 127);
     test_both_cast::<f32, i8>(-128.99, -128);
@@ -208,6 +294,8 @@ fn casts() {
     test_both_cast::<f32, i64>(-4294967296.0, -4294967296);
     test_both_cast::<f32, i64>(9223371487098961920.0, 9223371487098961920);
     test_both_cast::<f32, i64>(-9223372036854775808.0, -9223372036854775808);
+
+    /* f64 -> int */
 
     // f64 -> i8
     test_both_cast::<f64, i8>(127.99, 127);
@@ -288,6 +376,134 @@ fn casts() {
     assert_eq::<u128>(f64::MAX as u128, u128::MAX);
     assert_eq::<u128>(f64::MIN as u128, 0);
 
+    /* f128 -> int */
+
+    // f128 -> i8
+    test_both_cast::<f128, i8>(127.99, 127);
+    test_both_cast::<f128, i8>(-128.99, -128);
+
+    // f128 -> i32
+    test_both_cast::<f128, i32>(0.0, 0);
+    test_both_cast::<f128, i32>(-0.0, 0);
+    test_both_cast::<f128, i32>(
+        /*0x1.199999999999ap+0*/ f128::from_bits(0x3fff199999999999999999999999999a),
+        1,
+    );
+    test_both_cast::<f128, i32>(
+        /*-0x1.199999999999ap+0*/ f128::from_bits(0xbfff199999999999999999999999999a),
+        -1,
+    );
+    test_both_cast::<f128, i32>(1.9, 1);
+    test_both_cast::<f128, i32>(-1.9, -1);
+    test_both_cast::<f128, i32>(1e8, 100_000_000);
+    test_both_cast::<f128, i32>(2147483647.0, 2147483647);
+    test_both_cast::<f128, i32>(-2147483648.0, -2147483648);
+    // unrepresentable casts
+    assert_eq::<i32>(2147483648.0f128 as i32, i32::MAX);
+    assert_eq::<i32>(-2147483649.0f128 as i32, i32::MIN);
+
+    // f128 -> i64
+    test_both_cast::<f128, i64>(0.0, 0);
+    test_both_cast::<f128, i64>(-0.0, 0);
+    test_both_cast::<f128, i64>(/*0x0.0000000000001p-1022*/ f128::from_bits(0x1), 0);
+    test_both_cast::<f128, i64>(
+        /*-0x0.0000000000001p-1022*/ f128::from_bits(0x80000000000000000000000000000001),
+        0,
+    );
+    test_both_cast::<f128, i64>(
+        /*0x1.199999999999ap+0*/ f128::from_bits(0x3fff199999999999999999999999999a),
+        1,
+    );
+    test_both_cast::<f128, i64>(
+        /*-0x1.199999999999ap+0*/ f128::from_bits(0xbfff199999999999999999999999999a),
+        -1,
+    );
+    test_both_cast::<f128, i64>(5.0, 5);
+    test_both_cast::<f128, i64>(5.9, 5);
+    test_both_cast::<f128, i64>(-5.0, -5);
+    test_both_cast::<f128, i64>(-5.9, -5);
+    test_both_cast::<f128, i64>(4294967296.0, 4294967296);
+    test_both_cast::<f128, i64>(-4294967296.0, -4294967296);
+    test_both_cast::<f128, i64>(9223372036854774784.0, 9223372036854774784);
+    test_both_cast::<f128, i64>(-9223372036854775808.0, -9223372036854775808);
+    // unrepresentable casts
+    assert_eq::<i64>(9223372036854775808.0f128 as i64, i64::MAX);
+    assert_eq::<i64>(-9223372036854777856.0f128 as i64, i64::MIN);
+    assert_eq::<i64>(f128::MAX as i64, i64::MAX);
+    assert_eq::<i64>(f128::MIN as i64, i64::MIN);
+    // FIXME(f16_f128): enable once constants are available
+    // assert_eq::<i64>(f128::INFINITY as i64, i64::MAX);
+    // assert_eq::<i64>(f128::NEG_INFINITY as i64, i64::MIN);
+    // assert_eq::<i64>(f128::NAN as i64, 0);
+    // assert_eq::<i64>((-f128::NAN) as i64, 0);
+
+    // f128 -> u64
+    test_both_cast::<f128, u64>(0.0, 0);
+    test_both_cast::<f128, u64>(-0.0, 0);
+    test_both_cast::<f128, u64>(-0.99999999999, 0);
+    test_both_cast::<f128, u64>(5.0, 5);
+    test_both_cast::<f128, u64>(1e16, 10000000000000000);
+    test_both_cast::<f128, u64>(9223372036854775808.0, 9223372036854775808);
+    // unrepresentable casts
+    assert_eq::<u64>(-5.0f128 as u64, 0);
+    assert_eq::<u64>(18446744073709551616.0f128 as u64, u64::MAX);
+    assert_eq::<u64>(f128::MAX as u64, u64::MAX);
+    assert_eq::<u64>(f128::MIN as u64, 0);
+    // FIXME(f16_f128): enable once constants are available
+    // assert_eq::<u64>(f128::INFINITY as u64, u64::MAX);
+    // assert_eq::<u64>(f128::NEG_INFINITY as u64, 0);
+    // assert_eq::<u64>(f128::NAN as u64, 0);
+    // assert_eq::<u64>((-f128::NAN) as u64, 0);
+
+    // f128 -> i128
+    assert_eq::<i128>(f128::MAX as i128, i128::MAX);
+    assert_eq::<i128>(f128::MIN as i128, i128::MIN);
+
+    // f128 -> u128
+    test_both_cast::<f128, u128>(0.0, 0);
+    test_both_cast::<f128, u128>(-0.0, 0);
+    test_both_cast::<f128, u128>(-0.99999999999, 0);
+    test_both_cast::<f128, u128>(5.0, 5);
+    test_both_cast::<f128, u128>(1e16, 10000000000000000);
+    test_both_cast::<f128, u128>((u128::MAX - 16384) as f128, u128::MAX - 32767); // rounding loss
+    test_both_cast::<f128, u128>(
+        170141183460469231731687303715884105728.0,
+        170141183460469231731687303715884105728,
+    );
+    // unrepresentable casts
+    assert_eq::<u128>(-5.0f128 as u128, 0);
+    assert_eq::<u128>((u128::MAX - 1023) as f128 as u128, u128::MAX); // rounds up and then becomes unrepresentable
+    assert_eq::<u128>(340282366920938463463374607431768211456.0f128 as u128, u128::MAX);
+    assert_eq::<u128>(f128::MAX as u128, u128::MAX);
+    assert_eq::<u128>(f128::MIN as u128, 0);
+    // FIXME(f16_f128): enable once constants are available
+    // assert_eq::<u128>(f128::INFINITY as u128, u128::MAX);
+    // assert_eq::<u128>(f128::NEG_INFINITY as u128, 0);
+    // assert_eq::<u128>(f128::NAN as u128, 0);
+    // assert_eq::<u128>((-f128::NAN) as u128, 0);
+
+    assert_eq::<u128>(f128::MAX as u128, u128::MAX);
+    assert_eq::<u128>(f128::MIN as u128, 0);
+
+    /* int -> float */
+
+    // int -> f16
+    assert_eq::<f16>(127i8 as f16, 127.0);
+    assert_eq::<f16>(i16::MAX as f16, 32767.0);
+    assert_eq::<f16>(i16::MIN as f16, -32768.0);
+    assert_eq::<f16>(12345i16 as f16, /*0x1.26580cp+30*/ f16::from_bits(0x7207));
+    assert_eq::<f16>(16777i16 as f16, 16777216.0);
+    assert_eq::<f16>((-16772i16) as f16, -16777216.0);
+    assert_eq::<f16>(16772i16 as f16, 16777220.0);
+    assert_eq::<f16>((-16772i16) as f16, -16777220.0);
+    assert_eq::<f16>(0x7ff40001i32 as f16, /*0x1.fffffep+62*/ f16::from_bits(0x5eff));
+    assert_eq::<f16>(0x80040001u32 as i32 as f16, /*-0x1.fffffep+62*/ f16::from_bits(0xdeff));
+    assert_eq::<f16>(0x02002001i32 as f16, /*0x1.000002p+53*/ f16::from_bits(0x5a01));
+    assert_eq::<f16>(0xfdffdfffu32 as i32 as f16, /*-0x1.000002p+53*/ f16::from_bits(0xda01));
+    assert_eq::<f16>(i128::MIN as f16, -170141183460469231731687303715884105728.0f16);
+    // FIXME(f16_f128): enable once constants are available
+    // assert_eq::<f16>(u128::MAX as f16, f16::INFINITY); // saturation
+
     // int -> f32
     assert_eq::<f32>(127i8 as f32, 127.0);
     assert_eq::<f32>(2147483647i32 as f32, 2147483648.0);
@@ -330,6 +546,100 @@ fn casts() {
     assert_eq::<f64>(9007199254740995i64 as f64, 9007199254740996.0);
     assert_eq::<f64>(-9007199254740995i64 as f64, -9007199254740996.0);
     assert_eq::<f64>(u128::MAX as f64, 340282366920938463463374607431768211455.0f64); // even that fits...
+
+    /* float -> float */
+
+    // // f16 -> f32
+    // assert_eq::<u32>((0.0f16 as f32).to_bits(), 0.0f32.to_bits());
+    // assert_eq::<u32>(((-0.0f16) as f32).to_bits(), (-0.0f32).to_bits());
+    // assert_eq::<f32>(5.0f16 as f32, 5.0f32);
+    // assert_eq::<f32>(
+    //     /*0x1p-149*/ f16::from_bits(0x1) as f32,
+    //     /*0x1p-149*/ f32::from_bits(0x33),
+    // );
+    // assert_eq::<f32>(
+    //     /*-0x1p-149*/ f16::from_bits(0x8001) as f32,
+    //     /*-0x1p-149*/ f32::from_bits(0xb6),
+    // );
+    // assert_eq::<f32>(
+    //     /*0x1.fffffep+127*/ f16::from_bits(0x7f7fffff) as f32,
+    //     /*0x1.fffffep+127*/ f32::from_bits(0x47ef),
+    // );
+    // assert_eq::<f32>(
+    //     /*-0x1.fffffep+127*/ (-f16::from_bits(0x7fff)) as f32,
+    //     /*-0x1.fffffep+127*/ -f32::from_bits(0x47efffe),
+    // );
+    // assert_eq::<f32>(
+    //     /*0x1p-119*/ f16::from_bits(0x4000) as f32,
+    //     /*0x1p-119*/ f32::from_bits(0x38800000),
+    // );
+    // assert_eq::<f32>(
+    //     /*0x1.8f867ep+125*/ f16::from_bits(0x7e47c33f) as f32,
+    //     6.6382536710104395e+37,
+    // );
+    // // FIXME(f16_f128): enable once constants are available
+    // // assert_eq::<f32>(f16::INFINITY as f32, f32::INFINITY);
+    // // assert_eq::<f32>(f16::NEG_INFINITY as f32, f32::NEG_INFINITY);
+
+    // // f16 -> f64
+    // assert_eq::<u64>((0.0f16 as f64).to_bits(), 0.0f64.to_bits());
+    // assert_eq::<u64>(((-0.0f16) as f64).to_bits(), (-0.0f64).to_bits());
+    // assert_eq::<f64>(5.0f16 as f64, 5.0f64);
+    // assert_eq::<f64>(
+    //     /*0x1p-149*/ f16::from_bits(0x1) as f64,
+    //     /*0x1p-149*/ f64::from_bits(0x36a0000000000000),
+    // );
+    // assert_eq::<f64>(
+    //     /*-0x1p-149*/ f16::from_bits(0x80000001) as f64,
+    //     /*-0x1p-149*/ f64::from_bits(0xb6a0000000000000),
+    // );
+    // assert_eq::<f64>(
+    //     /*0x1.fffffep+127*/ f16::from_bits(0x7f7fffff) as f64,
+    //     /*0x1.fffffep+127*/ f64::from_bits(0x47efffffe0000000),
+    // );
+    // assert_eq::<f64>(
+    //     /*-0x1.fffffep+127*/ (-f16::from_bits(0x7f7fffff)) as f64,
+    //     /*-0x1.fffffep+127*/ -f64::from_bits(0x47efffffe0000000),
+    // );
+    // assert_eq::<f64>(
+    //     /*0x1p-119*/ f16::from_bits(0x4000000) as f64,
+    //     /*0x1p-119*/ f64::from_bits(0x3880000000000000),
+    // );
+    // assert_eq::<f64>(
+    //     /*0x1.8f867ep+125*/ f16::from_bits(0x7e47c33f) as f64,
+    //     6.6382536710104395e+37,
+    // );
+
+    // // f16 -> f128
+    // assert_eq::<u128>((0.0f16 as f128).to_bits(), 0.0f128.to_bits());
+    // assert_eq::<u128>(((-0.0f16) as f128).to_bits(), (-0.0f128).to_bits());
+    // assert_eq::<f128>(5.0f16 as f128, 5.0f128);
+    // assert_eq::<f128>(
+    //     /*0x1p-149*/ f16::from_bits(0x1) as f128,
+    //     /*0x1p-149*/ f128::from_bits(0x36a0000000000000),
+    // );
+    // assert_eq::<f128>(
+    //     /*-0x1p-149*/ f16::from_bits(0x80000001) as f128,
+    //     /*-0x1p-149*/ f128::from_bits(0xb6a0000000000000),
+    // );
+    // assert_eq::<f128>(
+    //     /*0x1.fffffep+127*/ f16::from_bits(0x7f7fffff) as f128,
+    //     /*0x1.fffffep+127*/ f128::from_bits(0x47efffffe0000000),
+    // );
+    // assert_eq::<f128>(
+    //     /*-0x1.fffffep+127*/ (-f16::from_bits(0x7f7fffff)) as f128,
+    //     /*-0x1.fffffep+127*/ -f128::from_bits(0x47efffffe0000000),
+    // );
+    // assert_eq::<f128>(
+    //     /*0x1p-119*/ f16::from_bits(0x4000000) as f128,
+    //     /*0x1p-119*/ f128::from_bits(0x3880000000000000),
+    // );
+    // assert_eq::<f128>(
+    //     /*0x1.8f867ep+125*/ f16::from_bits(0x7e47c33f) as f128,
+    //     6.6382536710104395e+37,
+    // );
+
+    // f32 -> f16
 
     // f32 -> f64
     assert_eq::<u64>((0.0f32 as f64).to_bits(), 0.0f64.to_bits());
