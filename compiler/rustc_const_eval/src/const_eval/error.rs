@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
 use rustc_span::{Span, Symbol};
 
-use super::CompileTimeInterpreter;
+use super::CompileTimeMachine;
 use crate::errors::{self, FrameNote, ReportErrorExt};
 use crate::interpret::{err_inval, err_machine_stop};
 use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
@@ -160,7 +160,7 @@ where
 // Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
 pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
-    machine: &CompileTimeInterpreter<'tcx>,
+    machine: &CompileTimeMachine<'tcx>,
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where

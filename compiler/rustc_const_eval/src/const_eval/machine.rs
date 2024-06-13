@@ -44,7 +44,7 @@ const TINY_LINT_TERMINATOR_LIMIT: usize = 20;
 const PROGRESS_INDICATOR_START: usize = 4_000_000;
 
 /// Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'tcx> {
+pub struct CompileTimeMachine<'tcx> {
     /// The number of terminators that have been evaluated.
     ///
     /// This is used to produce lints informing the user that the compiler is not stuck.
@@ -89,12 +89,12 @@ impl From<bool> for CanAccessMutGlobal {
     }
 }
 
-impl<'tcx> CompileTimeInterpreter<'tcx> {
+impl<'tcx> CompileTimeMachine<'tcx> {
     pub(crate) fn new(
         can_access_mut_global: CanAccessMutGlobal,
         check_alignment: CheckAlignment,
     ) -> Self {
-        CompileTimeInterpreter {
+        CompileTimeMachine {
             num_evaluated_steps: 0,
             stack: Vec::new(),
             can_access_mut_global,
@@ -163,7 +163,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     }
 }
 
-pub(crate) type CompileTimeEvalContext<'tcx> = InterpCx<'tcx, CompileTimeInterpreter<'tcx>>;
+pub(crate) type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
@@ -195,7 +195,7 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'tcx> CompileTimeEvalContext<'tcx> {
+impl<'tcx> CompileTimeInterpCx<'tcx> {
     fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
@@ -369,7 +369,7 @@ impl<'tcx> CompileTimeEvalContext<'tcx> {
     }
 }
 
-impl<'tcx> interpret::Machine<'tcx> for CompileTimeInterpreter<'tcx> {
+impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     compile_time_machine!(<'tcx>);
 
     type MemoryKind = MemoryKind;
