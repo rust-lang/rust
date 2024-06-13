@@ -662,6 +662,10 @@ impl Token {
     }
 
     /// Returns `true` if the token is a lifetime.
+    ///
+    /// This does not check that the lifetime is a *valid* lifetime -- for that,
+    /// you need to go through `expect_lifetime`, since we need to check that the
+    /// lifetime name is not reserved.
     pub fn is_lifetime(&self) -> bool {
         self.lifetime().is_some()
     }
