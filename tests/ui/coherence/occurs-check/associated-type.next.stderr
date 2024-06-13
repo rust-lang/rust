@@ -16,11 +16,11 @@ LL | |     for<'a> *const T: ToUnit<'a>,
    |
    = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
 
-error[E0284]: type annotations needed: cannot satisfy `<for<'a> fn(&'a (), ()) as Overlap<for<'a> fn(&'a (), ())>>::Assoc == usize`
+error[E0284]: type annotations needed: cannot normalize `<for<'a> fn(&'a (), ()) as Overlap<for<'a> fn(&'a (), ())>>::Assoc`
   --> $DIR/associated-type.rs:44:59
    |
 LL |     foo::<for<'a> fn(&'a (), ()), for<'a> fn(&'a (), ())>(3usize);
-   |                                                           ^^^^^^ cannot satisfy `<for<'a> fn(&'a (), ()) as Overlap<for<'a> fn(&'a (), ())>>::Assoc == usize`
+   |                                                           ^^^^^^ cannot normalize `<for<'a> fn(&'a (), ()) as Overlap<for<'a> fn(&'a (), ())>>::Assoc`
 
 error: aborting due to 2 previous errors
 
