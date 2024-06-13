@@ -13,6 +13,6 @@ define-function: (
         // Close the popover.
         click: "#settings-menu"
         // Ensure that the local storage was correctly updated.
-        assert-local-storage: {"rustdoc-theme": |theme|}
+        wait-for-local-storage: {"rustdoc-theme": |theme|}
     },
 )
