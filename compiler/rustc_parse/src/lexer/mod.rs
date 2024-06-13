@@ -273,7 +273,19 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                             .stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
-                    token::Lifetime(ident)
+                    token::Lifetime(ident, IdentIsRaw::No)
+                }
+                rustc_lexer::TokenKind::RawLifetime => {
+                    // Include the leading `'` in the real identifier, for macro
+                    // expansion purposes. See #12512 for the gory details of why
+                    // this is necessary.
+                    let lifetime_name_without_tick = self.str_from(start + BytePos(3));
+                    let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.len() + 1);
+                    lifetime_name.push('\'');
+                    lifetime_name += lifetime_name_without_tick;
+                    self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
+                    let ident = Symbol::intern(&lifetime_name);
+                    token::Lifetime(ident, IdentIsRaw::Yes)
                 }
                 rustc_lexer::TokenKind::Semi => token::Semi,
                 rustc_lexer::TokenKind::Comma => token::Comma,

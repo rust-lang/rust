@@ -104,6 +104,9 @@ pub enum TokenKind {
     /// "'a"
     Lifetime { starts_with_number: bool },
 
+    /// `'r#async`
+    RawLifetime,
+
     // One-char tokens:
     /// ";"
     Semi,
@@ -676,9 +679,18 @@ impl Cursor<'_> {
             return Literal { kind, suffix_start };
         }
 
+        if self.first() == 'r' && self.second() == '#' && is_id_start(self.third()) {
+            // Eat "r" character.
+            self.bump();
+            // Eat "#" symbol.
+            self.bump();
+            // Eat the identifier part of RawIdent.
+            self.eat_identifier();
+            return RawLifetime;
+        }
+
         // Either a lifetime or a character literal with
         // length greater than 1.
-
         let starts_with_number = self.first().is_ascii_digit();
 
         // Skip the literal contents.

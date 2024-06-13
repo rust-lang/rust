@@ -776,7 +776,7 @@ fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyAttrTokenStream>, vis
 pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
     let Token { kind, span } = t;
     match kind {
-        token::Ident(name, _) | token::Lifetime(name) => {
+        token::Ident(name, _) | token::Lifetime(name, _) => {
             let mut ident = Ident::new(*name, *span);
             vis.visit_ident(&mut ident);
             *name = ident.name;
@@ -786,7 +786,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
         token::NtIdent(ident, _is_raw) => {
             vis.visit_ident(ident);
         }
-        token::NtLifetime(ident) => {
+        token::NtLifetime(ident, _is_raw) => {
             vis.visit_ident(ident);
         }
         token::Interpolated(nt) => {

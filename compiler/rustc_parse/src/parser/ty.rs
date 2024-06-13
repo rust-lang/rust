@@ -1201,7 +1201,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(ident) = self.token.lifetime() {
+        if let Some((ident, _)) = self.token.lifetime() {
             self.bump();
             Lifetime { ident, id: ast::DUMMY_NODE_ID }
         } else {

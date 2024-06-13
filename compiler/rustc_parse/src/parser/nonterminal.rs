@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
                 _ => false,
             },
             NonterminalKind::Lifetime => match &token.kind {
-                token::Lifetime(_) | token::NtLifetime(..) => true,
+                token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
@@ -182,8 +182,9 @@ impl<'a> Parser<'a> {
                     .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?))
             }
             NonterminalKind::Lifetime => {
-                return if self.check_lifetime() {
-                    Ok(ParseNtResult::Lifetime(self.expect_lifetime().ident))
+                return if let Some((ident, is_raw)) = self.token.lifetime() {
+                    self.bump();
+                    Ok(ParseNtResult::Lifetime(ident, is_raw))
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,

@@ -14,7 +14,7 @@ use crate::parser::expr::could_be_unclosed_char_literal;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token};
 use rustc_ast::{
     self as ast, AttrVec, BindingMode, ByRef, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
     PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -539,7 +539,7 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let token::Lifetime(lt) = self.token.kind
+        } else if let token::Lifetime(lt, IdentIsRaw::No) = self.token.kind
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
@@ -672,7 +672,7 @@ impl<'a> Parser<'a> {
     /// Parse `&pat` / `&mut pat`.
     fn parse_pat_deref(&mut self, expected: Option<Expected>) -> PResult<'a, PatKind> {
         self.expect_and()?;
-        if let token::Lifetime(name) = self.token.kind {
+        if let token::Lifetime(name, _) = self.token.kind {
             self.bump(); // `'a`
 
             self.dcx()

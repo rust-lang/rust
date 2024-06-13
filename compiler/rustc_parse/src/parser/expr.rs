@@ -2081,7 +2081,7 @@ impl<'a> Parser<'a> {
         };
         // On an error path, eagerly consider a lifetime to be an unclosed character lit, if that
         // makes sense.
-        if let Some(ident) = self.token.lifetime()
+        if let Some((ident, IdentIsRaw::No)) = self.token.lifetime()
             && could_be_unclosed_char_literal(ident)
         {
             let lt = self.expect_lifetime();
@@ -2931,7 +2931,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
-        self.token.lifetime().map(|ident| {
+        self.token.lifetime().map(|(ident, _)| {
             self.bump();
             Label { ident }
         })
