@@ -956,7 +956,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
         }
     }
 
-    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
+    fn visit_const_operand(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
         if constant.const_.is_required_const() {
             self.promoted.required_consts.push(*constant);
         }

@@ -301,10 +301,10 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         self.sanitize_place(place, location, context);
     }
 
-    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        debug!(?constant, ?location, "visit_constant");
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
+        debug!(?constant, ?location, "visit_const_operand");
 
-        self.super_constant(constant, location);
+        self.super_const_operand(constant, location);
         let ty = self.sanitize_type(constant, constant.const_.ty());
 
         self.cx.infcx.tcx.for_each_free_region(&ty, |live_region| {
