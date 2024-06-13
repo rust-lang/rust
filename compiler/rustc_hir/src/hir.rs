@@ -1633,6 +1633,13 @@ pub struct ConstBlock {
 }
 
 /// An expression.
+///
+/// For more details, see the [rust lang reference].
+/// Note that the reference does not document nightly-only features.
+/// There may be also slight differences in the names and representation of AST nodes between
+/// the compiler and the reference.
+///
+/// [rust lang reference]: https://doc.rust-lang.org/reference/expressions.html
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
     pub hir_id: HirId,
@@ -3147,6 +3154,13 @@ impl ItemId {
 /// An item
 ///
 /// The name might be a dummy name in case of anonymous items
+///
+/// For more details, see the [rust lang reference].
+/// Note that the reference does not document nightly-only features.
+/// There may be also slight differences in the names and representation of AST nodes between
+/// the compiler and the reference.
+///
+/// [rust lang reference]: https://doc.rust-lang.org/reference/items.html
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Item<'hir> {
     pub ident: Ident,
