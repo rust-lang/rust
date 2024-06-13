@@ -45,6 +45,11 @@ unsafe fn test_crc() {
         let v = 0xef;
         let i = _mm_crc32_u8(crc, v);
         assert_eq!(i, 0xb95511db);
+
+        let crc = 0xbadeafe;
+        let v = 0xc0;
+        let i = _mm_crc32_u8(crc, v);
+        assert_eq!(i, 0x9c905b7c);
     }
     test_mm_crc32_u8();
 
@@ -59,6 +64,11 @@ unsafe fn test_crc() {
         let v = 0xa6c0;
         let i = _mm_crc32_u16(crc, v);
         assert_eq!(i, 0xab04fe4e);
+
+        let crc = 0xbadeafe;
+        let v = 0xc0fe;
+        let i = _mm_crc32_u16(crc, v);
+        assert_eq!(i, 0x4b5fad4b);
     }
     test_mm_crc32_u16();
 
@@ -73,6 +83,11 @@ unsafe fn test_crc() {
         let v = 0x885585c2;
         let i = _mm_crc32_u32(crc, v);
         assert_eq!(i, 0x22443a7b);
+
+        let crc = 0xbadeafe;
+        let v = 0xc0febeef;
+        let i = _mm_crc32_u32(crc, v);
+        assert_eq!(i, 0xb309502f);
     }
     test_mm_crc32_u32();
 
@@ -88,6 +103,11 @@ unsafe fn test_crc() {
         let v = 0x1a7ea8fb571746b0;
         let i = _mm_crc32_u64(crc, v);
         assert_eq!(i, 0x315b4f6);
+
+        let crc = 0xbadeafe;
+        let v = 0xc0febeefdadafefe;
+        let i = _mm_crc32_u64(crc, v);
+        assert_eq!(i, 0x5b44f54f);
     }
     #[cfg(not(target_arch = "x86_64"))]
     unsafe fn test_mm_crc32_u64() {}
