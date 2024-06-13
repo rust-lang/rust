@@ -904,17 +904,18 @@ table,
 }
 
 .item-table {
-	display: table;
+	display: flex;
+	flex-direction: column;
 	padding: 0;
 	margin: 0;
 }
 .item-table > li {
-	display: table-row;
+	display: flex;
+	justify-content: space-between;
 }
 .item-table > li > div {
 	display: table-cell;
 }
-
 .item-table > li > .item-name {
 	padding-right: 1.25rem;
 }
@@ -2128,9 +2129,8 @@ in src-script.js and main.js
 		padding: 2px 4px;
 		box-shadow: 0 0 4px var(--main-background-color);
 	}
-
 	.item-table > li > .item-name {
-		max-width: 40vw;
+		max-width: 50%;
 	}
 }
 
