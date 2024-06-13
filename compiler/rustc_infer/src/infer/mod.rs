@@ -9,7 +9,6 @@ pub use rustc_middle::ty::IntVarValue;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
-pub use ValuePairs::*;
 
 use crate::infer::relate::{Relate, RelateResult};
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
@@ -484,7 +483,7 @@ pub enum ValuePairs<'tcx> {
     PolySigs(ExpectedFound<ty::PolyFnSig<'tcx>>),
     ExistentialTraitRef(ExpectedFound<ty::PolyExistentialTraitRef<'tcx>>),
     ExistentialProjection(ExpectedFound<ty::PolyExistentialProjection<'tcx>>),
-    DummyPair,
+    Dummy,
 }
 
 impl<'tcx> ValuePairs<'tcx> {
@@ -1880,7 +1879,7 @@ impl<'tcx> TypeTrace<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
     }
 
@@ -1892,7 +1891,7 @@ impl<'tcx> TypeTrace<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 
@@ -1904,12 +1903,12 @@ impl<'tcx> TypeTrace<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
     }
 
     fn dummy(cause: &ObligationCause<'tcx>) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: ValuePairs::DummyPair }
+        TypeTrace { cause: cause.clone(), values: ValuePairs::Dummy }
     }
 }
 

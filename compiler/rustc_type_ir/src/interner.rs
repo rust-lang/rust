@@ -152,7 +152,7 @@ pub trait Interner:
     fn bound_coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+    ) -> impl IntoIterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
 
     fn fn_sig(
         self,
@@ -168,18 +168,18 @@ pub trait Interner:
     fn item_bounds(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl Iterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
     fn super_predicates_of(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl Iterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
 
-    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl Iterator<Item = Self::DefId>;
+    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

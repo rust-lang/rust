@@ -263,7 +263,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn bound_coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
+    ) -> impl IntoIterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
         self.bound_coroutine_hidden_types(def_id)
     }
 
@@ -286,14 +286,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn item_bounds(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = ty::Clause<'tcx>>> {
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         self.item_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
     fn super_predicates_of(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = ty::Clause<'tcx>>> {
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind(
             self.super_predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
         )
@@ -315,7 +315,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
-    fn associated_type_def_ids(self, def_id: DefId) -> impl Iterator<Item = DefId> {
+    fn associated_type_def_ids(self, def_id: DefId) -> impl IntoIterator<Item = DefId> {
         self.associated_items(def_id)
             .in_definition_order()
             .filter(|assoc_item| matches!(assoc_item.kind, ty::AssocKind::Type))

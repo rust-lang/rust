@@ -17,13 +17,14 @@ use crate::solve::EvalCtxt;
 // For types with an "existential" binder, i.e. coroutine witnesses, we also
 // instantiate the binder with placeholders eagerly.
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
->(
+pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<Infcx, I>(
     ecx: &EvalCtxt<'_, Infcx>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution> {
+) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
     let tcx = ecx.interner();
     match ty.kind() {
         ty::Uint(_)
@@ -79,6 +80,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .interner()
             .bound_coroutine_hidden_types(def_id)
+            .into_iter()
             .map(|bty| bty.instantiate(tcx, &args))
             .collect()),
 
@@ -101,13 +103,14 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<
 }
 
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
->(
+pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<Infcx, I>(
     ecx: &EvalCtxt<'_, Infcx>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution> {
+) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
     match ty.kind() {
         // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
         // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
@@ -168,13 +171,14 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<
 }
 
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
->(
+pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<Infcx, I>(
     ecx: &EvalCtxt<'_, Infcx>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution> {
+) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
     match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
         ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
@@ -239,6 +243,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .interner()
             .bound_coroutine_hidden_types(def_id)
+            .into_iter()
             .map(|bty| bty.instantiate(ecx.interner(), &args))
             .collect()),
     }
@@ -651,15 +656,16 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
 // This is unsound in general and once that is fixed, we don't need to
 // normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
 // for more details.
-pub(in crate::solve) fn predicates_for_object_candidate<
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
->(
+pub(in crate::solve) fn predicates_for_object_candidate<Infcx, I>(
     ecx: &EvalCtxt<'_, Infcx>,
     param_env: I::ParamEnv,
     trait_ref: ty::TraitRef<I>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Vec<Goal<I, I::Predicate>> {
+) -> Vec<Goal<I, I::Predicate>>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
     let tcx = ecx.interner();
     let mut requirements = vec![];
     requirements

@@ -305,24 +305,8 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
 {
     fn is_coinductive(self, interner: I) -> bool;
 
-    fn allow_normalization(self) -> bool {
-        match self.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
-            | ty::PredicateKind::AliasRelate(..)
-            | ty::PredicateKind::NormalizesTo(..) => false,
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
-            | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))
-            | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(_))
-            | ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
-            | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-            | ty::PredicateKind::ObjectSafe(_)
-            | ty::PredicateKind::Subtype(_)
-            | ty::PredicateKind::Coerce(_)
-            | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_))
-            | ty::PredicateKind::ConstEquate(_, _)
-            | ty::PredicateKind::Ambiguous => true,
-        }
-    }
+    // FIXME: Eventually uplift the impl out of rustc and make this defaulted.
+    fn allow_normalization(self) -> bool;
 }
 
 pub trait Clause<I: Interner<Clause = Self>>:
