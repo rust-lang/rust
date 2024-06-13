@@ -460,9 +460,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
-                ChildMode::WellFormedObligation
-            }
+            ty::PredicateKind::Clause(
+                ty::ClauseKind::WellFormed(_) | ty::ClauseKind::Projection(..),
+            )
+            | ty::PredicateKind::AliasRelate(..) => ChildMode::PassThrough,
             _ => {
                 return ControlFlow::Break(self.obligation.clone());
             }
@@ -496,7 +497,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::WellFormedObligation, _) => {
+                (ChildMode::PassThrough, _) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
@@ -527,7 +528,7 @@ enum ChildMode<'tcx> {
     // Skip trying to derive an `ObligationCause` from this obligation, and
     // report *all* sub-obligations as if they came directly from the parent
     // obligation.
-    WellFormedObligation,
+    PassThrough,
 }
 
 fn derive_cause<'tcx>(
