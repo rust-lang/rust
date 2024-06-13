@@ -621,6 +621,21 @@ impl Token {
         }
     }
 
+    pub fn can_begin_string_literal(&self) -> bool {
+        match self.uninterpolate().kind {
+            Literal(..) => true,
+            Interpolated(ref nt) => match &**nt {
+                NtLiteral(_) => true,
+                NtExpr(e) => match &e.kind {
+                    ast::ExprKind::Lit(_) => true,
+                    _ => false,
+                },
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     /// A convenience function for matching on identifiers during parsing.
     /// Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
     /// into the regular identifier or lifetime token it refers to,
