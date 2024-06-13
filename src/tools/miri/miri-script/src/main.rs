@@ -182,15 +182,14 @@ fn main() -> Result<()> {
                     verbose = true;
                 } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..256")? {
                     let (from, to) = val.split_once("..").ok_or_else(|| {
-                        anyhow!("invalid format for `--many-seeds-range`: expected `from..to`")
+                        anyhow!("invalid format for `--many-seeds`: expected `from..to`")
                     })?;
                     let from: u32 = if from.is_empty() {
                         0
                     } else {
-                        from.parse().context("invalid `from` in `--many-seeds-range=from..to")?
+                        from.parse().context("invalid `from` in `--many-seeds=from..to")?
                     };
-                    let to: u32 =
-                        to.parse().context("invalid `to` in `--many-seeds-range=from..to")?;
+                    let to: u32 = to.parse().context("invalid `to` in `--many-seeds=from..to")?;
                     many_seeds = Some(from..to);
                 } else if let Some(val) = args.get_long_opt("target")? {
                     target = Some(val);
