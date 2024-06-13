@@ -125,13 +125,13 @@ fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 
 impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
-        if !in_external_macro(cx.sess(), item.span)
-            && let ItemKind::Impl(imp) = item.kind
+        if let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
             && let Some(trait_ref) = imp.of_trait
             && trait_ref
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
+            && !in_external_macro(cx.sess(), item.span)
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
