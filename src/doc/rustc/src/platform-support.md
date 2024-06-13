@@ -118,7 +118,7 @@ The `std` column in the table below has the following meanings:
 
 * ✓ indicates the full standard library is available.
 * \* indicates the target only supports [`no_std`] development.
-* ? indicates the standard library support is unknown or a work-in-progress.
+* ? indicates the standard library support is a work-in-progress.
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
 
