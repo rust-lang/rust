@@ -296,74 +296,75 @@
 
 
 - FP-Class:
-    * [ ] _mm_fpclass_pd_mask
-    * [ ] _mm_mask_fpclass_pd_mask
-    * [ ] _mm256_fpclass_pd_mask
-    * [ ] _mm256_mask_fpclass_pd_mask
-    * [ ] _mm512_fpclass_pd_mask
-    * [ ] _mm512_mask_fpclass_pd_mask
-    * [ ] _mm_fpclass_ps_mask
-    * [ ] _mm_mask_fpclass_ps_mask
-    * [ ] _mm256_fpclass_ps_mask
-    * [ ] _mm256_mask_fpclass_ps_mask
-    * [ ] _mm512_fpclass_ps_mask
-    * [ ] _mm512_mask_fpclass_ps_mask
-    * [ ] _mm_fpclass_sd_mask
-    * [ ] _mm_mask_fpclass_sd_mask
-    * [ ] _mm_fpclass_ss_mask
-    * [ ] _mm_mask_fpclass_ss_mask
+    * [ ] _mm_fpclass_pd_mask (Needs `i1` type)
+    * [ ] _mm_mask_fpclass_pd_mask (Needs `i1` type)
+    * [ ] _mm256_fpclass_pd_mask (Needs `i1` type)
+    * [ ] _mm256_mask_fpclass_pd_mask (Needs `i1` type)
+    * [ ] _mm512_fpclass_pd_mask (Needs `i1` type)
+    * [ ] _mm512_mask_fpclass_pd_mask (Needs `i1` type)
+    * [ ] _mm_fpclass_ps_mask (Needs `i1` type)
+    * [ ] _mm_mask_fpclass_ps_mask (Needs `i1` type)
+    * [ ] _mm256_fpclass_ps_mask (Needs `i1` type)
+    * [ ] _mm256_mask_fpclass_ps_mask (Needs `i1` type)
+    * [ ] _mm512_fpclass_ps_mask (Needs `i1` type)
+    * [ ] _mm512_mask_fpclass_ps_mask (Needs `i1` type)
+    * [ ] _mm_fpclass_sd_mask (Needs `i1` type)
+    * [ ] _mm_mask_fpclass_sd_mask (Needs `i1` type)
+    * [ ] _mm_fpclass_ss_mask (Needs `i1` type)
+    * [ ] _mm_mask_fpclass_ss_mask (Needs `i1` type)
 
 
 - Mask Registers:
-    * [ ] _cvtmask8_u32
-    * [ ] _cvtu32_mask8
-    * [ ] _kadd_mask16
-    * [ ] _kadd_mask8
-    * [ ] _kand_mask8
-    * [ ] _kandn_mask8
-    * [ ] _knot_mask8
-    * [ ] _kor_mask8
-    * [ ] _kortest_mask8_u8
-    * [ ] _kortestc_mask8_u8
-    * [ ] _kortestz_mask8_u8
-    * [ ] _kshiftli_mask8
-    * [ ] _kshiftri_mask8
-    * [ ] _ktest_mask16_u8
-    * [ ] _ktest_mask8_u8
-    * [ ] _ktestc_mask16_u8
-    * [ ] _ktestc_mask8_u8
-    * [ ] _ktestz_mask16_u8
-    * [ ] _ktestz_mask8_u8
-    * [ ] _kxnor_mask8
-    * [ ] _kxor_mask8
-    * [ ] _load_mask8
+    * [x] _cvtmask8_u32
+    * [x] _cvtu32_mask8
+    * [x] _kadd_mask16
+    * [x] _kadd_mask8
+    * [x] _kand_mask8
+    * [x] _kandn_mask8
+    * [x] _knot_mask8
+    * [x] _kor_mask8
+    * [x] _kortest_mask8_u8
+    * [x] _kortestc_mask8_u8
+    * [x] _kortestz_mask8_u8
+    * [x] _kshiftli_mask8
+    * [x] _kshiftri_mask8
+    * [x] _ktest_mask16_u8
+    * [x] _ktest_mask8_u8
+    * [x] _ktestc_mask16_u8
+    * [x] _ktestc_mask8_u8
+    * [x] _ktestz_mask16_u8
+    * [x] _ktestz_mask8_u8
+    * [x] _kxnor_mask8
+    * [x] _kxor_mask8
+    * [x] _load_mask8
+    * [x] _store_mask8
 
 
 - Mask register for Bit patterns:
-    * [ ] _mm_movepi32_mask
-    * [ ] _mm256_movepi32_mask
-    * [ ] _mm512_movepi32_mask
-    * [ ] _mm_movepi64_mask
-    * [ ] _mm256_movepi64_mask
-    * [ ] _mm512_movepi64_mask
-    * [ ] _mm_movm_epi32
-    * [ ] _mm256_movm_epi32
-    * [ ] _mm512_movm_epi32
-    * [ ] _mm_movm_epi64
-    * [ ] _mm256_movm_epi64
-    * [ ] _mm512_movm_epi64
+    * [x] _mm_movepi32_mask
+    * [x] _mm256_movepi32_mask
+    * [x] _mm512_movepi32_mask
+    * [x] _mm_movepi64_mask
+    * [x] _mm256_movepi64_mask
+    * [x] _mm512_movepi64_mask
+    * [x] _mm_movm_epi32
+    * [x] _mm256_movm_epi32
+    * [x] _mm512_movm_epi32
+    * [x] _mm_movm_epi64
+    * [x] _mm256_movm_epi64
+    * [x] _mm512_movm_epi64
 
 
 - Multiply Low:
-    * [ ] _mm_mullo_epi64
-    * [ ] _mm_mask_mullo_epi64
-    * [ ] _mm_maskz_mullo_epi64
-    * [ ] _mm256_mullo_epi64
-    * [ ] _mm256_mask_mullo_epi64
-    * [ ] _mm256_maskz_mullo_epi64
-    * [ ] _mm512_mullo_epi64
-    * [ ] _mm512_mask_mullo_epi64
-    * [ ] _mm512_maskz_mullo_epi64
+    * [x] _mm_mullo_epi64
+    * [x] _mm_mask_mullo_epi64
+    * [x] _mm_maskz_mullo_epi64
+    * [x] _mm256_mullo_epi64
+    * [x] _mm256_mask_mullo_epi64
+    * [x] _mm256_maskz_mullo_epi64
+    * [x] _mm512_mullo_epi64
+    * [x] _mm512_mask_mullo_epi64
+    * [x] _mm512_maskz_mullo_epi64
 
 
 - Range:

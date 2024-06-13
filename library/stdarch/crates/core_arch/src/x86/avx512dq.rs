@@ -1440,6 +1440,7 @@ pub unsafe fn _mm512_maskz_extracti32x8_epi32<const IMM8: i32>(k: __mmask8, a: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_extracti64x2_epi64<const IMM8: i32>(a: __m256i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 1);
+    let a = a.as_i64x4();
     match IMM8 & 1 {
         0 => simd_shuffle!(a, a, [0, 1]),
         _ => simd_shuffle!(a, a, [2, 3]),
@@ -1491,6 +1492,7 @@ pub unsafe fn _mm256_maskz_extracti64x2_epi64<const IMM8: i32>(k: __mmask8, a: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_extracti64x2_epi64<const IMM8: i32>(a: __m512i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 2);
+    let a = a.as_i64x8();
     match IMM8 & 3 {
         0 => simd_shuffle!(a, a, [0, 1]),
         1 => simd_shuffle!(a, a, [2, 3]),
@@ -1802,7 +1804,8 @@ pub unsafe fn _mm512_maskz_inserti32x8<const IMM8: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_inserti64x2<const IMM8: i32>(a: __m256i, b: __m128i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 1);
-    let b = _mm256_castsi128_si256(b);
+    let a = a.as_i64x4();
+    let b = _mm256_castsi128_si256(b).as_i64x4();
     match IMM8 & 1 {
         0 => simd_shuffle!(a, b, [4, 5, 2, 3]),
         _ => simd_shuffle!(a, b, [0, 1, 4, 5]),
@@ -1861,7 +1864,8 @@ pub unsafe fn _mm256_maskz_inserti64x2<const IMM8: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_inserti64x2<const IMM8: i32>(a: __m512i, b: __m128i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 2);
-    let b = _mm512_castsi128_si512(b);
+    let a = a.as_i64x8();
+    let b = _mm512_castsi128_si512(b).as_i64x8();
     match IMM8 & 3 {
         0 => simd_shuffle!(a, b, [8, 9, 2, 3, 4, 5, 6, 7]),
         1 => simd_shuffle!(a, b, [0, 1, 8, 9, 4, 5, 6, 7]),
@@ -4086,6 +4090,532 @@ pub unsafe fn _mm512_mask_cvttps_epu64(src: __m512i, k: __mmask8, a: __m256) -> 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_cvttps_epu64(k: __mmask8, a: __m256) -> __m512i {
     _mm512_mask_cvttps_epu64(_mm512_setzero_si512(), k, a)
+}
+
+// Multiply-Low
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst`.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mullo_epi64&ig_expand=4778)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mullo_epi64(a: __m128i, b: __m128i) -> __m128i {
+    transmute(simd_mul(a.as_i64x2(), b.as_i64x2()))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst` using writemask `k` (elements are copied from
+/// `src` if the corresponding bit is not set).
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_mullo_epi64&ig_expand=4776)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_mullo_epi64(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
+    let b = _mm_mullo_epi64(a, b).as_i64x2();
+    transmute(simd_select_bitmask(k, b, src.as_i64x2()))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst` using zeromask `k` (elements are zeroed out if
+/// the corresponding bit is not set).
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_mullo_epi64&ig_expand=4777)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_mullo_epi64(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
+    let b = _mm_mullo_epi64(a, b).as_i64x2();
+    let zero = _mm_setzero_si128().as_i64x2();
+    transmute(simd_select_bitmask(k, b, zero))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst`.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mullo_epi64&ig_expand=4781)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mullo_epi64(a: __m256i, b: __m256i) -> __m256i {
+    transmute(simd_mul(a.as_i64x4(), b.as_i64x4()))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst` using writemask `k` (elements are copied from
+/// `src` if the corresponding bit is not set).
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_mullo_epi64&ig_expand=4779)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_mullo_epi64(
+    src: __m256i,
+    k: __mmask8,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    let b = _mm256_mullo_epi64(a, b).as_i64x4();
+    transmute(simd_select_bitmask(k, b, src.as_i64x4()))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst` using zeromask `k` (elements are zeroed out if
+/// the corresponding bit is not set).
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_mullo_epi64&ig_expand=4780)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_maskz_mullo_epi64(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
+    let b = _mm256_mullo_epi64(a, b).as_i64x4();
+    let zero = _mm256_setzero_si256().as_i64x4();
+    transmute(simd_select_bitmask(k, b, zero))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst`.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mullo_epi64&ig_expand=4784)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mullo_epi64(a: __m512i, b: __m512i) -> __m512i {
+    transmute(simd_mul(a.as_i64x8(), b.as_i64x8()))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst` using writemask `k` (elements are copied from
+/// `src` if the corresponding bit is not set).
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_mullo_epi64&ig_expand=4782)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_mullo_epi64(
+    src: __m512i,
+    k: __mmask8,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    let b = _mm512_mullo_epi64(a, b).as_i64x8();
+    transmute(simd_select_bitmask(k, b, src.as_i64x8()))
+}
+
+/// Multiply packed 64-bit integers in `a` and `b`, producing intermediate 128-bit integers, and store
+/// the low 64 bits of the intermediate integers in `dst` using zeromask `k` (elements are zeroed out if
+/// the corresponding bit is not set).
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_mullo_epi64&ig_expand=4783)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vpmullq))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_maskz_mullo_epi64(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
+    let b = _mm512_mullo_epi64(a, b).as_i64x8();
+    let zero = _mm512_setzero_si512().as_i64x8();
+    transmute(simd_select_bitmask(k, b, zero))
+}
+
+// Mask Registers
+
+/// Convert 8-bit mask a to a 32-bit integer value and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_cvtmask8_u32&ig_expand=1891)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _cvtmask8_u32(a: __mmask8) -> u32 {
+    a as u32
+}
+
+/// Convert 32-bit integer value a to an 8-bit mask and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_cvtu32_mask8&ig_expand=2467)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _cvtu32_mask8(a: u32) -> __mmask8 {
+    a as __mmask8
+}
+
+/// Add 16-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kadd_mask16&ig_expand=3903)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kadd_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
+    a + b
+}
+
+/// Add 8-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kadd_mask8&ig_expand=3906)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kadd_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
+    a + b
+}
+
+/// Bitwise AND of 8-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kand_mask8&ig_expand=3911)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kand_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
+    a & b
+}
+
+/// Bitwise AND NOT of 8-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kandn_mask8&ig_expand=3916)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kandn_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
+    _knot_mask8(a) & b
+}
+
+/// Bitwise NOT of 8-bit mask a, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_knot_mask8&ig_expand=3922)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _knot_mask8(a: __mmask8) -> __mmask8 {
+    a ^ 0b11111111
+}
+
+/// Bitwise OR of 8-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kor_mask8&ig_expand=3927)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kor_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
+    a | b
+}
+
+/// Bitwise XNOR of 8-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kxnor_mask8&ig_expand=3969)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kxnor_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
+    _knot_mask8(_kxor_mask8(a, b))
+}
+
+/// Bitwise XOR of 8-bit masks a and b, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kxor_mask8&ig_expand=3974)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kxor_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
+    a ^ b
+}
+
+/// Compute the bitwise OR of 8-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst. If the result is all ones, store 1 in all_ones, otherwise store 0 in all_ones.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortest_mask8_u8&ig_expand=3931)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortest_mask8_u8(a: __mmask8, b: __mmask8, all_ones: *mut u8) -> u8 {
+    let tmp = _kor_mask8(a, b);
+    *all_ones = (tmp == 0xff) as u8;
+    (tmp == 0) as u8
+}
+
+/// Compute the bitwise OR of 8-bit masks a and b. If the result is all ones, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestc_mask8_u8&ig_expand=3936)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestc_mask8_u8(a: __mmask8, b: __mmask8) -> u8 {
+    (_kor_mask8(a, b) == 0xff) as u8
+}
+
+/// Compute the bitwise OR of 8-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestz_mask8_u8&ig_expand=3941)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestz_mask8_u8(a: __mmask8, b: __mmask8) -> u8 {
+    (_kor_mask8(a, b) == 0) as u8
+}
+
+/// Shift 8-bit mask a left by count bits while shifting in zeros, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask8&ig_expand=3945)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftli_mask8(a: __mmask8, count: u32) -> __mmask8 {
+    a << count
+}
+
+/// Shift 8-bit mask a right by count bits while shifting in zeros, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask8&ig_expand=3949)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftri_mask8(a: __mmask8, count: u32) -> __mmask8 {
+    a >> count
+}
+
+/// Compute the bitwise AND of 16-bit masks a and b, and if the result is all zeros, store 1 in dst,
+/// otherwise store 0 in dst. Compute the bitwise NOT of a and then AND with b, if the result is all
+/// zeros, store 1 in and_not, otherwise store 0 in and_not.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktest_mask16_u8&ig_expand=3950)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktest_mask16_u8(a: __mmask16, b: __mmask16, and_not: *mut u8) -> u8 {
+    *and_not = (_kandn_mask16(a, b) == 0) as u8;
+    (_kand_mask16(a, b) == 0) as u8
+}
+
+/// Compute the bitwise AND of 8-bit masks a and b, and if the result is all zeros, store 1 in dst,
+/// otherwise store 0 in dst. Compute the bitwise NOT of a and then AND with b, if the result is all
+/// zeros, store 1 in and_not, otherwise store 0 in and_not.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktest_mask8_u8&ig_expand=3953)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktest_mask8_u8(a: __mmask8, b: __mmask8, and_not: *mut u8) -> u8 {
+    *and_not = (_kandn_mask8(a, b) == 0) as u8;
+    (_kandn_mask8(a, b) == 0) as u8
+}
+
+/// Compute the bitwise NOT of 16-bit mask a and then AND with 16-bit mask b, if the result is all
+/// zeros, store 1 in dst, otherwise store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestc_mask16_u8&ig_expand=3954)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestc_mask16_u8(a: __mmask16, b: __mmask16) -> u8 {
+    (_kandn_mask16(a, b) == 0) as u8
+}
+
+/// Compute the bitwise NOT of 8-bit mask a and then AND with 8-bit mask b, if the result is all
+/// zeros, store 1 in dst, otherwise store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestc_mask8_u8&ig_expand=3957)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestc_mask8_u8(a: __mmask8, b: __mmask8) -> u8 {
+    (_kandn_mask8(a, b) == 0) as u8
+}
+
+/// Compute the bitwise AND of 16-bit masks a and  b, if the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestz_mask16_u8&ig_expand=3958)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestz_mask16_u8(a: __mmask16, b: __mmask16) -> u8 {
+    (_kand_mask16(a, b) == 0) as u8
+}
+
+/// Compute the bitwise AND of 8-bit masks a and  b, if the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestz_mask8_u8&ig_expand=3961)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestz_mask8_u8(a: __mmask8, b: __mmask8) -> u8 {
+    (_kand_mask8(a, b) == 0) as u8
+}
+
+/// Load 8-bit mask from memory
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_load_mask8&ig_expand=3999)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _load_mask8(mem_addr: *const __mmask8) -> __mmask8 {
+    *mem_addr
+}
+
+/// Store 8-bit mask to memory
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_store_mask8&ig_expand=6468)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _store_mask8(mem_addr: *mut __mmask8, a: __mmask8) {
+    *mem_addr = a;
+}
+
+/// Set each bit of mask register k based on the most significant bit of the corresponding packed 32-bit
+/// integer in a.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movepi32_mask&ig_expand=4612)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_movepi32_mask(a: __m128i) -> __mmask8 {
+    let zero = _mm_setzero_si128();
+    _mm_cmplt_epi32_mask(a, zero)
+}
+
+/// Set each bit of mask register k based on the most significant bit of the corresponding packed 32-bit
+/// integer in a.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movepi32_mask&ig_expand=4613)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_movepi32_mask(a: __m256i) -> __mmask8 {
+    let zero = _mm256_setzero_si256();
+    _mm256_cmplt_epi32_mask(a, zero)
+}
+
+/// Set each bit of mask register k based on the most significant bit of the corresponding packed 32-bit
+/// integer in a.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movepi32_mask&ig_expand=4614)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_movepi32_mask(a: __m512i) -> __mmask16 {
+    let zero = _mm512_setzero_si512();
+    _mm512_cmplt_epi32_mask(a, zero)
+}
+
+/// Set each bit of mask register k based on the most significant bit of the corresponding packed 64-bit
+/// integer in a.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movepi64_mask&ig_expand=4615)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_movepi64_mask(a: __m128i) -> __mmask8 {
+    let zero = _mm_setzero_si128();
+    _mm_cmplt_epi64_mask(a, zero)
+}
+
+/// Set each bit of mask register k based on the most significant bit of the corresponding packed 64-bit
+/// integer in a.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movepi64_mask&ig_expand=4616)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_movepi64_mask(a: __m256i) -> __mmask8 {
+    let zero = _mm256_setzero_si256();
+    _mm256_cmplt_epi64_mask(a, zero)
+}
+
+/// Set each bit of mask register k based on the most significant bit of the corresponding packed 64-bit
+/// integer in a.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movepi64_mask&ig_expand=4617)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_movepi64_mask(a: __m512i) -> __mmask8 {
+    let zero = _mm512_setzero_si512();
+    _mm512_cmplt_epi64_mask(a, zero)
+}
+
+/// Set each packed 32-bit integer in dst to all ones or all zeros based on the value of the corresponding
+/// bit in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movm_epi32&ig_expand=4625)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_movm_epi32(k: __mmask8) -> __m128i {
+    let ones = _mm_set1_epi32(-1);
+    _mm_maskz_mov_epi32(k, ones)
+}
+
+/// Set each packed 32-bit integer in dst to all ones or all zeros based on the value of the corresponding
+/// bit in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movm_epi32&ig_expand=4626)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_movm_epi32(k: __mmask8) -> __m256i {
+    let ones = _mm256_set1_epi32(-1);
+    _mm256_maskz_mov_epi32(k, ones)
+}
+
+/// Set each packed 32-bit integer in dst to all ones or all zeros based on the value of the corresponding
+/// bit in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movm_epi32&ig_expand=4627)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_movm_epi32(k: __mmask16) -> __m512i {
+    let ones = _mm512_set1_epi32(-1);
+    _mm512_maskz_mov_epi32(k, ones)
+}
+
+/// Set each packed 64-bit integer in dst to all ones or all zeros based on the value of the corresponding
+/// bit in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movm_epi64&ig_expand=4628)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_movm_epi64(k: __mmask8) -> __m128i {
+    let ones = _mm_set1_epi64x(-1);
+    _mm_maskz_mov_epi64(k, ones)
+}
+
+/// Set each packed 64-bit integer in dst to all ones or all zeros based on the value of the corresponding
+/// bit in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movm_epi64&ig_expand=4629)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_movm_epi64(k: __mmask8) -> __m256i {
+    let ones = _mm256_set1_epi64x(-1);
+    _mm256_maskz_mov_epi64(k, ones)
+}
+
+/// Set each packed 64-bit integer in dst to all ones or all zeros based on the value of the corresponding
+/// bit in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movm_epi64&ig_expand=4630)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_movm_epi64(k: __mmask8) -> __m512i {
+    let ones = _mm512_set1_epi64(-1);
+    _mm512_maskz_mov_epi64(k, ones)
 }
 
 #[allow(improper_ctypes)]
@@ -6625,6 +7155,386 @@ mod tests {
         let a = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm512_maskz_cvttps_epu64(0b01101001, a);
         let e = _mm512_set_epi64(0, 2, 3, 0, 5, 0, 0, 8);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mullo_epi64() {
+        let a = _mm_set_epi64x(1, 2);
+        let b = _mm_set_epi64x(3, 4);
+        let r = _mm_mullo_epi64(a, b);
+        let e = _mm_set_epi64x(3, 8);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_mullo_epi64() {
+        let a = _mm_set_epi64x(1, 2);
+        let b = _mm_set_epi64x(3, 4);
+        let c = _mm_set_epi64x(5, 6);
+        let r = _mm_mask_mullo_epi64(c, 0b01, a, b);
+        let e = _mm_set_epi64x(5, 8);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_mullo_epi64() {
+        let a = _mm_set_epi64x(1, 2);
+        let b = _mm_set_epi64x(3, 4);
+        let r = _mm_maskz_mullo_epi64(0b01, a, b);
+        let e = _mm_set_epi64x(0, 8);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_mullo_epi64() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let b = _mm256_set_epi64x(5, 6, 7, 8);
+        let r = _mm256_mullo_epi64(a, b);
+        let e = _mm256_set_epi64x(5, 12, 21, 32);
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_mask_mullo_epi64() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let b = _mm256_set_epi64x(5, 6, 7, 8);
+        let c = _mm256_set_epi64x(9, 10, 11, 12);
+        let r = _mm256_mask_mullo_epi64(c, 0b0110, a, b);
+        let e = _mm256_set_epi64x(9, 12, 21, 12);
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_maskz_mullo_epi64() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let b = _mm256_set_epi64x(5, 6, 7, 8);
+        let r = _mm256_maskz_mullo_epi64(0b0110, a, b);
+        let e = _mm256_set_epi64x(0, 12, 21, 0);
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mullo_epi64() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm512_set_epi64(9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_mullo_epi64(a, b);
+        let e = _mm512_set_epi64(9, 20, 33, 48, 65, 84, 105, 128);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_mullo_epi64() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm512_set_epi64(9, 10, 11, 12, 13, 14, 15, 16);
+        let c = _mm512_set_epi64(17, 18, 19, 20, 21, 22, 23, 24);
+        let r = _mm512_mask_mullo_epi64(c, 0b01101001, a, b);
+        let e = _mm512_set_epi64(17, 20, 33, 12, 65, 14, 15, 128);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_maskz_mullo_epi64() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm512_set_epi64(9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_maskz_mullo_epi64(0b01101001, a, b);
+        let e = _mm512_set_epi64(0, 20, 33, 0, 65, 0, 0, 128);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_cvtmask8_u32() {
+        let a: __mmask8 = 0b01101001;
+        let r = _cvtmask8_u32(a);
+        let e: u32 = 0b01101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_cvtu32_mask8() {
+        let a: u32 = 0b01101001;
+        let r = _cvtu32_mask8(a);
+        let e: __mmask8 = 0b01101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kadd_mask16() {
+        let a: __mmask16 = 27549;
+        let b: __mmask16 = 23434;
+        let r = _kadd_mask16(a, b);
+        let e: __mmask16 = 50983;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kadd_mask8() {
+        let a: __mmask8 = 98;
+        let b: __mmask8 = 117;
+        let r = _kadd_mask8(a, b);
+        let e: __mmask8 = 215;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kand_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110011;
+        let r = _kand_mask8(a, b);
+        let e: __mmask8 = 0b00100001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kandn_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110011;
+        let r = _kandn_mask8(a, b);
+        let e: __mmask8 = 0b10011010;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_knot_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let r = _knot_mask8(a);
+        let e: __mmask8 = 0b10010110;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kor_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110011;
+        let r = _kor_mask8(a, b);
+        let e: __mmask8 = 0b11111011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kxnor_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110011;
+        let r = _kxnor_mask8(a, b);
+        let e: __mmask8 = 0b00100101;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kxor_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110011;
+        let r = _kxor_mask8(a, b);
+        let e: __mmask8 = 0b11011010;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kortest_mask8_u8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110110;
+        let mut all_ones: u8 = 0;
+        let r = _kortest_mask8_u8(a, b, &mut all_ones);
+        assert_eq!(r, 0);
+        assert_eq!(all_ones, 1);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kortestc_mask8_u8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110110;
+        let r = _kortestc_mask8_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kortestz_mask8_u8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10110110;
+        let r = _kortestz_mask8_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kshiftli_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let r = _kshiftli_mask8(a, 3);
+        let e: __mmask8 = 0b01001000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kshiftri_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let r = _kshiftri_mask8(a, 3);
+        let e: __mmask8 = 0b00001101;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_ktest_mask8_u8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10010110;
+        let mut and_not: u8 = 0;
+        let r = _ktest_mask8_u8(a, b, &mut and_not);
+        assert_eq!(r, 1);
+        assert_eq!(and_not, 0);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_ktestc_mask8_u8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10010110;
+        let r = _ktestc_mask8_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_ktestz_mask8_u8() {
+        let a: __mmask8 = 0b01101001;
+        let b: __mmask8 = 0b10010110;
+        let r = _ktestz_mask8_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_ktest_mask16_u8() {
+        let a: __mmask16 = 0b0110100100111100;
+        let b: __mmask16 = 0b1001011011000011;
+        let mut and_not: u8 = 0;
+        let r = _ktest_mask16_u8(a, b, &mut and_not);
+        assert_eq!(r, 1);
+        assert_eq!(and_not, 0);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_ktestc_mask16_u8() {
+        let a: __mmask16 = 0b0110100100111100;
+        let b: __mmask16 = 0b1001011011000011;
+        let r = _ktestc_mask16_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_ktestz_mask16_u8() {
+        let a: __mmask16 = 0b0110100100111100;
+        let b: __mmask16 = 0b1001011011000011;
+        let r = _ktestz_mask16_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_load_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let r = _load_mask8(&a);
+        let e: __mmask8 = 0b01101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_store_mask8() {
+        let a: __mmask8 = 0b01101001;
+        let mut r = 0;
+        _store_mask8(&mut r, a);
+        let e: __mmask8 = 0b01101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_movepi32_mask() {
+        let a = _mm_set_epi32(0, -2, -3, 4);
+        let r = _mm_movepi32_mask(a);
+        let e = 0b0110;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_movepi32_mask() {
+        let a = _mm256_set_epi32(0, -2, -3, 4, -5, 6, 7, -8);
+        let r = _mm256_movepi32_mask(a);
+        let e = 0b01101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_movepi32_mask() {
+        let a = _mm512_set_epi32(
+            0, -2, -3, 4, -5, 6, 7, -8, 9, 10, -11, -12, -13, -14, 15, 16,
+        );
+        let r = _mm512_movepi32_mask(a);
+        let e = 0b0110100100111100;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_movepi64_mask() {
+        let a = _mm_set_epi64x(0, -2);
+        let r = _mm_movepi64_mask(a);
+        let e = 0b01;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_movepi64_mask() {
+        let a = _mm256_set_epi64x(0, -2, -3, 4);
+        let r = _mm256_movepi64_mask(a);
+        let e = 0b0110;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_movepi64_mask() {
+        let a = _mm512_set_epi64(0, -2, -3, 4, -5, 6, 7, -8);
+        let r = _mm512_movepi64_mask(a);
+        let e = 0b01101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_movm_epi32() {
+        let a = 0b0110;
+        let r = _mm_movm_epi32(a);
+        let e = _mm_set_epi32(0, -1, -1, 0);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_movm_epi32() {
+        let a = 0b01101001;
+        let r = _mm256_movm_epi32(a);
+        let e = _mm256_set_epi32(0, -1, -1, 0, -1, 0, 0, -1);
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_movm_epi32() {
+        let a = 0b0110100100111100;
+        let r = _mm512_movm_epi32(a);
+        let e = _mm512_set_epi32(0, -1, -1, 0, -1, 0, 0, -1, 0, 0, -1, -1, -1, -1, 0, 0);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_movm_epi64() {
+        let a = 0b01;
+        let r = _mm_movm_epi64(a);
+        let e = _mm_set_epi64x(0, -1);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_movm_epi64() {
+        let a = 0b0110;
+        let r = _mm256_movm_epi64(a);
+        let e = _mm256_set_epi64x(0, -1, -1, 0);
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_movm_epi64() {
+        let a = 0b01101001;
+        let r = _mm512_movm_epi64(a);
+        let e = _mm512_set_epi64(0, -1, -1, 0, -1, 0, 0, -1);
         assert_eq_m512i(r, e);
     }
 }
