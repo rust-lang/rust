@@ -1368,8 +1368,7 @@ pub enum NonLocalDefinitionsDiag {
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
-        help: Option<()>,
-        doctest_help: Option<()>,
+        doctest: bool,
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
     },
 }
@@ -1448,8 +1447,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 depth,
                 body_kind_descr,
                 body_name,
-                help,
-                doctest_help,
+                doctest,
                 cargo_update,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_macro_rules);
@@ -1457,11 +1455,10 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
 
-                if let Some(()) = help {
-                    diag.help(fluent::lint_help);
-                }
-                if let Some(()) = doctest_help {
+                if doctest {
                     diag.help(fluent::lint_help_doctest);
+                } else {
+                    diag.help(fluent::lint_help);
                 }
 
                 diag.note(fluent::lint_non_local);

@@ -304,8 +304,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
-                        help: (!is_at_toplevel_doctest()).then_some(()),
-                        doctest_help: is_at_toplevel_doctest().then_some(()),
+                        doctest: is_at_toplevel_doctest(),
                     },
                 )
             }
