@@ -62,8 +62,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Some(InlineAsmType::I64),
             ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Some(InlineAsmType::I128),
             ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(asm_ty_isize),
+            ty::Float(FloatTy::F16) => Some(InlineAsmType::F16),
             ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
             ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
+            ty::Float(FloatTy::F128) => Some(InlineAsmType::F128),
             ty::FnPtr(_) => Some(asm_ty_isize),
             ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Some(asm_ty_isize),
             ty::Adt(adt, args) if adt.repr().simd() => {
@@ -105,8 +107,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             width => bug!("unsupported pointer width: {width}"),
                         })
                     }
+                    ty::Float(FloatTy::F16) => Some(InlineAsmType::VecF16(size)),
                     ty::Float(FloatTy::F32) => Some(InlineAsmType::VecF32(size)),
                     ty::Float(FloatTy::F64) => Some(InlineAsmType::VecF64(size)),
+                    ty::Float(FloatTy::F128) => Some(InlineAsmType::VecF128(size)),
                     _ => None,
                 }
             }

@@ -960,6 +960,43 @@ fn llvm_fixup_input<'ll, 'tcx>(
             Abi::Vector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, bx.cx.type_vector(bx.cx.type_f64(), 8)),
         (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Scalar(s),
+        ) if bx.sess().asm_arch == Some(InlineAsmArch::X86)
+            && s.primitive() == Primitive::Float(Float::F128) =>
+        {
+            bx.bitcast(value, bx.type_vector(bx.type_i32(), 4))
+        }
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F16) => {
+            let value = bx.insert_element(
+                bx.const_undef(bx.type_vector(bx.type_f16(), 8)),
+                value,
+                bx.const_usize(0),
+            );
+            bx.bitcast(value, bx.type_vector(bx.type_i16(), 8))
+        }
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Vector { element, count: count @ (8 | 16) },
+        ) if element.primitive() == Primitive::Float(Float::F16) => {
+            bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
+        }
+        (
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) => {
@@ -1037,6 +1074,39 @@ fn llvm_fixup_output<'ll, 'tcx>(
             Abi::Vector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, layout.llvm_type(bx.cx)),
         (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Scalar(s),
+        ) if bx.sess().asm_arch == Some(InlineAsmArch::X86)
+            && s.primitive() == Primitive::Float(Float::F128) =>
+        {
+            bx.bitcast(value, bx.type_f128())
+        }
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F16) => {
+            let value = bx.bitcast(value, bx.type_vector(bx.type_f16(), 8));
+            bx.extract_element(value, bx.const_usize(0))
+        }
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Vector { element, count: count @ (8 | 16) },
+        ) if element.primitive() == Primitive::Float(Float::F16) => {
+            bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
+        }
+        (
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) => {
@@ -1109,6 +1179,36 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
             Abi::Vector { .. },
         ) if layout.size.bytes() == 64 => cx.type_vector(cx.type_f64(), 8),
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Scalar(s),
+        ) if cx.sess().asm_arch == Some(InlineAsmArch::X86)
+            && s.primitive() == Primitive::Float(Float::F128) =>
+        {
+            cx.type_vector(cx.type_i32(), 4)
+        }
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F16) => cx.type_vector(cx.type_i16(), 8),
+        (
+            InlineAsmRegClass::X86(
+                X86InlineAsmRegClass::xmm_reg
+                | X86InlineAsmRegClass::ymm_reg
+                | X86InlineAsmRegClass::zmm_reg,
+            ),
+            Abi::Vector { element, count: count @ (8 | 16) },
+        ) if element.primitive() == Primitive::Float(Float::F16) => {
+            cx.type_vector(cx.type_i16(), count)
+        }
         (
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
