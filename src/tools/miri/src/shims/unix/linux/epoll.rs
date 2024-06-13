@@ -57,10 +57,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let flags = this.read_scalar(flags)?.to_i32()?;
 
         let epoll_cloexec = this.eval_libc_i32("EPOLL_CLOEXEC");
-        if flags == epoll_cloexec {
-            // Miri does not support exec, so this flag has no effect.
-        } else if flags != 0 {
-            throw_unsup_format!("epoll_create1 flags {flags} are not implemented");
+
+        // Miri does not support exec, so EPOLL_CLOEXEC flag has no effect.
+        if flags != epoll_cloexec && flags != 0 {
+            throw_unsup_format!(
+                "epoll_create1: flag {:#x} is unsupported, only 0 or EPOLL_CLOEXEC are allowed",
+                flags
+            );
         }
 
         let fd = this.machine.fds.insert_fd(FileDescriptor::new(Epoll::default()));

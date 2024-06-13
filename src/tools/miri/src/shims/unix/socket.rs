@@ -179,19 +179,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // their values differ.
         if domain != this.eval_libc_i32("AF_UNIX") && domain != this.eval_libc_i32("AF_LOCAL") {
             throw_unsup_format!(
-                "socketpair: Unsupported domain {:#x} is used, only AF_UNIX \
+                "socketpair: domain {:#x} is unsupported, only AF_UNIX \
                                  and AF_LOCAL are allowed",
                 domain
             );
         } else if type_ != 0 {
             throw_unsup_format!(
-                "socketpair: Unsupported type {:#x} is used, only SOCK_STREAM, \
+                "socketpair: type {:#x} is unsupported, only SOCK_STREAM, \
                                  SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
                 type_
             );
         } else if protocol != 0 {
             throw_unsup_format!(
-                "socketpair: Unsupported socket protocol {protocol} is used, \
+                "socketpair: socket protocol {protocol} is unsupported, \
                                  only 0 is allowed",
             );
         }
