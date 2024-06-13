@@ -75,8 +75,9 @@ impl DocTestRunner {
 #![allow(internal_features)]
 #![feature(test)]
 #![feature(rustc_attrs)]
-#![feature(coverage_attribute)]\n"
-            .to_string();
+#![feature(coverage_attribute)]
+"
+        .to_string();
 
         for crate_attr in &self.crate_attrs {
             code.push_str(crate_attr);
@@ -104,15 +105,67 @@ impl DocTestRunner {
             code,
             "\
 {output}
+
+mod __doctest_mod {{
+    pub static mut BINARY_PATH: Option<std::path::PathBuf> = None;
+    pub const RUN_OPTION: &str = \"*doctest-inner-test\";
+    pub const BIN_OPTION: &str = \"*doctest-bin-path\";
+
+    #[allow(unused)]
+    pub fn get_doctest_path() -> Option<&'static std::path::Path> {{
+        unsafe {{ self::BINARY_PATH.as_deref() }}
+    }}
+
+    #[allow(unused)]
+    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> Result<(), String> {{
+        let out = std::process::Command::new(bin)
+            .arg(self::RUN_OPTION)
+            .arg(test_nb.to_string())
+            .output()
+            .expect(\"failed to run command\");
+        if !out.status.success() {{
+            Err(String::from_utf8_lossy(&out.stderr).to_string())
+        }} else {{
+            Ok(())
+        }}
+    }}
+}}
+
 #[rustc_main]
 #[coverage(off)]
-fn main() {{
+fn main() -> std::process::ExitCode {{
 const TESTS: [test::TestDescAndFn; {nb_tests}] = [{ids}];
-test::test_main(
-    &[{test_args}],
-    Vec::from(TESTS),
-    None,
-);
+let bin_marker = std::ffi::OsStr::new(__doctest_mod::BIN_OPTION);
+let test_marker = std::ffi::OsStr::new(__doctest_mod::RUN_OPTION);
+
+let mut args = std::env::args_os().skip(1);
+while let Some(arg) = args.next() {{
+    if arg == bin_marker {{
+        let Some(binary) = args.next() else {{
+            panic!(\"missing argument after `{{}}`\", __doctest_mod::BIN_OPTION);
+        }};
+        unsafe {{ crate::__doctest_mod::BINARY_PATH = Some(binary.into()); }}
+        return std::process::Termination::report(test::test_main(
+            &[{test_args}],
+            Vec::from(TESTS),
+            None,
+        ));
+    }} else if arg == test_marker {{
+        let Some(nb_test) = args.next() else {{
+            panic!(\"missing argument after `{{}}`\", __doctest_mod::RUN_OPTION);
+        }};
+        if let Some(nb_test) = nb_test.to_str().and_then(|nb| nb.parse::<usize>().ok()) {{
+            if let Some(test) = TESTS.get(nb_test) {{
+                if let test::StaticTestFn(f) = test.testfn {{
+                    return std::process::Termination::report(f());
+                }}
+            }}
+        }}
+        panic!(\"Unexpected value after `{{}}`\", __doctest_mod::RUN_OPTION);
+    }}
+}}
+
+panic!(\"missing argument for merged doctest binary\");
 }}",
             nb_tests = self.nb_tests,
             output = self.output,
@@ -156,6 +209,10 @@ fn generate_mergeable_doctest(
     } else {
         writeln!(output, "mod {test_id} {{\n{}{}", doctest.crates, doctest.maybe_crate_attrs)
             .unwrap();
+        if scraped_test.langstr.no_run {
+            // To prevent having warnings about unused items since they're not called.
+            writeln!(output, "#![allow(unused)]").unwrap();
+        }
         if doctest.has_main_fn {
             output.push_str(&doctest.everything_else);
         } else {
@@ -167,14 +224,15 @@ fn generate_mergeable_doctest(
             write!(
                 output,
                 "\
-    fn main() {returns_result} {{
-        {}
-    }}",
+fn main() {returns_result} {{
+    {}
+}}",
                 doctest.everything_else
             )
             .unwrap();
         }
     }
+    let not_running = ignore || scraped_test.langstr.no_run;
     writeln!(
         output,
         "
@@ -196,7 +254,7 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
     }},
     testfn: test::StaticTestFn(
         #[coverage(off)]
-        || test::assert_test_result({runner}),
+        || {{{runner}}},
     )
 }};
 }}",
@@ -211,10 +269,18 @@ pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
         },
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
-        runner = if ignore || scraped_test.langstr.no_run {
-            "Ok::<(), String>(())"
+        runner = if not_running {
+            "test::assert_test_result(Ok::<(), String>(()))".to_string()
         } else {
-            "self::main()"
+            format!(
+                "
+if let Some(bin_path) = crate::__doctest_mod::get_doctest_path() {{
+    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}))
+}} else {{
+    test::assert_test_result(self::main())
+}}
+",
+            )
         },
     )
     .unwrap();
