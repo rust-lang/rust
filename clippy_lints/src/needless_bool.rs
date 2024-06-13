@@ -6,8 +6,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt, peel_blocks, peel_blocks_with_stmt,
-    span_extract_comment, SpanlessEq,
+    get_parent_expr, higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt, is_receiver_of_method_call,
+    peel_blocks, peel_blocks_with_stmt, span_extract_comment, SpanlessEq,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -154,7 +154,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     snip = snip.blockify();
                 }
 
-                if condition_needs_parentheses(cond) && is_parent_stmt(cx, e.hir_id) {
+                if (condition_needs_parentheses(cond) && is_parent_stmt(cx, e.hir_id))
+                    || is_receiver_of_method_call(cx, e)
+                    || is_as_argument(cx, e)
+                {
                     snip = snip.maybe_par();
                 }
 
@@ -441,4 +444,8 @@ fn fetch_assign<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, bool)
     } else {
         None
     }
+}
+
+fn is_as_argument(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    matches!(get_parent_expr(cx, e).map(|e| e.kind), Some(ExprKind::Cast(_, _)))
 }

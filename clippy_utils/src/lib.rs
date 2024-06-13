@@ -126,7 +126,7 @@ use visitors::Visitable;
 use crate::consts::{constant, mir_to_const, Constant};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
-use crate::visitors::for_each_expr;
+use crate::visitors::for_each_expr_without_closures;
 
 use rustc_middle::hir::nested_filter;
 
@@ -319,6 +319,15 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
         .type_dependent_def_id(expr.hir_id)
         .and_then(|defid| cx.tcx.trait_of_item(defid))
         .map_or(false, |trt_id| match_def_path(cx, trt_id, path))
+}
+
+/// Checks if the given method call expression calls an inherent method.
+pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+        cx.tcx.trait_of_item(method_id).is_none()
+    } else {
+        false
+    }
 }
 
 /// Checks if a method is defined in an impl of a diagnostic item
@@ -1313,7 +1322,7 @@ pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<
 
 /// Returns `true` if `expr` contains a return expression
 pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
-    for_each_expr(expr, |e| {
+    for_each_expr_without_closures(expr, |e| {
         if matches!(e.kind, ExprKind::Ret(..)) {
             ControlFlow::Break(())
         } else {
@@ -3391,4 +3400,15 @@ pub fn binary_expr_needs_parentheses(expr: &Expr<'_>) -> bool {
     }
 
     contains_block(expr, false)
+}
+
+/// Returns true if the specified expression is in a receiver position.
+pub fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::MethodCall(_, receiver, ..) = parent_expr.kind
+        && receiver.hir_id == expr.hir_id
+    {
+        return true;
+    }
+    false
 }

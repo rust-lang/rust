@@ -2,7 +2,8 @@ use clippy_utils::consts::Constant::{Int, F32, F64};
 use clippy_utils::consts::{constant, constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, higher, in_constant, is_no_std_crate, numeric_literal, peel_blocks, sugg,
+    eq_expr_value, get_parent_expr, higher, in_constant, is_inherent_method_call, is_no_std_crate, numeric_literal,
+    peel_blocks, sugg,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -759,7 +760,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
         if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
-            if recv_ty.is_floating_point() && !is_no_std_crate(cx) {
+            if recv_ty.is_floating_point() && !is_no_std_crate(cx) && is_inherent_method_call(cx, expr) {
                 match path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, receiver),
                     "log" => check_log_base(cx, expr, receiver, args),

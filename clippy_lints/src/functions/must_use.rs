@@ -14,7 +14,7 @@ use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_must_use_ty;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{return_ty, trait_ref_of_method};
 
 use core::ops::ControlFlow;
@@ -226,7 +226,7 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
 }
 
 fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bool {
-    for_each_expr(body.value, |e| {
+    for_each_expr_without_closures(body.value, |e| {
         use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
 
         match e.kind {

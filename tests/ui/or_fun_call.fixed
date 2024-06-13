@@ -311,4 +311,11 @@ mod lazy {
     }
 }
 
+fn host_effect() {
+    // #12877 - make sure we don't ICE in type_certainty
+    use std::ops::Add;
+
+    Add::<i32>::add(1, 1).add(i32::MIN);
+}
+
 fn main() {}

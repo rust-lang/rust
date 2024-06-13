@@ -733,7 +733,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         match stmt.value.kind {
             StmtKind::Let(local) => {
                 bind!(self, local);
-                kind!("Local({local})");
+                kind!("Let({local})");
                 self.option(field!(local.init), "init", |init| {
                     self.expr(init);
                 });
