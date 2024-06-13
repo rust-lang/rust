@@ -1,15 +1,17 @@
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
+// tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
+#![feature(rustdoc_internals)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that

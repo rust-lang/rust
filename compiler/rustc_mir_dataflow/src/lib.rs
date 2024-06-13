@@ -1,8 +1,10 @@
+// tidy-alphabetical-start
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
+// tidy-alphabetical-end
 
 use rustc_middle::ty;
 

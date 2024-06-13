@@ -1,4 +1,4 @@
-use std::fs::copy;
+use run_make_support::fs_wrapper::copy;
 use std::path::{Path, PathBuf};
 
 use run_make_support::{copy_dir_all, recursive_diff, rustdoc};
@@ -38,7 +38,7 @@ fn main() {
     assert!(out_dir.join("foobar.json").is_file());
 
     // Copy first json output to check if it's exactly same after second compilation.
-    copy(out_dir.join("foobar.json"), tmp_out_dir.join("foobar.json")).unwrap();
+    copy(out_dir.join("foobar.json"), tmp_out_dir.join("foobar.json"));
 
     // Generate json doc on the same output.
     generate_docs(&out_dir, JsonOutput::Yes);

@@ -3,7 +3,7 @@
 macro_rules! foo {
     () => {};
     ($( $i:ident = $($j:ident),+ );*) => { $( $i = $j; )* };
-    //~^ ERROR variable 'j' is still repeating
+    //~^ ERROR variable `j` is still repeating
 }
 
 macro_rules! bar {
@@ -12,12 +12,12 @@ macro_rules! bar {
         macro_rules! nested {
             () => {};
             ($( $i:ident = $($j:ident),+ );*) => { $( $i = $j; )* };
-            //~^ ERROR variable 'j' is still repeating
+            //~^ ERROR variable `j` is still repeating
         }
     };
     ( $( $i:ident = $($j:ident),+ );* ) => {
         $(macro_rules! $i {
-            () => { $j }; //~ ERROR variable 'j' is still repeating
+            () => { $j }; //~ ERROR variable `j` is still repeating
         })*
     };
 }

@@ -7,23 +7,25 @@
 //!
 //! This crate implements several kinds of arena.
 
+// tidy-alphabetical-start
+#![allow(clippy::mut_from_ref)] // Arena allocators are one place where this pattern is fine.
+#![allow(internal_features)]
+#![cfg_attr(test, feature(test))]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(core_intrinsics)]
-#![feature(dropck_eyepatch)]
-#![feature(new_uninit)]
-#![feature(maybe_uninit_slice)]
 #![feature(decl_macro)]
+#![feature(dropck_eyepatch)]
+#![feature(maybe_uninit_slice)]
+#![feature(new_uninit)]
 #![feature(rustc_attrs)]
-#![cfg_attr(test, feature(test))]
+#![feature(rustdoc_internals)]
 #![feature(strict_provenance)]
-#![deny(unsafe_op_in_unsafe_fn)]
-#![allow(internal_features)]
-#![allow(clippy::mut_from_ref)] // Arena allocators are one of the places where this pattern is fine.
+// tidy-alphabetical-end
 
 use smallvec::SmallVec;
 

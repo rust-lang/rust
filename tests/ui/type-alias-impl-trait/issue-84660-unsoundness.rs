@@ -20,7 +20,8 @@ trait Trait<T, In> {
 impl<In, Out> Trait<Bar, In> for Out {
     type Out = Out;
     fn convert(_i: In) -> Self::Out {
-        //[next]~^ ERROR: type annotations needed
+        //[next]~^  ERROR: cannot satisfy `<Out as Trait<Bar, In>>::Out == ()`
+        //[current]~^^ ERROR: item does not constrain `Bar::{opaque#0}`, but has it in its signature
         unreachable!();
     }
 }

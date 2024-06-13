@@ -1566,7 +1566,6 @@ impl<'a> Builder<'a> {
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        cargo.arg("-Zcheck-cfg");
         if mode == Mode::Std {
             rustflags.arg("--check-cfg=cfg(feature,values(any()))");
         }

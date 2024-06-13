@@ -854,9 +854,9 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-asm-support",
     "needs-dlltool",
     "needs-dynamic-linking",
+    "needs-force-clang-based-tests",
     "needs-git-hash",
     "needs-llvm-components",
-    "needs-matching-clang",
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
@@ -1281,6 +1281,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const BUILD_BASE: &str = "{{build-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
+    const TARGET: &str = "{{target}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
@@ -1301,6 +1302,10 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(TARGET_LINKER) {
         value = value.replace(TARGET_LINKER, config.target_linker.as_deref().unwrap_or(""));
+    }
+
+    if value.contains(TARGET) {
+        value = value.replace(TARGET, &config.target);
     }
 
     value

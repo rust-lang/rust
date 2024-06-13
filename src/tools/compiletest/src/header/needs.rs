@@ -100,9 +100,9 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
-            name: "needs-matching-clang",
+            name: "needs-force-clang-based-tests",
             condition: config.run_clang_based_tests_with.is_some(),
-            ignore_reason: "ignored when the used clang does not match the built LLVM",
+            ignore_reason: "ignored when RUSTBUILD_FORCE_CLANG_BASED_TESTS is not set",
         },
         Need {
             name: "needs-xray",

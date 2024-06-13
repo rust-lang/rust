@@ -16,17 +16,18 @@ fn foo() {
     let _b = z; // this should *not* check that `'a` in the type `Foo<'a>::foo::opaque` is live
 }
 
+struct Foo<'a> {
+    x: &'a mut u8,
+}
+// desugared
+mod foo {
+    pub type FooX = impl Sized;
+    impl<'a> super::Foo<'a> {
+        pub fn foo(&self) -> FooX {}
+    }
+}
+
 fn bar() {
-    struct Foo<'a> {
-        x: &'a mut u8,
-    }
-
-    // desugared
-    type FooX = impl Sized;
-    impl<'a> Foo<'a> {
-        fn foo(&self) -> FooX {}
-    }
-
     // use site
     let mut x = 5;
     let y = Foo { x: &mut x };

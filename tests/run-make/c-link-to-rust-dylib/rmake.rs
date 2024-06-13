@@ -3,9 +3,9 @@
 
 //@ ignore-cross-compile
 
-use std::fs::remove_file;
-
-use run_make_support::{cc, cwd, dynamic_lib_extension, is_msvc, read_dir, run, run_fail, rustc};
+use run_make_support::{
+    cc, cwd, dynamic_lib_extension, fs_wrapper, is_msvc, read_dir, run, run_fail, rustc,
+};
 
 fn main() {
     rustc().input("foo.rs").run();
@@ -28,7 +28,7 @@ fn main() {
                 name.ends_with(".so") || name.ends_with(".dll") || name.ends_with(".dylib")
             })
         {
-            remove_file(path).unwrap();
+            fs_wrapper::remove_file(path);
         }
     });
     run_fail("bar");

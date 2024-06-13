@@ -2058,7 +2058,7 @@ pub trait Seek {
     /// ```
     ///
     /// [`BufReader`]: crate::io::BufReader
-    #[stable(feature = "seek_seek_relative", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "seek_seek_relative", since = "1.80.0")]
     fn seek_relative(&mut self, offset: i64) -> Result<()> {
         self.seek(SeekFrom::Current(offset))?;
         Ok(())

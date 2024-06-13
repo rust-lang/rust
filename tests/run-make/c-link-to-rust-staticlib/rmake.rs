@@ -3,6 +3,7 @@
 
 //@ ignore-cross-compile
 
+use run_make_support::fs_wrapper::remove_file;
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 use std::fs;
 
@@ -10,6 +11,6 @@ fn main() {
     rustc().input("foo.rs").run();
     cc().input("bar.c").input(static_lib_name("foo")).out_exe("bar").args(&extra_c_flags()).run();
     run("bar");
-    fs::remove_file(static_lib_name("foo"));
+    remove_file(static_lib_name("foo"));
     run("bar");
 }

@@ -18,12 +18,12 @@ use rustc_span::{def_id::LocalDefId, Span};
 #[derive(Copy, Clone)]
 pub enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
-    FallbackToUnit,
+    ToUnit,
     /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
-    FallbackToNiko,
+    ContextDependent,
     /// Always fallback to `!` (which should be equivalent to never falling back + not making
     /// never-to-any coercions unless necessary)
-    FallbackToNever,
+    ToNever,
     /// Don't fallback at all
     NoFallback,
 }
@@ -373,13 +373,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 diverging_fallback.insert(diverging_ty, ty);
             };
 
-            use DivergingFallbackBehavior::*;
             match behavior {
-                FallbackToUnit => {
+                DivergingFallbackBehavior::ToUnit => {
                     debug!("fallback to () - legacy: {:?}", diverging_vid);
                     fallback_to(self.tcx.types.unit);
                 }
-                FallbackToNiko => {
+                DivergingFallbackBehavior::ContextDependent => {
                     if found_infer_var_info.self_in_trait && found_infer_var_info.output {
                         // This case falls back to () to ensure that the code pattern in
                         // tests/ui/never_type/fallback-closure-ret.rs continues to
@@ -415,14 +414,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         fallback_to(self.tcx.types.never);
                     }
                 }
-                FallbackToNever => {
+                DivergingFallbackBehavior::ToNever => {
                     debug!(
                         "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
                         diverging_vid
                     );
                     fallback_to(self.tcx.types.never);
                 }
-                NoFallback => {
+                DivergingFallbackBehavior::NoFallback => {
                     debug!(
                         "no fallback - `rustc_never_type_mode = \"no_fallback\"`: {:?}",
                         diverging_vid

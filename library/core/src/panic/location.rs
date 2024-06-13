@@ -2,9 +2,10 @@ use crate::fmt;
 
 /// A struct containing information about the location of a panic.
 ///
-/// This structure is created by [`PanicInfo::location()`].
+/// This structure is created by [`PanicHookInfo::location()`] and [`PanicInfo::location()`].
 ///
 /// [`PanicInfo::location()`]: crate::panic::PanicInfo::location
+/// [`PanicHookInfo::location()`]: ../../std/panic/struct.PanicHookInfo.html#method.location
 ///
 /// # Examples
 ///

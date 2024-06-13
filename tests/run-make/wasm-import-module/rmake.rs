@@ -1,6 +1,6 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{rustc, wasmparser};
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::collections::HashMap;
 use wasmparser::TypeRef::Func;
 
@@ -8,7 +8,7 @@ fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
     rustc().input("bar.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
 
-    let file = std::fs::read("bar.wasm").unwrap();
+    let file = fs_wrapper::read("bar.wasm");
 
     let mut imports = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {

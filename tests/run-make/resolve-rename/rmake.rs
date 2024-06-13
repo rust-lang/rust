@@ -5,11 +5,12 @@
 // the renamed library.
 // See https://github.com/rust-lang/rust/pull/49253
 
+use run_make_support::fs_wrapper;
 use run_make_support::rustc;
-use std::fs;
+
 fn main() {
     rustc().extra_filename("-hash").input("foo.rs").run();
     rustc().input("bar.rs").run();
-    fs::rename("libfoo-hash.rlib", "libfoo-another-hash.rlib").unwrap();
+    fs_wrapper::rename("libfoo-hash.rlib", "libfoo-another-hash.rlib");
     rustc().input("baz.rs").run();
 }

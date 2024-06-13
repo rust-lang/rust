@@ -1,10 +1,12 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(associated_type_defaults)]
-#![feature(try_blocks)]
 #![feature(let_chains)]
+#![feature(rustdoc_internals)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
 
 mod errors;
 

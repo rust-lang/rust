@@ -33,6 +33,11 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(mir_build_suggestion, applicability = "machine-applicable")]
 pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafeSub {
+    pub(crate) indent: String,
+    #[suggestion_part(
+        code = "{indent}// TODO: Audit that the environment access only happens in single-threaded code.\n" // ignore-tidy-todo
+    )]
+    pub(crate) start_of_line: Span,
     #[suggestion_part(code = "unsafe {{ ")]
     pub(crate) left: Span,
     #[suggestion_part(code = " }}")]

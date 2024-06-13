@@ -1,8 +1,10 @@
+// tidy-alphabetical-start
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
+#![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
@@ -12,7 +14,7 @@
 #![feature(round_char_boundary)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(if_let_guard)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;

@@ -1,9 +1,11 @@
+// tidy-alphabetical-start
+#![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(
     feature = "nightly",
     feature(associated_type_defaults, min_specialization, never_type, rustc_attrs, negative_impls)
 )]
-#![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+// tidy-alphabetical-end
 
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
@@ -40,7 +42,6 @@ mod macros;
 mod binder;
 mod canonical;
 mod const_kind;
-mod debug;
 mod flags;
 mod generic_arg;
 mod infcx;
@@ -57,7 +58,6 @@ pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
-pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
 pub use generic_arg::*;
 pub use infcx::InferCtxtLike;

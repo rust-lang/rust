@@ -2313,6 +2313,7 @@ pub mod unexpected_cfg_value {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_macro_use_deprecated)]
+#[help]
 pub struct MacroUseDeprecated;
 
 #[derive(LintDiagnostic)]
@@ -2323,6 +2324,8 @@ pub struct UnusedMacroUse;
 #[diag(lint_private_extern_crate_reexport, code = E0365)]
 pub struct PrivateExternCrateReexport {
     pub ident: Ident,
+    #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
+    pub sugg: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -2416,6 +2419,7 @@ pub struct UnknownMacroVariable {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_crate_dependency)]
+#[help]
 pub struct UnusedCrateDependency {
     pub extern_crate: Symbol,
     pub local_crate: Symbol,

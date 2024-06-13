@@ -9,5 +9,5 @@ fn main() {
         .output(&out_dir)
         .run();
     // FIXME (GuillaumeGomez): Port the python script to Rust as well.
-    assert!(python_command().arg("validate_json.py").arg(&out_dir).status().unwrap().success());
+    python_command().arg("validate_json.py").arg(&out_dir).run();
 }

@@ -5,7 +5,7 @@ use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt;
 
-use crate::{self as ty, DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+use crate::{self as ty, DebruijnIndex, Interner};
 
 use self::ConstKind::*;
 
@@ -61,28 +61,19 @@ impl<I: Interner> PartialEq for ConstKind<I> {
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-
-impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
         use ConstKind::*;
 
-        match this.data {
+        match self {
             Param(param) => write!(f, "{param:?}"),
-            Infer(var) => write!(f, "{:?}", &this.wrap(var)),
+            Infer(var) => write!(f, "{:?}", &var),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
             Unevaluated(uv) => {
-                write!(f, "{:?}", &this.wrap(uv))
+                write!(f, "{:?}", &uv)
             }
-            Value(ty, valtree) => write!(f, "({valtree:?}: {:?})", &this.wrap(ty)),
+            Value(ty, valtree) => write!(f, "({valtree:?}: {:?})", &ty),
             Error(_) => write!(f, "{{const error}}"),
-            Expr(expr) => write!(f, "{:?}", &this.wrap(expr)),
+            Expr(expr) => write!(f, "{:?}", &expr),
         }
     }
 }
@@ -112,17 +103,9 @@ impl<I: Interner> UnevaluatedConst<I> {
 
 impl<I: Interner> fmt::Debug for UnevaluatedConst<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-impl<I: Interner> DebugWithInfcx<I> for UnevaluatedConst<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
         f.debug_struct("UnevaluatedConst")
-            .field("def", &this.data.def)
-            .field("args", &this.wrap(this.data.args))
+            .field("def", &self.def)
+            .field("args", &self.args)
             .finish()
     }
 }
@@ -172,23 +155,6 @@ impl fmt::Debug for InferConst {
             InferConst::Var(var) => write!(f, "{var:?}"),
             InferConst::EffectVar(var) => write!(f, "{var:?}"),
             InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
-        }
-    }
-}
-impl<I: Interner> DebugWithInfcx<I> for InferConst {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match *this.data {
-            InferConst::Var(vid) => match this.infcx.universe_of_ct(vid) {
-                None => write!(f, "{:?}", this.data),
-                Some(universe) => write!(f, "?{}_{}c", vid.index(), universe.index()),
-            },
-            InferConst::EffectVar(vid) => write!(f, "?{}e", vid.index()),
-            InferConst::Fresh(_) => {
-                unreachable!()
-            }
         }
     }
 }
