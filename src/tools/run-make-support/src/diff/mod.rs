@@ -3,6 +3,7 @@ use similar::TextDiff;
 use std::path::{Path, PathBuf};
 
 use crate::drop_bomb::DropBomb;
+use crate::fs_wrapper;
 
 #[cfg(test)]
 mod tests;
@@ -42,7 +43,7 @@ impl Diff {
     /// Specify the expected output for the diff from a file.
     pub fn expected_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path).expect("failed to read file");
+        let content = fs_wrapper::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
         self.expected_file = Some(path.into());
@@ -61,10 +62,7 @@ impl Diff {
     /// Specify the actual output for the diff from a file.
     pub fn actual_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = match std::fs::read_to_string(path) {
-            Ok(c) => c,
-            Err(e) => panic!("failed to read `{}`: {:?}", path.display(), e),
-        };
+        let content = fs_wrapper::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
         self.actual = Some(content);
@@ -112,7 +110,7 @@ impl Diff {
             if let Some(ref expected_file) = self.expected_file {
                 if std::env::var("RUSTC_BLESS_TEST").is_ok() {
                     println!("Blessing `{}`", expected_file.display());
-                    std::fs::write(expected_file, actual).unwrap();
+                    fs_wrapper::write(expected_file, actual);
                     return;
                 }
             }
