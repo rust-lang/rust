@@ -477,7 +477,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         behavior: DivergingFallbackBehavior,
         diverging_vids: &[ty::TyVid],
     ) {
-        let DivergingFallbackBehavior::FallbackToUnit = behavior else { return };
+        let DivergingFallbackBehavior::ToUnit = behavior else { return };
 
         // Fallback happens if and only if there are diverging variables
         if diverging_vids.is_empty() {
