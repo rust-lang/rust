@@ -117,6 +117,28 @@ mod i_to_f {
         u128, __floatuntidf;
         i128, __floattidf;
     }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
+        u32, __floatunsitf;
+        i32, __floatsitf;
+        u64, __floatunditf;
+        i64, __floatditf;
+        u128, __floatuntitf;
+        i128, __floattitf;
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
+        u32, __floatunsikf;
+        i32, __floatsikf;
+        u64, __floatundikf;
+        i64, __floatdikf;
+        u128, __floatuntikf;
+        i128, __floattikf;
+    }
 }
 
 // PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520

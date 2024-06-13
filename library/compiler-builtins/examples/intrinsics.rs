@@ -264,14 +264,18 @@ mod intrinsics {
 
     /* i32 operations */
 
+    // floatsisf
+    pub fn aeabi_i2f(x: i32) -> f32 {
+        x as f32
+    }
+
     // floatsidf
     pub fn aeabi_i2d(x: i32) -> f64 {
         x as f64
     }
 
-    // floatsisf
-    pub fn aeabi_i2f(x: i32) -> f32 {
-        x as f32
+    pub fn floatsitf(x: i32) -> f128 {
+        x as f128
     }
 
     pub fn aeabi_idiv(a: i32, b: i32) -> i32 {
@@ -294,6 +298,10 @@ mod intrinsics {
         x as f64
     }
 
+    pub fn floatditf(x: i64) -> f128 {
+        x as f128
+    }
+
     pub fn mulodi4(a: i64, b: i64) -> i64 {
         a * b
     }
@@ -314,6 +322,18 @@ mod intrinsics {
 
     /* i128 operations */
 
+    pub fn floattisf(x: i128) -> f32 {
+        x as f32
+    }
+
+    pub fn floattidf(x: i128) -> f64 {
+        x as f64
+    }
+
+    pub fn floattitf(x: i128) -> f128 {
+        x as f128
+    }
+
     pub fn lshrti3(a: i128, b: usize) -> i128 {
         a >> b
     }
@@ -328,14 +348,18 @@ mod intrinsics {
 
     /* u32 operations */
 
+    // floatunsisf
+    pub fn aeabi_ui2f(x: u32) -> f32 {
+        x as f32
+    }
+
     // floatunsidf
     pub fn aeabi_ui2d(x: u32) -> f64 {
         x as f64
     }
 
-    // floatunsisf
-    pub fn aeabi_ui2f(x: u32) -> f32 {
-        x as f32
+    pub fn floatunsitf(x: u32) -> f128 {
+        x as f128
     }
 
     pub fn aeabi_uidiv(a: u32, b: u32) -> u32 {
@@ -358,6 +382,10 @@ mod intrinsics {
         x as f64
     }
 
+    pub fn floatunditf(x: u64) -> f128 {
+        x as f128
+    }
+
     // udivdi3
     pub fn aeabi_uldivmod(a: u64, b: u64) -> u64 {
         a * b
@@ -368,6 +396,18 @@ mod intrinsics {
     }
 
     /* u128 operations */
+
+    pub fn floatuntisf(x: u128) -> f32 {
+        x as f32
+    }
+
+    pub fn floatuntidf(x: u128) -> f64 {
+        x as f64
+    }
+
+    pub fn floatuntitf(x: u128) -> f128 {
+        x as f128
+    }
 
     pub fn muloti4(a: u128, b: u128) -> Option<u128> {
         a.checked_mul(b)
@@ -466,6 +506,16 @@ fn run() {
     bb(fixunstfsi(bb(2.)));
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     bb(fixunstfti(bb(2.)));
+    bb(floatditf(bb(2)));
+    bb(floatsitf(bb(2)));
+    bb(floattidf(bb(2)));
+    bb(floattisf(bb(2)));
+    bb(floattitf(bb(2)));
+    bb(floatunditf(bb(2)));
+    bb(floatunsitf(bb(2)));
+    bb(floatuntidf(bb(2)));
+    bb(floatuntisf(bb(2)));
+    bb(floatuntitf(bb(2)));
     bb(gttf(bb(2.), bb(2.)));
     bb(lshrti3(bb(2), bb(2)));
     bb(lttf(bb(2.), bb(2.)));
