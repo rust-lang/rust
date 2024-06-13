@@ -6,7 +6,7 @@ use rustc_span::Span;
 use super::ZERO_PREFIXED_LITERAL;
 
 pub(super) fn check(cx: &EarlyContext<'_>, lit_span: Span, lit_snip: &str) {
-    let trimmed_lit_snip = lit_snip.trim_start_matches(|c| c == '_' || c == '0');
+    let trimmed_lit_snip = lit_snip.trim_start_matches(['_', '0']);
     span_lint_and_then(
         cx,
         ZERO_PREFIXED_LITERAL,
@@ -20,7 +20,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, lit_span: Span, lit_snip: &str) {
                 Applicability::MaybeIncorrect,
             );
             // do not advise to use octal form if the literal cannot be expressed in base 8.
-            if !lit_snip.contains(|c| c == '8' || c == '9') {
+            if !lit_snip.contains(['8', '9']) {
                 diag.span_suggestion(
                     lit_span,
                     "if you mean to use an octal constant, use `0o`",

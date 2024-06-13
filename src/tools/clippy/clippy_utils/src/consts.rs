@@ -412,7 +412,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.lcx.tcx.hir().body(body).value), ExprKind::DropTemps(e) => self.expr(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.lcx.tcx.hir().body(body).value),
+            ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => {
                 self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |this, result| {
                     let result = mir_to_const(this.lcx, result)?;
@@ -490,7 +491,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// leaves the local crate.
     pub fn expr_is_empty(&mut self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr_is_empty(self.lcx.tcx.hir().body(body).value), ExprKind::DropTemps(e) => self.expr_is_empty(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr_is_empty(self.lcx.tcx.hir().body(body).value),
+            ExprKind::DropTemps(e) => self.expr_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
                     .typeck_results
@@ -811,12 +813,8 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),
-            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                int.try_into().expect("invalid f32 bit representation"),
-            ))),
-            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                int.try_into().expect("invalid f64 bit representation"),
-            ))),
+            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(int.into()))),
+            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(int.into()))),
             ty::RawPtr(_, _) => Some(Constant::RawPtr(int.to_bits(int.size()))),
             _ => None,
         },

@@ -1,6 +1,6 @@
 ## `cargo lintcheck`
 
-Runs clippy on a fixed set of crates read from
+Runs Clippy on a fixed set of crates read from
 `lintcheck/lintcheck_crates.toml` and saves logs of the lint warnings into the
 repo.  We can then check the diff and spot new or disappearing warnings.
 
@@ -84,7 +84,7 @@ This lets us spot bad suggestions or false positives automatically in some cases
 
 > Note: Fix mode implies `--all-targets`, so it can fix as much code as it can.
 
-Please note that the target dir should be cleaned afterwards since clippy will modify
+Please note that the target dir should be cleaned afterwards since Clippy will modify
 the downloaded sources which can lead to unexpected results when running lintcheck again afterwards.
 
 ### Recursive mode

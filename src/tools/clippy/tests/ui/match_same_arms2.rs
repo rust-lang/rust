@@ -262,3 +262,21 @@ fn main() {
         _ => false,
     };
 }
+
+// issue #8919, fixed on https://github.com/rust-lang/rust/pull/97312
+mod with_lifetime {
+    enum MaybeStaticStr<'a> {
+        Static(&'static str),
+        Borrowed(&'a str),
+    }
+
+    impl<'a> MaybeStaticStr<'a> {
+        fn get(&self) -> &'a str {
+            match *self {
+                MaybeStaticStr::Static(s) => s,
+                MaybeStaticStr::Borrowed(s) => s,
+                //~^ ERROR: this match arm has an identical body to another arm
+            }
+        }
+    }
+}

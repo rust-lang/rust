@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
 use clippy_utils::{method_chain_args, sext};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -266,7 +266,7 @@ fn expr_add_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
 fn exprs_with_muldiv_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
     let mut res = vec![];
 
-    for_each_expr(expr, |sub_expr| -> ControlFlow<Infallible, Descend> {
+    for_each_expr_without_closures(expr, |sub_expr| -> ControlFlow<Infallible, Descend> {
         // We don't check for mul/div/rem methods here, but we could.
         if let ExprKind::Binary(op, lhs, _rhs) = sub_expr.kind {
             if matches!(op.node, BinOpKind::Mul | BinOpKind::Div) {
@@ -315,7 +315,7 @@ fn exprs_with_muldiv_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
 fn exprs_with_add_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
     let mut res = vec![];
 
-    for_each_expr(expr, |sub_expr| -> ControlFlow<Infallible, Descend> {
+    for_each_expr_without_closures(expr, |sub_expr| -> ControlFlow<Infallible, Descend> {
         // We don't check for add methods here, but we could.
         if let ExprKind::Binary(op, _lhs, _rhs) = sub_expr.kind {
             if matches!(op.node, BinOpKind::Add) {

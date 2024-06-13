@@ -97,5 +97,17 @@ error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid
 LL | #![warn(clippy::wrong_pub_self_convention)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: lint `clippy::maybe_misused_cfg` has been removed: this lint has been replaced by `unexpected_cfgs`
+  --> tests/ui/deprecated.rs:21:9
+   |
+LL | #![warn(clippy::maybe_misused_cfg)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::mismatched_target_os` has been removed: this lint has been replaced by `unexpected_cfgs`
+  --> tests/ui/deprecated.rs:22:9
+   |
+LL | #![warn(clippy::mismatched_target_os)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
 

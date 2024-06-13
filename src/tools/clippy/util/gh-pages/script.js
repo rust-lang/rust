@@ -397,7 +397,7 @@
             $scope.bySearch = function (lint, index, array) {
                 let searchStr = $scope.search;
                 // It can be `null` I haven't missed this value
-                if (searchStr == null || searchStr.length < 3) {
+                if (searchStr == null) {
                     return true;
                 }
                 searchStr = searchStr.toLowerCase();

@@ -719,7 +719,7 @@ fn get_lint_group_and_level_or_lint(
         Some(sym::clippy),
         &std::iter::once(Ident::with_dummy_span(sym::clippy)).collect(),
     );
-    if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
+    if let CheckLintNameResult::Tool(lint_lst, None) = result {
         if let Some(group) = get_lint_group(cx, lint_lst[0]) {
             if EXCLUDED_LINT_GROUPS.contains(&group.as_str()) {
                 return None;

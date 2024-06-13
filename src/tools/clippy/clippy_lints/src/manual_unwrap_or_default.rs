@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// let x: Option<Vec<String>> = Some(Vec::new());
     /// let y: Vec<String> = x.unwrap_or_default();
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub MANUAL_UNWRAP_OR_DEFAULT,
     suspicious,
     "check if a `match` or `if let` can be simplified with `unwrap_or_default`"
@@ -57,7 +57,8 @@ fn get_some<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<HirId> {
         // Since it comes from a pattern binding, we need to get the parent to actually match
         // against it.
         && let Some(def_id) = cx.tcx.opt_parent(def_id)
-        && cx.tcx.lang_items().get(LangItem::OptionSome) == Some(def_id)
+        && (cx.tcx.lang_items().get(LangItem::OptionSome) == Some(def_id)
+        || cx.tcx.lang_items().get(LangItem::ResultOk) == Some(def_id))
     {
         let mut bindings = Vec::new();
         pat.each_binding(|_, id, _, _| bindings.push(id));
@@ -78,6 +79,14 @@ fn get_none<'tcx>(cx: &LateContext<'tcx>, arm: &Arm<'tcx>) -> Option<&'tcx Expr<
         // against it.
         && let Some(def_id) = cx.tcx.opt_parent(def_id)
         && cx.tcx.lang_items().get(LangItem::OptionNone) == Some(def_id)
+    {
+        Some(arm.body)
+    } else if let PatKind::TupleStruct(QPath::Resolved(_, path), _, _)= arm.pat.kind
+        && let Some(def_id) = path.res.opt_def_id()
+        // Since it comes from a pattern binding, we need to get the parent to actually match
+        // against it.
+        && let Some(def_id) = cx.tcx.opt_parent(def_id)
+        && cx.tcx.lang_items().get(LangItem::ResultErr) == Some(def_id)
     {
         Some(arm.body)
     } else if let PatKind::Wild = arm.pat.kind {
