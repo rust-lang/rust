@@ -444,7 +444,11 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_valtree()?.try_to_target_usize(tcx)
+        let scalar = self.try_to_valtree()?.try_to_scalar_int()?;
+        if scalar.size() != tcx.data_layout.pointer_size {
+            return None;
+        }
+        Some(scalar.to_target_usize(tcx))
     }
 
     pub fn is_ct_infer(self) -> bool {
