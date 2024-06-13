@@ -7,7 +7,8 @@ use std::process::Command;
 use glob::glob;
 
 use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP};
-use crate::runtest::{static_regex, Emit, ProcRes, TestCx, WillExecute};
+use crate::runtest::{Emit, ProcRes, TestCx, WillExecute};
+use crate::util::static_regex;
 
 impl<'test> TestCx<'test> {
     fn coverage_dump_path(&self) -> &Path {
