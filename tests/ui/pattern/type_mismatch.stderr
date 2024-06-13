@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/type_mismatch.rs:23:13
+   |
+LL |         let Either::Two(ref mut _t) = x;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `X`
+   |             |
+   |             expected `X`, found `Either`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
