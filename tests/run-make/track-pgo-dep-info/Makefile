@@ -1,5 +1,4 @@
 # needs-profiler-support
-# ignore-windows-gnu
 
 include ../tools.mk
 

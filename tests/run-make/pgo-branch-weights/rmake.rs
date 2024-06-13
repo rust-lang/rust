@@ -10,10 +10,6 @@
 //@ needs-profiler-support
 //@ ignore-cross-compile
 
-// FIXME(Oneirical): This test has problems generating profdata on mingw.
-// For more information, see https://github.com/rust-lang/rust/pull/122613
-//@ ignore-windows-gnu
-
 use run_make_support::{fs_wrapper, llvm_filecheck, llvm_profdata, run_with_args, rustc};
 use std::path::Path;
 
