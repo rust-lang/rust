@@ -17,7 +17,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, Abi};
 
-use super::{CanAccessMutGlobal, CompileTimeEvalContext, CompileTimeInterpreter};
+use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
 use crate::errors::ConstEvalError;
 use crate::errors::{self, DanglingPtrInFinal};
@@ -32,7 +32,7 @@ use crate::CTRL_C_RECEIVED;
 // Returns a pointer to where the result lives
 #[instrument(level = "trace", skip(ecx, body))]
 fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
-    ecx: &mut CompileTimeEvalContext<'tcx>,
+    ecx: &mut CompileTimeInterpCx<'tcx>,
     cid: GlobalId<'tcx>,
     body: &'tcx mir::Body<'tcx>,
 ) -> InterpResult<'tcx, R> {
@@ -114,7 +114,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
             let err_diag = errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };
             ecx.tcx.emit_node_span_lint(
                 lint::builtin::CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
-                ecx.best_lint_scope(),
+                ecx.machine.best_lint_scope(*ecx.tcx),
                 err_diag.span,
                 err_diag,
             )
@@ -139,13 +139,13 @@ pub(crate) fn mk_eval_cx_to_read_const_val<'tcx>(
     root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
     can_access_mut_global: CanAccessMutGlobal,
-) -> CompileTimeEvalContext<'tcx> {
+) -> CompileTimeInterpCx<'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(can_access_mut_global, CheckAlignment::No),
+        CompileTimeMachine::new(can_access_mut_global, CheckAlignment::No),
     )
 }
 
@@ -156,7 +156,7 @@ pub fn mk_eval_cx_for_const_val<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
-) -> Option<(CompileTimeEvalContext<'tcx>, OpTy<'tcx>)> {
+) -> Option<(CompileTimeInterpCx<'tcx>, OpTy<'tcx>)> {
     let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, param_env, CanAccessMutGlobal::No);
     let op = ecx.const_val_to_op(val, ty, None).ok()?;
     Some((ecx, op))
@@ -170,7 +170,7 @@ pub fn mk_eval_cx_for_const_val<'tcx>(
 /// encounter an `Indirect` they cannot handle.
 #[instrument(skip(ecx), level = "debug")]
 pub(super) fn op_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx>,
+    ecx: &CompileTimeInterpCx<'tcx>,
     op: &OpTy<'tcx>,
     for_diagnostics: bool,
 ) -> ConstValue<'tcx> {
@@ -328,14 +328,14 @@ pub trait InterpretationResult<'tcx> {
     /// evaluation query.
     fn make_result(
         mplace: MPlaceTy<'tcx>,
-        ecx: &mut InterpCx<'tcx, CompileTimeInterpreter<'tcx>>,
+        ecx: &mut InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     ) -> Self;
 }
 
 impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
     fn make_result(
         mplace: MPlaceTy<'tcx>,
-        _ecx: &mut InterpCx<'tcx, CompileTimeInterpreter<'tcx>>,
+        _ecx: &mut InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     ) -> Self {
         ConstAlloc { alloc_id: mplace.ptr().provenance.unwrap().alloc_id(), ty: mplace.layout.ty }
     }
@@ -383,7 +383,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
         // they do not have to behave "as if" they were evaluated at runtime.
         // For consts however we want to ensure they behave "as if" they were evaluated at runtime,
         // so we have to reject reading mutable global memory.
-        CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
+        CompileTimeMachine::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)).map_err(|error| {
@@ -417,7 +417,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
 
 #[inline(always)]
 fn const_validate_mplace<'tcx>(
-    ecx: &InterpCx<'tcx, CompileTimeInterpreter<'tcx>>,
+    ecx: &InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     mplace: &MPlaceTy<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> Result<(), ErrorHandled> {
@@ -447,7 +447,7 @@ fn const_validate_mplace<'tcx>(
 
 #[inline(always)]
 fn report_validation_error<'tcx>(
-    ecx: &InterpCx<'tcx, CompileTimeInterpreter<'tcx>>,
+    ecx: &InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     error: InterpErrorInfo<'tcx>,
     alloc_id: AllocId,
 ) -> ErrorHandled {
