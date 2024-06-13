@@ -30,10 +30,12 @@ pub(crate) fn unlinked_file(
     // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
     // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523
     let message = if fixes.is_none() {
-        "file not included in crate hierarchy"
+        "This file is not included in any crates, so rust-analyzer can't offer IDE services."
     } else {
-        "file not included in module tree"
+        "This file is not included anywhere in the module tree, so rust-analyzer can't offer IDE services."
     };
+
+    let message = format!("{message}\n\nIf you're intentionally working on unowned files, you can silence this warning by adding \"unlinked-file\" to rust-analyzer.diagnostics.disabled in your settings.");
 
     let mut range = ctx.sema.db.parse(file_id).syntax_node().text_range();
     let mut unused = true;
