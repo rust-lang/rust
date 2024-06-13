@@ -95,8 +95,6 @@ jobs:
           path-type: inherit
           install: >
             make
-            dos2unix
-            diffutils
 
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
