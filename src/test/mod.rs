@@ -391,12 +391,24 @@ fn self_tests() {
         files.push(path);
     }
     // for crates that need to be included but lies outside src
-    let external_crates = vec!["check_diff"];
+    let external_crates = vec!["check_diff", "config_proc_macro"];
     for external_crate in external_crates {
         let mut path = PathBuf::from(external_crate);
         path.push("src");
-        path.push("main.rs");
-        files.push(path);
+        let directory = fs::read_dir(&path).unwrap();
+        let search_files = directory.filter_map(|file| {
+            file.ok().and_then(|f| {
+                let name = f.file_name();
+                if matches!(name.as_os_str().to_str(), Some("main.rs" | "lib.rs")) {
+                    Some(f.path())
+                } else {
+                    None
+                }
+            })
+        });
+        for file in search_files {
+            files.push(file);
+        }
     }
     files.push(PathBuf::from("src/lib.rs"));
 
