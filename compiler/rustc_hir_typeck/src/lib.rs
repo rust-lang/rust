@@ -4,6 +4,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
+#![feature(is_none_or)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]

@@ -13,6 +13,7 @@
 #![feature(lint_reasons)]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
+#![feature(is_none_or)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
