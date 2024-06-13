@@ -672,7 +672,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_none_or", issue = "none")]
+    #[unstable(feature = "is_none_or", issue = "126383")]
     pub fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => true,
