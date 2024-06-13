@@ -7,12 +7,12 @@ use rustc_middle::ty::{self, Mutability};
 use rustc_span::symbol::Symbol;
 use tracing::trace;
 
-use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, CompileTimeEvalContext};
+use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, CompileTimeInterpCx};
 use crate::interpret::*;
 
 /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
 fn alloc_caller_location<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx>,
+    ecx: &mut CompileTimeInterpCx<'tcx>,
     filename: Symbol,
     line: u32,
     col: u32,
