@@ -24,19 +24,13 @@ impl ConfigurationSection {
     fn get_section<I: Iterator<Item = String>>(
         file: &mut Enumerate<I>,
     ) -> Option<ConfigurationSection> {
-        lazy_static! {
-            static ref CONFIG_NAME_REGEX: regex::Regex =
-                regex::Regex::new(r"^## `([^`]+)`").expect("failed creating configuration pattern");
-            // Configuration values, which will be passed to `from_str`:
-            //
-            // - must be prefixed with `####`
-            // - must be wrapped in backticks
-            // - may by wrapped in double quotes (which will be stripped)
-            static ref CONFIG_VALUE_REGEX: regex::Regex =
-                regex::Regex::new(r#"^#### `"?([^`]+?)"?`"#)
-                    .expect("failed creating configuration value pattern");
-        }
-
+        let config_name_regex = static_regex!(r"^## `([^`]+)`");
+        // Configuration values, which will be passed to `from_str`:
+        //
+        // - must be prefixed with `####`
+        // - must be wrapped in backticks
+        // - may by wrapped in double quotes (which will be stripped)
+        let config_value_regex = static_regex!(r#"^#### `"?([^`]+?)"?`"#);
         loop {
             match file.next() {
                 Some((i, line)) => {
@@ -53,9 +47,9 @@ impl ConfigurationSection {
                         let start_line = (i + 2) as u32;
 
                         return Some(ConfigurationSection::CodeBlock((block, start_line)));
-                    } else if let Some(c) = CONFIG_NAME_REGEX.captures(&line) {
+                    } else if let Some(c) = config_name_regex.captures(&line) {
                         return Some(ConfigurationSection::ConfigName(String::from(&c[1])));
-                    } else if let Some(c) = CONFIG_VALUE_REGEX.captures(&line) {
+                    } else if let Some(c) = config_value_regex.captures(&line) {
                         return Some(ConfigurationSection::ConfigValue(String::from(&c[1])));
                     }
                 }
@@ -208,7 +202,7 @@ impl ConfigCodeBlock {
     }
 
     // Extract a code block from the iterator. Behavior:
-    // - Rust code blocks are identifed by lines beginning with "```rust".
+    // - Rust code blocks are identified by lines beginning with "```rust".
     // - One explicit configuration setting is supported per code block.
     // - Rust code blocks with no configuration setting are illegal and cause an
     //   assertion failure, unless the snippet begins with #![rustfmt::skip].

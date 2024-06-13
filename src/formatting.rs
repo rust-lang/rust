@@ -82,7 +82,7 @@ fn should_skip_module<T: FormatHandler>(
         let source_file = context.psess.span_to_file_contents(module.span);
         let src = source_file.src.as_ref().expect("SourceFile without src");
 
-        if is_generated_file(src) {
+        if is_generated_file(src, config) {
             return true;
         }
     }

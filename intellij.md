@@ -20,7 +20,7 @@
 - Open Rustfmt settings (File → Settings → Languages & Frameworks → Rust → Rustfmt) and enable "Run rustfmt on Save"
   ![run_rustfmt_on_save](https://user-images.githubusercontent.com/6505554/83944610-3468f380-a81e-11ea-9c34-0cbd18dd4969.png)
 
-- IntellJ uses autosave, so now your files will always be formatted according to rustfmt. Alternatively you can use Ctrl+S to reformat file manually
+- IntelliJ uses autosave, so now your files will always be formatted according to rustfmt. Alternatively you can use Ctrl+S to reformat file manually
 
 ### Bind shortcut to "Reformat File with Rustfmt" action
 

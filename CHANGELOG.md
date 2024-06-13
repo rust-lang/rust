@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Updating `dirs 4.0.0 -> 5.0.1` and `cargo_metadata 0.15.4 -> 0.18.0` [#6033] (https://github.com/rust-lang/rustfmt/issues/6033)
 
 ## [1.7.0] 2023-10-22
 
@@ -27,7 +28,7 @@
   }
   ```
 - Prevent ICE when formatting `vec!{}` [#5735](https://github.com/rust-lang/rustfmt/issues/5735)
-- Prevent internal trailing whitespace error when formatting an empty `macro_rules!` defintion e.g. `macro_rules! foo {}` [#5882](https://github.com/rust-lang/rustfmt/issues/5882)
+- Prevent internal trailing whitespace error when formatting an empty `macro_rules!` definition e.g. `macro_rules! foo {}` [#5882](https://github.com/rust-lang/rustfmt/issues/5882)
 - Formatting doc comment lines that start with `.` or `)` won't be treated as ordered markdown lists because `.` or `)` must be preceded by a number to start an ordered markdown list [#5835](https://github.com/rust-lang/rustfmt/pull/5835)
 - Add parenthesis around closures when they're used as method receives, don't have a block body, and end with `.` [#4808](https://github.com/rust-lang/rustfmt/issues/4808)
   ```rust
@@ -184,7 +185,7 @@
 
 - Simplify the rustfmt help text by eliding the full path to the rustfmt binary path from the usage string when running `rustfmt --help` [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
 
-- Bumped the version for serveral dependencies. Most notably `dirs` `v2.0.1` -> `v4.0.0`. This changed the global user config directory on macOS from `$HOME/Library/Preferences` to `$HOME/Library/Application Support` [#5237](https://github.com/rust-lang/rustfmt/pull/5237)
+- Bumped the version for several dependencies. Most notably `dirs` `v2.0.1` -> `v4.0.0`. This changed the global user config directory on macOS from `$HOME/Library/Preferences` to `$HOME/Library/Application Support` [#5237](https://github.com/rust-lang/rustfmt/pull/5237)
 
 ### Fixed
 
@@ -942,7 +943,7 @@ from formatting an attribute #3665
 
 ### Fixed
 
-- Do not remove path disambiugator inside macro #3142
+- Do not remove path disambiguator inside macro #3142
 - Improve handling of Windows newlines #3141
 - Fix alignment of a struct's fields (`struct_field_align_threshold` option) with the Visual `indent_style` #3165
 - Fix a bug in formatting markdown lists within comments #3172
@@ -1031,7 +1032,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Replace '--conifig-help' with '--config=help' cb10e06
+- Replace '--config-help' with '--config=help' cb10e06
 - Improve formatting of slice patterns #2912
 
 ### Fixed
@@ -1075,7 +1076,7 @@ from formatting an attribute #3665
 - Add max_width option for all heuristics c2ae39e
 - Add config option `format_macro_matchers` to format the metavariable matching patterns in macros 79c5ee8
 - Add config option `format_macro_bodies` to format the bodies of macros 79c5ee8
-- Format exitential type fc307ff
+- Format existential type fc307ff
 - Support raw identifiers in struct expressions f121b1a
 - Format Async block and async function 0b25f60
 
@@ -1131,7 +1132,7 @@ from formatting an attribute #3665
 
 ### Changed
 
-- Update rustc-ap-syntax to 128.0.0 and ustc-ap-rustc_target to 128.0.0 195395f
+- Update rustc-ap-syntax to 128.0.0 and rustc-ap-rustc_target to 128.0.0 195395f
 - Put operands on its own line when each fits in a single line f8439ce
 - Improve CLI options 55ac062 1869888 798bffb 4d9de48 eca7796 8396da1 5d9f5aa
 
@@ -1195,7 +1196,7 @@ from formatting an attribute #3665
 - Do not collapse block around expr with condition on match arm 5b9b7d5
 - Use vertical layout for complex attributes c77708f
 - Format array using heuristics for function calls 98c6f7b
-- Implement stable ordering for impl items with the the following item priority: type, const, macro, then method fa80ddf
+- Implement stable ordering for impl items with the following item priority: type, const, macro, then method fa80ddf
 - Reorder imports by default 164cf7d
 - Group `extern crate` by default 3a138a2
 - Make `error_on_line_overflow` false by default f146711

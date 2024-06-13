@@ -33,7 +33,7 @@ where
     let mut emitter = create_emitter(config);
 
     emitter.emit_header(out)?;
-    for &(ref filename, ref text) in source_file {
+    for (filename, text) in source_file {
         write_file(
             None,
             filename,

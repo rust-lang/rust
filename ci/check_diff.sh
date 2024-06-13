@@ -2,9 +2,6 @@
 
 set -e
 
-# https://github.com/rust-lang/rustfmt/issues/5675
-export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
-
 function print_usage() {
     echo "usage check_diff REMOTE_REPO FEATURE_BRANCH [COMMIT_HASH] [OPTIONAL_RUSTFMT_CONFIGS]"
 }
@@ -31,7 +28,7 @@ function clone_repo() {
     GIT_TERMINAL_PROMPT=0 git clone --quiet $1 --depth 1 $2 && cd $2
 }
 
-# Initialize Git submoduels for the repo.
+# Initialize Git submodules for the repo.
 #
 # Parameters
 # $1: list of directories to initialize
@@ -46,7 +43,7 @@ function init_submodules() {
 # $2: Output file path for the diff
 # $3: Any additional configuration options to pass to rustfmt
 #
-# Globlas:
+# Globals:
 # $OPTIONAL_RUSTFMT_CONFIGS: Optional configs passed to the script from $4
 function create_diff() {
     local config;
@@ -67,7 +64,7 @@ function create_diff() {
 # Parameters
 # $1: Name of the repository (used for logging)
 #
-# Globlas:
+# Globals:
 # $RUSFMT_BIN: Path to the rustfmt master binary. Created when running `compile_rustfmt`
 # $FEATURE_BIN: Path to the rustfmt feature binary. Created when running `compile_rustfmt`
 # $OPTIONAL_RUSTFMT_CONFIGS: Optional configs passed to the script from $4
@@ -90,7 +87,7 @@ function check_diff() {
     )
 
     if [ -z "$diff" ]; then
-        echo "no diff detected between rustfmt and the feture branch"
+        echo "no diff detected between rustfmt and the feature branch"
         return 0
     else
         echo "$diff"
@@ -104,7 +101,7 @@ function check_diff() {
 # Parameters:
 # $1: Directory where rustfmt will be cloned
 #
-# Globlas:
+# Globals:
 # $REMOTE_REPO: Clone URL to the rustfmt fork that we want to test
 # $FEATURE_BRANCH: Name of the feature branch
 # $OPTIONAL_COMMIT_HASH: Optional commit hash that will be checked out if provided
@@ -114,15 +111,42 @@ function compile_rustfmt() {
     git remote add feature $REMOTE_REPO
     git fetch feature $FEATURE_BRANCH
 
-    cargo build --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
+    CARGO_VERSION=$(cargo --version)
+    echo -e "\ncompiling with $CARGO_VERSION\n"
+
+    # Because we're building standalone binaries we need to set `LD_LIBRARY_PATH` so each
+    # binary can find it's runtime dependencies. See https://github.com/rust-lang/rustfmt/issues/5675
+    # This will prepend the `LD_LIBRARY_PATH` for the master rustfmt binary
+    export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+
+    echo "Building rustfmt from src"
+    cargo build -q --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
+
     if [ -z "$OPTIONAL_COMMIT_HASH" ] || [ "$FEATURE_BRANCH" = "$OPTIONAL_COMMIT_HASH" ]; then
         git switch $FEATURE_BRANCH
     else
         git switch $OPTIONAL_COMMIT_HASH --detach
     fi
-    cargo build --release --bin rustfmt && cp target/release/rustfmt $1/feature_rustfmt
+
+    # This will prepend the `LD_LIBRARY_PATH` for the feature branch rustfmt binary.
+    # In most cases the `LD_LIBRARY_PATH` should be the same for both rustfmt binaries that we build
+    # in `compile_rustfmt`, however, there are scenarios where each binary has different runtime
+    # dependencies. For example, during subtree syncs we bump the nightly toolchain required to build
+    # rustfmt, and therefore the feature branch relies on a newer set of runtime dependencies.
+    export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+
+    echo "Building feature rustfmt from src"
+    cargo build -q --release --bin rustfmt && cp target/release/rustfmt $1/feature_rustfmt
+
+    echo -e "\nRuntime dependencies for rustfmt -- LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+
     RUSFMT_BIN=$1/rustfmt
+    RUSTFMT_VERSION=$($RUSFMT_BIN --version)
+    echo -e "\nRUSFMT_BIN $RUSTFMT_VERSION\n"
+
     FEATURE_BIN=$1/feature_rustfmt
+    FEATURE_VERSION=$($FEATURE_BIN --version)
+    echo -e "FEATURE_BIN $FEATURE_VERSION\n"
 }
 
 # Check the diff for running rustfmt and the feature branch on all the .rs files in the repo.
@@ -155,7 +179,7 @@ function check_repo() {
     STATUSES+=($?)
     set -e
 
-    echo "removing tmp_dir $tmp_dir"
+    echo -e "removing tmp_dir $tmp_dir\n\n"
     rm -rf $tmp_dir
     cd $WORKDIR
 }

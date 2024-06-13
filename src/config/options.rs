@@ -191,7 +191,7 @@ pub enum Color {
 pub enum Version {
     /// 1.x.y. When specified, rustfmt will format in the same style as 1.0.0.
     One,
-    /// 2.x.y. When specified, rustfmt will format in the the latest style.
+    /// 2.x.y. When specified, rustfmt will format in the latest style.
     Two,
 }
 
@@ -416,7 +416,7 @@ pub trait CliOptions {
     fn config_path(&self) -> Option<&Path>;
 }
 
-/// The edition of the syntax and semntics of code (RFC 2052).
+/// The edition of the syntax and semantics of code (RFC 2052).
 #[config_type]
 pub enum Edition {
     #[value = "2015"]
@@ -469,4 +469,28 @@ pub enum MatchArmLeadingPipe {
     Never,
     /// Preserve any existing leading pipes
     Preserve,
+}
+
+/// Defines the default values for each config according to [the style guide].
+/// rustfmt output may differ between style editions.
+///
+/// [the style guide]: https://doc.rust-lang.org/nightly/style-guide/
+#[config_type]
+pub enum StyleEdition {
+    #[value = "2015"]
+    #[doc_hint = "2015"]
+    /// [Edition 2015]()
+    Edition2015,
+    #[value = "2018"]
+    #[doc_hint = "2018"]
+    /// [Edition 2018]()
+    Edition2018,
+    #[value = "2021"]
+    #[doc_hint = "2021"]
+    /// [Edition 2021]()
+    Edition2021,
+    #[value = "2024"]
+    #[doc_hint = "2024"]
+    /// [Edition 2024]().
+    Edition2024,
 }

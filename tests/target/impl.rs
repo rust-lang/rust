@@ -32,6 +32,11 @@ where
 {
 }
 
+// #5941
+impl T where (): Clone // Should not add comma to comment
+{
+}
+
 // #1823
 default impl Trait for X {}
 default unsafe impl Trait for Y {}

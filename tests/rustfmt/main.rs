@@ -176,11 +176,34 @@ fn rustfmt_emits_error_on_line_overflow_true() {
 #[test]
 #[allow(non_snake_case)]
 fn dont_emit_ICE() {
-    let files = ["tests/target/issue_5728.rs", "tests/target/issue_5729.rs", "tests/target/issue_6082.rs"];
+    let files = [
+        "tests/target/issue_5728.rs",
+        "tests/target/issue_5729.rs",
+        "tests/target/issue-5885.rs",
+        "tests/target/issue_6082.rs",
+        "tests/target/issue_6069.rs",
+        "tests/target/issue-6105.rs",
+    ];
 
     for file in files {
         let args = [file];
         let (_stdout, stderr) = rustfmt(&args);
         assert!(!stderr.contains("thread 'main' panicked"));
     }
+}
+
+#[test]
+fn rustfmt_emits_error_when_control_brace_style_is_always_next_line() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5912
+    let args = [
+        "--config=color=Never",
+        "--config",
+        "control_brace_style=AlwaysNextLine",
+        "--config",
+        "match_arm_blocks=false",
+        "tests/target/issue_5912.rs",
+    ];
+
+    let (_stdout, stderr) = rustfmt(&args);
+    assert!(!stderr.contains("error[internal]: left behind trailing whitespace"))
 }

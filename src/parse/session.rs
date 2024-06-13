@@ -97,7 +97,7 @@ fn default_dcx(
     source_map: Lrc<SourceMap>,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset: Lrc<AtomicBool>,
-    hide_parse_errors: bool,
+    show_parse_errors: bool,
     color: Color,
 ) -> DiagCtxt {
     let supports_color = term::stderr().map_or(false, |term| term.supports_color());
@@ -116,7 +116,7 @@ fn default_dcx(
             .sm(Some(source_map.clone())),
     );
 
-    let emitter: Box<DynEmitter> = if hide_parse_errors {
+    let emitter: Box<DynEmitter> = if !show_parse_errors {
         Box::new(SilentEmitter {
             fallback_bundle,
             fatal_dcx: DiagCtxt::new(emitter),
@@ -148,7 +148,7 @@ impl ParseSess {
             Lrc::clone(&source_map),
             Lrc::clone(&ignore_path_set),
             Lrc::clone(&can_reset_errors),
-            config.hide_parse_errors(),
+            config.show_parse_errors(),
             config.color(),
         );
         let raw_psess = RawParseSess::with_dcx(dcx, source_map);
@@ -164,7 +164,7 @@ impl ParseSess {
     ///
     /// * `id` - The name of the module
     /// * `relative` - If Some(symbol), the symbol name is a directory relative to the dir_path.
-    ///   If relative is Some, resolve the submodle at {dir_path}/{symbol}/{id}.rs
+    ///   If relative is Some, resolve the submodule at {dir_path}/{symbol}/{id}.rs
     ///   or {dir_path}/{symbol}/{id}/mod.rs. if None, resolve the module at {dir_path}/{id}.rs.
     /// *  `dir_path` - Module resolution will occur relative to this directory.
     pub(crate) fn default_submod_path(
@@ -175,7 +175,7 @@ impl ParseSess {
     ) -> Result<ModulePathSuccess, ModError<'_>> {
         rustc_expand::module::default_submod_path(&self.raw_psess, id, relative, dir_path).or_else(
             |e| {
-                // If resloving a module relative to {dir_path}/{symbol} fails because a file
+                // If resolving a module relative to {dir_path}/{symbol} fails because a file
                 // could not be found, then try to resolve the module relative to {dir_path}.
                 // If we still can't find the module after searching for it in {dir_path},
                 // surface the original error.

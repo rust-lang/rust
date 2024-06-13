@@ -656,9 +656,16 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let context = self.get_context();
-        // 1 = ','
-        let shape = self.shape().sub_width(1)?;
-        let attrs_str = field.attrs.rewrite(&context, shape)?;
+        let shape = self.shape();
+        let attrs_str = if context.config.version() == Version::Two {
+            field.attrs.rewrite(&context, shape)?
+        } else {
+            // Version::One formatting that was off by 1. See issue #5801
+            field.attrs.rewrite(&context, shape.sub_width(1)?)?
+        };
+        // sub_width(1) to take the trailing comma into account
+        let shape = shape.sub_width(1)?;
+
         let lo = field
             .attrs
             .last()
@@ -836,13 +843,15 @@ pub(crate) fn format_impl(
 
     if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
         result.push_str(&where_clause_str);
-        if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
-            // if the where_clause contains extra comments AND
-            // there is only one where-clause predicate
-            // recover the suppressed comma in single line where_clause formatting
+        if where_clause_str.contains('\n') {
+            // If there is only one where-clause predicate
+            // and the where-clause spans multiple lines,
+            // then recover the suppressed comma in single line where-clause formatting
             if generics.where_clause.predicates.len() == 1 {
                 result.push(',');
             }
+        }
+        if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
             result.push_str(&format!("{sep}{{{sep}}}"));
         } else {
             result.push_str(" {}");
@@ -1161,9 +1170,9 @@ pub(crate) fn format_trait(
 
     // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
     if !bounds.is_empty() {
-        let ident_hi = context
-            .snippet_provider
-            .span_after(item.span, item.ident.as_str());
+        // Retrieve *unnormalized* ident (See #6069)
+        let source_ident = context.snippet(item.ident.span);
+        let ident_hi = context.snippet_provider.span_after(item.span, source_ident);
         let bound_hi = bounds.last().unwrap().span().hi();
         let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
         if contains_comment(snippet) {
@@ -2483,7 +2492,7 @@ fn rewrite_fn_base(
                 || context.config.indent_style() == IndentStyle::Visual
             {
                 let indent = if param_str.is_empty() {
-                    // Aligning with non-existent params looks silly.
+                    // Aligning with nonexistent params looks silly.
                     force_new_line_for_brace = true;
                     indent + 4
                 } else {
@@ -2498,7 +2507,7 @@ fn rewrite_fn_base(
             } else {
                 let mut ret_shape = Shape::indented(indent, context.config);
                 if param_str.is_empty() {
-                    // Aligning with non-existent params looks silly.
+                    // Aligning with nonexistent params looks silly.
                     force_new_line_for_brace = true;
                     ret_shape = if context.use_block_indent() {
                         ret_shape.offset_left(4).unwrap_or(ret_shape)

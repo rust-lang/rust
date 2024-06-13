@@ -38,14 +38,14 @@ enum FormatDiffError {
 }
 
 #[derive(Parser, Debug)]
-#[clap(
+#[command(
     name = "rustfmt-format-diff",
     disable_version_flag = true,
     next_line_help = true
 )]
 pub struct Opts {
     /// Skip the smallest prefix containing NUMBER slashes
-    #[clap(
+    #[arg(
         short = 'p',
         long = "skip-prefix",
         value_name = "NUMBER",
@@ -54,7 +54,7 @@ pub struct Opts {
     skip_prefix: u32,
 
     /// Custom pattern selecting file paths to reformat
-    #[clap(
+    #[arg(
         short = 'f',
         long = "filter",
         value_name = "PATTERN",
@@ -234,14 +234,14 @@ mod cmd_line_tests {
     #[test]
     fn default_options() {
         let empty: Vec<String> = vec![];
-        let o = Opts::parse_from(&empty);
+        let o = Opts::parse_from(empty);
         assert_eq!(DEFAULT_PATTERN, o.filter);
         assert_eq!(0, o.skip_prefix);
     }
 
     #[test]
     fn good_options() {
-        let o = Opts::parse_from(&["test", "-p", "10", "-f", r".*\.hs"]);
+        let o = Opts::parse_from(["test", "-p", "10", "-f", r".*\.hs"]);
         assert_eq!(r".*\.hs", o.filter);
         assert_eq!(10, o.skip_prefix);
     }
@@ -250,7 +250,7 @@ mod cmd_line_tests {
     fn unexpected_option() {
         assert!(
             Opts::command()
-                .try_get_matches_from(&["test", "unexpected"])
+                .try_get_matches_from(["test", "unexpected"])
                 .is_err()
         );
     }
@@ -259,7 +259,7 @@ mod cmd_line_tests {
     fn unexpected_flag() {
         assert!(
             Opts::command()
-                .try_get_matches_from(&["test", "--flag"])
+                .try_get_matches_from(["test", "--flag"])
                 .is_err()
         );
     }
@@ -268,7 +268,7 @@ mod cmd_line_tests {
     fn overridden_option() {
         assert!(
             Opts::command()
-                .try_get_matches_from(&["test", "-p", "10", "-p", "20"])
+                .try_get_matches_from(["test", "-p", "10", "-p", "20"])
                 .is_err()
         );
     }
@@ -277,7 +277,7 @@ mod cmd_line_tests {
     fn negative_filter() {
         assert!(
             Opts::command()
-                .try_get_matches_from(&["test", "-p", "-1"])
+                .try_get_matches_from(["test", "-p", "-1"])
                 .is_err()
         );
     }
