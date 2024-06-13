@@ -332,6 +332,18 @@ pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
     }
 }
 
+/// Check that `haystack` contains `needle`. Panic otherwise.
+#[track_caller]
+pub fn assert_contains(haystack: &str, needle: &str) {
+    if !haystack.contains(needle) {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle was not found in haystack");
+    }
+}
+
 /// Check that `haystack` does not contain `needle`. Panic otherwise.
 #[track_caller]
 pub fn assert_not_contains(haystack: &str, needle: &str) {
