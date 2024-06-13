@@ -25,7 +25,7 @@ LL |     SelectInt.check("bar");
    = help: the trait `AsExpression<Text>` is implemented for `&str`
    = help: for that trait implementation, expected `Text`, found `Integer`
 
-error[E0271]: type mismatch resolving `<&str as AsExpression<<SelectInt as Expression>::SqlType>>::Expression == _`
+error[E0271]: type mismatch resolving `<SelectInt as Expression>::SqlType == Text`
   --> $DIR/as_expression.rs:57:5
    |
 LL |     SelectInt.check("bar");
