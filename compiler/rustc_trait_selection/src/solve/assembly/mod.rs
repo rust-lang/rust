@@ -1,6 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::bug;
@@ -481,7 +482,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.interner();
-        let lang_items = tcx.lang_items();
         let trait_def_id = goal.predicate.trait_def_id(tcx);
 
         // N.B. When assembling built-in candidates for lang items that are also
@@ -497,43 +497,43 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             G::consider_auto_trait_candidate(self, goal)
         } else if tcx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
-        } else if lang_items.sized_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Sized) {
             G::consider_builtin_sized_candidate(self, goal)
-        } else if lang_items.copy_trait() == Some(trait_def_id)
-            || lang_items.clone_trait() == Some(trait_def_id)
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Copy)
+            || tcx.is_lang_item(trait_def_id, LangItem::Clone)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
-        } else if lang_items.pointer_like() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::PointerLike) {
             G::consider_builtin_pointer_like_candidate(self, goal)
-        } else if lang_items.fn_ptr_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::FnPtrTrait) {
             G::consider_builtin_fn_ptr_trait_candidate(self, goal)
         } else if let Some(kind) = self.interner().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if let Some(kind) = self.interner().async_fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
-        } else if lang_items.async_fn_kind_helper() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncFnKindHelper) {
             G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
-        } else if lang_items.tuple_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Tuple) {
             G::consider_builtin_tuple_candidate(self, goal)
-        } else if lang_items.pointee_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::PointeeTrait) {
             G::consider_builtin_pointee_candidate(self, goal)
-        } else if lang_items.future_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Future) {
             G::consider_builtin_future_candidate(self, goal)
-        } else if lang_items.iterator_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Iterator) {
             G::consider_builtin_iterator_candidate(self, goal)
-        } else if lang_items.fused_iterator_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::FusedIterator) {
             G::consider_builtin_fused_iterator_candidate(self, goal)
-        } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncIterator) {
             G::consider_builtin_async_iterator_candidate(self, goal)
-        } else if lang_items.coroutine_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Coroutine) {
             G::consider_builtin_coroutine_candidate(self, goal)
-        } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::DiscriminantKind) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
-        } else if lang_items.async_destruct_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncDestruct) {
             G::consider_builtin_async_destruct_candidate(self, goal)
-        } else if lang_items.destruct_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::Destruct) {
             G::consider_builtin_destruct_candidate(self, goal)
-        } else if lang_items.transmute_trait() == Some(trait_def_id) {
+        } else if tcx.is_lang_item(trait_def_id, LangItem::TransmuteTrait) {
             G::consider_builtin_transmute_candidate(self, goal)
         } else {
             Err(NoSolution)
@@ -543,7 +543,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
 
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
-        if lang_items.unsize_trait() == Some(trait_def_id) {
+        if tcx.is_lang_item(trait_def_id, LangItem::Unsize) {
             candidates.extend(G::consider_structural_builtin_unsize_candidates(self, goal));
         }
     }

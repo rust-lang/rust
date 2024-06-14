@@ -338,7 +338,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let make_freeze_obl = |ty| {
                         let trait_ref = ty::TraitRef::new(
                             tcx,
-                            tcx.lang_items().freeze_trait().unwrap(),
+                            tcx.require_lang_item(LangItem::Freeze, None),
                             [ty::GenericArg::from(ty)],
                         );
                         Obligation::with_depth(

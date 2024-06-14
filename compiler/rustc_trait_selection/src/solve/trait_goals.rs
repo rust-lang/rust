@@ -802,14 +802,13 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             );
 
             // The type must be `Sized` to be unsized.
-            if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
-                ecx.add_goal(
-                    GoalSource::ImplWhereBound,
-                    goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])),
-                );
-            } else {
-                return Err(NoSolution);
-            }
+            ecx.add_goal(
+                GoalSource::ImplWhereBound,
+                goal.with(
+                    tcx,
+                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, None), [a_ty]),
+                ),
+            );
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
             ecx.add_goal(GoalSource::Misc, goal.with(tcx, ty::OutlivesPredicate(a_ty, b_region)));
@@ -991,7 +990,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 tcx,
                 ty::TraitRef::new(
                     tcx,
-                    tcx.lang_items().unsize_trait().unwrap(),
+                    tcx.require_lang_item(LangItem::Unsize, None),
                     [a_tail_ty, b_tail_ty],
                 ),
             ),
@@ -1034,7 +1033,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 tcx,
                 ty::TraitRef::new(
                     tcx,
-                    tcx.lang_items().unsize_trait().unwrap(),
+                    tcx.require_lang_item(LangItem::Unsize, None),
                     [a_last_ty, b_last_ty],
                 ),
             ),
@@ -1076,7 +1075,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             // takes precedence over the structural auto trait candidate being
             // assembled.
             ty::Coroutine(def_id, _)
-                if Some(goal.predicate.def_id()) == self.interner().lang_items().unpin_trait() =>
+                if self.interner().is_lang_item(goal.predicate.def_id(), LangItem::Unpin) =>
             {
                 match self.interner().coroutine_movability(def_id) {
                     Movability::Static => Some(Err(NoSolution)),

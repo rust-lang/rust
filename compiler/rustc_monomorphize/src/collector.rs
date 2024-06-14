@@ -945,7 +945,7 @@ fn visit_instance_use<'tcx>(
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
             // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
             // codegen a call to that function without generating code for the function itself.
-            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let def_id = tcx.require_lang_item(LangItem::PanicNounwind, None);
             let panic_instance = Instance::mono(tcx, def_id);
             if should_codegen_locally(tcx, panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
