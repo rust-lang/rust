@@ -64,11 +64,11 @@ use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
     ErrorGuaranteed, IntoDiagArg, StringPart,
 };
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, ParamName};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
@@ -2429,7 +2429,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let (type_scope, type_param_sugg_span) = match bound_kind {
                 GenericKind::Param(param) => {
                     let generics = self.tcx.generics_of(generic_param_scope);
-                    let def_id = generics.type_param(param, self.tcx).def_id.expect_local();
+                    let type_param = generics.type_param(param, self.tcx);
+                    let def_id = type_param.def_id.expect_local();
                     let scope = self.tcx.local_def_id_to_hir_id(def_id).owner.def_id;
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: 'a'b`,
@@ -2439,7 +2440,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         Some((span, open_paren_sp)) => Some((span, true, open_paren_sp)),
                         // If `param` corresponds to `Self`, no usable suggestion span.
                         None if generics.has_self && param.index == 0 => None,
-                        None => Some((self.tcx.def_span(def_id).shrink_to_hi(), false, None)),
+                        None => {
+                            let span = if let Some(param) =
+                                hir_generics.params.iter().find(|param| param.def_id == def_id)
+                                && let ParamName::Plain(ident) = param.name
+                            {
+                                ident.span.shrink_to_hi()
+                            } else {
+                                let span = self.tcx.def_span(def_id);
+                                span.shrink_to_hi()
+                            };
+                            Some((span, false, None))
+                        }
                     };
                     (scope, sugg_span)
                 }
