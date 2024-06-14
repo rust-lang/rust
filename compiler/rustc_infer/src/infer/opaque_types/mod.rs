@@ -345,7 +345,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .args
                 .iter()
                 .enumerate()
-                .filter(|(i, _)| variances[*i] == ty::Variance::Invariant)
+                .filter(|(i, _)| variances[*i] == ty::Invariant)
                 .filter_map(|(_, arg)| match arg.unpack() {
                     GenericArgKind::Lifetime(r) => Some(r),
                     GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
@@ -441,7 +441,7 @@ where
                 let variances = self.tcx.variances_of(*def_id);
 
                 for (v, s) in std::iter::zip(variances, args.iter()) {
-                    if *v != ty::Variance::Bivariant {
+                    if *v != ty::Bivariant {
                         s.visit_with(self);
                     }
                 }
