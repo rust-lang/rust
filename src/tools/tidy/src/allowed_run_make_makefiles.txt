@@ -90,7 +90,6 @@ run-make/manual-link/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
-run-make/mixing-libs/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
