@@ -8,15 +8,14 @@ impl<'a, T> Trait<'a> for T {
 }
 
 type Foo = impl Sized;
-//~^ ERROR: unconstrained opaque type
 
 fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
-//~^ ERROR: item does not constrain
 where
     for<'a> X: Trait<'a>,
     for<'a> <X as Trait<'a>>::Out<()>: Copy,
 {
     let x = *x; //~ ERROR: cannot move out of `*x`
+    //~^ ERROR: cannot move a value of type `<X as Trait<'_>>::Out<Foo>`
     todo!();
 }
 

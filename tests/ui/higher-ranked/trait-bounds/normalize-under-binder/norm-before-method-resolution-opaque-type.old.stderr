@@ -1,26 +1,11 @@
-error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:16:4
+error[E0161]: cannot move a value of type `<X as Trait<'_>>::Out<Foo>`
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:21:9
    |
-LL | fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
-   |    ^^^^^^^^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:13:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-
-error: unconstrained opaque type
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:13:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
+LL |     let x = *x;
+   |         ^ the size of `<X as Trait<'_>>::Out<Foo>` cannot be statically determined
 
 error[E0507]: cannot move out of `*x` which is behind a shared reference
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:23:13
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:21:13
    |
 LL |     let x = *x;
    |             ^^ move occurs because `*x` has type `<X as Trait<'_>>::Out<Foo>`, which does not implement the `Copy` trait
@@ -31,6 +16,7 @@ LL -     let x = *x;
 LL +     let x = x;
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0507`.
+Some errors have detailed explanations: E0161, E0507.
+For more information about an error, try `rustc --explain E0161`.
