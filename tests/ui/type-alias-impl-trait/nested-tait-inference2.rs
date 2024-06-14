@@ -15,7 +15,7 @@ impl Foo<()> for () {}
 impl Foo<u32> for () {}
 
 fn foo() -> impl Foo<FooX> {
-    //[current]~^ ERROR: cannot satisfy `(): Foo<FooX>`
+    //[current]~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
     ()
     //[next]~^ ERROR: cannot satisfy `impl Foo<FooX> == ()`
 }
