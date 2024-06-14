@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // When the compiled executable would conflict with a directory, a
 // rustc error should be displayed instead of a verbose and
 // potentially-confusing linker error.
@@ -7,5 +8,7 @@ use run_make_support::{fs_wrapper, rustc};
 
 fn main() {
     fs_wrapper::create_dir("foo");
-    rustc().input("foo.rs").output("foo").run_fail().assert_stderr_contains(r#"the generated executable for the input file "foo.rs" conflicts with the existing directory "foo""#);
+    rustc().input("foo.rs").output("foo").run_fail().assert_stderr_contains(
+        r#"the generated executable for the input file "foo.rs" conflicts with the existing directory "foo""#,
+    );
 }
