@@ -152,7 +152,6 @@ run-make/no-duplicate-libs/Makefile
 run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
 run-make/optimization-remarks-dir/Makefile
-run-make/output-filename-overwrites-input/Makefile
 run-make/output-type-permutations/Makefile
 run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
