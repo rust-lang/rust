@@ -225,7 +225,7 @@ fn generate_mergeable_doctest(
                 output,
                 "\
 fn main() {returns_result} {{
-    {}
+{}
 }}",
                 doctest.everything_else
             )
