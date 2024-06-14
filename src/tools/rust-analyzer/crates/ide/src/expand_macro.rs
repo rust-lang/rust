@@ -229,6 +229,32 @@ mod tests {
     }
 
     #[test]
+    fn only_expand_allowed_builtin_macro() {
+        let fail_tests = [r#"
+        //- minicore: asm
+        $0asm!("0x300, x0");
+            "#];
+
+        for test in fail_tests {
+            let (analysis, pos) = fixture::position(test);
+            let expansion = analysis.expand_macro(pos).unwrap();
+            assert!(expansion.is_none());
+        }
+
+        let tests = [(
+            r#"
+            //- minicore: concat
+            $0concat!("test", 10, 'b', true);"#,
+            expect![[r#"
+                concat!
+                "test10btrue""#]],
+        )];
+        for (test, expect) in tests {
+            check(test, expect);
+        }
+    }
+
+    #[test]
     fn macro_expand_as_keyword() {
         check(
             r#"
