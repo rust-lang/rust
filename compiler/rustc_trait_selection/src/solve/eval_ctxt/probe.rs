@@ -65,7 +65,7 @@ where
     pub(in crate::solve) fn enter(
         self,
         f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>) -> QueryResult<'tcx>,
-    ) -> Result<Candidate<'tcx>, NoSolution> {
+    ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution> {
         self.cx.enter(|ecx| f(ecx)).map(|result| Candidate { source: self.source, result })
     }
 }
