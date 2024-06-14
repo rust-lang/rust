@@ -393,6 +393,14 @@ language_item_table! {
 
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
     CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
+
+    EffectsRuntime,          sym::EffectsRuntime,      effects_runtime,            Target::Struct,         GenericRequirement::None;
+    EffectsNoRuntime,        sym::EffectsNoRuntime,    effects_no_runtime,         Target::Struct,         GenericRequirement::None;
+    EffectsMaybe,            sym::EffectsMaybe,        effects_maybe,              Target::Struct,         GenericRequirement::None;
+    EffectsMin,              sym::EffectsMin,          effects_min,                Target::Trait,          GenericRequirement::None;
+    EffectsMinOutput,        sym::EffectsMinOutput,    effects_min_output,         Target::AssocTy,        GenericRequirement::None;
+    EffectsCompat,           sym::EffectsCompat,       effects_compat,             Target::Trait,          GenericRequirement::Exact(1);
+    EffectsTyCompat,         sym::EffectsTyCompat,     effects_ty_compat,          Target::Trait,          GenericRequirement::Exact(1);
 }
 
 pub enum GenericRequirement {

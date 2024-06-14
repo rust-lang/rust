@@ -549,7 +549,7 @@ fn clean_generic_param_def<'tcx>(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default, is_host_effect } => (
+        ty::GenericParamDefKind::Const { has_default, synthetic, is_host_effect: _ } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -572,7 +572,7 @@ fn clean_generic_param_def<'tcx>(
                 } else {
                     None
                 },
-                is_host_effect,
+                synthetic,
             },
         ),
     };
@@ -628,13 +628,13 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default, is_host_effect } => (
+        hir::GenericParamKind::Const { ty, default, synthetic, is_host_effect: _ } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
-                is_host_effect,
+                synthetic,
             },
         ),
     };
@@ -1411,7 +1411,11 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             let mut generics = clean_ty_generics(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
-                ty::GenericPredicates { parent: None, predicates },
+                ty::GenericPredicates {
+                    parent: None,
+                    predicates,
+                    effects_min_tys: ty::List::empty(),
+                },
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 

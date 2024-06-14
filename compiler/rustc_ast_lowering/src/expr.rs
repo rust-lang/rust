@@ -103,7 +103,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParamMode::Optional,
                         ParenthesizedGenericArgs::Err,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                        None,
                         // Method calls can't have bound modifiers
                         None,
                     ));

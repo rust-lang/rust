@@ -282,12 +282,21 @@ help: wrap the field type in `ManuallyDrop<...>`
 LL | union Union<T: ~const Trait> { field: std::mem::ManuallyDrop<T> }
    |                                       +++++++++++++++++++++++ +
 
-error[E0275]: overflow evaluating the requirement `(): Trait`
+error[E0275]: overflow evaluating the requirement `Trait::{opaque#0} == _`
   --> $DIR/tilde-const-invalid-places.rs:34:34
    |
 LL |     type Type<T: ~const Trait> = ();
    |                                  ^^
    |
+note: required for `()` to implement `Trait`
+  --> $DIR/tilde-const-invalid-places.rs:56:23
+   |
+LL | impl<T: ~const Trait> Trait for T {}
+   |         ------------  ^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `()` to implement `Trait`
 note: required by a bound in `NonConstTrait::Type`
   --> $DIR/tilde-const-invalid-places.rs:25:33
    |

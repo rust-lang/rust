@@ -1,4 +1,5 @@
 // Ensure that we print unsatisfied always-const trait bounds as `const Trait` in diagnostics.
+//@ compile-flags: -Znext-solver
 
 #![feature(const_trait_impl, effects, generic_const_exprs)]
 #![allow(incomplete_features)]

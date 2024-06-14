@@ -274,6 +274,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                     }
                 }),
             ),
+            effects_min_tys: ty::List::empty(),
         }
     }
 
