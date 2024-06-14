@@ -239,24 +239,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(());
         }
 
-        let all_bounds = stack
+        let bounds = stack
             .obligation
             .param_env
             .caller_bounds()
             .iter()
             .filter(|p| !p.references_error())
-            .filter_map(|p| p.as_trait_clause());
-
-        // Micro-optimization: filter out predicates relating to different traits.
-        let matching_bounds =
-            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
+            .filter_map(|p| p.as_trait_clause())
+            // Micro-optimization: filter out predicates relating to different traits.
+            .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
+            .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
-        for bound in matching_bounds {
-            if bound.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity {
-                continue;
-            }
-
+        for bound in bounds {
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
             let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
