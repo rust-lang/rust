@@ -381,8 +381,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     .collect::<Option<Vec<_>>>()?;
                 let ty = match kind {
                     AggregateTy::Array => {
-                        assert!(fields.len() > 0);
-                        Ty::new_array(self.tcx, fields[0].layout.ty, fields.len() as u64)
+                        let [field, ..] = fields.as_slice() else {
+                            bug!("fields.len() == 0");
+                        };
+                        let field_ty = field.layout.ty;
+                        // Ignore nested array
+                        if field_ty.is_array() {
+                            trace!(
+                                "ignoring nested array of type: [{field_ty}; {len}]",
+                                len = fields.len(),
+                            );
+                            return None;
+                        }
+                        Ty::new_array(self.tcx, field_ty, fields.len() as u64)
                     }
                     AggregateTy::Tuple => {
                         Ty::new_tup_from_iter(self.tcx, fields.iter().map(|f| f.layout.ty))
@@ -412,10 +423,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         .ecx
                         .intern_with_temp_alloc(ty, |ecx, dest| {
                             for (field_index, op) in fields.iter().copied().enumerate() {
-                                // ignore nested arrays
-                                if let Either::Left(_) = op.as_mplace_or_imm() {
-                                    interpret::throw_inval!(TooGeneric);
-                                }
                                 let field_dest = ecx.project_field(dest, field_index)?;
                                 ecx.copy_op(op, &field_dest)?;
                             }
