@@ -25,4 +25,3 @@ fn main() {
     rustc_foo.run();
     rustc_foo_panic.run();
 }
-
