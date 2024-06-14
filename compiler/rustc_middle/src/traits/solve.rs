@@ -10,7 +10,7 @@ use crate::ty::{
 
 mod cache;
 
-pub use cache::{CacheData, EvaluationCache};
+pub use cache::EvaluationCache;
 
 pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
 pub type QueryInput<'tcx, P> = ir::solve::QueryInput<TyCtxt<'tcx>, P>;

@@ -57,6 +57,19 @@ pub enum Reveal {
     All,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum SolverMode {
+    /// Ordinary trait solving, using everywhere except for coherence.
+    Normal,
+    /// Trait solving during coherence. There are a few notable differences
+    /// between coherence and ordinary trait solving.
+    ///
+    /// Most importantly, trait solving during coherence must not be incomplete,
+    /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
+    /// This means that we must not make any guesses or arbitrary choices.
+    Coherence,
+}
+
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> = Canonical<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
@@ -355,4 +368,13 @@ impl MaybeCause {
             ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
         }
     }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+pub struct CacheData<I: Interner> {
+    pub result: QueryResult<I>,
+    pub proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
+    pub additional_depth: usize,
+    pub encountered_overflow: bool,
 }

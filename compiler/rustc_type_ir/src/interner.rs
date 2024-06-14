@@ -10,6 +10,7 @@ use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
+use crate::solve::{ExternalConstraintsData, SolverMode};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty};
 
@@ -45,15 +46,25 @@ pub trait Interner:
         + Default;
     type BoundVarKind: Copy + Debug + Hash + Eq;
 
-    type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = ty::CanonicalVarInfo<Self>>;
     type PredefinedOpaques: Copy + Debug + Hash + Eq;
     type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
-    type ExternalConstraints: Copy + Debug + Hash + Eq;
     type CanonicalGoalEvaluationStepRef: Copy
         + Debug
         + Hash
         + Eq
         + Deref<Target = CanonicalGoalEvaluationStep<Self>>;
+
+    type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = ty::CanonicalVarInfo<Self>>;
+    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+
+    type ExternalConstraints: Copy + Debug + Hash + Eq;
+    fn mk_external_constraints(
+        self,
+        data: ExternalConstraintsData<Self>,
+    ) -> Self::ExternalConstraints;
+
+    type DepNodeIndex;
+    fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, Self::DepNodeIndex);
 
     // Kinds of tys
     type Ty: Ty<Self>;
@@ -97,9 +108,10 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
-    fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
+    type EvaluationCache: EvaluationCache<Self>;
+    fn evaluation_cache(self, mode: SolverMode) -> Self::EvaluationCache;
 
-    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+    fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;

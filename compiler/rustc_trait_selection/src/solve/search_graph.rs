@@ -3,14 +3,11 @@ use std::mem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::Idx;
 use rustc_index::IndexVec;
-use rustc_infer::infer::InferCtxt;
-use rustc_middle::dep_graph::dep_kinds;
-use rustc_middle::traits::solve::CacheData;
-use rustc_middle::traits::solve::EvaluationCache;
-use rustc_middle::ty::TyCtxt;
+use rustc_next_trait_solver::solve::CacheData;
 use rustc_next_trait_solver::solve::{CanonicalInput, Certainty, QueryResult};
 use rustc_session::Limit;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::InferCtxtLike;
 use rustc_type_ir::Interner;
 
 use super::inspect;
@@ -240,34 +237,26 @@ impl<I: Interner> SearchGraph<I> {
             !entry.is_empty()
         });
     }
-}
 
-impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
     /// The trait solver behavior is different for coherence
     /// so we use a separate cache. Alternatively we could use
     /// a single cache and share it between coherence and ordinary
     /// trait solving.
-    pub(super) fn global_cache(&self, tcx: TyCtxt<'tcx>) -> &'tcx EvaluationCache<'tcx> {
-        match self.mode {
-            SolverMode::Normal => &tcx.new_solver_evaluation_cache,
-            SolverMode::Coherence => &tcx.new_solver_coherence_evaluation_cache,
-        }
+    pub(super) fn global_cache(&self, tcx: I) -> I::EvaluationCache {
+        tcx.evaluation_cache(self.mode)
     }
 
     /// Probably the most involved method of the whole solver.
     ///
     /// Given some goal which is proven via the `prove_goal` closure, this
     /// handles caching, overflow, and coinductive cycles.
-    pub(super) fn with_new_goal(
+    pub(super) fn with_new_goal<Infcx: InferCtxtLike<Interner = I>>(
         &mut self,
-        tcx: TyCtxt<'tcx>,
-        input: CanonicalInput<TyCtxt<'tcx>>,
-        inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
-        mut prove_goal: impl FnMut(
-            &mut Self,
-            &mut ProofTreeBuilder<InferCtxt<'tcx>>,
-        ) -> QueryResult<TyCtxt<'tcx>>,
-    ) -> QueryResult<TyCtxt<'tcx>> {
+        tcx: I,
+        input: CanonicalInput<I>,
+        inspect: &mut ProofTreeBuilder<Infcx>,
+        mut prove_goal: impl FnMut(&mut Self, &mut ProofTreeBuilder<Infcx>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
         self.check_invariants();
         // Check for overflow.
         let Some(available_depth) = Self::allowed_depth_for_nested(tcx, &self.stack) else {
@@ -361,21 +350,20 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
         // not tracked by the cache key and from outside of this anon task, it
         // must not be added to the global cache. Notably, this is the case for
         // trait solver cycles participants.
-        let ((final_entry, result), dep_node) =
-            tcx.dep_graph.with_anon_task(tcx, dep_kinds::TraitSelect, || {
-                for _ in 0..FIXPOINT_STEP_LIMIT {
-                    match self.fixpoint_step_in_task(tcx, input, inspect, &mut prove_goal) {
-                        StepResult::Done(final_entry, result) => return (final_entry, result),
-                        StepResult::HasChanged => debug!("fixpoint changed provisional results"),
-                    }
+        let ((final_entry, result), dep_node) = tcx.with_cached_task(|| {
+            for _ in 0..FIXPOINT_STEP_LIMIT {
+                match self.fixpoint_step_in_task(tcx, input, inspect, &mut prove_goal) {
+                    StepResult::Done(final_entry, result) => return (final_entry, result),
+                    StepResult::HasChanged => debug!("fixpoint changed provisional results"),
                 }
+            }
 
-                debug!("canonical cycle overflow");
-                let current_entry = self.pop_stack();
-                debug_assert!(current_entry.has_been_used.is_empty());
-                let result = Self::response_no_constraints(tcx, input, Certainty::overflow(false));
-                (current_entry, result)
-            });
+            debug!("canonical cycle overflow");
+            let current_entry = self.pop_stack();
+            debug_assert!(current_entry.has_been_used.is_empty());
+            let result = Self::response_no_constraints(tcx, input, Certainty::overflow(false));
+            (current_entry, result)
+        });
 
         let proof_tree = inspect.finalize_canonical_goal_evaluation(tcx);
 
@@ -423,16 +411,17 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
     /// Try to fetch a previously computed result from the global cache,
     /// making sure to only do so if it would match the result of reevaluating
     /// this goal.
-    fn lookup_global_cache(
+    fn lookup_global_cache<Infcx: InferCtxtLike<Interner = I>>(
         &mut self,
-        tcx: TyCtxt<'tcx>,
-        input: CanonicalInput<TyCtxt<'tcx>>,
+        tcx: I,
+        input: CanonicalInput<I>,
         available_depth: Limit,
-        inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
-    ) -> Option<QueryResult<TyCtxt<'tcx>>> {
+        inspect: &mut ProofTreeBuilder<Infcx>,
+    ) -> Option<QueryResult<I>> {
         let CacheData { result, proof_tree, additional_depth, encountered_overflow } = self
             .global_cache(tcx)
-            .get(tcx, input, self.stack.iter().map(|e| e.input), available_depth)?;
+            // TODO: Awkward `Limit -> usize -> Limit`.
+            .get(tcx, input, self.stack.iter().map(|e| e.input), available_depth.0)?;
 
         // If we're building a proof tree and the current cache entry does not
         // contain a proof tree, we do not use the entry but instead recompute
@@ -465,21 +454,22 @@ enum StepResult<I: Interner> {
     HasChanged,
 }
 
-impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
+impl<I: Interner> SearchGraph<I> {
     /// When we encounter a coinductive cycle, we have to fetch the
     /// result of that cycle while we are still computing it. Because
     /// of this we continuously recompute the cycle until the result
     /// of the previous iteration is equal to the final result, at which
     /// point we are done.
-    fn fixpoint_step_in_task<F>(
+    fn fixpoint_step_in_task<Infcx, F>(
         &mut self,
-        tcx: TyCtxt<'tcx>,
-        input: CanonicalInput<TyCtxt<'tcx>>,
-        inspect: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
+        tcx: I,
+        input: CanonicalInput<I>,
+        inspect: &mut ProofTreeBuilder<Infcx>,
         prove_goal: &mut F,
-    ) -> StepResult<TyCtxt<'tcx>>
+    ) -> StepResult<I>
     where
-        F: FnMut(&mut Self, &mut ProofTreeBuilder<InferCtxt<'tcx>>) -> QueryResult<TyCtxt<'tcx>>,
+        Infcx: InferCtxtLike<Interner = I>,
+        F: FnMut(&mut Self, &mut ProofTreeBuilder<Infcx>) -> QueryResult<I>,
     {
         let result = prove_goal(self, inspect);
         let stack_entry = self.pop_stack();
@@ -533,15 +523,13 @@ impl<'tcx> SearchGraph<TyCtxt<'tcx>> {
     }
 
     fn response_no_constraints(
-        tcx: TyCtxt<'tcx>,
-        goal: CanonicalInput<TyCtxt<'tcx>>,
+        tcx: I,
+        goal: CanonicalInput<I>,
         certainty: Certainty,
-    ) -> QueryResult<TyCtxt<'tcx>> {
+    ) -> QueryResult<I> {
         Ok(super::response_no_constraints_raw(tcx, goal.max_universe, goal.variables, certainty))
     }
-}
 
-impl<I: Interner> SearchGraph<I> {
     #[allow(rustc::potential_query_instability)]
     fn check_invariants(&self) {
         if !cfg!(debug_assertions) {

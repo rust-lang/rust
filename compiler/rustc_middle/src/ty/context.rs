@@ -71,6 +71,7 @@ use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx}
 use rustc_target::spec::abi;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
@@ -139,8 +140,28 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Clause = Clause<'tcx>;
     type Clauses = ty::Clauses<'tcx>;
 
+    type DepNodeIndex = DepNodeIndex;
+    fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, DepNodeIndex) {
+        self.dep_graph.with_anon_task(self, crate::dep_graph::dep_kinds::TraitSelect, task)
+    }
+
+    type EvaluationCache = &'tcx solve::EvaluationCache<'tcx>;
+    fn evaluation_cache(self, mode: SolverMode) -> &'tcx solve::EvaluationCache<'tcx> {
+        match mode {
+            SolverMode::Normal => &self.new_solver_evaluation_cache,
+            SolverMode::Coherence => &self.new_solver_coherence_evaluation_cache,
+        }
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
+    }
+
+    fn mk_external_constraints(
+        self,
+        data: ExternalConstraintsData<Self>,
+    ) -> ExternalConstraints<'tcx> {
+        self.mk_external_constraints(data)
     }
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {

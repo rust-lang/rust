@@ -14,12 +14,11 @@
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_macros::extension;
 use rustc_middle::bug;
-use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
 };
@@ -27,6 +26,8 @@ use rustc_middle::ty::{
     self, AliasRelationDirection, CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, Ty,
     TyCtxt, TypeOutlivesPredicate, UniverseIndex,
 };
+use rustc_type_ir::solve::SolverMode;
+use rustc_type_ir::{self as ir, Interner};
 
 mod alias_relate;
 mod assembly;
@@ -56,19 +57,6 @@ pub use select::InferCtxtSelectExt;
 /// is required, we can add a new attribute for that or revert this to be dependant on the
 /// recursion limit again. However, this feels very unlikely.
 const FIXPOINT_STEP_LIMIT: usize = 8;
-
-#[derive(Debug, Clone, Copy)]
-enum SolverMode {
-    /// Ordinary trait solving, using everywhere except for coherence.
-    Normal,
-    /// Trait solving during coherence. There are a few notable differences
-    /// between coherence and ordinary trait solving.
-    ///
-    /// Most importantly, trait solving during coherence must not be incomplete,
-    /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
-    /// This means that we must not make any guesses or arbitrary choices.
-    Coherence,
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum GoalEvaluationKind {
@@ -314,17 +302,17 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     }
 }
 
-fn response_no_constraints_raw<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn response_no_constraints_raw<I: Interner>(
+    tcx: I,
     max_universe: UniverseIndex,
-    variables: CanonicalVarInfos<'tcx>,
+    variables: I::CanonicalVars,
     certainty: Certainty,
-) -> CanonicalResponse<'tcx> {
-    Canonical {
+) -> ir::solve::CanonicalResponse<I> {
+    ir::Canonical {
         max_universe,
         variables,
         value: Response {
-            var_values: CanonicalVarValues::make_identity(tcx, variables),
+            var_values: ir::CanonicalVarValues::make_identity(tcx, variables),
             // FIXME: maybe we should store the "no response" version in tcx, like
             // we do for tcx.types and stuff.
             external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
