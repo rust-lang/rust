@@ -434,7 +434,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         return None;
                     }
                     let mut mplace = None;
-                    let alloc_id = self
+                    let _alloc_id = self
                         .ecx
                         .intern_with_temp_alloc(ty, |ecx, dest| {
                             // FIXME: Can we speed it up by using `ecx.write_immediate(.ScalarPair(_), dest)`?
@@ -449,11 +449,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                             Ok(())
                         })
                         .ok()?;
-                    let GlobalAlloc::Memory(_alloc) = self.tcx.global_alloc(alloc_id) else {
-                        bug!()
-                    };
                     let mplace = mplace.unwrap();
-                    debug!(?mplace);
                     return Some(mplace.into());
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
