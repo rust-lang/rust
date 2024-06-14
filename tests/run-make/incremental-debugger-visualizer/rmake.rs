@@ -1,20 +1,15 @@
-// This test makes sure that changes to files referenced via //[debugger_visualizer]
-// are picked up when compiling incrementally.
+// This test ensures that changes to files referenced via #[debugger_visualizer]
+// (in this case, foo.py and foo.natvis) are picked up when compiling incrementally.
+// See https://github.com/rust-lang/rust/pull/111641
 
-// We have to copy the source to $(TMPDIR) because Github CI mounts the source
-// directory as readonly. We need to apply modifications to some of the source
-// file.
-
-use run_make_support::{
-    fs_wrapper, invalid_utf8_contains_str, invalid_utf8_not_contains_str, rustc,
-};
+use run_make_support::{fs_wrapper, invalid_utf8_contains, invalid_utf8_not_contains, rustc};
 use std::io::Read;
 
 fn main() {
     fs_wrapper::create_file("foo.py");
     fs_wrapper::write("foo.py", "GDB script v1");
     fs_wrapper::create_file("foo.natvis");
-    fs_wrapper::write("foo.py", "Natvis v1");
+    fs_wrapper::write("foo.natvis", "Natvis v1");
     rustc()
         .input("foo.rs")
         .crate_type("rlib")
@@ -23,8 +18,8 @@ fn main() {
         .arg("-Zincremental-verify-ich")
         .run();
 
-    invalid_utf8_contains_str("libfoo.rmeta", "GDB script v1");
-    invalid_utf8_contains_str("libfoo.rmeta", "Natvis v1");
+    invalid_utf8_contains("libfoo.rmeta", "GDB script v1");
+    invalid_utf8_contains("libfoo.rmeta", "Natvis v1");
 
     // Change only the GDB script and check that the change has been picked up
     fs_wrapper::remove_file("foo.py");
@@ -38,14 +33,14 @@ fn main() {
         .arg("-Zincremental-verify-ich")
         .run();
 
-    invalid_utf8_contains_str("libfoo.rmeta", "GDB script v2");
-    invalid_utf8_not_contains_str("libfoo.rmeta", "GDB script v1");
-    invalid_utf8_contains_str("libfoo.rmeta", "Natvis v1");
+    invalid_utf8_contains("libfoo.rmeta", "GDB script v2");
+    invalid_utf8_not_contains("libfoo.rmeta", "GDB script v1");
+    invalid_utf8_contains("libfoo.rmeta", "Natvis v1");
 
     // Now change the Natvis version and check that the change has been picked up
     fs_wrapper::remove_file("foo.natvis");
     fs_wrapper::create_file("foo.natvis");
-    fs_wrapper::write("foo.py", "Natvis v2");
+    fs_wrapper::write("foo.natvis", "Natvis v2");
     rustc()
         .input("foo.rs")
         .crate_type("rlib")
@@ -54,8 +49,8 @@ fn main() {
         .arg("-Zincremental-verify-ich")
         .run();
 
-    invalid_utf8_contains_str("libfoo.rmeta", "GDB script v2");
-    invalid_utf8_not_contains_str("libfoo.rmeta", "GDB script v1");
-    invalid_utf8_not_contains_str("libfoo.rmeta", "Natvis v1");
-    invalid_utf8_contains_str("libfoo.rmeta", "Natvis v2");
+    invalid_utf8_contains("libfoo.rmeta", "GDB script v2");
+    invalid_utf8_not_contains("libfoo.rmeta", "GDB script v1");
+    invalid_utf8_not_contains("libfoo.rmeta", "Natvis v1");
+    invalid_utf8_contains("libfoo.rmeta", "Natvis v2");
 }
