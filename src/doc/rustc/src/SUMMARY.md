@@ -71,6 +71,7 @@
     - [*-unknown-hermit](platform-support/hermit.md)
     - [\*-unknown-netbsd\*](platform-support/netbsd.md)
     - [*-unknown-openbsd](platform-support/openbsd.md)
+    - [*-unknown-redox](platform-support/redox.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
     - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasip1-threads](platform-support/wasm32-wasip1-threads.md)
