@@ -345,7 +345,13 @@ impl<'db> SemanticsImpl<'db> {
             ) => {
                 // Do nothing and allow matching macros to be expanded
             }
-            _ => return None,
+
+            hir_expand::MacroDefKind::BuiltIn(_, _)
+            | hir_expand::MacroDefKind::BuiltInAttr(_, _)
+            | hir_expand::MacroDefKind::BuiltInEager(_, _)
+            | hir_expand::MacroDefKind::BuiltInDerive(_, _) => return None,
+
+            _ => (),
         }
 
         let node = self.parse_or_expand(file_id.into());
