@@ -4,7 +4,6 @@ use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
 
-use crate::infer::canonical::QueryRegionConstraints;
 use crate::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };
@@ -52,7 +51,7 @@ impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
 #[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default, TypeVisitable, TypeFoldable)]
 pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
-    pub region_constraints: QueryRegionConstraints<'tcx>,
+    pub region_constraints: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub normalization_nested_goals: NestedNormalizationGoals<'tcx>,
 }
