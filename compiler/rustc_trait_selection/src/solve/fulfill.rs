@@ -520,8 +520,9 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred_kind.no_bound_vars() {
             if let Some(obligation) = goal
                 .infcx()
-                .visit_proof_tree(
+                .visit_proof_tree_at_depth(
                     goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                    goal.depth() + 1,
                     self,
                 )
                 .break_value()
@@ -529,8 +530,9 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 return ControlFlow::Break(obligation);
             } else if let Some(obligation) = goal
                 .infcx()
-                .visit_proof_tree(
+                .visit_proof_tree_at_depth(
                     goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                    goal.depth() + 1,
                     self,
                 )
                 .break_value()
