@@ -640,9 +640,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 const_eval_validation_ref_to_uninhabited
             }
 
-            PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_static,
-            PtrToStatic { ptr_kind: PointerKind::Ref(_) } => const_eval_validation_ref_to_static,
-
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
             ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
@@ -807,7 +804,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 );
             }
             NullPtr { .. }
-            | PtrToStatic { .. }
             | ConstRefToMutable
             | ConstRefToExtern
             | MutableRefToImmutable
