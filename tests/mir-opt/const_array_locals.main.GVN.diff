@@ -1,0 +1,97 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: [i32; 5];
+      let mut _4: [i32; 5];
+      let mut _5: [i32; 5];
+      let mut _7: &[i32; 5];
+      let _8: [i32; 5];
+      let _9: ();
+      let mut _10: [u32; 5];
+      let mut _12: [f32; 8];
+      let _13: [[i32; 3]; 3];
+      let mut _14: [i32; 3];
+      let mut _15: [i32; 3];
+      let mut _16: [i32; 3];
+      scope 1 {
+          debug _arr => _1;
+          let _2: [i32; 5];
+          scope 2 {
+              debug _duplicated_arr => _2;
+              let _3: [[i32; 5]; 2];
+              scope 3 {
+                  debug _foo => _3;
+                  let _6: [i32; 5];
+                  let mut _17: &[i32; 5];
+                  scope 4 {
+                      debug _darr => _6;
+                      let _11: F32x8;
+                      scope 5 {
+                          debug _f => _11;
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          _1 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32];
+          StorageLive(_2);
+-         _2 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32];
++         _2 = _1;
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = [const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32];
+          StorageLive(_5);
+          _5 = [const 193_i32, const 164_i32, const 194_i32, const 197_i32, const 6_i32];
+          _3 = [move _4, move _5];
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          _17 = const main::promoted[0];
+          _7 = &(*_17);
+-         _6 = (*_7);
++         _6 = (*_17);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = [const 31_u32, const 96_u32, const 173_u32, const 50_u32, const 1_u32];
+          _9 = consume(move _10) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = [const 1f32, const 2f32, const 3f32, const 1f32, const 1f32, const 1f32, const 1f32, const 42f32];
+          _11 = F32x8(move _12);
+          StorageDead(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = [const 1_i32, const 0_i32, const 0_i32];
+          StorageLive(_15);
+          _15 = [const 0_i32, const 1_i32, const 0_i32];
+          StorageLive(_16);
+          _16 = [const 0_i32, const 0_i32, const 1_i32];
+          _13 = [move _14, move _15, move _16];
+          StorageDead(_16);
+          StorageDead(_15);
+          StorageDead(_14);
+          StorageDead(_13);
+          _0 = const ();
+          StorageDead(_11);
+          StorageDead(_6);
+          StorageDead(_3);
+          StorageDead(_2);
+-         StorageDead(_1);
++         nop;
+          return;
+      }
+  }
+  
