@@ -127,28 +127,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let dominators = body.basic_blocks.dominators().clone();
 
     let mut state = VnState::new(tcx, param_env, &ssa, &dominators, &body.local_decls);
-    ssa.for_each_assignment_mut(
-        body.basic_blocks.as_mut_preserves_cfg(),
-        |local, value, location| {
-            let value = match value {
-                // We do not know anything of this assigned value.
-                AssignedValue::Arg | AssignedValue::Terminator => None,
-                // Try to get some insight.
-                AssignedValue::Rvalue(rvalue) => {
-                    let value = state.simplify_rvalue(rvalue, location);
-                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
-                    // reusable if we have an exact type match.
-                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
-                        return;
-                    }
-                    value
-                }
-            };
-            // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
-            let value = value.or_else(|| state.new_opaque()).unwrap();
-            state.assign(local, value);
-        },
-    );
+    simplify_assignments(&ssa, &mut state, &mut body.basic_blocks);
 
     // Stop creating opaques during replacement as it is useless.
     state.next_opaque = None;
@@ -163,6 +142,33 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
     // statements.
     StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
+}
+
+#[instrument(level = "trace", skip_all)]
+fn simplify_assignments<'tcx>(
+    ssa: &SsaLocals,
+    state: &mut VnState<'_, 'tcx>,
+    basic_blocks: &mut BasicBlocks<'tcx>,
+) {
+    ssa.for_each_assignment_mut(basic_blocks.as_mut_preserves_cfg(), |local, value, location| {
+        let value = match value {
+            // We do not know anything of this assigned value.
+            AssignedValue::Arg | AssignedValue::Terminator => None,
+            // Try to get some insight.
+            AssignedValue::Rvalue(rvalue) => {
+                let value = state.simplify_rvalue(rvalue, location);
+                // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
+                // reusable if we have an exact type match.
+                if state.local_decls[local].ty != rvalue.ty(state.local_decls, state.tcx) {
+                    return;
+                }
+                value
+            }
+        };
+        // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
+        let value = value.or_else(|| state.new_opaque()).unwrap();
+        state.assign(local, value);
+    });
 }
 
 newtype_index! {
