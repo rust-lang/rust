@@ -1098,7 +1098,9 @@ fn next_space(tok: &TokenKind) -> SpaceState {
         | TokenKind::OpenDelim(_)
         | TokenKind::CloseDelim(_) => SpaceState::Never,
 
-        TokenKind::Literal(..) | TokenKind::Ident(..) | TokenKind::Lifetime(..) => SpaceState::Ident,
+        TokenKind::Literal(..) | TokenKind::Ident(..) | TokenKind::Lifetime(..) => {
+            SpaceState::Ident
+        }
 
         _ => SpaceState::Always,
     }

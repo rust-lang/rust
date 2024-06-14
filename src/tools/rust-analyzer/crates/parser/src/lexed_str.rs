@@ -209,6 +209,14 @@ impl<'a> Converter<'a> {
                     }
                     LIFETIME_IDENT
                 }
+                rustc_lexer::TokenKind::UnknownPrefixLifetime => {
+                    err = "Unknown lifetime prefix";
+                    LIFETIME_IDENT
+                }
+                rustc_lexer::TokenKind::RawLifetimePrefix => {
+                    err = "Unsupported raw lifetime";
+                    LIFETIME_IDENT
+                }
 
                 rustc_lexer::TokenKind::Semi => T![;],
                 rustc_lexer::TokenKind::Comma => T![,],
