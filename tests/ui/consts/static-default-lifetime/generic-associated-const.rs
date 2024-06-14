@@ -12,7 +12,6 @@ impl A {
 
 trait Trait {
     const GAC_TYPE<T>: &str = "";
-    //~^ ERROR missing lifetime specifier
     const GAC_LIFETIME<'a>: &str = "";
     //~^ ERROR missing lifetime specifier
 }

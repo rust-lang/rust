@@ -1,16 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/generic-associated-const.rs:14:24
-   |
-LL |     const GAC_TYPE<T>: &str = "";
-   |                        ^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL |     const GAC_TYPE<'a, T>: &'a str = "";
-   |                    +++      ++
-
-error[E0106]: missing lifetime specifier
-  --> $DIR/generic-associated-const.rs:16:29
+  --> $DIR/generic-associated-const.rs:15:29
    |
 LL |     const GAC_LIFETIME<'a>: &str = "";
    |                             ^ expected named lifetime parameter
@@ -52,6 +41,6 @@ help: use the `'static` lifetime
 LL |     const GAC_LIFETIME<'a>: &'static str = "";
    |                              +++++++
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0106`.

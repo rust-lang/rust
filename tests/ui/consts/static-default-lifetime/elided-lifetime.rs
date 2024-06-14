@@ -9,8 +9,7 @@ impl Foo<'_> {
 }
 
 trait Bar {
-    const STATIC: &'static str;
-    // TODO^
+    const STATIC: &str;
 }
 
 impl Bar for Foo<'_> {

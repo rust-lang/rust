@@ -22,7 +22,7 @@ LL |     const STATIC: &'static str = "";
    |                    +++++++
 
 error: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/elided-lifetime.rs:17:19
+  --> $DIR/elided-lifetime.rs:16:19
    |
 LL |     const STATIC: &str = "";
    |                   ^
@@ -30,7 +30,7 @@ LL |     const STATIC: &str = "";
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 note: cannot automatically infer `'static` because of other lifetimes in scope
-  --> $DIR/elided-lifetime.rs:16:18
+  --> $DIR/elided-lifetime.rs:15:18
    |
 LL | impl Bar for Foo<'_> {
    |                  ^^
@@ -40,7 +40,7 @@ LL |     const STATIC: &'static str = "";
    |                    +++++++
 
 error[E0308]: const not compatible with trait
-  --> $DIR/elided-lifetime.rs:17:5
+  --> $DIR/elided-lifetime.rs:16:5
    |
 LL |     const STATIC: &str = "";
    |     ^^^^^^^^^^^^^^^^^^ lifetime mismatch
@@ -48,7 +48,7 @@ LL |     const STATIC: &str = "";
    = note: expected reference `&'static _`
               found reference `&_`
 note: the anonymous lifetime as defined here...
-  --> $DIR/elided-lifetime.rs:16:18
+  --> $DIR/elided-lifetime.rs:15:18
    |
 LL | impl Bar for Foo<'_> {
    |                  ^^
