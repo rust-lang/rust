@@ -29,11 +29,9 @@ use super::inspect::ProofTreeBuilder;
 use super::{search_graph, GoalEvaluationKind, FIXPOINT_STEP_LIMIT};
 use super::{search_graph::SearchGraph, Goal};
 use super::{GoalSource, SolverMode};
-pub use select::InferCtxtSelectExt;
 
 pub(super) mod canonical;
 mod probe;
-mod select;
 
 pub struct EvalCtxt<'a, Infcx, I = <Infcx as InferCtxtLike>::Interner>
 where
