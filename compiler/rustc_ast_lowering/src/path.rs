@@ -107,8 +107,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         param_mode,
                         parenthesized_generic_args,
                         itctx,
-                        // if this is the last segment, add constness to the trait path
-                        if i == proj_start - 1 { modifiers.map(|m| m.constness) } else { None },
                         bound_modifier_allowed_features.clone(),
                     )
                 },
@@ -165,7 +163,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ParenthesizedGenericArgs::Err,
                 itctx,
                 None,
-                None,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -208,7 +205,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ParenthesizedGenericArgs::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
-                    None,
                 )
             })),
             span: self.lower_span(p.span),
@@ -222,7 +218,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
         itctx: ImplTraitContext,
-        constness: Option<ast::BoundConstness>,
         // Additional features ungated with a bound modifier like `async`.
         // This is passed down to the implicit associated type binding in
         // parenthesized bounds.
@@ -288,10 +283,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 param_mode == ParamMode::Optional,
             )
         };
-
-        if let Some(constness) = constness {
-            generic_args.push_constness(self, constness);
-        }
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));

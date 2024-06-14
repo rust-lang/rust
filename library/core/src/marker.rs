@@ -1027,3 +1027,41 @@ pub trait FnPtr: Copy + Clone {
 pub macro SmartPointer($item:item) {
     /* compiler built-in */
 }
+
+#[doc(hidden)]
+#[unstable(
+    feature = "effect_types",
+    issue = "none",
+    reason = "internal module for implementing effects"
+)]
+#[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
+#[cfg(not(bootstrap))]
+// TODO docs
+pub mod effects {
+    #[lang = "EffectsNoRuntime"]
+    pub struct NoRuntime;
+    #[lang = "EffectsMaybe"]
+    pub struct Maybe;
+    #[lang = "EffectsRuntime"]
+    pub struct Runtime;
+
+    #[lang = "EffectsCompat"]
+    pub trait Compat<#[rustc_runtime] const RUNTIME: bool> {}
+
+    impl Compat<false> for NoRuntime {}
+    impl Compat<true> for Runtime {}
+    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+
+    #[lang = "EffectsTyCompat"]
+    #[marker]
+    pub trait TyCompat<T> {}
+
+    impl<T> TyCompat<T> for T {}
+    impl<T> TyCompat<T> for Maybe {}
+
+    #[lang = "EffectsMin"]
+    pub trait Min {
+        #[lang = "EffectsMinOutput"]
+        type Output;
+    }
+}

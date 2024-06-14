@@ -3095,9 +3095,9 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             node,
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
+                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
                 ..
-            }) if generics.params.iter().any(|p| matches!(p.kind, hir::GenericParamKind::Const { is_host_effect: true, .. }))
+            }) if matches!(constness, hir::Constness::Const)
         )
     }
 
