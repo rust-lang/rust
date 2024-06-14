@@ -195,6 +195,7 @@ impl<'a> Converter<'a> {
                     }
                     LIFETIME_IDENT
                 }
+                rustc_lexer::TokenKind::RawLifetime => LIFETIME_IDENT,
 
                 rustc_lexer::TokenKind::Semi => T![;],
                 rustc_lexer::TokenKind::Comma => T![,],
