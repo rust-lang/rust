@@ -22,22 +22,27 @@ features! {
     /// * `"crc"` - FEAT_CRC
     /// * `"lse"` - FEAT_LSE
     /// * `"lse2"` - FEAT_LSE2
+    /// * `"lse128"` - FEAT_LSE128
     /// * `"rdm"` - FEAT_RDM
     /// * `"rcpc"` - FEAT_LRCPC
     /// * `"rcpc2"` - FEAT_LRCPC2
+    /// * `"rcpc3"` - FEAT_LRCPC3
     /// * `"dotprod"` - FEAT_DotProd
     /// * `"tme"` - FEAT_TME
     /// * `"fhm"` - FEAT_FHM
     /// * `"dit"` - FEAT_DIT
     /// * `"flagm"` - FEAT_FLAGM
+    /// * `"flagm2"` - FEAT_FLAGM2
     /// * `"ssbs"` - FEAT_SSBS & FEAT_SSBS2
     /// * `"sb"` - FEAT_SB
     /// * `"paca"` - FEAT_PAuth (address authentication)
     /// * `"pacg"` - FEAT_Pauth (generic authentication)
     /// * `"dpb"` - FEAT_DPB
     /// * `"dpb2"` - FEAT_DPB2
+    /// * `"sve-b16b16"` - FEAT_SVE_B16B16
     /// * `"sve2"` - FEAT_SVE2
-    /// * `"sve2-aes"` - FEAT_SVE2_AES
+    /// * `"sve2p1"` - FEAT_SVE2p1
+    /// * `"sve2-aes"` - FEAT_SVE_AES & FEAT_SVE_PMULL128 (SVE2 AES crypto)
     /// * `"sve2-sm4"` - FEAT_SVE2_SM4
     /// * `"sve2-sha3"` - FEAT_SVE2_SHA3
     /// * `"sve2-bitperm"` - FEAT_SVE2_BitPerm
@@ -55,6 +60,18 @@ features! {
     /// * `"sha2"` - FEAT_SHA1 & FEAT_SHA256
     /// * `"sha3"` - FEAT_SHA512 & FEAT_SHA3
     /// * `"sm4"` - FEAT_SM3 & FEAT_SM4
+    /// * `"hbc"` - FEAT_HBC
+    /// * `"mops"` - FEAT_MOPS
+    /// * `"ecv"` - FEAT_ECV
+    /// * `"cssc"` - FEAT_CSSC
+    /// * `"fpmr"` - FEAT_FPMR
+    /// * `"lut"` - FEAT_LUT
+    /// * `"faminmax"` - FEAT_FAMINMAX
+    /// * `"fp8"` - FEAT_FP8
+    /// * `"fp8fma"` - FEAT_FP8FMA
+    /// * `"fp8dot4"` - FEAT_FP8DOT4
+    /// * `"fp8dot2"` - FEAT_FP8DOT2
+    /// * `"wfxt"` - FEAT_WFxT
     ///
     /// [docs]: https://developer.arm.com/documentation/ddi0487/latest
     #[stable(feature = "simd_aarch64", since = "1.60.0")]
@@ -67,6 +84,14 @@ features! {
     @NO_RUNTIME_DETECTION: "v8.5a";
     @NO_RUNTIME_DETECTION: "v8.6a";
     @NO_RUNTIME_DETECTION: "v8.7a";
+    @NO_RUNTIME_DETECTION: "v8.8a";
+    @NO_RUNTIME_DETECTION: "v8.9a";
+    @NO_RUNTIME_DETECTION: "v9.1a";
+    @NO_RUNTIME_DETECTION: "v9.2a";
+    @NO_RUNTIME_DETECTION: "v9.3a";
+    @NO_RUNTIME_DETECTION: "v9.4a";
+    @NO_RUNTIME_DETECTION: "v9.5a";
+    @NO_RUNTIME_DETECTION: "v9a";
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] asimd: "neon";
     /// FEAT_AdvSIMD (Advanced SIMD/NEON)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] pmull: "pmull";
@@ -85,12 +110,16 @@ features! {
     /// FEAT_LSE (Large System Extension - atomics)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] lse2: "lse2";
     /// FEAT_LSE2 (unaligned and register-pair atomics)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] lse128: "lse128";
+    /// FEAT_LSE128 (128-bit atomics)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] rdm: "rdm";
     /// FEAT_RDM (Rounding Doubling Multiply - ASIMDRDM)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] rcpc: "rcpc";
     /// FEAT_LRCPC (Release consistent Processor consistent)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] rcpc2: "rcpc2";
     /// FEAT_LRCPC2 (RCPC with immediate offsets)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] rcpc3: "rcpc3";
+    /// FEAT_LRCPC3 (RCPC Instructions v3)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] dotprod: "dotprod";
     /// FEAT_DotProd (Vector Dot-Product - ASIMDDP)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] tme: "tme";
@@ -101,6 +130,8 @@ features! {
     /// FEAT_DIT (Data Independent Timing instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] flagm: "flagm";
     /// FEAT_FLAGM (flag manipulation instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] flagm2: "flagm2";
+    /// FEAT_FLAGM2 (flag manipulation instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] ssbs: "ssbs";
     /// FEAT_SSBS & FEAT_SSBS2 (speculative store bypass safe)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sb: "sb";
@@ -115,14 +146,18 @@ features! {
     /// FEAT_DPB2 (aka dcpodp - data cache clean to point of deep persistence)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2: "sve2";
     /// FEAT_SVE2 (Scalable Vector Extension 2)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sve2p1: "sve2p1";
+    /// FEAT_SVE2p1 (Scalable Vector Extension 2.1)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_aes: "sve2-aes";
-    /// FEAT_SVE_AES (SVE2 AES crypto)
+    /// FEAT_SVE_AES & FEAT_SVE_PMULL128 (SVE2 AES crypto)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_sm4: "sve2-sm4";
     /// FEAT_SVE_SM4 (SVE2 SM4 crypto)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_sha3: "sve2-sha3";
     /// FEAT_SVE_SHA3 (SVE2 SHA3 crypto)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_bitperm: "sve2-bitperm";
     /// FEAT_SVE_BitPerm (SVE2 bit permutation instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sve_b16b16: "sve-b16b16";
+    /// FEAT_SVE_B16B16 (SVE or SME Instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] frintts: "frintts";
     /// FEAT_FRINTTS (float to integer rounding instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] i8mm: "i8mm";
@@ -151,4 +186,28 @@ features! {
     /// FEAT_SHA512 & FEAT_SHA3 (SHA2-512 & SHA3 instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sm4: "sm4";
     /// FEAT_SM3 & FEAT_SM4 (SM3 & SM4 instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] hbc: "hbc";
+    /// FEAT_HBC (Hinted conditional branches)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] mops: "mops";
+    /// FEAT_MOPS (Standardization of memory operations)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] ecv: "ecv";
+    /// FEAT_ECV (Enhanced Counter Virtualization)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] cssc: "cssc";
+    /// FEAT_CSSC (Common Short Sequence Compression instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fpmr: "fpmr";
+    /// FEAT_FPMR (Special-purpose AArch64-FPMR register)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] lut: "lut";
+    /// FEAT_LUT (Lookup Table Instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] faminmax: "faminmax";
+    /// FEAT_FAMINMAX (FAMIN and FAMAX SIMD/SVE/SME instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fp8: "fp8";
+    /// FEAT_FP8 (F8CVT Instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fp8fma: "fp8fma";
+    /// FEAT_FP8FMA (F8FMA Instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fp8dot4: "fp8dot4";
+    /// FEAT_FP8DOT4 (F8DP4 Instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fp8dot2: "fp8dot2";
+    /// FEAT_FP8DOT2 (F8DP2 Instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] wfxt: "wfxt";
+    /// FEAT_WFxT (WFET and WFIT Instructions)
 }

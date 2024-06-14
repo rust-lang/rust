@@ -12,6 +12,7 @@
     feature(stdarch_internal)
 )]
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_feature_detection))]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_aarch64_feature_detection))]
 #![cfg_attr(target_arch = "powerpc", feature(stdarch_powerpc_feature_detection))]
 #![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
