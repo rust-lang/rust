@@ -422,6 +422,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let alloc_id = self
                         .ecx
                         .intern_with_temp_alloc(ty, |ecx, dest| {
+                            // FIXME: Can we speed it up by using `ecx.write_immediate(.ScalarPair(_), dest)`?
                             for (field_index, op) in fields.iter().copied().enumerate() {
                                 let field_dest = ecx.project_field(dest, field_index)?;
                                 ecx.copy_op(op, &field_dest)?;
