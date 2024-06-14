@@ -142,7 +142,6 @@ run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
 run-make/native-link-modifier-bundle/Makefile
-run-make/native-link-modifier-verbatim-linker/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
