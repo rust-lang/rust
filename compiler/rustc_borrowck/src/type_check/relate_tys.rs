@@ -50,14 +50,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        NllTypeRelating::new(
-            self,
-            locations,
-            category,
-            UniverseInfo::other(),
-            ty::Variance::Invariant,
-        )
-        .relate(a, b)?;
+        NllTypeRelating::new(self, locations, category, UniverseInfo::other(), ty::Invariant)
+            .relate(a, b)?;
         Ok(())
     }
 }
@@ -106,15 +100,15 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
 
     fn ambient_covariance(&self) -> bool {
         match self.ambient_variance {
-            ty::Variance::Covariant | ty::Variance::Invariant => true,
-            ty::Variance::Contravariant | ty::Variance::Bivariant => false,
+            ty::Covariant | ty::Invariant => true,
+            ty::Contravariant | ty::Bivariant => false,
         }
     }
 
     fn ambient_contravariance(&self) -> bool {
         match self.ambient_variance {
-            ty::Variance::Contravariant | ty::Variance::Invariant => true,
-            ty::Variance::Covariant | ty::Variance::Bivariant => false,
+            ty::Contravariant | ty::Invariant => true,
+            ty::Covariant | ty::Bivariant => false,
         }
     }
 
@@ -336,11 +330,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
 
         debug!(?self.ambient_variance);
         // In a bivariant context this always succeeds.
-        let r = if self.ambient_variance == ty::Variance::Bivariant {
-            Ok(a)
-        } else {
-            self.relate(a, b)
-        };
+        let r = if self.ambient_variance == ty::Bivariant { Ok(a) } else { self.relate(a, b) };
 
         self.ambient_variance = old_ambient_variance;
 
@@ -474,7 +464,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
         }
 
         match self.ambient_variance {
-            ty::Variance::Covariant => {
+            ty::Covariant => {
                 // Covariance, so we want `for<..> A <: for<..> B` --
                 // therefore we compare any instantiation of A (i.e., A
                 // instantiated with existentials) against every
@@ -489,7 +479,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
                 })?;
             }
 
-            ty::Variance::Contravariant => {
+            ty::Contravariant => {
                 // Contravariance, so we want `for<..> A :> for<..> B` --
                 // therefore we compare every instantiation of A (i.e., A
                 // instantiated with universals) against any
@@ -504,7 +494,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
                 })?;
             }
 
-            ty::Variance::Invariant => {
+            ty::Invariant => {
                 // Invariant, so we want `for<..> A == for<..> B` --
                 // therefore we want `exists<..> A == for<..> B` and
                 // `exists<..> B == for<..> A`.
@@ -525,7 +515,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
                 })?;
             }
 
-            ty::Variance::Bivariant => {}
+            ty::Bivariant => {}
         }
 
         Ok(a)
@@ -584,23 +574,23 @@ impl<'bccx, 'tcx> PredicateEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx,
 
     fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
+            ty::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),
                 b.into(),
                 ty::AliasRelationDirection::Subtype,
             ),
             // a :> b is b <: a
-            ty::Variance::Contravariant => ty::PredicateKind::AliasRelate(
+            ty::Contravariant => ty::PredicateKind::AliasRelate(
                 b.into(),
                 a.into(),
                 ty::AliasRelationDirection::Subtype,
             ),
-            ty::Variance::Invariant => ty::PredicateKind::AliasRelate(
+            ty::Invariant => ty::PredicateKind::AliasRelate(
                 a.into(),
                 b.into(),
                 ty::AliasRelationDirection::Equate,
             ),
-            ty::Variance::Bivariant => {
+            ty::Bivariant => {
                 unreachable!("cannot defer an alias-relate goal with Bivariant variance (yet?)")
             }
         })]);

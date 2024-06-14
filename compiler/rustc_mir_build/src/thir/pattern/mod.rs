@@ -525,7 +525,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             };
             kind = PatKind::AscribeUserType {
                 subpattern: Box::new(Pat { span, ty, kind }),
-                ascription: Ascription { annotation, variance: ty::Variance::Covariant },
+                ascription: Ascription { annotation, variance: ty::Covariant },
             };
         }
 
@@ -612,7 +612,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                 annotation,
                                 // Note that use `Contravariant` here. See the
                                 // `variance` field documentation for details.
-                                variance: ty::Variance::Contravariant,
+                                variance: ty::Contravariant,
                             },
                         },
                         ty: const_.ty(),
