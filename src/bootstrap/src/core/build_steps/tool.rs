@@ -823,19 +823,29 @@ impl Step for LibcxxVersionTool {
 
     fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
         let out_dir = builder.out.join(self.target.to_string()).join("libcxx-version");
-        let _ = fs::remove_dir_all(&out_dir);
-        t!(fs::create_dir_all(&out_dir));
-
-        let compiler = builder.cxx(self.target).unwrap();
-        let mut cmd = Command::new(compiler);
-
         let executable = out_dir.join(exe("libcxx-version", self.target));
-        cmd.arg("-o").arg(&executable).arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-        builder.run_cmd(&mut cmd);
-
+        // This is a sanity-check specific step, which means it is frequently called (when using
+        // CI LLVM), and compiling `src/tools/libcxx-version/main.cpp` at the beginning of the bootstrap
+        // invocation adds a fair amount of overhead to the process (see https://github.com/rust-lang/rust/issues/126423).
+        // Therefore, we want to avoid recompiling this file unnecessarily.
         if !executable.exists() {
-            panic!("Something went wrong. {} is not present", executable.display());
+            if !out_dir.exists() {
+                t!(fs::create_dir_all(&out_dir));
+            }
+
+            let compiler = builder.cxx(self.target).unwrap();
+            let mut cmd = Command::new(compiler);
+
+            cmd.arg("-o")
+                .arg(&executable)
+                .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
+
+            builder.run_cmd(&mut cmd);
+
+            if !executable.exists() {
+                panic!("Something went wrong. {} is not present", executable.display());
+            }
         }
 
         let version_output = output(&mut Command::new(executable));
