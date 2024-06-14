@@ -462,7 +462,7 @@ fn rewrite_empty_block(
         return None;
     }
 
-    let label_str = rewrite_label(label);
+    let label_str = rewrite_label(context, label);
     if attrs.map_or(false, |a| !inner_attributes(a).is_empty()) {
         return None;
     }
@@ -527,7 +527,7 @@ fn rewrite_single_line_block(
     if let Some(block_expr) = stmt::Stmt::from_simple_block(context, block, attrs) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
         let expr_str = block_expr.rewrite(context, expr_shape)?;
-        let label_str = rewrite_label(label);
+        let label_str = rewrite_label(context, label);
         let result = format!("{prefix}{label_str}{{ {expr_str} }}");
         if result.len() <= shape.width && !result.contains('\n') {
             return Some(result);
@@ -562,7 +562,7 @@ pub(crate) fn rewrite_block_with_visitor(
     }
 
     let inner_attrs = attrs.map(inner_attributes);
-    let label_str = rewrite_label(label);
+    let label_str = rewrite_label(context, label);
     visitor.visit_block(block, inner_attrs.as_deref(), has_braces);
     let visitor_context = visitor.get_context();
     context
@@ -939,7 +939,7 @@ impl<'a> ControlFlow<'a> {
             fresh_shape
         };
 
-        let label_string = rewrite_label(self.label);
+        let label_string = rewrite_label(context, self.label);
         // 1 = space after keyword.
         let offset = self.keyword.len() + label_string.len() + 1;
 
@@ -1168,9 +1168,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
     }
 }
 
-fn rewrite_label(opt_label: Option<ast::Label>) -> Cow<'static, str> {
+fn rewrite_label(context: &RewriteContext<'_>, opt_label: Option<ast::Label>) -> Cow<'static, str> {
     match opt_label {
-        Some(label) => Cow::from(format!("{}: ", label.ident)),
+        Some(label) => Cow::from(format!("{}: ", context.snippet(label.ident.span))),
         None => Cow::from(""),
     }
 }
