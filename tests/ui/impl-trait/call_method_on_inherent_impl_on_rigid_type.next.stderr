@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed for `&_`
+  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:14:13
+   |
+LL |         let x = &my_foo();
+   |             ^
+LL |
+LL |         x.my_debug();
+   |           -------- type must be known at this point
+   |
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
+   |
+LL |         let x: &_ = &my_foo();
+   |              ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.
