@@ -40,21 +40,42 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             predicate: self.infcx.resolve_vars_if_possible(obligation.predicate),
         };
 
-        if obligation.predicate.skip_binder().self_ty().is_ty_var() {
-            debug!(ty = ?obligation.predicate.skip_binder().self_ty(), "ambiguous inference var or opaque type");
-            // Self is a type variable (e.g., `_: AsRef<str>`).
-            //
-            // This is somewhat problematic, as the current scheme can't really
-            // handle it turning to be a projection. This does end up as truly
-            // ambiguous in most cases anyway.
-            //
-            // Take the fast path out - this also improves
-            // performance by preventing assemble_candidates_from_impls from
-            // matching every impl for this trait.
-            return Ok(SelectionCandidateSet { vec: vec![], ambiguous: true });
-        }
-
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
+        let def_id = obligation.predicate.def_id();
+        let tcx = self.tcx();
+
+        match obligation.predicate.skip_binder().self_ty().kind() {
+            // Opaque types in their defining scope are just like inference vars...
+            ty::Alias(ty::Opaque, alias) if self.infcx.can_define_opaque_ty(alias.def_id) => {
+                if tcx.is_lang_item(def_id, LangItem::Unsize) {
+                    self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+                }
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                // .. unless we are looking for candidates just on the opaque signature, ...
+                self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
+                // .. or for auto traits, which look at the hidden type.
+                // Auto traits must be collected after projected tys, because opaque types
+                // do not emit auto trait candidates if a projection for the same auto trait
+                // already exists (e.g. due to the bounds on the opaque).
+                self.assemble_candidates_from_auto_impls(obligation, &mut candidates);
+                return Ok(candidates);
+            }
+            ty::Infer(ty::TyVar(vid)) => {
+                debug!(?vid, "ambiguous inference var");
+                // Self is a type variable (e.g., `_: AsRef<str>`).
+                //
+                // This is somewhat problematic, as the current scheme can't really
+                // handle it turning to be a projection. This does end up as truly
+                // ambiguous in most cases anyway.
+                //
+                // Take the fast path out - this also improves
+                // performance by preventing assemble_candidates_from_impls from
+                // matching every impl for this trait.
+                candidates.ambiguous = true;
+                return Ok(candidates);
+            }
+            _ => {}
+        }
 
         // Negative trait predicates have different rules than positive trait predicates.
         if obligation.polarity() == ty::PredicatePolarity::Negative {
@@ -66,8 +87,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // Other bounds. Consider both in-scope bounds from fn decl
             // and applicable impls. There is a certain set of precedence rules here.
-            let def_id = obligation.predicate.def_id();
-            let tcx = self.tcx();
 
             if tcx.is_lang_item(def_id, LangItem::Copy) {
                 debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
