@@ -1437,6 +1437,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             return;
         }
 
+
+        // FIXME(generic_const_exprs): Revisit this before stabilization.
+        // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
+        let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+        if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
+            && cx.tcx.features().generic_const_exprs
+        {
+            return;
+        }
+
         // NOTE(inherent_associated_types): While we currently do take some bounds in type
         // aliases into consideration during IAT *selection*, we don't perform full use+def
         // site wfchecking for such type aliases. Therefore TAB should still trigger.
