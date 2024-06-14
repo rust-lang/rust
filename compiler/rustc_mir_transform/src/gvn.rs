@@ -1334,37 +1334,28 @@ impl<'tcx> VnState<'_, 'tcx> {
         // This was already constant in MIR, do not change it.
         let value = self.get(index);
         debug!(?index, ?value);
-        match value {
-            // If the constant is not deterministic, adding an additional mention of it in MIR will
-            // not give the same value as the former mention.
-            Value::Constant { value, disambiguator: _ } if value.is_deterministic() => {
-                return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: *value });
-            }
-            // ignore nested arrays
-            Value::Aggregate(AggregateTy::Array, _, fields) => {
-                for f in fields {
-                    if let Value::Constant { value: Const::Val(const_, _), .. } = self.get(*f)
-                        && let ConstValue::Indirect { .. } = const_
-                    {
-                        return None;
-                    }
-                }
-            }
-            // ignore promoted arrays
-            Value::Projection(index, ProjectionElem::Deref) => {
-                if let Value::Constant { value: Const::Val(const_, ty), .. } = self.get(*index)
-                    && let ConstValue::Scalar(Scalar::Ptr(..)) = const_
-                    && let ty::Ref(region, ty, _mutability) = ty.kind()
-                    && region.is_erased()
-                    && ty.is_array()
-                {
-                    return None;
-                }
-            }
-            _ => {}
+        // If the constant is not deterministic, adding an additional mention of it in MIR will
+        // not give the same value as the former mention.
+        if let Value::Constant { value, disambiguator: _ } = value
+            && value.is_deterministic()
+        {
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: *value });
         }
 
         let op = self.evaluated[index].as_ref()?;
+
+        if let Either::Left(mplace) = op.as_mplace_or_imm()
+            && let ty::Array(ty, _const) = mplace.layout.ty.kind()
+        {
+            // ignore nested arrays
+            if ty.is_array() {
+                return None;
+            }
+            // ignore promoted arrays
+            else if let Value::Projection(_index, ProjectionElem::Deref) = value {
+                return None;
+            }
+        }
 
         let value = op_to_prop_const(&mut self.ecx, op)?;
 
