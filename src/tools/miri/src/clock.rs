@@ -98,7 +98,7 @@ impl Clock {
                 // Time will pass without us doing anything.
             }
             ClockKind::Virtual { nanoseconds } => {
-                nanoseconds.update(|x| x + NANOSECONDS_PER_BASIC_BLOCK);
+                nanoseconds.get_update(|x| x + NANOSECONDS_PER_BASIC_BLOCK);
             }
         }
     }
@@ -110,7 +110,7 @@ impl Clock {
             ClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
                 let nanos: u128 = duration.as_nanos();
-                nanoseconds.update(|x| {
+                nanoseconds.get_update(|x| {
                     x.checked_add(nanos)
                         .expect("Miri's virtual clock cannot represent an execution this long")
                 });

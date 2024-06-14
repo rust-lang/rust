@@ -47,13 +47,27 @@ fn smoketest_cell() {
 }
 
 #[test]
-fn cell_update() {
+fn cell_get_update() {
     let x = Cell::new(10);
 
-    assert_eq!(x.update(|x| x + 5), 15);
+    assert_eq!(x.get_update(|x| x + 5), 15);
     assert_eq!(x.get(), 15);
 
-    assert_eq!(x.update(|x| x / 3), 5);
+    assert_eq!(x.get_update(|x| x / 3), 5);
+    assert_eq!(x.get(), 5);
+}
+
+#[test]
+fn cell_take_update() {
+    let x = Cell::new(10);
+
+    x.take_update(|x| x + 5);
+    assert_eq!(x.get(), 15);
+
+    x.take_update(|y| {
+        assert_eq!(x.get(), 0);
+        y / 3
+    });
     assert_eq!(x.get(), 5);
 }
 

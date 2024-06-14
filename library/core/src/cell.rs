@@ -546,14 +546,14 @@ impl<T: Copy> Cell<T> {
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
-    /// let new = c.update(|x| x + 1);
+    /// let new = c.get_update(|x| x + 1);
     ///
     /// assert_eq!(new, 6);
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
     #[unstable(feature = "cell_update", issue = "50186")]
-    pub fn update<F>(&self, f: F) -> T
+    pub fn get_update<F>(&self, f: F) -> T
     where
         F: FnOnce(T) -> T,
     {
@@ -650,6 +650,35 @@ impl<T: Default> Cell<T> {
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn take(&self) -> T {
         self.replace(Default::default())
+    }
+
+    /// Takes and updates the contained value using a function and returns the
+    /// new value, leaving `Default::default()` in its place during the function call.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_update)]
+    ///
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// c.take_update(|x| {
+    ///     assert_eq!(c.get(), 0);
+    ///     x + 1
+    /// });
+    ///
+    /// assert_eq!(c.get(), 6);
+    /// ```
+    #[inline]
+    #[unstable(feature = "cell_update", issue = "50186")]
+    pub fn take_update<F>(&self, f: F)
+    where
+        F: FnOnce(T) -> T,
+    {
+        let old = self.take();
+        let new = f(old);
+        self.set(new);
     }
 }
 
