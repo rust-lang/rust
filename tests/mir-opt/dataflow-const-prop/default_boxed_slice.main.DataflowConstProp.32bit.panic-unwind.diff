@@ -98,15 +98,9 @@
       }
   }
   
-  ALLOC2 (size: 8, align: 4) {
-      01 00 00 00 00 00 00 00                         │ ........
-  }
+  ALLOC2 (size: 8, align: 4) { .. }
   
-  ALLOC1 (size: 8, align: 4) {
-      01 00 00 00 00 00 00 00                         │ ........
-  }
+  ALLOC1 (size: 8, align: 4) { .. }
   
-  ALLOC0 (size: 8, align: 4) {
-      01 00 00 00 00 00 00 00                         │ ........
-  }
+  ALLOC0 (size: 8, align: 4) { .. }
   
