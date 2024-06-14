@@ -29,6 +29,7 @@ pub trait Interner:
     + IrPrint<ty::FnSig<Self>>
 {
     type DefId: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
+    type LocalDefId: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
     type AdtDef: AdtDef<Self>;
 
     type GenericArgs: GenericArgs<Self>;

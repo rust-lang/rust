@@ -7,7 +7,7 @@ use std::hash::Hash;
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::{Canonical, CanonicalVarValues, Interner, Upcast};
+use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -252,6 +252,47 @@ pub struct Response<I: Interner> {
     pub var_values: CanonicalVarValues<I>,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
+}
+
+/// Additional constraints returned on success.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub struct ExternalConstraintsData<I: Interner> {
+    pub region_constraints: Vec<ty::OutlivesPredicate<I, I::GenericArg>>,
+    pub opaque_types: Vec<(I::LocalDefId, I::GenericArgs, I::Ty)>,
+    pub normalization_nested_goals: NestedNormalizationGoals<I>,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
+
+impl<I: Interner> NestedNormalizationGoals<I> {
+    pub fn empty() -> Self {
+        NestedNormalizationGoals(vec![])
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]

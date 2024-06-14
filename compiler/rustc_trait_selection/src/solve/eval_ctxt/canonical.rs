@@ -14,6 +14,7 @@ use crate::solve::{
     inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
 };
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
@@ -178,8 +179,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     fn compute_external_query_constraints(
         &self,
         certainty: Certainty,
-        normalization_nested_goals: NestedNormalizationGoals<'tcx>,
-    ) -> ExternalConstraintsData<'tcx> {
+        normalization_nested_goals: NestedNormalizationGoals<TyCtxt<'tcx>>,
+    ) -> ExternalConstraintsData<TyCtxt<'tcx>> {
         // We only return region constraints once the certainty is `Yes`. This
         // is necessary as we may drop nested goals on ambiguity, which may result
         // in unconstrained inference variables in the region constraints. It also
@@ -213,13 +214,20 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             Default::default()
         };
 
-        let mut opaque_types = self.infcx.clone_opaque_types_for_query_response();
-        // Only return opaque type keys for newly-defined opaques
-        opaque_types.retain(|(a, _)| {
-            self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
-        });
-
-        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
+        ExternalConstraintsData {
+            region_constraints,
+            opaque_types: self
+                .infcx
+                .clone_opaque_types_for_query_response()
+                .into_iter()
+                // Only return *newly defined* opaque types.
+                .filter(|(a, _)| {
+                    self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
+                })
+                .map(|(key, value)| (key.def_id, key.args, value))
+                .collect(),
+            normalization_nested_goals,
+        }
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -235,7 +243,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
-    ) -> (NestedNormalizationGoals<'tcx>, Certainty) {
+    ) -> (NestedNormalizationGoals<TyCtxt<'tcx>>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
             self.infcx,
             &original_values,
@@ -385,10 +393,14 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         }
     }
 
-    fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)]) {
-        for &(key, ty) in opaque_types {
+    fn register_new_opaque_types(
+        &mut self,
+        opaque_types: &[(LocalDefId, ty::GenericArgsRef<'tcx>, Ty<'tcx>)],
+    ) {
+        for &(def_id, args, ty) in opaque_types {
             let hidden_ty = ty::OpaqueHiddenType { ty, span: DUMMY_SP };
-            self.infcx.inject_new_hidden_type_unchecked(key, hidden_ty);
+            self.infcx
+                .inject_new_hidden_type_unchecked(ty::OpaqueTypeKey { def_id, args }, hidden_ty);
         }
     }
 }
