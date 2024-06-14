@@ -888,12 +888,11 @@ impl Step for Rustc {
 macro_rules! tool_doc {
     (
         $tool: ident,
-        $should_run: literal,
         $path: literal,
         $(rustc_tool = $rustc_tool:literal, )?
-        $(in_tree = $in_tree:literal ,)?
         $(is_library = $is_library:expr,)?
         $(crates = $crates:expr)?
+        $(, submodule $(= $submodule:literal)? )?
        ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
@@ -907,7 +906,7 @@ macro_rules! tool_doc {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.crate_or_deps($should_run).default_condition(builder.config.compiler_docs)
+                run.path($path).default_condition(builder.config.compiler_docs)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -921,6 +920,15 @@ macro_rules! tool_doc {
             /// we do not merge it with the other documentation from std, test and
             /// proc_macros. This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
+                let source_type = SourceType::InTree;
+                $(
+                    let _ = source_type; // silence the "unused variable" warning
+                    let source_type = SourceType::Submodule;
+
+                    let path = Path::new(submodule_helper!( $path, submodule $( = $submodule )? ));
+                    builder.update_submodule(&path);
+                )?
+
                 let stage = builder.top_stage;
                 let target = self.target;
 
@@ -940,12 +948,6 @@ macro_rules! tool_doc {
                     // with strange errors, but only on a full bors test ...
                     builder.ensure(compile::Rustc::new(compiler, target));
                 }
-
-                let source_type = if true $(&& $in_tree)? {
-                    SourceType::InTree
-                } else {
-                    SourceType::Submodule
-                };
 
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
@@ -1008,21 +1010,14 @@ macro_rules! tool_doc {
     }
 }
 
-tool_doc!(Rustdoc, "rustdoc-tool", "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
-tool_doc!(
-    Rustfmt,
-    "rustfmt-nightly",
-    "src/tools/rustfmt",
-    crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
-);
-tool_doc!(Clippy, "clippy", "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
-tool_doc!(Miri, "miri", "src/tools/miri", crates = ["miri"]);
+tool_doc!(Rustdoc, "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
+tool_doc!(Rustfmt, "src/tools/rustfmt", crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]);
+tool_doc!(Clippy, "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
+tool_doc!(Miri, "src/tools/miri", crates = ["miri"]);
 tool_doc!(
     Cargo,
-    "cargo",
     "src/tools/cargo",
     rustc_tool = false,
-    in_tree = false,
     crates = [
         "cargo",
         "cargo-credential",
@@ -1034,12 +1029,12 @@ tool_doc!(
         "crates-io",
         "mdman",
         "rustfix",
-    ]
+    ],
+    submodule = "src/tools/cargo"
 );
-tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
+tool_doc!(Tidy, "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
 tool_doc!(
     Bootstrap,
-    "bootstrap",
     "src/bootstrap",
     rustc_tool = false,
     is_library = true,
@@ -1047,7 +1042,6 @@ tool_doc!(
 );
 tool_doc!(
     RunMakeSupport,
-    "run_make_support",
     "src/tools/run-make-support",
     rustc_tool = false,
     is_library = true,
