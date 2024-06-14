@@ -26,7 +26,7 @@ use crate::core::builder;
 use crate::core::builder::crate_description;
 use crate::core::builder::Cargo;
 use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
-use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
+use crate::core::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date,
 };
@@ -969,19 +969,6 @@ impl Step for Rustc {
             false,
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
-
-        // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
-        // unexpected debuginfo from dependencies, for example from the C++ standard library used in
-        // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
-        // debuginfo (via the debuginfo level of the executables using it): strip this debuginfo
-        // away after the fact.
-        if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
-            && builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None
-        {
-            let target_root_dir = stamp.parent().unwrap();
-            let rustc_driver = target_root_dir.join("librustc_driver.so");
-            strip_debug(builder, target, &rustc_driver);
-        }
 
         builder.ensure(RustcLink::from_rustc(
             self,
@@ -2142,6 +2129,7 @@ pub enum CargoMessage<'a> {
     BuildFinished,
 }
 
+/// Strips debug symbols from the given library or executable **in-place**.
 pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) {
     // FIXME: to make things simpler for now, limit this to the host and target where we know
     // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not

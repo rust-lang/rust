@@ -24,13 +24,14 @@ use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::tool::{self, Tool};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
-use crate::core::config::TargetSelection;
+use crate::core::config::{DebuginfoLevel, TargetSelection};
 use crate::utils::channel::{self, Info};
 use crate::utils::helpers::{
     exe, is_dylib, move_file, output, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
+use crate::core::build_steps::compile::strip_debug;
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     format!("{}-{}", component, builder.rust_package_vers())
@@ -433,6 +434,7 @@ impl Step for Rustc {
 
             // Copy runtime DLLs needed by the compiler
             if libdir_relative.to_str() != Some("bin") {
+                let target_libdir = image.join("lib");
                 let libdir = builder.rustc_libdir(compiler);
                 for entry in builder.read_dir(&libdir) {
                     let name = entry.file_name();
@@ -440,7 +442,18 @@ impl Step for Rustc {
                         if is_dylib(s) {
                             // Don't use custom libdir here because ^lib/ will be resolved again
                             // with installer
-                            builder.install(&entry.path(), &image.join("lib"), 0o644);
+                            builder.install(&entry.path(), &target_libdir, 0o644);
+
+                            // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
+                            // unexpected debuginfo from dependencies, for example from the C++ standard library used in
+                            // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
+                            // debuginfo (via the debuginfo level of the executables using it): strip this debuginfo
+                            // away after the fact when we distribute it.
+                            if s.starts_with("librustc_driver") &&
+                                builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None &&
+                                builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
+                                strip_debug(builder, host, &target_libdir.join(name));
+                            }
                         }
                     }
                 }
