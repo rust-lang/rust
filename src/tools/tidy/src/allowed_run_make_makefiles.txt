@@ -67,7 +67,6 @@ run-make/inaccessible-temp-dir/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
-run-make/incremental-debugger-visualizer/Makefile
 run-make/incremental-session-fail/Makefile
 run-make/inline-always-many-cgu/Makefile
 run-make/interdependent-c-libraries/Makefile

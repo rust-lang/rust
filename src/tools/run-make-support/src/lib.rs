@@ -271,6 +271,28 @@ pub fn set_host_rpath(cmd: &mut Command) {
     });
 }
 
+/// Read the contents of a file that cannot simply be read by
+/// read_to_string, due to invalid utf8 data, then assert that it contains `expected`.
+#[track_caller]
+pub fn invalid_utf8_contains_str<P: AsRef<Path>>(path: P, expected: &str) {
+    use std::io::Read;
+    let mut file = std::fs::File::open(path).unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    assert!(String::from_utf8_lossy(&buffer).contains(expected));
+}
+
+/// Read the contents of a file that cannot simply be read by
+/// read_to_string, due to invalid utf8 data, then assert that it does not contain `expected`.
+#[track_caller]
+pub fn invalid_utf8_not_contains_str<P: AsRef<Path>>(path: P, expected: &str) {
+    use std::io::Read;
+    let mut file = std::fs::File::open(path).unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    assert!(!String::from_utf8_lossy(&buffer).contains(expected));
+}
+
 /// Copy a directory into another.
 pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
