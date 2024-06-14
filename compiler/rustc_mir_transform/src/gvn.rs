@@ -952,8 +952,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         let (mut ty, variant_index) = match *kind {
-            AggregateKind::Array(..) => {
+            AggregateKind::Array(ty) => {
                 assert!(!field_ops.is_empty());
+                // Ignore nested arrays
+                if ty.is_array() {
+                    return None;
+                }
                 (AggregateTy::Array, FIRST_VARIANT)
             }
             AggregateKind::Tuple => {
@@ -1375,17 +1379,12 @@ impl<'tcx> VnState<'_, 'tcx> {
 
         let op = self.evaluated[index].as_ref()?;
 
+        // Ignore promoted arrays.
         if let Either::Left(mplace) = op.as_mplace_or_imm()
-            && let ty::Array(ty, _const) = mplace.layout.ty.kind()
+            && mplace.layout.ty.is_array()
+            && let Value::Projection(_index, ProjectionElem::Deref) = value
         {
-            // ignore nested arrays
-            if ty.is_array() {
-                return None;
-            }
-            // ignore promoted arrays
-            else if let Value::Projection(_index, ProjectionElem::Deref) = value {
-                return None;
-            }
+            return None;
         }
 
         let value = op_to_prop_const(&mut self.ecx, op)?;
