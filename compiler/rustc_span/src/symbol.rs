@@ -1118,6 +1118,7 @@ symbols! {
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_metavar_expr,
+        macro_metavar_expr_concat,
         macro_reexport,
         macro_use,
         macro_vis_matcher,
