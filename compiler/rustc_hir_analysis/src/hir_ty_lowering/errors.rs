@@ -3,7 +3,7 @@ use crate::errors::{
     ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
 };
 use crate::fluent_generated as fluent;
-use crate::hir_ty_lowering::HirTyLowerer;
+use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
@@ -11,9 +11,9 @@ use rustc_errors::MultiSpan;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed,
 };
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, Node};
+use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -116,8 +116,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(super) fn complain_about_assoc_item_not_found<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        ty_param_name: &str,
-        ty_param_def_id: Option<LocalDefId>,
+        qself: AssocItemQSelf,
         assoc_kind: ty::AssocKind,
         assoc_name: Ident,
         span: Span,
@@ -139,7 +138,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        let assoc_kind_str = super::assoc_kind_str(assoc_kind);
+        let assoc_kind_str = assoc_kind_str(assoc_kind);
+        let qself_str = qself.to_string(tcx);
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
         // valid span, so we point at the whole path segment instead.
@@ -149,7 +149,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span: if is_dummy { span } else { assoc_name.span },
             assoc_name,
             assoc_kind: assoc_kind_str,
-            ty_param_name,
+            qself: &qself_str,
             label: None,
             sugg: None,
         };
@@ -219,19 +219,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     suggested_name,
                     identically_named: suggested_name == assoc_name.name,
                 });
-                let hir = tcx.hir();
-                if let Some(def_id) = ty_param_def_id
-                    && let parent = hir.get_parent_item(tcx.local_def_id_to_hir_id(def_id))
-                    && let Some(generics) = hir.get_generics(parent.def_id)
+                if let AssocItemQSelf::TyParam(ty_param_def_id) = qself
+                    // Not using `self.item_def_id()` here as that would yield the opaque type itself if we're
+                    // inside an opaque type while we're interested in the overarching type alias (TAIT).
+                    // FIXME: However, for trait aliases, this incorrectly returns the enclosing module...
+                    && let item_def_id =
+                        tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
+                    // FIXME: ...which obviously won't have any generics.
+                    && let Some(generics) = tcx.hir().get_generics(item_def_id.def_id)
                 {
-                    if generics.bounds_for_param(def_id).flat_map(|pred| pred.bounds.iter()).any(
-                        |b| match b {
+                    // FIXME: Suggest adding supertrait bounds if we have a `Self` type param.
+                    // FIXME(trait_alias): Suggest adding `Self: Trait` to
+                    // `trait Alias = where Self::Proj:;` with `trait Trait { type Proj; }`.
+                    if generics
+                        .bounds_for_param(ty_param_def_id)
+                        .flat_map(|pred| pred.bounds.iter())
+                        .any(|b| match b {
                             hir::GenericBound::Trait(t, ..) => {
                                 t.trait_ref.trait_def_id() == Some(best_trait)
                             }
                             _ => false,
-                        },
-                    ) {
+                        })
+                    {
                         // The type param already has a bound for `trait_name`, we just need to
                         // change the associated item.
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
@@ -247,7 +256,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         tcx,
                         generics,
                         &mut err,
-                        &ty_param_name,
+                        &qself_str,
                         &trait_name,
                         None,
                         None,
@@ -273,7 +282,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let [candidate_name] = all_candidate_names.as_slice() {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
                 span: assoc_name.span,
-                ty_param_name,
+                qself: &qself_str,
                 assoc_kind: assoc_kind_str,
                 suggested_name: *candidate_name,
             });
@@ -339,10 +348,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.dcx().emit_err(errors::AssocKindMismatch {
             span,
-            expected: super::assoc_kind_str(expected),
-            got: super::assoc_kind_str(got),
+            expected: assoc_kind_str(expected),
+            got: assoc_kind_str(got),
             expected_because_label,
-            assoc_kind: super::assoc_kind_str(assoc_item.kind),
+            assoc_kind: assoc_kind_str(assoc_item.kind),
             def_span: tcx.def_span(assoc_item.def_id),
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
@@ -736,7 +745,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
             let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.trait_ref.hir_ref_id));
             in_expr_or_pat = match grandparent {
-                Node::Expr(_) | Node::Pat(_) => true,
+                hir::Node::Expr(_) | hir::Node::Pat(_) => true,
                 _ => false,
             };
             match bound.trait_ref.path.segments {
@@ -1600,5 +1609,13 @@ fn generics_args_err_extend<'a>(
             }
         }
         _ => {}
+    }
+}
+
+pub(super) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
+    match kind {
+        ty::AssocKind::Fn => "function",
+        ty::AssocKind::Const => "constant",
+        ty::AssocKind::Type => "type",
     }
 }

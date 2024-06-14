@@ -22,7 +22,7 @@ pub struct AmbiguousAssocItem<'a> {
     pub span: Span,
     pub assoc_kind: &'static str,
     pub assoc_name: Ident,
-    pub ty_param_name: &'a str,
+    pub qself: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -75,7 +75,7 @@ pub struct AssocItemNotFound<'a> {
     pub span: Span,
     pub assoc_name: Ident,
     pub assoc_kind: &'static str,
-    pub ty_param_name: &'a str,
+    pub qself: &'a str,
     #[subdiagnostic]
     pub label: Option<AssocItemNotFoundLabel<'a>>,
     #[subdiagnostic]
@@ -134,7 +134,7 @@ pub enum AssocItemNotFoundSugg<'a> {
     Other {
         #[primary_span]
         span: Span,
-        ty_param_name: &'a str,
+        qself: &'a str,
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
