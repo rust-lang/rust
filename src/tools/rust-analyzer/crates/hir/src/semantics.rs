@@ -331,7 +331,8 @@ impl<'db> SemanticsImpl<'db> {
                 BuiltinFnLikeExpander::Cfg
                 | BuiltinFnLikeExpander::StdPanic
                 | BuiltinFnLikeExpander::Stringify
-                | BuiltinFnLikeExpander::CorePanic,
+                | BuiltinFnLikeExpander::CorePanic
+                | BuiltinFnLikeExpander::FormatArgs,
             )
             | hir_expand::MacroDefKind::BuiltInEager(
                 _,
