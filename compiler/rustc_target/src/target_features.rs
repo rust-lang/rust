@@ -99,6 +99,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("bti", Stable, &[]),
     // FEAT_CRC
     ("crc", Stable, &[]),
+    // FEAT_CSSC
+    ("cssc", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_DIT
     ("dit", Stable, &[]),
     // FEAT_DotProd
@@ -107,21 +109,39 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("dpb", Stable, &[]),
     // FEAT_DPB2
     ("dpb2", Stable, &["dpb"]),
+    // FEAT_ECV
+    ("ecv", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_F32MM
     ("f32mm", Stable, &["sve"]),
     // FEAT_F64MM
     ("f64mm", Stable, &["sve"]),
+    // FEAT_FAMINMAX
+    ("faminmax", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_FCMA
     ("fcma", Stable, &["neon"]),
     // FEAT_FHM
     ("fhm", Stable, &["fp16"]),
     // FEAT_FLAGM
     ("flagm", Stable, &[]),
+    // FEAT_FLAGM2
+    ("flagm2", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_FP16
     // Rust ties FP and Neon: https://github.com/rust-lang/rust/pull/91608
     ("fp16", Stable, &["neon"]),
+    // FEAT_FP8
+    ("fp8", Unstable(sym::aarch64_unstable_target_feature), &["faminmax", "lut", "bf16"]),
+    // FEAT_FP8DOT2
+    ("fp8dot2", Unstable(sym::aarch64_unstable_target_feature), &["fp8dot4"]),
+    // FEAT_FP8DOT4
+    ("fp8dot4", Unstable(sym::aarch64_unstable_target_feature), &["fp8fma"]),
+    // FEAT_FP8FMA
+    ("fp8fma", Unstable(sym::aarch64_unstable_target_feature), &["fp8"]),
+    // FEAT_FPMR
+    ("fpmr", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_FRINTTS
     ("frintts", Stable, &[]),
+    // FEAT_HBC
+    ("hbc", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_I8MM
     ("i8mm", Stable, &[]),
     // FEAT_JSCVT
@@ -131,6 +151,14 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("lor", Stable, &[]),
     // FEAT_LSE
     ("lse", Stable, &[]),
+    // FEAT_LSE128
+    ("lse128", Unstable(sym::aarch64_unstable_target_feature), &["lse"]),
+    // FEAT_LSE2
+    ("lse2", Unstable(sym::aarch64_unstable_target_feature), &[]),
+    // FEAT_LUT
+    ("lut", Unstable(sym::aarch64_unstable_target_feature), &[]),
+    // FEAT_MOPS
+    ("mops", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_MTE & FEAT_MTE2
     ("mte", Stable, &[]),
     // FEAT_AdvSimd & FEAT_FP
@@ -143,14 +171,16 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("pan", Stable, &[]),
     // FEAT_PMUv3
     ("pmuv3", Stable, &[]),
-    // FEAT_RAND
+    // FEAT_RNG
     ("rand", Stable, &[]),
     // FEAT_RAS & FEAT_RASv1p1
     ("ras", Stable, &[]),
-    // FEAT_RCPC
+    // FEAT_LRCPC
     ("rcpc", Stable, &[]),
-    // FEAT_RCPC2
+    // FEAT_LRCPC2
     ("rcpc2", Stable, &["rcpc"]),
+    // FEAT_LRCPC3
+    ("rcpc3", Unstable(sym::aarch64_unstable_target_feature), &["rcpc2"]),
     // FEAT_RDM
     ("rdm", Stable, &["neon"]),
     // FEAT_SB
@@ -173,9 +203,11 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     //
     // "For backwards compatibility, Neon and VFP are required in the latest architectures."
     ("sve", Stable, &["neon"]),
+    // FEAT_SVE_B16B16 (SVE or SME Instructions)
+    ("sve-b16b16", Unstable(sym::aarch64_unstable_target_feature), &["bf16"]),
     // FEAT_SVE2
     ("sve2", Stable, &["sve"]),
-    // FEAT_SVE2_AES
+    // FEAT_SVE_AES & FEAT_SVE_PMULL128
     ("sve2-aes", Stable, &["sve2", "aes"]),
     // FEAT_SVE2_BitPerm
     ("sve2-bitperm", Stable, &["sve2"]),
@@ -183,6 +215,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sve2-sha3", Stable, &["sve2", "sha3"]),
     // FEAT_SVE2_SM4
     ("sve2-sm4", Stable, &["sve2", "sm4"]),
+    // FEAT_SVE2p1
+    ("sve2p1", Unstable(sym::aarch64_unstable_target_feature), &["sve2"]),
     // FEAT_TME
     ("tme", Stable, &[]),
     (
@@ -199,9 +233,19 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("v8.4a", Unstable(sym::aarch64_ver_target_feature), &["v8.3a", "dotprod", "dit", "flagm"]),
     ("v8.5a", Unstable(sym::aarch64_ver_target_feature), &["v8.4a", "ssbs", "sb", "dpb2", "bti"]),
     ("v8.6a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "bf16", "i8mm"]),
-    ("v8.7a", Unstable(sym::aarch64_ver_target_feature), &[]),
+    ("v8.7a", Unstable(sym::aarch64_ver_target_feature), &["v8.6a", "wfxt"]),
+    ("v8.8a", Unstable(sym::aarch64_ver_target_feature), &["v8.7a", "hbc", "mops"]),
+    ("v8.9a", Unstable(sym::aarch64_ver_target_feature), &["v8.8a", "cssc"]),
+    ("v9.1a", Unstable(sym::aarch64_ver_target_feature), &["v9a", "v8.6a"]),
+    ("v9.2a", Unstable(sym::aarch64_ver_target_feature), &["v9.1a", "v8.7a"]),
+    ("v9.3a", Unstable(sym::aarch64_ver_target_feature), &["v9.2a", "v8.8a"]),
+    ("v9.4a", Unstable(sym::aarch64_ver_target_feature), &["v9.3a", "v8.9a"]),
+    ("v9.5a", Unstable(sym::aarch64_ver_target_feature), &["v9.4a"]),
+    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "sve2"]),
     // FEAT_VHE
     ("vh", Stable, &[]),
+    // FEAT_WFxT
+    ("wfxt", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // tidy-alphabetical-end
 ];
 
