@@ -26,19 +26,19 @@
 //!
 //! The actual algorithm to resolve syntax to def is curious in two aspects:
 //!
-//!     * It is recursive
-//!     * It uses the inverse algorithm (what is the syntax for this def?)
+//! * It is recursive
+//! * It uses the inverse algorithm (what is the syntax for this def?)
 //!
 //! Specifically, the algorithm goes like this:
 //!
-//!     1. Find the syntactic container for the syntax. For example, field's
-//!        container is the struct, and structs container is a module.
-//!     2. Recursively get the def corresponding to container.
-//!     3. Ask the container def for all child defs. These child defs contain
-//!        the answer and answer's siblings.
-//!     4. For each child def, ask for it's source.
-//!     5. The child def whose source is the syntax node we've started with
-//!        is the answer.
+//! 1. Find the syntactic container for the syntax. For example, field's
+//!    container is the struct, and structs container is a module.
+//! 2. Recursively get the def corresponding to container.
+//! 3. Ask the container def for all child defs. These child defs contain
+//!    the answer and answer's siblings.
+//! 4. For each child def, ask for it's source.
+//! 5. The child def whose source is the syntax node we've started with
+//!    is the answer.
 //!
 //! It's interesting that both Roslyn and Kotlin contain very similar code
 //! shape.

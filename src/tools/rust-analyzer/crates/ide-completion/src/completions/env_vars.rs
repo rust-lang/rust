@@ -1,4 +1,5 @@
-//! Completes environment variables defined by Cargo (https://doc.rust-lang.org/cargo/reference/environment-variables.html)
+//! Completes environment variables defined by Cargo
+//! (<https://doc.rust-lang.org/cargo/reference/environment-variables.html>)
 use hir::MacroFileIdExt;
 use ide_db::syntax_helpers::node_ext::macro_call_for_string_token;
 use syntax::{

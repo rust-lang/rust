@@ -1,8 +1,8 @@
 //! Consumer of `tracing` data, which prints a hierarchical profile.
 //!
-//! Based on https://github.com/davidbarsky/tracing-tree, but does less, while
+//! Based on <https://github.com/davidbarsky/tracing-tree>, but does less, while
 //! actually printing timings for spans by default. The code here is vendored from
-//! https://github.com/matklad/tracing-span-tree.
+//! <https://github.com/matklad/tracing-span-tree>.
 //!
 //! Usage:
 //!

@@ -26,7 +26,7 @@ pub trait HasSource {
     ///
     /// The current some implementations can return `InFile` instead of `Option<InFile>`.
     /// But we made this method `Option` to support rlib in the future
-    /// by https://github.com/rust-lang/rust-analyzer/issues/6913
+    /// by <https://github.com/rust-lang/rust-analyzer/issues/6913>
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>>;
 }
 

@@ -4,7 +4,7 @@
 //! Expansion, and Definition Contexts,” *Journal of Functional Programming* 22, no. 2
 //! (March 1, 2012): 181–216, <https://doi.org/10.1017/S0956796812000093>.
 //!
-//! Also see https://rustc-dev-guide.rust-lang.org/macro-expansion.html#hygiene-and-hierarchies
+//! Also see <https://rustc-dev-guide.rust-lang.org/macro-expansion.html#hygiene-and-hierarchies>
 //!
 //! # The Expansion Order Hierarchy
 //!

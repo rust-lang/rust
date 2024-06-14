@@ -16,8 +16,8 @@
 //!
 //! This happens in the `raw` module, which parses a single source file into a
 //! set of top-level items. Nested imports are desugared to flat imports in this
-//! phase. Macro calls are represented as a triple of (Path, Option<Name>,
-//! TokenTree).
+//! phase. Macro calls are represented as a triple of `(Path, Option<Name>,
+//! TokenTree)`.
 //!
 //! ## Collecting Modules
 //!
