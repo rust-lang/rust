@@ -6,7 +6,6 @@ mod tests;
 
 pub use self::imp::read2;
 use std::io::{self, Write};
-use std::mem::replace;
 use std::process::{Child, Output};
 
 #[derive(Copy, Clone, Debug)]
@@ -101,10 +100,10 @@ impl ProcOutput {
                     return;
                 }
 
-                let mut head = replace(bytes, Vec::new());
+                let mut head = std::mem::take(bytes);
                 // Don't truncate if this as a whole line.
                 // That should make it less likely that we cut a JSON line in half.
-                if head.last() != Some(&('\n' as u8)) {
+                if head.last() != Some(&b'\n') {
                     head.truncate(MAX_OUT_LEN);
                 }
                 let skipped = new_len - head.len();

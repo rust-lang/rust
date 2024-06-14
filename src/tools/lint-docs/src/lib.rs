@@ -84,8 +84,8 @@ impl Lint {
         for &expected in &["### Example", "### Explanation", "{{produces}}"] {
             if expected == "{{produces}}" && self.is_ignored() {
                 if self.doc_contains("{{produces}}") {
-                    return Err(format!(
-                        "the lint example has `ignore`, but also contains the {{{{produces}}}} marker\n\
+                    return Err(
+                        "the lint example has `ignore`, but also contains the {{produces}} marker\n\
                         \n\
                         The documentation generator cannot generate the example output when the \
                         example is ignored.\n\
@@ -111,7 +111,7 @@ impl Lint {
                         Replacing the output with the text of the example you \
                         compiled manually yourself.\n\
                         "
-                    ).into());
+                    .into());
                 }
                 continue;
             }
@@ -519,11 +519,11 @@ impl<'a> LintExtractor<'a> {
         let mut these_lints: Vec<_> = lints.iter().filter(|lint| lint.level == level).collect();
         these_lints.sort_unstable_by_key(|lint| &lint.name);
         for lint in &these_lints {
-            write!(result, "* [`{}`](#{})\n", lint.name, lint.name.replace("_", "-")).unwrap();
+            writeln!(result, "* [`{}`](#{})", lint.name, lint.name.replace('_', "-")).unwrap();
         }
         result.push('\n');
         for lint in &these_lints {
-            write!(result, "## {}\n\n", lint.name.replace("_", "-")).unwrap();
+            write!(result, "## {}\n\n", lint.name.replace('_', "-")).unwrap();
             for line in &lint.doc {
                 result.push_str(line);
                 result.push('\n');
@@ -583,7 +583,7 @@ fn add_rename_redirect(level: Level, output: &mut String) {
             let filename = level.doc_filename().replace(".md", ".html");
             output.push_str(RENAME_START);
             for (from, to) in *names {
-                write!(output, "        \"#{from}\": \"{filename}#{to}\",\n").unwrap();
+                writeln!(output, "        \"#{from}\": \"{filename}#{to}\",").unwrap();
             }
             output.push_str(RENAME_END);
         }

@@ -34,10 +34,11 @@ use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 /// trees. At the end of trait solving `ProofTreeBuilder::finalize`
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
-pub(in crate::solve) struct ProofTreeBuilder<
+pub(in crate::solve) struct ProofTreeBuilder<Infcx, I = <Infcx as InferCtxtLike>::Interner>
+where
     Infcx: InferCtxtLike<Interner = I>,
-    I: Interner = <Infcx as InferCtxtLike>::Interner,
-> {
+    I: Interner,
+{
     _infcx: PhantomData<Infcx>,
     state: Option<Box<DebugSolver<I>>>,
 }

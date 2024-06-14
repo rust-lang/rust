@@ -1707,6 +1707,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ValuePairs::ExistentialProjection(_) => {
                         (false, Mismatch::Fixed("existential projection"))
                     }
+                    ValuePairs::Dummy => {
+                        bug!("do not expect to report a type error from a ValuePairs::Dummy")
+                    }
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -2250,12 +2253,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         values: ValuePairs<'tcx>,
     ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
         match values {
-            infer::Regions(exp_found) => self.expected_found_str(exp_found),
-            infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
-            infer::Aliases(exp_found) => self.expected_found_str(exp_found),
-            infer::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
-            infer::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(exp_found) => {
+            ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found),
+            ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_trait_sugared(),
                     found: exp_found.found.print_trait_sugared(),
@@ -2267,13 +2270,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ret => ret,
                 }
             }
-            infer::PolySigs(exp_found) => {
+            ValuePairs::PolySigs(exp_found) => {
                 let exp_found = self.resolve_vars_if_possible(exp_found);
                 if exp_found.references_error() {
                     return None;
                 }
                 let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
                 Some((exp, fnd, None))
+            }
+            ValuePairs::Dummy => {
+                bug!("do not expect to report a type error from a ValuePairs::Dummy")
             }
         }
     }

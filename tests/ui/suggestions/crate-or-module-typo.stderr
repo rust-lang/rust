@@ -30,9 +30,7 @@ help: there is a crate or module with a similar name
    |
 LL |     bar: std::cell::Cell<bool>
    |          ~~~
-help: consider importing one of these items
-   |
-LL + use core::cell;
+help: consider importing this module
    |
 LL + use std::cell;
    |

@@ -7,6 +7,8 @@
 //@ [no_std]compile-flags: --cfg=no_std -C panic=abort
 #![cfg_attr(no_std, no_std)]
 
+use core::num::NonZero;
+
 fn main() {
     //~^ HELP consider importing this struct
     let _x = NonZero::new(5u32).unwrap();
