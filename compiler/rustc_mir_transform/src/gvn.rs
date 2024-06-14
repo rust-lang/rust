@@ -366,7 +366,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn eval_to_const(&mut self, value: VnIndex) -> Option<OpTy<'tcx>> {
         use Value::*;
-        let op = match *self.get(value) {
+        // LLVM optimizes the load of `sizeof(size_t) * 2` as a single `mov`,
+        // which is cheap. Bigger values make more `mov` instructions generated.
+        // After GVN, it became a single load (`lea`) of an address in `.rodata`.
+        // But to avoid blessing differences between 32-bit and 64-bit target,
+        // let's choose `size_t = u64`.
+        const STACK_THRESHOLD: u64 = std::mem::size_of::<u64>() as u64 * 2;
+        let vvalue = self.get(value);
+        debug!(?vvalue);
+        let op = match *vvalue {
             Opaque(_) => return None,
             // Do not bother evaluating repeat expressions. This would uselessly consume memory.
             Repeat(..) => return None,
@@ -381,10 +389,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     .collect::<Option<Vec<_>>>()?;
                 let ty = match kind {
                     AggregateTy::Array => {
-                        let [field, ..] = fields.as_slice() else {
-                            bug!("fields.len() == 0");
-                        };
-                        let field_ty = field.layout.ty;
+                        assert!(fields.len() > 0);
+                        let field_ty = fields[0].layout.ty;
                         // Ignore nested array
                         if field_ty.is_array() {
                             trace!(
@@ -418,6 +424,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
                 } else if matches!(kind, AggregateTy::Array) {
+                    if ty.layout.size().bytes() <= STACK_THRESHOLD {
+                        return None;
+                    }
                     let mut mplace = None;
                     let alloc_id = self
                         .ecx
