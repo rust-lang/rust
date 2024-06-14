@@ -471,6 +471,10 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
     {
         self.resolve_vars_if_possible(value)
     }
+
+    fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {
+        self.probe(|_| probe())
+    }
 }
 
 /// See the `error_reporting` module for more details.
