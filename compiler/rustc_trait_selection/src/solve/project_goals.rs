@@ -1,11 +1,11 @@
 use crate::solve::GoalSource;
 
 use super::EvalCtxt;
-use rustc_infer::infer::InferCtxt;
+use crate::solve::infcx::RustcSolverDelegate;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty::{self, ProjectionPredicate};
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, RustcSolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_projection_goal(
         &mut self,

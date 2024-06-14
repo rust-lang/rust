@@ -9,10 +9,11 @@ use std::mem;
 use crate::solve::eval_ctxt::canonical;
 use crate::solve::{self, inspect, GenerateProofTree};
 use rustc_middle::bug;
+use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_next_trait_solver::solve::{
     CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
 };
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
+use rustc_type_ir::{self as ty, Interner};
 
 /// The core data structure when building proof trees.
 ///
@@ -34,9 +35,9 @@ use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 /// trees. At the end of trait solving `ProofTreeBuilder::finalize`
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
-pub(in crate::solve) struct ProofTreeBuilder<Infcx, I = <Infcx as InferCtxtLike>::Interner>
+pub(in crate::solve) struct ProofTreeBuilder<Infcx, I = <Infcx as SolverDelegate>::Interner>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     _infcx: PhantomData<Infcx>,
@@ -232,7 +233,7 @@ impl<I: Interner> WipProbeStep<I> {
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
+impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
     fn new(state: impl Into<DebugSolver<I>>) -> ProofTreeBuilder<Infcx> {
         ProofTreeBuilder { state: Some(Box::new(state.into())), _infcx: PhantomData }
     }

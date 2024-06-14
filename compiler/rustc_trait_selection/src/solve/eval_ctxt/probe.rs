@@ -1,15 +1,16 @@
 use crate::solve::assembly::Candidate;
 
 use super::EvalCtxt;
+use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_next_trait_solver::solve::{
     inspect, BuiltinImplSource, CandidateSource, NoSolution, QueryResult,
 };
-use rustc_type_ir::{InferCtxtLike, Interner};
+use rustc_type_ir::Interner;
 use std::marker::PhantomData;
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, Infcx, I, F, T>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     ecx: &'me mut EvalCtxt<'a, Infcx, I>,
@@ -20,7 +21,7 @@ where
 impl<Infcx, I, F, T> ProbeCtxt<'_, '_, Infcx, I, F, T>
 where
     F: FnOnce(&T) -> inspect::ProbeKind<I>,
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, Infcx>) -> T) -> T {
@@ -42,7 +43,7 @@ where
         };
         let r = nested_ecx.infcx.probe(|| {
             let r = f(&mut nested_ecx);
-            nested_ecx.inspect.probe_final_state(infcx, max_input_universe);
+            nested_ecx.inspect.probe_final_state(&infcx, max_input_universe);
             r
         });
         if !nested_ecx.inspect.is_noop() {
@@ -56,7 +57,7 @@ where
 
 pub(in crate::solve) struct TraitProbeCtxt<'me, 'a, Infcx, I, F>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     cx: ProbeCtxt<'me, 'a, Infcx, I, F, QueryResult<I>>,
@@ -65,7 +66,7 @@ where
 
 impl<Infcx, I, F> TraitProbeCtxt<'_, '_, Infcx, I, F>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
     F: FnOnce(&QueryResult<I>) -> inspect::ProbeKind<I>,
 {
@@ -80,7 +81,7 @@ where
 
 impl<'a, Infcx, I> EvalCtxt<'a, Infcx, I>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// `probe_kind` is only called when proof tree building is enabled so it can be

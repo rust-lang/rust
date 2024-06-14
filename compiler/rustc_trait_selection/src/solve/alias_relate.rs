@@ -16,11 +16,11 @@
 //! relate them structurally.
 
 use super::EvalCtxt;
-use rustc_infer::infer::InferCtxt;
+use crate::solve::infcx::RustcSolverDelegate;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, RustcSolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_alias_relate_goal(
         &mut self,

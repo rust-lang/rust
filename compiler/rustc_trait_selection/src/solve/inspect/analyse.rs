@@ -23,6 +23,7 @@ use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::solve::eval_ctxt::canonical;
+use crate::solve::infcx::RustcSolverDelegate;
 use crate::solve::{EvalCtxt, GoalEvaluationKind, GoalSource};
 use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
 use crate::traits::ObligationCtxt;
@@ -199,8 +200,9 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             let _ = term_hack.constrain(infcx, span, param_env);
         }
 
-        let opt_impl_args =
-            opt_impl_args.map(|impl_args| impl_args.fold_with(&mut EagerResolver::new(infcx)));
+        let opt_impl_args = opt_impl_args.map(|impl_args| {
+            impl_args.fold_with(&mut EagerResolver::new(<&RustcSolverDelegate<'tcx>>::from(infcx)))
+        });
 
         let goals = instantiated_goals
             .into_iter()
@@ -399,7 +401,11 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             infcx,
             depth,
             orig_values,
-            goal: uncanonicalized_goal.fold_with(&mut EagerResolver::new(infcx)),
+            goal: uncanonicalized_goal.fold_with(&mut EagerResolver::new(<&RustcSolverDelegate<
+                'tcx,
+            >>::from(
+                infcx
+            ))),
             result,
             evaluation_kind: evaluation.kind,
             normalizes_to_term_hack,

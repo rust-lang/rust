@@ -1,9 +1,9 @@
-use crate::fold::TypeFoldable;
-use crate::relate::Relate;
-use crate::solve::{Goal, NoSolution};
-use crate::{self as ty, Interner};
+use rustc_type_ir::fold::TypeFoldable;
+use rustc_type_ir::relate::Relate;
+use rustc_type_ir::solve::{Goal, NoSolution};
+use rustc_type_ir::{self as ty, Interner};
 
-pub trait InferCtxtLike: Sized {
+pub trait SolverDelegate: Sized {
     type Interner: Interner;
 
     fn interner(&self) -> Self::Interner;
