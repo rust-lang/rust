@@ -258,6 +258,13 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     Some((cx.tcx.def_span(parent), may_move))
                 };
 
+                let macro_to_change =
+                    if let ExpnKind::Macro(kind, name) = item.span.ctxt().outer_expn_data().kind {
+                        Some((name.to_string(), kind.descr()))
+                    } else {
+                        None
+                    };
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     ms,
@@ -274,6 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         move_to,
                         may_remove,
                         has_trait: impl_.of_trait.is_some(),
+                        macro_to_change,
                     },
                 )
             }
