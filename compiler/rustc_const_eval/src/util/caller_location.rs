@@ -7,7 +7,9 @@ use rustc_middle::ty::{self, Mutability};
 use rustc_span::symbol::Symbol;
 use tracing::trace;
 
-use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, CompileTimeInterpCx};
+use crate::const_eval::{
+    mk_eval_cx_to_read_const_val, CompileTimeInterpCx, GlobalAccessPermissions,
+};
 use crate::interpret::*;
 
 /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
@@ -62,7 +64,7 @@ pub(crate) fn const_caller_location_provider(
         tcx.tcx,
         tcx.span,
         ty::ParamEnv::reveal_all(),
-        CanAccessMutGlobal::No,
+        GlobalAccessPermissions::Static,
     );
 
     let loc_place = alloc_caller_location(&mut ecx, file, line, col);

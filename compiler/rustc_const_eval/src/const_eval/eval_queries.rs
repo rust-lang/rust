@@ -17,7 +17,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, Abi};
 
-use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
+use super::{CompileTimeInterpCx, CompileTimeMachine, GlobalAccessPermissions};
 use crate::const_eval::CheckAlignment;
 use crate::errors::ConstEvalError;
 use crate::errors::{self, DanglingPtrInFinal};
@@ -138,7 +138,7 @@ pub(crate) fn mk_eval_cx_to_read_const_val<'tcx>(
     tcx: TyCtxt<'tcx>,
     root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    can_access_mut_global: CanAccessMutGlobal,
+    can_access_mut_global: GlobalAccessPermissions,
 ) -> CompileTimeInterpCx<'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
@@ -157,7 +157,8 @@ pub fn mk_eval_cx_for_const_val<'tcx>(
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<(CompileTimeInterpCx<'tcx>, OpTy<'tcx>)> {
-    let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, param_env, CanAccessMutGlobal::No);
+    let ecx =
+        mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, param_env, GlobalAccessPermissions::Static);
     let op = ecx.const_val_to_op(val, ty, None).ok()?;
     Some((ecx, op))
 }
@@ -261,7 +262,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,
-        CanAccessMutGlobal::from(is_static),
+        GlobalAccessPermissions::from(is_static),
     );
 
     let mplace = ecx.raw_const_to_mplace(constant).expect(
@@ -383,7 +384,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
         // they do not have to behave "as if" they were evaluated at runtime.
         // For consts however we want to ensure they behave "as if" they were evaluated at runtime,
         // so we have to reject reading mutable global memory.
-        CompileTimeMachine::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
+        CompileTimeMachine::new(GlobalAccessPermissions::from(is_static), CheckAlignment::Error),
     );
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)).map_err(|error| {

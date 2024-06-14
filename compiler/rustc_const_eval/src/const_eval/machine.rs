@@ -58,7 +58,7 @@ pub struct CompileTimeMachine<'tcx> {
     /// Pattern matching on consts with references would be unsound if those references
     /// could point to anything mutable. Therefore, when evaluating consts and when constructing valtrees,
     /// we ensure that only immutable global memory can be accessed.
-    pub(super) can_access_mut_global: CanAccessMutGlobal,
+    pub(super) global_access_permissions: GlobalAccessPermissions,
 
     /// Whether to check alignment during evaluation.
     pub(super) check_alignment: CheckAlignment,
@@ -79,26 +79,28 @@ pub enum CheckAlignment {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub(crate) enum CanAccessMutGlobal {
-    No,
-    Yes,
+pub(crate) enum GlobalAccessPermissions {
+    /// Allowed to read from immutable statics
+    Static,
+    /// Allowed to read from mutable statics
+    StaticMut,
 }
 
-impl From<bool> for CanAccessMutGlobal {
+impl From<bool> for GlobalAccessPermissions {
     fn from(value: bool) -> Self {
-        if value { Self::Yes } else { Self::No }
+        if value { Self::StaticMut } else { Self::Static }
     }
 }
 
 impl<'tcx> CompileTimeMachine<'tcx> {
     pub(crate) fn new(
-        can_access_mut_global: CanAccessMutGlobal,
+        global_access_permissions: GlobalAccessPermissions,
         check_alignment: CheckAlignment,
     ) -> Self {
         CompileTimeMachine {
             num_evaluated_steps: 0,
             stack: Vec::new(),
-            can_access_mut_global,
+            global_access_permissions,
             check_alignment,
             static_root_ids: None,
         }
@@ -696,17 +698,18 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             }
         } else {
             // Read access. These are usually allowed, with some exceptions.
-            if machine.can_access_mut_global == CanAccessMutGlobal::Yes {
+            match machine.global_access_permissions {
                 // Machine configuration allows us read from anything (e.g., `static` initializer).
-                Ok(())
-            } else if alloc.mutability == Mutability::Mut {
-                // Machine configuration does not allow us to read statics (e.g., `const`
-                // initializer).
-                Err(ConstEvalErrKind::ConstAccessesMutGlobal.into())
-            } else {
-                // Immutable global, this read is fine.
-                assert_eq!(alloc.mutability, Mutability::Not);
-                Ok(())
+                GlobalAccessPermissions::StaticMut => Ok(()),
+                GlobalAccessPermissions::Static => match alloc.mutability {
+                    Mutability::Mut => {
+                        // Machine configuration does not allow us to read statics (e.g., `const`
+                        // initializer).
+                        Err(ConstEvalErrKind::ConstAccessesMutGlobal.into())
+                    }
+                    // Immutable global, this read is fine.
+                    Mutability::Not => Ok(()),
+                },
             }
         }
     }

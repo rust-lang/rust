@@ -11,7 +11,7 @@ use tracing::{debug, instrument, trace};
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeInterpCx;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
-use crate::const_eval::CanAccessMutGlobal;
+use crate::const_eval::GlobalAccessPermissions;
 use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
@@ -242,7 +242,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
         param_env,
         // It is absolutely crucial for soundness that
         // we do not read from mutable memory.
-        CanAccessMutGlobal::No,
+        GlobalAccessPermissions::Static,
     );
     let place = ecx.raw_const_to_mplace(const_alloc).unwrap();
     debug!(?place);
@@ -301,8 +301,12 @@ pub fn valtree_to_const_value<'tcx>(
         }
         ty::Pat(ty, _) => valtree_to_const_value(tcx, param_env.and(ty), valtree),
         ty::Ref(_, inner_ty, _) => {
-            let mut ecx =
-                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
+            let mut ecx = mk_eval_cx_to_read_const_val(
+                tcx,
+                DUMMY_SP,
+                param_env,
+                GlobalAccessPermissions::Static,
+            );
             let imm = valtree_to_ref(&mut ecx, valtree, inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
@@ -329,8 +333,12 @@ pub fn valtree_to_const_value<'tcx>(
                 bug!("could not find non-ZST field during in {layout:#?}");
             }
 
-            let mut ecx =
-                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
+            let mut ecx = mk_eval_cx_to_read_const_val(
+                tcx,
+                DUMMY_SP,
+                param_env,
+                GlobalAccessPermissions::Static,
+            );
 
             // Need to create a place for this valtree.
             let place = create_valtree_place(&mut ecx, layout, valtree);
