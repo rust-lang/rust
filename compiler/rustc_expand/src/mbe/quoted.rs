@@ -155,6 +155,13 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, sp
     }
 }
 
+fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Session, span: Span) {
+    if !features.macro_metavar_expr_concat {
+        let msg = "the `concat` meta-variable expression is unstable";
+        feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
+    }
+}
+
 /// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Specifically, this takes a
 /// generic `TokenTree`, such as is used in the rest of the compiler, and returns a `TokenTree`
 /// for use in parsing a macro.
@@ -217,11 +224,19 @@ fn parse_tree<'a>(
                                         return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        maybe_emit_macro_metavar_expr_feature(
-                                            features,
-                                            sess,
-                                            delim_span.entire(),
-                                        );
+                                        if let MetaVarExpr::Concat(_) = elem {
+                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                            );
+                                        } else {
+                                            maybe_emit_macro_metavar_expr_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                            );
+                                        }
                                         return TokenTree::MetaVarExpr(delim_span, elem);
                                     }
                                 }
