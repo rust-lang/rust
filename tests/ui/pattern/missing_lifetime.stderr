@@ -1,0 +1,25 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing_lifetime.rs:18:12
+   |
+LL |     Other2(AstKind),
+   |            ^^^^^^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ enum Other<'a> {
+LL |     Other1(Foo),
+LL ~     Other2(AstKind<'a>),
+   |
+
+error[E0392]: lifetime parameter `'ast` is never used
+  --> $DIR/missing_lifetime.rs:6:14
+   |
+LL | enum AstKind<'ast> {
+   |              ^^^^ unused lifetime parameter
+   |
+   = help: consider removing `'ast`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0106, E0392.
+For more information about an error, try `rustc --explain E0106`.

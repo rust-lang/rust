@@ -286,7 +286,7 @@ class TestEnvironment:
         # Look up the product bundle transfer manifest.
         self.log_info("Looking up the product bundle transfer manifest...")
         product_name = "minimal." + self.triple_to_arch(self.target)
-        fuchsia_version = "20.20240412.3.1"
+        fuchsia_version = "21.20240610.2.1"
 
         out = self.check_output(
             [
