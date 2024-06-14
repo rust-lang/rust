@@ -218,7 +218,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 } else {
                     let mut sugg = None;
 
-                    if Some(trait_id) == ccx.tcx.lang_items().eq_trait() {
+                    if ccx.tcx.is_lang_item(trait_id, LangItem::PartialEq) {
                         match (args[0].unpack(), args[1].unpack()) {
                             (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
                                 if self_ty == rhs_ty

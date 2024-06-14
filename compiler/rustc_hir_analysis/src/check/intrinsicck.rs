@@ -1,6 +1,6 @@
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
@@ -134,7 +134,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
-            ty::Adt(adt, args) if Some(adt.did()) == self.tcx.lang_items().maybe_uninit() => {
+            ty::Adt(adt, args) if self.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
                 let fields = &adt.non_enum_variant().fields;
                 let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx, args);
                 // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?

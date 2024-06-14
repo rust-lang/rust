@@ -593,7 +593,7 @@ fn check_recursion_limit<'tcx>(
     let recursion_depth = recursion_depths.get(&def_id).cloned().unwrap_or(0);
     debug!(" => recursion depth={}", recursion_depth);
 
-    let adjusted_recursion_depth = if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
+    let adjusted_recursion_depth = if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
         // HACK: drop_in_place creates tight monomorphization loops. Give
         // it more margin.
         recursion_depth / 4

@@ -284,7 +284,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     && let CallKind::FnCall { fn_trait_id, self_ty } = kind
                     && let ty::Param(_) = self_ty.kind()
                     && ty == self_ty
-                    && Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait()
+                    && self.infcx.tcx.is_lang_item(fn_trait_id, LangItem::FnOnce)
                 {
                     // this is a type parameter `T: FnOnce()`, don't suggest `T: FnOnce() + Clone`.
                     true
@@ -708,9 +708,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
                 && pred.self_ty() == ty
             {
-                if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
+                if tcx.is_lang_item(pred.def_id(), LangItem::Fn) {
                     return Some(hir::Mutability::Not);
-                } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
+                } else if tcx.is_lang_item(pred.def_id(), LangItem::FnMut) {
                     return Some(hir::Mutability::Mut);
                 }
             }
@@ -1832,7 +1832,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let hir::ExprKind::MethodCall(..) = ex.kind
                     && let Some(method_def_id) =
                         self.typeck_results.type_dependent_def_id(ex.hir_id)
-                    && self.tcx.lang_items().clone_trait() == Some(self.tcx.parent(method_def_id))
+                    && self.tcx.is_lang_item(self.tcx.parent(method_def_id), LangItem::Clone)
                 {
                     self.clones.push(ex);
                 }
@@ -3159,8 +3159,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let is_format_arguments_item = if let Some(expr_ty) = expr_ty
                             && let ty::Adt(adt, _) = expr_ty.kind()
                         {
-                            self.infcx.tcx.lang_items().get(LangItem::FormatArguments)
-                                == Some(adt.did())
+                            self.infcx.tcx.is_lang_item(adt.did(), LangItem::FormatArguments)
                         } else {
                             false
                         };

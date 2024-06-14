@@ -24,10 +24,10 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan, StringPart};
 use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::{self as hir, LangItem};
 use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
@@ -118,7 +118,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // with more relevant type information and hide redundant E0282 errors.
         errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if Some(pred.def_id()) == self.tcx.lang_items().sized_trait() =>
+                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
             {
                 1
             }
@@ -513,7 +513,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, main_trait_ref.def_id());
                         let is_unsize =
-                            Some(leaf_trait_ref.def_id()) == self.tcx.lang_items().unsize_trait();
+                            self.tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Unsize);
                         let (message, notes, append_const_msg) = if is_try_conversion {
                             (
                                 Some(format!(
@@ -586,14 +586,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        if Some(leaf_trait_ref.def_id()) == tcx.lang_items().tuple_trait() {
+                        if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Tuple) {
                             self.add_tuple_trait_message(
                                 obligation.cause.code().peel_derives(),
                                 &mut err,
                             );
                         }
 
-                        if Some(leaf_trait_ref.def_id()) == tcx.lang_items().drop_trait()
+                        if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Drop)
                             && predicate_is_const
                         {
                             err.note("`~const Drop` was renamed to `~const Destruct`");
@@ -648,7 +648,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if let ObligationCauseCode::Coercion { source, target } =
                             *obligation.cause.code().peel_derives()
                         {
-                            if Some(leaf_trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
+                            if self.tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Sized) {
                                 self.suggest_borrowing_for_object_cast(
                                     &mut err,
                                     root_obligation,
@@ -716,7 +716,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
 
-                        if Some(leaf_trait_ref.def_id()) == tcx.lang_items().try_trait() {
+                        if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Try) {
                             self.suggest_await_before_try(
                                 &mut err,
                                 &obligation,
@@ -1020,7 +1020,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // doesn't extend the goal kind. This is worth reporting, but we can only do so
         // if we actually know which closure this goal comes from, so look at the cause
         // to see if we can extract that information.
-        if Some(trait_ref.def_id()) == self.tcx.lang_items().async_fn_kind_helper()
+        if self.tcx.is_lang_item(trait_ref.def_id(), LangItem::AsyncFnKindHelper)
             && let Some(found_kind) = trait_ref.skip_binder().args.type_at(0).to_opt_closure_kind()
             && let Some(expected_kind) =
                 trait_ref.skip_binder().args.type_at(1).to_opt_closure_kind()
@@ -1744,7 +1744,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let self_ty = pred.projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if Some(pred.projection_term.def_id) == self.tcx.lang_items().fn_once_output() {
+            if self.tcx.is_lang_item(pred.projection_term.def_id,LangItem::FnOnceOutput) {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let item = match self_ty.kind() {
                     ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
@@ -1754,7 +1754,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     "expected `{item}` to be a {fn_kind} that returns `{expected_ty}`, but it \
                      returns `{normalized_ty}`",
                 ))
-            } else if Some(trait_def_id) == self.tcx.lang_items().future_trait() {
+            } else if self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
                 Some(format!(
                     "expected `{self_ty}` to be a future that resolves to `{expected_ty}`, but it \
                      resolves to `{normalized_ty}`"
@@ -1783,7 +1783,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => Some(2),
+                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => Some(2),
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)
@@ -2342,7 +2342,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+                if self.tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
                     match self.tainted_by_errors() {
                         None => {
                             let err = self.emit_inference_failure_err(
@@ -2925,7 +2925,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let (Some(node), true) = (
             self.tcx.hir().get_if_local(item_def_id),
-            Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
+            self.tcx.is_lang_item(pred.def_id(), LangItem::Sized),
         ) else {
             return;
         };

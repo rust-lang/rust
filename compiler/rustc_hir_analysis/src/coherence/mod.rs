@@ -8,6 +8,7 @@
 use crate::errors;
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::LangItem;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
@@ -49,7 +50,7 @@ fn enforce_trait_manually_implementable(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
 
-    if tcx.lang_items().freeze_trait() == Some(trait_def_id) {
+    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) {
         if !tcx.features().freeze_impls {
             feature_err(
                 &tcx.sess,
@@ -75,7 +76,7 @@ fn enforce_trait_manually_implementable(
 
         // Maintain explicit error code for `Unsize`, since it has a useful
         // explanation about using `CoerceUnsized` instead.
-        if Some(trait_def_id) == tcx.lang_items().unsize_trait() {
+        if tcx.is_lang_item(trait_def_id, LangItem::Unsize) {
             err.code(E0328);
         }
 

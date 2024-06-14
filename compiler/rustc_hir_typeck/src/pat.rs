@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, Pat, PatKind};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -491,7 +491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tcx = self.tcx;
             let expected = self.resolve_vars_if_possible(expected);
             pat_ty = match expected.kind() {
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
+                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => expected,
                 ty::Str => Ty::new_static_str(tcx),
                 _ => pat_ty,
             };

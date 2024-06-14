@@ -3150,7 +3150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 error.obligation.predicate.kind().skip_binder(),
             ) {
                 (ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)), _)
-                    if self.tcx.lang_items().index_trait() == Some(predicate.trait_ref.def_id) =>
+                    if self.tcx.is_lang_item(predicate.trait_ref.def_id, LangItem::Index) =>
                 {
                     seen_preds.insert(error.obligation.predicate.kind().skip_binder());
                 }

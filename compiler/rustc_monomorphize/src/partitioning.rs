@@ -104,6 +104,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
+use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
@@ -813,7 +814,7 @@ fn mono_item_visibility<'tcx>(
     //        from the `main` symbol we'll generate later.
     //
     //        This may be fixable with a new `InstanceDef` perhaps? Unsure!
-    if tcx.lang_items().start_fn() == Some(def_id) {
+    if tcx.is_lang_item(def_id, LangItem::Start) {
         *can_be_internalized = false;
         return Visibility::Hidden;
     }

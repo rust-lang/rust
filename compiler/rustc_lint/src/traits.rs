@@ -2,7 +2,7 @@ use crate::lints::{DropGlue, DropTraitConstraintsDiag};
 use crate::LateContext;
 use crate::LateLintPass;
 use crate::LintContext;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::sym;
 
@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 continue;
             };
             let def_id = trait_predicate.trait_ref.def_id;
-            if cx.tcx.lang_items().drop_trait() == Some(def_id) {
+            if cx.tcx.is_lang_item(def_id, LangItem::Drop) {
                 // Explicitly allow `impl Drop`, a drop-guards-as-unnameable-type pattern.
                 if trait_predicate.trait_ref.self_ty().is_impl_trait() {
                     continue;

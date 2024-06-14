@@ -699,26 +699,25 @@ impl<'tcx> Instance<'tcx> {
         };
         let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
 
-        let lang_items = tcx.lang_items();
-        let coroutine_callable_item = if Some(trait_id) == lang_items.future_trait() {
+        let coroutine_callable_item = if tcx.is_lang_item(trait_id, LangItem::Future) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
             );
             hir::LangItem::FuturePoll
-        } else if Some(trait_id) == lang_items.iterator_trait() {
+        } else if tcx.is_lang_item(trait_id, LangItem::Iterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
             );
             hir::LangItem::IteratorNext
-        } else if Some(trait_id) == lang_items.async_iterator_trait() {
+        } else if tcx.is_lang_item(trait_id, LangItem::AsyncIterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
             );
             hir::LangItem::AsyncIteratorPollNext
-        } else if Some(trait_id) == lang_items.coroutine_trait() {
+        } else if tcx.is_lang_item(trait_id, LangItem::Coroutine) {
             assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
             hir::LangItem::CoroutineResume
         } else {

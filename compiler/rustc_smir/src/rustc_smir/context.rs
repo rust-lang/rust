@@ -6,6 +6,7 @@
 #![allow(rustc::usage_of_qualified_ty)]
 
 use rustc_abi::HasDataLayout;
+use rustc_hir::LangItem;
 use rustc_middle::ty::layout::{
     FnAbiOf, FnAbiOfHelpers, HasParamEnv, HasTyCtxt, LayoutOf, LayoutOfHelpers,
 };
@@ -295,7 +296,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
-        tables.tcx.lang_items().c_str() == Some(def_id)
+        tables.tcx.is_lang_item(def_id, LangItem::CStr)
     }
 
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {

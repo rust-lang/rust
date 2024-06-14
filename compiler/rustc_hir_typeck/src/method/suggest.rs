@@ -1102,7 +1102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             unsatisfied_predicates.iter().any(|(pred, _, _)| {
                                 match pred.kind().skip_binder() {
                                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                                        Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
+                                        self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
                                             && pred.polarity == ty::PredicatePolarity::Positive
                                     }
                                     _ => false,
@@ -1375,10 +1375,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty.is_str()
                             || matches!(
                                 ty.kind(),
-                                ty::Adt(adt, _) if Some(adt.did()) == self.tcx.lang_items().string()
+                                ty::Adt(adt, _) if self.tcx.is_lang_item(adt.did(), LangItem::String)
                             )
                     }
-                    ty::Adt(adt, _) => Some(adt.did()) == self.tcx.lang_items().string(),
+                    ty::Adt(adt, _) => self.tcx.is_lang_item(adt.did(), LangItem::String),
                     _ => false,
                 };
                 if is_string_or_ref_str && item_name.name == sym::iter {
@@ -2723,7 +2723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if tcx.is_diagnostic_item(sym::LocalKey, inner_id) {
                     err.help("use `with` or `try_with` to access thread local storage");
-                } else if Some(kind.did()) == tcx.lang_items().maybe_uninit() {
+                } else if tcx.is_lang_item(kind.did(), LangItem::MaybeUninit) {
                     err.help(format!(
                         "if this `{name}` has been initialized, \
                         use one of the `assume_init` methods to access the inner value"
