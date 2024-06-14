@@ -13,6 +13,7 @@ use super::machine::CompileTimeInterpCx;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::GlobalAccessPermissions;
 use crate::errors::MaxNumNodesInConstErr;
+use crate::errors::StaticRefErr;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MemPlaceMeta, MemoryKind, PlaceTy,
@@ -138,6 +139,16 @@ fn const_to_valtree_inner<'tcx>(
 
         ty::Ref(_, _, _)  => {
             let derefd_place = ecx.deref_pointer(place)?;
+            if let Some(prov) = derefd_place.ptr().provenance {
+                match ecx.tcx.global_alloc(prov.alloc_id()) {
+                    mir::interpret::GlobalAlloc::Function(_) => unreachable!(),
+                    mir::interpret::GlobalAlloc::VTable(_, _) => unreachable!(),
+                    mir::interpret::GlobalAlloc::Static(_) => {
+                        return Err(ValTreeCreationError::StaticRef);
+                    },
+                    mir::interpret::GlobalAlloc::Memory(_) => {},
+                }
+            }
             const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
@@ -236,7 +247,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`
-    let ecx = mk_eval_cx_to_read_const_val(
+    let mut ecx = mk_eval_cx_to_read_const_val(
         tcx,
         DUMMY_SP,
         param_env,
@@ -248,6 +259,14 @@ pub(crate) fn eval_to_valtree<'tcx>(
     debug!(?place);
 
     let mut num_nodes = 0;
+
+    // To preserve provenance of static items, it is crucial that we do not
+    // treat them as constants and just read their values.
+    // This flag will cause valtree creation to ICE if a reference to a static
+    // is read, so valtree creation needs to eagerly catch those cases and handle
+    // them in custom ways. Currently by reporting a hard error, but we can opt to
+    // create a special valtree node for statics in the future.
+    ecx.machine.global_access_permissions = GlobalAccessPermissions::Nothing;
     let valtree_result = const_to_valtree_inner(&ecx, &place, &mut num_nodes);
 
     match valtree_result {
@@ -260,6 +279,10 @@ pub(crate) fn eval_to_valtree<'tcx>(
                 ValTreeCreationError::NodesOverflow => {
                     let handled =
                         tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
+                    Err(handled.into())
+                }
+                ValTreeCreationError::StaticRef => {
+                    let handled = tcx.dcx().emit_err(StaticRefErr { span });
                     Err(handled.into())
                 }
                 ValTreeCreationError::NonSupportedType => Ok(None),

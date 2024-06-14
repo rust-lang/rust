@@ -127,6 +127,13 @@ pub(crate) struct MaxNumNodesInConstErr {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_ref_to_static)]
+pub(crate) struct StaticRefErr {
+    #[primary_span]
+    pub span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unallowed_fn_pointer_call)]
 pub(crate) struct UnallowedFnPointerCall {
     #[primary_span]

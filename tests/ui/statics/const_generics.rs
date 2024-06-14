@@ -1,7 +1,6 @@
 //! check that we lose the information that `BAR` points to `FOO`
 //! when going through a const generic.
 
-//@ run-pass
 // With optimizations, LLVM will deduplicate the constant `X` whose
 // value is `&42` to just be a reference to the static. This is correct,
 // but obscures the issue we're trying to show.
@@ -19,4 +18,5 @@ fn foo<const X: &'static usize>() {
 
 fn main() {
     foo::<BAR>();
+    //~^ ERROR: encountered a reference pointing to a static variable in a constant
 }

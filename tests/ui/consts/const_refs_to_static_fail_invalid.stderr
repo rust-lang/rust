@@ -49,6 +49,18 @@ error: could not evaluate constant pattern
 LL |         C => {}
    |         ^
 
-error: aborting due to 6 previous errors
+error: encountered a reference pointing to a static variable in a constant
+  --> $DIR/const_refs_to_static_fail_invalid.rs:54:5
+   |
+LL |     const C: &i32 = unsafe { &S };
+   |     ^^^^^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refs_to_static_fail_invalid.rs:62:9
+   |
+LL |         C => {}
+   |         ^
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

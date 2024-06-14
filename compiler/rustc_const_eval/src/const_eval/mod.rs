@@ -31,6 +31,8 @@ pub(crate) enum ValTreeCreationError {
     NodesOverflow,
     /// Values of this type, or this particular value, are not supported as valtrees.
     NonSupportedType,
+    /// Tried to create a valtree with a reference to a static.
+    StaticRef,
 }
 pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError>;
 

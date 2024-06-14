@@ -310,6 +310,8 @@ const_eval_realloc_or_alloc_with_offset =
 
 const_eval_recursive_static = encountered static that tried to initialize itself with itself
 
+const_eval_ref_to_static = encountered a reference pointing to a static variable in a constant
+
 const_eval_remainder_by_zero =
     calculating the remainder with a divisor of zero
 const_eval_remainder_overflow =
@@ -399,7 +401,6 @@ const_eval_unwind_past_top =
 
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
-const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 
 const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`

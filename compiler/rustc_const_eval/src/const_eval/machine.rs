@@ -80,6 +80,8 @@ pub enum CheckAlignment {
 
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum GlobalAccessPermissions {
+    /// Not allowed to read from static items at all
+    Nothing,
     /// Allowed to read from immutable statics
     Static,
     /// Allowed to read from mutable statics
@@ -686,7 +688,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         machine: &Self,
         alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,
-        _static_def_id: Option<DefId>,
+        static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
         let alloc = alloc.inner();
@@ -697,19 +699,26 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 Mutability::Mut => Err(ConstEvalErrKind::ModifiedGlobal.into()),
             }
         } else {
-            // Read access. These are usually allowed, with some exceptions.
+            let check_mutability = || match alloc.mutability {
+                Mutability::Mut => {
+                    // Machine configuration does not allow us to read statics (e.g., `const`
+                    // initializer).
+                    Err(ConstEvalErrKind::ConstAccessesMutGlobal.into())
+                }
+                // Immutable global, this read is fine.
+                Mutability::Not => Ok(()),
+            };
             match machine.global_access_permissions {
                 // Machine configuration allows us read from anything (e.g., `static` initializer).
                 GlobalAccessPermissions::StaticMut => Ok(()),
-                GlobalAccessPermissions::Static => match alloc.mutability {
-                    Mutability::Mut => {
-                        // Machine configuration does not allow us to read statics (e.g., `const`
-                        // initializer).
+                GlobalAccessPermissions::Static => check_mutability(),
+                GlobalAccessPermissions::Nothing => {
+                    if static_def_id.is_none() {
+                        check_mutability()
+                    } else {
                         Err(ConstEvalErrKind::ConstAccessesMutGlobal.into())
                     }
-                    // Immutable global, this read is fine.
-                    Mutability::Not => Ok(()),
-                },
+                }
             }
         }
     }

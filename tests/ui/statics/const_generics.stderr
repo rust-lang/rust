@@ -1,0 +1,8 @@
+error: encountered a reference pointing to a static variable in a constant
+  --> $DIR/const_generics.rs:20:11
+   |
+LL |     foo::<BAR>();
+   |           ^^^
+
+error: aborting due to 1 previous error
+

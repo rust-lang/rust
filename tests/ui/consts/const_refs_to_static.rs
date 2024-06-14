@@ -14,6 +14,4 @@ const C2: *const i32 = unsafe { std::ptr::addr_of!(S_MUT) };
 fn main() {
     assert_eq!(*C1, 0);
     assert_eq!(unsafe { *C2 }, 0);
-    // Computing this pattern will read from an immutable static. That's fine.
-    assert!(matches!(&0, C1));
 }

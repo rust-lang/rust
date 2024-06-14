@@ -48,4 +48,20 @@ fn mutable() {
     }
 }
 
+fn immutable() {
+    static S: i32 = 0;
+
+    const C: &i32 = unsafe { &S };
+    //~^ ERROR: encountered a reference pointing to a static variable in a constant
+
+    // This could be ok, but we'd need to teach valtrees to support
+    // preserving statics, because valtree creation is shared with
+    // const generics, which can't just erase the information about
+    // the static's address.
+    match &42 {
+        C => {} //~ERROR: could not evaluate constant pattern
+        _ => {}
+    }
+}
+
 fn main() {}
