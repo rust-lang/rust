@@ -2451,6 +2451,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn lower_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
         // Some ast::AnonConst's turn into ConstArgKind::Path's, so we create their def
         // only when we're sure they're going to stay as an AnonConst.
