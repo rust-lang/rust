@@ -284,7 +284,7 @@ pub trait ParallelDatabase: Database + Send {
     /// series of queries in parallel and arranging the results. Using
     /// this method for that purpose ensures that those queries will
     /// see a consistent view of the database (it is also advisable
-    /// for those queries to use the [`Runtime::unwind_if_cancelled`]
+    /// for those queries to use the [`Database::unwind_if_cancelled`]
     /// method to check for cancellation).
     ///
     /// # Panics
