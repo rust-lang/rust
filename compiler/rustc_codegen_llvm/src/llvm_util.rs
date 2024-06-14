@@ -234,6 +234,8 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
         ("aarch64", "pmuv3") => LLVMFeature::new("perfmon"),
         ("aarch64", "paca") => LLVMFeature::new("pauth"),
         ("aarch64", "pacg") => LLVMFeature::new("pauth"),
+        ("aarch64", "sve-b16b16") => LLVMFeature::new("b16b16"),
+        ("aarch64", "flagm2") => LLVMFeature::new("altnzcv"),
         // Rust ties fp and neon together.
         ("aarch64", "neon") => {
             LLVMFeature::with_dependency("neon", TargetFeatureFoldStrength::Both("fp-armv8"))
