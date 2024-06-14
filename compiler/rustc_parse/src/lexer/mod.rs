@@ -301,7 +301,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
                         token::Lifetime(sym, IdentIsRaw::Yes)
                     } else {
-                        // Otherwise, this is just `'r`. Warn about it though.
+                        // Otherwise, this should be parsed like `'r`. Warn about it though.
                         self.psess.buffer_lint(
                             RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                             prefix_span,
