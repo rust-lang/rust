@@ -2675,7 +2675,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         );
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)
+            .eq(DefineOpaqueTypes::Yes, predicate.trait_ref, trait_ref)
             .map(|InferOk { obligations, .. }| obligations)
             .map_err(|_| ())
     }

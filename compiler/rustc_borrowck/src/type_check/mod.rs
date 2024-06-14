@@ -19,6 +19,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -40,6 +41,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -1799,7 +1801,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let erased_ty = tcx.erase_regions(ty);
-        if !erased_ty.is_sized(tcx, self.param_env) {
+        let sized_trait = tcx.require_lang_item(LangItem::Sized, Some(span));
+        let trait_ref = ty::TraitRef::new(tcx, sized_trait, [erased_ty]);
+
+        let is_sized = self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+            tcx,
+            ObligationCause::dummy_with_span(span),
+            self.param_env,
+            trait_ref,
+        ));
+        if !is_sized {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
             // slot or local, so to find all unsized rvalues it is enough
