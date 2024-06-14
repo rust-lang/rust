@@ -11,7 +11,7 @@ use std::{
 };
 
 use base_db::{
-    salsa::{impl_intern_value_trivial, Cycle},
+    salsa::{Cycle, InternValueTrivial},
     CrateId,
 };
 use chalk_ir::{
@@ -1965,7 +1965,9 @@ pub enum CallableDefId {
     StructId(StructId),
     EnumVariantId(EnumVariantId),
 }
-impl_intern_value_trivial!(CallableDefId);
+
+impl InternValueTrivial for CallableDefId {}
+
 impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
 impl From<CallableDefId> for ModuleDefId {
     fn from(def: CallableDefId) -> ModuleDefId {

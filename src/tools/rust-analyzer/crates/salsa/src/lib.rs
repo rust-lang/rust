@@ -40,7 +40,7 @@ use std::panic::{self, UnwindSafe};
 
 pub use crate::durability::Durability;
 pub use crate::intern_id::InternId;
-pub use crate::interned::{InternKey, InternValue};
+pub use crate::interned::{InternKey, InternValue, InternValueTrivial};
 pub use crate::runtime::Runtime;
 pub use crate::runtime::RuntimeId;
 pub use crate::storage::Storage;
