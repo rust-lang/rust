@@ -126,6 +126,22 @@ pub enum AssocItemNotFoundSugg<'a> {
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
+    #[multipart_suggestion(
+        hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    SimilarInOtherTraitQPath {
+        #[suggestion_part(code = "<")]
+        lo: Span,
+        #[suggestion_part(code = " as {trait_}>")]
+        mi: Span,
+        #[suggestion_part(code = "{suggested_name}")]
+        hi: Option<Span>,
+        trait_: &'a str,
+        suggested_name: Symbol,
+        identically_named: bool,
+    },
     #[suggestion(
         hir_analysis_assoc_item_not_found_other_sugg,
         code = "{suggested_name}",

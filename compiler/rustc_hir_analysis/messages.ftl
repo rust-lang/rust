@@ -20,8 +20,13 @@ hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identi
     } associated {$assoc_kind} `{$suggested_name}` in the trait `{$trait_name}`
 hir_analysis_assoc_item_not_found_label = associated {$assoc_kind} `{$assoc_name}` not found
 hir_analysis_assoc_item_not_found_other_sugg = `{$qself}` has the following associated {$assoc_kind}
+hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg =
+    consider fully qualifying{$identically_named ->
+        [true] {""}
+        *[false] {" "}and renaming
+    } the associated {$assoc_kind}
 hir_analysis_assoc_item_not_found_similar_in_other_trait_sugg = change the associated {$assoc_kind} name to use `{$suggested_name}` from `{$trait_name}`
-hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg = and also change the associated {$assoc_kind} name
+hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg = ...and changing the associated {$assoc_kind} name
 hir_analysis_assoc_item_not_found_similar_sugg = there is an associated {$assoc_kind} with a similar name
 
 hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}

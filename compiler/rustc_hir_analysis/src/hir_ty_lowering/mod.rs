@@ -197,7 +197,7 @@ pub trait HirTyLowerer<'tcx> {
 /// For diagnostic purposes only.
 enum AssocItemQSelf {
     Trait(DefId),
-    TyParam(LocalDefId),
+    TyParam(LocalDefId, Span),
     SelfTyAlias,
 }
 
@@ -205,7 +205,7 @@ impl AssocItemQSelf {
     fn to_string(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             Self::Trait(def_id) => tcx.def_path_str(def_id),
-            Self::TyParam(def_id) => tcx.hir().ty_param_name(def_id).to_string(),
+            Self::TyParam(def_id, _) => tcx.hir().ty_param_name(def_id).to_string(),
             Self::SelfTyAlias => kw::SelfUpper.to_string(),
         }
     }
@@ -820,6 +820,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn probe_single_ty_param_bound_for_assoc_ty(
         &self,
         ty_param_def_id: LocalDefId,
+        ty_param_span: Span,
         assoc_name: Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
@@ -836,7 +837,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref)));
                 traits::transitive_bounds_that_define_assoc_item(tcx, trait_refs, assoc_name)
             },
-            AssocItemQSelf::TyParam(ty_param_def_id),
+            AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span),
             ty::AssocKind::Type,
             assoc_name,
             span,
@@ -1080,6 +1081,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
             ) => self.probe_single_ty_param_bound_for_assoc_ty(
                 param_did.expect_local(),
+                qself.span,
                 assoc_ident,
                 span,
             )?,

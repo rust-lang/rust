@@ -219,7 +219,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     suggested_name,
                     identically_named: suggested_name == assoc_name.name,
                 });
-                if let AssocItemQSelf::TyParam(ty_param_def_id) = qself
+                if let AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span) = qself
                     // Not using `self.item_def_id()` here as that would yield the opaque type itself if we're
                     // inside an opaque type while we're interested in the overarching type alias (TAIT).
                     // FIXME: However, for trait aliases, this incorrectly returns the enclosing module...
@@ -251,27 +251,44 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return self.dcx().emit_err(err);
                     }
 
-                    let mut err = self.dcx().create_err(err);
-                    if suggest_constraining_type_param(
-                        tcx,
-                        generics,
-                        &mut err,
-                        &qself_str,
-                        &trait_name,
-                        None,
-                        None,
-                    ) && suggested_name != assoc_name.name
+                    let identically_named = suggested_name == assoc_name.name;
+
+                    if let DefKind::TyAlias = tcx.def_kind(item_def_id)
+                        && !tcx.type_alias_is_lazy(item_def_id)
                     {
-                        // We suggested constraining a type parameter, but the associated item on it
-                        // was also not an exact match, so we also suggest changing it.
-                        err.span_suggestion_verbose(
-                            assoc_name.span,
-                            fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
+                        err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {
+                            lo: ty_param_span.shrink_to_lo(),
+                            mi: ty_param_span.shrink_to_hi(),
+                            hi: (!identically_named).then_some(assoc_name.span),
+                            // FIXME(fmease): Use a full trait ref here (with placeholders).
+                            trait_: &trait_name,
+                            identically_named,
                             suggested_name,
-                            Applicability::MaybeIncorrect,
-                        );
+                        });
+                    } else {
+                        let mut err = self.dcx().create_err(err);
+                        if suggest_constraining_type_param(
+                            tcx,
+                            generics,
+                            &mut err,
+                            &qself_str,
+                            // FIXME(fmease): Use a full trait ref here (with placeholders).
+                            &trait_name,
+                            None,
+                            None,
+                        ) && !identically_named
+                        {
+                            // We suggested constraining a type parameter, but the associated item on it
+                            // was also not an exact match, so we also suggest changing it.
+                            err.span_suggestion_verbose(
+                                assoc_name.span,
+                                fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
+                                suggested_name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        return err.emit();
                     }
-                    return err.emit();
                 }
                 return self.dcx().emit_err(err);
             }
