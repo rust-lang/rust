@@ -1362,6 +1362,7 @@ pub enum NonLocalDefinitionsDiag {
         has_trait: bool,
         self_ty_str: String,
         of_trait_str: Option<String>,
+        macro_to_change: Option<(String, &'static str)>,
     },
     MacroRules {
         depth: u32,
@@ -1387,6 +1388,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 has_trait,
                 self_ty_str,
                 of_trait_str,
+                macro_to_change,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
                 diag.arg("depth", depth);
@@ -1395,6 +1397,15 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 diag.arg("self_ty_str", self_ty_str);
                 if let Some(of_trait_str) = of_trait_str {
                     diag.arg("of_trait_str", of_trait_str);
+                }
+
+                if let Some((macro_to_change, macro_kind)) = macro_to_change {
+                    diag.arg("macro_to_change", macro_to_change);
+                    diag.arg("macro_kind", macro_kind);
+                    diag.note(fluent::lint_macro_to_change);
+                }
+                if let Some(cargo_update) = cargo_update {
+                    diag.subdiagnostic(&diag.dcx, cargo_update);
                 }
 
                 if has_trait {
@@ -1422,9 +1433,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     );
                 }
 
-                if let Some(cargo_update) = cargo_update {
-                    diag.subdiagnostic(&diag.dcx, cargo_update);
-                }
                 if let Some(const_anon) = const_anon {
                     diag.note(fluent::lint_exception);
                     if let Some(const_anon) = const_anon {
