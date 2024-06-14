@@ -368,40 +368,40 @@
 
 
 - Range:
-    * [ ] _mm512_range_round_pd
-    * [ ] _mm512_mask_range_round_pd
-    * [ ] _mm512_maskz_range_round_pd
-    * [ ] _mm_range_pd
-    * [ ] _mm_mask_range_pd
-    * [ ] _mm_maskz_range_pd
-    * [ ] _mm256_range_pd
-    * [ ] _mm256_mask_range_pd
-    * [ ] _mm256_maskz_range_pd
-    * [ ] _mm512_range_pd
-    * [ ] _mm512_mask_range_pd
-    * [ ] _mm512_maskz_range_pd
-    * [ ] _mm512_range_round_ps
-    * [ ] _mm512_mask_range_round_ps
-    * [ ] _mm512_maskz_range_round_ps
-    * [ ] _mm_range_ps
-    * [ ] _mm_mask_range_ps
-    * [ ] _mm_maskz_range_ps
-    * [ ] _mm256_range_ps
-    * [ ] _mm256_mask_range_ps
-    * [ ] _mm256_maskz_range_ps
-    * [ ] _mm512_range_ps
-    * [ ] _mm512_mask_range_ps
-    * [ ] _mm512_maskz_range_ps
-    * [ ] _mm_range_round_sd
-    * [ ] _mm_mask_range_round_sd
-    * [ ] _mm_maskz_range_round_sd
-    * [ ] _mm_mask_range_sd
-    * [ ] _mm_maskz_range_sd
-    * [ ] _mm_range_round_ss
-    * [ ] _mm_mask_range_round_ss
-    * [ ] _mm_maskz_range_round_ss
-    * [ ] _mm_mask_range_ss
-    * [ ] _mm_maskz_range_ss
+    * [x] _mm512_range_round_pd
+    * [x] _mm512_mask_range_round_pd
+    * [x] _mm512_maskz_range_round_pd
+    * [x] _mm_range_pd
+    * [x] _mm_mask_range_pd
+    * [x] _mm_maskz_range_pd
+    * [x] _mm256_range_pd
+    * [x] _mm256_mask_range_pd
+    * [x] _mm256_maskz_range_pd
+    * [x] _mm512_range_pd
+    * [x] _mm512_mask_range_pd
+    * [x] _mm512_maskz_range_pd
+    * [x] _mm512_range_round_ps
+    * [x] _mm512_mask_range_round_ps
+    * [x] _mm512_maskz_range_round_ps
+    * [x] _mm_range_ps
+    * [x] _mm_mask_range_ps
+    * [x] _mm_maskz_range_ps
+    * [x] _mm256_range_ps
+    * [x] _mm256_mask_range_ps
+    * [x] _mm256_maskz_range_ps
+    * [x] _mm512_range_ps
+    * [x] _mm512_mask_range_ps
+    * [x] _mm512_maskz_range_ps
+    * [x] _mm_range_round_sd
+    * [x] _mm_mask_range_round_sd
+    * [x] _mm_maskz_range_round_sd
+    * [x] _mm_mask_range_sd
+    * [x] _mm_maskz_range_sd
+    * [x] _mm_range_round_ss
+    * [x] _mm_mask_range_round_ss
+    * [x] _mm_maskz_range_round_ss
+    * [x] _mm_mask_range_ss
+    * [x] _mm_maskz_range_ss
 
 
 - Reduce:

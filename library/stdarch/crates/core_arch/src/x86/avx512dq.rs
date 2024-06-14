@@ -2191,7 +2191,7 @@ pub unsafe fn _mm512_maskz_cvt_roundepi64_ps<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vcvtqq2ps))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtepi64_ps(a: __m128i) -> __m128 {
-    _mm_mask_cvtepi64_ps(_mm_undefined_ps(), 0b11, a)
+    _mm_mask_cvtepi64_ps(_mm_undefined_ps(), 0xff, a)
 }
 
 /// Convert packed signed 64-bit integers in a to packed single-precision (32-bit) floating-point elements,
@@ -2572,7 +2572,7 @@ pub unsafe fn _mm512_maskz_cvt_roundepu64_ps<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vcvtuqq2ps))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtepu64_ps(a: __m128i) -> __m128 {
-    _mm_mask_cvtepu64_ps(_mm_undefined_ps(), 0b11, a)
+    _mm_mask_cvtepu64_ps(_mm_undefined_ps(), 0xff, a)
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed single-precision (32-bit) floating-point elements,
@@ -2758,7 +2758,7 @@ pub unsafe fn _mm512_maskz_cvt_roundpd_epi64<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vcvtpd2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtpd_epi64(a: __m128d) -> __m128i {
-    _mm_mask_cvtpd_epi64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvtpd_epi64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed signed 64-bit integers,
@@ -2795,7 +2795,7 @@ pub unsafe fn _mm_maskz_cvtpd_epi64(k: __mmask8, a: __m128d) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvtpd2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtpd_epi64(a: __m256d) -> __m256i {
-    _mm256_mask_cvtpd_epi64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvtpd_epi64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed signed 64-bit integers,
@@ -2943,7 +2943,7 @@ pub unsafe fn _mm512_maskz_cvt_roundps_epi64<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vcvtps2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtps_epi64(a: __m128) -> __m128i {
-    _mm_mask_cvtps_epi64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvtps_epi64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed signed 64-bit integers,
@@ -2980,7 +2980,7 @@ pub unsafe fn _mm_maskz_cvtps_epi64(k: __mmask8, a: __m128) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvtps2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtps_epi64(a: __m128) -> __m256i {
-    _mm256_mask_cvtps_epi64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvtps_epi64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed signed 64-bit integers,
@@ -3128,7 +3128,7 @@ pub unsafe fn _mm512_maskz_cvt_roundpd_epu64<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vcvtpd2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtpd_epu64(a: __m128d) -> __m128i {
-    _mm_mask_cvtpd_epu64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvtpd_epu64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed unsigned 64-bit integers,
@@ -3165,7 +3165,7 @@ pub unsafe fn _mm_maskz_cvtpd_epu64(k: __mmask8, a: __m128d) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvtpd2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtpd_epu64(a: __m256d) -> __m256i {
-    _mm256_mask_cvtpd_epu64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvtpd_epu64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed unsigned 64-bit integers,
@@ -3313,7 +3313,7 @@ pub unsafe fn _mm512_maskz_cvt_roundps_epu64<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vcvtps2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtps_epu64(a: __m128) -> __m128i {
-    _mm_mask_cvtps_epu64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvtps_epu64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 64-bit integers,
@@ -3350,7 +3350,7 @@ pub unsafe fn _mm_maskz_cvtps_epu64(k: __mmask8, a: __m128) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvtps2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtps_epu64(a: __m128) -> __m256i {
-    _mm256_mask_cvtps_epu64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvtps_epu64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 64-bit integers,
@@ -3478,7 +3478,7 @@ pub unsafe fn _mm512_maskz_cvtt_roundpd_epi64<const SAE: i32>(k: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vcvttpd2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvttpd_epi64(a: __m128d) -> __m128i {
-    _mm_mask_cvttpd_epi64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvttpd_epi64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed signed 64-bit integers
@@ -3516,7 +3516,7 @@ pub unsafe fn _mm_maskz_cvttpd_epi64(k: __mmask8, a: __m128d) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvttpd2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvttpd_epi64(a: __m256d) -> __m256i {
-    _mm256_mask_cvttpd_epi64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvttpd_epi64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed signed 64-bit integers
@@ -3646,7 +3646,7 @@ pub unsafe fn _mm512_maskz_cvtt_roundps_epi64<const SAE: i32>(k: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vcvttps2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvttps_epi64(a: __m128) -> __m128i {
-    _mm_mask_cvttps_epi64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvttps_epi64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed signed 64-bit integers
@@ -3684,7 +3684,7 @@ pub unsafe fn _mm_maskz_cvttps_epi64(k: __mmask8, a: __m128) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvttps2qq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvttps_epi64(a: __m128) -> __m256i {
-    _mm256_mask_cvttps_epi64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvttps_epi64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed signed 64-bit integers
@@ -3814,7 +3814,7 @@ pub unsafe fn _mm512_maskz_cvtt_roundpd_epu64<const SAE: i32>(k: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vcvttpd2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvttpd_epu64(a: __m128d) -> __m128i {
-    _mm_mask_cvttpd_epu64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvttpd_epu64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed unsigned 64-bit integers
@@ -3852,7 +3852,7 @@ pub unsafe fn _mm_maskz_cvttpd_epu64(k: __mmask8, a: __m128d) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvttpd2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvttpd_epu64(a: __m256d) -> __m256i {
-    _mm256_mask_cvttpd_epu64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvttpd_epu64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed unsigned 64-bit integers
@@ -3982,7 +3982,7 @@ pub unsafe fn _mm512_maskz_cvtt_roundps_epu64<const SAE: i32>(k: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vcvttps2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvttps_epu64(a: __m128) -> __m128i {
-    _mm_mask_cvttps_epu64(_mm_undefined_si128(), 0b11, a)
+    _mm_mask_cvttps_epu64(_mm_undefined_si128(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 64-bit integers
@@ -4020,7 +4020,7 @@ pub unsafe fn _mm_maskz_cvttps_epu64(k: __mmask8, a: __m128) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvttps2uqq))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvttps_epu64(a: __m128) -> __m256i {
-    _mm256_mask_cvttps_epu64(_mm256_undefined_si256(), 0xf, a)
+    _mm256_mask_cvttps_epu64(_mm256_undefined_si256(), 0xff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 64-bit integers
@@ -4369,9 +4369,10 @@ pub unsafe fn _kortestz_mask8_u8(a: __mmask8, b: __mmask8) -> u8 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask8&ig_expand=3945)
 #[inline]
 #[target_feature(enable = "avx512dq")]
+#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _kshiftli_mask8(a: __mmask8, count: u32) -> __mmask8 {
-    a << count
+pub unsafe fn _kshiftli_mask8<const COUNT: u32>(a: __mmask8) -> __mmask8 {
+    a << COUNT
 }
 
 /// Shift 8-bit mask a right by count bits while shifting in zeros, and store the result in dst.
@@ -4379,9 +4380,10 @@ pub unsafe fn _kshiftli_mask8(a: __mmask8, count: u32) -> __mmask8 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask8&ig_expand=3949)
 #[inline]
 #[target_feature(enable = "avx512dq")]
+#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _kshiftri_mask8(a: __mmask8, count: u32) -> __mmask8 {
-    a >> count
+pub unsafe fn _kshiftri_mask8<const COUNT: u32>(a: __mmask8) -> __mmask8 {
+    a >> COUNT
 }
 
 /// Compute the bitwise AND of 16-bit masks a and b, and if the result is all zeros, store 1 in dst,
@@ -4552,6 +4554,7 @@ pub unsafe fn _mm512_movepi64_mask(a: __m512i) -> __mmask8 {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movm_epi32&ig_expand=4625)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmovm2d))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_movm_epi32(k: __mmask8) -> __m128i {
     let ones = _mm_set1_epi32(-1);
@@ -4564,6 +4567,7 @@ pub unsafe fn _mm_movm_epi32(k: __mmask8) -> __m128i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movm_epi32&ig_expand=4626)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmovm2d))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_movm_epi32(k: __mmask8) -> __m256i {
     let ones = _mm256_set1_epi32(-1);
@@ -4576,6 +4580,7 @@ pub unsafe fn _mm256_movm_epi32(k: __mmask8) -> __m256i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movm_epi32&ig_expand=4627)
 #[inline]
 #[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vpmovm2d))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_movm_epi32(k: __mmask16) -> __m512i {
     let ones = _mm512_set1_epi32(-1);
@@ -4588,6 +4593,7 @@ pub unsafe fn _mm512_movm_epi32(k: __mmask16) -> __m512i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movm_epi64&ig_expand=4628)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmovm2q))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_movm_epi64(k: __mmask8) -> __m128i {
     let ones = _mm_set1_epi64x(-1);
@@ -4600,6 +4606,7 @@ pub unsafe fn _mm_movm_epi64(k: __mmask8) -> __m128i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movm_epi64&ig_expand=4629)
 #[inline]
 #[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vpmovm2q))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_movm_epi64(k: __mmask8) -> __m256i {
     let ones = _mm256_set1_epi64x(-1);
@@ -4612,10 +4619,852 @@ pub unsafe fn _mm256_movm_epi64(k: __mmask8) -> __m256i {
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movm_epi64&ig_expand=4630)
 #[inline]
 #[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vpmovm2q))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_movm_epi64(k: __mmask8) -> __m512i {
     let ones = _mm512_set1_epi64(-1);
     _mm512_maskz_mov_epi64(k, ones)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_pd&ig_expand=5210)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(2, 3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_range_round_pd<const IMM8: i32, const SAE: i32>(
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm512_mask_range_round_pd::<IMM8, SAE>(_mm512_setzero_pd(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_range_round_pd&ig_expand=5208)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(4, 5)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_range_round_pd<const IMM8: i32, const SAE: i32>(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    transmute(vrangepd_512(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        IMM8,
+        src.as_f64x8(),
+        k,
+        SAE,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_range_round_pd&ig_expand=5209)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(3, 4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_maskz_range_round_pd<const IMM8: i32, const SAE: i32>(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm512_mask_range_round_pd::<IMM8, SAE>(_mm512_setzero_pd(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_range_pd&ig_expand=5192)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_range_pd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm_mask_range_pd::<IMM8>(_mm_setzero_pd(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_pd&ig_expand=5190)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_range_pd<const IMM8: i32>(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangepd_128(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        IMM8,
+        src.as_f64x4(),
+        k,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_pd&ig_expand=5191)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_range_pd<const IMM8: i32>(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm_mask_range_pd::<IMM8>(_mm_setzero_pd(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_range_pd&ig_expand=5195)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_range_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm256_mask_range_pd::<IMM8>(_mm256_setzero_pd(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_range_pd&ig_expand=5193)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_range_pd<const IMM8: i32>(
+    src: __m256d,
+    k: __mmask8,
+    a: __m256d,
+    b: __m256d,
+) -> __m256d {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangepd_256(
+        a.as_f64x4(),
+        b.as_f64x4(),
+        IMM8,
+        src.as_f64x4(),
+        k,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_range_pd&ig_expand=5194)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_maskz_range_pd<const IMM8: i32>(
+    k: __mmask8,
+    a: __m256d,
+    b: __m256d,
+) -> __m256d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm256_mask_range_pd::<IMM8>(_mm256_setzero_pd(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_pd&ig_expand=5198)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_range_pd<const IMM8: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm512_mask_range_pd::<IMM8>(_mm512_setzero_pd(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_range_pd&ig_expand=5196)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_range_pd<const IMM8: i32>(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangepd_512(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        IMM8,
+        src.as_f64x8(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// double-precision (64-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_range_pd&ig_expand=5197)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangepd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_maskz_range_pd<const IMM8: i32>(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm512_mask_range_pd::<IMM8>(_mm512_setzero_pd(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_ps&ig_expand=5213)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(2, 3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_range_round_ps<const IMM8: i32, const SAE: i32>(
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm512_mask_range_round_ps::<IMM8, SAE>(_mm512_setzero_ps(), 0xffff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_range_round_ps&ig_expand=5211)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(4, 5)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_range_round_ps<const IMM8: i32, const SAE: i32>(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    transmute(vrangeps_512(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        IMM8,
+        src.as_f32x16(),
+        k,
+        SAE,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_range_round_ps&ig_expand=5212)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(3, 4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_maskz_range_round_ps<const IMM8: i32, const SAE: i32>(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm512_mask_range_round_ps::<IMM8, SAE>(_mm512_setzero_ps(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_range_ps&ig_expand=5201)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_range_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm_mask_range_ps::<IMM8>(_mm_setzero_ps(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_ps&ig_expand=5199)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_range_ps<const IMM8: i32>(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangeps_128(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        IMM8,
+        src.as_f32x4(),
+        k,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_ps&ig_expand=5200)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_range_ps<const IMM8: i32>(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm_mask_range_ps::<IMM8>(_mm_setzero_ps(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_range_ps&ig_expand=5204)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_range_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm256_mask_range_ps::<IMM8>(_mm256_setzero_ps(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_range_ps&ig_expand=5202)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_range_ps<const IMM8: i32>(
+    src: __m256,
+    k: __mmask8,
+    a: __m256,
+    b: __m256,
+) -> __m256 {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangeps_256(
+        a.as_f32x8(),
+        b.as_f32x8(),
+        IMM8,
+        src.as_f32x8(),
+        k,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_range_ps&ig_expand=5203)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_maskz_range_ps<const IMM8: i32>(k: __mmask8, a: __m256, b: __m256) -> __m256 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm256_mask_range_ps::<IMM8>(_mm256_setzero_ps(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_ps&ig_expand=5207)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_range_ps<const IMM8: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm512_mask_range_ps::<IMM8>(_mm512_setzero_ps(), 0xffff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// writemask k (elements are copied from src to dst if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_range_ps&ig_expand=5205)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_range_ps<const IMM8: i32>(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangeps_512(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        IMM8,
+        src.as_f32x16(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for packed
+/// single-precision (32-bit) floating-point elements in a and b, and store the results in dst using
+/// zeromask k (elements are zeroed out if the corresponding mask bit is not set).
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_range_ps&ig_expand=5206)
+#[inline]
+#[target_feature(enable = "avx512dq")]
+#[cfg_attr(test, assert_instr(vrangeps, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_maskz_range_ps<const IMM8: i32>(k: __mmask16, a: __m512, b: __m512) -> __m512 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm512_mask_range_ps::<IMM8>(_mm512_setzero_ps(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// double-precision (64-bit) floating-point element in a and b, store the result in the lower element
+/// of dst, and copy the upper element from a to the upper element of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_sd&ig_expand=5216)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(2, 3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_range_round_sd<const IMM8: i32, const SAE: i32>(
+    a: __m128d,
+    b: __m128d,
+) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm_mask_range_round_sd::<IMM8, SAE>(_mm_setzero_pd(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// double-precision (64-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the
+/// upper element from a to the upper element of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_round_sd&ig_expand=5214)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(4, 5)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_range_round_sd<const IMM8: i32, const SAE: i32>(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    transmute(vrangesd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        IMM8,
+        SAE,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// double-precision (64-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper
+/// element from a to the upper element of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_round_sd&ig_expand=5215)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(3, 4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_range_round_sd<const IMM8: i32, const SAE: i32>(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm_mask_range_round_sd::<IMM8, SAE>(_mm_setzero_pd(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// double-precision (64-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the
+/// upper element from a to the upper element of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_sd&ig_expand=5220)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_range_sd<const IMM8: i32>(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangesd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        IMM8,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// double-precision (64-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper
+/// element from a to the upper element of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_sd&ig_expand=5221)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_range_sd<const IMM8: i32>(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm_mask_range_sd::<IMM8>(_mm_setzero_pd(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// single-precision (32-bit) floating-point element in a and b, store the result in the lower element
+/// of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_ss&ig_expand=5219)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(2, 3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_range_round_ss<const IMM8: i32, const SAE: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm_mask_range_round_ss::<IMM8, SAE>(_mm_setzero_ps(), 0xff, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// single-precision (32-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the
+/// upper 3 packed elements from a to the upper elements of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_round_ss&ig_expand=5217)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(4, 5)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_range_round_ss<const IMM8: i32, const SAE: i32>(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    transmute(vrangess(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        IMM8,
+        SAE,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// single-precision (32-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper
+/// 3 packed elements from a to the upper elements of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_round_ss&ig_expand=5218)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
+#[rustc_legacy_const_generics(3, 4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_range_round_ss<const IMM8: i32, const SAE: i32>(
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    static_assert_sae!(SAE);
+    _mm_mask_range_round_ss::<IMM8, SAE>(_mm_setzero_ps(), k, a, b)
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// single-precision (32-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the
+/// upper 3 packed elements from a to the upper elements of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_ss&ig_expand=5222)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangess, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_range_ss<const IMM8: i32>(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    transmute(vrangess(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        IMM8,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Calculate the max, min, absolute max, or absolute min (depending on control in imm8) for the lower
+/// single-precision (32-bit) floating-point element in a and b, store the result in the lower element
+/// of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper
+/// 3 packed elements from a to the upper elements of dst.
+/// Lower 2 bits of IMM8 specifies the operation control:
+///     00 = min, 01 = max, 10 = absolute min, 11 = absolute max.
+/// Upper 2 bits of IMM8 specifies the sign control:
+///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_ss&ig_expand=5223)
+#[inline]
+#[target_feature(enable = "avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vrangess, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_range_ss<const IMM8: i32>(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    static_assert_uimm_bits!(IMM8, 4);
+    _mm_mask_range_ss::<IMM8>(_mm_setzero_ps(), k, a, b)
 }
 
 #[allow(improper_ctypes)]
@@ -4703,6 +5552,45 @@ extern "C" {
     fn vcvttps2uqq_256(a: f32x4, src: u64x4, k: __mmask8) -> u64x4;
     #[link_name = "llvm.x86.avx512.mask.cvttps2uqq.512"]
     fn vcvttps2uqq_512(a: f32x8, src: u64x8, k: __mmask8, sae: i32) -> u64x8;
+
+    #[link_name = "llvm.x86.avx512.mask.range.pd.128"]
+    fn vrangepd_128(a: f64x2, b: f64x2, imm8: i32, src: f64x2, k: __mmask8) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.range.pd.256"]
+    fn vrangepd_256(a: f64x4, b: f64x4, imm8: i32, src: f64x4, k: __mmask8) -> f64x4;
+    #[link_name = "llvm.x86.avx512.mask.range.pd.512"]
+    fn vrangepd_512(a: f64x8, b: f64x8, imm8: i32, src: f64x8, k: __mmask8, sae: i32) -> f64x8;
+
+    #[link_name = "llvm.x86.avx512.mask.range.ps.128"]
+    fn vrangeps_128(a: f32x4, b: f32x4, imm8: i32, src: f32x4, k: __mmask8) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.range.ps.256"]
+    fn vrangeps_256(a: f32x8, b: f32x8, imm8: i32, src: f32x8, k: __mmask8) -> f32x8;
+    #[link_name = "llvm.x86.avx512.mask.range.ps.512"]
+    fn vrangeps_512(a: f32x16, b: f32x16, imm8: i32, src: f32x16, k: __mmask16, sae: i32)
+        -> f32x16;
+
+    #[link_name = "llvm.x86.avx512.mask.range.sd"]
+    fn vrangesd(a: f64x2, b: f64x2, src: f64x2, k: __mmask8, imm8: i32, sae: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.range.ss"]
+    fn vrangess(a: f32x4, b: f32x4, src: f32x4, k: __mmask8, imm8: i32, sae: i32) -> f32x4;
+
+    #[link_name = "llvm.x86.avx512.mask.reduce.pd.128"]
+    fn vreducepd_128(a: f64x2, imm8: i32, src: f64x2, k: __mmask8) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.reduce.pd.256"]
+    fn vreducepd_256(a: f64x4, imm8: i32, src: f64x4, k: __mmask8) -> f64x4;
+    #[link_name = "llvm.x86.avx512.mask.reduce.pd.512"]
+    fn vreducepd_512(a: f64x8, imm8: i32, src: f64x8, k: __mmask8, sae: i32) -> f64x8;
+
+    #[link_name = "llvm.x86.avx512.mask.reduce.ps.128"]
+    fn vreduceps_128(a: f32x4, imm8: i32, src: f32x4, k: __mmask8) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.reduce.ps.256"]
+    fn vreduceps_256(a: f32x8, imm8: i32, src: f32x8, k: __mmask8) -> f32x8;
+    #[link_name = "llvm.x86.avx512.mask.reduce.ps.512"]
+    fn vreduceps_512(a: f32x16, imm8: i32, src: f32x16, k: __mmask16, sae: i32) -> f32x16;
+
+    #[link_name = "llvm.x86.avx512.mask.reduce.sd"]
+    fn vreducesd(a: f64x2, b: f64x2, src: f64x2, k: __mmask8, imm8: i32, sae: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.reduce.ss"]
+    fn vreducess(a: f32x4, b: f32x4, src: f32x4, k: __mmask8, imm8: i32, sae: i32) -> f32x4;
 }
 
 #[cfg(test)]
@@ -7358,7 +8246,7 @@ mod tests {
     #[simd_test(enable = "avx512dq")]
     unsafe fn test_kshiftli_mask8() {
         let a: __mmask8 = 0b01101001;
-        let r = _kshiftli_mask8(a, 3);
+        let r = _kshiftli_mask8::<3>(a);
         let e: __mmask8 = 0b01001000;
         assert_eq!(r, e);
     }
@@ -7366,7 +8254,7 @@ mod tests {
     #[simd_test(enable = "avx512dq")]
     unsafe fn test_kshiftri_mask8() {
         let a: __mmask8 = 0b01101001;
-        let r = _kshiftri_mask8(a, 3);
+        let r = _kshiftri_mask8::<3>(a);
         let e: __mmask8 = 0b00001101;
         assert_eq!(r, e);
     }
@@ -7537,4 +8425,323 @@ mod tests {
         let e = _mm512_set_epi64(0, -1, -1, 0, -1, 0, 0, -1);
         assert_eq_m512i(r, e);
     }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_range_round_pd() {
+        let a = _mm512_set_pd(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm512_set_pd(2., 1., 4., 3., 6., 5., 8., 7.);
+        let r = _mm512_range_round_pd::<0b0101, _MM_FROUND_NO_EXC>(a, b);
+        let e = _mm512_set_pd(2., 2., 4., 4., 6., 6., 8., 8.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_range_round_pd() {
+        let a = _mm512_set_pd(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm512_set_pd(2., 1., 4., 3., 6., 5., 8., 7.);
+        let c = _mm512_set_pd(9., 10., 11., 12., 13., 14., 15., 16.);
+        let r = _mm512_mask_range_round_pd::<0b0101, _MM_FROUND_NO_EXC>(c, 0b01101001, a, b);
+        let e = _mm512_set_pd(9., 2., 4., 12., 6., 14., 15., 8.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_maskz_range_round_pd() {
+        let a = _mm512_set_pd(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm512_set_pd(2., 1., 4., 3., 6., 5., 8., 7.);
+        let r = _mm512_maskz_range_round_pd::<0b0101, _MM_FROUND_NO_EXC>(0b01101001, a, b);
+        let e = _mm512_set_pd(0., 2., 4., 0., 6., 0., 0., 8.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_range_pd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(2., 1.);
+        let r = _mm_range_pd::<0b0101>(a, b);
+        let e = _mm_set_pd(2., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_range_pd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(2., 1.);
+        let c = _mm_set_pd(3., 4.);
+        let r = _mm_mask_range_pd::<0b0101>(c, 0b01, a, b);
+        let e = _mm_set_pd(3., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_range_pd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(2., 1.);
+        let r = _mm_maskz_range_pd::<0b0101>(0b01, a, b);
+        let e = _mm_set_pd(0., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_range_pd() {
+        let a = _mm256_set_pd(1., 2., 3., 4.);
+        let b = _mm256_set_pd(2., 1., 4., 3.);
+        let r = _mm256_range_pd::<0b0101>(a, b);
+        let e = _mm256_set_pd(2., 2., 4., 4.);
+        assert_eq_m256d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_mask_range_pd() {
+        let a = _mm256_set_pd(1., 2., 3., 4.);
+        let b = _mm256_set_pd(2., 1., 4., 3.);
+        let c = _mm256_set_pd(5., 6., 7., 8.);
+        let r = _mm256_mask_range_pd::<0b0101>(c, 0b0110, a, b);
+        let e = _mm256_set_pd(5., 2., 4., 8.);
+        assert_eq_m256d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_maskz_range_pd() {
+        let a = _mm256_set_pd(1., 2., 3., 4.);
+        let b = _mm256_set_pd(2., 1., 4., 3.);
+        let r = _mm256_maskz_range_pd::<0b0101>(0b0110, a, b);
+        let e = _mm256_set_pd(0., 2., 4., 0.);
+        assert_eq_m256d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_range_pd() {
+        let a = _mm512_set_pd(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm512_set_pd(2., 1., 4., 3., 6., 5., 8., 7.);
+        let r = _mm512_range_pd::<0b0101>(a, b);
+        let e = _mm512_set_pd(2., 2., 4., 4., 6., 6., 8., 8.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_range_pd() {
+        let a = _mm512_set_pd(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm512_set_pd(2., 1., 4., 3., 6., 5., 8., 7.);
+        let c = _mm512_set_pd(9., 10., 11., 12., 13., 14., 15., 16.);
+        let r = _mm512_mask_range_pd::<0b0101>(c, 0b01101001, a, b);
+        let e = _mm512_set_pd(9., 2., 4., 12., 6., 14., 15., 8.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_maskz_range_pd() {
+        let a = _mm512_set_pd(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm512_set_pd(2., 1., 4., 3., 6., 5., 8., 7.);
+        let r = _mm512_maskz_range_pd::<0b0101>(0b01101001, a, b);
+        let e = _mm512_set_pd(0., 2., 4., 0., 6., 0., 0., 8.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_range_round_ps() {
+        let a = _mm512_set_ps(1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.);
+        let b = _mm512_set_ps(2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16., 15.);
+        let r = _mm512_range_round_ps::<0b0101, _MM_FROUND_NO_EXC>(a, b);
+        let e = _mm512_set_ps(2., 2., 4., 4., 6., 6., 8., 8., 10., 10., 12., 12., 14., 14., 16., 16.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_range_round_ps() {
+        let a = _mm512_set_ps(1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.);
+        let b = _mm512_set_ps(2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16., 15.);
+        let c = _mm512_set_ps(17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29., 30., 31., 32.);
+        let r = _mm512_mask_range_round_ps::<0b0101, _MM_FROUND_NO_EXC>(c, 0b0110100100111100, a, b);
+        let e = _mm512_set_ps(17., 2., 4., 20., 6., 22., 23., 8., 25., 26., 12., 12., 14., 14., 31., 32.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_maskz_range_round_ps() {
+        let a = _mm512_set_ps(1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.);
+        let b = _mm512_set_ps(2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16., 15.);
+        let r = _mm512_maskz_range_round_ps::<0b0101, _MM_FROUND_NO_EXC>(0b0110100100111100, a, b);
+        let e = _mm512_set_ps(0., 2., 4., 0., 6., 0., 0., 8., 0., 0., 12., 12., 14., 14., 0., 0.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_range_ps() {
+        let a = _mm_set_ps(1., 2., 3., 4.);
+        let b = _mm_set_ps(2., 1., 4., 3.);
+        let r = _mm_range_ps::<0b0101>(a, b);
+        let e = _mm_set_ps(2., 2., 4., 4.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_range_ps() {
+        let a = _mm_set_ps(1., 2., 3., 4.);
+        let b = _mm_set_ps(2., 1., 4., 3.);
+        let c = _mm_set_ps(5., 6., 7., 8.);
+        let r = _mm_mask_range_ps::<0b0101>(c, 0b0110, a, b);
+        let e = _mm_set_ps(5., 2., 4., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_range_ps() {
+        let a = _mm_set_ps(1., 2., 3., 4.);
+        let b = _mm_set_ps(2., 1., 4., 3.);
+        let r = _mm_maskz_range_ps::<0b0101>(0b0110, a, b);
+        let e = _mm_set_ps(0., 2., 4., 0.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_range_ps() {
+        let a = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm256_set_ps(2., 1., 4., 3., 6., 5., 8., 7.);
+        let r = _mm256_range_ps::<0b0101>(a, b);
+        let e = _mm256_set_ps(2., 2., 4., 4., 6., 6., 8., 8.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_mask_range_ps() {
+        let a = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm256_set_ps(2., 1., 4., 3., 6., 5., 8., 7.);
+        let c = _mm256_set_ps(9., 10., 11., 12., 13., 14., 15., 16.);
+        let r = _mm256_mask_range_ps::<0b0101>(c, 0b01101001, a, b);
+        let e = _mm256_set_ps(9., 2., 4., 12., 6., 14., 15., 8.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_maskz_range_ps() {
+        let a = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
+        let b = _mm256_set_ps(2., 1., 4., 3., 6., 5., 8., 7.);
+        let r = _mm256_maskz_range_ps::<0b0101>(0b01101001, a, b);
+        let e = _mm256_set_ps(0., 2., 4., 0., 6., 0., 0., 8.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_range_ps() {
+        let a = _mm512_set_ps(1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.);
+        let b = _mm512_set_ps(2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16., 15.);
+        let r = _mm512_range_ps::<0b0101>(a, b);
+        let e = _mm512_set_ps(2., 2., 4., 4., 6., 6., 8., 8., 10., 10., 12., 12., 14., 14., 16., 16.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_range_ps() {
+        let a = _mm512_set_ps(1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.);
+        let b = _mm512_set_ps(2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16., 15.);
+        let c = _mm512_set_ps(17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29., 30., 31., 32.);
+        let r = _mm512_mask_range_ps::<0b0101>(c, 0b0110100100111100, a, b);
+        let e = _mm512_set_ps(17., 2., 4., 20., 6., 22., 23., 8., 25., 26., 12., 12., 14., 14., 31., 32.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_maskz_range_ps() {
+        let a = _mm512_set_ps(1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.);
+        let b = _mm512_set_ps(2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16., 15.);
+        let r = _mm512_maskz_range_ps::<0b0101>(0b0110100100111100, a, b);
+        let e = _mm512_set_ps(0., 2., 4., 0., 6., 0., 0., 8., 0., 0., 12., 12., 14., 14., 0., 0.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_range_round_sd() {
+        let a = _mm_set_sd(1.);
+        let b = _mm_set_sd(2.);
+        let r = _mm_range_round_sd::<0b0101, _MM_FROUND_NO_EXC>(a, b);
+        let e = _mm_set_sd(2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_range_round_sd() {
+        let a = _mm_set_sd(1.);
+        let b = _mm_set_sd(2.);
+        let c = _mm_set_sd(3.);
+        let r = _mm_mask_range_round_sd::<0b0101, _MM_FROUND_NO_EXC>(c, 0b0, a, b);
+        let e = _mm_set_sd(3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_range_round_sd() {
+        let a = _mm_set_sd(1.);
+        let b = _mm_set_sd(2.);
+        let r = _mm_maskz_range_round_sd::<0b0101, _MM_FROUND_NO_EXC>(0b0, a, b);
+        let e = _mm_set_sd(0.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_range_sd() {
+        let a = _mm_set_sd(1.);
+        let b = _mm_set_sd(2.);
+        let c = _mm_set_sd(3.);
+        let r = _mm_mask_range_sd::<0b0101>(c, 0b0, a, b);
+        let e = _mm_set_sd(3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_range_sd() {
+        let a = _mm_set_sd(1.);
+        let b = _mm_set_sd(2.);
+        let r = _mm_maskz_range_sd::<0b0101>(0b0, a, b);
+        let e = _mm_set_sd(0.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_range_round_ss() {
+        let a = _mm_set_ss(1.);
+        let b = _mm_set_ss(2.);
+        let r = _mm_range_round_ss::<0b0101, _MM_FROUND_NO_EXC>(a, b);
+        let e = _mm_set_ss(2.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_range_round_ss() {
+        let a = _mm_set_ss(1.);
+        let b = _mm_set_ss(2.);
+        let c = _mm_set_ss(3.);
+        let r = _mm_mask_range_round_ss::<0b0101, _MM_FROUND_NO_EXC>(c, 0b0, a, b);
+        let e = _mm_set_ss(3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_range_round_ss() {
+        let a = _mm_set_ss(1.);
+        let b = _mm_set_ss(2.);
+        let r = _mm_maskz_range_round_ss::<0b0101, _MM_FROUND_NO_EXC>(0b0, a, b);
+        let e = _mm_set_ss(0.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_range_ss() {
+        let a = _mm_set_ss(1.);
+        let b = _mm_set_ss(2.);
+        let c = _mm_set_ss(3.);
+        let r = _mm_mask_range_ss::<0b0101>(c, 0b0, a, b);
+        let e = _mm_set_ss(3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_maskz_range_ss() {
+        let a = _mm_set_ss(1.);
+        let b = _mm_set_ss(2.);
+        let r = _mm_maskz_range_ss::<0b0101>(0b0, a, b);
+        let e = _mm_set_ss(0.);
+        assert_eq_m128(r, e);
+    }
+
 }

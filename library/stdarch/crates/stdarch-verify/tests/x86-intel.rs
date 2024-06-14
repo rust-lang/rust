@@ -760,8 +760,10 @@ fn equate(
         (&Type::MutPtr(&Type::PrimUnsigned(32)), "unsigned int*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(8)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(8)), "unsigned char*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
+        (&Type::MutPtr(&Type::MMASK8), "__mmask8*") => {}
         (&Type::MutPtr(&Type::M64), "__m64*") => {}
         (&Type::MutPtr(&Type::M128), "__m128*") => {}
         (&Type::MutPtr(&Type::M128BH), "__m128bh*") => {}
@@ -808,6 +810,7 @@ fn equate(
         (&Type::ConstPtr(&Type::M512D), "__m512d const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
+        (&Type::ConstPtr(&Type::MMASK8), "__mmask8*") => {}
 
         (&Type::MM_CMPINT_ENUM, "_MM_CMPINT_ENUM") => {}
         (&Type::MM_MANTISSA_NORM_ENUM, "_MM_MANTISSA_NORM_ENUM") => {}
