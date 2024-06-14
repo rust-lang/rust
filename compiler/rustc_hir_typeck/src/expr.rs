@@ -121,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation(expr, ExpectHasType(expected))
     }
 
-    fn check_expr_with_expectation_and_needs(
+    pub(super) fn check_expr_with_expectation_and_needs(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,

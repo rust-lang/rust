@@ -1577,7 +1577,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // referent for the reference that results is *equal to* the
             // type of the place it is referencing, and not some
             // supertype thereof.
-            let init_ty = self.check_expr_with_needs(init, Needs::maybe_mut_place(m));
+            let mut init_ty = self.check_expr_with_expectation_and_needs(
+                init,
+                ExpectHasType(local_ty),
+                Needs::maybe_mut_place(m),
+            );
+            // The one exception to the above rule - we permit coercions when the expression has type !
+            // This allows `let Foo { ref my_field } = diverging_expr;`. The actual assignment is guaranteed
+            // to be unreachable, so the soundness concerns with 'ref mut' do not apply.
+            if init_ty.is_never() {
+                init_ty = self.demand_coerce(init, init_ty, local_ty, None, AllowTwoPhase::No);
+            };
+
             if let Some(mut diag) = self.demand_eqtype_diag(init.span, local_ty, init_ty) {
                 self.emit_type_mismatch_suggestions(
                     &mut diag,
