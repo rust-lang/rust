@@ -680,9 +680,19 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
             }
 
-            ty::Array(subty, _) => {
+            ty::Array(subty, len) => {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
-                // Note that we handle the len is implicitly checked while walking `arg`.
+                let cause = self.cause(ObligationCauseCode::Misc);
+                self.out.push(traits::Obligation::with_depth(
+                    tcx,
+                    cause,
+                    self.recursion_depth,
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                        len,
+                        tcx.types.usize,
+                    ))),
+                ));
             }
 
             ty::Pat(subty, _) => {
