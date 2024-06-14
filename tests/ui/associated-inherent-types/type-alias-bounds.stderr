@@ -1,0 +1,15 @@
+warning: bounds on generic parameters are not enforced in type aliases
+  --> $DIR/type-alias-bounds.rs:21:19
+   |
+LL | pub type Alias<T: Bound> = (Source<T>::Assoc,);
+   |                   ^^^^^
+   |
+   = note: `#[warn(type_alias_bounds)]` on by default
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL - pub type Alias<T: Bound> = (Source<T>::Assoc,);
+LL + pub type Alias<T> = (Source<T>::Assoc,);
+   |
+
+warning: 1 warning emitted
+
