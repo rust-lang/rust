@@ -1,13 +1,19 @@
-error[E0277]: the trait bound `Foo: Trait<Bar>` is not satisfied
+error[E0283]: type annotations needed: cannot satisfy `Foo: Trait<Bar>`
   --> $DIR/constrain_in_projection2.rs:27:14
    |
 LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
-   |              ^^^ the trait `Trait<Bar>` is not implemented for `Foo`
+   |              ^^^ help: use the fully qualified path to an implementation: `<Type as Trait>::Assoc`
    |
-   = help: the following other types implement trait `Trait<T>`:
-             `Foo` implements `Trait<()>`
-             `Foo` implements `Trait<u32>`
+note: multiple `impl`s satisfying `Foo: Trait<Bar>` found
+  --> $DIR/constrain_in_projection2.rs:18:1
+   |
+LL | impl Trait<()> for Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Trait<u32> for Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: associated types cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0283`.
