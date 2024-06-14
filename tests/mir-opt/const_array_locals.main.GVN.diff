@@ -37,12 +37,13 @@
       }
   
       bb0: {
-          StorageLive(_1);
+-         StorageLive(_1);
 -         _1 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32, const 251_i32, const 191_i32, const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32, const 193_i32, const 164_i32, const 194_i32, const 197_i32, const 6_i32, const 243_i32, const 218_i32, const 171_i32, const 87_i32, const 247_i32, const 104_i32, const 159_i32, const 22_i32, const 157_i32, const 105_i32, const 31_i32, const 96_i32, const 173_i32, const 50_i32, const 1_i32];
++         nop;
 +         _1 = const [255_i32, 105_i32, 15_i32, 39_i32, 62_i32, 251_i32, 191_i32, 178_i32, 9_i32, 4_i32, 56_i32, 221_i32, 193_i32, 164_i32, 194_i32, 197_i32, 6_i32, 243_i32, 218_i32, 171_i32, 87_i32, 247_i32, 104_i32, 159_i32, 22_i32, 157_i32, 105_i32, 31_i32, 96_i32, 173_i32, 50_i32, 1_i32];
           StorageLive(_2);
 -         _2 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32, const 251_i32, const 191_i32, const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32, const 193_i32, const 164_i32, const 194_i32, const 197_i32, const 6_i32, const 243_i32, const 218_i32, const 171_i32, const 87_i32, const 247_i32, const 104_i32, const 159_i32, const 22_i32, const 157_i32, const 105_i32, const 31_i32, const 96_i32, const 173_i32, const 50_i32, const 1_i32];
-+         _2 = const [255_i32, 105_i32, 15_i32, 39_i32, 62_i32, 251_i32, 191_i32, 178_i32, 9_i32, 4_i32, 56_i32, 221_i32, 193_i32, 164_i32, 194_i32, 197_i32, 6_i32, 243_i32, 218_i32, 171_i32, 87_i32, 247_i32, 104_i32, 159_i32, 22_i32, 157_i32, 105_i32, 31_i32, 96_i32, 173_i32, 50_i32, 1_i32];
++         _2 = _1;
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = [const 255_i32, const 105_i32, const 15_i32, const 39_i32, const 62_i32, const 251_i32, const 191_i32, const 178_i32, const 9_i32, const 4_i32, const 56_i32, const 221_i32];
@@ -96,7 +97,8 @@
           StorageDead(_6);
           StorageDead(_3);
           StorageDead(_2);
-          StorageDead(_1);
+-         StorageDead(_1);
++         nop;
           return;
       }
 + }

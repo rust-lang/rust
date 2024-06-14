@@ -1356,6 +1356,14 @@ impl<'tcx> VnState<'_, 'tcx> {
         if let Value::Constant { value, disambiguator: _ } = value
             && value.is_deterministic()
         {
+            // Prevent code bloat that makes
+            // `_2 = _1` now resolved to `_2 = <evaluated array>`.
+            if let Const::Val(_, ty) = value
+                && ty.is_array()
+                && self.rev_locals[index].len() > 1
+            {
+                return None;
+            }
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: *value });
         }
 
@@ -1382,7 +1390,7 @@ impl<'tcx> VnState<'_, 'tcx> {
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
-        // cache the propagated const
+        // Cache the propagated constant.
         if let Some(new_index) = self.insert_constant(const_) {
             self.values.swap_indices(index.as_usize(), new_index.as_usize());
         }
