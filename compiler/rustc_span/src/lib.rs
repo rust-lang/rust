@@ -967,7 +967,7 @@ impl Span {
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
     pub fn with_neighbor(self, neighbor: Span) -> Span {
         match Span::prepare_to_combine(self, neighbor) {
-            Ok((this, ..)) => Span::new(this.lo, this.hi, this.ctxt, this.parent),
+            Ok((this, ..)) => this.span(),
             Err(_) => self,
         }
     }
@@ -1352,7 +1352,7 @@ impl fmt::Debug for Span {
 
 impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&Span::new(self.lo, self.hi, self.ctxt, self.parent), f)
+        fmt::Debug::fmt(&self.span(), f)
     }
 }
 

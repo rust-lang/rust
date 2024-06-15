@@ -121,7 +121,7 @@ impl InlineCtxt {
         SpanData {
             lo: BytePos(self.lo),
             hi: BytePos(self.lo.debug_strict_add(len)),
-            ctxt: SyntaxContext::from_u32(self.ctxt as u32),
+            ctxt: SyntaxContext::from_u16(self.ctxt),
             parent: None,
         }
     }
@@ -146,7 +146,7 @@ impl InlineParent {
             lo: BytePos(self.lo),
             hi: BytePos(self.lo.debug_strict_add(len)),
             ctxt: SyntaxContext::root(),
-            parent: Some(LocalDefId { local_def_index: DefIndex::from_u32(self.parent as u32) }),
+            parent: Some(LocalDefId { local_def_index: DefIndex::from_u16(self.parent) }),
         }
     }
     #[inline]
@@ -167,7 +167,7 @@ impl PartiallyInterned {
     #[inline]
     fn data(self) -> SpanData {
         SpanData {
-            ctxt: SyntaxContext::from_u32(self.ctxt as u32),
+            ctxt: SyntaxContext::from_u16(self.ctxt),
             ..with_span_interner(|interner| interner.spans[self.index as usize])
         }
     }
@@ -331,8 +331,7 @@ impl Span {
         match_span_kind! {
             self,
             InlineCtxt(span) => {
-                updated_ctxt32 =
-                    update(SyntaxContext::from_u32(span.ctxt as u32)).as_u32();
+                updated_ctxt32 = update(SyntaxContext::from_u16(span.ctxt)).as_u32();
                 // Any small new context including zero will preserve the format.
                 if updated_ctxt32 <= MAX_CTXT {
                     return InlineCtxt::span(span.lo, span.len, updated_ctxt32 as u16);
@@ -349,7 +348,7 @@ impl Span {
                 data = span.data();
             },
             PartiallyInterned(span) => {
-                updated_ctxt32 = update(SyntaxContext::from_u32(span.ctxt as u32)).as_u32();
+                updated_ctxt32 = update(SyntaxContext::from_u16(span.ctxt)).as_u32();
                 // Any small new context excluding zero will preserve the format.
                 // Zero may change the format to `InlineParent` if parent and len are small enough.
                 if updated_ctxt32 <= MAX_CTXT && updated_ctxt32 != 0 {
@@ -373,9 +372,9 @@ impl Span {
     fn inline_ctxt(self) -> Result<SyntaxContext, usize> {
         match_span_kind! {
             self,
-            InlineCtxt(span) => Ok(SyntaxContext::from_u32(span.ctxt as u32)),
+            InlineCtxt(span) => Ok(SyntaxContext::from_u16(span.ctxt)),
             InlineParent(_span) => Ok(SyntaxContext::root()),
-            PartiallyInterned(span) => Ok(SyntaxContext::from_u32(span.ctxt as u32)),
+            PartiallyInterned(span) => Ok(SyntaxContext::from_u16(span.ctxt)),
             Interned(span) => Err(span.index as usize),
         }
     }
