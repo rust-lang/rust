@@ -394,10 +394,15 @@ fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &ll
             (*feature, desc)
         })
         .collect::<Vec<_>>();
+
+    // Since we add this at the end ...
     rustc_target_features.extend_from_slice(&[(
         "crt-static",
         "Enables C Run-time Libraries to be statically linked",
     )]);
+    // ... we need to sort the list again.
+    rustc_target_features.sort();
+
     llvm_target_features.retain(|(f, _d)| !known_llvm_target_features.contains(f));
 
     let max_feature_len = llvm_target_features
