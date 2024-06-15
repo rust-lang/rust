@@ -707,15 +707,19 @@ pub enum InlineAsmType {
     I32,
     I64,
     I128,
+    F16,
     F32,
     F64,
+    F128,
     VecI8(u64),
     VecI16(u64),
     VecI32(u64),
     VecI64(u64),
     VecI128(u64),
+    VecF16(u64),
     VecF32(u64),
     VecF64(u64),
+    VecF128(u64),
 }
 
 impl InlineAsmType {
@@ -730,15 +734,19 @@ impl InlineAsmType {
             Self::I32 => 4,
             Self::I64 => 8,
             Self::I128 => 16,
+            Self::F16 => 2,
             Self::F32 => 4,
             Self::F64 => 8,
+            Self::F128 => 16,
             Self::VecI8(n) => n * 1,
             Self::VecI16(n) => n * 2,
             Self::VecI32(n) => n * 4,
             Self::VecI64(n) => n * 8,
             Self::VecI128(n) => n * 16,
+            Self::VecF16(n) => n * 2,
             Self::VecF32(n) => n * 4,
             Self::VecF64(n) => n * 8,
+            Self::VecF128(n) => n * 16,
         })
     }
 }
@@ -751,15 +759,19 @@ impl fmt::Display for InlineAsmType {
             Self::I32 => f.write_str("i32"),
             Self::I64 => f.write_str("i64"),
             Self::I128 => f.write_str("i128"),
+            Self::F16 => f.write_str("f16"),
             Self::F32 => f.write_str("f32"),
             Self::F64 => f.write_str("f64"),
+            Self::F128 => f.write_str("f128"),
             Self::VecI8(n) => write!(f, "i8x{n}"),
             Self::VecI16(n) => write!(f, "i16x{n}"),
             Self::VecI32(n) => write!(f, "i32x{n}"),
             Self::VecI64(n) => write!(f, "i64x{n}"),
             Self::VecI128(n) => write!(f, "i128x{n}"),
+            Self::VecF16(n) => write!(f, "f16x{n}"),
             Self::VecF32(n) => write!(f, "f32x{n}"),
             Self::VecF64(n) => write!(f, "f64x{n}"),
+            Self::VecF128(n) => write!(f, "f128x{n}"),
         }
     }
 }
