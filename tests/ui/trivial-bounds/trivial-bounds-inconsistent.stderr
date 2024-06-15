@@ -24,18 +24,19 @@ warning: trait bound i32: Foo does not depend on any type or lifetime parameters
 LL | union U where i32: Foo { f: i32 }
    |                    ^^^
 
-warning: where clauses are not enforced in type aliases
+warning: where clauses on type aliases are not enforced
   --> $DIR/trivial-bounds-inconsistent.rs:22:14
    |
 LL | type Y where i32: Foo = ();
-   |              ^^^^^^^^
+   |        ------^^^^^^^^
+   |        |     |
+   |        |     will not be checked at usage sites of the type alias
+   |        help: remove this where clause
    |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
    = note: `#[warn(type_alias_bounds)]` on by default
-help: the clause will not be checked when the type alias is used, and should be removed
-   |
-LL - type Y where i32: Foo = ();
-LL + type Y  = ();
-   |
 
 warning: trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:22:19

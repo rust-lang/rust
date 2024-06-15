@@ -144,13 +144,18 @@ lint_builtin_special_module_name_used_main = found module declaration for main.r
 
 lint_builtin_trivial_bounds = {$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters
 
-lint_builtin_type_alias_bounds_help = use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
-
-lint_builtin_type_alias_generic_bounds = bounds on generic parameters are not enforced in type aliases
-    .suggestion = the bound will not be checked when the type alias is used, and should be removed
-
-lint_builtin_type_alias_where_clause = where clauses are not enforced in type aliases
-    .suggestion = the clause will not be checked when the type alias is used, and should be removed
+lint_builtin_type_alias_bounds_enable_feat_help = add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+lint_builtin_type_alias_bounds_label = will not be checked at usage sites of the type alias
+lint_builtin_type_alias_bounds_limitation_note = this is a known limitation of the type checker that may be lifted in a future edition.
+    see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+lint_builtin_type_alias_bounds_param_bounds = bounds on generic parameters in type aliases are not enforced
+    .suggestion = remove {$count ->
+        [one] this bound
+        *[other] these bounds
+    }
+lint_builtin_type_alias_bounds_qualify_assoc_tys_sugg = fully qualify this associated type
+lint_builtin_type_alias_bounds_where_clause = where clauses on type aliases are not enforced
+    .suggestion = remove this where clause
 
 lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
 lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
