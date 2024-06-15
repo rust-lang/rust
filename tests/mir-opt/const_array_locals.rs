@@ -25,6 +25,6 @@ pub fn main() {
     [[1, 0, 0], [0, 1, 0], [0, 0, 1]]; // 2D array
 }
 
-fn consume(_arr: [u16; 5]) {
+fn consume(_arr: [u32; 5]) {
     unimplemented!()
 }

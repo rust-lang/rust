@@ -9,7 +9,7 @@
       let mut _7: &[i32; 5];
       let _8: [i32; 5];
       let _9: ();
-      let mut _10: [u16; 5];
+      let mut _10: [u32; 5];
       let mut _12: [f32; 8];
       let _13: [[i32; 3]; 3];
       let mut _14: [i32; 3];
@@ -63,8 +63,10 @@
           StorageDead(_7);
           StorageLive(_9);
           StorageLive(_10);
-          _10 = [const 31_u16, const 96_u16, const 173_u16, const 50_u16, const 1_u16];
-          _9 = consume(move _10) -> [return: bb1, unwind continue];
+-         _10 = [const 31_u32, const 96_u32, const 173_u32, const 50_u32, const 1_u32];
+-         _9 = consume(move _10) -> [return: bb1, unwind continue];
++         _10 = const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32];
++         _9 = consume(const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32]) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -105,16 +107,21 @@
 + }
 + 
 + ALLOC1 (size: 20, align: 4) {
++     0x00 │ 1f 00 00 00 60 00 00 00 ad 00 00 00 32 00 00 00 │ ....`.......2...
++     0x10 │ 01 00 00 00                                     │ ....
++ }
++ 
++ ALLOC2 (size: 20, align: 4) {
 +     0x00 │ c1 00 00 00 a4 00 00 00 c2 00 00 00 c5 00 00 00 │ ................
 +     0x10 │ 06 00 00 00                                     │ ....
 + }
 + 
-+ ALLOC2 (size: 20, align: 4) {
++ ALLOC3 (size: 20, align: 4) {
 +     0x00 │ b2 00 00 00 09 00 00 00 04 00 00 00 38 00 00 00 │ ............8...
 +     0x10 │ dd 00 00 00                                     │ ....
 + }
 + 
-+ ALLOC3 (size: 20, align: 4) {
++ ALLOC4 (size: 20, align: 4) {
 +     0x00 │ ff 00 00 00 69 00 00 00 0f 00 00 00 27 00 00 00 │ ....i.......'...
 +     0x10 │ 3e 00 00 00                                     │ >...
   }
