@@ -268,7 +268,7 @@ pub struct Response<I: Interner> {
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: Vec<ty::OutlivesPredicate<I, I::GenericArg>>,
-    pub opaque_types: Vec<(I::LocalDefId, I::GenericArgs, I::Ty)>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 

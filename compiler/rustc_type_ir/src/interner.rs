@@ -29,7 +29,7 @@ pub trait Interner:
     + IrPrint<ty::FnSig<Self>>
 {
     type DefId: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
-    type LocalDefId: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
+    type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
     type AdtDef: AdtDef<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -104,7 +104,11 @@ pub trait Interner:
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
-    type VariancesOf: Copy + Debug + Deref<Target = [ty::Variance]>;
+    type VariancesOf: Copy
+        + Debug
+        + Deref<Target = [ty::Variance]>
+        // FIXME: This is terrible!
+        + IntoIterator<Item: Deref<Target = ty::Variance>>;
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
     // FIXME: Remove after uplifting `EarlyBinder`
