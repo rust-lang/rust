@@ -456,8 +456,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::MutToConstPointer)
-                    | mir::CastKind::PtrToPtr
+                    mir::CastKind::PointerCoercion(
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                    ) => {
+                        bug!("{kind:?} is for borrowck, and should never appear in codegen");
+                    }
+                    mir::CastKind::PtrToPtr
                         if bx.cx().is_backend_scalar_pair(operand.layout) =>
                     {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
@@ -477,9 +481,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
                     }
-                    mir::CastKind::PointerCoercion(
-                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
-                    )
                     | mir::CastKind::IntToInt
                     | mir::CastKind::FloatToInt
                     | mir::CastKind::FloatToFloat
