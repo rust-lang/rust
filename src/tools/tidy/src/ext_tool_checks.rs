@@ -24,9 +24,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Minimum python revision is 3.7 for ruff
-const MIN_PY_REV: (u32, u32) = (3, 7);
-const MIN_PY_REV_STR: &str = "≥3.7";
+const MIN_PY_REV: (u32, u32) = (3, 9);
+const MIN_PY_REV_STR: &str = "≥3.9";
 
 /// Path to find the python executable within a virtual environment
 #[cfg(target_os = "windows")]
@@ -223,17 +222,8 @@ fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf,
 fn create_venv_at_path(path: &Path) -> Result<(), Error> {
     /// Preferred python versions in order. Newest to oldest then current
     /// development versions
-    const TRY_PY: &[&str] = &[
-        "python3.11",
-        "python3.10",
-        "python3.9",
-        "python3.8",
-        "python3.7",
-        "python3",
-        "python",
-        "python3.12",
-        "python3.13",
-    ];
+    const TRY_PY: &[&str] =
+        &["python3.11", "python3.10", "python3.9", "python3", "python", "python3.12", "python3.13"];
 
     let mut sys_py = None;
     let mut found = Vec::new();
