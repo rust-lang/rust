@@ -14,6 +14,7 @@ use helpers::bool_to_simd_element;
 mod aesni;
 mod avx;
 mod avx2;
+mod bmi;
 mod sse;
 mod sse2;
 mod sse3;
@@ -113,6 +114,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 pclmulqdq(this, left, right, imm, dest)?;
             }
 
+            name if name.starts_with("bmi.") => {
+                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
             name if name.starts_with("sse.") => {
                 return sse::EvalContextExt::emulate_x86_sse_intrinsic(
                     this, link_name, abi, args, dest,
