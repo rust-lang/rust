@@ -22,10 +22,6 @@ use rustc_span::def_id::DefId;
 
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
-use crate::traits::vtable::{
-    count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
-    VtblSegment,
-};
 use crate::traits::{
     ImplDerivedCause, ImplSource, ImplSourceUserDefinedData, Normalized, Obligation,
     ObligationCause, PolyTraitObligation, PredicateObligation, Selection, SelectionError,
@@ -689,13 +685,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?nested, "object nested obligations");
 
-        let vtable_base = vtable_trait_first_method_offset(
-            tcx,
-            unnormalized_upcast_trait_ref,
-            ty::Binder::dummy(object_trait_ref),
-        );
-
-        Ok(ImplSource::Builtin(BuiltinImplSource::Object { vtable_base: vtable_base }, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::Object(index), nested))
     }
 
     fn confirm_fn_pointer_candidate(
@@ -1125,36 +1115,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )?
             .expect("did not expect ambiguity during confirmation");
 
-        let vtable_segment_callback = {
-            let mut vptr_offset = 0;
-            move |segment| {
-                match segment {
-                    VtblSegment::MetadataDSA => {
-                        vptr_offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
-                    }
-                    VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        vptr_offset += count_own_vtable_entries(tcx, trait_ref);
-                        if trait_ref == unnormalized_upcast_principal {
-                            if emit_vptr {
-                                return ControlFlow::Break(Some(vptr_offset));
-                            } else {
-                                return ControlFlow::Break(None);
-                            }
-                        }
-
-                        if emit_vptr {
-                            vptr_offset += 1;
-                        }
-                    }
-                }
-                ControlFlow::Continue(())
-            }
-        };
-
-        let vtable_vptr_slot =
-            prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap();
-
-        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting, nested))
     }
 
     fn confirm_builtin_unsize_candidate(

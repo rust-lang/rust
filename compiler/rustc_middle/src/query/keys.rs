@@ -360,6 +360,14 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>) {
     }
 }
 
+impl<'tcx> Key for ty::TraitRef<'tcx> {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.def_id)
+    }
+}
+
 impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 

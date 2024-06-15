@@ -24,7 +24,6 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 use std::ops::ControlFlow;
 
 use crate::traits::coherence;
-use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
 use super::{search_graph, GoalEvaluationKind, FIXPOINT_STEP_LIMIT};
@@ -1021,41 +1020,6 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 Some(ty::Const::new_error(self.interner(), e.into()))
             }
         }
-    }
-
-    /// Walk through the vtable of a principal trait ref, executing a `supertrait_visitor`
-    /// for every trait ref encountered (including the principal). Passes both the vtable
-    /// base and the (optional) vptr slot.
-    pub(super) fn walk_vtable(
-        &mut self,
-        principal: ty::PolyTraitRef<'tcx>,
-        mut supertrait_visitor: impl FnMut(&mut Self, ty::PolyTraitRef<'tcx>, usize, Option<usize>),
-    ) {
-        let tcx = self.interner();
-        let mut offset = 0;
-        prepare_vtable_segments::<()>(tcx, principal, |segment| {
-            match segment {
-                VtblSegment::MetadataDSA => {
-                    offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
-                }
-                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                    let own_vtable_entries = count_own_vtable_entries(tcx, trait_ref);
-
-                    supertrait_visitor(
-                        self,
-                        trait_ref,
-                        offset,
-                        emit_vptr.then(|| offset + own_vtable_entries),
-                    );
-
-                    offset += own_vtable_entries;
-                    if emit_vptr {
-                        offset += 1;
-                    }
-                }
-            }
-            ControlFlow::Continue(())
-        });
     }
 }
 

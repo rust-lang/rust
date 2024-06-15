@@ -9,6 +9,7 @@ use rustc_hir::{LangItem, Movability};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::MaybeCause;
+use rustc_infer::traits::util::supertraits;
 use rustc_middle::bug;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
@@ -756,24 +757,19 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 a_data.principal(),
             ));
         } else if let Some(a_principal) = a_data.principal() {
-            self.walk_vtable(
-                a_principal.with_self_ty(tcx, a_ty),
-                |ecx, new_a_principal, _, vtable_vptr_slot| {
-                    responses.extend(ecx.consider_builtin_upcast_to_principal(
-                        goal,
-                        CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting {
-                            vtable_vptr_slot,
-                        }),
-                        a_data,
-                        a_region,
-                        b_data,
-                        b_region,
-                        Some(new_a_principal.map_bound(|trait_ref| {
-                            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                        })),
-                    ));
-                },
-            );
+            for new_a_principal in supertraits(tcx, a_principal.with_self_ty(tcx, a_ty)).skip(1) {
+                responses.extend(self.consider_builtin_upcast_to_principal(
+                    goal,
+                    CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting),
+                    a_data,
+                    a_region,
+                    b_data,
+                    b_region,
+                    Some(new_a_principal.map_bound(|trait_ref| {
+                        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                    })),
+                ));
+            }
         }
 
         responses

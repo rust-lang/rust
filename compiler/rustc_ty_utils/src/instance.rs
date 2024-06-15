@@ -212,13 +212,23 @@ fn resolve_associated_item<'tcx>(
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))
         }
-        traits::ImplSource::Builtin(BuiltinImplSource::Object { vtable_base }, _) => {
-            traits::get_vtable_index_of_object_method(tcx, *vtable_base, trait_item_id).map(
-                |index| Instance {
-                    def: ty::InstanceDef::Virtual(trait_item_id, index),
+        traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
+            let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
+            if trait_ref.has_non_region_infer() || trait_ref.has_non_region_param() {
+                // We only resolve totally substituted vtable entries.
+                None
+            } else {
+                let vtable_base = tcx.first_method_vtable_slot(trait_ref);
+                let offset = tcx
+                    .own_existential_vtable_entries(trait_id)
+                    .iter()
+                    .copied()
+                    .position(|def_id| def_id == trait_item_id);
+                offset.map(|offset| Instance {
+                    def: ty::InstanceDef::Virtual(trait_item_id, vtable_base + offset),
                     args: rcvr_args,
-                },
-            )
+                })
+            }
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Misc, _) => {
             let lang_items = tcx.lang_items();
