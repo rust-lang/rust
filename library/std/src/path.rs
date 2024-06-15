@@ -3345,12 +3345,12 @@ impl Error for StripPrefixError {
 /// Makes the path absolute without accessing the filesystem.
 ///
 /// If the path is relative, the current directory is used as the base directory.
-/// All intermediate components will be resolved according to platforms-specific
-/// rules but unlike [`canonicalize`][crate::fs::canonicalize] this does not
-/// resolve symlinks and may succeed even if the path does not exist.
+/// All intermediate components will be resolved according to platform-specific
+/// rules, but unlike [`canonicalize`][crate::fs::canonicalize], this does not
+/// resolve symlinks, and may succeed even if the path does not exist.
 ///
-/// If the `path` is empty or getting the
-/// [current directory][crate::env::current_dir] fails then an error will be
+/// If the `path` is empty, or getting the
+/// [current directory][crate::env::current_dir] fails, then an error will be
 /// returned.
 ///
 /// # Examples
