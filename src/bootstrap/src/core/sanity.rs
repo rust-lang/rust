@@ -129,6 +129,9 @@ pub fn check(build: &mut Build) {
                     eprintln!(
                         "Consider upgrading libstdc++ or disabling the `llvm.download-ci-llvm` option."
                     );
+                    eprintln!(
+                        "If you choose to upgrade libstdc++, run `x clean` or delete `build/host/libcxx-version` manually after the upgrade."
+                    );
                 }
             }
             tool::LibcxxVersion::Llvm(_) => {
