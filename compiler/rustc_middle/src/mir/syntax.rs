@@ -1490,7 +1490,8 @@ pub enum BinOp {
     BitOr,
     /// The `<<` operator (shift left)
     ///
-    /// The offset is (uniquely) determined as follows:
+    /// The offset is given by `RHS.rem_euclid(LHS::BITS)`.
+    /// In other words, it is (uniquely) determined as follows:
     /// - it is "equal modulo LHS::BITS" to the RHS
     /// - it is in the range `0..LHS::BITS`
     Shl,
@@ -1498,7 +1499,8 @@ pub enum BinOp {
     ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
-    /// The offset is (uniquely) determined as follows:
+    /// The offset is given by `RHS.rem_euclid(LHS::BITS)`.
+    /// In other words, it is (uniquely) determined as follows:
     /// - it is "equal modulo LHS::BITS" to the RHS
     /// - it is in the range `0..LHS::BITS`
     ///
