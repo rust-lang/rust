@@ -699,7 +699,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // exactly `T` (i.e., with invariance). The variance field, in
                             // contrast, is intended to be used to relate `T` to the type of
                             // `<expr>`.
-                            ty::Variance::Invariant,
+                            ty::Invariant,
                         ),
                     },
                 );
