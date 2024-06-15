@@ -1168,7 +1168,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             ..Default::default()
         })
     });
-    store.register_late_pass(|_| Box::new(string_patterns::StringPatterns));
+    store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(msrv())));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

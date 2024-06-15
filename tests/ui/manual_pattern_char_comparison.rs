@@ -47,3 +47,15 @@ fn main() {
     }
     "".find(|c| m!(c));
 }
+
+#[clippy::msrv = "1.57"]
+fn msrv_1_57() {
+    let sentence = "Hello, world!";
+    sentence.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?');
+}
+
+#[clippy::msrv = "1.58"]
+fn msrv_1_58() {
+    let sentence = "Hello, world!";
+    sentence.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?');
+}
