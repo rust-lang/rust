@@ -128,7 +128,7 @@ pub fn relate_args_invariantly<I: Interner, R: TypeRelation<I>>(
     b_arg: I::GenericArgs,
 ) -> RelateResult<I, I::GenericArgs> {
     relation.tcx().mk_args_from_iter(iter::zip(a_arg, b_arg).map(|(a, b)| {
-        relation.relate_with_variance(ty::Variance::Invariant, VarianceDiagInfo::default(), a, b)
+        relation.relate_with_variance(ty::Invariant, VarianceDiagInfo::default(), a, b)
     }))
 }
 
@@ -145,7 +145,7 @@ pub fn relate_args_with_variances<I: Interner, R: TypeRelation<I>>(
     let mut cached_ty = None;
     let params = iter::zip(a_arg, b_arg).enumerate().map(|(i, (a, b))| {
         let variance = variances[i];
-        let variance_info = if variance == ty::Variance::Invariant && fetch_ty_for_diag {
+        let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
             let ty =
                 *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).instantiate(tcx, &a_arg));
             VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
@@ -191,7 +191,7 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
                     relation.relate(a, b)
                 } else {
                     relation.relate_with_variance(
-                        ty::Variance::Contravariant,
+                        ty::Contravariant,
                         VarianceDiagInfo::default(),
                         a,
                         b,
@@ -311,13 +311,13 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
             }))
         } else {
             let term = relation.relate_with_variance(
-                ty::Variance::Invariant,
+                ty::Invariant,
                 VarianceDiagInfo::default(),
                 a.term,
                 b.term,
             )?;
             let args = relation.relate_with_variance(
-                ty::Variance::Invariant,
+                ty::Invariant,
                 VarianceDiagInfo::default(),
                 a.args,
                 b.args,
@@ -466,9 +466,9 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             }
 
             let (variance, info) = match a_mutbl {
-                Mutability::Not => (ty::Variance::Covariant, VarianceDiagInfo::None),
+                Mutability::Not => (ty::Covariant, VarianceDiagInfo::None),
                 Mutability::Mut => {
-                    (ty::Variance::Invariant, VarianceDiagInfo::Invariant { ty: a, param_index: 0 })
+                    (ty::Invariant, VarianceDiagInfo::Invariant { ty: a, param_index: 0 })
                 }
             };
 
@@ -483,9 +483,9 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             }
 
             let (variance, info) = match a_mutbl {
-                Mutability::Not => (ty::Variance::Covariant, VarianceDiagInfo::None),
+                Mutability::Not => (ty::Covariant, VarianceDiagInfo::None),
                 Mutability::Mut => {
-                    (ty::Variance::Invariant, VarianceDiagInfo::Invariant { ty: a, param_index: 0 })
+                    (ty::Invariant, VarianceDiagInfo::Invariant { ty: a, param_index: 0 })
                 }
             };
 
@@ -612,7 +612,7 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
             }
 
             let args = relation.relate_with_variance(
-                ty::Variance::Invariant,
+                ty::Invariant,
                 VarianceDiagInfo::default(),
                 au.args,
                 bu.args,
