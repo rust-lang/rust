@@ -94,6 +94,17 @@ adding `NEW_TARGET_OS` as `target_os`:
 + (Some(Mode::Std), "target_os", Some(&["watchos", "NEW_TARGET_OS"])),
 ```
 
+To use this target in bootstrap, we need to explicitly add the target triple to the `STAGE0_MISSING_TARGETS`
+list in `src/bootstrap/src/core/sanity.rs`. This is necessary because the default compiler bootstrap uses does
+not recognize the new target we just added. Therefore, it should be added to `STAGE0_MISSING_TARGETS` so that the
+bootstrap is aware that this target is not yet supported by the stage0 compiler.
+
+```diff
+const STAGE0_MISSING_TARGETS: &[&str] = &[
++   "NEW_TARGET_TRIPLE"
+];
+```
+
 ## Patching crates
 
 You may need to make changes to crates that the compiler depends on,
