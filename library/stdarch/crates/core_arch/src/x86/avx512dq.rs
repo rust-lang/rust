@@ -6248,7 +6248,7 @@ pub unsafe fn _mm_maskz_reduce_sd<const IMM8: i32>(k: __mmask8, a: __m128d, b: _
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_round_ss&ig_expand=5453)
 #[inline]
-#[target_feature(enable = "avx512dq")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6405,6 +6405,426 @@ pub unsafe fn _mm_mask_reduce_ss<const IMM8: i32>(
 pub unsafe fn _mm_maskz_reduce_ss<const IMM8: i32>(k: __mmask8, a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_mask_reduce_ss::<IMM8>(_mm_setzero_ps(), k, a, b)
+}
+
+// FP-Class
+
+macro_rules! fpclass_asm {
+    ($instr:literal, $mask_type: ty, $reg: ident, $a: expr) => {{
+        let dst: $mask_type;
+        $crate::arch::asm!(
+            concat!($instr, " {k}, {src}, {imm8}"),
+            k = lateout(kreg) dst,
+            src = in($reg) $a,
+            imm8 = const IMM8,
+            options(pure, nomem, nostack)
+        );
+        dst
+    }};
+    ($instr:literal, $mask_type: ty, $mask: expr, $reg: ident, $a: expr) => {{
+        let dst: $mask_type;
+        $crate::arch::asm!(
+            concat!($instr, " {k} {{ {mask} }}, {src}, {imm8}"),
+            k = lateout(kreg) dst,
+            mask = in(kreg) $mask,
+            src = in($reg) $a,
+            imm8 = const IMM8,
+            options(pure, nomem, nostack)
+        );
+        dst
+    }};
+}
+
+/// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_pd_mask&ig_expand=3493)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_fpclass_pd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasspd", __mmask8, xmm_reg, a)
+}
+
+/// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_pd_mask&ig_expand=3494)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasspd", __mmask8, k1, xmm_reg, a)
+}
+
+/// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fpclass_pd_mask&ig_expand=3495)
+#[inline]
+#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_fpclass_pd_mask<const IMM8: i32>(a: __m256d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasspd", __mmask8, ymm_reg, a)
+}
+
+/// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_fpclass_pd_mask&ig_expand=3496)
+#[inline]
+#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m256d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasspd", __mmask8, k1, ymm_reg, a)
+}
+
+/// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_fpclass_pd_mask&ig_expand=3497)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq")]
+#[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_fpclass_pd_mask<const IMM8: i32>(a: __m512d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasspd", __mmask8, zmm_reg, a)
+}
+
+/// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_fpclass_pd_mask&ig_expand=3498)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq")]
+#[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m512d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasspd", __mmask8, k1, zmm_reg, a)
+}
+
+/// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_ps_mask&ig_expand=3505)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_fpclass_ps_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassps", __mmask8, xmm_reg, a)
+}
+
+/// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ps_mask&ig_expand=3506)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask8, a: __m128) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassps", __mmask8, k1, xmm_reg, a)
+}
+
+/// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fpclass_ps_mask&ig_expand=3507)
+#[inline]
+#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_fpclass_ps_mask<const IMM8: i32>(a: __m256) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassps", __mmask8, ymm_reg, a)
+}
+
+/// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_fpclass_ps_mask&ig_expand=3508)
+#[inline]
+#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask8, a: __m256) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassps", __mmask8, k1, ymm_reg, a)
+}
+
+/// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_fpclass_ps_mask&ig_expand=3509)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq")]
+#[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_fpclass_ps_mask<const IMM8: i32>(a: __m512) -> __mmask16 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassps", __mmask16, zmm_reg, a)
+}
+
+/// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_fpclass_ps_mask&ig_expand=3510)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq")]
+#[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m512) -> __mmask16 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassps", __mmask16, k1, zmm_reg, a)
+}
+
+/// Test the lower double-precision (64-bit) floating-point element in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_sd_mask&ig_expand=3511)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_fpclass_sd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasssd", __mmask8, xmm_reg, a)
+}
+
+/// Test the lower double-precision (64-bit) floating-point element in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_sd_mask&ig_expand=3512)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclasssd", __mmask8, k1, xmm_reg, a)
+}
+
+/// Test the lower single-precision (32-bit) floating-point element in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_ss_mask&ig_expand=3515)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_fpclass_ss_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassss", __mmask8, xmm_reg, a)
+}
+
+/// Test the lower single-precision (32-bit) floating-point element in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     - 0x01 // QNaN
+///     - 0x02 // Positive Zero
+///     - 0x04 // Negative Zero
+///     - 0x08 // Positive Infinity
+///     - 0x10 // Negative Infinity
+///     - 0x20 // Denormal
+///     - 0x40 // Negative
+///     - 0x80 // SNaN
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ss_mask&ig_expand=3516)
+#[inline]
+#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_fpclass_ss_mask<const IMM8: i32>(k1: __mmask8, a: __m128) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!("vfpclassss", __mmask8, k1, xmm_reg, a)
 }
 
 #[allow(improper_ctypes)]
@@ -10086,5 +10506,203 @@ mod tests {
         let r = _mm_maskz_reduce_ss::<{ 16 | _MM_FROUND_TO_ZERO }>(0b0, a, b);
         let e = _mm_set_ps(1., 2., 3., 0.);
         assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_fpclass_pd_mask() {
+        let a = _mm_set_pd(1., f64::INFINITY);
+        let r = _mm_fpclass_pd_mask::<0x18>(a);
+        let e = 0b01;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_fpclass_pd_mask() {
+        let a = _mm_set_pd(1., f64::INFINITY);
+        let r = _mm_mask_fpclass_pd_mask::<0x18>(0b10, a);
+        let e = 0b00;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_fpclass_pd_mask() {
+        let a = _mm256_set_pd(1., f64::INFINITY, f64::NEG_INFINITY, 0.0);
+        let r = _mm256_fpclass_pd_mask::<0x18>(a);
+        let e = 0b0110;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_mask_fpclass_pd_mask() {
+        let a = _mm256_set_pd(1., f64::INFINITY, f64::NEG_INFINITY, 0.0);
+        let r = _mm256_mask_fpclass_pd_mask::<0x18>(0b1010, a);
+        let e = 0b0010;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_fpclass_pd_mask() {
+        let a = _mm512_set_pd(
+            1.,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f64::NAN,
+            1.0e-308,
+        );
+        let r = _mm512_fpclass_pd_mask::<0x18>(a);
+        let e = 0b01100000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_fpclass_pd_mask() {
+        let a = _mm512_set_pd(
+            1.,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f64::NAN,
+            1.0e-308,
+        );
+        let r = _mm512_mask_fpclass_pd_mask::<0x18>(0b10101010, a);
+        let e = 0b00100000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_fpclass_ps_mask() {
+        let a = _mm_set_ps(1., f32::INFINITY, f32::NEG_INFINITY, 0.0);
+        let r = _mm_fpclass_ps_mask::<0x18>(a);
+        let e = 0b0110;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_fpclass_ps_mask() {
+        let a = _mm_set_ps(1., f32::INFINITY, f32::NEG_INFINITY, 0.0);
+        let r = _mm_mask_fpclass_ps_mask::<0x18>(0b1010, a);
+        let e = 0b0010;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_fpclass_ps_mask() {
+        let a = _mm256_set_ps(
+            1.,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f32::NAN,
+            1.0e-38,
+        );
+        let r = _mm256_fpclass_ps_mask::<0x18>(a);
+        let e = 0b01100000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm256_mask_fpclass_ps_mask() {
+        let a = _mm256_set_ps(
+            1.,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f32::NAN,
+            1.0e-38,
+        );
+        let r = _mm256_mask_fpclass_ps_mask::<0>(0b10101010, a);
+        let e = 0b00100000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_fpclass_ps_mask() {
+        let a = _mm512_set_ps(
+            1.,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f32::NAN,
+            1.0e-38,
+            -1.,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            -0.0,
+            0.0,
+            2.0,
+            f32::NAN,
+            -1.0e-38,
+        );
+        let r = _mm512_fpclass_ps_mask::<0x18>(a);
+        let e = 0b0110000001100000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_mm512_mask_fpclass_ps_mask() {
+        let a = _mm512_set_ps(
+            1.,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f32::NAN,
+            1.0e-38,
+            -1.,
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            -0.0,
+            0.0,
+            2.0,
+            f32::NAN,
+            -1.0e-38,
+        );
+        let r = _mm512_mask_fpclass_ps_mask::<0>(0b1010101010101010, a);
+        let e = 0b0010000000100000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_fpclass_sd_mask() {
+        let a = _mm_set_pd(1., f64::INFINITY);
+        let r = _mm_fpclass_sd_mask::<0x18>(a);
+        let e = 0b1;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_fpclass_sd_mask() {
+        let a = _mm_set_sd(f64::INFINITY);
+        let r = _mm_mask_fpclass_sd_mask::<0x18>(0b0, a);
+        let e = 0b0;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_fpclass_ss_mask() {
+        let a = _mm_set_ss(f32::INFINITY);
+        let r = _mm_fpclass_ss_mask::<0x18>(a);
+        let e = 0b1;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq,avx512vl")]
+    unsafe fn test_mm_mask_fpclass_ss_mask() {
+        let a = _mm_set_ss(f32::INFINITY);
+        let r = _mm_mask_fpclass_ss_mask::<0x18>(0b0, a);
+        let e = 0b0;
+        assert_eq!(r, e);
     }
 }

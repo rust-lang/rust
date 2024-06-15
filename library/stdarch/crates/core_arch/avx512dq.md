@@ -296,22 +296,22 @@
 
 
 - FP-Class:
-    * [ ] _mm_fpclass_pd_mask (Needs `i1` type)
-    * [ ] _mm_mask_fpclass_pd_mask (Needs `i1` type)
-    * [ ] _mm256_fpclass_pd_mask (Needs `i1` type)
-    * [ ] _mm256_mask_fpclass_pd_mask (Needs `i1` type)
-    * [ ] _mm512_fpclass_pd_mask (Needs `i1` type)
-    * [ ] _mm512_mask_fpclass_pd_mask (Needs `i1` type)
-    * [ ] _mm_fpclass_ps_mask (Needs `i1` type)
-    * [ ] _mm_mask_fpclass_ps_mask (Needs `i1` type)
-    * [ ] _mm256_fpclass_ps_mask (Needs `i1` type)
-    * [ ] _mm256_mask_fpclass_ps_mask (Needs `i1` type)
-    * [ ] _mm512_fpclass_ps_mask (Needs `i1` type)
-    * [ ] _mm512_mask_fpclass_ps_mask (Needs `i1` type)
-    * [ ] _mm_fpclass_sd_mask (Needs `i1` type)
-    * [ ] _mm_mask_fpclass_sd_mask (Needs `i1` type)
-    * [ ] _mm_fpclass_ss_mask (Needs `i1` type)
-    * [ ] _mm_mask_fpclass_ss_mask (Needs `i1` type)
+    * [x] _mm_fpclass_pd_mask (Needs `i1` type)
+    * [x] _mm_mask_fpclass_pd_mask (Needs `i1` type)
+    * [x] _mm256_fpclass_pd_mask (Needs `i1` type)
+    * [x] _mm256_mask_fpclass_pd_mask (Needs `i1` type)
+    * [x] _mm512_fpclass_pd_mask (Needs `i1` type)
+    * [x] _mm512_mask_fpclass_pd_mask (Needs `i1` type)
+    * [x] _mm_fpclass_ps_mask (Needs `i1` type)
+    * [x] _mm_mask_fpclass_ps_mask (Needs `i1` type)
+    * [x] _mm256_fpclass_ps_mask (Needs `i1` type)
+    * [x] _mm256_mask_fpclass_ps_mask (Needs `i1` type)
+    * [x] _mm512_fpclass_ps_mask (Needs `i1` type)
+    * [x] _mm512_mask_fpclass_ps_mask (Needs `i1` type)
+    * [x] _mm_fpclass_sd_mask (Needs `i1` type)
+    * [x] _mm_mask_fpclass_sd_mask (Needs `i1` type)
+    * [x] _mm_fpclass_ss_mask (Needs `i1` type)
+    * [x] _mm_mask_fpclass_ss_mask (Needs `i1` type)
 
 
 - Mask Registers:
