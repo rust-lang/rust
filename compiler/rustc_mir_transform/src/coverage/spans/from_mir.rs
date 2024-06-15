@@ -31,7 +31,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
 ) -> Vec<Vec<SpanFromMir>> {
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
-    let mut initial_spans = vec![];
+    let mut covspans = vec![];
     let mut holes = vec![];
 
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
@@ -40,36 +40,36 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             body_span,
             bcb,
             bcb_data,
-            &mut initial_spans,
+            &mut covspans,
             &mut holes,
         );
     }
 
     // Only add the signature span if we found at least one span in the body.
-    if !initial_spans.is_empty() || !holes.is_empty() {
+    if !covspans.is_empty() || !holes.is_empty() {
         // If there is no usable signature span, add a fake one (before refinement)
         // to avoid an ugly gap between the body start and the first real span.
         // FIXME: Find a more principled way to solve this problem.
         let fn_sig_span = hir_info.fn_sig_span_extended.unwrap_or_else(|| body_span.shrink_to_lo());
-        initial_spans.push(SpanFromMir::for_fn_sig(fn_sig_span));
+        covspans.push(SpanFromMir::for_fn_sig(fn_sig_span));
     }
 
-    initial_spans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
-    remove_unwanted_macro_spans(&mut initial_spans);
-    split_visible_macro_spans(&mut initial_spans);
+    covspans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
+    remove_unwanted_macro_spans(&mut covspans);
+    split_visible_macro_spans(&mut covspans);
 
     let compare_covspans = |a: &SpanFromMir, b: &SpanFromMir| {
         compare_spans(a.span, b.span)
             // After deduplication, we want to keep only the most-dominated BCB.
             .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
     };
-    initial_spans.sort_by(compare_covspans);
+    covspans.sort_by(compare_covspans);
 
     // Among covspans with the same span, keep only one,
     // preferring the one with the most-dominated BCB.
     // (Ideally we should try to preserve _all_ non-dominating BCBs, but that
     // requires a lot more complexity in the span refiner, for little benefit.)
-    initial_spans.dedup_by(|b, a| a.span.source_equal(b.span));
+    covspans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     // Sort the holes, and merge overlapping/adjacent holes.
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
@@ -78,7 +78,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     // Now we're ready to start carving holes out of the initial coverage spans,
     // and grouping them in buckets separated by the holes.
 
-    let mut initial_spans = VecDeque::from(initial_spans);
+    let mut input_covspans = VecDeque::from(covspans);
     let mut fragments: Vec<SpanFromMir> = vec![];
 
     // For each hole:
@@ -93,10 +93,10 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
         // Only inspect spans that precede or overlap this hole,
         // leaving the rest to be inspected by later holes.
         // (This relies on the spans and holes both being sorted.)
-        let relevant_initial_spans =
-            drain_front_while(&mut initial_spans, |c| c.span.lo() < hole.span.hi());
+        let relevant_input_covspans =
+            drain_front_while(&mut input_covspans, |c| c.span.lo() < hole.span.hi());
 
-        for covspan in fragments_from_prev.into_iter().chain(relevant_initial_spans) {
+        for covspan in fragments_from_prev.into_iter().chain(relevant_input_covspans) {
             let (before, after) = covspan.split_around_hole_span(hole.span);
             bucket.extend(before);
             fragments.extend(after);
@@ -106,12 +106,12 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     // After finding the spans before each hole, any remaining fragments/spans
     // form their own final bucket, after the final hole.
     // (If there were no holes, this will just be all of the initial spans.)
-    fragments.extend(initial_spans);
+    fragments.extend(input_covspans);
     buckets.push(fragments);
 
     // Make sure each individual bucket is still internally sorted.
-    for bucket in &mut buckets {
-        bucket.sort_by(compare_covspans);
+    for covspans in &mut buckets {
+        covspans.sort_by(compare_covspans);
     }
     buckets
 }
@@ -143,9 +143,9 @@ fn drain_front_while<'a, T>(
 ///
 /// (The input spans should be sorted in BCB dominator order, so that the
 /// retained "first" span is likely to dominate the others.)
-fn remove_unwanted_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
+fn remove_unwanted_macro_spans(covspans: &mut Vec<SpanFromMir>) {
     let mut seen_macro_spans = FxHashSet::default();
-    initial_spans.retain(|covspan| {
+    covspans.retain(|covspan| {
         // Ignore (retain) non-macro-expansion spans.
         if covspan.visible_macro.is_none() {
             return true;
@@ -160,10 +160,10 @@ fn remove_unwanted_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
 /// function body, split it into two parts. The first part covers just the
 /// macro name plus `!`, and the second part covers the rest of the macro
 /// invocation. This seems to give better results for code that uses macros.
-fn split_visible_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
+fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
     let mut extra_spans = vec![];
 
-    initial_spans.retain(|covspan| {
+    covspans.retain(|covspan| {
         let Some(visible_macro) = covspan.visible_macro else { return true };
 
         let split_len = visible_macro.as_str().len() as u32 + 1;
@@ -183,7 +183,7 @@ fn split_visible_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
 
     // The newly-split spans are added at the end, so any previous sorting
     // is not preserved.
-    initial_spans.extend(extra_spans);
+    covspans.extend(extra_spans);
 }
 
 // Generate a set of coverage spans from the filtered set of `Statement`s and `Terminator`s of

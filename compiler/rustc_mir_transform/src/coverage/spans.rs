@@ -19,11 +19,11 @@ pub(super) fn extract_refined_covspans(
     basic_coverage_blocks: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let sorted_span_buckets =
+    let buckets =
         from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
-    for bucket in sorted_span_buckets {
-        let refined_spans = refine_sorted_spans(bucket);
-        code_mappings.extend(refined_spans.into_iter().map(|RefinedCovspan { span, bcb }| {
+    for covspans in buckets {
+        let covspans = refine_sorted_spans(covspans);
+        code_mappings.extend(covspans.into_iter().map(|RefinedCovspan { span, bcb }| {
             // Each span produced by the refiner represents an ordinary code region.
             mappings::CodeMapping { span, bcb }
         }));
