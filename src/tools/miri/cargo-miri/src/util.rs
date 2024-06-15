@@ -171,11 +171,16 @@ where
         drop(path); // We don't need the path, we can pipe the bytes directly
         cmd.stdin(std::process::Stdio::piped());
         let mut child = cmd.spawn().expect("failed to spawn process");
-        {
-            let stdin = child.stdin.as_mut().expect("failed to open stdin");
-            stdin.write_all(input).expect("failed to write out test source");
-        }
-        let exit_status = child.wait().expect("failed to run command");
+        let child_stdin = child.stdin.take().unwrap();
+        // Write stdin in a background thread, as it may block.
+        let exit_status = std::thread::scope(|s| {
+            s.spawn(|| {
+                let mut child_stdin = child_stdin;
+                // Ignore failure, it is most likely due to the process having terminated.
+                let _ = child_stdin.write_all(input);
+            });
+            child.wait().expect("failed to run command")
+        });
         std::process::exit(exit_status.code().unwrap_or(-1))
     }
 }
@@ -316,4 +321,25 @@ pub fn clean_target_dir(meta: &Metadata) {
     eprintln!("Cleaning target directory at {}", target_dir.display());
 
     remove_dir_all_idem(&target_dir).unwrap_or_else(|err| show_error!("{}", err))
+}
+
+/// Run `f` according to the many-seeds argument. In single-seed mode, `f` will only
+/// be called once, with `None`.
+pub fn run_many_seeds(many_seeds: Option<String>, f: impl Fn(Option<u32>)) {
+    let Some(many_seeds) = many_seeds else {
+        return f(None);
+    };
+    let (from, to) = many_seeds
+        .split_once("..")
+        .unwrap_or_else(|| show_error!("invalid format for `--many-seeds`: expected `from..to`"));
+    let from: u32 = if from.is_empty() {
+        0
+    } else {
+        from.parse().unwrap_or_else(|_| show_error!("invalid `from` in `--many-seeds=from..to"))
+    };
+    let to: u32 =
+        to.parse().unwrap_or_else(|_| show_error!("invalid `to` in `--many-seeds=from..to"));
+    for seed in from..to {
+        f(Some(seed));
+    }
 }

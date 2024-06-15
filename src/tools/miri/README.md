@@ -151,6 +151,21 @@ platform. For example `cargo miri test --target s390x-unknown-linux-gnu`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
+### Testing multiple different executions
+
+Certain parts of the execution are picked randomly by Miri, such as the exact base address
+allocations are stored at and the interleaving of concurrently executing threads. Sometimes, it can
+be useful to explore multiple different execution, e.g. to make sure that your code does not depend
+on incidental "super-alignment" of new allocations and to test different thread interleavings.
+This can be done with the `--many-seeds` flag:
+
+```
+cargo miri test --many-seeds # tries the seeds in 0..64
+cargo miri test --many-seeds=0..16
+```
+
+The default of 64 different seeds is quite slow, so you probably want to specify a smaller range.
+
 ### Running Miri on CI
 
 When running Miri on CI, use the following snippet to install a nightly toolchain with the Miri
@@ -182,23 +197,6 @@ Here is an example job for GitHub Actions:
 
 The explicit `cargo miri setup` helps to keep the output of the actual test step
 clean.
-
-### Testing for alignment issues
-
-Miri can sometimes miss misaligned accesses since allocations can "happen to be"
-aligned just right. You can use `-Zmiri-symbolic-alignment-check` to definitely
-catch all such issues, but that flag will also cause false positives when code
-does manual pointer arithmetic to account for alignment. Another alternative is
-to call Miri with various values for `-Zmiri-seed`; that will alter the
-randomness that is used to determine allocation base addresses. The following
-snippet calls Miri in a loop with different values for the seed:
-
-```
-for SEED in $(seq 0 255); do
-  echo "Trying seed: $SEED"
-  MIRIFLAGS=-Zmiri-seed=$SEED cargo miri test || { echo "Failing seed: $SEED"; break; };
-done
-```
 
 ### Supported targets
 

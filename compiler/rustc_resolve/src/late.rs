@@ -3281,17 +3281,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
         self.visit_path(&delegation.path, delegation.id);
         if let Some(body) = &delegation.body {
-            // `PatBoundCtx` is not necessary in this context
-            let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+            self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
+                // `PatBoundCtx` is not necessary in this context
+                let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
 
-            let span = delegation.path.segments.last().unwrap().ident.span;
-            self.fresh_binding(
-                Ident::new(kw::SelfLower, span),
-                delegation.id,
-                PatternSource::FnParam,
-                &mut bindings,
-            );
-            self.visit_block(body);
+                let span = delegation.path.segments.last().unwrap().ident.span;
+                this.fresh_binding(
+                    Ident::new(kw::SelfLower, span),
+                    delegation.id,
+                    PatternSource::FnParam,
+                    &mut bindings,
+                );
+                this.visit_block(body);
+            });
         }
     }
 

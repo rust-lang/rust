@@ -1,0 +1,31 @@
+error[E0424]: expected value, found module `self`
+  --> $DIR/self-hygiene.rs:4:34
+   |
+LL |   macro_rules! emit_self { () => { self } }
+   |                                    ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+...
+LL | /     fn method(self) {
+LL | |         emit_self!();
+   | |         ------------ in this macro invocation
+LL | |     }
+   | |_____- this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters
+   |
+   = note: this error originates in the macro `emit_self` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/self-hygiene.rs:4:34
+   |
+LL |   macro_rules! emit_self { () => { self } }
+   |                                    ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+...
+LL | / reuse foo as bar {
+LL | |     emit_self!()
+   | |     ------------ in this macro invocation
+LL | | }
+   | |_- delegation supports a `self` parameter, but a macro invocation can only access identifiers it receives from parameters
+   |
+   = note: this error originates in the macro `emit_self` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0424`.

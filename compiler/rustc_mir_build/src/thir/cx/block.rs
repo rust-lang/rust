@@ -92,7 +92,7 @@ impl<'tcx> Cx<'tcx> {
                                     kind: PatKind::AscribeUserType {
                                         ascription: Ascription {
                                             annotation,
-                                            variance: ty::Variance::Covariant,
+                                            variance: ty::Covariant,
                                         },
                                         subpattern: pattern,
                                     },

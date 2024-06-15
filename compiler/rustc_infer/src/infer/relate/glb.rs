@@ -94,12 +94,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Glb<'_, '_, 'tcx> {
             // When higher-ranked types are involved, computing the GLB is
             // very challenging, switch to invariance. This is obviously
             // overly conservative but works ok in practice.
-            self.relate_with_variance(
-                ty::Variance::Invariant,
-                ty::VarianceDiagInfo::default(),
-                a,
-                b,
-            )?;
+            self.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
             Ok(a)
         } else {
             Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))

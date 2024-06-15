@@ -7,7 +7,7 @@ use rustc_errors::{
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{
     edition::{Edition, LATEST_STABLE_EDITION},
     symbol::Ident,
@@ -186,7 +186,11 @@ pub enum NeverTypeFallbackFlowingIntoUnsafe {
 #[derive(LintDiagnostic)]
 #[help]
 #[diag(hir_typeck_dependency_on_unit_never_type_fallback)]
-pub struct DependencyOnUnitNeverTypeFallback {}
+pub struct DependencyOnUnitNeverTypeFallback<'tcx> {
+    #[note]
+    pub obligation_span: Span,
+    pub obligation: ty::Predicate<'tcx>,
+}
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(

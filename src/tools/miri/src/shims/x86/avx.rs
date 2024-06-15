@@ -176,8 +176,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // of 4.
                     let chunk_base = i & !0b11;
                     let src_i = u64::from(this.read_scalar(&control)?.to_u32()? & 0b11)
-                        .checked_add(chunk_base)
-                        .unwrap();
+                        .strict_add(chunk_base);
 
                     this.copy_op(
                         &this.project_index(&data, src_i)?,
@@ -210,9 +209,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // second instead of the first, ask Intel). To read the value from the current
                     // chunk, add the destination index truncated to a multiple of 2.
                     let chunk_base = i & !1;
-                    let src_i = ((this.read_scalar(&control)?.to_u64()? >> 1) & 1)
-                        .checked_add(chunk_base)
-                        .unwrap();
+                    let src_i =
+                        ((this.read_scalar(&control)?.to_u64()? >> 1) & 1).strict_add(chunk_base);
 
                     this.copy_op(
                         &this.project_index(&data, src_i)?,

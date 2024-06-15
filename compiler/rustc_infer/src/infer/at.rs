@@ -212,16 +212,16 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Variance::Covariant => self.sub(define_opaque_types, expected, actual),
-            ty::Variance::Invariant => self.eq(define_opaque_types, expected, actual),
-            ty::Variance::Contravariant => self.sup(define_opaque_types, expected, actual),
+            ty::Covariant => self.sub(define_opaque_types, expected, actual),
+            ty::Invariant => self.eq(define_opaque_types, expected, actual),
+            ty::Contravariant => self.sup(define_opaque_types, expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
             // that bivariance in general does a bit more than just
             // *nothing*, it checks that the types are the same
             // "modulo variance" basically.
-            ty::Variance::Bivariant => panic!("Bivariant given to `relate()`"),
+            ty::Bivariant => panic!("Bivariant given to `relate()`"),
         }
     }
 

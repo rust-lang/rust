@@ -866,10 +866,10 @@ impl<'tcx> Stable<'tcx> for ty::Variance {
     type T = stable_mir::mir::Variance;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
-            ty::Variance::Bivariant => stable_mir::mir::Variance::Bivariant,
-            ty::Variance::Contravariant => stable_mir::mir::Variance::Contravariant,
-            ty::Variance::Covariant => stable_mir::mir::Variance::Covariant,
-            ty::Variance::Invariant => stable_mir::mir::Variance::Invariant,
+            ty::Bivariant => stable_mir::mir::Variance::Bivariant,
+            ty::Contravariant => stable_mir::mir::Variance::Contravariant,
+            ty::Covariant => stable_mir::mir::Variance::Covariant,
+            ty::Invariant => stable_mir::mir::Variance::Invariant,
         }
     }
 }

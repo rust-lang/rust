@@ -488,7 +488,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let remaining_errors_if_fallback_to = |fallback| {
             self.probe(|_| {
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
-                let ocx = ObligationCtxt::new(&self.infcx);
+                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
                 ocx.register_obligations(obligations.iter().cloned());
 
                 for &diverging_vid in diverging_vids {
@@ -506,14 +506,18 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // then this code will be broken by the never type fallback change.qba
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
-            && let never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
-            && !never_errors.is_empty()
+            && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
+            && let [ref mut never_error, ..] = never_errors.as_mut_slice()
         {
+            self.adjust_fulfillment_error_for_expr_obligation(never_error);
             self.tcx.emit_node_span_lint(
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_id),
                 self.tcx.def_span(self.body_id),
-                errors::DependencyOnUnitNeverTypeFallback {},
+                errors::DependencyOnUnitNeverTypeFallback {
+                    obligation_span: never_error.obligation.cause.span,
+                    obligation: never_error.obligation.predicate,
+                },
             )
         }
     }
