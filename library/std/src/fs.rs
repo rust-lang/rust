@@ -2302,7 +2302,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// This function currently corresponds to the `realpath` function on Unix
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
-/// Note that, this [may change in the future][changes].
+/// Note that this [may change in the future][changes].
 ///
 /// On Windows, this converts the path to use [extended length path][path]
 /// syntax, which allows your program to use longer path names, but means you
