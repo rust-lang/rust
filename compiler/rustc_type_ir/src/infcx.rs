@@ -72,4 +72,6 @@ pub trait InferCtxtLike: Sized {
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<Self::Interner>;
+
+    fn probe<T>(&self, probe: impl FnOnce() -> T) -> T;
 }
