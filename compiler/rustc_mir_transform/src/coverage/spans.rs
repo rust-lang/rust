@@ -28,11 +28,15 @@ pub(super) fn extract_refined_covspans(
     let ExtractedCovspans { mut covspans, mut holes } =
         extract_covspans_and_holes_from_mir(mir_body, hir_info, basic_coverage_blocks);
 
+    // First, perform the passes that need macro information.
     covspans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
     remove_unwanted_macro_spans(&mut covspans);
     split_visible_macro_spans(&mut covspans);
 
-    let compare_covspans = |a: &SpanFromMir, b: &SpanFromMir| {
+    // We no longer need the extra information in `SpanFromMir`, so convert to `Covspan`.
+    let mut covspans = covspans.into_iter().map(SpanFromMir::into_covspan).collect::<Vec<_>>();
+
+    let compare_covspans = |a: &Covspan, b: &Covspan| {
         compare_spans(a.span, b.span)
             // After deduplication, we want to keep only the most-dominated BCB.
             .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
@@ -53,7 +57,7 @@ pub(super) fn extract_refined_covspans(
     // and grouping them in buckets separated by the holes.
 
     let mut input_covspans = VecDeque::from(covspans);
-    let mut fragments: Vec<SpanFromMir> = vec![];
+    let mut fragments = vec![];
 
     // For each hole:
     // - Identify the spans that are entirely or partly before the hole.
@@ -88,7 +92,7 @@ pub(super) fn extract_refined_covspans(
         covspans.sort_by(compare_covspans);
 
         let covspans = refine_sorted_spans(covspans);
-        code_mappings.extend(covspans.into_iter().map(|RefinedCovspan { span, bcb }| {
+        code_mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
             // Each span produced by the refiner represents an ordinary code region.
             mappings::CodeMapping { span, bcb }
         }));
@@ -145,23 +149,6 @@ fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
     covspans.extend(extra_spans);
 }
 
-#[derive(Debug)]
-struct RefinedCovspan {
-    span: Span,
-    bcb: BasicCoverageBlock,
-}
-
-impl RefinedCovspan {
-    fn is_mergeable(&self, other: &Self) -> bool {
-        self.bcb == other.bcb
-    }
-
-    fn merge_from(&mut self, other: &Self) {
-        debug_assert!(self.is_mergeable(other));
-        self.span = self.span.to(other.span);
-    }
-}
-
 /// Similar to `.drain(..)`, but stops just before it would remove an item not
 /// satisfying the predicate.
 fn drain_front_while<'a, T>(
@@ -175,18 +162,18 @@ fn drain_front_while<'a, T>(
 /// those spans by removing spans that overlap in unwanted ways, and by merging
 /// compatible adjacent spans.
 #[instrument(level = "debug")]
-fn refine_sorted_spans(sorted_spans: Vec<SpanFromMir>) -> Vec<RefinedCovspan> {
+fn refine_sorted_spans(sorted_spans: Vec<Covspan>) -> Vec<Covspan> {
     // Holds spans that have been read from the input vector, but haven't yet
     // been committed to the output vector.
     let mut pending = vec![];
     let mut refined = vec![];
 
     for curr in sorted_spans {
-        pending.retain(|prev: &SpanFromMir| {
+        pending.retain(|prev: &Covspan| {
             if prev.span.hi() <= curr.span.lo() {
                 // There's no overlap between the previous/current covspans,
                 // so move the previous one into the refined list.
-                refined.push(RefinedCovspan { span: prev.span, bcb: prev.bcb });
+                refined.push(prev.clone());
                 false
             } else {
                 // Otherwise, retain the previous covspan only if it has the
@@ -199,24 +186,53 @@ fn refine_sorted_spans(sorted_spans: Vec<SpanFromMir>) -> Vec<RefinedCovspan> {
     }
 
     // Drain the rest of the pending list into the refined list.
-    for prev in pending {
-        refined.push(RefinedCovspan { span: prev.span, bcb: prev.bcb });
-    }
+    refined.extend(pending);
 
     // Do one last merge pass, to simplify the output.
     debug!(?refined, "before merge");
-    refined.dedup_by(|b, a| {
-        if a.is_mergeable(b) {
-            debug!(?a, ?b, "merging list-adjacent refined spans");
-            a.merge_from(b);
-            true
-        } else {
-            false
-        }
-    });
+    refined.dedup_by(|b, a| a.merge_if_eligible(b));
     debug!(?refined, "after merge");
 
     refined
+}
+
+#[derive(Clone, Debug)]
+struct Covspan {
+    span: Span,
+    bcb: BasicCoverageBlock,
+}
+
+impl Covspan {
+    /// Splits this covspan into 0-2 parts:
+    /// - The part that is strictly before the hole span, if any.
+    /// - The part that is strictly after the hole span, if any.
+    fn split_around_hole_span(&self, hole_span: Span) -> (Option<Self>, Option<Self>) {
+        let before = try {
+            let span = self.span.trim_end(hole_span)?;
+            Self { span, ..*self }
+        };
+        let after = try {
+            let span = self.span.trim_start(hole_span)?;
+            Self { span, ..*self }
+        };
+
+        (before, after)
+    }
+
+    /// If `self` and `other` can be merged (i.e. they have the same BCB),
+    /// mutates `self.span` to also include `other.span` and returns true.
+    ///
+    /// Note that compatible covspans can be merged even if their underlying
+    /// spans are not overlapping/adjacent; any space between them will also be
+    /// part of the merged covspan.
+    fn merge_if_eligible(&mut self, other: &Self) -> bool {
+        if self.bcb != other.bcb {
+            return false;
+        }
+
+        self.span = self.span.to(other.span);
+        true
+    }
 }
 
 /// Compares two spans in (lo ascending, hi descending) order.

@@ -9,6 +9,7 @@ use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
+use crate::coverage::spans::Covspan;
 use crate::coverage::ExtractedHirInfo;
 
 pub(crate) struct ExtractedCovspans {
@@ -306,19 +307,8 @@ impl SpanFromMir {
         Self { span, visible_macro, bcb }
     }
 
-    /// Splits this span into 0-2 parts:
-    /// - The part that is strictly before the hole span, if any.
-    /// - The part that is strictly after the hole span, if any.
-    pub(crate) fn split_around_hole_span(&self, hole_span: Span) -> (Option<Self>, Option<Self>) {
-        let before = try {
-            let span = self.span.trim_end(hole_span)?;
-            Self { span, ..*self }
-        };
-        let after = try {
-            let span = self.span.trim_start(hole_span)?;
-            Self { span, ..*self }
-        };
-
-        (before, after)
+    pub(crate) fn into_covspan(self) -> Covspan {
+        let Self { span, visible_macro: _, bcb } = self;
+        Covspan { span, bcb }
     }
 }
