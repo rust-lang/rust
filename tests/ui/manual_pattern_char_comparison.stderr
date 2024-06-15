@@ -55,5 +55,11 @@ error: this manual char comparison can be written more succinctly
 LL |     sentence.find(|c| c == '🎈');
    |                   ^^^^^^^^^^^^^ help: consider using a `char`: `'🎈'`
 
-error: aborting due to 9 previous errors
+error: this manual char comparison can be written more succinctly
+  --> tests/ui/manual_pattern_char_comparison.rs:60:31
+   |
+LL |     sentence.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?');
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using an array of `char`: `['.', ',', '!', '?']`
+
+error: aborting due to 10 previous errors
 
