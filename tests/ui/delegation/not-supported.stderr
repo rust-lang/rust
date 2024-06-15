@@ -124,6 +124,11 @@ LL |         fn opaque_ret() -> impl Trait { unimplemented!() }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
+note: in edition 2024, the requirement `!: opaque::Trait` will fail
+  --> $DIR/not-supported.rs:80:28
+   |
+LL |         fn opaque_ret() -> impl Trait { unimplemented!() }
+   |                            ^^^^^^^^^^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
 
 error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:86:5: 86:24>::{synthetic#0}`
@@ -154,6 +159,11 @@ LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
+note: in edition 2024, the requirement `!: opaque::Trait` will fail
+  --> $DIR/not-supported.rs:72:32
+   |
+LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
+   |                                ^^^^^^^^^^
 
 error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/not-supported.rs:89:5: 89:25>::{synthetic#0}`
   --> $DIR/not-supported.rs:90:24
