@@ -826,7 +826,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
-                // Ignore arrays in operand.
+                // Ignore arrays in operands.
                 if let Value::Aggregate(AggregateTy::Array, ..) = self.get(value) {
                     return None;
                 }
@@ -1366,14 +1366,6 @@ impl<'tcx> VnState<'_, 'tcx> {
         if let Value::Constant { value, disambiguator: _ } = value
             && value.is_deterministic()
         {
-            // Prevent code bloat that makes
-            // `_2 = _1` now resolved to `_2 = <evaluated array>`.
-            if let Const::Val(_, ty) = value
-                && ty.is_array()
-                && self.rev_locals[index].len() > 1
-            {
-                return None;
-            }
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: *value });
         }
 
@@ -1444,7 +1436,19 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             let Some(value) = value else { return };
 
             debug!(before_rvalue = ?rvalue);
-            if let Some(const_) = self.try_as_constant(value) {
+            // Ignore arrays in operands.
+            // Prevent code bloat that makes
+            // `_2 = _1` now resolved to `_2 = <evaluated array>`.
+            let disallow_dup_array = if rvalue.ty(self.local_decls, self.tcx).is_array()
+                && let Some(locals) = self.rev_locals.get(value).as_deref()
+                && let [first, ..] = locals[..]
+            {
+                first != lhs.local
+            } else {
+                false
+            };
+
+            if !disallow_dup_array && let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
             } else if let Some(local) = self.try_as_local(value, location)
                 && *rvalue != Rvalue::Use(Operand::Move(local.into()))
