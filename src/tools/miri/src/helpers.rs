@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use rand::RngCore;
 
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_hir::{
     def::{DefKind, Namespace},
@@ -1201,12 +1201,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let (val, status) = match fty {
-            FloatTy::F16 => unimplemented!("f16_f128"),
+            FloatTy::F16 =>
+                float_to_int_inner::<Half>(this, src.to_scalar().to_f16()?, cast_to, round),
             FloatTy::F32 =>
                 float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
             FloatTy::F64 =>
                 float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            FloatTy::F128 => unimplemented!("f16_f128"),
+            FloatTy::F128 =>
+                float_to_int_inner::<Quad>(this, src.to_scalar().to_f128()?, cast_to, round),
         };
 
         if status.intersects(
