@@ -51,15 +51,32 @@ impl<'tcx> Tables<'tcx> {
         self.mir_consts.create_or_fetch(constant)
     }
 
-    pub(crate) fn has_body(&self, instance: Instance<'tcx>) -> bool {
+    /// Return whether the instance as a body available.
+    ///
+    /// Items and intrinsics may have a body available from its definition.
+    /// Shims body may be generated depending on their type.
+    pub(crate) fn instance_has_body(&self, instance: Instance<'tcx>) -> bool {
         let def_id = instance.def_id();
-        self.tcx.is_mir_available(def_id)
+        self.item_has_body(def_id)
             || !matches!(
                 instance.def,
                 ty::InstanceDef::Virtual(..)
                     | ty::InstanceDef::Intrinsic(..)
                     | ty::InstanceDef::Item(..)
             )
+    }
+
+    /// Return whether the item has a body defined by the user.
+    ///
+    /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
+    /// In StableMIR, we handle this case as if the body is not available.
+    pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
+        let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
+            intrinsic.must_be_overridden
+        } else {
+            false
+        };
+        !must_override && self.tcx.is_mir_available(def_id)
     }
 }
 
