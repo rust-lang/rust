@@ -59,8 +59,15 @@ pub(super) fn extract_refined_covspans(
     for mut covspans in buckets {
         // Make sure each individual bucket is internally sorted.
         covspans.sort_by(compare_covspans);
+        let _span = debug_span!("processing bucket", ?covspans).entered();
 
-        let covspans = refine_sorted_spans(covspans);
+        let mut covspans = remove_unwanted_overlapping_spans(covspans);
+        debug!(?covspans, "after removing overlaps");
+
+        // Do one last merge pass, to simplify the output.
+        covspans.dedup_by(|b, a| a.merge_if_eligible(b));
+        debug!(?covspans, "after merge");
+
         code_mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
             // Each span produced by the refiner represents an ordinary code region.
             mappings::CodeMapping { span, bcb }
@@ -177,10 +184,11 @@ fn drain_front_while<'a, T>(
 }
 
 /// Takes one of the buckets of (sorted) spans extracted from MIR, and "refines"
-/// those spans by removing spans that overlap in unwanted ways, and by merging
-/// compatible adjacent spans.
+/// those spans by removing spans that overlap in unwanted ways.
 #[instrument(level = "debug")]
-fn refine_sorted_spans(sorted_spans: Vec<Covspan>) -> Vec<Covspan> {
+fn remove_unwanted_overlapping_spans(sorted_spans: Vec<Covspan>) -> Vec<Covspan> {
+    debug_assert!(sorted_spans.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
+
     // Holds spans that have been read from the input vector, but haven't yet
     // been committed to the output vector.
     let mut pending = vec![];
@@ -205,12 +213,6 @@ fn refine_sorted_spans(sorted_spans: Vec<Covspan>) -> Vec<Covspan> {
 
     // Drain the rest of the pending list into the refined list.
     refined.extend(pending);
-
-    // Do one last merge pass, to simplify the output.
-    debug!(?refined, "before merge");
-    refined.dedup_by(|b, a| a.merge_if_eligible(b));
-    debug!(?refined, "after merge");
-
     refined
 }
 
