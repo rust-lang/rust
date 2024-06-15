@@ -465,7 +465,19 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> Option<AttrKind>
                     } else if attr_name == sym::no_std {
                         Some(AttrKind::NoStd)
                     } else if not_crate_attrs.contains(&attr_name) {
-                        Some(AttrKind::Attr)
+                        // There is one exception to these attributes:
+                        // `#![allow(internal_features)]`. If this attribute is used, we need to
+                        // consider it only as a crate-level attribute.
+                        if attr_name == sym::allow
+                            && let Some(list) = attr.meta_item_list()
+                            && list.iter().any(|sub_attr| {
+                                sub_attr.name_or_empty().as_str() == "internal_features"
+                            })
+                        {
+                            Some(AttrKind::CrateAttr)
+                        } else {
+                            Some(AttrKind::Attr)
+                        }
                     } else {
                         Some(AttrKind::CrateAttr)
                     }
