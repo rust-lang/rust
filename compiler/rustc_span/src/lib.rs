@@ -1065,33 +1065,41 @@ impl Span {
 
     #[inline]
     pub fn remove_mark(&mut self) -> ExpnId {
-        let mut span = self.data();
-        let mark = span.ctxt.remove_mark();
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = ExpnId::root();
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.remove_mark();
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.adjust(expn_id);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.glob_adjust(expn_id, glob_span);
+            ctxt
+        });
         mark
     }
 
@@ -1101,9 +1109,11 @@ impl Span {
         expn_id: ExpnId,
         glob_span: Span,
     ) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.reverse_glob_adjust(expn_id, glob_span);
+            ctxt
+        });
         mark
     }
 
