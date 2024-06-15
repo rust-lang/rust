@@ -107,26 +107,26 @@ impl X86InlineAsmRegClass {
         match self {
             Self::reg | Self::reg_abcd => {
                 if arch == InlineAsmArch::X86_64 {
-                    types! { _: I16, I32, I64, F32, F64; }
+                    types! { _: I16, I32, I64, F16, F32, F64; }
                 } else {
-                    types! { _: I16, I32, F32; }
+                    types! { _: I16, I32, F16, F32; }
                 }
             }
             Self::reg_byte => types! { _: I8; },
             Self::xmm_reg => types! {
-                sse: I32, I64, F32, F64,
-                  VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+                sse: I32, I64, F16, F32, F64, F128,
+                  VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
             },
             Self::ymm_reg => types! {
-                avx: I32, I64, F32, F64,
-                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
-                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4);
+                avx: I32, I64, F16, F32, F64, F128,
+                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
+                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4);
             },
             Self::zmm_reg => types! {
-                avx512f: I32, I64, F32, F64,
-                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
-                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4),
-                    VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF32(16), VecF64(8);
+                avx512f: I32, I64, F16, F32, F64, F128,
+                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
+                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4),
+                    VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF16(32), VecF32(16), VecF64(8);
             },
             Self::kreg => types! {
                 avx512f: I8, I16;

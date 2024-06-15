@@ -357,14 +357,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let left = left.to_scalar();
                 let right = right.to_scalar();
                 Ok(match fty {
-                    FloatTy::F16 => unimplemented!("f16_f128"),
+                    FloatTy::F16 => {
+                        self.binary_float_op(bin_op, layout, left.to_f16()?, right.to_f16()?)
+                    }
                     FloatTy::F32 => {
                         self.binary_float_op(bin_op, layout, left.to_f32()?, right.to_f32()?)
                     }
                     FloatTy::F64 => {
                         self.binary_float_op(bin_op, layout, left.to_f64()?, right.to_f64()?)
                     }
-                    FloatTy::F128 => unimplemented!("f16_f128"),
+                    FloatTy::F128 => {
+                        self.binary_float_op(bin_op, layout, left.to_f128()?, right.to_f128()?)
+                    }
                 })
             }
             _ if left.layout.ty.is_integral() => {
@@ -424,11 +428,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             ty::Float(fty) => {
                 let val = val.to_scalar();
+                if un_op != Neg {
+                    span_bug!(self.cur_span(), "Invalid float op {:?}", un_op);
+                }
+
                 // No NaN adjustment here, `-` is a bitwise operation!
-                let res = match (un_op, fty) {
-                    (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
-                    (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
-                    _ => span_bug!(self.cur_span(), "Invalid float op {:?}", un_op),
+                let res = match fty {
+                    FloatTy::F16 => Scalar::from_f16(-val.to_f16()?),
+                    FloatTy::F32 => Scalar::from_f32(-val.to_f32()?),
+                    FloatTy::F64 => Scalar::from_f64(-val.to_f64()?),
+                    FloatTy::F128 => Scalar::from_f128(-val.to_f128()?),
                 };
                 Ok(ImmTy::from_scalar(res, layout))
             }

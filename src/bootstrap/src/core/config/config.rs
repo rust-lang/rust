@@ -10,7 +10,7 @@ use std::env;
 use std::fmt::{self, Display};
 use std::fs;
 use std::io::IsTerminal;
-use std::path::{Path, PathBuf};
+use std::path::{absolute, Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
@@ -1437,7 +1437,7 @@ impl Config {
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !config.out.is_absolute() {
             // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
-            config.out = crate::utils::helpers::absolute(&config.out);
+            config.out = absolute(&config.out).expect("can't make empty path absolute");
         }
 
         config.initial_rustc = if let Some(rustc) = rustc {

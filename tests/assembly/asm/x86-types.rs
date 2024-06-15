@@ -7,7 +7,7 @@
 //@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
 //@ compile-flags: -C target-feature=+avx512bw
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -40,6 +40,8 @@ pub struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
 pub struct i32x4(i32, i32, i32, i32);
 #[repr(simd)]
 pub struct i64x2(i64, i64);
+#[repr(simd)]
+pub struct f16x8(f16, f16, f16, f16, f16, f16, f16, f16);
 #[repr(simd)]
 pub struct f32x4(f32, f32, f32, f32);
 #[repr(simd)]
@@ -86,6 +88,8 @@ pub struct i16x16(i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i1
 pub struct i32x8(i32, i32, i32, i32, i32, i32, i32, i32);
 #[repr(simd)]
 pub struct i64x4(i64, i64, i64, i64);
+#[repr(simd)]
+pub struct f16x16(f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16);
 #[repr(simd)]
 pub struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
 #[repr(simd)]
@@ -198,35 +202,59 @@ pub struct i32x16(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i3
 #[repr(simd)]
 pub struct i64x8(i64, i64, i64, i64, i64, i64, i64, i64);
 #[repr(simd)]
+pub struct f16x32(
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+    f16,
+);
+#[repr(simd)]
 pub struct f32x16(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32);
 #[repr(simd)]
 pub struct f64x8(f64, f64, f64, f64, f64, f64, f64, f64);
 
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
-impl Copy for i8x16 {}
-impl Copy for i16x8 {}
-impl Copy for i32x4 {}
-impl Copy for i64x2 {}
-impl Copy for f32x4 {}
-impl Copy for f64x2 {}
-impl Copy for i8x32 {}
-impl Copy for i16x16 {}
-impl Copy for i32x8 {}
-impl Copy for i64x4 {}
-impl Copy for f32x8 {}
-impl Copy for f64x4 {}
-impl Copy for i8x64 {}
-impl Copy for i16x32 {}
-impl Copy for i32x16 {}
-impl Copy for i64x8 {}
-impl Copy for f32x16 {}
-impl Copy for f64x8 {}
+macro_rules! impl_copy {
+    ($($ty:ident)*) => {
+        $(
+            impl Copy for $ty {}
+        )*
+    };
+}
+
+impl_copy!(
+    i8 i16 f16 i32 f32 i64 f64 f128 ptr
+    i8x16 i16x8 i32x4 i64x2 f16x8 f32x4 f64x2
+    i8x32 i16x16 i32x8 i64x4 f16x16 f32x8 f64x4
+    i8x64 i16x32 i32x16 i64x8 f16x32 f32x16 f64x8
+);
 
 extern "C" {
     fn extern_func();
@@ -292,6 +320,13 @@ macro_rules! check_reg {
 // CHECK: #NO_APP
 check!(reg_i16 i16 reg "mov");
 
+// CHECK-LABEL: reg_f16:
+// CHECK: #APP
+// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_f16 f16 reg "mov");
+
 // CHECK-LABEL: reg_i32:
 // CHECK: #APP
 // x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
@@ -334,6 +369,13 @@ check!(reg_ptr ptr reg "mov");
 // CHECK: #NO_APP
 check!(reg_abcd_i16 i16 reg_abcd "mov");
 
+// CHECK-LABEL: reg_abcd_f16:
+// CHECK: #APP
+// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_abcd_f16 f16 reg_abcd "mov");
+
 // CHECK-LABEL: reg_abcd_i32:
 // CHECK: #APP
 // x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
@@ -375,6 +417,12 @@ check!(reg_abcd_ptr ptr reg_abcd "mov");
 // CHECK: #NO_APP
 check!(reg_byte i8 reg_byte "mov");
 
+// CHECK-LABEL: xmm_reg_f16:
+// CHECK: #APP
+// CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(xmm_reg_f16 f16 xmm_reg "movaps");
+
 // CHECK-LABEL: xmm_reg_i32:
 // CHECK: #APP
 // CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
@@ -398,6 +446,12 @@ check!(xmm_reg_i64 i64 xmm_reg "movaps");
 // CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(xmm_reg_f64 f64 xmm_reg "movaps");
+
+// CHECK-LABEL: xmm_reg_f128:
+// CHECK: #APP
+// CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(xmm_reg_f128 f128 xmm_reg "movaps");
 
 // CHECK-LABEL: xmm_reg_ptr:
 // CHECK: #APP
@@ -429,6 +483,12 @@ check!(xmm_reg_i32x4 i32x4 xmm_reg "movaps");
 // CHECK: #NO_APP
 check!(xmm_reg_i64x2 i64x2 xmm_reg "movaps");
 
+// CHECK-LABEL: xmm_reg_f16x8:
+// CHECK: #APP
+// CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(xmm_reg_f16x8 f16x8 xmm_reg "movaps");
+
 // CHECK-LABEL: xmm_reg_f32x4:
 // CHECK: #APP
 // CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
@@ -440,6 +500,12 @@ check!(xmm_reg_f32x4 f32x4 xmm_reg "movaps");
 // CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(xmm_reg_f64x2 f64x2 xmm_reg "movaps");
+
+// CHECK-LABEL: ymm_reg_f16:
+// CHECK: #APP
+// CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(ymm_reg_f16 f16 ymm_reg "vmovaps");
 
 // CHECK-LABEL: ymm_reg_i32:
 // CHECK: #APP
@@ -464,6 +530,12 @@ check!(ymm_reg_i64 i64 ymm_reg "vmovaps");
 // CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(ymm_reg_f64 f64 ymm_reg "vmovaps");
+
+// CHECK-LABEL: ymm_reg_f128:
+// CHECK: #APP
+// CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(ymm_reg_f128 f128 ymm_reg "vmovaps");
 
 // CHECK-LABEL: ymm_reg_ptr:
 // CHECK: #APP
@@ -494,6 +566,12 @@ check!(ymm_reg_i32x4 i32x4 ymm_reg "vmovaps");
 // CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(ymm_reg_i64x2 i64x2 ymm_reg "vmovaps");
+
+// CHECK-LABEL: ymm_reg_f16x8:
+// CHECK: #APP
+// CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(ymm_reg_f16x8 f16x8 ymm_reg "vmovaps");
 
 // CHECK-LABEL: ymm_reg_f32x4:
 // CHECK: #APP
@@ -531,6 +609,12 @@ check!(ymm_reg_i32x8 i32x8 ymm_reg "vmovaps");
 // CHECK: #NO_APP
 check!(ymm_reg_i64x4 i64x4 ymm_reg "vmovaps");
 
+// CHECK-LABEL: ymm_reg_f16x16:
+// CHECK: #APP
+// CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(ymm_reg_f16x16 f16x16 ymm_reg "vmovaps");
+
 // CHECK-LABEL: ymm_reg_f32x8:
 // CHECK: #APP
 // CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
@@ -542,6 +626,12 @@ check!(ymm_reg_f32x8 f32x8 ymm_reg "vmovaps");
 // CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(ymm_reg_f64x4 f64x4 ymm_reg "vmovaps");
+
+// CHECK-LABEL: zmm_reg_f16:
+// CHECK: #APP
+// CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(zmm_reg_f16 f16 zmm_reg "vmovaps");
 
 // CHECK-LABEL: zmm_reg_i32:
 // CHECK: #APP
@@ -566,6 +656,12 @@ check!(zmm_reg_i64 i64 zmm_reg "vmovaps");
 // CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(zmm_reg_f64 f64 zmm_reg "vmovaps");
+
+// CHECK-LABEL: zmm_reg_f128:
+// CHECK: #APP
+// CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(zmm_reg_f128 f128 zmm_reg "vmovaps");
 
 // CHECK-LABEL: zmm_reg_ptr:
 // CHECK: #APP
@@ -596,6 +692,12 @@ check!(zmm_reg_i32x4 i32x4 zmm_reg "vmovaps");
 // CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(zmm_reg_i64x2 i64x2 zmm_reg "vmovaps");
+
+// CHECK-LABEL: zmm_reg_f16x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(zmm_reg_f16x8 f16x8 zmm_reg "vmovaps");
 
 // CHECK-LABEL: zmm_reg_f32x4:
 // CHECK: #APP
@@ -633,6 +735,12 @@ check!(zmm_reg_i32x8 i32x8 zmm_reg "vmovaps");
 // CHECK: #NO_APP
 check!(zmm_reg_i64x4 i64x4 zmm_reg "vmovaps");
 
+// CHECK-LABEL: zmm_reg_f16x16:
+// CHECK: #APP
+// CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(zmm_reg_f16x16 f16x16 zmm_reg "vmovaps");
+
 // CHECK-LABEL: zmm_reg_f32x8:
 // CHECK: #APP
 // CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
@@ -668,6 +776,12 @@ check!(zmm_reg_i32x16 i32x16 zmm_reg "vmovaps");
 // CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(zmm_reg_i64x8 i64x8 zmm_reg "vmovaps");
+
+// CHECK-LABEL: zmm_reg_f16x32:
+// CHECK: #APP
+// CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(zmm_reg_f16x32 f16x32 zmm_reg "vmovaps");
 
 // CHECK-LABEL: zmm_reg_f32x16:
 // CHECK: #APP
@@ -717,6 +831,12 @@ check!(kreg_ptr ptr kreg "kmovq");
 // CHECK: #NO_APP
 check_reg!(eax_i16 i16 "eax" "mov");
 
+// CHECK-LABEL: eax_f16:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check_reg!(eax_f16 f16 "eax" "mov");
+
 // CHECK-LABEL: eax_i32:
 // CHECK: #APP
 // CHECK: mov eax, eax
@@ -756,6 +876,12 @@ check_reg!(eax_ptr ptr "eax" "mov");
 #[cfg(i686)]
 check_reg!(ah_byte i8 "ah" "mov");
 
+// CHECK-LABEL: xmm0_f16:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f16 f16 "xmm0" "movaps");
+
 // CHECK-LABEL: xmm0_i32:
 // CHECK: #APP
 // CHECK: movaps xmm0, xmm0
@@ -779,6 +905,12 @@ check_reg!(xmm0_i64 i64 "xmm0" "movaps");
 // CHECK: movaps xmm0, xmm0
 // CHECK: #NO_APP
 check_reg!(xmm0_f64 f64 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_f128:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f128 f128 "xmm0" "movaps");
 
 // CHECK-LABEL: xmm0_ptr:
 // CHECK: #APP
@@ -810,6 +942,12 @@ check_reg!(xmm0_i32x4 i32x4 "xmm0" "movaps");
 // CHECK: #NO_APP
 check_reg!(xmm0_i64x2 i64x2 "xmm0" "movaps");
 
+// CHECK-LABEL: xmm0_f16x8:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f16x8 f16x8 "xmm0" "movaps");
+
 // CHECK-LABEL: xmm0_f32x4:
 // CHECK: #APP
 // CHECK: movaps xmm0, xmm0
@@ -821,6 +959,12 @@ check_reg!(xmm0_f32x4 f32x4 "xmm0" "movaps");
 // CHECK: movaps xmm0, xmm0
 // CHECK: #NO_APP
 check_reg!(xmm0_f64x2 f64x2 "xmm0" "movaps");
+
+// CHECK-LABEL: ymm0_f16:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f16 f16 "ymm0" "vmovaps");
 
 // CHECK-LABEL: ymm0_i32:
 // CHECK: #APP
@@ -845,6 +989,12 @@ check_reg!(ymm0_i64 i64 "ymm0" "vmovaps");
 // CHECK: vmovaps ymm0, ymm0
 // CHECK: #NO_APP
 check_reg!(ymm0_f64 f64 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f128:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f128 f128 "ymm0" "vmovaps");
 
 // CHECK-LABEL: ymm0_ptr:
 // CHECK: #APP
@@ -875,6 +1025,12 @@ check_reg!(ymm0_i32x4 i32x4 "ymm0" "vmovaps");
 // CHECK: vmovaps ymm0, ymm0
 // CHECK: #NO_APP
 check_reg!(ymm0_i64x2 i64x2 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f16x8:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f16x8 f16x8 "ymm0" "vmovaps");
 
 // CHECK-LABEL: ymm0_f32x4:
 // CHECK: #APP
@@ -912,6 +1068,12 @@ check_reg!(ymm0_i32x8 i32x8 "ymm0" "vmovaps");
 // CHECK: #NO_APP
 check_reg!(ymm0_i64x4 i64x4 "ymm0" "vmovaps");
 
+// CHECK-LABEL: ymm0_f16x16:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f16x16 f16x16 "ymm0" "vmovaps");
+
 // CHECK-LABEL: ymm0_f32x8:
 // CHECK: #APP
 // CHECK: vmovaps ymm0, ymm0
@@ -923,6 +1085,12 @@ check_reg!(ymm0_f32x8 f32x8 "ymm0" "vmovaps");
 // CHECK: vmovaps ymm0, ymm0
 // CHECK: #NO_APP
 check_reg!(ymm0_f64x4 f64x4 "ymm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f16:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f16 f16 "zmm0" "vmovaps");
 
 // CHECK-LABEL: zmm0_i32:
 // CHECK: #APP
@@ -947,6 +1115,12 @@ check_reg!(zmm0_i64 i64 "zmm0" "vmovaps");
 // CHECK: vmovaps zmm0, zmm0
 // CHECK: #NO_APP
 check_reg!(zmm0_f64 f64 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f128:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f128 f128 "zmm0" "vmovaps");
 
 // CHECK-LABEL: zmm0_ptr:
 // CHECK: #APP
@@ -977,6 +1151,12 @@ check_reg!(zmm0_i32x4 i32x4 "zmm0" "vmovaps");
 // CHECK: vmovaps zmm0, zmm0
 // CHECK: #NO_APP
 check_reg!(zmm0_i64x2 i64x2 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f16x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f16x8 f16x8 "zmm0" "vmovaps");
 
 // CHECK-LABEL: zmm0_f32x4:
 // CHECK: #APP
@@ -1014,6 +1194,12 @@ check_reg!(zmm0_i32x8 i32x8 "zmm0" "vmovaps");
 // CHECK: #NO_APP
 check_reg!(zmm0_i64x4 i64x4 "zmm0" "vmovaps");
 
+// CHECK-LABEL: zmm0_f16x16:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f16x16 f16x16 "zmm0" "vmovaps");
+
 // CHECK-LABEL: zmm0_f32x8:
 // CHECK: #APP
 // CHECK: vmovaps zmm0, zmm0
@@ -1049,6 +1235,12 @@ check_reg!(zmm0_i32x16 i32x16 "zmm0" "vmovaps");
 // CHECK: vmovaps zmm0, zmm0
 // CHECK: #NO_APP
 check_reg!(zmm0_i64x8 i64x8 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f16x32:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f16x32 f16x32 "zmm0" "vmovaps");
 
 // CHECK-LABEL: zmm0_f32x16:
 // CHECK: #APP

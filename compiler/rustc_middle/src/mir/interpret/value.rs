@@ -69,6 +69,13 @@ impl<Prov: Provenance> fmt::LowerHex for Scalar<Prov> {
     }
 }
 
+impl<Prov> From<Half> for Scalar<Prov> {
+    #[inline(always)]
+    fn from(f: Half) -> Self {
+        Scalar::from_f16(f)
+    }
+}
+
 impl<Prov> From<Single> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Single) -> Self {
@@ -80,6 +87,13 @@ impl<Prov> From<Double> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Double) -> Self {
         Scalar::from_f64(f)
+    }
+}
+
+impl<Prov> From<Quad> for Scalar<Prov> {
+    #[inline(always)]
+    fn from(f: Quad) -> Self {
+        Scalar::from_f128(f)
     }
 }
 

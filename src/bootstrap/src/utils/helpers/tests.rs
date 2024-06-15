@@ -25,27 +25,6 @@ fn test_make() {
     }
 }
 
-#[cfg(unix)]
-#[test]
-fn test_absolute_unix() {
-    use crate::utils::helpers::absolute_unix;
-
-    // Test an absolute path
-    let path = PathBuf::from("/home/user/file.txt");
-    assert_eq!(absolute_unix(&path).unwrap(), PathBuf::from("/home/user/file.txt"));
-
-    // Test an absolute path with double leading slashes
-    let path = PathBuf::from("//root//file.txt");
-    assert_eq!(absolute_unix(&path).unwrap(), PathBuf::from("//root/file.txt"));
-
-    // Test a relative path
-    let path = PathBuf::from("relative/path");
-    assert_eq!(
-        absolute_unix(&path).unwrap(),
-        std::env::current_dir().unwrap().join("relative/path")
-    );
-}
-
 #[test]
 fn test_beta_rev_parsing() {
     // single digit revision
