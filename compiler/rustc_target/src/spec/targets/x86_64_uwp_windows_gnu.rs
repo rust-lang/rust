@@ -7,7 +7,7 @@ pub fn target() -> Target {
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR
     base.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args(
+        let mut pre_link_args = TargetOptions::link_args_base(
             LinkerFlavor::Gnu(Cc::No, Lld::No),
             &["-m", "i386pep", "--high-entropy-va"],
         );

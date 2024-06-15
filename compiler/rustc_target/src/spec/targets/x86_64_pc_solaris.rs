@@ -1,11 +1,8 @@
-use crate::spec::{
-    base, Cc, LinkerFlavor, MaybeLazy, SanitizerSet, StackProbeType, Target, TargetOptions,
-};
+use crate::spec::{base, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::solaris::opts();
-    base.pre_link_args =
-        MaybeLazy::lazy(|| TargetOptions::link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]));
+    base.pre_link_args = TargetOptions::link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.vendor = "pc".into();

@@ -1,9 +1,8 @@
-use crate::spec::{base, Cc, LinkerFlavor, MaybeLazy, SanitizerSet, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::illumos::opts();
-    base.pre_link_args =
-        MaybeLazy::lazy(|| TargetOptions::link_args(LinkerFlavor::Unix(Cc::Yes), &["-std=c99"]));
+    base.pre_link_args = TargetOptions::link_args(LinkerFlavor::Unix(Cc::Yes), &["-std=c99"]);
     base.max_atomic_width = Some(128);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;
     base.features = "+v8a".into();

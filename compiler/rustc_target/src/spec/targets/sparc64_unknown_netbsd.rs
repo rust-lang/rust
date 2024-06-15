@@ -1,12 +1,10 @@
 use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::netbsd::opts();
     base.cpu = "v9".into();
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"])
-    });
+    base.pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);
 
     Target {

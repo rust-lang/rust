@@ -9,33 +9,31 @@
 // the timer-interrupt. Device-drivers are required to use polling-based models. Furthermore, all
 // code runs in the same environment, no process separation is supported.
 
-use crate::spec::{base, LinkerFlavor, Lld, MaybeLazy};
+use crate::spec::{base, LinkerFlavor, Lld};
 use crate::spec::{PanicStrategy, StackProbeType, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut base = base::msvc::opts();
 
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(
-            LinkerFlavor::Msvc(Lld::No),
-            &[
-                // Non-standard subsystems have no default entry-point in PE+ files. We have to define
-                // one. "efi_main" seems to be a common choice amongst other implementations and the
-                // spec.
-                "/entry:efi_main",
-                // COFF images have a "Subsystem" field in their header, which defines what kind of
-                // program it is. UEFI has 3 fields reserved, which are EFI_APPLICATION,
-                // EFI_BOOT_SERVICE_DRIVER, and EFI_RUNTIME_DRIVER. We default to EFI_APPLICATION,
-                // which is very likely the most common option. Individual projects can override this
-                // with custom linker flags.
-                // The subsystem-type only has minor effects on the application. It defines the memory
-                // regions the application is loaded into (runtime-drivers need to be put into
-                // reserved areas), as well as whether a return from the entry-point is treated as
-                // exit (default for applications).
-                "/subsystem:efi_application",
-            ],
-        )
-    });
+    base.pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Msvc(Lld::No),
+        &[
+            // Non-standard subsystems have no default entry-point in PE+ files. We have to define
+            // one. "efi_main" seems to be a common choice amongst other implementations and the
+            // spec.
+            "/entry:efi_main",
+            // COFF images have a "Subsystem" field in their header, which defines what kind of
+            // program it is. UEFI has 3 fields reserved, which are EFI_APPLICATION,
+            // EFI_BOOT_SERVICE_DRIVER, and EFI_RUNTIME_DRIVER. We default to EFI_APPLICATION,
+            // which is very likely the most common option. Individual projects can override this
+            // with custom linker flags.
+            // The subsystem-type only has minor effects on the application. It defines the memory
+            // regions the application is loaded into (runtime-drivers need to be put into
+            // reserved areas), as well as whether a return from the entry-point is treated as
+            // exit (default for applications).
+            "/subsystem:efi_application",
+        ],
+    );
 
     TargetOptions {
         os: "uefi".into(),

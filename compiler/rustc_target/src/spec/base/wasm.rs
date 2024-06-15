@@ -49,7 +49,8 @@ pub fn options() -> TargetOptions {
     }
 
     let pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::WasmLld(Cc::No), args!(""));
+        let mut pre_link_args =
+            TargetOptions::link_args_base(LinkerFlavor::WasmLld(Cc::No), args!(""));
         add_link_args(&mut pre_link_args, LinkerFlavor::WasmLld(Cc::Yes), args!("-Wl,"));
         pre_link_args
     });

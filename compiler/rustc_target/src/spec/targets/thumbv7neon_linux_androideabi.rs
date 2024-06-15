@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 // This target if is for the Android v7a ABI in thumb mode with
 // NEON unconditionally enabled and, therefore, with 32 FPU registers
@@ -10,9 +10,8 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions}
 
 pub fn target() -> Target {
     let mut base = base::android::opts();
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"])
-    });
+    base.pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
     Target {
         llvm_target: "armv7-none-linux-android".into(),
         metadata: crate::spec::TargetMetadata {

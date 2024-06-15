@@ -114,7 +114,7 @@ pub fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     };
     let sdk_version = min_version.clone();
 
-    let mut args = TargetOptions::link_args(
+    let mut args = TargetOptions::link_args_base(
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         &["-arch", arch.target_name(), "-platform_version"],
     );
@@ -144,7 +144,7 @@ pub fn opts(
     os: &'static str,
     arch: Arch,
     abi: TargetAbi,
-    pre_link_args: MaybeLazy<LinkArgs>,
+    pre_link_args: MaybeLazy<LinkArgs, (LinkerFlavor, &'static [&'static str])>,
 ) -> TargetOptions {
     TargetOptions {
         abi: abi.target_abi().into(),

@@ -1,14 +1,13 @@
 use crate::spec::{
-    base, Cc, FramePointer, LinkerFlavor, Lld, MaybeLazy, StackProbeType, Target, TargetOptions,
+    base, Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions,
 };
 
 pub fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-Wl,-melf_i386"])
-    });
+    base.pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-Wl,-melf_i386"]);
     base.stack_probes = StackProbeType::Inline;
 
     // The unwinder used by i686-unknown-linux-musl, the LLVM libunwind

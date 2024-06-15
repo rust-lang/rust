@@ -19,7 +19,7 @@ pub fn target() -> Target {
     options.env = "p1".into();
 
     options.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args(
+        let mut pre_link_args = TargetOptions::link_args_base(
             LinkerFlavor::WasmLld(Cc::No),
             &["--import-memory", "--export-memory", "--shared-memory"],
         );

@@ -17,7 +17,7 @@ pub fn opts() -> TargetOptions {
             "-lmingw32",
         ];
         let mut late_link_args =
-            TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
         add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
         late_link_args
     });

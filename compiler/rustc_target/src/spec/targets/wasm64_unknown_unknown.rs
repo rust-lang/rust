@@ -14,7 +14,7 @@ pub fn target() -> Target {
     options.os = "unknown".into();
 
     options.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args(
+        let mut pre_link_args = TargetOptions::link_args_base(
             LinkerFlavor::WasmLld(Cc::No),
             &[
                 // For now this target just never has an entry symbol no matter the output

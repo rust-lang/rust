@@ -1,16 +1,14 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, MaybeLazy, RelocModel, Target, TargetOptions};
+use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 
 /// A base target for Nintendo 3DS devices using the devkitARM toolchain.
 ///
 /// Requires the devkitARM toolchain for 3DS targets on the host system.
 
 pub fn target() -> Target {
-    let pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(
-            LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-            &["-specs=3dsx.specs", "-mtune=mpcore", "-mfloat-abi=hard", "-mtp=soft"],
-        )
-    });
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        &["-specs=3dsx.specs", "-mtune=mpcore", "-mfloat-abi=hard", "-mtp=soft"],
+    );
 
     Target {
         llvm_target: "armv6k-none-eabihf".into(),

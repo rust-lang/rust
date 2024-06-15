@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy};
+use crate::spec::{base, Cc, LinkerFlavor, Lld};
 use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -6,9 +6,7 @@ pub fn target() -> Target {
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"])
-    });
+    base.pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::Inline;
 
     Target {

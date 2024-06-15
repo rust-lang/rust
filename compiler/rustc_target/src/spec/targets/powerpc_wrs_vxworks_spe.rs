@@ -1,11 +1,10 @@
 use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, StackProbeType, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::vxworks::opts();
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mspe", "--secure-plt"])
-    });
+    base.pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mspe", "--secure-plt"]);
     base.max_atomic_width = Some(32);
     base.stack_probes = StackProbeType::Inline;
 

@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
     let pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args(
+        let mut pre_link_args = TargetOptions::link_args_base(
             LinkerFlavor::Gnu(Cc::No, Lld::No),
             &[
                 // Enable ASLR
@@ -51,7 +51,7 @@ pub fn opts() -> TargetOptions {
             "-lkernel32",
         ];
         let mut late_link_args =
-            TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
         add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
         late_link_args
     });
@@ -61,7 +61,7 @@ pub fn opts() -> TargetOptions {
     let late_link_args_dynamic = MaybeLazy::lazy(|| {
         let dynamic_unwind_libs = &["-lgcc_s"];
         let mut late_link_args_dynamic =
-            TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
+            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
         add_link_args(
             &mut late_link_args_dynamic,
             LinkerFlavor::Gnu(Cc::Yes, Lld::No),
@@ -77,7 +77,7 @@ pub fn opts() -> TargetOptions {
     let late_link_args_static = MaybeLazy::lazy(|| {
         let static_unwind_libs = &["-lgcc_eh", "-l:libpthread.a"];
         let mut late_link_args_static =
-            TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
+            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
         add_link_args(
             &mut late_link_args_static,
             LinkerFlavor::Gnu(Cc::Yes, Lld::No),

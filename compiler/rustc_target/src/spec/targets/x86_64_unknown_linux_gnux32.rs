@@ -1,13 +1,11 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, StackProbeType, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_gnu::opts();
     base.cpu = "x86-64".into();
     base.abi = "x32".into();
     base.max_atomic_width = Some(64);
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mx32"])
-    });
+    base.pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mx32"]);
     base.stack_probes = StackProbeType::Inline;
     base.has_thread_local = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI

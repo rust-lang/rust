@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -24,12 +24,10 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a".into(),
             max_atomic_width: Some(128),
-            pre_link_args: MaybeLazy::lazy(|| {
-                TargetOptions::link_args(
-                    LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-                    &["-Vgcc_ntoaarch64le_cxx"],
-                )
-            }),
+            pre_link_args: TargetOptions::link_args(
+                LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+                &["-Vgcc_ntoaarch64le_cxx"],
+            ),
             env: "nto71".into(),
             ..base::nto_qnx::opts()
         },

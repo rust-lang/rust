@@ -11,7 +11,7 @@ pub fn target() -> Target {
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
     base.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args(
+        let mut pre_link_args = TargetOptions::link_args_base(
             LinkerFlavor::Gnu(Cc::No, Lld::No),
             &["-m", "i386pe", "--large-address-aware"],
         );

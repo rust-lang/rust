@@ -39,6 +39,7 @@ use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors
 use crate::json::{Json, ToJson};
 use crate::spec::abi::Abi;
 use crate::spec::crt_objects::{CrtObjects, LazyCrtObjects};
+use crate::spec::link_args::{LazyLinkArgs, LinkArgs, LinkArgsCli};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -55,6 +56,7 @@ use tracing::debug;
 
 pub mod abi;
 pub mod crt_objects;
+pub mod link_args;
 pub mod maybe_lazy;
 
 mod base;
@@ -1105,9 +1107,6 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
-pub type LinkArgsCli = BTreeMap<LinkerFlavorCli, Vec<StaticCow<str>>>;
-
 /// Which kind of debuginfo does the target use?
 ///
 /// Useful in determining whether a target supports Split DWARF (a target with
@@ -2027,24 +2026,24 @@ pub struct TargetOptions {
     pub link_self_contained: LinkSelfContainedDefault,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: MaybeLazy<LinkArgs>,
+    pub pre_link_args: LazyLinkArgs,
     pre_link_args_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post-link objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
-    pub late_link_args: MaybeLazy<LinkArgs>,
+    pub late_link_args: LazyLinkArgs,
     late_link_args_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if at least one
     /// Rust dependency is dynamically linked.
-    pub late_link_args_dynamic: MaybeLazy<LinkArgs>,
+    pub late_link_args_dynamic: LazyLinkArgs,
     late_link_args_dynamic_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if all Rust
     /// dependencies are statically linked.
-    pub late_link_args_static: MaybeLazy<LinkArgs>,
+    pub late_link_args_static: LazyLinkArgs,
     late_link_args_static_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
-    pub post_link_args: MaybeLazy<LinkArgs>,
+    pub post_link_args: LazyLinkArgs,
     post_link_args_json: LinkArgsCli,
 
     /// Optional link script applied to `dylib` and `executable` crate types.
@@ -2391,7 +2390,11 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 }
 
 impl TargetOptions {
-    fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
+    fn link_args(flavor: LinkerFlavor, args: &'static [&'static str]) -> LazyLinkArgs {
+        MaybeLazy::lazied(link_args::LazyLinkArgsState::Simple(flavor, args))
+    }
+
+    fn link_args_base(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
         let mut link_args = LinkArgs::new();
         add_link_args(&mut link_args, flavor, args);
         link_args
@@ -2506,15 +2509,15 @@ impl Default for TargetOptions {
             pre_link_objects_self_contained: Default::default(),
             post_link_objects_self_contained: Default::default(),
             link_self_contained: LinkSelfContainedDefault::False,
-            pre_link_args: MaybeLazy::lazy(LinkArgs::new),
+            pre_link_args: Default::default(),
             pre_link_args_json: LinkArgsCli::new(),
-            late_link_args: MaybeLazy::lazy(LinkArgs::new),
+            late_link_args: Default::default(),
             late_link_args_json: LinkArgsCli::new(),
-            late_link_args_dynamic: MaybeLazy::lazy(LinkArgs::new),
+            late_link_args_dynamic: Default::default(),
             late_link_args_dynamic_json: LinkArgsCli::new(),
-            late_link_args_static: MaybeLazy::lazy(LinkArgs::new),
+            late_link_args_static: Default::default(),
             late_link_args_static_json: LinkArgsCli::new(),
-            post_link_args: MaybeLazy::lazy(LinkArgs::new),
+            post_link_args: Default::default(),
             post_link_args_json: LinkArgsCli::new(),
             link_env: cvs![],
             link_env_remove: cvs![],
