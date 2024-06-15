@@ -128,19 +128,20 @@ pub enum AssocItemNotFoundSugg<'a> {
     },
     #[multipart_suggestion(
         hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg,
-        style = "verbose",
-        applicability = "maybe-incorrect"
+        style = "verbose"
     )]
     SimilarInOtherTraitQPath {
         #[suggestion_part(code = "<")]
         lo: Span,
-        #[suggestion_part(code = " as {trait_}>")]
+        #[suggestion_part(code = " as {trait_ref}>")]
         mi: Span,
         #[suggestion_part(code = "{suggested_name}")]
         hi: Option<Span>,
-        trait_: &'a str,
+        trait_ref: String,
         suggested_name: Symbol,
         identically_named: bool,
+        #[applicability]
+        applicability: Applicability,
     },
     #[suggestion(
         hir_analysis_assoc_item_not_found_other_sugg,

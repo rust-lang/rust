@@ -251,6 +251,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return self.dcx().emit_err(err);
                     }
 
+                    let trait_args = &ty::GenericArgs::identity_for_item(tcx, best_trait)[1..];
+                    let mut trait_ref = trait_name.clone();
+                    let applicability = if let [arg, args @ ..] = trait_args {
+                        use std::fmt::Write;
+                        write!(trait_ref, "</* {arg}").unwrap();
+                        args.iter().try_for_each(|arg| write!(trait_ref, ", {arg}")).unwrap();
+                        trait_ref += " */>";
+                        Applicability::HasPlaceholders
+                    } else {
+                        Applicability::MaybeIncorrect
+                    };
+
                     let identically_named = suggested_name == assoc_name.name;
 
                     if let DefKind::TyAlias = tcx.def_kind(item_def_id)
@@ -260,22 +272,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             lo: ty_param_span.shrink_to_lo(),
                             mi: ty_param_span.shrink_to_hi(),
                             hi: (!identically_named).then_some(assoc_name.span),
-                            // FIXME(fmease): Use a full trait ref here (with placeholders).
-                            trait_: &trait_name,
+                            trait_ref,
                             identically_named,
                             suggested_name,
+                            applicability,
                         });
                     } else {
                         let mut err = self.dcx().create_err(err);
                         if suggest_constraining_type_param(
-                            tcx,
-                            generics,
-                            &mut err,
-                            &qself_str,
-                            // FIXME(fmease): Use a full trait ref here (with placeholders).
-                            &trait_name,
-                            None,
-                            None,
+                            tcx, generics, &mut err, &qself_str, &trait_ref, None, None,
                         ) && !identically_named
                         {
                             // We suggested constraining a type parameter, but the associated item on it
