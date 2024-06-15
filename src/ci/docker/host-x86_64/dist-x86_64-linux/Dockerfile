@@ -80,6 +80,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.debuginfo-level=1 \
       --set rust.strip=false \
+      --set rust.new-symbol-mangling=false \
       --set rust.codegen-units=1
 
 ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
