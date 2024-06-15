@@ -31,12 +31,12 @@ use crate::{
         BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
-        BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
-        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
-        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, InvalidAsmLabel, SuggestChangingAssocTypes,
+        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
+        BuiltinTypeAliasParamBoundsSuggestion, BuiltinUngatedAsyncFnTrackCaller,
+        BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+        BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+        BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
+        TypeAliasBoundsQualifyAssocTysSugg,
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
@@ -1406,23 +1406,6 @@ declare_lint_pass!(
     TypeAliasBounds => [TYPE_ALIAS_BOUNDS]
 );
 
-impl TypeAliasBounds {
-    pub(crate) fn is_type_variable_assoc(qpath: &hir::QPath<'_>) -> bool {
-        match *qpath {
-            hir::QPath::TypeRelative(ty, _) => {
-                // If this is a type variable, we found a `T::Assoc`.
-                match ty.kind {
-                    hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
-                        matches!(path.res, Res::Def(DefKind::TyParam, _))
-                    }
-                    _ => false,
-                }
-            }
-            hir::QPath::Resolved(..) | hir::QPath::LangItem(..) => false,
-        }
-    }
-}
-
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         let hir::ItemKind::TyAlias(hir_ty, generics) = &item.kind else { return };
@@ -1436,7 +1419,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         if cx.tcx.type_alias_is_lazy(item.owner_id) {
             return;
         }
-
 
         // FIXME(generic_const_exprs): Revisit this before stabilization.
         // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
@@ -1455,6 +1437,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let mut where_spans = Vec::new();
         let mut inline_spans = Vec::new();
         let mut inline_sugg = Vec::new();
+        let mut affects_object_lifetime_defaults = false;
+
         for p in generics.predicates {
             let span = p.span();
             if p.in_where_clause() {
@@ -1465,31 +1449,61 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 }
                 inline_sugg.push((span, String::new()));
             }
+
+            // FIXME(fmease): Move this into a "diagnostic decorator" for increased laziness
+            // Bounds of the form `T: 'a` where `T` is a type param of
+            // the type alias affect object lifetime defaults.
+            if !affects_object_lifetime_defaults
+                && let hir::WherePredicate::BoundPredicate(pred) = p
+                && pred.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Outlives(_)))
+                && pred.bound_generic_params.is_empty()
+                && let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = pred.bounded_ty.kind
+                && let Res::Def(DefKind::TyParam, _) = path.res
+            {
+                affects_object_lifetime_defaults = true;
+            }
         }
 
-        let mut suggested_changing_assoc_types = false;
-        if !where_spans.is_empty() {
-            let sub = (!suggested_changing_assoc_types).then(|| {
-                suggested_changing_assoc_types = true;
-                SuggestChangingAssocTypes { ty: hir_ty }
-            });
+        // FIXME(fmease): Add a disclaimer (in the form of a multi-span note) that the removal of
+        //                type-param-outlives-bounds affects OLDs and explicit object lifetime
+        //                bounds might be required [...].
+        // FIXME(fmease): The applicability should also depend on the outcome of the HIR walker
+        //                inside of `TypeAliasBoundsQualifyAssocTysSugg`: Whether it found a
+        //                shorthand projection or not.
+        let applicability = if affects_object_lifetime_defaults {
+            Applicability::MaybeIncorrect
+        } else {
+            Applicability::MachineApplicable
+        };
+
+        let mut qualify_assoc_tys_sugg = Some(TypeAliasBoundsQualifyAssocTysSugg { ty: hir_ty });
+        let enable_feat_help = cx.tcx.sess.is_nightly_build().then_some(());
+
+        if let [.., label_sp] = *where_spans {
             cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 where_spans,
-                BuiltinTypeAliasWhereClause { suggestion: generics.where_clause_span, sub },
+                BuiltinTypeAliasBounds::WhereClause {
+                    label: label_sp,
+                    enable_feat_help,
+                    suggestion: (generics.where_clause_span, applicability),
+                    qualify_assoc_tys_sugg: qualify_assoc_tys_sugg.take(),
+                },
             );
         }
-
-        if !inline_spans.is_empty() {
-            let suggestion = BuiltinTypeAliasGenericBoundsSuggestion { suggestions: inline_sugg };
-            let sub = (!suggested_changing_assoc_types).then(|| {
-                suggested_changing_assoc_types = true;
-                SuggestChangingAssocTypes { ty: hir_ty }
-            });
+        if let [.., label_sp] = *inline_spans {
             cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 inline_spans,
-                BuiltinTypeAliasGenericBounds { suggestion, sub },
+                BuiltinTypeAliasBounds::ParamBounds {
+                    label: label_sp,
+                    enable_feat_help,
+                    suggestion: BuiltinTypeAliasParamBoundsSuggestion {
+                        suggestions: inline_sugg,
+                        applicability,
+                    },
+                    qualify_assoc_tys_sugg,
+                },
             );
         }
     }

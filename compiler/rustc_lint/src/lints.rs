@@ -9,7 +9,7 @@ use rustc_errors::{
     ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp,
     Subdiagnostic, SuggestionStyle,
 };
-use rustc_hir::{def::Namespace, def_id::DefId};
+use rustc_hir::{self as hir, def::Namespace, def_id::DefId};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
     inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
@@ -22,9 +22,7 @@ use rustc_span::{
     Span, Symbol,
 };
 
-use crate::{
-    builtin::InitError, builtin::TypeAliasBounds, errors::OverruledAttributeSub, LateContext,
-};
+use crate::{builtin::InitError, errors::OverruledAttributeSub, LateContext};
 
 // array_into_iter.rs
 #[derive(LintDiagnostic)]
@@ -263,62 +261,6 @@ pub struct BuiltinUnreachablePub<'a> {
     pub help: Option<()>,
 }
 
-pub struct SuggestChangingAssocTypes<'a, 'b> {
-    pub ty: &'a rustc_hir::Ty<'b>,
-}
-
-impl<'a, 'b> Subdiagnostic for SuggestChangingAssocTypes<'a, 'b> {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
-        // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
-        // bound. Let's see if this type does that.
-
-        // We use a HIR visitor to walk the type.
-        use rustc_hir::intravisit::{self, Visitor};
-        struct WalkAssocTypes<'a, 'b, G: EmissionGuarantee> {
-            err: &'a mut Diag<'b, G>,
-        }
-        impl<'a, 'b, G: EmissionGuarantee> Visitor<'_> for WalkAssocTypes<'a, 'b, G> {
-            fn visit_qpath(
-                &mut self,
-                qpath: &rustc_hir::QPath<'_>,
-                id: rustc_hir::HirId,
-                span: Span,
-            ) {
-                if TypeAliasBounds::is_type_variable_assoc(qpath) {
-                    self.err.span_help(span, fluent::lint_builtin_type_alias_bounds_help);
-                }
-                intravisit::walk_qpath(self, qpath, id)
-            }
-        }
-
-        // Let's go for a walk!
-        let mut visitor = WalkAssocTypes { err: diag };
-        visitor.visit_ty(self.ty);
-    }
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_type_alias_where_clause)]
-pub struct BuiltinTypeAliasWhereClause<'a, 'b> {
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub suggestion: Span,
-    #[subdiagnostic]
-    pub sub: Option<SuggestChangingAssocTypes<'a, 'b>>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_type_alias_generic_bounds)]
-pub struct BuiltinTypeAliasGenericBounds<'a, 'b> {
-    #[subdiagnostic]
-    pub suggestion: BuiltinTypeAliasGenericBoundsSuggestion,
-    #[subdiagnostic]
-    pub sub: Option<SuggestChangingAssocTypes<'a, 'b>>,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(lint_macro_expr_fragment_specifier_2024_migration)]
 pub struct MacroExprFragment2024 {
@@ -326,21 +268,97 @@ pub struct MacroExprFragment2024 {
     pub suggestion: Span,
 }
 
-pub struct BuiltinTypeAliasGenericBoundsSuggestion {
-    pub suggestions: Vec<(Span, String)>,
+#[derive(LintDiagnostic)]
+pub enum BuiltinTypeAliasBounds<'a, 'hir> {
+    #[diag(lint_builtin_type_alias_bounds_where_clause)]
+    #[note(lint_builtin_type_alias_bounds_limitation_note)]
+    WhereClause {
+        #[label(lint_builtin_type_alias_bounds_label)]
+        label: Span,
+        #[help(lint_builtin_type_alias_bounds_enable_feat_help)]
+        enable_feat_help: Option<()>,
+        #[suggestion(code = "")]
+        suggestion: (Span, Applicability),
+        #[subdiagnostic]
+        qualify_assoc_tys_sugg: Option<TypeAliasBoundsQualifyAssocTysSugg<'a, 'hir>>,
+    },
+    #[diag(lint_builtin_type_alias_bounds_param_bounds)]
+    #[note(lint_builtin_type_alias_bounds_limitation_note)]
+    ParamBounds {
+        #[label(lint_builtin_type_alias_bounds_label)]
+        label: Span,
+        #[help(lint_builtin_type_alias_bounds_enable_feat_help)]
+        enable_feat_help: Option<()>,
+        #[subdiagnostic]
+        suggestion: BuiltinTypeAliasParamBoundsSuggestion,
+        #[subdiagnostic]
+        qualify_assoc_tys_sugg: Option<TypeAliasBoundsQualifyAssocTysSugg<'a, 'hir>>,
+    },
 }
 
-impl Subdiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
+pub struct BuiltinTypeAliasParamBoundsSuggestion {
+    pub suggestions: Vec<(Span, String)>,
+    pub applicability: Applicability,
+}
+
+impl Subdiagnostic for BuiltinTypeAliasParamBoundsSuggestion {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
-        diag.multipart_suggestion(
-            fluent::lint_suggestion,
-            self.suggestions,
-            Applicability::MachineApplicable,
-        );
+        diag.arg("count", self.suggestions.len());
+        diag.multipart_suggestion(fluent::lint_suggestion, self.suggestions, self.applicability);
+    }
+}
+
+pub struct TypeAliasBoundsQualifyAssocTysSugg<'a, 'hir> {
+    pub ty: &'a hir::Ty<'hir>,
+}
+
+impl<'a, 'hir> Subdiagnostic for TypeAliasBoundsQualifyAssocTysSugg<'a, 'hir> {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        // We perform the walk in here instead of in `<TypeAliasBounds as LateLintPass>` to
+        // avoid doing throwaway work in case the lint ends up getting suppressed.
+
+        use hir::intravisit::Visitor;
+        struct ProbeShorthandAssocTys<'a, 'b, G: EmissionGuarantee> {
+            diag: &'a mut Diag<'b, G>,
+        }
+        impl<'a, 'b, G: EmissionGuarantee> Visitor<'_> for ProbeShorthandAssocTys<'a, 'b, G> {
+            fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, _: Span) {
+                // Look for "type-parameter shorthand-associated-types". I.e., paths of the
+                // form `T::Assoc` with `T` type param. These are reliant on trait bounds.
+                // Suggest fully qualifying them via `<T as /* Trait */>::Assoc`.
+                //
+                // Instead of attempting to figure out the necessary trait ref, just use a
+                // placeholder. Since we don't record type-dependent resolutions for non-body
+                // items like type aliases, we can't simply deduce the corresp. trait from
+                // the HIR path alone without rerunning parts of HIR ty lowering here
+                // (namely `probe_single_ty_param_bound_for_assoc_ty`) which is infeasible.
+                //
+                // (We could employ some simple heuristics but that's likely not worth it).
+                if let hir::QPath::TypeRelative(qself, _) = qpath
+                    && let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = qself.kind
+                    && let hir::def::Res::Def(hir::def::DefKind::TyParam, _) = path.res
+                {
+                    self.diag.multipart_suggestion(
+                        fluent::lint_builtin_type_alias_bounds_qualify_assoc_tys_sugg,
+                        vec![
+                            (qself.span.shrink_to_lo(), "<".into()),
+                            (qself.span.shrink_to_hi(), " as /* Trait */>".into()),
+                        ],
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                hir::intravisit::walk_qpath(self, qpath, id)
+            }
+        }
+        ProbeShorthandAssocTys { diag }.visit_ty(self.ty);
     }
 }
 

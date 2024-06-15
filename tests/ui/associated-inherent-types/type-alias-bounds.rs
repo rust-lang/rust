@@ -19,7 +19,7 @@
 // automatically lead to full wfchecking and lint TAB getting suppressed.
 
 pub type Alias<T: Bound> = (Source<T>::Assoc,);
-//~^ WARN bounds on generic parameters are not enforced in type aliases
+//~^ WARN bounds on generic parameters in type aliases are not enforced
 
 pub struct Source<T>(T);
 pub trait Bound {}
