@@ -270,13 +270,14 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for attributes that allow lints without a reason.
-    ///
-    /// (This requires the `lint_reasons` feature)
+    /// Checks for attributes that allow lints without specifying the reason
+    /// they should be allowed. (This requires the `lint_reasons` feature.)
     ///
     /// ### Why restrict this?
-    /// Justifying each `allow` helps readers understand the reasoning,
-    /// and may allow removing `allow` attributes if their purpose is obsolete.
+    /// There should always be a specific reason to allow a lint. This reason
+    /// should be documented using the `reason` parameter, so that readers can
+    /// understand why the `allow` is required, or remove it if it's no
+    /// longer needed.
     ///
     /// ### Example
     /// ```no_run
