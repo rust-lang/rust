@@ -133,7 +133,8 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//! - [`Once`]: Used for a thread-safe, one-time global initialization routine
+//! - [`Once`]: Used for a thread-safe, one-time global initialization routine.
+//!   Mostly useful for implementing other types like `OnceLock`.
 //!
 //! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
 //!   variable, with potentially different initializers based on the caller.
