@@ -6450,7 +6450,7 @@ macro_rules! fpclass_asm {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_pd_mask&ig_expand=3493)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6475,7 +6475,7 @@ pub unsafe fn _mm_fpclass_pd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_pd_mask&ig_expand=3494)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6597,7 +6597,7 @@ pub unsafe fn _mm512_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m5
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_ps_mask&ig_expand=3505)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6622,7 +6622,7 @@ pub unsafe fn _mm_fpclass_ps_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ps_mask&ig_expand=3506)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6744,7 +6744,7 @@ pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_sd_mask&ig_expand=3511)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6769,7 +6769,7 @@ pub unsafe fn _mm_fpclass_sd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_sd_mask&ig_expand=3512)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6793,7 +6793,7 @@ pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_ss_mask&ig_expand=3515)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6818,7 +6818,7 @@ pub unsafe fn _mm_fpclass_ss_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ss_mask&ig_expand=3516)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
