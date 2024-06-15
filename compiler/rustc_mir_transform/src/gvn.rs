@@ -826,6 +826,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
+                // Ignore arrays in operand.
+                if let Value::Aggregate(AggregateTy::Array, ..) = self.get(value) {
+                    return None;
+                }
                 if let Some(const_) = self.try_as_constant(value) {
                     *operand = Operand::Constant(Box::new(const_));
                 }

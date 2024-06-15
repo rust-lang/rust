@@ -73,9 +73,8 @@
           StorageLive(_11);
           StorageLive(_12);
 -         _12 = [const 1f32, const 2f32, const 3f32, const 1f32, const 1f32, const 1f32, const 1f32, const 42f32];
--         _11 = F32x8(move _12);
 +         _12 = const [1f32, 2f32, 3f32, 1f32, 1f32, 1f32, 1f32, 42f32];
-+         _11 = F32x8(const [1f32, 2f32, 3f32, 1f32, 1f32, 1f32, 1f32, 42f32]);
+          _11 = F32x8(move _12);
           StorageDead(_12);
           StorageLive(_13);
           StorageLive(_14);
