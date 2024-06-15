@@ -258,16 +258,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
-        let lang_items = self.tcx().lang_items();
+        let tcx = self.tcx();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
-            let conditions = if Some(trait_def) == lang_items.sized_trait() {
+            let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
                 self.sized_conditions(obligation)
-            } else if Some(trait_def) == lang_items.copy_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.clone_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::Clone) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.fused_iterator_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::FusedIterator) {
                 self.fused_iterator_conditions(obligation)
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
@@ -338,7 +338,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let make_freeze_obl = |ty| {
                         let trait_ref = ty::TraitRef::new(
                             tcx,
-                            tcx.lang_items().freeze_trait().unwrap(),
+                            tcx.require_lang_item(LangItem::Freeze, None),
                             [ty::GenericArg::from(ty)],
                         );
                         Obligation::with_depth(
@@ -1444,7 +1444,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Foreign(_) => {}
 
                 // `ManuallyDrop` is trivially drop
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().manually_drop() => {}
+                ty::Adt(def, _) if def.is_manually_drop() => {}
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)

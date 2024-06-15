@@ -289,7 +289,7 @@ pub fn transform_instance<'tcx>(
     options: TransformTyOptions,
 ) -> Instance<'tcx> {
     if (matches!(instance.def, ty::InstanceDef::Virtual(..))
-        && Some(instance.def_id()) == tcx.lang_items().drop_in_place_fn())
+        && tcx.is_lang_item(instance.def_id(), LangItem::DropInPlace))
         || matches!(instance.def, ty::InstanceDef::DropGlue(..))
     {
         // Adjust the type ids of DropGlues

@@ -1,5 +1,6 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -34,7 +35,7 @@ fn resolve_instance<'tcx>(
         let def = if tcx.intrinsic(def_id).is_some() {
             debug!(" => intrinsic");
             ty::InstanceDef::Intrinsic(def_id)
-        } else if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
+        } else if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
             let ty = args.type_at(0);
 
             if ty.needs_drop(tcx, param_env) {
@@ -57,7 +58,7 @@ fn resolve_instance<'tcx>(
                 debug!(" => trivial drop glue");
                 ty::InstanceDef::DropGlue(def_id, None)
             }
-        } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
+        } else if tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace) {
             let ty = args.type_at(0);
 
             if ty.async_drop_glue_morphology(tcx) != AsyncDropGlueMorphology::Noop {
@@ -221,8 +222,7 @@ fn resolve_associated_item<'tcx>(
             )
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Misc, _) => {
-            let lang_items = tcx.lang_items();
-            if Some(trait_ref.def_id) == lang_items.clone_trait() {
+            if tcx.is_lang_item(trait_ref.def_id, LangItem::Clone) {
                 // FIXME(eddyb) use lang items for methods instead of names.
                 let name = tcx.item_name(trait_item_id);
                 if name == sym::clone {
@@ -248,8 +248,8 @@ fn resolve_associated_item<'tcx>(
                     let args = tcx.erase_regions(rcvr_args);
                     Some(ty::Instance::new(trait_item_id, args))
                 }
-            } else if Some(trait_ref.def_id) == lang_items.fn_ptr_trait() {
-                if lang_items.fn_ptr_addr() == Some(trait_item_id) {
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
+                if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAddr) {
                     let self_ty = trait_ref.self_ty();
                     if !matches!(self_ty.kind(), ty::FnPtr(..)) {
                         return Ok(None);

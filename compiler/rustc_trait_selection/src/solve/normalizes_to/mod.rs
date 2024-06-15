@@ -392,9 +392,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                      output_coroutine_ty,
                      coroutine_return_ty,
                  }| {
-                    let lang_items = tcx.lang_items();
-                    let (projection_term, term) = if Some(goal.predicate.def_id())
-                        == lang_items.call_once_future()
+                    let (projection_term, term) = if tcx
+                        .is_lang_item(goal.predicate.def_id(), LangItem::CallOnceFuture)
                     {
                         (
                             ty::AliasTerm::new(
@@ -404,7 +403,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             ),
                             output_coroutine_ty.into(),
                         )
-                    } else if Some(goal.predicate.def_id()) == lang_items.call_ref_future() {
+                    } else if tcx.is_lang_item(goal.predicate.def_id(), LangItem::CallRefFuture) {
                         (
                             ty::AliasTerm::new(
                                 tcx,
@@ -417,7 +416,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                             ),
                             output_coroutine_ty.into(),
                         )
-                    } else if Some(goal.predicate.def_id()) == lang_items.async_fn_once_output() {
+                    } else if tcx.is_lang_item(goal.predicate.def_id(), LangItem::AsyncFnOnceOutput)
+                    {
                         (
                             ty::AliasTerm::new(
                                 tcx,
@@ -719,10 +719,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
         let coroutine = args.as_coroutine();
 
-        let lang_items = tcx.lang_items();
-        let term = if Some(goal.predicate.def_id()) == lang_items.coroutine_return() {
+        let term = if tcx.is_lang_item(goal.predicate.def_id(), LangItem::CoroutineReturn) {
             coroutine.return_ty().into()
-        } else if Some(goal.predicate.def_id()) == lang_items.coroutine_yield() {
+        } else if tcx.is_lang_item(goal.predicate.def_id(), LangItem::CoroutineYield) {
             coroutine.yield_ty().into()
         } else {
             bug!(

@@ -32,6 +32,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
@@ -2800,19 +2801,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let predicates = predicates.instantiate_own(tcx, args);
         let mut obligations = Vec::with_capacity(predicates.len());
         for (index, (predicate, span)) in predicates.into_iter().enumerate() {
-            let cause =
-                if Some(parent_trait_pred.def_id()) == tcx.lang_items().coerce_unsized_trait() {
-                    cause.clone()
-                } else {
-                    cause.clone().derived_cause(parent_trait_pred, |derived| {
-                        ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
-                            derived,
-                            impl_or_alias_def_id: def_id,
-                            impl_def_predicate_index: Some(index),
-                            span,
-                        }))
-                    })
-                };
+            let cause = if tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
+                cause.clone()
+            } else {
+                cause.clone().derived_cause(parent_trait_pred, |derived| {
+                    ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
+                        derived,
+                        impl_or_alias_def_id: def_id,
+                        impl_def_predicate_index: Some(index),
+                        span,
+                    }))
+                })
+            };
             let clause = normalize_with_depth_to(
                 self,
                 param_env,

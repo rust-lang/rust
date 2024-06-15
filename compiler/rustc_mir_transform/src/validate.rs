@@ -1,6 +1,7 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_infer::traits::Reveal;
@@ -689,7 +690,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     ty::Adt(adt_def, args) => {
                         // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
-                        if Some(adt_def.did()) == self.tcx.lang_items().dyn_metadata() {
+                        if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
                             self.fail(
                                 location,
                                 format!(
