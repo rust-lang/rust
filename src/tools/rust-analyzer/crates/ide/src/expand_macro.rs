@@ -111,9 +111,10 @@ fn expand_macro_recur(
     macro_call: &ast::Item,
 ) -> Option<SyntaxNode> {
     let expanded = match macro_call {
-        item @ ast::Item::MacroCall(macro_call) => {
-            sema.expand_attr_macro(item).or_else(|| sema.expand(macro_call))?.clone_for_update()
-        }
+        item @ ast::Item::MacroCall(macro_call) => sema
+            .expand_attr_macro(item)
+            .or_else(|| sema.expand_allowed_builtins(macro_call))?
+            .clone_for_update(),
         item => sema.expand_attr_macro(item)?.clone_for_update(),
     };
     expand(sema, expanded)

@@ -323,6 +323,22 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             sa.expand(self.db, macro_call)?
         };
+
+        let node = self.parse_or_expand(file_id.into());
+        Some(node)
+    }
+
+    pub fn expand_allowed_builtins(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+        let sa = self.analyze_no_infer(macro_call.syntax())?;
+
+        let macro_call = InFile::new(sa.file_id, macro_call);
+        let file_id = if let Some(call) =
+            <ast::MacroCall as crate::semantics::ToDef>::to_def(self, macro_call)
+        {
+            call.as_macro_file()
+        } else {
+            sa.expand(self.db, macro_call)?
+        };
         let macro_call = self.db.lookup_intern_macro_call(file_id.macro_call_id);
 
         match macro_call.def.kind {
