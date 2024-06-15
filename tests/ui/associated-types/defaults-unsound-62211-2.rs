@@ -26,7 +26,6 @@ trait UncheckedCopy: Sized {
     //~| ERROR the trait bound `Self: Deref` is not satisfied
     //~| ERROR cannot add-assign `&'static str` to `Self`
     //~| ERROR `Self` doesn't implement `std::fmt::Display`
-    //[next]~| ERROR type mismatch resolving `<Self as Deref>::Target == str`
 
     // We said the Output type was Copy, so we can Copy it freely!
     fn unchecked_copy(other: &Self::Output) -> Self::Output {
