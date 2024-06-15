@@ -893,7 +893,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let dirent64_layout = this.libc_ty_layout("dirent64");
                 let d_name_offset = dirent64_layout.fields.offset(4 /* d_name */).bytes();
-                let size = d_name_offset.checked_add(name_len).unwrap();
+                let size = d_name_offset.strict_add(name_len);
 
                 let entry = this.allocate_ptr(
                     Size::from_bytes(size),
@@ -994,7 +994,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     name_place.ptr(),
                     name_place.layout.size.bytes(),
                 )?;
-                let file_name_len = file_name_buf_len.checked_sub(1).unwrap();
+                let file_name_len = file_name_buf_len.strict_sub(1);
                 if !name_fits {
                     throw_unsup_format!(
                         "a directory entry had a name too large to fit in libc::dirent"
