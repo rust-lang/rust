@@ -28,8 +28,6 @@ pub mod pipe;
 pub mod process;
 pub mod stdio;
 pub mod thread;
-#[path = "../unsupported/thread_local_key.rs"]
-pub mod thread_local_key;
 pub mod time;
 
 mod helpers;

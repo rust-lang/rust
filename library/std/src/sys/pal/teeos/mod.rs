@@ -27,9 +27,6 @@ pub mod process;
 mod rand;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-#[path = "../unix/thread_local_key.rs"]
-pub mod thread_local_key;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
 pub mod time;

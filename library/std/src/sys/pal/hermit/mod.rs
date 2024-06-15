@@ -33,9 +33,6 @@ pub mod pipe;
 pub mod process;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-#[path = "../unsupported/thread_local_key.rs"]
-pub mod thread_local_key;
 pub mod time;
 
 use crate::io::ErrorKind;
@@ -98,7 +95,6 @@ pub unsafe extern "C" fn runtime_entry(
     argv: *const *const c_char,
     env: *const *const c_char,
 ) -> ! {
-    use thread_local_dtor::run_dtors;
     extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
@@ -108,7 +104,7 @@ pub unsafe extern "C" fn runtime_entry(
 
     let result = main(argc as isize, argv);
 
-    run_dtors();
+    crate::sys::thread_local::destructors::run();
     hermit_abi::exit(result);
 }
 

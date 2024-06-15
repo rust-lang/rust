@@ -1,61 +1,16 @@
-//! OS-based thread local storage for non-Windows systems
+//! An implementation of `const`-creatable TLS keys for non-Windows platforms.
 //!
-//! This module provides an implementation of OS-based thread local storage,
-//! using the native OS-provided facilities (think `TlsAlloc` or
-//! `pthread_setspecific`). The interface of this differs from the other types
-//! of thread-local-storage provided in this crate in that OS-based TLS can only
-//! get/set pointer-sized data, possibly with an associated destructor.
+//! Most OSs without native TLS will provide a library-based way to create TLS
+//! storage. For each TLS variable, we create a key, which can then be used to
+//! reference an entry in a thread-local table. This then associates each key
+//! with a pointer which we can get and set to store our data.
 //!
-//! This module also provides two flavors of TLS. One is intended for static
-//! initialization, and does not contain a `Drop` implementation to deallocate
-//! the OS-TLS key. The other is a type which does implement `Drop` and hence
-//! has a safe interface.
-//!
-//! Windows doesn't use this module at all; `sys::pal::windows::thread_local_key`
-//! gets imported in its stead.
-//!
-//! # Usage
-//!
-//! This module should likely not be used directly unless other primitives are
-//! being built on. Types such as `thread_local::spawn::Key` are likely much
-//! more useful in practice than this OS-based version which likely requires
-//! unsafe code to interoperate with.
-//!
-//! # Examples
-//!
-//! Using a dynamically allocated TLS key. Note that this key can be shared
-//! among many threads via an `Arc`.
-//!
-//! ```ignore (cannot-doctest-private-modules)
-//! let key = Key::new(None);
-//! assert!(key.get().is_null());
-//! key.set(1 as *mut u8);
-//! assert!(!key.get().is_null());
-//!
-//! drop(key); // deallocate this TLS slot.
-//! ```
-//!
-//! Sometimes a statically allocated key is either required or easier to work
-//! with, however.
-//!
-//! ```ignore (cannot-doctest-private-modules)
-//! static KEY: StaticKey = INIT;
-//!
-//! unsafe {
-//!     assert!(KEY.get().is_null());
-//!     KEY.set(1 as *mut u8);
-//! }
-//! ```
-
-#![allow(non_camel_case_types)]
-#![unstable(feature = "thread_local_internals", issue = "none")]
-#![allow(dead_code)]
-
-#[cfg(test)]
-mod tests;
+//! Unfortunately, none of these platforms allows creating the key at compile-time,
+//! which means we need a way to lazily create keys (`StaticKey`). Instead of
+//! blocking API like `OnceLock`, we use racy initialization, which should be
+//! more lightweight and avoids circular dependencies with the rest of `std`.
 
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
-use crate::sys::thread_local_key as imp;
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -90,11 +45,6 @@ pub struct StaticKey {
     dtor: Option<unsafe extern "C" fn(*mut u8)>,
 }
 
-/// Constant initialization value for static TLS keys.
-///
-/// This value specifies no destructor by default.
-pub const INIT: StaticKey = StaticKey::new(None);
-
 // Define a sentinel value that is likely not to be returned
 // as a TLS key.
 #[cfg(not(target_os = "nto"))]
@@ -117,7 +67,7 @@ impl StaticKey {
     /// been allocated.
     #[inline]
     pub unsafe fn get(&self) -> *mut u8 {
-        imp::get(self.key())
+        unsafe { super::get(self.key()) }
     }
 
     /// Sets this TLS key to a new value.
@@ -126,18 +76,18 @@ impl StaticKey {
     /// been allocated.
     #[inline]
     pub unsafe fn set(&self, val: *mut u8) {
-        imp::set(self.key(), val)
+        unsafe { super::set(self.key(), val) }
     }
 
     #[inline]
-    unsafe fn key(&self) -> imp::Key {
+    fn key(&self) -> super::Key {
         match self.key.load(Ordering::Acquire) {
-            KEY_SENTVAL => self.lazy_init() as imp::Key,
-            n => n as imp::Key,
+            KEY_SENTVAL => self.lazy_init() as super::Key,
+            n => n as super::Key,
         }
     }
 
-    unsafe fn lazy_init(&self) -> usize {
+    fn lazy_init(&self) -> usize {
         // POSIX allows the key created here to be KEY_SENTVAL, but the compare_exchange
         // below relies on using KEY_SENTVAL as a sentinel value to check who won the
         // race to set the shared TLS key. As far as I know, there is no
@@ -147,12 +97,14 @@ impl StaticKey {
         // value of KEY_SENTVAL, but with some gyrations to make sure we have a non-KEY_SENTVAL
         // value returned from the creation routine.
         // FIXME: this is clearly a hack, and should be cleaned up.
-        let key1 = imp::create(self.dtor);
+        let key1 = super::create(self.dtor);
         let key = if key1 as usize != KEY_SENTVAL {
             key1
         } else {
-            let key2 = imp::create(self.dtor);
-            imp::destroy(key1);
+            let key2 = super::create(self.dtor);
+            unsafe {
+                super::destroy(key1);
+            }
             key2
         };
         rtassert!(key as usize != KEY_SENTVAL);
@@ -165,10 +117,10 @@ impl StaticKey {
             // The CAS succeeded, so we've created the actual key
             Ok(_) => key as usize,
             // If someone beat us to the punch, use their key instead
-            Err(n) => {
-                imp::destroy(key);
+            Err(n) => unsafe {
+                super::destroy(key);
                 n
-            }
+            },
         }
     }
 }
