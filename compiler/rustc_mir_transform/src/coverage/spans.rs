@@ -8,7 +8,7 @@ use rustc_span::Span;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::mappings;
 use crate::coverage::spans::from_mir::{
-    extract_covspans_and_holes_from_mir, ExtractedCovspans, SpanFromMir,
+    extract_covspans_and_holes_from_mir, ExtractedCovspans, Hole, SpanFromMir,
 };
 use crate::coverage::ExtractedHirInfo;
 
@@ -53,39 +53,8 @@ pub(super) fn extract_refined_covspans(
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 
-    // Now we're ready to start carving holes out of the initial coverage spans,
-    // and grouping them in buckets separated by the holes.
-
-    let mut input_covspans = VecDeque::from(covspans);
-    let mut fragments = vec![];
-
-    // For each hole:
-    // - Identify the spans that are entirely or partly before the hole.
-    // - Put those spans in a corresponding bucket, truncated to the start of the hole.
-    // - If one of those spans also extends after the hole, put the rest of it
-    //   in a "fragments" vector that is processed by the next hole.
-    let mut buckets = (0..holes.len()).map(|_| vec![]).collect::<Vec<_>>();
-    for (hole, bucket) in holes.iter().zip(&mut buckets) {
-        let fragments_from_prev = std::mem::take(&mut fragments);
-
-        // Only inspect spans that precede or overlap this hole,
-        // leaving the rest to be inspected by later holes.
-        // (This relies on the spans and holes both being sorted.)
-        let relevant_input_covspans =
-            drain_front_while(&mut input_covspans, |c| c.span.lo() < hole.span.hi());
-
-        for covspan in fragments_from_prev.into_iter().chain(relevant_input_covspans) {
-            let (before, after) = covspan.split_around_hole_span(hole.span);
-            bucket.extend(before);
-            fragments.extend(after);
-        }
-    }
-
-    // After finding the spans before each hole, any remaining fragments/spans
-    // form their own final bucket, after the final hole.
-    // (If there were no holes, this will just be all of the initial spans.)
-    fragments.extend(input_covspans);
-    buckets.push(fragments);
+    // Split the covspans into separate buckets that don't overlap any holes.
+    let buckets = divide_spans_into_buckets(covspans, &holes);
 
     for mut covspans in buckets {
         // Make sure each individual bucket is internally sorted.
@@ -147,6 +116,55 @@ fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
     // The newly-split spans are added at the end, so any previous sorting
     // is not preserved.
     covspans.extend(extra_spans);
+}
+
+/// Uses the holes to divide the given covspans into buckets, such that:
+/// - No span in any hole overlaps a bucket (truncating the spans if necessary).
+/// - The spans in each bucket are strictly after all spans in previous buckets,
+///   and strictly before all spans in subsequent buckets.
+///
+/// The resulting buckets are sorted relative to each other, but might not be
+/// internally sorted.
+#[instrument(level = "debug")]
+fn divide_spans_into_buckets(input_covspans: Vec<Covspan>, holes: &[Hole]) -> Vec<Vec<Covspan>> {
+    debug_assert!(input_covspans.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
+    debug_assert!(holes.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
+
+    // Now we're ready to start carving holes out of the initial coverage spans,
+    // and grouping them in buckets separated by the holes.
+
+    let mut input_covspans = VecDeque::from(input_covspans);
+    let mut fragments = vec![];
+
+    // For each hole:
+    // - Identify the spans that are entirely or partly before the hole.
+    // - Put those spans in a corresponding bucket, truncated to the start of the hole.
+    // - If one of those spans also extends after the hole, put the rest of it
+    //   in a "fragments" vector that is processed by the next hole.
+    let mut buckets = (0..holes.len()).map(|_| vec![]).collect::<Vec<_>>();
+    for (hole, bucket) in holes.iter().zip(&mut buckets) {
+        let fragments_from_prev = std::mem::take(&mut fragments);
+
+        // Only inspect spans that precede or overlap this hole,
+        // leaving the rest to be inspected by later holes.
+        // (This relies on the spans and holes both being sorted.)
+        let relevant_input_covspans =
+            drain_front_while(&mut input_covspans, |c| c.span.lo() < hole.span.hi());
+
+        for covspan in fragments_from_prev.into_iter().chain(relevant_input_covspans) {
+            let (before, after) = covspan.split_around_hole_span(hole.span);
+            bucket.extend(before);
+            fragments.extend(after);
+        }
+    }
+
+    // After finding the spans before each hole, any remaining fragments/spans
+    // form their own final bucket, after the final hole.
+    // (If there were no holes, this will just be all of the initial spans.)
+    fragments.extend(input_covspans);
+    buckets.push(fragments);
+
+    buckets
 }
 
 /// Similar to `.drain(..)`, but stops just before it would remove an item not
