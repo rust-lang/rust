@@ -278,6 +278,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         self.source
     }
 
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+
     fn candidates_recur(
         &'a self,
         candidates: &mut Vec<InspectCandidate<'a, 'tcx>>,
@@ -436,8 +440,17 @@ impl<'tcx> InferCtxt<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> V::Result {
+        self.visit_proof_tree_at_depth(goal, 0, visitor)
+    }
+
+    fn visit_proof_tree_at_depth<V: ProofTreeVisitor<'tcx>>(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        depth: usize,
+        visitor: &mut V,
+    ) -> V::Result {
         let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
         let proof_tree = proof_tree.unwrap();
-        visitor.visit_goal(&InspectGoal::new(self, 0, proof_tree, None, GoalSource::Misc))
+        visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }
 }

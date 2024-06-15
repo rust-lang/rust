@@ -11,7 +11,6 @@ run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
 run-make/cdylib-fewer-symbols/Makefile
-run-make/codegen-options-parsing/Makefile
 run-make/comment-section/Makefile
 run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
@@ -25,7 +24,6 @@ run-make/cross-lang-lto-upstream-rlibs/Makefile
 run-make/cross-lang-lto/Makefile
 run-make/debug-assertions/Makefile
 run-make/debugger-visualizer-dep-info/Makefile
-run-make/dep-graph/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile

@@ -52,7 +52,11 @@ impl<'tcx> BodyBuilder<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
-    fn visit_constant(&mut self, constant: &mut mir::ConstOperand<'tcx>, location: mir::Location) {
+    fn visit_const_operand(
+        &mut self,
+        constant: &mut mir::ConstOperand<'tcx>,
+        location: mir::Location,
+    ) {
         let const_ = constant.const_;
         let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), constant.span) {
             Ok(v) => v,
@@ -63,7 +67,7 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
         };
         let ty = constant.ty();
         constant.const_ = mir::Const::Val(val, ty);
-        self.super_constant(constant, location);
+        self.super_const_operand(constant, location);
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {

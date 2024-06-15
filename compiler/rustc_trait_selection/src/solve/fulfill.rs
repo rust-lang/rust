@@ -515,6 +515,32 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
         }
 
+        // alias-relate may fail because the lhs or rhs can't be normalized,
+        // and therefore is treated as rigid.
+        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred_kind.no_bound_vars() {
+            if let Some(obligation) = goal
+                .infcx()
+                .visit_proof_tree_at_depth(
+                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                    goal.depth() + 1,
+                    self,
+                )
+                .break_value()
+            {
+                return ControlFlow::Break(obligation);
+            } else if let Some(obligation) = goal
+                .infcx()
+                .visit_proof_tree_at_depth(
+                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                    goal.depth() + 1,
+                    self,
+                )
+                .break_value()
+            {
+                return ControlFlow::Break(obligation);
+            }
+        }
+
         ControlFlow::Break(self.obligation.clone())
     }
 }

@@ -328,13 +328,13 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
 }
 
 impl<'tcx> Stable<'tcx> for mir::ConstOperand<'tcx> {
-    type T = stable_mir::mir::Constant;
+    type T = stable_mir::mir::ConstOperand;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        stable_mir::mir::Constant {
+        stable_mir::mir::ConstOperand {
             span: self.span.stable(tables),
             user_ty: self.user_ty.map(|u| u.as_usize()).or(None),
-            literal: self.const_.stable(tables),
+            const_: self.const_.stable(tables),
         }
     }
 }

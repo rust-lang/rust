@@ -799,7 +799,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// This does not walk the MIR of the constant as that is not needed for codegen, all we need is
     /// to ensure that the constant evaluates successfully and walk the result.
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
         // No `super_constant` as we don't care about `visit_ty`/`visit_ty_const`.
         let Some(val) = self.eval_constant(constant) else { return };
         collect_const_value(self.tcx, val, self.used_items);

@@ -637,7 +637,7 @@ pub enum AggregateKind {
 pub enum Operand {
     Copy(Place),
     Move(Place),
-    Constant(Constant),
+    Constant(ConstOperand),
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -651,6 +651,13 @@ impl From<Local> for Place {
     fn from(local: Local) -> Self {
         Place { local, projection: vec![] }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstOperand {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub const_: MirConst,
 }
 
 /// Debug information pertaining to a user variable.
@@ -712,13 +719,6 @@ pub struct VarDebugInfoFragment {
 pub enum VarDebugInfoContents {
     Place(Place),
     Const(ConstOperand),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConstOperand {
-    pub span: Span,
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub const_: MirConst,
 }
 
 // In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
@@ -828,13 +828,6 @@ pub const RETURN_LOCAL: Local = 0;
 pub type FieldIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Constant {
-    pub span: Span,
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: MirConst,
-}
 
 /// The possible branch sites of a [TerminatorKind::SwitchInt].
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1001,9 +994,9 @@ impl Operand {
     }
 }
 
-impl Constant {
+impl ConstOperand {
     pub fn ty(&self) -> Ty {
-        self.literal.ty()
+        self.const_.ty()
     }
 }
 

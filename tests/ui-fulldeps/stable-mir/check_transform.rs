@@ -21,7 +21,7 @@ extern crate stable_mir;
 use rustc_smir::rustc_internal;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::Instance;
-use stable_mir::mir::{Body, Constant, Operand, Rvalue, StatementKind, TerminatorKind};
+use stable_mir::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
 use stable_mir::ty::{ConstantKind, MirConst};
 use stable_mir::{CrateDef, CrateItems, ItemKind};
 use std::convert::TryFrom;
@@ -72,7 +72,7 @@ fn check_msg(body: &Body, expected: &str) {
                             .unwrap()
                     }
                 };
-                let ConstantKind::Allocated(alloc) = msg_const.literal.kind() else {
+                let ConstantKind::Allocated(alloc) = msg_const.const_.kind() else {
                     unreachable!()
                 };
                 assert_eq!(alloc.provenance.ptrs.len(), 1);
@@ -96,8 +96,8 @@ fn change_panic_msg(mut body: Body, new_msg: &str) -> Body {
         match &mut bb.terminator.kind {
             TerminatorKind::Call { args, .. } => {
                 let new_const = MirConst::from_str(new_msg);
-                args[0] = Operand::Constant(Constant {
-                    literal: new_const,
+                args[0] = Operand::Constant(ConstOperand {
+                    const_: new_const,
                     span: bb.terminator.span,
                     user_ty: None,
                 });

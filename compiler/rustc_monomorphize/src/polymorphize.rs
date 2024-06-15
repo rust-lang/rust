@@ -261,7 +261,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_constant(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
         match ct.const_ {
             mir::Const::Ty(_, c) => {
                 c.visit_with(self);

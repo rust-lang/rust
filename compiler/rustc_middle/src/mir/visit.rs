@@ -184,12 +184,12 @@ macro_rules! make_mir_visitor {
 
             /// This is called for every constant in the MIR body and every `required_consts`
             /// (i.e., including consts that have been dead-code-eliminated).
-            fn visit_constant(
+            fn visit_const_operand(
                 &mut self,
                 constant: & $($mutability)? ConstOperand<'tcx>,
                 location: Location,
             ) {
-                self.super_constant(constant, location);
+                self.super_const_operand(constant, location);
             }
 
             fn visit_ty_const(
@@ -597,7 +597,7 @@ macro_rules! make_mir_visitor {
                                 }
                                 InlineAsmOperand::Const { value }
                                 | InlineAsmOperand::SymFn { value } => {
-                                    self.visit_constant(value, location);
+                                    self.visit_const_operand(value, location);
                                 }
                                 InlineAsmOperand::Out { place: None, .. }
                                 | InlineAsmOperand::SymStatic { def_id: _ }
@@ -788,7 +788,7 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     Operand::Constant(constant) => {
-                        self.visit_constant(constant, location);
+                        self.visit_const_operand(constant, location);
                     }
                 }
             }
@@ -867,7 +867,7 @@ macro_rules! make_mir_visitor {
                     }
                 }
                 match value {
-                    VarDebugInfoContents::Const(c) => self.visit_constant(c, location),
+                    VarDebugInfoContents::Const(c) => self.visit_const_operand(c, location),
                     VarDebugInfoContents::Place(place) =>
                         self.visit_place(
                             place,
@@ -882,7 +882,7 @@ macro_rules! make_mir_visitor {
                 _scope: $(& $mutability)? SourceScope
             ) {}
 
-            fn super_constant(
+            fn super_const_operand(
                 &mut self,
                 constant: & $($mutability)? ConstOperand<'tcx>,
                 location: Location
@@ -1057,7 +1057,7 @@ macro_rules! super_body {
 
         for const_ in &$($mutability)? $body.required_consts {
             let location = Location::START;
-            $self.visit_constant(const_, location);
+            $self.visit_const_operand(const_, location);
         }
     }
 }

@@ -49,14 +49,14 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
     }
 
     #[inline]
-    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, constant: &mut ConstOperand<'tcx>, location: Location) {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
         if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.param_env, constant.const_) {
             constant.const_ = c;
         }
-        self.super_constant(constant, location);
+        self.super_const_operand(constant, location);
     }
 
     #[inline]
