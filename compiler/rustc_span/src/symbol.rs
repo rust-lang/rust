@@ -2054,6 +2054,8 @@ symbols! {
         yes,
         yield_expr,
         ymm_reg,
+        zfh,
+        zfhmin,
         zmm_reg,
     }
 }
