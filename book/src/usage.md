@@ -36,7 +36,7 @@ You can configure lint levels on the command line by adding
 cargo clippy -- -Aclippy::style -Wclippy::double_neg -Dclippy::perf
 ```
 
-For [CI] all warnings can be elevated to errors which will inturn fail
+For [CI] all warnings can be elevated to errors which will in turn fail
 the build and cause Clippy to exit with a code other than `0`.
 
 ```
