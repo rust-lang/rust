@@ -405,41 +405,41 @@
 
 
 - Reduce:
-    * [ ] _mm512_reduce_round_pd
-    * [ ] _mm512_mask_reduce_round_pd
-    * [ ] _mm512_maskz_reduce_round_pd
-    * [ ] _mm_reduce_pd
-    * [ ] _mm_mask_reduce_pd
-    * [ ] _mm_maskz_reduce_pd
-    * [ ] _mm256_reduce_pd
-    * [ ] _mm256_mask_reduce_pd
-    * [ ] _mm256_maskz_reduce_pd
-    * [ ] _mm512_reduce_pd
-    * [ ] _mm512_mask_reduce_pd
-    * [ ] _mm512_maskz_reduce_pd
-    * [ ] _mm512_reduce_round_ps
-    * [ ] _mm512_mask_reduce_round_ps
-    * [ ] _mm512_maskz_reduce_round_ps
-    * [ ] _mm_reduce_ps
-    * [ ] _mm_mask_reduce_ps
-    * [ ] _mm_maskz_reduce_ps
-    * [ ] _mm256_reduce_ps
-    * [ ] _mm256_mask_reduce_ps
-    * [ ] _mm256_maskz_reduce_ps
-    * [ ] _mm512_reduce_ps
-    * [ ] _mm512_mask_reduce_ps
-    * [ ] _mm512_maskz_reduce_ps
-    * [ ] _mm_reduce_round_sd
-    * [ ] _mm_mask_reduce_round_sd
-    * [ ] _mm_maskz_reduce_round_sd
-    * [ ] _mm_reduce_sd
-    * [ ] _mm_mask_reduce_sd
-    * [ ] _mm_maskz_reduce_sd
-    * [ ] _mm_reduce_round_ss
-    * [ ] _mm_mask_reduce_round_ss
-    * [ ] _mm_maskz_reduce_round_ss
-    * [ ] _mm_reduce_ss
-    * [ ] _mm_mask_reduce_ss
-    * [ ] _mm_maskz_reduce_ss
+    * [x] _mm512_reduce_round_pd
+    * [x] _mm512_mask_reduce_round_pd
+    * [x] _mm512_maskz_reduce_round_pd
+    * [x] _mm_reduce_pd
+    * [x] _mm_mask_reduce_pd
+    * [x] _mm_maskz_reduce_pd
+    * [x] _mm256_reduce_pd
+    * [x] _mm256_mask_reduce_pd
+    * [x] _mm256_maskz_reduce_pd
+    * [x] _mm512_reduce_pd
+    * [x] _mm512_mask_reduce_pd
+    * [x] _mm512_maskz_reduce_pd
+    * [x] _mm512_reduce_round_ps
+    * [x] _mm512_mask_reduce_round_ps
+    * [x] _mm512_maskz_reduce_round_ps
+    * [x] _mm_reduce_ps
+    * [x] _mm_mask_reduce_ps
+    * [x] _mm_maskz_reduce_ps
+    * [x] _mm256_reduce_ps
+    * [x] _mm256_mask_reduce_ps
+    * [x] _mm256_maskz_reduce_ps
+    * [x] _mm512_reduce_ps
+    * [x] _mm512_mask_reduce_ps
+    * [x] _mm512_maskz_reduce_ps
+    * [x] _mm_reduce_round_sd
+    * [x] _mm_mask_reduce_round_sd
+    * [x] _mm_maskz_reduce_round_sd
+    * [x] _mm_reduce_sd
+    * [x] _mm_mask_reduce_sd
+    * [x] _mm_maskz_reduce_sd
+    * [x] _mm_reduce_round_ss
+    * [x] _mm_mask_reduce_round_ss
+    * [x] _mm_maskz_reduce_round_ss
+    * [x] _mm_reduce_ss
+    * [x] _mm_mask_reduce_ss
+    * [x] _mm_maskz_reduce_ss
 
 </p>
