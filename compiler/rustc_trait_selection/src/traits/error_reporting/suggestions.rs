@@ -4598,19 +4598,41 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return;
         }
 
+        fn get_fn_decl<'tcx, 'hir>(
+            tcx: TyCtxt<'tcx>,
+            node: hir::Node<'hir>,
+        ) -> Option<(&'hir hir::FnDecl<'hir>, hir::BodyId)> {
+            match node {
+                hir::Node::Item(item) if let hir::ItemKind::Fn(sig, _, body_id) = item.kind => {
+                    Some((sig.decl, body_id))
+                }
+                hir::Node::ImplItem(item)
+                    if let hir::ImplItemKind::Fn(sig, body_id) = item.kind =>
+                {
+                    let parent = tcx.parent_hir_node(item.hir_id());
+                    if let hir::Node::Item(item) = parent
+                        && let hir::ItemKind::Impl(imp) = item.kind
+                        && imp.of_trait.is_none()
+                    {
+                        return Some((sig.decl, body_id));
+                    }
+                    None
+                }
+                _ => None,
+            }
+        }
+
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
-        if let hir::Node::Item(item) = node
-            && let hir::ItemKind::Fn(sig, _, body_id) = item.kind
-            && let hir::FnRetTy::DefaultReturn(ret_span) = sig.decl.output
+        if let Some((fn_decl, body_id)) = get_fn_decl(self.tcx, node)
+            && let hir::FnRetTy::DefaultReturn(ret_span) = fn_decl.output
             && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())
             && trait_pred.skip_binder().trait_ref.args.type_at(0).is_unit()
             && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
             && self.tcx.is_diagnostic_item(sym::Result, def.did())
         {
-            let body = self.tcx.hir().body(body_id);
             let mut sugg_spans =
                 vec![(ret_span, " -> Result<(), Box<dyn std::error::Error>>".to_string())];
-
+            let body = self.tcx.hir().body(body_id);
             if let hir::ExprKind::Block(b, _) = body.value.kind
                 && b.expr.is_none()
             {
