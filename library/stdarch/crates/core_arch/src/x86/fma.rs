@@ -377,7 +377,7 @@ pub unsafe fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     simd_insert!(
         a,
         0,
-        fmaf32(_mm_cvtss_f32(a, -_mm_cvtss_f32(b), _mm_cvtss_f32(c))
+        fmaf32(_mm_cvtss_f32(a), -_mm_cvtss_f32(b), _mm_cvtss_f32(c))
     )
 }
 
