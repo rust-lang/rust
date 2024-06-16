@@ -1215,10 +1215,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog2(self) -> Option<u32> {
-            if let Some(x) = NonZero::new(self) {
-                Some(x.ilog2())
-            } else {
-                None
+            match NonZero::new(self) {
+                Some(x) => Some(x.ilog2()),
+                None => None,
             }
         }
 
@@ -1237,10 +1236,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
-            if let Some(x) = NonZero::new(self) {
-                Some(x.ilog10())
-            } else {
-                None
+            match NonZero::new(self) {
+                Some(x) => Some(x.ilog10()),
+                None => None,
             }
         }
 

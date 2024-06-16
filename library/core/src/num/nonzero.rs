@@ -1270,9 +1270,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
 
             // SAFETY: The result fits in an integer with half as many bits.
             // Inform the optimizer about it.
-            unsafe {
-                hint::assert_unchecked(res < 1 << (Self::BITS / 2));
-            }
+            unsafe { hint::assert_unchecked(res < 1 << (Self::BITS / 2)) };
 
             // SAFETY: The result is positive.
             unsafe { Self::new_unchecked(res) }
