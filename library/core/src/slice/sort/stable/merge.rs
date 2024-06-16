@@ -61,91 +61,91 @@ pub fn merge<T, F: FnMut(&T, &T) -> bool>(
         // Finally, `merge_state` gets dropped. If the shorter run was not fully
         // consumed, whatever remains of it will now be copied into the hole in `v`.
     }
+}
 
-    // When dropped, copies the range `start..end` into `dst..`.
-    struct MergeState<T> {
-        start: *mut T,
-        end: *mut T,
-        dst: *mut T,
-    }
+// When dropped, copies the range `start..end` into `dst..`.
+struct MergeState<T> {
+    start: *mut T,
+    end: *mut T,
+    dst: *mut T,
+}
 
-    impl<T> MergeState<T> {
-        /// # Safety
-        /// The caller MUST guarantee that `self` is initialized in a way where `start -> end` is
-        /// the longer sub-slice and so that `dst` can be written to at least the shorter sub-slice
-        /// length times. In addition `start -> end` and `right -> right_end` MUST be valid to be
-        /// read. This function MUST only be called once.
-        unsafe fn merge_up<F: FnMut(&T, &T) -> bool>(
-            &mut self,
-            mut right: *const T,
-            right_end: *const T,
-            is_less: &mut F,
-        ) {
-            // SAFETY: See function safety comment.
-            unsafe {
-                let left = &mut self.start;
-                let out = &mut self.dst;
+impl<T> MergeState<T> {
+    /// # Safety
+    /// The caller MUST guarantee that `self` is initialized in a way where `start -> end` is
+    /// the longer sub-slice and so that `dst` can be written to at least the shorter sub-slice
+    /// length times. In addition `start -> end` and `right -> right_end` MUST be valid to be
+    /// read. This function MUST only be called once.
+    unsafe fn merge_up<F: FnMut(&T, &T) -> bool>(
+        &mut self,
+        mut right: *const T,
+        right_end: *const T,
+        is_less: &mut F,
+    ) {
+        // SAFETY: See function safety comment.
+        unsafe {
+            let left = &mut self.start;
+            let out = &mut self.dst;
 
-                while *left != self.end && right as *const T != right_end {
-                    let consume_left = !is_less(&*right, &**left);
+            while *left != self.end && right as *const T != right_end {
+                let consume_left = !is_less(&*right, &**left);
 
-                    let src = if consume_left { *left } else { right };
-                    ptr::copy_nonoverlapping(src, *out, 1);
+                let src = if consume_left { *left } else { right };
+                ptr::copy_nonoverlapping(src, *out, 1);
 
-                    *left = left.add(consume_left as usize);
-                    right = right.add(!consume_left as usize);
+                *left = left.add(consume_left as usize);
+                right = right.add(!consume_left as usize);
 
-                    *out = out.add(1);
-                }
-            }
-        }
-
-        /// # Safety
-        /// The caller MUST guarantee that `self` is initialized in a way where `left_end <- dst` is
-        /// the shorter sub-slice and so that `out` can be written to at least the shorter sub-slice
-        /// length times. In addition `left_end <- dst` and `right_end <- end` MUST be valid to be
-        /// read. This function MUST only be called once.
-        unsafe fn merge_down<F: FnMut(&T, &T) -> bool>(
-            &mut self,
-            left_end: *const T,
-            right_end: *const T,
-            mut out: *mut T,
-            is_less: &mut F,
-        ) {
-            // SAFETY: See function safety comment.
-            unsafe {
-                loop {
-                    let left = self.dst.sub(1);
-                    let right = self.end.sub(1);
-                    out = out.sub(1);
-
-                    let consume_left = is_less(&*right, &*left);
-
-                    let src = if consume_left { left } else { right };
-                    ptr::copy_nonoverlapping(src, out, 1);
-
-                    self.dst = left.add(!consume_left as usize);
-                    self.end = right.add(consume_left as usize);
-
-                    if self.dst as *const T == left_end || self.end as *const T == right_end {
-                        break;
-                    }
-                }
+                *out = out.add(1);
             }
         }
     }
 
-    impl<T> Drop for MergeState<T> {
-        fn drop(&mut self) {
-            // SAFETY: The user of MergeState MUST ensure, that at any point this drop
-            // impl MAY run, for example when the user provided `is_less` panics, that
-            // copying the contiguous region between `start` and `end` to `dst` will
-            // leave the input slice `v` with each original element and all possible
-            // modifications observed.
-            unsafe {
-                let len = self.end.sub_ptr(self.start);
-                ptr::copy_nonoverlapping(self.start, self.dst, len);
+    /// # Safety
+    /// The caller MUST guarantee that `self` is initialized in a way where `left_end <- dst` is
+    /// the shorter sub-slice and so that `out` can be written to at least the shorter sub-slice
+    /// length times. In addition `left_end <- dst` and `right_end <- end` MUST be valid to be
+    /// read. This function MUST only be called once.
+    unsafe fn merge_down<F: FnMut(&T, &T) -> bool>(
+        &mut self,
+        left_end: *const T,
+        right_end: *const T,
+        mut out: *mut T,
+        is_less: &mut F,
+    ) {
+        // SAFETY: See function safety comment.
+        unsafe {
+            loop {
+                let left = self.dst.sub(1);
+                let right = self.end.sub(1);
+                out = out.sub(1);
+
+                let consume_left = is_less(&*right, &*left);
+
+                let src = if consume_left { left } else { right };
+                ptr::copy_nonoverlapping(src, out, 1);
+
+                self.dst = left.add(!consume_left as usize);
+                self.end = right.add(consume_left as usize);
+
+                if self.dst as *const T == left_end || self.end as *const T == right_end {
+                    break;
+                }
             }
+        }
+    }
+}
+
+impl<T> Drop for MergeState<T> {
+    fn drop(&mut self) {
+        // SAFETY: The user of MergeState MUST ensure, that at any point this drop
+        // impl MAY run, for example when the user provided `is_less` panics, that
+        // copying the contiguous region between `start` and `end` to `dst` will
+        // leave the input slice `v` with each original element and all possible
+        // modifications observed.
+        unsafe {
+            let len = self.end.sub_ptr(self.start);
+            ptr::copy_nonoverlapping(self.start, self.dst, len);
         }
     }
 }

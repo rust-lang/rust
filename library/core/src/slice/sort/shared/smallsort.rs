@@ -94,9 +94,9 @@ impl<T: FreezeMarker> UnstableSmallSortTypeImpl for T {
     #[inline(always)]
     fn small_sort_threshold() -> usize {
         match const { choose_unstable_small_sort::<T>() } {
-            UnstalbeSmallSort::Fallback => SMALL_SORT_FALLBACK_THRESHOLD,
-            UnstalbeSmallSort::General => SMALL_SORT_GENERAL_THRESHOLD,
-            UnstalbeSmallSort::Network => SMALL_SORT_NETWORK_THRESHOLD,
+            UnstableSmallSort::Fallback => SMALL_SORT_FALLBACK_THRESHOLD,
+            UnstableSmallSort::General => SMALL_SORT_GENERAL_THRESHOLD,
+            UnstableSmallSort::Network => SMALL_SORT_NETWORK_THRESHOLD,
         }
     }
 
@@ -137,34 +137,34 @@ const SMALL_SORT_NETWORK_SCRATCH_LEN: usize = SMALL_SORT_NETWORK_THRESHOLD;
 /// within this limit.
 const MAX_STACK_ARRAY_SIZE: usize = 4096;
 
-enum UnstalbeSmallSort {
+enum UnstableSmallSort {
     Fallback,
     General,
     Network,
 }
 
-const fn choose_unstable_small_sort<T: FreezeMarker>() -> UnstalbeSmallSort {
+const fn choose_unstable_small_sort<T: FreezeMarker>() -> UnstableSmallSort {
     if T::is_copy()
         && has_efficient_in_place_swap::<T>()
         && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
     {
         // Heuristic for int like types.
-        return UnstalbeSmallSort::Network;
+        return UnstableSmallSort::Network;
     }
 
     if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
-        return UnstalbeSmallSort::General;
+        return UnstableSmallSort::General;
     }
 
-    UnstalbeSmallSort::Fallback
+    UnstableSmallSort::Fallback
 }
 
 const fn inst_unstable_small_sort<T: FreezeMarker, F: FnMut(&T, &T) -> bool>()
 -> fn(&mut [T], &mut F) {
     match const { choose_unstable_small_sort::<T>() } {
-        UnstalbeSmallSort::Fallback => small_sort_fallback::<T, F>,
-        UnstalbeSmallSort::General => small_sort_general::<T, F>,
-        UnstalbeSmallSort::Network => small_sort_network::<T, F>,
+        UnstableSmallSort::Fallback => small_sort_fallback::<T, F>,
+        UnstableSmallSort::General => small_sort_general::<T, F>,
+        UnstableSmallSort::Network => small_sort_network::<T, F>,
     }
 }
 
@@ -384,8 +384,12 @@ where
     }
 }
 
-// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
-// performance impact.
+/// Sorts the first 9 elements of `v` with a fast fixed function.
+///
+/// Should `is_less` generate substantial amounts of code the compiler can choose to not inline
+/// `swap_if_less`. If the code of a sort impl changes so as to call this function in multiple
+/// places, `#[inline(never)]` is recommended to keep binary-size in check. The current design of
+/// `small_sort_network` makes sure to only call this once.
 fn sort9_optimal<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -429,8 +433,12 @@ where
     }
 }
 
-// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
-// performance impact.
+/// Sorts the first 13 elements of `v` with a fast fixed function.
+///
+/// Should `is_less` generate substantial amounts of code the compiler can choose to not inline
+/// `swap_if_less`. If the code of a sort impl changes so as to call this function in multiple
+/// places, `#[inline(never)]` is recommended to keep binary-size in check. The current design of
+/// `small_sort_network` makes sure to only call this once.
 fn sort13_optimal<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
