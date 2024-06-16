@@ -389,7 +389,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     AggregateTy::Array => {
                         assert!(fields.len() > 0);
                         let field_ty = fields[0].layout.ty;
-                        // Ignore nested array
+                        // FIXME: Ignore nested arrays, because arrays is large. Nested arrays are rarer and bigger
+                        // while we already process 1-dimension arrays, which is enough?
                         if field_ty.is_array() {
                             trace!(
                                 "ignoring nested array of type: [{field_ty}; {len}]",
@@ -818,7 +819,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
-                // Ignore arrays in operands.
+                // In MIR, the array assignments are previously processed before operands.
                 if let Value::Aggregate(AggregateTy::Array, ..) = self.get(value) {
                     return None;
                 }
@@ -946,7 +947,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let (mut ty, variant_index) = match *kind {
             AggregateKind::Array(ty) => {
                 assert!(!field_ops.is_empty());
-                // Ignore nested arrays
+                // FIXME: Ignore nested arrays, because arrays is large. Nested arrays are rarer and bigger
+                // while we already process 1-dimension arrays, which is enough?
                 if ty.is_array() {
                     return None;
                 }
