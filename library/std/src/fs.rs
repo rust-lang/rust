@@ -2400,17 +2400,17 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Errors
 ///
-/// This function will return an error in the following situations, but is not
-/// limited to just these cases:
+/// This function will return an error in the following situation, but is not
+/// limited to just this case:
 ///
-/// * If any directory in the path specified by `path`
-/// does not already exist and it could not be created otherwise. The specific
+/// * If any directory specified in `path`
+/// does not already exist and could not be created. The specific
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by [`fs::create_dir`].
 ///
 /// Notable exception is made for situations where any of the directories
 /// specified in the `path` could not be created as it was being created concurrently.
-/// Such cases are considered to be successful. That is, calling `create_dir_all`
+/// Such cases are considered to be successful. Because calling `create_dir_all`
 /// concurrently from multiple threads or processes is guaranteed not to fail
 /// due to a race condition with itself.
 ///
