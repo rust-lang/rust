@@ -8,8 +8,7 @@
 //! Historically this target was known as `wasm32-wasi-preview1-threads`.
 
 use crate::spec::{
-    add_link_args, base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, MaybeLazy,
-    Target, TargetOptions,
+    base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, Target, TargetOptions,
 };
 
 pub fn target() -> Target {
@@ -18,13 +17,9 @@ pub fn target() -> Target {
     options.os = "wasi".into();
     options.env = "p1".into();
 
-    options.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args_base(
-            LinkerFlavor::WasmLld(Cc::No),
-            &["--import-memory", "--export-memory", "--shared-memory"],
-        );
-        add_link_args(
-            &mut pre_link_args,
+    options.pre_link_args = TargetOptions::link_args_list(&[
+        (LinkerFlavor::WasmLld(Cc::No), &["--import-memory", "--export-memory", "--shared-memory"]),
+        (
             LinkerFlavor::WasmLld(Cc::Yes),
             &[
                 "--target=wasm32-wasip1-threads",
@@ -32,9 +27,8 @@ pub fn target() -> Target {
                 "-Wl,--export-memory,",
                 "-Wl,--shared-memory",
             ],
-        );
-        pre_link_args
-    });
+        ),
+    ]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
     options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();

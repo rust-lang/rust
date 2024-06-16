@@ -9,25 +9,22 @@
 //!
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
-
-use crate::spec::add_link_args;
-use crate::spec::{base, Cc, LinkerFlavor, MaybeLazy, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
     options.os = "unknown".into();
 
-    options.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args_base(
+    options.pre_link_args = TargetOptions::link_args_list(&[
+        (
             LinkerFlavor::WasmLld(Cc::No),
             &[
                 // For now this target just never has an entry symbol no matter the output
                 // type, so unconditionally pass this.
                 "--no-entry",
             ],
-        );
-        add_link_args(
-            &mut pre_link_args,
+        ),
+        (
             LinkerFlavor::WasmLld(Cc::Yes),
             &[
                 // Make sure clang uses LLD as its linker and is configured appropriately
@@ -35,9 +32,8 @@ pub fn target() -> Target {
                 "--target=wasm32-unknown-unknown",
                 "-Wl,--no-entry",
             ],
-        );
-        pre_link_args
-    });
+        ),
+    ]);
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),

@@ -1,11 +1,11 @@
-use crate::spec::{add_link_args, crt_objects};
+use crate::spec::crt_objects;
+use crate::spec::LinkSelfContainedDefault;
 use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
-use crate::spec::{LinkSelfContainedDefault, MaybeLazy};
 use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
-    let pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args_base(
+    let pre_link_args = TargetOptions::link_args_list(&[
+        (
             LinkerFlavor::Gnu(Cc::No, Lld::No),
             &[
                 // Enable ASLR
@@ -13,9 +13,8 @@ pub fn opts() -> TargetOptions {
                 // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
                 "--disable-auto-image-base",
             ],
-        );
-        add_link_args(
-            &mut pre_link_args,
+        ),
+        (
             LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             &[
                 // Tell GCC to avoid linker plugins, because we are not bundling
@@ -24,14 +23,13 @@ pub fn opts() -> TargetOptions {
                 "-Wl,--dynamicbase",
                 "-Wl,--disable-auto-image-base",
             ],
-        );
-        pre_link_args
-    });
+        ),
+    ]);
 
-    let late_link_args = MaybeLazy::lazy(|| {
+    let late_link_args = {
         // Order of `late_link_args*` was found through trial and error to work with various
         // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.
-        let mingw_libs = &[
+        const MINGW_LIBS: &[&str] = &[
             "-lmsvcrt",
             "-lmingwex",
             "-lmingw32",
@@ -50,41 +48,33 @@ pub fn opts() -> TargetOptions {
             "-luser32",
             "-lkernel32",
         ];
-        let mut late_link_args =
-            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
-        add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
-        late_link_args
-    });
+        TargetOptions::link_args_list(&[
+            (LinkerFlavor::Gnu(Cc::No, Lld::No), MINGW_LIBS),
+            (LinkerFlavor::Gnu(Cc::Yes, Lld::No), MINGW_LIBS),
+        ])
+    };
     // If any of our crates are dynamically linked then we need to use
     // the shared libgcc_s-dw2-1.dll. This is required to support
     // unwinding across DLL boundaries.
-    let late_link_args_dynamic = MaybeLazy::lazy(|| {
-        let dynamic_unwind_libs = &["-lgcc_s"];
-        let mut late_link_args_dynamic =
-            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
-        add_link_args(
-            &mut late_link_args_dynamic,
-            LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-            dynamic_unwind_libs,
-        );
-        late_link_args_dynamic
-    });
+    let late_link_args_dynamic = {
+        const DYNAMIC_UNWIND_LIBS: &[&str] = &["-lgcc_s"];
+        TargetOptions::link_args_list(&[
+            (LinkerFlavor::Gnu(Cc::No, Lld::No), DYNAMIC_UNWIND_LIBS),
+            (LinkerFlavor::Gnu(Cc::Yes, Lld::No), DYNAMIC_UNWIND_LIBS),
+        ])
+    };
     // If all of our crates are statically linked then we can get away
     // with statically linking the libgcc unwinding code. This allows
     // binaries to be redistributed without the libgcc_s-dw2-1.dll
     // dependency, but unfortunately break unwinding across DLL
     // boundaries when unwinding across FFI boundaries.
-    let late_link_args_static = MaybeLazy::lazy(|| {
-        let static_unwind_libs = &["-lgcc_eh", "-l:libpthread.a"];
-        let mut late_link_args_static =
-            TargetOptions::link_args_base(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
-        add_link_args(
-            &mut late_link_args_static,
-            LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-            static_unwind_libs,
-        );
-        late_link_args_static
-    });
+    let late_link_args_static = {
+        const STATIC_UNWIND_LIBS: &[&str] = &["-lgcc_eh", "-l:libpthread.a"];
+        TargetOptions::link_args_list(&[
+            (LinkerFlavor::Gnu(Cc::No, Lld::No), STATIC_UNWIND_LIBS),
+            (LinkerFlavor::Gnu(Cc::Yes, Lld::No), STATIC_UNWIND_LIBS),
+        ])
+    };
 
     TargetOptions {
         os: "windows".into(),

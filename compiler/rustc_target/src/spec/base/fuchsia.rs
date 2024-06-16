@@ -1,5 +1,5 @@
 use crate::spec::{
-    crt_objects, cvs, Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, MaybeLazy, TargetOptions,
+    crt_objects, cvs, Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, TargetOptions,
 };
 
 pub fn opts() -> TargetOptions {

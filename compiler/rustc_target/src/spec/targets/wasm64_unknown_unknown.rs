@@ -7,14 +7,14 @@
 //! the standard library is available, most of it returns an error immediately
 //! (e.g. trying to create a TCP stream or something like that).
 
-use crate::spec::{add_link_args, base, Cc, LinkerFlavor, MaybeLazy, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
     options.os = "unknown".into();
 
-    options.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args_base(
+    options.pre_link_args = TargetOptions::link_args_list(&[
+        (
             LinkerFlavor::WasmLld(Cc::No),
             &[
                 // For now this target just never has an entry symbol no matter the output
@@ -22,9 +22,8 @@ pub fn target() -> Target {
                 "--no-entry",
                 "-mwasm64",
             ],
-        );
-        add_link_args(
-            &mut pre_link_args,
+        ),
+        (
             LinkerFlavor::WasmLld(Cc::Yes),
             &[
                 // Make sure clang uses LLD as its linker and is configured appropriately
@@ -32,9 +31,8 @@ pub fn target() -> Target {
                 "--target=wasm64-unknown-unknown",
                 "-Wl,--no-entry",
             ],
-        );
-        pre_link_args
-    });
+        ),
+    ]);
 
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time

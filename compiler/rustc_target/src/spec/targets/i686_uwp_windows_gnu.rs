@@ -1,5 +1,5 @@
-use crate::spec::{add_link_args, base, Cc, FramePointer};
-use crate::spec::{LinkerFlavor, Lld, MaybeLazy, Target, TargetOptions};
+use crate::spec::{base, Cc, FramePointer};
+use crate::spec::{LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::windows_uwp_gnu::opts();
@@ -9,18 +9,10 @@ pub fn target() -> Target {
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    base.pre_link_args = MaybeLazy::lazy(|| {
-        let mut pre_link_args = TargetOptions::link_args_base(
-            LinkerFlavor::Gnu(Cc::No, Lld::No),
-            &["-m", "i386pe", "--large-address-aware"],
-        );
-        add_link_args(
-            &mut pre_link_args,
-            LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-            &["-Wl,--large-address-aware"],
-        );
-        pre_link_args
-    });
+    base.pre_link_args = TargetOptions::link_args_list(&[
+        (LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "i386pe", "--large-address-aware"]),
+        (LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-Wl,--large-address-aware"]),
+    ]);
 
     Target {
         llvm_target: "i686-pc-windows-gnu".into(),

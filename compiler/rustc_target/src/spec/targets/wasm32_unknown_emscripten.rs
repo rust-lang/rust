@@ -1,10 +1,9 @@
-use crate::spec::{
-    base, cvs, LinkArgs, LinkerFlavor, MaybeLazy, PanicStrategy, RelocModel, Target, TargetOptions,
-};
+use crate::spec::{base, cvs, LinkerFlavor, PanicStrategy};
+use crate::spec::{RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     // Reset flags for non-Em flavors back to empty to satisfy sanity checking tests.
-    let pre_link_args = MaybeLazy::lazy(LinkArgs::new);
+    let pre_link_args = Default::default();
     let post_link_args = TargetOptions::link_args(LinkerFlavor::EmCc, &["-sABORTING_MALLOC=0"]);
 
     let opts = TargetOptions {

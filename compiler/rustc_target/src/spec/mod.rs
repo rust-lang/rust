@@ -2394,10 +2394,8 @@ impl TargetOptions {
         MaybeLazy::lazied(link_args::LazyLinkArgsState::Simple(flavor, args))
     }
 
-    fn link_args_base(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
-        let mut link_args = LinkArgs::new();
-        add_link_args(&mut link_args, flavor, args);
-        link_args
+    fn link_args_list(list: &'static [(LinkerFlavor, &'static [&'static str])]) -> LazyLinkArgs {
+        MaybeLazy::lazied(link_args::LazyLinkArgsState::List(list))
     }
 
     fn update_from_cli(&mut self) {
