@@ -18,7 +18,7 @@ use stdarch_test::assert_instr;
 #[cfg_attr(test, assert_instr(addss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
-    addss(a, b)
+    simd_insert!(a, 0, _mm_cvtss_f32(a) + _mm_cvtss_f32(b))
 }
 
 /// Adds __m128 vectors.
@@ -41,7 +41,7 @@ pub unsafe fn _mm_add_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(subss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
-    subss(a, b)
+    simd_insert!(a, 0, _mm_cvtss_f32(a) - _mm_cvtss_f32(b))
 }
 
 /// Subtracts __m128 vectors.
@@ -64,7 +64,7 @@ pub unsafe fn _mm_sub_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(mulss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
-    mulss(a, b)
+    simd_insert!(a, 0, _mm_cvtss_f32(a) * _mm_cvtss_f32(b))
 }
 
 /// Multiplies __m128 vectors.
@@ -87,7 +87,7 @@ pub unsafe fn _mm_mul_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(divss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
-    divss(a, b)
+    simd_insert!(a, 0, _mm_cvtss_f32(a) / _mm_cvtss_f32(b))
 }
 
 /// Divides __m128 vectors.
@@ -110,7 +110,7 @@ pub unsafe fn _mm_div_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(sqrtss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_ss(a: __m128) -> __m128 {
-    sqrtss(a)
+    simd_insert!(a, 0, _mm_cvtss_f32(a).sqrt())
 }
 
 /// Returns the square root of packed single-precision (32-bit) floating-point
@@ -122,7 +122,7 @@ pub unsafe fn _mm_sqrt_ss(a: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(sqrtps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_ps(a: __m128) -> __m128 {
-    sqrtps(a)
+    simd_fsqrt(a)
 }
 
 /// Returns the approximate reciprocal of the first single-precision
@@ -1920,18 +1920,6 @@ pub unsafe fn _MM_TRANSPOSE4_PS(
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.sse.add.ss"]
-    fn addss(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.sub.ss"]
-    fn subss(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.mul.ss"]
-    fn mulss(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.div.ss"]
-    fn divss(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.sqrt.ss"]
-    fn sqrtss(a: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse.sqrt.ps"]
-    fn sqrtps(a: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.rcp.ss"]
     fn rcpss(a: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.rcp.ps"]
