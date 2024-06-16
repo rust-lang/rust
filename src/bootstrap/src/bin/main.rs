@@ -15,13 +15,14 @@ use std::{
 };
 
 use bootstrap::{
-    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Subcommand,
+    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Context, Subcommand,
     CONFIG_CHANGE_HISTORY,
 };
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let config = Config::parse(&args);
+    let ctx = Context {};
+    let config = Config::parse(&ctx, &args);
 
     let mut build_lock;
     let _build_lock_guard;
@@ -76,7 +77,7 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
-    Build::new(config).build();
+    Build::new(ctx, config).build();
 
     if suggest_setup {
         println!("WARNING: you have not made a `config.toml`");

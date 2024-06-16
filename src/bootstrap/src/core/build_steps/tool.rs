@@ -188,7 +188,7 @@ pub fn prepare_tool_cargo(
         cargo.env("CFG_VER_HASH", ver_hash);
     }
 
-    let info = GitInfo::new(builder.config.omit_git_hash, &dir);
+    let info = GitInfo::new(&builder.ctx, builder.config.omit_git_hash, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }

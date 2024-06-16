@@ -2,6 +2,8 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, ExitStatus, Output};
 
+use crate::Context;
+
 /// Wrapper around `std::process::Command` whose execution will be eventually
 /// tracked.
 #[derive(Debug)]
@@ -26,8 +28,8 @@ impl TrackedCommand {
 
     /// Runs the command, ensuring that it has succeeded.
     #[track_caller]
-    pub fn run(&mut self) -> CommandOutput {
-        let output = self.run_maybe();
+    pub fn run(&mut self, ctx: &Context) -> CommandOutput {
+        let output = self.run_maybe(ctx);
         if !output.is_success() {
             panic!(
                 "`{:?}`\nwas supposed to succeed, but it failed with {}\nStdout: {}\nStderr: {}",
@@ -42,15 +44,15 @@ impl TrackedCommand {
 
     /// Runs the command.
     #[track_caller]
-    pub fn run_maybe(&mut self) -> CommandOutput {
+    pub fn run_maybe(&mut self, _ctx: &Context) -> CommandOutput {
         let output = self.cmd.output().expect("Cannot execute process");
         output.into()
     }
 
     /// Runs the command, ensuring that it has succeeded, and returns its stdout.
     #[track_caller]
-    pub fn run_output(&mut self) -> String {
-        self.run().stdout()
+    pub fn run_output(&mut self, ctx: &Context) -> String {
+        self.run(ctx).stdout()
     }
 }
 

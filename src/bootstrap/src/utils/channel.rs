@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::utils::helpers::t;
-use crate::Build;
+use crate::{Build, Context};
 
 use super::git;
 
@@ -35,7 +35,7 @@ pub struct Info {
 }
 
 impl GitInfo {
-    pub fn new(omit_git_hash: bool, dir: &Path) -> GitInfo {
+    pub fn new(ctx: &Context, omit_git_hash: bool, dir: &Path) -> GitInfo {
         // See if this even begins to look like a git dir
         if !dir.join(".git").exists() {
             match read_commit_info_file(dir) {
@@ -45,7 +45,7 @@ impl GitInfo {
         }
 
         // Make sure git commands work
-        if git::cmd_works(dir).run_maybe().is_failure() {
+        if git::cmd_works(dir).run_maybe(ctx).is_failure() {
             return GitInfo::Absent;
         }
 
@@ -61,11 +61,10 @@ impl GitInfo {
             .arg("-1")
             .arg("--date=short")
             .arg("--pretty=format:%cd")
-            .arg("--qěšaorzišč564687.foo")
-            .run_output();
-        let ver_hash = git::cmd_get_current_sha(dir).run_output();
+            .run_output(ctx);
+        let ver_hash = git::cmd_get_current_sha(dir).run_output(ctx);
         let short_ver_hash =
-            git::cmd_git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").run_output();
+            git::cmd_git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").run_output(ctx);
         GitInfo::Present(Some(Info {
             commit_date: ver_date.trim().to_string(),
             sha: ver_hash.trim().to_string(),

@@ -10,7 +10,7 @@ use clap::{CommandFactory, Parser, ValueEnum};
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{target_selection_list, Config, TargetSelectionList};
-use crate::{Build, DocTests};
+use crate::{Build, Context, DocTests};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
 pub enum Color {
@@ -201,8 +201,9 @@ impl Flags {
             HelpVerboseOnly::try_parse_from(it.clone())
         {
             println!("NOTE: updating submodules before printing available paths");
-            let config = Config::parse(&[String::from("build")]);
-            let build = Build::new(config);
+            let ctx = Context {};
+            let config = Config::parse(&ctx, &[String::from("build")]);
+            let build = Build::new(ctx, config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
                 println!("{s}");

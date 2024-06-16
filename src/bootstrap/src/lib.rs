@@ -24,6 +24,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::rc::Rc;
 use std::str;
 use std::sync::OnceLock;
 
@@ -118,6 +119,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::ToolRustc), "windows_raw_dylib", None),
 ];
 
+/// A global bootstrap context that tracks various things.
+pub struct Context {}
+
 /// A structure representing a Rust compiler.
 ///
 /// Each compiler has a `stage` that it is associated with and a `host` that
@@ -158,6 +162,8 @@ pub enum GitRepo {
 pub struct Build {
     /// User-specified configuration from `config.toml`.
     config: Config,
+
+    ctx: Rc<Context>,
 
     // Version information
     version: String,
@@ -310,7 +316,7 @@ impl Build {
     /// line and the filesystem `config`.
     ///
     /// By default all build output will be placed in the current directory.
-    pub fn new(mut config: Config) -> Build {
+    pub fn new(ctx: Context, mut config: Config) -> Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
@@ -332,15 +338,16 @@ impl Build {
         let is_sudo = false;
 
         let omit_git_hash = config.omit_git_hash;
-        let rust_info = GitInfo::new(omit_git_hash, &src);
-        let cargo_info = GitInfo::new(omit_git_hash, &src.join("src/tools/cargo"));
-        let rust_analyzer_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rust-analyzer"));
-        let clippy_info = GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
-        let miri_info = GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
-        let rustfmt_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
+        let rust_info = GitInfo::new(&ctx, omit_git_hash, &src);
+        let cargo_info = GitInfo::new(&ctx, omit_git_hash, &src.join("src/tools/cargo"));
+        let rust_analyzer_info =
+            GitInfo::new(&ctx, omit_git_hash, &src.join("src/tools/rust-analyzer"));
+        let clippy_info = GitInfo::new(&ctx, omit_git_hash, &src.join("src/tools/clippy"));
+        let miri_info = GitInfo::new(&ctx, omit_git_hash, &src.join("src/tools/miri"));
+        let rustfmt_info = GitInfo::new(&ctx, omit_git_hash, &src.join("src/tools/rustfmt"));
 
         // we always try to use git for LLVM builds
-        let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
+        let in_tree_llvm_info = GitInfo::new(&ctx, false, &src.join("src/llvm-project"));
 
         let initial_target_libdir_str = if config.dry_run() {
             "/dummy/lib/path/to/lib/".to_string()
@@ -400,6 +407,7 @@ impl Build {
         }
 
         let mut build = Build {
+            ctx: Rc::new(ctx),
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_lld,
@@ -514,7 +522,7 @@ impl Build {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
+        if !GitInfo::new(&self.ctx, false, &absolute_path).is_managed_git_subrepository()
             && !dir_is_empty(&absolute_path)
         {
             return;
@@ -622,7 +630,7 @@ impl Build {
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
             let submodule = Path::new(line.split_once(' ').unwrap().1);
             // Don't update the submodule unless it's already been cloned.
-            if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            if GitInfo::new(&self.ctx, false, submodule).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
             }
         }
@@ -635,7 +643,7 @@ impl Build {
             return;
         }
 
-        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+        if GitInfo::new(&self.ctx, false, submodule).is_managed_git_subrepository() {
             self.update_submodule(submodule);
         }
     }

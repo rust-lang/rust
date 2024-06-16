@@ -26,6 +26,7 @@ use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
 pub use crate::core::config::flags::Subcommand;
+use crate::Context;
 use build_helper::git::GitConfig;
 
 macro_rules! check_ci_llvm {
@@ -1186,7 +1187,7 @@ impl Config {
         }
     }
 
-    pub fn parse(args: &[String]) -> Config {
+    pub fn parse(ctx: &Context, args: &[String]) -> Config {
         #[cfg(test)]
         fn get_toml(_: &Path) -> TomlConfig {
             TomlConfig::default()
@@ -1216,10 +1217,14 @@ impl Config {
                     exit!(2);
                 })
         }
-        Self::parse_inner(args, get_toml)
+        Self::parse_inner(ctx, args, get_toml)
     }
 
-    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
+    pub(crate) fn parse_inner(
+        ctx: &Context,
+        args: &[String],
+        get_toml: impl Fn(&Path) -> TomlConfig,
+    ) -> Config {
         let mut flags = Flags::parse(args);
         let mut config = Config::default_opts();
 
@@ -1716,7 +1721,7 @@ impl Config {
         // rust_info must be set before is_ci_llvm_available() is called.
         let default = config.channel == "dev";
         config.omit_git_hash = omit_git_hash.unwrap_or(default);
-        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
+        config.rust_info = GitInfo::new(ctx, config.omit_git_hash, &config.src);
 
         if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
             ci_channel.clone_into(&mut config.channel);
