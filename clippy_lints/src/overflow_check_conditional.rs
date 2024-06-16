@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::SpanlessEq;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
+use clippy_utils::eq_expr_value;
+use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -26,45 +28,39 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OverflowCheckConditional => [OVERFLOW_CHECK_CONDITIONAL]);
 
-const OVERFLOW_MSG: &str = "you are trying to use classic C overflow conditions that will fail in Rust";
-const UNDERFLOW_MSG: &str = "you are trying to use classic C underflow conditions that will fail in Rust";
-
 impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
     // a + b < a, a > a + b, a < a - b, a - b > a
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let eq = |l, r| SpanlessEq::new(cx).eq_path_segment(l, r);
-        if let ExprKind::Binary(ref op, first, second) = expr.kind
-            && let ExprKind::Binary(ref op2, ident1, ident2) = first.kind
-            && let ExprKind::Path(QPath::Resolved(_, path1)) = ident1.kind
-            && let ExprKind::Path(QPath::Resolved(_, path2)) = ident2.kind
-            && let ExprKind::Path(QPath::Resolved(_, path3)) = second.kind
-            && (eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]))
-            && cx.typeck_results().expr_ty(ident1).is_integral()
-            && cx.typeck_results().expr_ty(ident2).is_integral()
+        if let ExprKind::Binary(op, lhs, rhs) = expr.kind
+            && let (lt, gt) = match op.node {
+                BinOpKind::Lt => (lhs, rhs),
+                BinOpKind::Gt => (rhs, lhs),
+                _ => return,
+            }
+            && let ctxt = expr.span.ctxt()
+            && let (op_lhs, op_rhs, other, commutative) = match (&lt.kind, &gt.kind) {
+                (&ExprKind::Binary(op, lhs, rhs), _) if op.node == BinOpKind::Add && ctxt == lt.span.ctxt() => {
+                    (lhs, rhs, gt, true)
+                },
+                (_, &ExprKind::Binary(op, lhs, rhs)) if op.node == BinOpKind::Sub && ctxt == gt.span.ctxt() => {
+                    (lhs, rhs, lt, false)
+                },
+                _ => return,
+            }
+            && let typeck = cx.typeck_results()
+            && let ty = typeck.expr_ty(op_lhs)
+            && matches!(ty.kind(), ty::Uint(_))
+            && ty == typeck.expr_ty(op_rhs)
+            && ty == typeck.expr_ty(other)
+            && !in_external_macro(cx.tcx.sess, expr.span)
+            && (eq_expr_value(cx, op_lhs, other) || (commutative && eq_expr_value(cx, op_rhs, other)))
         {
-            if op.node == BinOpKind::Lt && op2.node == BinOpKind::Add {
-                span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span, OVERFLOW_MSG);
-            }
-            if op.node == BinOpKind::Gt && op2.node == BinOpKind::Sub {
-                span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span, UNDERFLOW_MSG);
-            }
-        }
-
-        if let ExprKind::Binary(ref op, first, second) = expr.kind
-            && let ExprKind::Binary(ref op2, ident1, ident2) = second.kind
-            && let ExprKind::Path(QPath::Resolved(_, path1)) = ident1.kind
-            && let ExprKind::Path(QPath::Resolved(_, path2)) = ident2.kind
-            && let ExprKind::Path(QPath::Resolved(_, path3)) = first.kind
-            && (eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]))
-            && cx.typeck_results().expr_ty(ident1).is_integral()
-            && cx.typeck_results().expr_ty(ident2).is_integral()
-        {
-            if op.node == BinOpKind::Gt && op2.node == BinOpKind::Add {
-                span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span, OVERFLOW_MSG);
-            }
-            if op.node == BinOpKind::Lt && op2.node == BinOpKind::Sub {
-                span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span, UNDERFLOW_MSG);
-            }
+            span_lint(
+                cx,
+                OVERFLOW_CHECK_CONDITIONAL,
+                expr.span,
+                "you are trying to use classic C overflow conditions that will fail in Rust",
+            );
         }
     }
 }

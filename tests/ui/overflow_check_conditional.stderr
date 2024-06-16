@@ -8,46 +8,34 @@ LL |     if a + b < a {}
    = help: to override `-D warnings` add `#[allow(clippy::overflow_check_conditional)]`
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:8:8
+  --> tests/ui/overflow_check_conditional.rs:6:8
    |
 LL |     if a > a + b {}
    |        ^^^^^^^^^
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:10:8
+  --> tests/ui/overflow_check_conditional.rs:7:8
    |
 LL |     if a + b < b {}
    |        ^^^^^^^^^
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:12:8
+  --> tests/ui/overflow_check_conditional.rs:8:8
    |
 LL |     if b > a + b {}
    |        ^^^^^^^^^
 
-error: you are trying to use classic C underflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:14:8
-   |
-LL |     if a - b > b {}
-   |        ^^^^^^^^^
-
-error: you are trying to use classic C underflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:16:8
-   |
-LL |     if b < a - b {}
-   |        ^^^^^^^^^
-
-error: you are trying to use classic C underflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:18:8
+error: you are trying to use classic C overflow conditions that will fail in Rust
+  --> tests/ui/overflow_check_conditional.rs:11:8
    |
 LL |     if a - b > a {}
    |        ^^^^^^^^^
 
-error: you are trying to use classic C underflow conditions that will fail in Rust
-  --> tests/ui/overflow_check_conditional.rs:20:8
+error: you are trying to use classic C overflow conditions that will fail in Rust
+  --> tests/ui/overflow_check_conditional.rs:12:8
    |
 LL |     if a < a - b {}
    |        ^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
