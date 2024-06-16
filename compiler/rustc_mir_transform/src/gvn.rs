@@ -378,9 +378,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // But to avoid blessing differences between 32-bit and 64-bit target,
         // let's choose `size_t = u64`.
         const STACK_THRESHOLD: u64 = std::mem::size_of::<u64>() as u64 * 2;
-        let vvalue = self.get(value);
-        debug!(?vvalue);
-        let op = match *vvalue {
+        let op = match *self.get(value) {
             Opaque(_) => return None,
             // Do not bother evaluating repeat expressions. This would uselessly consume memory.
             Repeat(..) => return None,
@@ -450,7 +448,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         })
                         .ok()?;
                     let mplace = mplace.unwrap();
-                    return Some(mplace.into());
+                    mplace.into()
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
                     let variant_dest = if let Some(variant) = variant {

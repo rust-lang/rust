@@ -6,7 +6,6 @@ struct F32x8([f32; 8]);
 
 // EMIT_MIR const_array_locals.main.GVN.diff
 // CHECK-LABEL: fn main(
-#[rustfmt::skip]
 pub fn main() {
     let _arr = [255, 105, 15, 39, 62];
     // duplicate item
