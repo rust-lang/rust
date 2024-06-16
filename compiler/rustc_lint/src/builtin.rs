@@ -32,11 +32,10 @@ use crate::{
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
-        BuiltinTypeAliasParamBoundsSuggestion, BuiltinUngatedAsyncFnTrackCaller,
-        BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
-        BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-        BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
-        TypeAliasBoundsQualifyAssocTysSugg,
+        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
+        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
+        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+        BuiltinWhileTrue, InvalidAsmLabel,
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
@@ -1406,9 +1405,23 @@ declare_lint_pass!(
     TypeAliasBounds => [TYPE_ALIAS_BOUNDS]
 );
 
+impl TypeAliasBounds {
+    pub(crate) fn affects_object_lifetime_defaults(pred: &hir::WherePredicate<'_>) -> bool {
+        // Bounds of the form `T: 'a` with `T` type param affect object lifetime defaults.
+        if let hir::WherePredicate::BoundPredicate(pred) = pred
+            && pred.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Outlives(_)))
+            && pred.bound_generic_params.is_empty() // indeed, even if absent from the RHS
+            && pred.bounded_ty.as_generic_param().is_some()
+        {
+            return true;
+        }
+        false
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(hir_ty, generics) = &item.kind else { return };
+        let hir::ItemKind::TyAlias(hir_ty, generics) = item.kind else { return };
 
         // There must not be a where clause.
         if generics.predicates.is_empty() {
@@ -1437,7 +1450,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let mut where_spans = Vec::new();
         let mut inline_spans = Vec::new();
         let mut inline_sugg = Vec::new();
-        let mut affects_object_lifetime_defaults = false;
 
         for p in generics.predicates {
             let span = p.span();
@@ -1449,45 +1461,22 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 }
                 inline_sugg.push((span, String::new()));
             }
-
-            // FIXME(fmease): Move this into a "diagnostic decorator" for increased laziness
-            // Bounds of the form `T: 'a` where `T` is a type param of
-            // the type alias affect object lifetime defaults.
-            if !affects_object_lifetime_defaults
-                && let hir::WherePredicate::BoundPredicate(pred) = p
-                && pred.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Outlives(_)))
-                && pred.bound_generic_params.is_empty()
-                && let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = pred.bounded_ty.kind
-                && let Res::Def(DefKind::TyParam, _) = path.res
-            {
-                affects_object_lifetime_defaults = true;
-            }
         }
 
-        // FIXME(fmease): Add a disclaimer (in the form of a multi-span note) that the removal of
-        //                type-param-outlives-bounds affects OLDs and explicit object lifetime
-        //                bounds might be required [...].
-        // FIXME(fmease): The applicability should also depend on the outcome of the HIR walker
-        //                inside of `TypeAliasBoundsQualifyAssocTysSugg`: Whether it found a
-        //                shorthand projection or not.
-        let applicability = if affects_object_lifetime_defaults {
-            Applicability::MaybeIncorrect
-        } else {
-            Applicability::MachineApplicable
-        };
-
-        let mut qualify_assoc_tys_sugg = Some(TypeAliasBoundsQualifyAssocTysSugg { ty: hir_ty });
-        let enable_feat_help = cx.tcx.sess.is_nightly_build().then_some(());
+        let mut ty = Some(hir_ty);
+        let enable_feat_help = cx.tcx.sess.is_nightly_build();
 
         if let [.., label_sp] = *where_spans {
             cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 where_spans,
-                BuiltinTypeAliasBounds::WhereClause {
+                BuiltinTypeAliasBounds {
+                    in_where_clause: true,
                     label: label_sp,
                     enable_feat_help,
-                    suggestion: (generics.where_clause_span, applicability),
-                    qualify_assoc_tys_sugg: qualify_assoc_tys_sugg.take(),
+                    suggestions: vec![(generics.where_clause_span, String::new())],
+                    preds: generics.predicates,
+                    ty: ty.take(),
                 },
             );
         }
@@ -1495,17 +1484,33 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 inline_spans,
-                BuiltinTypeAliasBounds::ParamBounds {
+                BuiltinTypeAliasBounds {
+                    in_where_clause: false,
                     label: label_sp,
                     enable_feat_help,
-                    suggestion: BuiltinTypeAliasParamBoundsSuggestion {
-                        suggestions: inline_sugg,
-                        applicability,
-                    },
-                    qualify_assoc_tys_sugg,
+                    suggestions: inline_sugg,
+                    preds: generics.predicates,
+                    ty,
                 },
             );
         }
+    }
+}
+
+pub(crate) struct ShorthandAssocTyCollector {
+    pub(crate) qselves: Vec<Span>,
+}
+
+impl hir::intravisit::Visitor<'_> for ShorthandAssocTyCollector {
+    fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, _: Span) {
+        // Look for "type-parameter shorthand-associated-types". I.e., paths of the
+        // form `T::Assoc` with `T` type param. These are reliant on trait bounds.
+        if let hir::QPath::TypeRelative(qself, _) = qpath
+            && qself.as_generic_param().is_some()
+        {
+            self.qselves.push(qself.span);
+        }
+        hir::intravisit::walk_qpath(self, qpath, id)
     }
 }
 
