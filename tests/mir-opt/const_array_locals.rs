@@ -25,8 +25,8 @@ pub fn main() {
     // CHECK: [[_darr]] = (*[[PROMOTED]]);
     let _darr = *&[255, 105, 15, 39, 62];
 
-    // CHECK: {{_[0-9]+}} = const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32];
-    // CHECK: consume(const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32])
+    // CHECK: [[ARG:_[0-9]+]] = const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32];
+    // CHECK: consume(move [[ARG]])
     consume([31, 96, 173, 50, 1]);
 
     // CHECK: [[OP:_[0-9]+]] = const [1f32, 2f32, 3f32, 1f32, 1f32, 1f32, 1f32, 42f32];

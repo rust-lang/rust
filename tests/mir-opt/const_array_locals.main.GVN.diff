@@ -64,9 +64,8 @@
           StorageLive(_9);
           StorageLive(_10);
 -         _10 = [const 31_u32, const 96_u32, const 173_u32, const 50_u32, const 1_u32];
--         _9 = consume(move _10) -> [return: bb1, unwind continue];
 +         _10 = const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32];
-+         _9 = consume(const [31_u32, 96_u32, 173_u32, 50_u32, 1_u32]) -> [return: bb1, unwind continue];
+          _9 = consume(move _10) -> [return: bb1, unwind continue];
       }
   
       bb1: {
