@@ -22,9 +22,9 @@ pub(super) fn check<'tcx>(
 
     if matches!(cast_from.kind(), ty::Ref(..))
         && let ty::RawPtr(_, to_mutbl) = cast_to.kind()
-        && let Some(use_cx) = expr_use_ctxt(cx, expr)
+        && let use_cx = expr_use_ctxt(cx, expr)
         // TODO: only block the lint if `cast_expr` is a temporary
-        && !matches!(use_cx.node, ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_))
+        && !matches!(use_cx.use_node(cx), ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_))
     {
         let core_or_std = if is_no_std_crate(cx) { "core" } else { "std" };
         let fn_name = match to_mutbl {

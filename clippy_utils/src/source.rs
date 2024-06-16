@@ -14,8 +14,17 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 /// A type which can be converted to the range portion of a `Span`.
-pub trait SpanRange {
+pub trait SpanRange: Sized {
     fn into_range(self) -> Range<BytePos>;
+    fn set_span_pos(self, sp: Span) -> Span {
+        let range = self.into_range();
+        SpanData {
+            lo: range.start,
+            hi: range.end,
+            ..sp.data()
+        }
+        .span()
+    }
 }
 impl SpanRange for Span {
     fn into_range(self) -> Range<BytePos> {
@@ -59,6 +68,22 @@ pub fn get_source_text(cx: &impl LintContext, sp: impl SpanRange) -> Option<Sour
         Some(SourceFileRange { sf: start.sf, range })
     }
     f(cx.sess().source_map(), sp.into_range())
+}
+
+pub fn with_leading_whitespace(cx: &impl LintContext, sp: impl SpanRange) -> Range<BytePos> {
+    #[expect(clippy::needless_pass_by_value, clippy::cast_possible_truncation)]
+    fn f(src: SourceFileRange, sp: Range<BytePos>) -> Range<BytePos> {
+        let Some(text) = &src.sf.src else {
+            return sp;
+        };
+        let len = src.range.start - text[..src.range.start].trim_end().len();
+        BytePos(sp.start.0 - len as u32)..sp.end
+    }
+    let sp = sp.into_range();
+    match get_source_text(cx, sp.clone()) {
+        Some(src) => f(src, sp),
+        None => sp,
+    }
 }
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
