@@ -426,24 +426,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     if ty.layout.size().bytes() <= STACK_THRESHOLD {
                         return None;
                     }
-                    let mut mplace = None;
-                    let _alloc_id = self
-                        .ecx
-                        .intern_with_temp_alloc(ty, |ecx, dest| {
-                            // FIXME: Can we speed it up by using `ecx.write_immediate(.ScalarPair(_), dest)`?
-                            for (field_index, op) in fields.iter().copied().enumerate() {
-                                let field_dest = ecx.project_field(dest, field_index)?;
-                                ecx.copy_op(op, &field_dest)?;
-                            }
-
-                            let dest =
-                                dest.assert_mem_place().map_provenance(|prov| prov.as_immutable());
-                            mplace.replace(dest);
-                            Ok(())
-                        })
-                        .ok()?;
-                    let mplace = mplace.unwrap();
-                    mplace.into()
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
+                    // FIXME: Can we speed it up by using `ecx.write_immediate(.ScalarPair(_), dest)`?
+                    for (field_index, op) in fields.iter().copied().enumerate() {
+                        let field_dest = self.ecx.project_field(&dest, field_index).ok()?;
+                        self.ecx.copy_op(op, &field_dest).ok()?;
+                    }
+                    let dest = dest.map_provenance(|prov| prov.as_immutable());
+                    dest.into()
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
                     let variant_dest = if let Some(variant) = variant {
