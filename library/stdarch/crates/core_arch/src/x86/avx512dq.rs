@@ -4409,7 +4409,7 @@ pub unsafe fn _ktest_mask16_u8(a: __mmask16, b: __mmask16, and_not: *mut u8) -> 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _ktest_mask8_u8(a: __mmask8, b: __mmask8, and_not: *mut u8) -> u8 {
     *and_not = (_kandn_mask8(a, b) == 0) as u8;
-    (_kandn_mask8(a, b) == 0) as u8
+    (_kand_mask8(a, b) == 0) as u8
 }
 
 /// Compute the bitwise NOT of 16-bit mask a and then AND with 16-bit mask b, if the result is all
@@ -6409,6 +6409,7 @@ pub unsafe fn _mm_maskz_reduce_ss<const IMM8: i32>(k: __mmask8, a: __m128, b: __
 
 // FP-Class
 
+// FIXME: Use LLVM intrinsics instead of inline assembly
 macro_rules! fpclass_asm {
     ($instr:literal, $mask_type: ty, $reg: ident, $a: expr) => {{
         let dst: $mask_type;
@@ -7691,7 +7692,7 @@ mod tests {
         let a = _mm_set_epi32(1, 2, 3, 4);
         let b = _mm_set_epi32(5, 6, 7, 8);
         let r = _mm_mask_broadcast_i32x2(b, 0b0110, a);
-        let e = _mm_set_epi32(5, 4, 3, 6);
+        let e = _mm_set_epi32(5, 4, 3, 8);
         assert_eq_m128i(r, e);
     }
 
@@ -8010,7 +8011,7 @@ mod tests {
         );
         let r = _mm512_mask_insertf32x8::<1>(src, 0b0110100100111100, a, b);
         let e = _mm512_set_ps(
-            25., 18., 19., 28., 29., 30., 31., 32., 33., 34., 11., 12., 13., 14., 39., 40.,
+            25., 18., 19., 28., 21., 30., 31., 24., 33., 34., 11., 12., 13., 14., 39., 40.,
         );
         assert_eq_m512(r, e);
     }
@@ -8104,7 +8105,7 @@ mod tests {
         );
         let r = _mm512_mask_inserti32x8::<1>(src, 0b0110100100111100, a, b);
         let e = _mm512_set_epi32(
-            25, 18, 19, 28, 20, 30, 31, 24, 33, 34, 11, 12, 13, 14, 39, 40,
+            25, 18, 19, 28, 21, 30, 31, 24, 33, 34, 11, 12, 13, 14, 39, 40,
         );
         assert_eq_m512i(r, e);
     }
@@ -9477,7 +9478,7 @@ mod tests {
         let b = _mm512_set_epi64(9, 10, 11, 12, 13, 14, 15, 16);
         let c = _mm512_set_epi64(17, 18, 19, 20, 21, 22, 23, 24);
         let r = _mm512_mask_mullo_epi64(c, 0b01101001, a, b);
-        let e = _mm512_set_epi64(17, 20, 33, 12, 65, 14, 15, 128);
+        let e = _mm512_set_epi64(17, 20, 33, 20, 65, 22, 23, 128);
         assert_eq_m512i(r, e);
     }
 
@@ -9538,7 +9539,7 @@ mod tests {
         let a: __mmask8 = 0b01101001;
         let b: __mmask8 = 0b10110011;
         let r = _kandn_mask8(a, b);
-        let e: __mmask8 = 0b10011010;
+        let e: __mmask8 = 0b10010010;
         assert_eq!(r, e);
     }
 
@@ -10160,7 +10161,7 @@ mod tests {
         let r = _mm512_mask_reduce_round_pd::<{ 16 | _MM_FROUND_TO_ZERO }, _MM_FROUND_NO_EXC>(
             src, 0b01101001, a,
         );
-        let e = _mm512_set_pd(3., 0., 0.25, 4., 0.25, 6., 7., 0.);
+        let e = _mm512_set_pd(3., 0., 0.25, 6., 0.25, 8., 9., 0.);
         assert_eq_m512d(r, e);
     }
 
@@ -10212,7 +10213,7 @@ mod tests {
         let a = _mm256_set_pd(0.25, 0.50, 0.75, 1.0);
         let src = _mm256_set_pd(3., 4., 5., 6.);
         let r = _mm256_mask_reduce_pd::<{ 16 | _MM_FROUND_TO_ZERO }>(src, 0b0110, a);
-        let e = _mm256_set_pd(3., 0., 0.25, 4.);
+        let e = _mm256_set_pd(3., 0., 0.25, 6.);
         assert_eq_m256d(r, e);
     }
 
@@ -10237,7 +10238,7 @@ mod tests {
         let a = _mm512_set_pd(0.25, 0.50, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0);
         let src = _mm512_set_pd(3., 4., 5., 6., 7., 8., 9., 10.);
         let r = _mm512_mask_reduce_pd::<{ 16 | _MM_FROUND_TO_ZERO }>(src, 0b01101001, a);
-        let e = _mm512_set_pd(3., 0., 0.25, 4., 0.25, 6., 7., 0.);
+        let e = _mm512_set_pd(3., 0., 0.25, 6., 0.25, 8., 9., 0.);
         assert_eq_m512d(r, e);
     }
 
@@ -10277,7 +10278,7 @@ mod tests {
             a,
         );
         let e = _mm512_set_ps(
-            5., 0., 0.25, 6., 0.25, 8., 9., 0., 13., 14., 0.25, 0., 0.25, 0., 19., 20.,
+            5., 0., 0.25, 8., 0.25, 10., 11., 0., 13., 14., 0.25, 0., 0.25, 0., 19., 20.,
         );
         assert_eq_m512(r, e);
     }
@@ -10311,7 +10312,7 @@ mod tests {
         let a = _mm_set_ps(0.25, 0.50, 0.75, 1.0);
         let src = _mm_set_ps(2., 3., 4., 5.);
         let r = _mm_mask_reduce_ps::<{ 16 | _MM_FROUND_TO_ZERO }>(src, 0b0110, a);
-        let e = _mm_set_ps(2., 0., 0.25, 3.);
+        let e = _mm_set_ps(2., 0., 0.25, 5.);
         assert_eq_m128(r, e);
     }
 
@@ -10336,7 +10337,7 @@ mod tests {
         let a = _mm256_set_ps(0.25, 0.50, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0);
         let src = _mm256_set_ps(3., 4., 5., 6., 7., 8., 9., 10.);
         let r = _mm256_mask_reduce_ps::<{ 16 | _MM_FROUND_TO_ZERO }>(src, 0b01101001, a);
-        let e = _mm256_set_ps(3., 0., 0.25, 4., 0.25, 6., 7., 0.);
+        let e = _mm256_set_ps(3., 0., 0.25, 6., 0.25, 8., 9., 0.);
         assert_eq_m256(r, e);
     }
 
@@ -10372,7 +10373,7 @@ mod tests {
         );
         let r = _mm512_mask_reduce_ps::<{ 16 | _MM_FROUND_TO_ZERO }>(src, 0b0110100100111100, a);
         let e = _mm512_set_ps(
-            5., 0., 0.25, 6., 0.25, 8., 9., 0., 13., 14., 0.25, 0., 0.25, 0., 19., 20.,
+            5., 0., 0.25, 8., 0.25, 10., 11., 0., 13., 14., 0.25, 0., 0.25, 0., 19., 20.,
         );
         assert_eq_m512(r, e);
     }
@@ -10619,7 +10620,7 @@ mod tests {
             f32::NAN,
             1.0e-38,
         );
-        let r = _mm256_mask_fpclass_ps_mask::<0>(0b10101010, a);
+        let r = _mm256_mask_fpclass_ps_mask::<0x18>(0b10101010, a);
         let e = 0b00100000;
         assert_eq!(r, e);
     }
@@ -10669,7 +10670,7 @@ mod tests {
             f32::NAN,
             -1.0e-38,
         );
-        let r = _mm512_mask_fpclass_ps_mask::<0>(0b1010101010101010, a);
+        let r = _mm512_mask_fpclass_ps_mask::<0x18>(0b1010101010101010, a);
         let e = 0b0010000000100000;
         assert_eq!(r, e);
     }
