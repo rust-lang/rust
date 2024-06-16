@@ -1,7 +1,7 @@
+//! Common code for printing backtraces.
+
 use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
-/// Common code for printing the backtrace in the same way across the different
-/// supported platforms.
 use crate::env;
 use crate::fmt;
 use crate::io;

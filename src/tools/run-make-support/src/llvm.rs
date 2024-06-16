@@ -4,18 +4,21 @@ use crate::{env_var, Command};
 
 /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
 /// at `$LLVM_BIN_DIR/llvm-readobj`.
+#[track_caller]
 pub fn llvm_readobj() -> LlvmReadobj {
     LlvmReadobj::new()
 }
 
 /// Construct a new `llvm-profdata` invocation. This assumes that `llvm-profdata` is available
 /// at `$LLVM_BIN_DIR/llvm-profdata`.
+#[track_caller]
 pub fn llvm_profdata() -> LlvmProfdata {
     LlvmProfdata::new()
 }
 
 /// Construct a new `llvm-filecheck` invocation. This assumes that `llvm-filecheck` is available
 /// at `$LLVM_FILECHECK`.
+#[track_caller]
 pub fn llvm_filecheck() -> LlvmFilecheck {
     LlvmFilecheck::new()
 }
@@ -55,6 +58,7 @@ pub fn llvm_bin_dir() -> PathBuf {
 impl LlvmReadobj {
     /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
     /// at `$LLVM_BIN_DIR/llvm-readobj`.
+    #[track_caller]
     pub fn new() -> Self {
         let llvm_readobj = llvm_bin_dir().join("llvm-readobj");
         let cmd = Command::new(llvm_readobj);
@@ -77,6 +81,7 @@ impl LlvmReadobj {
 impl LlvmProfdata {
     /// Construct a new `llvm-profdata` invocation. This assumes that `llvm-profdata` is available
     /// at `$LLVM_BIN_DIR/llvm-profdata`.
+    #[track_caller]
     pub fn new() -> Self {
         let llvm_profdata = llvm_bin_dir().join("llvm-profdata");
         let cmd = Command::new(llvm_profdata);
@@ -107,6 +112,7 @@ impl LlvmProfdata {
 impl LlvmFilecheck {
     /// Construct a new `llvm-filecheck` invocation. This assumes that `llvm-filecheck` is available
     /// at `$LLVM_FILECHECK`.
+    #[track_caller]
     pub fn new() -> Self {
         let llvm_filecheck = env_var("LLVM_FILECHECK");
         let cmd = Command::new(llvm_filecheck);

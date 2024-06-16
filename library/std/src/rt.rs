@@ -156,7 +156,7 @@ fn lang_start<T: crate::process::Termination + 'static>(
     sigpipe: u8,
 ) -> isize {
     let Ok(v) = lang_start_internal(
-        &move || crate::sys_common::backtrace::__rust_begin_short_backtrace(main).report().to_i32(),
+        &move || crate::sys::backtrace::__rust_begin_short_backtrace(main).report().to_i32(),
         argc,
         argv,
         sigpipe,
