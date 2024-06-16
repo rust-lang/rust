@@ -48,7 +48,16 @@ pub(crate) struct LintcheckConfig {
 
 #[derive(Subcommand, Clone, Debug)]
 pub(crate) enum Commands {
+    /// Display a markdown diff between two lintcheck log files in JSON format
     Diff { old: PathBuf, new: PathBuf },
+    /// Create a lintcheck crates TOML file containing the top N popular crates
+    Popular {
+        /// Output TOML file name
+        output: PathBuf,
+        /// Number of crate names to download
+        #[clap(short, long, default_value_t = 100)]
+        number: usize,
+    },
 }
 
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
