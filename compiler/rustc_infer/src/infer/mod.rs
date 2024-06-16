@@ -881,13 +881,13 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect();
         vars.extend(
             (0..inner.int_unification_table().len())
-                .map(|i| ty::IntVid::from_u32(i as u32))
+                .map(|i| ty::IntVid::from_usize(i))
                 .filter(|&vid| inner.int_unification_table().probe_value(vid).is_unknown())
                 .map(|v| Ty::new_int_var(self.tcx, v)),
         );
         vars.extend(
             (0..inner.float_unification_table().len())
-                .map(|i| ty::FloatVid::from_u32(i as u32))
+                .map(|i| ty::FloatVid::from_usize(i))
                 .filter(|&vid| inner.float_unification_table().probe_value(vid).is_unknown())
                 .map(|v| Ty::new_float_var(self.tcx, v)),
         );

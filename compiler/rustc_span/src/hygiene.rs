@@ -691,6 +691,11 @@ impl SyntaxContext {
         SyntaxContext(raw)
     }
 
+    #[inline]
+    pub(crate) const fn from_u16(raw: u16) -> SyntaxContext {
+        SyntaxContext(raw as u32)
+    }
+
     /// Extend a syntax context with a given expansion and transparency.
     pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
