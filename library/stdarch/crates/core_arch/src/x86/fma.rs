@@ -19,7 +19,8 @@
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
 use crate::core_arch::x86::*;
-use crate::intrinsics::simd::simd_fma;
+use crate::intrinsics::simd::{simd_fma, simd_insert, simd_neg};
+use crate::intrinsics::{fmaf32, fmaf64};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -86,7 +87,7 @@ pub unsafe fn _mm_fmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     simd_insert!(
         a,
         0,
-        _mm_cvtsd_f64(a).mul_add(_mm_cvtsd_f64(b), _mm_cvtsd_f64(c))
+        fmaf64(_mm_cvtsd_f64(a), _mm_cvtsd_f64(b), _mm_cvtsd_f64(c))
     )
 }
 
@@ -104,7 +105,7 @@ pub unsafe fn _mm_fmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     simd_insert!(
         a,
         0,
-        _mm_cvtss_f32(a).mul_add(_mm_cvtss_f32(b), _mm_cvtss_f32(c))
+        fmaf32(_mm_cvtss_f32(a), _mm_cvtss_f32(b), _mm_cvtss_f32(c))
     )
 }
 
@@ -222,7 +223,7 @@ pub unsafe fn _mm_fmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     simd_insert!(
         a,
         0,
-        _mm_cvtsd_f64(a).mul_add(_mm_cvtsd_f64(b), -_mm_cvtsd_f64(c))
+        fmaf64(_mm_cvtsd_f64(a), _mm_cvtsd_f64(b), -_mm_cvtsd_f64(c))
     )
 }
 
@@ -240,7 +241,7 @@ pub unsafe fn _mm_fmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     simd_insert!(
         a,
         0,
-        _mm_cvtss_f32(a).mul_add(_mm_cvtss_f32(b), -_mm_cvtss_f32(c))
+        fmaf32(_mm_cvtss_f32(a), _mm_cvtss_f32(b), -_mm_cvtss_f32(c))
     )
 }
 
@@ -358,7 +359,7 @@ pub unsafe fn _mm_fnmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     simd_insert!(
         a,
         0,
-        _mm_cvtsd_f64(a).mul_add(-_mm_cvtsd_f64(b), _mm_cvtsd_f64(c))
+        fmaf64(_mm_cvtsd_f64(a), -_mm_cvtsd_f64(b), _mm_cvtsd_f64(c))
     )
 }
 
@@ -376,7 +377,7 @@ pub unsafe fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     simd_insert!(
         a,
         0,
-        _mm_cvtss_f32(a).mul_add(-_mm_cvtss_f32(b), _mm_cvtss_f32(c))
+        fmaf32(_mm_cvtss_f32(a, -_mm_cvtss_f32(b), _mm_cvtss_f32(c))
     )
 }
 
@@ -447,7 +448,7 @@ pub unsafe fn _mm_fnmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     simd_insert!(
         a,
         0,
-        _mm_cvtsd_f64(a).mul_add(-_mm_cvtsd_f64(b), -_mm_cvtsd_f64(c))
+        fmaf64(_mm_cvtsd_f64(a), -_mm_cvtsd_f64(b), -_mm_cvtsd_f64(c))
     )
 }
 
@@ -466,7 +467,7 @@ pub unsafe fn _mm_fnmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     simd_insert!(
         a,
         0,
-        _mm_cvtss_f32(a).mul_add(-_mm_cvtss_f32(b), -_mm_cvtss_f32(c))
+        fmaf32(_mm_cvtss_f32(a), -_mm_cvtss_f32(b), -_mm_cvtss_f32(c))
     )
 }
 
