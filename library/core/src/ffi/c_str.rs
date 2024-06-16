@@ -517,7 +517,8 @@ impl CStr {
     const fn as_non_null_ptr(&self) -> NonNull<c_char> {
         // FIXME(effects) replace with `NonNull::from`
         // SAFETY: a reference is never null
-        unsafe { NonNull::new_unchecked(&self.inner as *const [c_char] as *mut [c_char]) }.as_non_null_ptr()
+        unsafe { NonNull::new_unchecked(&self.inner as *const [c_char] as *mut [c_char]) }
+            .as_non_null_ptr()
     }
 
     /// Returns the length of `self`. Like C's `strlen`, this does not include the nul terminator.
