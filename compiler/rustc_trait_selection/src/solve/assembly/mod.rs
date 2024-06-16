@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::util::supertraits;
 use rustc_middle::bug;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause, QueryResult};
@@ -744,14 +745,14 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         // a projection goal.
         if let Some(principal) = bounds.principal() {
             let principal_trait_ref = principal.with_self_ty(tcx, self_ty);
-            self.walk_vtable(principal_trait_ref, |ecx, assumption, vtable_base, _| {
+            for (idx, assumption) in supertraits(self.interner(), principal_trait_ref).enumerate() {
                 candidates.extend(G::probe_and_consider_object_bound_candidate(
-                    ecx,
-                    CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base }),
+                    self,
+                    CandidateSource::BuiltinImpl(BuiltinImplSource::Object(idx)),
                     goal,
                     assumption.upcast(tcx),
                 ));
-            });
+            }
         }
     }
 

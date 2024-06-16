@@ -171,25 +171,20 @@ pub enum CandidateSource<I: Interner> {
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BuiltinImplSource {
-    /// Some builtin impl we don't need to differentiate. This should be used
+    /// Some built-in impl we don't need to differentiate. This should be used
     /// unless more specific information is necessary.
     Misc,
-    /// A builtin impl for trait objects.
+    /// A built-in impl for trait objects. The index is only used in winnowing.
+    Object(usize),
+    /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the start of `upcast_trait_ref`'s methods
-    /// in that vtable.
-    Object { vtable_base: usize },
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
-    /// within that vtable.
-    TraitUpcasting { vtable_vptr_slot: Option<usize> },
+    /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
+    /// use it to detect when upcasting traits in hir typeck.
+    TraitUpcasting,
     /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
     ///
-    /// This needs to be a separate variant as it is still unstable and we need to emit
-    /// a feature error when using it on stable.
+    /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only
+    /// use it to detect when unsizing tuples in hir typeck.
     TupleUnsizing,
 }
 

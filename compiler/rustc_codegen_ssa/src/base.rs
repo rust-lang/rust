@@ -163,8 +163,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // trait upcasting coercion
 
-            let vptr_entry_idx =
-                cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
+            let vptr_entry_idx = cx.tcx().supertrait_vtable_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_size = bx.data_layout().pointer_size;
