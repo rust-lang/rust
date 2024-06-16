@@ -441,7 +441,7 @@ pub unsafe fn _mm256_floor_ps(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vsqrtps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_sqrt_ps(a: __m256) -> __m256 {
-    sqrtps256(a)
+    simd_fsqrt(a)
 }
 
 /// Returns the square root of packed double-precision (64-bit) floating point
@@ -2961,8 +2961,6 @@ extern "C" {
     fn roundpd256(a: __m256d, b: i32) -> __m256d;
     #[link_name = "llvm.x86.avx.round.ps.256"]
     fn roundps256(a: __m256, b: i32) -> __m256;
-    #[link_name = "llvm.x86.avx.sqrt.ps.256"]
-    fn sqrtps256(a: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.dp.ps.256"]
     fn vdpps(a: __m256, b: __m256, imm8: i32) -> __m256;
     #[link_name = "llvm.x86.avx.hadd.pd.256"]
