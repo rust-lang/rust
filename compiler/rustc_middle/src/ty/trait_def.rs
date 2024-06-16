@@ -1,6 +1,6 @@
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use crate::ty::{Ident, Ty, TyCtxt};
+use crate::ty::{self, Ident, Ty, TyCtxt};
 use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -164,6 +164,52 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     f(impl_def_id);
+                }
+            }
+        } else if let ty::Infer(ty::IntVar(_)) = self_ty.kind() {
+            use ty::IntTy::*;
+            use ty::UintTy::*;
+            // This causes a compiler error if any new integer kinds are added.
+            let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
+            let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
+            let possible_integers = [
+                // signed integers
+                SimplifiedType::Int(I8),
+                SimplifiedType::Int(I16),
+                SimplifiedType::Int(I32),
+                SimplifiedType::Int(I64),
+                SimplifiedType::Int(I128),
+                SimplifiedType::Int(Isize),
+                // unsigned integers
+                SimplifiedType::Uint(U8),
+                SimplifiedType::Uint(U16),
+                SimplifiedType::Uint(U32),
+                SimplifiedType::Uint(U64),
+                SimplifiedType::Uint(U128),
+                SimplifiedType::Uint(Usize),
+            ];
+            for simp in possible_integers {
+                if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+                    for &impl_def_id in impls {
+                        f(impl_def_id);
+                    }
+                }
+            }
+        } else if let ty::Infer(ty::FloatVar(_)) = self_ty.kind() {
+            // This causes a compiler error if any new float kinds are added.
+            let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
+            let possible_floats = [
+                SimplifiedType::Float(ty::FloatTy::F16),
+                SimplifiedType::Float(ty::FloatTy::F32),
+                SimplifiedType::Float(ty::FloatTy::F64),
+                SimplifiedType::Float(ty::FloatTy::F128),
+            ];
+
+            for simp in possible_floats {
+                if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+                    for &impl_def_id in impls {
+                        f(impl_def_id);
+                    }
                 }
             }
         } else {
