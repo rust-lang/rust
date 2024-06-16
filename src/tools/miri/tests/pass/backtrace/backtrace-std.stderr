@@ -10,8 +10,8 @@
  at $DIR/backtrace-std.rs:LL:CC
    5: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
  at RUSTLIB/core/src/ops/function.rs:LL:CC
-   6: std::sys_common::backtrace::__rust_begin_short_backtrace
- at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   6: std::sys::backtrace::__rust_begin_short_backtrace
+ at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
    7: std::rt::lang_start::{closure#0}
  at RUSTLIB/std/src/rt.rs:LL:CC
    8: std::ops::function::impls::call_once

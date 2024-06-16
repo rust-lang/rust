@@ -5,6 +5,7 @@ mod pal;
 
 mod personality;
 
+pub mod backtrace;
 pub mod cmath;
 pub mod os_str;
 pub mod path;
