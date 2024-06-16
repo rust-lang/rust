@@ -1294,7 +1294,9 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
+    // Do not synthesize too large constants, except constant arrays.
+    // For arrays, codegen will just memcpy them, but LLVM will optimize out those unneeded memcpy.
+    // For others, we'd prefer in-place initialization over memcpy them.
     if !(op.layout.ty.is_array() || matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)))
     {
         return None;
@@ -1355,17 +1357,18 @@ impl<'tcx> VnState<'_, 'tcx> {
         // This was already constant in MIR, do not change it.
         let value = self.get(index);
         debug!(?index, ?value);
-        // If the constant is not deterministic, adding an additional mention of it in MIR will
-        // not give the same value as the former mention.
-        if let Value::Constant { value, disambiguator: _ } = value
+        if let Value::Constant { value, disambiguator: _ } = *value
+            // If the constant is not deterministic, adding an additional mention of it in MIR will
+            // not give the same value as the former mention.
             && value.is_deterministic()
         {
-            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: *value });
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
         let op = self.evaluated[index].as_ref()?;
 
-        // Ignore promoted arrays.
+        // Ignore promoted arrays. Promoted arrays is already placed in `.rodata`.
+        // Which is what we try to archive for running gvn on constant local arrays.
         if let Either::Left(mplace) = op.as_mplace_or_imm()
             && mplace.layout.ty.is_array()
             && let Value::Projection(_index, ProjectionElem::Deref) = value
@@ -1430,10 +1433,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             let Some(value) = value else { return };
 
             debug!(before_rvalue = ?rvalue);
-            // Ignore arrays in operands.
-            // Prevent code bloat that makes
-            // `_2 = _1` now resolved to `_2 = <evaluated array>`.
-            let disallow_dup_array = if rvalue.ty(self.local_decls, self.tcx).is_array()
+            // De-duplicate locals has the same arrays assigned to prevent code bloat.
+            let disallowed_duplicated_array = if rvalue.ty(self.local_decls, self.tcx).is_array()
                 && let Some(locals) = self.rev_locals.get(value).as_deref()
                 && let [first, ..] = locals[..]
             {
@@ -1442,7 +1443,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 false
             };
 
-            if !disallow_dup_array && let Some(const_) = self.try_as_constant(value) {
+            if !disallowed_duplicated_array && let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
             } else if let Some(local) = self.try_as_local(value, location)
                 && *rvalue != Rvalue::Use(Operand::Move(local.into()))
