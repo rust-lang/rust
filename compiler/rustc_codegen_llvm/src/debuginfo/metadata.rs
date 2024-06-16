@@ -36,7 +36,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
-use rustc_span::FileName;
+use rustc_span::{hygiene, FileName, DUMMY_SP};
 use rustc_span::{FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
@@ -1306,7 +1306,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
     let var_scope = get_namespace_for_item(cx, def_id);
-    let span = tcx.def_span(def_id);
+    let span = hygiene::walk_chain_collapsed(tcx.def_span(def_id), DUMMY_SP);
 
     let (file_metadata, line_number) = if !span.is_dummy() {
         let loc = cx.lookup_debug_loc(span.lo());
