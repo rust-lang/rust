@@ -93,10 +93,62 @@ impl<T> UnstableSmallSortTypeImpl for T {
 impl<T: FreezeMarker> UnstableSmallSortTypeImpl for T {
     #[inline(always)]
     fn small_sort_threshold() -> usize {
-        match const { choose_unstable_small_sort::<T>() } {
-            UnstableSmallSort::Fallback => SMALL_SORT_FALLBACK_THRESHOLD,
-            UnstableSmallSort::General => SMALL_SORT_GENERAL_THRESHOLD,
-            UnstableSmallSort::Network => SMALL_SORT_NETWORK_THRESHOLD,
+        <T as UnstableSmallSortFreezeTypeImpl>::small_sort_threshold()
+    }
+
+    #[inline(always)]
+    fn small_sort<F>(v: &mut [T], is_less: &mut F)
+    where
+        F: FnMut(&T, &T) -> bool,
+    {
+        <T as UnstableSmallSortFreezeTypeImpl>::small_sort(v, is_less);
+    }
+}
+
+/// FIXME(effects) use original ipnsort approach with choose_unstable_small_sort,
+/// as found here https://github.com/Voultapher/sort-research-rs/blob/438fad5d0495f65d4b72aa87f0b62fc96611dff3/ipnsort/src/smallsort.rs#L83C10-L83C36.
+pub(crate) trait UnstableSmallSortFreezeTypeImpl: Sized + FreezeMarker {
+    fn small_sort_threshold() -> usize;
+
+    fn small_sort<F: FnMut(&Self, &Self) -> bool>(v: &mut [Self], is_less: &mut F);
+}
+
+impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
+    #[inline(always)]
+    default fn small_sort_threshold() -> usize {
+        if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+            SMALL_SORT_GENERAL_THRESHOLD
+        } else {
+            SMALL_SORT_FALLBACK_THRESHOLD
+        }
+    }
+
+    #[inline(always)]
+    default fn small_sort<F>(v: &mut [T], is_less: &mut F)
+    where
+        F: FnMut(&T, &T) -> bool,
+    {
+        if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+            small_sort_general(v, is_less);
+        } else {
+            small_sort_fallback(v, is_less);
+        }
+    }
+}
+
+/// SAFETY: Only used for run-time optimization heuristic.
+#[rustc_unsafe_specialization_marker]
+trait CopyMarker {}
+
+impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
+    #[inline(always)]
+    fn small_sort_threshold() -> usize {
+        if has_efficient_in_place_swap::<T>()
+            && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
+        {
+            SMALL_SORT_NETWORK_SCRATCH_LEN
+        } else {
+            SMALL_SORT_FALLBACK_THRESHOLD
         }
     }
 
@@ -105,9 +157,13 @@ impl<T: FreezeMarker> UnstableSmallSortTypeImpl for T {
     where
         F: FnMut(&T, &T) -> bool,
     {
-        // This construct is used to limit the LLVM IR generated, which saves large amounts of
-        // compile-time by only instantiating the code that is needed. Idea by Frank Steffahn.
-        (const { inst_unstable_small_sort::<T, F>() })(v, is_less);
+        if has_efficient_in_place_swap::<T>()
+            && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
+        {
+            small_sort_network(v, is_less);
+        } else {
+            small_sort_fallback(v, is_less);
+        }
     }
 }
 
@@ -136,37 +192,6 @@ const SMALL_SORT_NETWORK_SCRATCH_LEN: usize = SMALL_SORT_NETWORK_THRESHOLD;
 /// conservative we limit the usage of small-sorts that require a stack array to types that fit
 /// within this limit.
 const MAX_STACK_ARRAY_SIZE: usize = 4096;
-
-enum UnstableSmallSort {
-    Fallback,
-    General,
-    Network,
-}
-
-const fn choose_unstable_small_sort<T: FreezeMarker>() -> UnstableSmallSort {
-    if T::is_copy()
-        && has_efficient_in_place_swap::<T>()
-        && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
-    {
-        // Heuristic for int like types.
-        return UnstableSmallSort::Network;
-    }
-
-    if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
-        return UnstableSmallSort::General;
-    }
-
-    UnstableSmallSort::Fallback
-}
-
-const fn inst_unstable_small_sort<T: FreezeMarker, F: FnMut(&T, &T) -> bool>()
--> fn(&mut [T], &mut F) {
-    match const { choose_unstable_small_sort::<T>() } {
-        UnstableSmallSort::Fallback => small_sort_fallback::<T, F>,
-        UnstableSmallSort::General => small_sort_general::<T, F>,
-        UnstableSmallSort::Network => small_sort_network::<T, F>,
-    }
-}
 
 fn small_sort_fallback<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
     if v.len() >= 2 {
@@ -821,26 +846,4 @@ fn panic_on_ord_violation() -> ! {
 pub(crate) const fn has_efficient_in_place_swap<T>() -> bool {
     // Heuristic that holds true on all tested 64-bit capable architectures.
     mem::size_of::<T>() <= 8 // mem::size_of::<u64>()
-}
-
-/// SAFETY: Only used for run-time optimization heuristic.
-#[rustc_unsafe_specialization_marker]
-trait CopyMarker {}
-
-impl<T: Copy> CopyMarker for T {}
-
-#[const_trait]
-trait IsCopy {
-    fn is_copy() -> bool;
-}
-
-impl<T> const IsCopy for T {
-    default fn is_copy() -> bool {
-        false
-    }
-}
-impl<T: CopyMarker> const IsCopy for T {
-    fn is_copy() -> bool {
-        true
-    }
 }

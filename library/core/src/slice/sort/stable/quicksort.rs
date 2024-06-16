@@ -233,24 +233,23 @@ impl<T> PartitionState<T> {
     }
 }
 
-#[const_trait]
 trait IsFreeze {
     fn is_freeze() -> bool;
 }
 
-impl<T> const IsFreeze for T {
+impl<T> IsFreeze for T {
     default fn is_freeze() -> bool {
         false
     }
 }
-impl<T: FreezeMarker> const IsFreeze for T {
+impl<T: FreezeMarker> IsFreeze for T {
     fn is_freeze() -> bool {
         true
     }
 }
 
 #[must_use]
-const fn has_direct_interior_mutability<T>() -> bool {
+fn has_direct_interior_mutability<T>() -> bool {
     // If a type has interior mutability it may alter itself during comparison
     // in a way that must be preserved after the sort operation concludes.
     // Otherwise a type like Mutex<Option<Box<str>>> could lead to double free.
