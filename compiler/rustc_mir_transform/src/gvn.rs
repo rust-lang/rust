@@ -1429,10 +1429,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 .as_local()
                 .and_then(|local| self.locals[local])
                 .or_else(|| self.simplify_rvalue(rvalue, location));
-            debug!(?value);
             let Some(value) = value else { return };
 
-            debug!(before_rvalue = ?rvalue);
             // De-duplicate locals has the same arrays assigned to prevent code bloat.
             let disallowed_duplicated_array = if rvalue.ty(self.local_decls, self.tcx).is_array()
                 && let Some(locals) = self.rev_locals.get(value).as_deref()
@@ -1451,7 +1449,6 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 *rvalue = Rvalue::Use(Operand::Copy(local.into()));
                 self.reused_locals.insert(local);
             }
-            debug!(after_rvalue = ?rvalue);
 
             return;
         }
