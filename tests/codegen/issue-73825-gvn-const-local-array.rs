@@ -3,11 +3,11 @@
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @foo
-// CHECK-NEXT: {{.*}}:
-// CHECK-NEXT: and
-// CHECK-NEXT: getelementptr inbounds
-// CHECK-NEXT: load i32
-// CHECK-NEXT: ret i32
+// CHECK-NEXT: start:
+// CHECK-NEXT: %_3 = and i64 %x, 63
+// CHECK-NEXT: %0 = getelementptr inbounds [64 x i32], ptr @0, i64 0, i64 %_3
+// CHECK-NEXT: %_0 = load i32, ptr %0, align 4, !noundef !3
+// CHECK-NEXT: ret i32 %_0
 #[no_mangle]
 #[rustfmt::skip]
 pub fn foo(x: usize) -> i32 {
