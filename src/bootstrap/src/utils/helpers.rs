@@ -489,3 +489,19 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
     };
     format!("--check-cfg=cfg({name}{next})")
 }
+
+/// Prepares `Command` that runs git inside the source directory if given.
+///
+/// Whenever a git invocation is needed, this function should be preferred over
+/// manually building a git `Command`. This approach allows us to manage bootstrap-specific
+/// needs/hacks from a single source, rather than applying them on next to every `Command::new("git")`,
+/// which is painful to ensure that the required change is applied on each one of them correctly.
+pub fn git(source_dir: Option<&Path>) -> Command {
+    let mut git = Command::new("git");
+
+    if let Some(source_dir) = source_dir {
+        git.current_dir(source_dir);
+    }
+
+    git
+}

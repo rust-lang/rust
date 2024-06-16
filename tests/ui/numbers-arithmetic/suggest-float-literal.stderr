@@ -6,10 +6,10 @@ LL |     x + 100
    |
    = help: the trait `Add<{integer}>` is not implemented for `f32`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f32 as Add<f32>>
-             <&f32 as Add<&f32>>
-             <f32 as Add<&f32>>
-             <f32 as Add>
+             `&'a f32` implements `Add<f32>`
+             `&f32` implements `Add<&f32>`
+             `f32` implements `Add<&f32>`
+             `f32` implements `Add`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x + 100.0
@@ -23,10 +23,10 @@ LL |     x + 100
    |
    = help: the trait `Add<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f64 as Add<f64>>
-             <&f64 as Add<&f64>>
-             <f64 as Add<&f64>>
-             <f64 as Add>
+             `&'a f64` implements `Add<f64>`
+             `&f64` implements `Add<&f64>`
+             `f64` implements `Add<&f64>`
+             `f64` implements `Add`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x + 100.0
@@ -40,10 +40,10 @@ LL |     x - 100
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f32`
    = help: the following other types implement trait `Sub<Rhs>`:
-             <&'a f32 as Sub<f32>>
-             <&f32 as Sub<&f32>>
-             <f32 as Sub<&f32>>
-             <f32 as Sub>
+             `&'a f32` implements `Sub<f32>`
+             `&f32` implements `Sub<&f32>`
+             `f32` implements `Sub<&f32>`
+             `f32` implements `Sub`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x - 100.0
@@ -57,10 +57,10 @@ LL |     x - 100
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Sub<Rhs>`:
-             <&'a f64 as Sub<f64>>
-             <&f64 as Sub<&f64>>
-             <f64 as Sub<&f64>>
-             <f64 as Sub>
+             `&'a f64` implements `Sub<f64>`
+             `&f64` implements `Sub<&f64>`
+             `f64` implements `Sub<&f64>`
+             `f64` implements `Sub`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x - 100.0
@@ -74,10 +74,10 @@ LL |     x * 100
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f32`
    = help: the following other types implement trait `Mul<Rhs>`:
-             <&'a f32 as Mul<f32>>
-             <&f32 as Mul<&f32>>
-             <f32 as Mul<&f32>>
-             <f32 as Mul>
+             `&'a f32` implements `Mul<f32>`
+             `&f32` implements `Mul<&f32>`
+             `f32` implements `Mul<&f32>`
+             `f32` implements `Mul`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x * 100.0
@@ -91,10 +91,10 @@ LL |     x * 100
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Mul<Rhs>`:
-             <&'a f64 as Mul<f64>>
-             <&f64 as Mul<&f64>>
-             <f64 as Mul<&f64>>
-             <f64 as Mul>
+             `&'a f64` implements `Mul<f64>`
+             `&f64` implements `Mul<&f64>`
+             `f64` implements `Mul<&f64>`
+             `f64` implements `Mul`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x * 100.0
@@ -108,10 +108,10 @@ LL |     x / 100
    |
    = help: the trait `Div<{integer}>` is not implemented for `f32`
    = help: the following other types implement trait `Div<Rhs>`:
-             <&'a f32 as Div<f32>>
-             <&f32 as Div<&f32>>
-             <f32 as Div<&f32>>
-             <f32 as Div>
+             `&'a f32` implements `Div<f32>`
+             `&f32` implements `Div<&f32>`
+             `f32` implements `Div<&f32>`
+             `f32` implements `Div`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x / 100.0
@@ -125,10 +125,10 @@ LL |     x / 100
    |
    = help: the trait `Div<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Div<Rhs>`:
-             <&'a f64 as Div<f64>>
-             <&f64 as Div<&f64>>
-             <f64 as Div<&f64>>
-             <f64 as Div>
+             `&'a f64` implements `Div<f64>`
+             `&f64` implements `Div<&f64>`
+             `f64` implements `Div<&f64>`
+             `f64` implements `Div`
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x / 100.0

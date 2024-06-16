@@ -2068,7 +2068,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if all_traits_equal {
                         format!("\n  {}", c.self_ty())
                     } else {
-                        format!("\n  {c}")
+                        format!("\n  `{}` implements `{}`", c.self_ty(), c.print_only_trait_path())
                     }
                 })
                 .collect();
