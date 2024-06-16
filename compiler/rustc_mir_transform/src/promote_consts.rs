@@ -60,7 +60,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let ccx = ConstCx::new(tcx, body);
         let (mut temps, all_candidates) = collect_temps_and_candidates(&ccx);
 
-        let promotable_candidates = validate_candidates(&ccx, &mut temps, &all_candidates);
+        let promotable_candidates = validate_candidates(&ccx, &mut temps, all_candidates);
 
         let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -691,15 +691,12 @@ impl<'tcx> Validator<'_, 'tcx> {
 fn validate_candidates(
     ccx: &ConstCx<'_, '_>,
     temps: &mut IndexSlice<Local, TempState>,
-    candidates: &[Candidate],
+    mut candidates: Vec<Candidate>,
 ) -> Vec<Candidate> {
     let mut validator = Validator { ccx, temps, promotion_safe_blocks: None };
 
+    candidates.retain(|&candidate| validator.validate_candidate(candidate).is_ok());
     candidates
-        .iter()
-        .copied()
-        .filter(|&candidate| validator.validate_candidate(candidate).is_ok())
-        .collect()
 }
 
 struct Promoter<'a, 'tcx> {
