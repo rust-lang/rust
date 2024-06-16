@@ -419,26 +419,25 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
         );
 
         while let Some(context) = self.context_stack.last_mut() {
-            if let Some(bcb) = context.worklist.pop_front() {
-                if !self.visited.insert(bcb) {
-                    debug!("Already visited: {bcb:?}");
-                    continue;
-                }
-                debug!("Visiting {bcb:?}");
-
-                if self.backedges[bcb].len() > 0 {
-                    debug!("{bcb:?} is a loop header! Start a new TraversalContext...");
-                    self.context_stack.push(TraversalContext {
-                        loop_header: Some(bcb),
-                        worklist: VecDeque::new(),
-                    });
-                }
-                self.add_successors_to_worklists(bcb);
-                return Some(bcb);
-            } else {
-                // Strip contexts with empty worklists from the top of the stack
+            let Some(bcb) = context.worklist.pop_front() else {
+                // This stack level is exhausted; pop it and try the next one.
                 self.context_stack.pop();
+                continue;
+            };
+
+            if !self.visited.insert(bcb) {
+                debug!("Already visited: {bcb:?}");
+                continue;
             }
+            debug!("Visiting {bcb:?}");
+
+            if self.backedges[bcb].len() > 0 {
+                debug!("{bcb:?} is a loop header! Start a new TraversalContext...");
+                self.context_stack
+                    .push(TraversalContext { loop_header: Some(bcb), worklist: VecDeque::new() });
+            }
+            self.add_successors_to_worklists(bcb);
+            return Some(bcb);
         }
 
         None
