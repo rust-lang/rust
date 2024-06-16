@@ -940,15 +940,18 @@ impl<T, A: Allocator> Arc<T, A> {
     /// This will succeed even if there are outstanding weak references.
     ///
     /// It is strongly recommended to use [`Arc::into_inner`] instead if you don't
-    /// want to keep the `Arc` in the [`Err`] case.
-    /// Immediately dropping the [`Err`] payload, like in the expression
-    /// `Arc::try_unwrap(this).ok()`, can still cause the strong count to
-    /// drop to zero and the inner value of the `Arc` to be dropped:
-    /// For instance if two threads each execute this expression in parallel, then
-    /// there is a race condition. The threads could first both check whether they
-    /// have the last clone of their `Arc` via `Arc::try_unwrap`, and then
-    /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
-    /// taking the strong count from two down to zero.
+    /// keep the `Arc` in the [`Err`] case.
+    /// Immediately dropping the [`Err`]-value, as the expression
+    /// `Arc::try_unwrap(this).ok()` does, can cause the strong count to
+    /// drop to zero and the inner value of the `Arc` to be dropped.
+    /// For instance, if two threads execute such an expression in parallel,
+    /// there is a race condition without the possibility of unsafety:
+    /// The threads could first both check whether they own the last instance
+    /// in `Arc::try_unwrap`, determine that they both do not, and then both
+    /// discard and drop their instance in the call to [`ok`][`Result::ok`].
+    /// In this scenario, the value inside the `Arc` is safely destroyed
+    /// by exactly one of the threads, but neither thread will ever be able
+    /// to use the value.
     ///
     /// # Examples
     ///
