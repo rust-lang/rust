@@ -36,7 +36,9 @@ impl std::error::Error for MyError {
         // LLVM should be able to optimize multiple .provide_* calls into a switch table
         // and eliminate redundant ones, rather than compare one-by-one.
 
-        // CHECK: switch i64 %{{.*}}, label %{{.*}} [
+        // CHECK-NEXT: start:
+        // CHECK-NEXT: %[[SCRUTINEE:[^ ]+]] = load i64, ptr
+        // CHECK-NEXT: switch i64 %[[SCRUTINEE]], label %{{.*}} [
         // CHECK-COUNT-3: i64 {{.*}}, label %{{.*}}
         // CHECK-NEXT: ]
         request
