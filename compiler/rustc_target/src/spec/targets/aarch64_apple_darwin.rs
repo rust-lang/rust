@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{macos_llvm_target, opts, pre_link_args, Arch, TargetAbi};
+use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{FramePointer, MaybeLazy, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     const OS: &'static str = "macos";
     const ABI: TargetAbi = TargetAbi::Normal;
 
-    let mut base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
+    let mut base = opts(OS, ARCH, ABI);
     base.cpu = "apple-m1".into();
     base.max_atomic_width = Some(128);
 

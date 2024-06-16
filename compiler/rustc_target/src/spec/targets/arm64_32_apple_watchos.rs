@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{opts, pre_link_args, watchos_llvm_target, Arch, TargetAbi};
+use crate::spec::base::apple::{opts, watchos_llvm_target, Arch, TargetAbi};
 use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     const ARCH: Arch = Arch::Arm64_32;
     const ABI: TargetAbi = TargetAbi::Normal;
 
-    let base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
+    let base = opts(OS, ARCH, ABI);
 
     Target {
         llvm_target: MaybeLazy::lazy(|| watchos_llvm_target(ARCH)),

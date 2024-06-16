@@ -1,5 +1,5 @@
-use crate::spec::base::apple::{opts, pre_link_args, Arch, TargetAbi};
-use crate::spec::{MaybeLazy, Target, TargetOptions};
+use crate::spec::base::apple::{opts, Arch, TargetAbi};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     const ARCH: Arch = Arch::Armv7k;
@@ -22,7 +22,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(64),
             dynamic_linking: false,
             position_independent_executables: true,
-            ..opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)))
+            ..opts(OS, ARCH, ABI)
         },
     }
 }

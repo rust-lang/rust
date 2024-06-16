@@ -1,5 +1,6 @@
 use std::{borrow::Cow, env};
 
+use crate::spec::link_args::LazyLinkArgsState;
 use crate::spec::{add_link_args, add_link_args_iter, MaybeLazy};
 use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs, LinkerFlavor, Lld};
 use crate::spec::{SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions};
@@ -94,7 +95,10 @@ impl TargetAbi {
     }
 }
 
-pub fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
+pub(crate) type ApplePreLinkArgs =
+    (/*os:*/ &'static str, /*arch:*/ Arch, /*abi:*/ TargetAbi);
+
+pub(crate) fn pre_link_args((os, arch, abi): ApplePreLinkArgs) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
         TargetAbi::Normal => os.into(),
         TargetAbi::Simulator => format!("{os}-simulator").into(),
@@ -114,7 +118,9 @@ pub fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     };
     let sdk_version = min_version.clone();
 
-    let mut args = TargetOptions::link_args_base(
+    let mut args = LinkArgs::new();
+    add_link_args(
+        &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         &["-arch", arch.target_name(), "-platform_version"],
     );
@@ -140,12 +146,7 @@ pub fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     args
 }
 
-pub fn opts(
-    os: &'static str,
-    arch: Arch,
-    abi: TargetAbi,
-    pre_link_args: MaybeLazy<LinkArgs, (LinkerFlavor, &'static [&'static str])>,
-) -> TargetOptions {
+pub fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
     TargetOptions {
         abi: abi.target_abi().into(),
         os: os.into(),
@@ -156,7 +157,7 @@ pub fn opts(
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
-        pre_link_args,
+        pre_link_args: MaybeLazy::lazied(LazyLinkArgsState::Apple((os, arch, abi))),
         families: cvs!["unix"],
         is_like_osx: true,
         // LLVM notes that macOS 10.11+ and iOS 9+ default

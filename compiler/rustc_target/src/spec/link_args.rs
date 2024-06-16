@@ -11,9 +11,10 @@ pub type LinkArgsCli = BTreeMap<LinkerFlavorCli, Vec<StaticCow<str>>>;
 
 pub type LazyLinkArgs = MaybeLazy<LinkArgs, LazyLinkArgsState>;
 
-pub(super) enum LazyLinkArgsState {
+pub enum LazyLinkArgsState {
     Simple(LinkerFlavor, &'static [&'static str]),
     List(&'static [(LinkerFlavor, &'static [&'static str])]),
+    Apple(super::base::apple::ApplePreLinkArgs),
 }
 
 impl FnOnce<()> for LazyLinkArgsState {
@@ -32,6 +33,7 @@ impl FnOnce<()> for LazyLinkArgsState {
                 }
                 link_args
             }
+            LazyLinkArgsState::Apple(args) => super::base::apple::pre_link_args(args),
         }
     }
 }

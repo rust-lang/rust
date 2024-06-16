@@ -1,13 +1,12 @@
-use crate::spec::base::apple::{opts, pre_link_args, visionos_llvm_target, Arch, TargetAbi};
-use crate::spec::maybe_lazy::MaybeLazy;
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
+use crate::spec::base::apple::{opts, visionos_llvm_target, Arch, TargetAbi};
+use crate::spec::{FramePointer, MaybeLazy, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     const OS: &str = "visionos";
     const ABI: TargetAbi = TargetAbi::Normal;
     const ARCH: Arch = Arch::Arm64;
 
-    let mut base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
+    let mut base = opts(OS, ARCH, ABI);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {

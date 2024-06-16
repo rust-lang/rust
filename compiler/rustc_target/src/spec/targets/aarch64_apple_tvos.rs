@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{opts, pre_link_args, tvos_llvm_target, Arch, TargetAbi};
+use crate::spec::base::apple::{opts, tvos_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -21,7 +21,7 @@ pub fn target() -> Target {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
             frame_pointer: FramePointer::NonLeaf,
-            ..opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)))
+            ..opts(OS, ARCH, ABI)
         },
     }
 }

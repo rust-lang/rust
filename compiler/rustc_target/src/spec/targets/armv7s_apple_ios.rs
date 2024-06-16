@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{ios_llvm_target, opts, pre_link_args, Arch, TargetAbi};
+use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -20,7 +20,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".into(),
             max_atomic_width: Some(64),
-            ..opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)))
+            ..opts(OS, ARCH, ABI)
         },
     }
 }

@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{ios_sim_llvm_target, opts, pre_link_args, Arch, TargetAbi};
+use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{MaybeLazy, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -8,7 +8,7 @@ pub fn target() -> Target {
 
     // x86_64-apple-ios is a simulator target, even though it isn't declared
     // that way in the target name like the other ones...
-    let mut base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
+    let mut base = opts(OS, ARCH, ABI);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {

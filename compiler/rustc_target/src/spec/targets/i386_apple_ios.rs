@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{ios_sim_llvm_target, opts, pre_link_args, Arch, TargetAbi};
+use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{MaybeLazy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -25,9 +25,6 @@ pub fn target() -> Target {
             i128:128-f64:32:64-f80:128-n8:16:32-S128"
             .into(),
         arch: ARCH.target_arch(),
-        options: TargetOptions {
-            max_atomic_width: Some(64),
-            ..opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)))
-        },
+        options: TargetOptions { max_atomic_width: Some(64), ..opts(OS, ARCH, ABI) },
     }
 }

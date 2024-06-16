@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{mac_catalyst_llvm_target, opts, pre_link_args, Arch, TargetAbi};
+use crate::spec::base::apple::{mac_catalyst_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{MaybeLazy, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     const OS: &'static str = "ios";
     const ABI: TargetAbi = TargetAbi::MacCatalyst;
 
-    let mut base = opts(OS, ARCH, ABI, MaybeLazy::lazy(|| pre_link_args(OS, ARCH, ABI)));
+    let mut base = opts(OS, ARCH, ABI);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     Target {
