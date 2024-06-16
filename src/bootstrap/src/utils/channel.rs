@@ -8,10 +8,10 @@
 use std::fs;
 use std::path::Path;
 
-use crate::utils::helpers::{output, t};
+use crate::utils::helpers::t;
 use crate::Build;
 
-use super::helpers;
+use super::git;
 
 #[derive(Clone, Default)]
 pub enum GitInfo {
@@ -45,9 +45,8 @@ impl GitInfo {
         }
 
         // Make sure git commands work
-        match helpers::git(Some(dir)).arg("rev-parse").output() {
-            Ok(ref out) if out.status.success() => {}
-            _ => return GitInfo::Absent,
+        if git::cmd_works(dir).run_maybe().is_failure() {
+            return GitInfo::Absent;
         }
 
         // If we're ignoring the git info, we don't actually need to collect it, just make sure this
@@ -57,16 +56,16 @@ impl GitInfo {
         }
 
         // Ok, let's scrape some info
-        let ver_date = output(
-            helpers::git(Some(dir))
-                .arg("log")
-                .arg("-1")
-                .arg("--date=short")
-                .arg("--pretty=format:%cd"),
-        );
-        let ver_hash = output(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD"));
+        let ver_date = git::cmd_git(Some(dir))
+            .arg("log")
+            .arg("-1")
+            .arg("--date=short")
+            .arg("--pretty=format:%cd")
+            .arg("--qěšaorzišč564687.foo")
+            .run_output();
+        let ver_hash = git::cmd_get_current_sha(dir).run_output();
         let short_ver_hash =
-            output(helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD"));
+            git::cmd_git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").run_output();
         GitInfo::Present(Some(Info {
             commit_date: ver_date.trim().to_string(),
             sha: ver_hash.trim().to_string(),
