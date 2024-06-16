@@ -3,6 +3,7 @@
 use crate::intrinsics::const_eval_select;
 use crate::ops;
 use crate::ptr;
+use crate::range;
 use crate::ub_checks::assert_unsafe_precondition;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -107,7 +108,8 @@ const fn slice_end_index_overflow_fail() -> ! {
 }
 
 mod private_slice_index {
-    use super::ops;
+    use super::{ops, range};
+
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     pub trait Sealed {}
 
@@ -127,6 +129,13 @@ mod private_slice_index {
     impl Sealed for ops::RangeToInclusive<usize> {}
     #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
     impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
+
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::Range<usize> {}
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::RangeInclusive<usize> {}
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::RangeFrom<usize> {}
 
     impl Sealed for ops::IndexRange {}
 }
@@ -419,6 +428,93 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     }
 }
 
+#[unstable(feature = "new_range_api", issue = "125687")]
+unsafe impl<T> SliceIndex<[T]> for range::Range<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        if self.start > self.end || self.end > slice.len() {
+            None
+        } else {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { Some(&*self.get_unchecked(slice)) }
+        }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        if self.start > self.end || self.end > slice.len() {
+            None
+        } else {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "slice::get_unchecked requires that the range is within the slice",
+            (
+                start: usize = self.start,
+                end: usize = self.end,
+                len: usize = slice.len()
+            ) => end >= start && end <= len
+        );
+
+        // SAFETY: the caller guarantees that `slice` is not dangling, so it
+        // cannot be longer than `isize::MAX`. They also guarantee that
+        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
+        // so the call to `add` is safe and the length calculation cannot overflow.
+        unsafe {
+            let new_len = self.end.unchecked_sub(self.start);
+            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len)
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "slice::get_unchecked_mut requires that the range is within the slice",
+            (
+                start: usize = self.start,
+                end: usize = self.end,
+                len: usize = slice.len()
+            ) => end >= start && end <= len
+        );
+        // SAFETY: see comments for `get_unchecked` above.
+        unsafe {
+            let new_len = self.end.unchecked_sub(self.start);
+            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len)
+        }
+    }
+
+    #[inline(always)]
+    fn index(self, slice: &[T]) -> &[T] {
+        if self.start > self.end {
+            slice_index_order_fail(self.start, self.end);
+        } else if self.end > slice.len() {
+            slice_end_index_len_fail(self.end, slice.len());
+        }
+        // SAFETY: `self` is checked to be valid and in bounds above.
+        unsafe { &*self.get_unchecked(slice) }
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        if self.start > self.end {
+            slice_index_order_fail(self.start, self.end);
+        } else if self.end > slice.len() {
+            slice_end_index_len_fail(self.end, slice.len());
+        }
+        // SAFETY: `self` is checked to be valid and in bounds above.
+        unsafe { &mut *self.get_unchecked_mut(slice) }
+    }
+}
+
 /// The methods `index` and `index_mut` panic if the end of the range is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
@@ -462,6 +558,51 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        (self.start..slice.len()).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        (self.start..slice.len()).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (self.start..slice.len()).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (self.start..slice.len()).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        if self.start > slice.len() {
+            slice_start_index_len_fail(self.start, slice.len());
+        }
+        // SAFETY: `self` is checked to be valid and in bounds above.
+        unsafe { &*self.get_unchecked(slice) }
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        if self.start > slice.len() {
+            slice_start_index_len_fail(self.start, slice.len());
+        }
+        // SAFETY: `self` is checked to be valid and in bounds above.
+        unsafe { &mut *self.get_unchecked_mut(slice) }
+    }
+}
+
+#[unstable(feature = "new_range_api", issue = "125687")]
+unsafe impl<T> SliceIndex<[T]> for range::RangeFrom<usize> {
     type Output = [T];
 
     #[inline]
@@ -583,6 +724,49 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         if *self.end() == usize::MAX {
+            slice_end_index_overflow_fail();
+        }
+        self.into_slice_range().index_mut(slice)
+    }
+}
+
+#[unstable(feature = "new_range_api", issue = "125687")]
+unsafe impl<T> SliceIndex<[T]> for range::RangeInclusive<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        if self.end == usize::MAX { None } else { self.into_slice_range().get(slice) }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        if self.end == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { self.into_slice_range().get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        if self.end == usize::MAX {
+            slice_end_index_overflow_fail();
+        }
+        self.into_slice_range().index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        if self.end == usize::MAX {
             slice_end_index_overflow_fail();
         }
         self.into_slice_range().index_mut(slice)
@@ -726,7 +910,7 @@ where
 
 /// Performs bounds-checking of a range without panicking.
 ///
-/// This is a version of [`range`] that returns [`None`] instead of panicking.
+/// This is a version of [`range()`] that returns [`None`] instead of panicking.
 ///
 /// # Examples
 ///
