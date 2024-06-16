@@ -1367,7 +1367,7 @@ impl<'tcx> VnState<'_, 'tcx> {
 
         let op = self.evaluated[index].as_ref()?;
 
-        // Ignore promoted arrays. Promoted arrays is already placed in `.rodata`.
+        // Ignore promoted arrays. Promoted arrays are already placed in `.rodata`.
         // Which is what we try to archive for running gvn on constant local arrays.
         if let Either::Left(mplace) = op.as_mplace_or_imm()
             && mplace.layout.ty.is_array()
