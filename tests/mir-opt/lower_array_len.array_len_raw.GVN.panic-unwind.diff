@@ -1,5 +1,5 @@
-- // MIR for `array_len_raw` before NormalizeArrayLen
-+ // MIR for `array_len_raw` after NormalizeArrayLen
+- // MIR for `array_len_raw` before GVN
++ // MIR for `array_len_raw` after GVN
   
   fn array_len_raw(_1: [u8; N]) -> usize {
       debug arr => _1;
@@ -18,7 +18,8 @@
       }
   
       bb0: {
-          StorageLive(_2);
+-         StorageLive(_2);
++         nop;
           StorageLive(_3);
           StorageLive(_4);
           _4 = &_1;
@@ -32,7 +33,7 @@
           StorageLive(_7);
           _7 = &(*_5);
           _6 = &(*_7);
--         _0 = Len((*_6));
+-         _0 = PtrMetadata(move _6);
 +         _0 = const N;
           goto -> bb1;
       }
@@ -40,7 +41,8 @@
       bb1: {
           StorageDead(_6);
           StorageDead(_5);
-          StorageDead(_2);
+-         StorageDead(_2);
++         nop;
           StorageDead(_7);
           return;
       }

@@ -88,7 +88,6 @@ mod lower_slice_len;
 mod match_branches;
 mod mentioned_items;
 mod multiple_return_terminators;
-mod normalize_array_len;
 mod nrvo;
 mod prettify;
 mod promote_consts;
@@ -581,9 +580,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify::SimplifyCfg::AfterUnreachableEnumBranching),
             // Inlining may have introduced a lot of redundant code and a large move pattern.
             // Now, we need to shrink the generated MIR.
-
-            // Has to run after `slice::len` lowering
-            &normalize_array_len::NormalizeArrayLen,
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
