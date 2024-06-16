@@ -21,7 +21,8 @@ mod tests;
 // only one location which panics rather than a bunch throughout the module.
 #[cfg(not(no_global_oom_handling))]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-fn capacity_overflow() -> ! {
+#[track_caller]
+pub(crate) fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }
 
@@ -113,6 +114,7 @@ impl<T> RawVec<T, Global> {
     #[cfg(not(any(no_global_oom_handling, test)))]
     #[must_use]
     #[inline]
+    #[track_caller]
     pub fn with_capacity(capacity: usize) -> Self {
         match Self::try_allocate_in(capacity, AllocInit::Uninitialized, Global) {
             Ok(res) => res,
@@ -124,6 +126,7 @@ impl<T> RawVec<T, Global> {
     #[cfg(not(any(no_global_oom_handling, test)))]
     #[must_use]
     #[inline]
+    #[track_caller]
     pub fn with_capacity_zeroed(capacity: usize) -> Self {
         Self::with_capacity_zeroed_in(capacity, Global)
     }
@@ -154,6 +157,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[track_caller]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         match Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc) {
             Ok(res) => res,
@@ -172,6 +176,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// of allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[track_caller]
     pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
         match Self::try_allocate_in(capacity, AllocInit::Zeroed, alloc) {
             Ok(res) => res,
@@ -335,6 +340,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[track_caller]
     pub fn reserve(&mut self, len: usize, additional: usize) {
         // Callers expect this function to be very cheap when there is already sufficient capacity.
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
@@ -360,6 +366,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// caller to ensure `len == self.capacity()`.
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
+    #[track_caller]
     pub fn grow_one(&mut self) {
         if let Err(err) = self.grow_amortized(self.cap.0, 1) {
             handle_error(err);
@@ -396,6 +403,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
+    #[track_caller]
     pub fn reserve_exact(&mut self, len: usize, additional: usize) {
         if let Err(err) = self.try_reserve_exact(len, additional) {
             handle_error(err);
@@ -429,6 +437,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
+    #[track_caller]
     pub fn shrink_to_fit(&mut self, cap: usize) {
         if let Err(err) = self.shrink(cap) {
             handle_error(err);
@@ -510,7 +519,6 @@ impl<T, A: Allocator> RawVec<T, A> {
         Ok(())
     }
 
-    #[cfg(not(no_global_oom_handling))]
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
 
@@ -588,6 +596,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
 #[cold]
+#[track_caller]
 fn handle_error(e: TryReserveError) -> ! {
     match e.kind() {
         CapacityOverflow => capacity_overflow(),

@@ -2,7 +2,7 @@ use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
-use crate::raw_vec::RawVec;
+use crate::raw_vec::{capacity_overflow, RawVec};
 
 use super::{SpecExtend, Vec};
 
@@ -17,6 +17,7 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
         // expanded on this iteration in every case when the iterable is not
@@ -49,6 +50,7 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
+    #[track_caller]
     fn from_iter(iterator: I) -> Self {
         let mut vector = match iterator.size_hint() {
             (_, Some(upper)) => Vec::with_capacity(upper),
@@ -56,7 +58,7 @@ where
             // are more than `usize::MAX` elements.
             // Since the previous branch would eagerly panic if the capacity is too large
             // (via `with_capacity`) we do the same here.
-            _ => panic!("capacity overflow"),
+            _ => capacity_overflow(),
         };
         // reuse extend specialization for TrustedLen
         vector.spec_extend(iterator);

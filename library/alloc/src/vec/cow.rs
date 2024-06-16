@@ -59,6 +59,7 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]>
 where
     T: Clone,
 {
+    #[track_caller]
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
     }
