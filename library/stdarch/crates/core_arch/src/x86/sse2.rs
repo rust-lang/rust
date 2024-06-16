@@ -6,6 +6,7 @@ use stdarch_test::assert_instr;
 use crate::{
     core_arch::{simd::*, x86::*},
     intrinsics::simd::*,
+    intrinsics::sqrtf64,
     mem, ptr,
 };
 
@@ -1760,7 +1761,7 @@ pub unsafe fn _mm_mul_pd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(sqrtsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert!(a, 0, _mm_cvtsd_f64(b).sqrt())
+    simd_insert!(a, 0, sqrtf64(_mm_cvtsd_f64(b)))
 }
 
 /// Returns a new vector with the square root of each of the values in `a`.
