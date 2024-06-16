@@ -510,9 +510,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         .report_mismatched_types(&cause, method_self_ty, self_ty, terr)
                         .emit();
                 } else {
-                    error!("{self_ty} was a subtype of {method_self_ty} but now is not?");
-                    // This must already have errored elsewhere.
-                    self.dcx().has_errors().unwrap();
+                    self.dcx().span_delayed_bug(
+                        self.self_expr.span,
+                        format!("{self_ty} was a subtype of {method_self_ty} but now is not?"),
+                    );
                 }
             }
         }
