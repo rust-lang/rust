@@ -954,13 +954,13 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     if !t.is_object_safe(cx.tcx()) {
         write_section_heading(
             w,
-            "Object Safety",
+            "Trait-Object Safety",
             "object-safety",
             None,
             &format!(
-                "<div class=\"object-safety-info\">This trait is <b>not</b> \
+                "<div class=\"object-safety-info\">This trait is <strong>not</strong> compatible with \
                 <a href=\"{base}/reference/items/traits.html#object-safety\">\
-                object safe</a>.</div>",
+                <code>dyn Trait</code> types</a>.</div>",
                 base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
             ),
         );
