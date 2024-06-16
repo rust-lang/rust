@@ -455,6 +455,23 @@ fn ty_to_text_edit(
 // * elided lifetimes
 // * compiler inserted reborrows
 //
+// Note: inlay hints for function argument names are heuristically omitted to reduce noise and will not appear if
+// any of the
+// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99[following criteria]
+// are met:
+//
+// * the parameter name is a suffix of the function's name
+// * the argument is a qualified constructing or call expression where the qualifier is an ADT
+// * exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
+//   of argument with _ splitting it off
+// * the parameter name starts with `ra_fixture`
+// * the parameter name is a
+// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200[well known name]
+// in a unary function
+// * the parameter name is a
+// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201[single character]
+// in a unary function
+//
 // image::https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png[]
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
