@@ -1,0 +1,115 @@
+name: Lintcheck
+
+on: pull_request
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+
+concurrency:
+  # For a given workflow, if we push to the same PR, cancel all previous builds on that PR.
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number}}"
+  cancel-in-progress: true
+
+jobs:
+  # Generates `lintcheck-logs/base.json` and stores it in a cache
+  base:
+    runs-on: ubuntu-latest
+
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    # HEAD is the generated merge commit `refs/pull/N/merge` between the PR and `master`, `HEAD^`
+    # being the commit from `master` that is the base of the merge
+    - name: Checkout base
+      run: git checkout HEAD^
+
+    # Use the lintcheck from the PR to generate the JSON in case the PR modifies lintcheck in some
+    # way
+    - name: Checkout current lintcheck
+      run: |
+        rm -rf lintcheck
+        git checkout ${{ github.sha }} -- lintcheck
+
+    - name: Create cache key
+      id: key
+      run: echo "key=lintcheck-base-${{ hashfiles('lintcheck/**') }}-$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache results
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: lintcheck-logs/base.json
+        key: ${{ steps.key.outputs.key }}
+
+    - name: Run lintcheck
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: cargo lintcheck --format json
+
+    - name: Rename JSON file
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: mv lintcheck-logs/lintcheck_crates_logs.json lintcheck-logs/base.json
+
+  # Generates `lintcheck-logs/head.json` and stores it in a cache
+  head:
+    runs-on: ubuntu-latest
+
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Create cache key
+      id: key
+      run: echo "key=lintcheck-head-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+    - name: Cache results
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: lintcheck-logs/head.json
+        key: ${{ steps.key.outputs.key }}
+
+    - name: Run lintcheck
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: cargo lintcheck --format json
+
+    - name: Rename JSON file
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: mv lintcheck-logs/lintcheck_crates_logs.json lintcheck-logs/head.json
+
+  # Retrieves `lintcheck-logs/base.json` and `lintcheck-logs/head.json` from the cache and prints
+  # the diff to the GH actions step summary
+  diff:
+    runs-on: ubuntu-latest
+
+    needs: [base, head]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Restore base JSON
+      uses: actions/cache/restore@v4
+      with:
+        key: ${{ needs.base.outputs.key }}
+        path: lintcheck-logs/base.json
+        fail-on-cache-miss: true
+
+    - name: Restore head JSON
+      uses: actions/cache/restore@v4
+      with:
+        key: ${{ needs.head.outputs.key }}
+        path: lintcheck-logs/head.json
+        fail-on-cache-miss: true
+
+    - name: Diff results
+      run: cargo lintcheck diff lintcheck-logs/base.json lintcheck-logs/head.json >> $GITHUB_STEP_SUMMARY
