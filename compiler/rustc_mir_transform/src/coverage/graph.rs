@@ -216,7 +216,7 @@ impl graph::StartNode for CoverageGraph {
 impl graph::Successors for CoverageGraph {
     #[inline]
     fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
-        self.successors[node].iter().cloned()
+        self.successors[node].iter().copied()
     }
 }
 
