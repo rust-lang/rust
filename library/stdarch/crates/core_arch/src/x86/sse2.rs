@@ -1760,7 +1760,7 @@ pub unsafe fn _mm_mul_pd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(sqrtsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert!(a, 0, _mm_cvtsd_f64(sqrtsd(b)))
+    simd_insert!(a, 0, _mm_cvtsd_f64(b).sqrt())
 }
 
 /// Returns a new vector with the square root of each of the values in `a`.
@@ -2911,10 +2911,6 @@ extern "C" {
     fn minsd(a: __m128d, b: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse2.min.pd"]
     fn minpd(a: __m128d, b: __m128d) -> __m128d;
-    #[link_name = "llvm.x86.sse2.sqrt.sd"]
-    fn sqrtsd(a: __m128d) -> __m128d;
-    #[link_name = "llvm.x86.sse2.sqrt.pd"]
-    fn sqrtpd(a: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse2.cmp.sd"]
     fn cmpsd(a: __m128d, b: __m128d, imm8: i8) -> __m128d;
     #[link_name = "llvm.x86.sse2.cmp.pd"]
