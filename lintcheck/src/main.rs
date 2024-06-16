@@ -17,6 +17,7 @@
 mod config;
 mod driver;
 mod json;
+mod popular_crates;
 mod recursive;
 
 use crate::config::{Commands, LintcheckConfig, OutputFormat};
@@ -43,21 +44,21 @@ const LINTCHECK_DOWNLOADS: &str = "target/lintcheck/downloads";
 const LINTCHECK_SOURCES: &str = "target/lintcheck/sources";
 
 /// List of sources to check, loaded from a .toml file
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct SourceList {
     crates: HashMap<String, TomlCrate>,
     #[serde(default)]
     recursive: RecursiveOptions,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default)]
 struct RecursiveOptions {
     ignore: HashSet<String>,
 }
 
 /// A crate source stored inside the .toml
 /// will be translated into on one of the `CrateSource` variants
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct TomlCrate {
     name: String,
     versions: Option<Vec<String>>,
@@ -69,7 +70,7 @@ struct TomlCrate {
 
 /// Represents an archive we download from crates.io, or a git repo, or a local repo/folder
 /// Once processed (downloaded/extracted/cloned/copied...), this will be translated into a `Crate`
-#[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
 enum CrateSource {
     CratesIo {
         name: String,
@@ -609,7 +610,6 @@ fn gather_stats(warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>)
     (stats_string, counter)
 }
 
-#[allow(clippy::too_many_lines)]
 fn main() {
     // We're being executed as a `RUSTC_WRAPPER` as part of `--recursive`
     if let Ok(addr) = env::var("LINTCHECK_SERVER") {
@@ -624,11 +624,15 @@ fn main() {
 
     let config = LintcheckConfig::new();
 
-    if let Some(Commands::Diff { old, new }) = config.subcommand {
-        json::diff(&old, &new);
-        return;
+    match config.subcommand {
+        Some(Commands::Diff { old, new }) => json::diff(&old, &new),
+        Some(Commands::Popular { output, number }) => popular_crates::fetch(output, number).unwrap(),
+        None => lintcheck(config),
     }
+}
 
+#[allow(clippy::too_many_lines)]
+fn lintcheck(config: LintcheckConfig) {
     println!("Compiling clippy...");
     build_clippy();
     println!("Done compiling");
