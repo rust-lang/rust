@@ -819,3 +819,34 @@ pub enum Enum {
         "#]],
     );
 }
+
+#[test]
+fn add_space_after_mut_ref_kw() {
+    check_edit(
+        "mut",
+        r#"
+fn foo() {
+    let $0
+}
+"#,
+        r#"
+fn foo() {
+    let mut $0
+}
+"#,
+    );
+
+    check_edit(
+        "ref",
+        r#"
+fn foo() {
+    let $0
+}
+"#,
+        r#"
+fn foo() {
+    let ref $0
+}
+"#,
+    );
+}
