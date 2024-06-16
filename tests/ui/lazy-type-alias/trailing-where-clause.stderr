@@ -5,12 +5,12 @@ LL |     let _: Alias<()>;
    |                  ^^ the trait `From<()>` is not implemented for `String`
    |
    = help: the following other types implement trait `From<T>`:
-             <String as From<&String>>
-             <String as From<&mut str>>
-             <String as From<&str>>
-             <String as From<Box<str>>>
-             <String as From<Cow<'a, str>>>
-             <String as From<char>>
+             `String` implements `From<&String>`
+             `String` implements `From<&mut str>`
+             `String` implements `From<&str>`
+             `String` implements `From<Box<str>>`
+             `String` implements `From<Cow<'a, str>>`
+             `String` implements `From<char>`
 note: required by a bound in `Alias`
   --> $DIR/trailing-where-clause.rs:8:13
    |
