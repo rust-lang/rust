@@ -1384,10 +1384,6 @@ impl<'tcx> VnState<'_, 'tcx> {
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
-        // Cache the propagated constant.
-        if let Some(new_index) = self.insert_constant(const_) {
-            self.values.swap_indices(index.as_usize(), new_index.as_usize());
-        }
         Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
     }
 
