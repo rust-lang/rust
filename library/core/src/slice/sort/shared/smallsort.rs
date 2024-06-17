@@ -146,7 +146,9 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
         if has_efficient_in_place_swap::<T>()
             && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
         {
-            SMALL_SORT_NETWORK_SCRATCH_LEN
+            SMALL_SORT_NETWORK_THRESHOLD
+        } else if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+            SMALL_SORT_GENERAL_THRESHOLD
         } else {
             SMALL_SORT_FALLBACK_THRESHOLD
         }
@@ -161,6 +163,8 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
             && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
         {
             small_sort_network(v, is_less);
+        } else if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+            small_sort_general(v, is_less);
         } else {
             small_sort_fallback(v, is_less);
         }
