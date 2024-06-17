@@ -304,6 +304,34 @@ pub fn set_host_rpath(cmd: &mut Command) {
     });
 }
 
+/// Read the contents of a file that cannot simply be read by
+/// read_to_string, due to invalid utf8 data, then assert that it contains `expected`.
+#[track_caller]
+pub fn invalid_utf8_contains<P: AsRef<Path>>(path: P, expected: &str) {
+    let buffer = fs_wrapper::read(path.as_ref());
+    if !String::from_utf8_lossy(&buffer).contains(expected) {
+        eprintln!("=== FILE CONTENTS (LOSSY) ===");
+        eprintln!("{}", String::from_utf8_lossy(&buffer));
+        eprintln!("=== SPECIFIED TEXT ===");
+        eprintln!("{}", expected);
+        panic!("specified text was not found in file");
+    }
+}
+
+/// Read the contents of a file that cannot simply be read by
+/// read_to_string, due to invalid utf8 data, then assert that it does not contain `expected`.
+#[track_caller]
+pub fn invalid_utf8_not_contains<P: AsRef<Path>>(path: P, expected: &str) {
+    let buffer = fs_wrapper::read(path.as_ref());
+    if String::from_utf8_lossy(&buffer).contains(expected) {
+        eprintln!("=== FILE CONTENTS (LOSSY) ===");
+        eprintln!("{}", String::from_utf8_lossy(&buffer));
+        eprintln!("=== SPECIFIED TEXT ===");
+        eprintln!("{}", expected);
+        panic!("specified text was unexpectedly found in file");
+    }
+}
+
 /// Copy a directory into another.
 pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {

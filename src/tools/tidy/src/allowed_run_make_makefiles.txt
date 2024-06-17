@@ -40,7 +40,6 @@ run-make/error-writing-dependencies/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
-run-make/extern-flag-fun/Makefile
 run-make/extern-flag-pathless/Makefile
 run-make/extern-flag-rename-transitive/Makefile
 run-make/extern-fn-explicit-align/Makefile
@@ -64,8 +63,6 @@ run-make/glibc-staticlib-args/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
-run-make/incremental-debugger-visualizer/Makefile
-run-make/incremental-session-fail/Makefile
 run-make/inline-always-many-cgu/Makefile
 run-make/interdependent-c-libraries/Makefile
 run-make/intrinsic-unreachable/Makefile
