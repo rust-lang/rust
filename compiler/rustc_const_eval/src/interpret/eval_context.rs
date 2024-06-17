@@ -824,7 +824,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn push_new_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
-        body: &'mir mir::Body<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
         return_to_block: StackPopCleanup,
         return_place: MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
@@ -850,7 +850,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn after_stack_frame_push(
         &mut self,
         instance: ty::Instance<'tcx>,
-        body: &'mir mir::Body<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
     ) -> InterpResult<'tcx> {
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         for &const_ in &body.required_consts {
