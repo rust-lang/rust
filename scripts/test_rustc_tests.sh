@@ -89,6 +89,7 @@ rm -r tests/run-make/sepcomp-cci-copies # same
 rm -r tests/run-make/volatile-intrinsics # same
 rm -r tests/run-make/llvm-ident # same
 rm -r tests/run-make/no-builtins-attribute # same
+rm -r tests/run-make/pgo-gen-no-imp-symbols # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
@@ -103,6 +104,7 @@ rm -r tests/run-make/emit-to-stdout
 rm -r tests/run-make/compressed-debuginfo
 rm -r tests/run-make/symbols-include-type-name
 rm -r tests/run-make/notify-all-emit-artifacts
+rm -r tests/run-make/reset-codegen-1
 
 # giving different but possibly correct results
 # =============================================
@@ -125,6 +127,7 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm -r tests/run-make/const_fn_mir # needs-unwind directive accidentally dropped
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
@@ -151,7 +154,7 @@ index 9607ff02f96..b7d97caf9a2 100644
 --- a/src/tools/run-make-support/src/rustdoc.rs
 +++ b/src/tools/run-make-support/src/rustdoc.rs
 @@ -34,8 +34,6 @@ pub fn bare() -> Self {
-     /// Construct a \`rustdoc\` invocation with \`-L \$(TARGET_RPATH_DIR)\` set.
+     #[track_caller]
      pub fn new() -> Self {
          let mut cmd = setup_common();
 -        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
