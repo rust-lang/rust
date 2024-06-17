@@ -4,12 +4,11 @@ warning: integer-to-pointer cast
 LL |     let x: &Foo = unsafe { &*(16 as *const Foo) };
    |                              ^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
    |
-   = help: This program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`,
-   = help: which means that Miri might miss pointer bugs in this program.
+   = help: This program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program.
    = help: See https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation.
    = help: To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.
-   = help: You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `with_exposed_provenance` semantics.
-   = help: Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.
+   = help: You can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics.
+   = help: Alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning.
    = note: BACKTRACE:
    = note: inside `main` at $DIR/extern_types.rs:LL:CC
 

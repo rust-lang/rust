@@ -1,6 +1,6 @@
 //@error-in-other-file: memory leaked
-//@stderr-per-bitwidth
 //@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
+//@normalize-stderr-test: "Rust heap, size: [0-9]+, align: [0-9]+" -> "Rust heap, SIZE, ALIGN"
 
 use std::cell::RefCell;
 use std::rc::Rc;

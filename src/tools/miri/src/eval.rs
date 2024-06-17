@@ -468,7 +468,7 @@ pub fn eval_entry<'tcx>(
         // Check for thread leaks.
         if !ecx.have_all_terminated() {
             tcx.dcx().err("the main thread terminated without waiting for all remaining threads");
-            tcx.dcx().note("pass `-Zmiri-ignore-leaks` to disable this check");
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             return None;
         }
         // Check for memory leaks.
@@ -476,14 +476,7 @@ pub fn eval_entry<'tcx>(
         let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);
-            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
-            if ecx.machine.collect_leak_backtraces {
-                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
-                tcx.dcx().note(leak_message);
-            } else {
-                // If we do not have backtraces, we just report an error without any span.
-                tcx.dcx().err(leak_message);
-            };
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

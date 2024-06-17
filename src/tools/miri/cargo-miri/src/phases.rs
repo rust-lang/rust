@@ -23,6 +23,12 @@ Subcommands:
     clean                    Clean the Miri cache & target directory
 
 The cargo options are exactly the same as for `cargo run` and `cargo test`, respectively.
+Furthermore, the following extra flags and environment variables are recognized for `run` and `test`:
+
+    --many-seeds[=from..to]  Run the program/tests many times with different seeds in the given range.
+                             The range defaults to `0..64`.
+
+    MIRIFLAGS                Extra flags to pass to the Miri driver. Use this to pass `-Zmiri-...` flags.
 
 Examples:
     cargo miri run
