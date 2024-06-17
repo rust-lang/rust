@@ -26,8 +26,8 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 use super::{
     err_inval, throw_inval, throw_ub, throw_ub_custom, throw_unsup, GlobalId, Immediate,
     InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, MemoryKind,
-    OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar,
-    StackPopJump,
+    OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance,
+    ReturnAction, Scalar,
 };
 use crate::errors;
 use crate::util;
@@ -161,9 +161,15 @@ pub enum StackPopCleanup {
 
 /// Return type of [`InterpCx::pop_stack_frame`].
 pub struct StackPop<'tcx, Prov: Provenance> {
-    pub jump: StackPopJump,
-    pub target: StackPopCleanup,
-    pub destination: MPlaceTy<'tcx, Prov>,
+    /// Additional information about the action to be performed when returning from the popped
+    /// stack frame.
+    pub return_action: ReturnAction,
+
+    /// [`return_to_block`](Frame::return_to_block) of the popped stack frame.
+    pub return_to_block: StackPopCleanup,
+
+    /// [`return_place`](Frame::return_place) of the popped stack frame.
+    pub return_place: MPlaceTy<'tcx, Prov>,
 }
 
 /// State of a local variable including a memoized layout
@@ -890,16 +896,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
-        let target = frame.return_to_block;
-        let destination = frame.return_place.clone();
+        let return_to_block = frame.return_to_block;
+        let return_place = frame.return_place.clone();
 
-        let jump = if cleanup {
+        let return_action = if cleanup {
             M::after_stack_pop(self, frame, unwinding)?
         } else {
-            StackPopJump::NoCleanup
+            ReturnAction::NoCleanup
         };
 
-        Ok(StackPop { jump, target, destination })
+        Ok(StackPop { return_action, return_to_block, return_place })
     }
 
     /// A private helper for [`pop_stack_frame`](InterpCx::pop_stack_frame).
@@ -1042,13 +1048,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Report error from return value copy, if any.
         copy_ret_result?;
 
-        match frame.jump {
-            StackPopJump::Normal => {}
-            StackPopJump::NoJump => {
+        match frame.return_action {
+            ReturnAction::Normal => {}
+            ReturnAction::NoJump => {
                 // The hook already did everything.
                 return Ok(());
             }
-            StackPopJump::NoCleanup => {
+            ReturnAction::NoCleanup => {
                 // If we are not doing cleanup, also skip everything else.
                 assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
                 assert!(!unwinding, "tried to skip cleanup during unwinding");
@@ -1060,7 +1066,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = match frame.target {
+            let unwind = match frame.return_to_block {
                 StackPopCleanup::Goto { unwind, .. } => unwind,
                 StackPopCleanup::Root { .. } => {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
@@ -1070,7 +1076,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
-            match frame.target {
+            match frame.return_to_block {
                 StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
                 StackPopCleanup::Root { .. } => {
                     assert!(

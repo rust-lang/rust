@@ -27,7 +27,7 @@ use super::{
 };
 use crate::{
     fluent_generated as fluent,
-    interpret::{eval_context::StackPop, StackPopJump},
+    interpret::{eval_context::StackPop, ReturnAction},
 };
 
 /// An argment passed to a function.
@@ -982,11 +982,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // only the tail called function should return to the current return block.
         M::before_stack_pop(self, self.frame())?;
 
-        let StackPop { jump, target, destination } = self.pop_stack_frame(false)?;
+        let StackPop { return_action, return_to_block, return_place } =
+            self.pop_stack_frame(false)?;
 
-        assert_eq!(jump, StackPopJump::Normal);
+        assert_eq!(return_action, ReturnAction::Normal);
 
-        let StackPopCleanup::Goto { ret, unwind } = target else {
+        let StackPopCleanup::Goto { ret, unwind } = return_to_block else {
             bug!("can't tailcall as root");
         };
 
@@ -999,7 +1000,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             (caller_abi, caller_fn_abi),
             args,
             with_caller_location,
-            &destination,
+            &return_place,
             ret,
             unwind,
         )
