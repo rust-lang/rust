@@ -26,6 +26,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::option_map_unwrap_or", "clippy::map_unwrap_or"),
     ("clippy::option_map_unwrap_or_else", "clippy::map_unwrap_or"),
     ("clippy::option_unwrap_used", "clippy::unwrap_used"),
+    ("clippy::overflow_check_conditional", "clippy::panicking_overflow_checks"),
     ("clippy::ref_in_deref", "clippy::needless_borrow"),
     ("clippy::result_expect_used", "clippy::expect_used"),
     ("clippy::result_map_unwrap_or_else", "clippy::map_unwrap_or"),

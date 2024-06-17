@@ -278,9 +278,9 @@ mod only_used_in_recursion;
 mod operators;
 mod option_env_unwrap;
 mod option_if_let_else;
-mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
+mod panicking_overflow_checks;
 mod partial_pub_fields;
 mod partialeq_ne_impl;
 mod partialeq_to_none;
@@ -791,7 +791,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(format::UselessFormat::new(format_args.clone())));
     store.register_late_pass(|_| Box::new(swap::Swap));
-    store.register_late_pass(|_| Box::new(overflow_check_conditional::OverflowCheckConditional));
+    store.register_late_pass(|_| Box::new(panicking_overflow_checks::PanickingOverflowChecks));
     store.register_late_pass(|_| Box::<new_without_default::NewWithoutDefault>::default());
     store.register_late_pass(move |_| Box::new(disallowed_names::DisallowedNames::new(disallowed_names)));
     store.register_late_pass(move |_| {

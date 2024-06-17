@@ -21,14 +21,14 @@ declare_clippy_lint! {
     /// a + b < a;
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub OVERFLOW_CHECK_CONDITIONAL,
+    pub PANICKING_OVERFLOW_CHECKS,
     complexity,
     "overflow checks inspired by C which are likely to panic"
 }
 
-declare_lint_pass!(OverflowCheckConditional => [OVERFLOW_CHECK_CONDITIONAL]);
+declare_lint_pass!(PanickingOverflowChecks => [PANICKING_OVERFLOW_CHECKS]);
 
-impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
+impl<'tcx> LateLintPass<'tcx> for PanickingOverflowChecks {
     // a + b < a, a > a + b, a < a - b, a - b > a
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(op, lhs, rhs) = expr.kind
@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
         {
             span_lint(
                 cx,
-                OVERFLOW_CHECK_CONDITIONAL,
+                PANICKING_OVERFLOW_CHECKS,
                 expr.span,
                 "you are trying to use classic C overflow conditions that will fail in Rust",
             );
