@@ -6,7 +6,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{remove_dylibs, rustc};
+use run_make_support::{dynamic_lib_name, fs_wrapper, rustc};
 
 fn main() {
     rustc().input("rlib.rs").crate_type("rlib").crate_type("dylib").run();
@@ -16,6 +16,6 @@ fn main() {
 
     // librlib's dynamic version needs to be removed here to prevent prog.rs from fetching
     // the wrong one.
-    remove_dylibs("rlib");
+    fs_wrapper::remove_file(dynamic_lib_name("rlib"));
     rustc().input("prog.rs").run_fail();
 }

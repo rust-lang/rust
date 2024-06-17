@@ -5,12 +5,17 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{count_rlibs, remove_dylibs, remove_rlibs, rustc};
+use run_make_support::{
+    cwd, dynamic_lib_name, fs_wrapper, has_extension, rust_lib_name, rustc, shallow_find_files,
+};
+use std::path::Path;
 
 fn main() {
     rustc().input("test.rs").run();
-    remove_rlibs("test");
-    remove_dylibs("test");
+    assert!(Path::new(&dynamic_lib_name("test")).exists());
+    assert!(Path::new(&rust_lib_name("test")).exists());
+
+    fs_wrapper::remove_file(rust_lib_name("test"));
     rustc().crate_type("dylib").input("test.rs").run();
-    assert_eq!(count_rlibs("test"), 0);
+    assert!(shallow_find_files(cwd(), |path| { has_extension(path, "rlib") }).is_empty());
 }

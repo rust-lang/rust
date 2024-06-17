@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 
 pub use bstr;
 pub use gimli;
-pub use glob;
 pub use object;
 pub use regex;
 pub use wasmparser;
@@ -222,42 +221,6 @@ pub fn rust_lib_name(name: &str) -> String {
 #[must_use]
 pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
-}
-
-/// Remove all dynamic libraries possessing a name starting with `paths`.
-#[track_caller]
-pub fn remove_dylibs(paths: &str) {
-    let paths = format!(r"{paths}*");
-    remove_glob(dynamic_lib_name(&paths).as_str());
-}
-
-/// Remove all rust libraries possessing a name starting with `paths`.
-#[track_caller]
-pub fn remove_rlibs(paths: &str) {
-    let paths = format!(r"{paths}*");
-    remove_glob(rust_lib_name(&paths).as_str());
-}
-
-#[track_caller]
-fn remove_glob(paths: &str) {
-    let paths = glob::glob(paths).expect(format!("Glob expression {paths} is not valid.").as_str());
-    paths
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.as_path().is_file())
-        .for_each(|file| fs_wrapper::remove_file(&file));
-}
-
-#[track_caller]
-fn count_glob(paths: &str) -> usize {
-    let paths = glob::glob(paths).expect(format!("Glob expression {paths} is not valid.").as_str());
-    paths.filter_map(|entry| entry.ok()).filter(|entry| entry.as_path().is_file()).count()
-}
-
-/// Count the number of rust libraries possessing a name starting with `paths`.
-#[track_caller]
-pub fn count_rlibs(paths: &str) -> usize {
-    let paths = format!(r"{paths}*");
-    count_glob(rust_lib_name(&paths).as_str())
 }
 
 /// Return the current working directory.
