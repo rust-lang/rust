@@ -160,7 +160,7 @@ pub enum StackPopCleanup {
 }
 
 /// Return type of [`InterpCx::pop_stack_frame`].
-pub struct StackPop<'tcx, Prov: Provenance> {
+pub struct StackPopInfo<'tcx, Prov: Provenance> {
     /// Additional information about the action to be performed when returning from the popped
     /// stack frame.
     pub return_action: ReturnAction,
@@ -890,7 +890,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn pop_stack_frame(
         &mut self,
         unwinding: bool,
-    ) -> InterpResult<'tcx, StackPop<'tcx, M::Provenance>> {
+    ) -> InterpResult<'tcx, StackPopInfo<'tcx, M::Provenance>> {
         let cleanup = self.cleanup_current_frame_locals()?;
 
         let frame =
@@ -905,7 +905,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ReturnAction::NoCleanup
         };
 
-        Ok(StackPop { return_action, return_to_block, return_place })
+        Ok(StackPopInfo { return_action, return_to_block, return_place })
     }
 
     /// A private helper for [`pop_stack_frame`](InterpCx::pop_stack_frame).
@@ -1043,12 +1043,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         // All right, now it is time to actually pop the frame.
-        let frame = self.pop_stack_frame(unwinding)?;
+        let stack_pop_info = self.pop_stack_frame(unwinding)?;
 
         // Report error from return value copy, if any.
         copy_ret_result?;
 
-        match frame.return_action {
+        match stack_pop_info.return_action {
             ReturnAction::Normal => {}
             ReturnAction::NoJump => {
                 // The hook already did everything.
@@ -1066,7 +1066,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = match frame.return_to_block {
+            let unwind = match stack_pop_info.return_to_block {
                 StackPopCleanup::Goto { unwind, .. } => unwind,
                 StackPopCleanup::Root { .. } => {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
@@ -1076,7 +1076,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
-            match frame.return_to_block {
+            match stack_pop_info.return_to_block {
                 StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
                 StackPopCleanup::Root { .. } => {
                     assert!(

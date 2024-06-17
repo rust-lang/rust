@@ -27,7 +27,7 @@ use super::{
 };
 use crate::{
     fluent_generated as fluent,
-    interpret::{eval_context::StackPop, ReturnAction},
+    interpret::{eval_context::StackPopInfo, ReturnAction},
 };
 
 /// An argment passed to a function.
@@ -982,7 +982,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // only the tail called function should return to the current return block.
         M::before_stack_pop(self, self.frame())?;
 
-        let StackPop { return_action, return_to_block, return_place } =
+        let StackPopInfo { return_action, return_to_block, return_place } =
             self.pop_stack_frame(false)?;
 
         assert_eq!(return_action, ReturnAction::Normal);
