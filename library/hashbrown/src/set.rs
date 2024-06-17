@@ -1410,9 +1410,9 @@ impl<T, S, A> BitOr<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the union of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1434,7 +1434,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.union(rhs).cloned().collect()
     }
 }
@@ -1443,9 +1443,9 @@ impl<T, S, A> BitAnd<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1467,7 +1467,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.intersection(rhs).cloned().collect()
     }
 }
@@ -1476,9 +1476,9 @@ impl<T, S, A> BitXor<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1500,7 +1500,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitxor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitxor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.symmetric_difference(rhs).cloned().collect()
     }
 }
@@ -1509,9 +1509,9 @@ impl<T, S, A> Sub<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the difference of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1533,7 +1533,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn sub(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn sub(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.difference(rhs).cloned().collect()
     }
 }
