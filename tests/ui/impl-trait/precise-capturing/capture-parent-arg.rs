@@ -1,5 +1,4 @@
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 trait Tr {
     type Assoc;

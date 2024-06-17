@@ -1,5 +1,4 @@
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 fn lt<'a>() -> impl Sized + use<'a, 'a> {}
 //~^ ERROR cannot capture parameter `'a` twice

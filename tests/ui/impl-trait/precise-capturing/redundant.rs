@@ -2,7 +2,6 @@
 //@ check-pass
 
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 fn hello<'a>() -> impl Sized + use<'a> {}
 //~^ WARN all possible in-scope parameters are already captured

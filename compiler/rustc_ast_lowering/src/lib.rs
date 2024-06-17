@@ -1385,7 +1385,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 None
                             }
                             // Ignore `use` syntax since that is not valid in objects.
-                            GenericBound::Use(..) => None,
+                            GenericBound::Use(_, span) => {
+                                this.dcx()
+                                    .span_delayed_bug(*span, "use<> not allowed in dyn types");
+                                None
+                            }
                         }));
                     let lifetime_bound =
                         lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));

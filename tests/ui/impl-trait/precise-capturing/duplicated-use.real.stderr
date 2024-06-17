@@ -1,17 +1,8 @@
 error: duplicate `use<...>` precise capturing syntax
-  --> $DIR/duplicated-use.rs:8:32
+  --> $DIR/duplicated-use.rs:7:32
    |
 LL | fn hello<'a>() -> impl Sized + use<'a> + use<'a> {}
    |                                ^^^^^^^   ------- second `use<...>` here
 
-warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/duplicated-use.rs:4:12
-   |
-LL | #![feature(precise_capturing)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 

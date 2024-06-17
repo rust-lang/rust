@@ -1,5 +1,4 @@
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 fn no_elided_lt() -> impl Sized + use<'_> {}
 //~^ ERROR missing lifetime specifier

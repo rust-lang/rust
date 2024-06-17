@@ -1,5 +1,4 @@
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 fn missing() -> impl Sized + use<T> {}
 //~^ ERROR cannot find type `T` in this scope

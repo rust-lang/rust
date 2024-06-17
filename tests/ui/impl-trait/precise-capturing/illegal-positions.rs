@@ -3,7 +3,6 @@
 //@ edition: 2021
 
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 #[cfg(real)]
 trait Foo: use<> {
