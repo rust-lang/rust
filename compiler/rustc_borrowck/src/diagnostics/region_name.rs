@@ -628,9 +628,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     | GenericArgKind::Const(_),
                     _,
                 ) => {
-                    // This was previously a `span_delayed_bug` and could be
-                    // reached by the test for #82126, but no longer.
-                    self.dcx().span_bug(
+                    self.dcx().span_delayed_bug(
                         hir_arg.span(),
                         format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
