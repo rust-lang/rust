@@ -21,6 +21,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
+use util::visit_bindings;
 
 // helper functions, broken out by category:
 mod simplify;
@@ -725,6 +726,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         set_match_place: bool,
     ) -> BlockAnd<()> {
         let mut candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
+
+        // For matches and function arguments, the place that is being matched
+        // can be set when creating the variables. But the place for
+        // let PATTERN = ... might not even exist until we do the assignment.
+        // so we set it here instead.
+        if set_match_place {
+            // `try_to_place` may fail if it is unable to resolve the given `PlaceBuilder` inside a
+            // closure. In this case, we don't want to include a scrutinee place.
+            // `scrutinee_place_builder` will fail for destructured assignments. This is because a
+            // closure only captures the precise places that it will read and as a result a closure
+            // may not capture the entire tuple/struct and rather have individual places that will
+            // be read in the final MIR.
+            // Example:
+            // ```
+            // let foo = (0, 1);
+            // let c = || {
+            //    let (v1, v2) = foo;
+            // };
+            // ```
+            if let Some(place) = initializer.try_to_place(self) {
+                visit_bindings(&[&mut candidate], |binding: &Binding<'_>| {
+                    let local = self.var_local_id(binding.var_id, OutsideGuard);
+                    if let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                        opt_match_place: Some((ref mut match_place, _)),
+                        ..
+                    })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
+                    {
+                        *match_place = Some(place);
+                    } else {
+                        bug!("Let binding to non-user variable.")
+                    };
+                });
+            }
+        }
+
         let fake_borrow_temps = self.lower_match_tree(
             block,
             irrefutable_pat.span,
@@ -733,47 +769,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             false,
             &mut [&mut candidate],
         );
-
-        // For matches and function arguments, the place that is being matched
-        // can be set when creating the variables. But the place for
-        // let PATTERN = ... might not even exist until we do the assignment.
-        // so we set it here instead.
-        if set_match_place {
-            let mut next = Some(&candidate);
-            while let Some(candidate_ref) = next.take() {
-                for binding in &candidate_ref.extra_data.bindings {
-                    let local = self.var_local_id(binding.var_id, OutsideGuard);
-                    // `try_to_place` may fail if it is unable to resolve the given
-                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
-                    // a scrutinee place. `scrutinee_place_builder` will fail for destructured
-                    // assignments. This is because a closure only captures the precise places
-                    // that it will read and as a result a closure may not capture the entire
-                    // tuple/struct and rather have individual places that will be read in the
-                    // final MIR.
-                    // Example:
-                    // ```
-                    // let foo = (0, 1);
-                    // let c = || {
-                    //    let (v1, v2) = foo;
-                    // };
-                    // ```
-                    if let Some(place) = initializer.try_to_place(self) {
-                        let LocalInfo::User(BindingForm::Var(VarBindingForm {
-                            opt_match_place: Some((ref mut match_place, _)),
-                            ..
-                        })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
-                        else {
-                            bug!("Let binding to non-user variable.")
-                        };
-                        *match_place = Some(place);
-                    }
-                }
-                // All of the subcandidates should bind the same locals, so we
-                // only visit the first one.
-                next = candidate_ref.subcandidates.get(0)
-            }
-        }
-
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
             candidate,
