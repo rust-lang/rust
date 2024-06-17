@@ -1,4 +1,3 @@
-run-make/allocator-shim-circular-deps/Makefile
 run-make/archive-duplicate-names/Makefile
 run-make/atomic-lock-free/Makefile
 run-make/branch-protection-check-IBT/Makefile
