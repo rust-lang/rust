@@ -59,9 +59,9 @@ pub(crate) mod destructors {
             target_os = "netbsd",
             target_os = "dragonfly"
         ))] {
-            mod linux;
+            mod linux_like;
             mod list;
-            pub(super) use linux::register;
+            pub(super) use linux_like::register;
             pub(super) use list::run;
         } else {
             mod list;
