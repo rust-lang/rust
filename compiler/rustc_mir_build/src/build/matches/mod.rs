@@ -2059,14 +2059,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return self.cfg.start_new_block();
         }
 
-        self.ascribe_types(
-            block,
-            parent_data
-                .iter()
-                .flat_map(|d| &d.ascriptions)
-                .cloned()
-                .chain(candidate.extra_data.ascriptions),
-        );
+        let ascriptions = parent_data
+            .iter()
+            .flat_map(|d| &d.ascriptions)
+            .cloned()
+            .chain(candidate.extra_data.ascriptions);
+        let bindings =
+            parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
+
+        self.ascribe_types(block, ascriptions);
 
         // rust-lang/rust#27282: The `autoref` business deserves some
         // explanation here.
@@ -2153,12 +2154,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
-            let bindings =
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
 
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
-            let guard_frame =
-                GuardFrame { locals: bindings.map(|b| GuardFrameLocal::new(b.var_id)).collect() };
+            let guard_frame = GuardFrame {
+                locals: bindings.clone().map(|b| GuardFrameLocal::new(b.var_id)).collect(),
+            };
             debug!("entering guard building context: {:?}", guard_frame);
             self.guard_context.push(guard_frame);
 
@@ -2231,11 +2231,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings = parent_data
-                .iter()
-                .flat_map(|d| &d.bindings)
-                .chain(&candidate.extra_data.bindings)
-                .filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
+            let by_value_bindings =
+                bindings.filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
@@ -2259,7 +2256,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_matched_candidate_for_arm_body(
                 block,
                 schedule_drops,
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings),
+                bindings,
                 storages_alive,
             );
             block
