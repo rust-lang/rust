@@ -75,7 +75,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir, MirPass};
-use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct ByMoveBody;
@@ -102,7 +102,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
 
         // We don't need to generate a by-move coroutine if the coroutine body was
         // produced by the `CoroutineKindShim`, since it's already by-move.
-        if matches!(body.source.instance, ty::InstanceDef::CoroutineKindShim { .. }) {
+        if matches!(body.source.instance, ty::InstanceKind::CoroutineKindShim { .. }) {
             return;
         }
 
@@ -193,7 +193,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
         dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
         // FIXME: use query feeding to generate the body right here and then only store the `DefId` of the new body.
-        by_move_body.source = mir::MirSource::from_instance(InstanceDef::CoroutineKindShim {
+        by_move_body.source = mir::MirSource::from_instance(InstanceKind::CoroutineKindShim {
             coroutine_def_id: coroutine_def_id.to_def_id(),
         });
         body.coroutine.as_mut().unwrap().by_move_body = Some(by_move_body);

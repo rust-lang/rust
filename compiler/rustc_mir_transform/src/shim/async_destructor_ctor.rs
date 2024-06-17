@@ -529,7 +529,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         last_bb.terminator = Some(Terminator { source_info, kind: TerminatorKind::Return });
 
-        let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(
+        let source = MirSource::from_instance(ty::InstanceKind::AsyncDropGlueCtorShim(
             self.def_id,
             self.self_ty,
         ));

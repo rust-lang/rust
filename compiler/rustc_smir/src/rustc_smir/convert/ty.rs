@@ -839,22 +839,22 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         let def = tables.instance_def(tables.tcx.lift(*self).unwrap());
         let kind = match self.def {
-            ty::InstanceDef::Item(..) => stable_mir::mir::mono::InstanceKind::Item,
-            ty::InstanceDef::Intrinsic(..) => stable_mir::mir::mono::InstanceKind::Intrinsic,
-            ty::InstanceDef::Virtual(_def_id, idx) => {
+            ty::InstanceKind::Item(..) => stable_mir::mir::mono::InstanceKind::Item,
+            ty::InstanceKind::Intrinsic(..) => stable_mir::mir::mono::InstanceKind::Intrinsic,
+            ty::InstanceKind::Virtual(_def_id, idx) => {
                 stable_mir::mir::mono::InstanceKind::Virtual { idx }
             }
-            ty::InstanceDef::VTableShim(..)
-            | ty::InstanceDef::ReifyShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..)
-            | ty::InstanceDef::ClosureOnceShim { .. }
-            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceDef::CoroutineKindShim { .. }
-            | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..)
-            | ty::InstanceDef::FnPtrShim(..)
-            | ty::InstanceDef::AsyncDropGlueCtorShim(..) => {
+            ty::InstanceKind::VTableShim(..)
+            | ty::InstanceKind::ReifyShim(..)
+            | ty::InstanceKind::FnPtrAddrShim(..)
+            | ty::InstanceKind::ClosureOnceShim { .. }
+            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceKind::CoroutineKindShim { .. }
+            | ty::InstanceKind::ThreadLocalShim(..)
+            | ty::InstanceKind::DropGlue(..)
+            | ty::InstanceKind::CloneShim(..)
+            | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
                 stable_mir::mir::mono::InstanceKind::Shim
             }
         };

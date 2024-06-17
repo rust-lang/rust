@@ -510,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
-        if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
+        if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
             return helper.funclet_br(self, bx, target, mergeable_succ);
         }
@@ -541,7 +541,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //                \-------/
                 //
                 let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
+                    def: ty::InstanceKind::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
                     args: drop_fn.args,
                 };
                 debug!("ty = {:?}", ty);
@@ -583,7 +583,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //
                 // SO THEN WE CAN USE THE ABOVE CODE.
                 let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
+                    def: ty::InstanceKind::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
                     args: drop_fn.args,
                 };
                 debug!("ty = {:?}", ty);
@@ -855,7 +855,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let def = instance.map(|i| i.def);
 
         if let Some(
-            ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None),
+            ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None),
         ) = def
         {
             // Empty drop glue; a no-op.
@@ -871,7 +871,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Handle intrinsics old codegen wants Expr's for, ourselves.
         let intrinsic = match def {
-            Some(ty::InstanceDef::Intrinsic(def_id)) => Some(bx.tcx().intrinsic(def_id).unwrap()),
+            Some(ty::InstanceKind::Intrinsic(def_id)) => Some(bx.tcx().intrinsic(def_id).unwrap()),
             _ => None,
         };
 
@@ -1026,7 +1026,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             let mut op = self.codegen_operand(bx, &arg.node);
 
-            if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
+            if let (0, Some(ty::InstanceKind::Virtual(_, idx))) = (i, def) {
                 match op.val {
                     Pair(data_ptr, meta) => {
                         // In the case of Rc<Self>, we need to explicitly pass a
