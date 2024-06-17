@@ -9,7 +9,12 @@ import {
     applySnippetTextEdits,
     type SnippetTextDocumentEdit,
 } from "./snippets";
-import { type RunnableQuickPick, selectRunnable, createTask, createCargoArgs } from "./run";
+import {
+    type RunnableQuickPick,
+    selectRunnable,
+    createTaskFromRunnable,
+    createCargoArgs,
+} from "./run";
 import { AstInspector } from "./ast_inspector";
 import {
     isRustDocument,
@@ -1096,7 +1101,7 @@ export function run(ctx: CtxInit): Cmd {
 
         item.detail = "rerun";
         prevRunnable = item;
-        const task = await createTask(item.runnable, ctx.config);
+        const task = await createTaskFromRunnable(item.runnable, ctx.config);
         return await vscode.tasks.executeTask(task);
     };
 }
@@ -1139,7 +1144,7 @@ export function runSingle(ctx: CtxInit): Cmd {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const task = await createTask(runnable, ctx.config);
+        const task = await createTaskFromRunnable(runnable, ctx.config);
         task.group = vscode.TaskGroup.Build;
         task.presentationOptions = {
             reveal: vscode.TaskRevealKind.Always,
