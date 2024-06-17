@@ -1406,10 +1406,11 @@ where
     }
 }
 
-impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
+impl<T, S, A> BitOr<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
+    A: Allocator,
 {
     type Output = HashSet<T, S>;
 
@@ -1433,15 +1434,16 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
         self.union(rhs).cloned().collect()
     }
 }
 
-impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
+impl<T, S, A> BitAnd<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
+    A: Allocator,
 {
     type Output = HashSet<T, S>;
 
@@ -1465,15 +1467,16 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitand(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
         self.intersection(rhs).cloned().collect()
     }
 }
 
-impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
+impl<T, S, A> BitXor<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
+    A: Allocator,
 {
     type Output = HashSet<T, S>;
 
@@ -1497,15 +1500,16 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitxor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+    fn bitxor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
         self.symmetric_difference(rhs).cloned().collect()
     }
 }
 
-impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
+impl<T, S, A> Sub<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
+    A: Allocator,
 {
     type Output = HashSet<T, S>;
 
@@ -1529,15 +1533,16 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn sub(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+    fn sub(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
         self.difference(rhs).cloned().collect()
     }
 }
 
-impl<T, S> BitOrAssign<&HashSet<T, S>> for HashSet<T, S>
+impl<T, S, A> BitOrAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher,
+    A: Allocator,
 {
     /// Modifies this set to contain the union of `self` and `rhs`.
     ///
@@ -1559,7 +1564,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitor_assign(&mut self, rhs: &HashSet<T, S>) {
+    fn bitor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
             if !self.contains(item) {
                 self.insert(item.clone());
@@ -1568,10 +1573,11 @@ where
     }
 }
 
-impl<T, S> BitAndAssign<&HashSet<T, S>> for HashSet<T, S>
+impl<T, S, A> BitAndAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher,
+    A: Allocator,
 {
     /// Modifies this set to contain the intersection of `self` and `rhs`.
     ///
@@ -1593,15 +1599,16 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitand_assign(&mut self, rhs: &HashSet<T, S>) {
+    fn bitand_assign(&mut self, rhs: &HashSet<T, S, A>) {
         self.retain(|item| rhs.contains(item));
     }
 }
 
-impl<T, S> BitXorAssign<&HashSet<T, S>> for HashSet<T, S>
+impl<T, S, A> BitXorAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher,
+    A: Allocator,
 {
     /// Modifies this set to contain the symmetric difference of `self` and `rhs`.
     ///
@@ -1623,7 +1630,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitxor_assign(&mut self, rhs: &HashSet<T, S>) {
+    fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
             let entry = self.map.raw_entry_mut().from_key(item);
             match entry {
@@ -1638,10 +1645,11 @@ where
     }
 }
 
-impl<T, S> SubAssign<&HashSet<T, S>> for HashSet<T, S>
+impl<T, S, A> SubAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher,
+    A: Allocator,
 {
     /// Modifies this set to contain the difference of `self` and `rhs`.
     ///
@@ -1663,7 +1671,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn sub_assign(&mut self, rhs: &HashSet<T, S>) {
+    fn sub_assign(&mut self, rhs: &HashSet<T, S, A>) {
         if rhs.len() < self.len() {
             for item in rhs {
                 self.remove(item);
