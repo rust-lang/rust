@@ -2784,8 +2784,10 @@ macro_rules! int_impl {
         ///
         /// In other words, the result is `self / rhs` rounded to the integer `q`
         /// such that `self >= q * rhs`.
-        /// If `self > 0`, this is equal to round towards zero (the default in Rust);
-        /// if `self < 0`, this is equal to round towards +/- infinity.
+        /// If `self > 0`, this is equal to rounding towards zero (the default in Rust);
+        /// if `self < 0`, this is equal to rounding away from zero (towards +/- infinity).
+        /// If `rhs > 0`, this is equal to rounding towards -infinity;
+        /// if `rhs < 0`, this is equal to rounding towards +infinity.
         ///
         /// # Panics
         ///
@@ -2823,8 +2825,8 @@ macro_rules! int_impl {
         /// Calculates the least nonnegative remainder of `self (mod rhs)`.
         ///
         /// This is done as if by the Euclidean division algorithm -- given
-        /// `r = self.rem_euclid(rhs)`, `self = rhs * self.div_euclid(rhs) + r`, and
-        /// `0 <= r < abs(rhs)`.
+        /// `r = self.rem_euclid(rhs)`, the result satisfies
+        /// `self = rhs * self.div_euclid(rhs) + r` and `0 <= r < abs(rhs)`.
         ///
         /// # Panics
         ///

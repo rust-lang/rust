@@ -928,7 +928,7 @@ pub(crate) mod tags {
 /// An `Option` with a type tag `I`.
 ///
 /// Since this struct implements `Erased`, the type can be erased to make a dynamically typed
-/// option. The type can be checked dynamically using `Erased::tag_id` and since this is statically
+/// option. The type can be checked dynamically using `Tagged::tag_id` and since this is statically
 /// checked for the concrete type, there is some degree of type safety.
 #[repr(transparent)]
 pub(crate) struct TaggedOption<'a, I: tags::Type<'a>>(pub Option<I::Reified>);
