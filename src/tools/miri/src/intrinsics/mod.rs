@@ -57,7 +57,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     );
                 }
                 Ok(Some(ty::Instance {
-                    def: ty::InstanceDef::Item(instance.def_id()),
+                    def: ty::InstanceKind::Item(instance.def_id()),
                     args: instance.args,
                 }))
             }

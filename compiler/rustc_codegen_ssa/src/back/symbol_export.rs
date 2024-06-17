@@ -310,7 +310,7 @@ fn exported_symbols_provider_local(
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
         use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
-        use rustc_middle::ty::InstanceDef;
+        use rustc_middle::ty::InstanceKind;
 
         // Normally, we require that shared monomorphizations are not hidden,
         // because if we want to re-use a monomorphization from a Rust dylib, it
@@ -337,7 +337,7 @@ fn exported_symbols_provider_local(
             }
 
             match *mono_item {
-                MonoItem::Fn(Instance { def: InstanceDef::Item(def), args }) => {
+                MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     if args.non_erasable_generics(tcx, def).next().is_some() {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
@@ -350,7 +350,7 @@ fn exported_symbols_provider_local(
                         ));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceDef::DropGlue(def_id, Some(ty)), args }) => {
+                MonoItem::Fn(Instance { def: InstanceKind::DropGlue(def_id, Some(ty)), args }) => {
                     // A little sanity-check
                     debug_assert_eq!(
                         args.non_erasable_generics(tcx, def_id).next(),
@@ -366,7 +366,7 @@ fn exported_symbols_provider_local(
                     ));
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceDef::AsyncDropGlueCtorShim(def_id, Some(ty)),
+                    def: InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty)),
                     args,
                 }) => {
                     // A little sanity-check
@@ -556,7 +556,7 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
                 ty::Instance {
-                    def: ty::InstanceDef::ThreadLocalShim(def_id),
+                    def: ty::InstanceKind::ThreadLocalShim(def_id),
                     args: ty::GenericArgs::empty(),
                 },
                 instantiating_crate,

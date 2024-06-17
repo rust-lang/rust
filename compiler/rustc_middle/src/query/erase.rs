@@ -365,7 +365,7 @@ tcx_lifetime! {
     rustc_middle::ty::GenericPredicates,
     rustc_middle::ty::inhabitedness::InhabitedPredicate,
     rustc_middle::ty::Instance,
-    rustc_middle::ty::InstanceDef,
+    rustc_middle::ty::InstanceKind,
     rustc_middle::ty::layout::FnAbiError,
     rustc_middle::ty::layout::LayoutError,
     rustc_middle::ty::ParamEnv,
