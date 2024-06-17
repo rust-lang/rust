@@ -2126,7 +2126,8 @@ pub struct BareFnTy {
     pub ext: Extern,
     pub generic_params: ThinVec<GenericParam>,
     pub decl: P<FnDecl>,
-    /// Span of the `fn(...) -> ...` part.
+    /// Span of the `[unsafe] [extern] fn(...) -> ...` part, i.e. everything
+    /// after the generic params (if there are any, e.g. `for<'a>`).
     pub decl_span: Span,
 }
 
