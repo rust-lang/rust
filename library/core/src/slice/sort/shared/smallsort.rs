@@ -140,6 +140,8 @@ impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
 #[rustc_unsafe_specialization_marker]
 trait CopyMarker {}
 
+impl<T: Copy> CopyMarker for T {}
+
 impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
     #[inline(always)]
     fn small_sort_threshold() -> usize {
