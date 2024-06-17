@@ -1,7 +1,5 @@
 //@ revisions: nofallback fallback
-//@ ignore-windows - the number of `Error` impls is platform-dependent
-//@[fallback] check-pass
-//@[nofallback] check-fail
+//@check-fail
 
 #![feature(never_type)]
 #![cfg_attr(fallback, feature(never_type_fallback))]
@@ -15,18 +13,21 @@ fn raw_ptr_box<T>(t: T) -> *mut T {
 }
 
 fn foo(x: !) -> Box<dyn Error> {
-    /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
-    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
+    // Subtyping during method resolution will generate new inference vars and
+    // subtype them. Thus fallback will not fall back to `!`, but `()` instead.
+    Box::<_ /* ! */>::new(x)
+    //~^ ERROR trait bound `(): std::error::Error` is not satisfied
 }
 
 fn foo_raw_ptr(x: !) -> *mut dyn Error {
-    /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
+    /* *mut $0 is coerced to *mut Error here */
+    raw_ptr_box::<_ /* ! */>(x)
     //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
 }
 
 fn no_coercion(d: *mut dyn Error) -> *mut dyn Error {
     /* an unsize coercion won't compile here, and it is indeed not used
-       because there is nothing requiring the _ to be Sized */
+    because there is nothing requiring the _ to be Sized */
     d as *mut _
 }
 
@@ -49,10 +50,9 @@ fn foo_no_never() {
         first_iter = true;
     }
 
-    let mut y : Option<S> = None;
+    let mut y: Option<S> = None;
     // assert types are equal
     mem::swap(&mut x, &mut y);
 }
 
-fn main() {
-}
+fn main() {}
