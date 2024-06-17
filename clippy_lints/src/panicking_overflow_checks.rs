@@ -8,22 +8,42 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects classic underflow/overflow checks.
+    /// Detects C-style underflow/overflow checks.
     ///
     /// ### Why is this bad?
-    /// Most classic C underflow/overflow checks will fail in
-    /// Rust. Users can use functions like `overflowing_*` and `wrapping_*` instead.
+    /// These checks will, by default, panic in debug builds rather than check
+    /// whether the operation caused an overflow.
     ///
     /// ### Example
     /// ```no_run
-    /// # let a = 1;
-    /// # let b = 2;
-    /// a + b < a;
+    /// # let a = 1i32;
+    /// # let b = 2i32;
+    /// if a + b < a {
+    ///     // handle overflow
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let a = 1i32;
+    /// # let b = 2i32;
+    /// if a.checked_add(b).is_none() {
+    ///     // handle overflow
+    /// }
+    /// ```
+    ///
+    /// Or:
+    /// ```no_run
+    /// # let a = 1i32;
+    /// # let b = 2i32;
+    /// if a.overflowing_add(b).1 {
+    ///     // handle overflow
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub PANICKING_OVERFLOW_CHECKS,
-    complexity,
-    "overflow checks inspired by C which are likely to panic"
+    correctness,
+    "overflow checks which will panic in debug mode"
 }
 
 declare_lint_pass!(PanickingOverflowChecks => [PANICKING_OVERFLOW_CHECKS]);
