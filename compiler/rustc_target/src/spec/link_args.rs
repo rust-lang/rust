@@ -19,6 +19,8 @@ pub enum LazyLinkArgsState {
 
 impl FnOnce<()> for LazyLinkArgsState {
     type Output = LinkArgs;
+
+    #[inline]
     extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
         match self {
             LazyLinkArgsState::Simple(flavor, args) => {

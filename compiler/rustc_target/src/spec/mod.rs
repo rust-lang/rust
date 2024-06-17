@@ -2390,10 +2390,12 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 }
 
 impl TargetOptions {
+    #[inline]
     fn link_args(flavor: LinkerFlavor, args: &'static [&'static str]) -> LazyLinkArgs {
         MaybeLazy::lazied(link_args::LazyLinkArgsState::Simple(flavor, args))
     }
 
+    #[inline]
     fn link_args_list(list: &'static [(LinkerFlavor, &'static [&'static str])]) -> LazyLinkArgs {
         MaybeLazy::lazied(link_args::LazyLinkArgsState::List(list))
     }
