@@ -12,7 +12,7 @@ use rustc_target::{
     spec::abi::Abi,
 };
 
-use super::alloc::{check_alloc_request, EvalContextExt as _};
+use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::*;
 use helpers::{ToHost, ToSoft};
@@ -204,6 +204,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Check some basic requirements for this allocation request:
+    /// non-zero size, power-of-two alignment.
+    fn check_rustc_alloc_request(&self, size: u64, align: u64) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        if size == 0 {
+            throw_ub_format!("creating allocation with size 0");
+        }
+        if i128::from(size) > this.tcx.data_layout.pointer_size.signed_int_max() {
+            throw_ub_format!("creating an allocation larger than half the address space");
+        }
+        if !align.is_power_of_two() {
+            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        }
+        Ok(())
+    }
+
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
@@ -462,7 +478,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
-                    check_alloc_request(size, align)?;
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
                         "__rust_alloc" => MiriMemoryKind::Rust,
@@ -496,7 +512,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
-                    check_alloc_request(size, align)?;
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
@@ -560,7 +576,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let new_size = this.read_target_usize(new_size)?;
                     // No need to check old_size; we anyway check that they match the allocation.
 
-                    check_alloc_request(new_size, align)?;
+                    this.check_rustc_alloc_request(new_size, align)?;
 
                     let align = Align::from_bytes(align).unwrap();
                     let new_ptr = this.reallocate_ptr(
