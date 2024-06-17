@@ -750,16 +750,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
+    #[instrument(level = "trace", skip(self), ret)]
     pub fn resolve_ty_and_res_fully_qualified_call(
         &self,
         qpath: &'tcx QPath<'tcx>,
         hir_id: HirId,
         span: Span,
     ) -> (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
-        debug!(
-            "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
-            qpath, hir_id, span
-        );
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, path) => {
                 return (
@@ -1417,10 +1414,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
             let self_ty = self.normalize(span, self_ty);
-            match self.at(&self.misc(span), self.param_env).eq(
+            match self.at(&self.misc(span), self.param_env).sub(
                 DefineOpaqueTypes::Yes,
-                impl_ty,
                 self_ty,
+                impl_ty,
             ) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {

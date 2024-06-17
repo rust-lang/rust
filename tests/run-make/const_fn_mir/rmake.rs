@@ -1,5 +1,7 @@
 // The `needs-unwind -Cpanic=abort` gives a different MIR output.
 
+//@ needs-unwind
+
 use run_make_support::{cwd, diff, rustc};
 
 fn main() {
