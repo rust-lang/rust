@@ -7,10 +7,11 @@
 
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use crate::utils::helpers::{output, t};
 use crate::Build;
+
+use super::helpers;
 
 #[derive(Clone, Default)]
 pub enum GitInfo {
@@ -44,7 +45,7 @@ impl GitInfo {
         }
 
         // Make sure git commands work
-        match Command::new("git").arg("rev-parse").current_dir(dir).output() {
+        match helpers::git(Some(dir)).arg("rev-parse").output() {
             Ok(ref out) if out.status.success() => {}
             _ => return GitInfo::Absent,
         }
@@ -57,17 +58,15 @@ impl GitInfo {
 
         // Ok, let's scrape some info
         let ver_date = output(
-            Command::new("git")
-                .current_dir(dir)
+            helpers::git(Some(dir))
                 .arg("log")
                 .arg("-1")
                 .arg("--date=short")
                 .arg("--pretty=format:%cd"),
         );
-        let ver_hash = output(Command::new("git").current_dir(dir).arg("rev-parse").arg("HEAD"));
-        let short_ver_hash = output(
-            Command::new("git").current_dir(dir).arg("rev-parse").arg("--short=9").arg("HEAD"),
-        );
+        let ver_hash = output(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD"));
+        let short_ver_hash =
+            output(helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD"));
         GitInfo::Present(Some(Info {
             commit_date: ver_date.trim().to_string(),
             sha: ver_hash.trim().to_string(),

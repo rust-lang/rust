@@ -34,6 +34,7 @@ declare_lint_pass! {
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
         DEAD_CODE,
+        DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
@@ -3257,7 +3258,11 @@ declare_lint! {
     /// See the [Checking Conditional Configurations][check-cfg] section for more
     /// details.
     ///
+    /// See the [Cargo Specifics][unexpected_cfgs_lint_config] section for configuring this lint in
+    /// `Cargo.toml`.
+    ///
     /// [check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
+    /// [unexpected_cfgs_lint_config]: https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html#check-cfg-in-lintsrust-table
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
@@ -4190,6 +4195,59 @@ declare_lint! {
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+    };
+    report_in_external_macro
+}
+
+declare_lint! {
+    /// The `dependency_on_unit_never_type_fallback` lint detects cases where code compiles with
+    /// [never type fallback] being [`()`], but will stop compiling with fallback being [`!`].
+    ///
+    /// [never type fallback]: https://doc.rust-lang.org/nightly/core/primitive.never.html#never-type-fallback
+    /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(dependency_on_unit_never_type_fallback)]
+    /// fn main() {
+    ///     if true {
+    ///         // return has type `!` which, is some cases, causes never type fallback
+    ///         return
+    ///     } else {
+    ///         // the type produced by this call is not specified explicitly,
+    ///         // so it will be inferred from the previous branch
+    ///         Default::default()
+    ///     };
+    ///     // depending on the fallback, this may compile (because `()` implements `Default`),
+    ///     // or it may not (because `!` does not implement `Default`)
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Due to historic reasons never type fallback was `()`, meaning that `!` got spontaneously
+    /// coerced to `()`. There are plans to change that, but they may make the code such as above
+    /// not compile. Instead of depending on the fallback, you should specify the type explicitly:
+    /// ```
+    /// if true {
+    ///     return
+    /// } else {
+    ///     // type is explicitly specified, fallback can't hurt us no more
+    ///     <() as Default>::default()
+    /// };
+    /// ```
+    ///
+    /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
+    pub DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
+    Warn,
+    "never type fallback affecting unsafe function calls",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
     };
     report_in_external_macro

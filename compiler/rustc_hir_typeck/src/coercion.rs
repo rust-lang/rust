@@ -913,7 +913,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 if self
                     .tcx
                     .upvars_mentioned(closure_def_id_a.expect_local())
-                    .map_or(true, |u| u.is_empty()) =>
+                    .is_none_or(|u| u.is_empty()) =>
             {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`

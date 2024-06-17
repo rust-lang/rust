@@ -1,5 +1,5 @@
 //@ check-pass
-//@ needs-profiler-support
+//@ compile-flags: -Zno-profiler-runtime
 //@ revisions: default y yes on true_ all
 //@ [default] compile-flags: -Cinstrument-coverage
 //@ [y] compile-flags: -Cinstrument-coverage=y

@@ -7,9 +7,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::{
-    ArrayLen, BinOpKind, BindingMode, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
-    GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
-    PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, AssocItemConstraint,
+    ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy,
+    GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName, Pat, PatField,
+    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -519,7 +519,11 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn eq_assoc_type_binding(&mut self, left: &AssocItemConstraint<'_>, right: &AssocItemConstraint<'_>) -> bool {
-        left.ident.name == right.ident.name && self.eq_ty(left.ty().expect("expected assoc type binding"), right.ty().expect("expected assoc type binding"))
+        left.ident.name == right.ident.name
+            && self.eq_ty(
+                left.ty().expect("expected assoc type binding"),
+                right.ty().expect("expected assoc type binding"),
+            )
     }
 
     fn check_ctxt(&mut self, left: SyntaxContext, right: SyntaxContext) -> bool {

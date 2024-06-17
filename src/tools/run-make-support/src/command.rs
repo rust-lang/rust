@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::{Command as StdCommand, ExitStatus, Output, Stdio};
 
 use crate::drop_bomb::DropBomb;
-use crate::{assert_not_contains, handle_failed_output};
+use crate::{assert_contains, assert_not_contains, handle_failed_output};
 
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to
 /// ensure that we check the exit status of executed processes.
@@ -148,14 +148,17 @@ pub struct CompletedProcess {
 }
 
 impl CompletedProcess {
+    #[must_use]
     pub fn stdout_utf8(&self) -> String {
         String::from_utf8(self.output.stdout.clone()).expect("stdout is not valid UTF-8")
     }
 
+    #[must_use]
     pub fn stderr_utf8(&self) -> String {
         String::from_utf8(self.output.stderr.clone()).expect("stderr is not valid UTF-8")
     }
 
+    #[must_use]
     pub fn status(&self) -> ExitStatus {
         self.output.status
     }
@@ -164,6 +167,12 @@ impl CompletedProcess {
     #[track_caller]
     pub fn assert_stdout_equals<S: AsRef<str>>(&self, content: S) -> &Self {
         assert_eq!(self.stdout_utf8().trim(), content.as_ref().trim());
+        self
+    }
+
+    #[track_caller]
+    pub fn assert_stdout_contains<S: AsRef<str>>(self, needle: S) -> Self {
+        assert_contains(&self.stdout_utf8(), needle.as_ref());
         self
     }
 
@@ -182,7 +191,7 @@ impl CompletedProcess {
 
     #[track_caller]
     pub fn assert_stderr_contains<S: AsRef<str>>(&self, needle: S) -> &Self {
-        assert!(self.stderr_utf8().contains(needle.as_ref()));
+        assert_contains(&self.stderr_utf8(), needle.as_ref());
         self
     }
 

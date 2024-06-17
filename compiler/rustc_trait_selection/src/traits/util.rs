@@ -132,7 +132,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
-            pred.instantiate_supertrait(tcx, &trait_ref)
+            pred.instantiate_supertrait(tcx, trait_ref)
                 .as_trait_clause()
                 .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
         });
@@ -206,23 +206,6 @@ pub fn upcast_choices<'tcx>(
     }
 
     supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
-}
-
-/// Given an upcast trait object described by `object`, returns the
-/// index of the method `method_def_id` (which should be part of
-/// `object.upcast_trait_ref`) within the vtable for `object`.
-pub fn get_vtable_index_of_object_method<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    vtable_base: usize,
-    method_def_id: DefId,
-) -> Option<usize> {
-    // Count number of methods preceding the one we are selecting and
-    // add them to the total offset.
-    tcx.own_existential_vtable_entries(tcx.parent(method_def_id))
-        .iter()
-        .copied()
-        .position(|def_id| def_id == method_def_id)
-        .map(|index| vtable_base + index)
 }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(

@@ -9,12 +9,13 @@ use rustc_data_structures::fx::IndexEntry;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
+use rustc_hir::{self as hir, CRATE_HIR_ID};
 use rustc_middle::bug;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -44,7 +45,7 @@ const TINY_LINT_TERMINATOR_LIMIT: usize = 20;
 const PROGRESS_INDICATOR_START: usize = 4_000_000;
 
 /// Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'tcx> {
+pub struct CompileTimeMachine<'tcx> {
     /// The number of terminators that have been evaluated.
     ///
     /// This is used to produce lints informing the user that the compiler is not stuck.
@@ -89,12 +90,12 @@ impl From<bool> for CanAccessMutGlobal {
     }
 }
 
-impl<'tcx> CompileTimeInterpreter<'tcx> {
+impl<'tcx> CompileTimeMachine<'tcx> {
     pub(crate) fn new(
         can_access_mut_global: CanAccessMutGlobal,
         check_alignment: CheckAlignment,
     ) -> Self {
-        CompileTimeInterpreter {
+        CompileTimeMachine {
             num_evaluated_steps: 0,
             stack: Vec::new(),
             can_access_mut_global,
@@ -163,7 +164,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     }
 }
 
-pub(crate) type CompileTimeEvalContext<'tcx> = InterpCx<'tcx, CompileTimeInterpreter<'tcx>>;
+pub(crate) type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
@@ -195,7 +196,7 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'tcx> CompileTimeEvalContext<'tcx> {
+impl<'tcx> CompileTimeInterpCx<'tcx> {
     fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
@@ -229,7 +230,7 @@ impl<'tcx> CompileTimeEvalContext<'tcx> {
         let def_id = instance.def_id();
 
         if self.tcx.has_attr(def_id, sym::rustc_const_panic_str)
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
+            || self.tcx.is_lang_item(def_id, LangItem::BeginPanic)
         {
             let args = self.copy_fn_args(args);
             // &str or &&str
@@ -244,7 +245,7 @@ impl<'tcx> CompileTimeEvalContext<'tcx> {
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
-        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
+        } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
             // For panic_fmt, call const_panic_fmt instead.
             let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
             let new_instance = ty::Instance::expect_resolve(
@@ -255,7 +256,7 @@ impl<'tcx> CompileTimeEvalContext<'tcx> {
             );
 
             return Ok(Some(new_instance));
-        } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
+        } else if self.tcx.is_lang_item(def_id, LangItem::AlignOffset) {
             let args = self.copy_fn_args(args);
             // For align_offset, we replace the function call if the pointer has no address.
             match self.align_offset(instance, &args, dest, ret)? {
@@ -369,7 +370,16 @@ impl<'tcx> CompileTimeEvalContext<'tcx> {
     }
 }
 
-impl<'tcx> interpret::Machine<'tcx> for CompileTimeInterpreter<'tcx> {
+impl<'tcx> CompileTimeMachine<'tcx> {
+    #[inline(always)]
+    /// Find the first stack frame that is within the current crate, if any.
+    /// Otherwise, return the crate's HirId
+    pub fn best_lint_scope(&self, tcx: TyCtxt<'tcx>) -> hir::HirId {
+        self.stack.iter().find_map(|frame| frame.lint_root(tcx)).unwrap_or(CRATE_HIR_ID)
+    }
+}
+
+impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     compile_time_machine!(<'tcx>);
 
     type MemoryKind = MemoryKind;
@@ -600,7 +610,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeInterpreter<'tcx> {
                 // By default, we stop after a million steps, but the user can disable this lint
                 // to be able to run until the heat death of the universe or power loss, whichever
                 // comes first.
-                let hir_id = ecx.best_lint_scope();
+                let hir_id = ecx.machine.best_lint_scope(*ecx.tcx);
                 let is_error = ecx
                     .tcx
                     .lint_level_at_node(

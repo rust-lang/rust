@@ -8,9 +8,9 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
@@ -204,6 +204,23 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     fn def_id(self) -> DefId {
         self.did()
     }
+
+    fn is_phantom_data(self) -> bool {
+        self.is_phantom_data()
+    }
+
+    fn all_field_tys(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = Ty<'tcx>>> {
+        ty::EarlyBinder::bind(
+            self.all_fields().map(move |field| tcx.type_of(field.did).skip_binder()),
+        )
+    }
+
+    fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.sized_constraint(tcx)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
@@ -257,16 +274,16 @@ impl AdtDefData {
         if tcx.has_attr(did, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
-        if Some(did) == tcx.lang_items().phantom_data() {
+        if tcx.is_lang_item(did, LangItem::PhantomData) {
             flags |= AdtFlags::IS_PHANTOM_DATA;
         }
-        if Some(did) == tcx.lang_items().owned_box() {
+        if tcx.is_lang_item(did, LangItem::OwnedBox) {
             flags |= AdtFlags::IS_BOX;
         }
-        if Some(did) == tcx.lang_items().manually_drop() {
+        if tcx.is_lang_item(did, LangItem::ManuallyDrop) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
-        if Some(did) == tcx.lang_items().unsafe_cell_type() {
+        if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
         if is_anonymous {

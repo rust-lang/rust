@@ -50,7 +50,13 @@ LL |     let b = **&aref;
    |              ^^^^^^ help: try: `aref`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:53:17
+  --> tests/ui/deref_addrof.rs:47:19
+   |
+LL |     let _repeat = *&[0; 64];
+   |                   ^^^^^^^^^ help: try: `[0; 64]`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:57:17
    |
 LL |         inline!(*& $(@expr self))
    |                 ^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
@@ -58,12 +64,12 @@ LL |         inline!(*& $(@expr self))
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:57:17
+  --> tests/ui/deref_addrof.rs:61:17
    |
 LL |         inline!(*&mut $(@expr self))
    |                 ^^^^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
    |
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 

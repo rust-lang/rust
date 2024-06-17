@@ -41,6 +41,8 @@ pub struct GenericArg<'tcx> {
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::GenericArg<TyCtxt<'tcx>> for GenericArg<'tcx> {}
+
 impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
     fn type_at(self, i: usize) -> Ty<'tcx> {
         self.type_at(i)

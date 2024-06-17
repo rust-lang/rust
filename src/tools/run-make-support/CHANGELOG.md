@@ -10,6 +10,22 @@ changes to the support library).
 This support library will probably never reach 1.0. Please bump the minor version in `Cargo.toml` if
 you make any breaking changes or other significant changes, or bump the patch version for bug fixes.
 
+## [0.2.0] - 2024-06-11
+
+### Added
+
+- Added `fs_wrapper` module which provides panic-on-fail helpers for their respective `std::fs`
+  counterparts, the motivation is to:
+    - Reduce littering `.unwrap()` or `.expect()` everywhere for fs operations
+    - Help the test writer avoid forgetting to check fs results (even though enforced by
+      `-Dunused_must_use`)
+    - Provide better panic messages by default
+- Added `path()` helper which creates a `Path` relative to `cwd()` (but is less noisy).
+
+### Changed
+
+- Marked many functions with `#[must_use]`, and rmake.rs are now compiled with `-Dunused_must_use`.
+
 ## [0.1.0] - 2024-06-09
 
 ### Changed

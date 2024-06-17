@@ -1,7 +1,7 @@
 //! Module that define a common trait for things that represent a crate definition,
 //! such as, a function, a trait, an enum, and any other definitions.
 
-use crate::ty::Span;
+use crate::ty::{GenericArgs, Span, Ty};
 use crate::{with, Crate, Symbol};
 
 /// A unique identification number for each item accessible for the current compilation unit.
@@ -52,6 +52,23 @@ pub trait CrateDef {
     }
 }
 
+/// A trait that can be used to retrieve a definition's type.
+///
+/// Note that not every CrateDef has a type `Ty`. They should not implement this trait.
+pub trait CrateDefType: CrateDef {
+    /// Returns the type of this crate item.
+    fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.def_id()))
+    }
+
+    /// Retrieve the type of this definition by instantiating and normalizing it with `args`.
+    ///
+    /// This will panic if instantiation fails.
+    fn ty_with_args(&self, args: &GenericArgs) -> Ty {
+        with(|cx| cx.def_ty_with_args(self.def_id(), args))
+    }
+}
+
 macro_rules! crate_def {
     ( $(#[$attr:meta])*
       $vis:vis $name:ident $(;)?
@@ -65,5 +82,23 @@ macro_rules! crate_def {
                 self.0
             }
         }
+    };
+}
+
+macro_rules! crate_def_with_ty {
+    ( $(#[$attr:meta])*
+      $vis:vis $name:ident $(;)?
+    ) => {
+        $(#[$attr])*
+        #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+        $vis struct $name(pub DefId);
+
+        impl CrateDef for $name {
+            fn def_id(&self) -> DefId {
+                self.0
+            }
+        }
+
+        impl CrateDefType for $name {}
     };
 }

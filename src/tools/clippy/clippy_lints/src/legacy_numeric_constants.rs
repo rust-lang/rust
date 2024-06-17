@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let eps = f32::EPSILON;
     /// ```
-    #[clippy::version = "1.72.0"]
+    #[clippy::version = "1.79.0"]
     pub LEGACY_NUMERIC_CONSTANTS,
     style,
     "checks for usage of legacy std numeric constants and methods"

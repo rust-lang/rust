@@ -44,6 +44,10 @@ hir_typeck_convert_using_method = try using `{$sugg}` to convert `{$found}` to `
 
 hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
 
+hir_typeck_dependency_on_unit_never_type_fallback = this function depends on never type fallback being `()`
+    .note = in edition 2024, the requirement `{$obligation}` will fail
+    .help = specify the types explicitly
+
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
 hir_typeck_expected_default_return_type = expected `()` because of default return type

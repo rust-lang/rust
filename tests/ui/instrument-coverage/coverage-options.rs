@@ -1,6 +1,5 @@
-//@ needs-profiler-support
 //@ revisions: block branch condition mcdc bad
-//@ compile-flags -Cinstrument-coverage
+//@ compile-flags -Cinstrument-coverage -Zno-profiler-runtime
 
 //@ [block] check-pass
 //@ [block] compile-flags: -Zcoverage-options=block

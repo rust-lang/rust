@@ -330,8 +330,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let is_sized = !self.feature_unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.ensure_contains_elem(value, SmallVec::new);
-            self.rev_locals[value].push(local);
+            self.rev_locals.ensure_contains_elem(value, SmallVec::new).push(local);
         }
     }
 

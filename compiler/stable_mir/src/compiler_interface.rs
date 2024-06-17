@@ -94,10 +94,6 @@ pub trait Context {
     /// Retrieve the plain function name of an intrinsic.
     fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol;
 
-    /// Returns whether the intrinsic has no meaningful body and all backends
-    /// need to shim all calls to it.
-    fn intrinsic_must_be_overridden(&self, def: IntrinsicDef) -> bool;
-
     /// Retrieve the closure signature for the given generic arguments.
     fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig;
 

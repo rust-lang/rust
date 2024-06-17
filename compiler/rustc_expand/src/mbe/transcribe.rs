@@ -3,18 +3,19 @@ use crate::errors::{
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxt, PResult};
 use rustc_parse::parser::ParseNtResult;
+use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, SyntaxContext};
-
-use rustc_session::parse::ParseSess;
+use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
@@ -30,7 +31,7 @@ impl MutVisitor for Marker {
         // it's some advanced case with macro-generated macros. So if we cache the marked version
         // of that context once, we'll typically have a 100% cache hit rate after that.
         let Marker(expn_id, transparency, ref mut cache) = *self;
-        span.update_ctxt(|ctxt| {
+        *span = span.map_ctxt(|ctxt| {
             *cache
                 .entry(ctxt)
                 .or_insert_with(|| ctxt.apply_mark(expn_id.to_expn_id(), transparency))
@@ -675,6 +676,23 @@ fn transcribe_metavar_expr<'a>(
         span
     };
     match *expr {
+        MetaVarExpr::Concat(ref elements) => {
+            let mut concatenated = String::new();
+            for element in elements.into_iter() {
+                let string = match element {
+                    MetaVarExprConcatElem::Ident(ident) => ident.to_string(),
+                    MetaVarExprConcatElem::Var(ident) => extract_ident(dcx, *ident, interp)?,
+                };
+                concatenated.push_str(&string);
+            }
+            // The current implementation marks the span as coming from the macro regardless of
+            // contexts of the concatenated identifiers but this behavior may change in the
+            // future.
+            result.push(TokenTree::Token(
+                Token::from_ast_ident(Ident::new(Symbol::intern(&concatenated), visited_span())),
+                Spacing::Alone,
+            ));
+        }
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(dcx, original_ident, interp)?;
             let count = count_repetitions(dcx, depth, matched, repeats, sp)?;
@@ -708,4 +726,34 @@ fn transcribe_metavar_expr<'a>(
         },
     }
     Ok(())
+}
+
+/// Extracts an identifier that can be originated from a `$var:ident` variable or from a token tree.
+fn extract_ident<'a>(
+    dcx: &'a DiagCtxt,
+    ident: Ident,
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+) -> PResult<'a, String> {
+    if let NamedMatch::MatchedSingle(pnr) = matched_from_ident(dcx, ident, interp)? {
+        if let ParseNtResult::Ident(nt_ident, is_raw) = pnr {
+            if let IdentIsRaw::Yes = is_raw {
+                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+            }
+            return Ok(nt_ident.to_string());
+        }
+        if let ParseNtResult::Tt(TokenTree::Token(
+            Token { kind: TokenKind::Ident(token_ident, is_raw), .. },
+            _,
+        )) = pnr
+        {
+            if let IdentIsRaw::Yes = is_raw {
+                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+            }
+            return Ok(token_ident.to_string());
+        }
+    }
+    Err(dcx.struct_span_err(
+        ident.span,
+        "`${concat(..)}` currently only accepts identifiers or meta-variables as parameters",
+    ))
 }

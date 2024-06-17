@@ -1,4 +1,4 @@
-use crate::const_eval::{CompileTimeEvalContext, CompileTimeInterpreter, InterpretationResult};
+use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{Allocation, InterpResult, Pointer};
@@ -84,7 +84,7 @@ where
 impl<'tcx> InterpretationResult<'tcx> for mir::interpret::ConstAllocation<'tcx> {
     fn make_result(
         mplace: MPlaceTy<'tcx>,
-        ecx: &mut InterpCx<'tcx, CompileTimeInterpreter<'tcx>>,
+        ecx: &mut InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     ) -> Self {
         let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
         let alloc = ecx.memory.alloc_map.swap_remove(&alloc_id).unwrap().1;
@@ -93,7 +93,7 @@ impl<'tcx> InterpretationResult<'tcx> for mir::interpret::ConstAllocation<'tcx> 
 }
 
 pub(crate) fn create_static_alloc<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx>,
+    ecx: &mut CompileTimeInterpCx<'tcx>,
     static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {

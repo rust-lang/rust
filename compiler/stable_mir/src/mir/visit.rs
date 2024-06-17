@@ -108,8 +108,8 @@ pub trait MirVisitor {
         self.super_ty(ty)
     }
 
-    fn visit_constant(&mut self, constant: &Constant, location: Location) {
-        self.super_constant(constant, location)
+    fn visit_const_operand(&mut self, constant: &ConstOperand, location: Location) {
+        self.super_const_operand(constant, location)
     }
 
     fn visit_mir_const(&mut self, constant: &MirConst, location: Location) {
@@ -366,7 +366,7 @@ pub trait MirVisitor {
                 self.visit_place(place, PlaceContext::NON_MUTATING, location)
             }
             Operand::Constant(constant) => {
-                self.visit_constant(constant, location);
+                self.visit_const_operand(constant, location);
             }
         }
     }
@@ -380,10 +380,10 @@ pub trait MirVisitor {
         let _ = ty;
     }
 
-    fn super_constant(&mut self, constant: &Constant, location: Location) {
-        let Constant { span, user_ty: _, literal } = constant;
+    fn super_const_operand(&mut self, constant: &ConstOperand, location: Location) {
+        let ConstOperand { span, user_ty: _, const_ } = constant;
         self.visit_span(span);
-        self.visit_mir_const(literal, location);
+        self.visit_mir_const(const_, location);
     }
 
     fn super_mir_const(&mut self, constant: &MirConst, location: Location) {

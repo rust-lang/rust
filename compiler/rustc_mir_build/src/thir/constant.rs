@@ -1,4 +1,5 @@
 use rustc_ast as ast;
+use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, ParamEnv, ScalarInt, TyCtxt};
@@ -46,7 +47,7 @@ pub(crate) fn lit_to_const<'tcx>(
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ty::ValTree::from_scalar_int((*n).into())
         }
-        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
+        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
         {
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)

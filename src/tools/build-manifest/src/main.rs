@@ -103,6 +103,7 @@ static TARGETS: &[&str] = &[
     "i686-unknown-freebsd",
     "i686-unknown-linux-gnu",
     "i686-unknown-linux-musl",
+    "i686-unknown-redox",
     "i686-unknown-uefi",
     "loongarch64-unknown-linux-gnu",
     "loongarch64-unknown-none",
@@ -495,7 +496,7 @@ impl Builder {
                 Some(p) => p,
                 None => return false,
             };
-            pkg.target.get(&c.target).is_some()
+            pkg.target.contains_key(&c.target)
         };
         extensions.retain(&has_component);
         components.retain(&has_component);

@@ -1,6 +1,9 @@
 use super::hermit_abi;
 use crate::io;
 use crate::io::{IoSlice, IoSliceMut};
+use crate::mem::ManuallyDrop;
+use crate::os::hermit::io::FromRawFd;
+use crate::sys::fd::FileDesc;
 
 pub struct Stdin;
 pub struct Stdout;
@@ -13,12 +16,14 @@ impl Stdin {
 }
 
 impl io::Read for Stdin {
-    fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
-        self.read_vectored(&mut [IoSliceMut::new(data)])
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDIN_FILENO)).read(buf) }
     }
 
-    fn read_vectored(&mut self, _data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        Ok(0)
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        unsafe {
+            ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDIN_FILENO)).read_vectored(bufs)
+        }
     }
 
     #[inline]
@@ -34,27 +39,13 @@ impl Stdout {
 }
 
 impl io::Write for Stdout {
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        let len;
-
-        unsafe { len = hermit_abi::write(1, data.as_ptr() as *const u8, data.len()) }
-
-        if len < 0 {
-            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stdout is not able to print"))
-        } else {
-            Ok(len as usize)
-        }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDOUT_FILENO)).write(buf) }
     }
 
-    fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len;
-
-        unsafe { len = hermit_abi::write(1, data.as_ptr() as *const u8, data.len()) }
-
-        if len < 0 {
-            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stdout is not able to print"))
-        } else {
-            Ok(len as usize)
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        unsafe {
+            ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDOUT_FILENO)).write_vectored(bufs)
         }
     }
 
@@ -75,27 +66,13 @@ impl Stderr {
 }
 
 impl io::Write for Stderr {
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        let len;
-
-        unsafe { len = hermit_abi::write(2, data.as_ptr() as *const u8, data.len()) }
-
-        if len < 0 {
-            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stderr is not able to print"))
-        } else {
-            Ok(len as usize)
-        }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDERR_FILENO)).write(buf) }
     }
 
-    fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len;
-
-        unsafe { len = hermit_abi::write(2, data.as_ptr() as *const u8, data.len()) }
-
-        if len < 0 {
-            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stderr is not able to print"))
-        } else {
-            Ok(len as usize)
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        unsafe {
+            ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDERR_FILENO)).write_vectored(bufs)
         }
     }
 
@@ -109,10 +86,10 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = 0;
+pub const STDIN_BUF_SIZE: usize = 128;
 
-pub fn is_ebadf(_err: &io::Error) -> bool {
-    true
+pub fn is_ebadf(err: &io::Error) -> bool {
+    err.raw_os_error() == Some(hermit_abi::EBADF)
 }
 
 pub fn panic_output() -> Option<impl io::Write> {

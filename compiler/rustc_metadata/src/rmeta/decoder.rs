@@ -539,7 +539,7 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         } else {
             SpanData::decode(self)
         };
-        Span::new(data.lo, data.hi, data.ctxt, data.parent)
+        data.span()
     }
 
     fn decode_symbol(&mut self) -> Symbol {
@@ -669,7 +669,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
         let lo = lo + source_file.translated_source_file.start_pos;
         let hi = hi + source_file.translated_source_file.start_pos;
 
-        // Do not try to decode parent for foreign spans.
+        // Do not try to decode parent for foreign spans (it wasn't encoded in the first place).
         SpanData { lo, hi, ctxt, parent: None }
     }
 }

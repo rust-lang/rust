@@ -12,6 +12,11 @@ error[E0229]: associated item constraints are not allowed here
    |
 LL | impl Super1<'_, bar(): Send> for () {}
    |                 ^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item constraint
+   |
+LL | impl Super1<'_, bar(): Send> for () {}
+   |               ~~~~~~~~~~~~~
 
 error[E0046]: not all trait items implemented, missing: `bar`
   --> $DIR/rtn-in-impl-signature.rs:10:1

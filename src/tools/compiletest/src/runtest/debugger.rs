@@ -148,5 +148,5 @@ fn check_single_line(line: &str, check_line: &str) -> bool {
         rest = &rest[pos + current_fragment.len()..];
     }
 
-    if !can_end_anywhere && !rest.is_empty() { false } else { true }
+    can_end_anywhere || rest.is_empty()
 }

@@ -460,9 +460,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
-                ChildMode::WellFormedObligation
-            }
+            ty::PredicateKind::Clause(
+                ty::ClauseKind::WellFormed(_) | ty::ClauseKind::Projection(..),
+            )
+            | ty::PredicateKind::AliasRelate(..) => ChildMode::PassThrough,
             _ => {
                 return ControlFlow::Break(self.obligation.clone());
             }
@@ -496,7 +497,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::WellFormedObligation, _) => {
+                (ChildMode::PassThrough, _) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
@@ -514,6 +515,32 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
         }
 
+        // alias-relate may fail because the lhs or rhs can't be normalized,
+        // and therefore is treated as rigid.
+        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred_kind.no_bound_vars() {
+            if let Some(obligation) = goal
+                .infcx()
+                .visit_proof_tree_at_depth(
+                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                    goal.depth() + 1,
+                    self,
+                )
+                .break_value()
+            {
+                return ControlFlow::Break(obligation);
+            } else if let Some(obligation) = goal
+                .infcx()
+                .visit_proof_tree_at_depth(
+                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                    goal.depth() + 1,
+                    self,
+                )
+                .break_value()
+            {
+                return ControlFlow::Break(obligation);
+            }
+        }
+
         ControlFlow::Break(self.obligation.clone())
     }
 }
@@ -527,7 +554,7 @@ enum ChildMode<'tcx> {
     // Skip trying to derive an `ObligationCause` from this obligation, and
     // report *all* sub-obligations as if they came directly from the parent
     // obligation.
-    WellFormedObligation,
+    PassThrough,
 }
 
 fn derive_cause<'tcx>(

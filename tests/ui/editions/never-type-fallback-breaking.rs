@@ -13,6 +13,8 @@ fn main() {
 }
 
 fn m() {
+    //[e2021]~^ this function depends on never type fallback being `()`
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     let x = match true {
         true => Default::default(),
         //[e2024]~^ error: the trait bound `!: Default` is not satisfied
@@ -23,6 +25,8 @@ fn m() {
 }
 
 fn q() -> Option<()> {
+    //[e2021]~^ this function depends on never type fallback being `()`
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     fn deserialize<T: Default>() -> Option<T> {
         Some(T::default())
     }

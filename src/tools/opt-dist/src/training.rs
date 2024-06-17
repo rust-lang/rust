@@ -216,11 +216,9 @@ pub fn gather_bolt_profiles(
     log::info!("Profile file count: {}", profiles.len());
 
     // Delete the gathered profiles
-    for profile in glob::glob(&format!("{profile_prefix}*"))?.into_iter() {
-        if let Ok(profile) = profile {
-            if let Err(error) = std::fs::remove_file(&profile) {
-                log::error!("Cannot delete BOLT profile {}: {error:?}", profile.display());
-            }
+    for profile in glob::glob(&format!("{profile_prefix}*"))?.flatten() {
+        if let Err(error) = std::fs::remove_file(&profile) {
+            log::error!("Cannot delete BOLT profile {}: {error:?}", profile.display());
         }
     }
 

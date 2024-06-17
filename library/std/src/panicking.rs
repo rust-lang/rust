@@ -19,8 +19,8 @@ use crate::mem::{self, ManuallyDrop};
 use crate::process;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
+use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
-use crate::sys_common::backtrace;
 use crate::thread;
 
 #[cfg(not(test))]
@@ -655,7 +655,7 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
     let msg = info.message();
-    crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
+    crate::sys::backtrace::__rust_end_short_backtrace(move || {
         if let Some(s) = msg.as_str() {
             rust_panic_with_hook(
                 &mut StaticStrPayload(s),
@@ -727,7 +727,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
     }
 
     let loc = Location::caller();
-    crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
+    crate::sys::backtrace::__rust_end_short_backtrace(move || {
         rust_panic_with_hook(
             &mut Payload { inner: Some(msg) },
             loc,

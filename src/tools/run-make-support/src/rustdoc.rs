@@ -17,6 +17,7 @@ pub fn rustdoc() -> Rustdoc {
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Rustdoc {
     cmd: Command,
 }

@@ -9,6 +9,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
@@ -850,7 +851,7 @@ where
                         // and we rely on this layout information to trigger a panic in
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
-                            && Some(def.did()) == tcx.lang_items().dyn_metadata()
+                            && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
                             && let ty::Dynamic(data, _, ty::Dyn) = args.type_at(0).kind()
                         {
                             mk_dyn_vtable(data.principal())
@@ -1169,7 +1170,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
         if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort {
-            if Some(did) == tcx.lang_items().drop_in_place_fn() {
+            if tcx.is_lang_item(did, LangItem::DropInPlace) {
                 return false;
             }
         }

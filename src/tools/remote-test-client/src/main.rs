@@ -317,13 +317,11 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
                 t!(io::copy(&mut (&mut client).take(amt), &mut stdout));
                 t!(stdout.flush());
             }
+        } else if amt == 0 {
+            stderr_done = true;
         } else {
-            if amt == 0 {
-                stderr_done = true;
-            } else {
-                t!(io::copy(&mut (&mut client).take(amt), &mut stderr));
-                t!(stderr.flush());
-            }
+            t!(io::copy(&mut (&mut client).take(amt), &mut stderr));
+            t!(stderr.flush());
         }
     }
 

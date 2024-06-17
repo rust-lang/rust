@@ -769,8 +769,8 @@ pub struct UncoveredTyParams<'tcx, T> {
 ///    add "non-blanket" impls without breaking negative reasoning in dependent
 ///    crates. This is the "rebalancing coherence" (RFC 1023) restriction.
 ///
-///    For that, we only a allow crate to perform negative reasoning on
-///    non-local-non-`#[fundamental]` only if there's a local key parameter as per (2).
+///    For that, we only allow a crate to perform negative reasoning on
+///    non-local-non-`#[fundamental]` if there's a local key parameter as per (2).
 ///
 ///    Because we never perform negative reasoning generically (coherence does
 ///    not involve type parameters), this can be interpreted as doing the full

@@ -1633,6 +1633,13 @@ pub struct ConstBlock {
 }
 
 /// An expression.
+///
+/// For more details, see the [rust lang reference].
+/// Note that the reference does not document nightly-only features.
+/// There may be also slight differences in the names and representation of AST nodes between
+/// the compiler and the reference.
+///
+/// [rust lang reference]: https://doc.rust-lang.org/reference/expressions.html
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
     pub hir_id: HirId,
@@ -2464,6 +2471,15 @@ pub enum AssocItemConstraintKind<'hir> {
     Bound { bounds: &'hir [GenericBound<'hir>] },
 }
 
+impl<'hir> AssocItemConstraintKind<'hir> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            AssocItemConstraintKind::Equality { .. } => "binding",
+            AssocItemConstraintKind::Bound { .. } => "constraint",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Ty<'hir> {
     pub hir_id: HirId,
@@ -3147,6 +3163,13 @@ impl ItemId {
 /// An item
 ///
 /// The name might be a dummy name in case of anonymous items
+///
+/// For more details, see the [rust lang reference].
+/// Note that the reference does not document nightly-only features.
+/// There may be also slight differences in the names and representation of AST nodes between
+/// the compiler and the reference.
+///
+/// [rust lang reference]: https://doc.rust-lang.org/reference/items.html
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Item<'hir> {
     pub ident: Ident,
@@ -3745,6 +3768,21 @@ impl<'hir> Node<'hir> {
             | Node::ForeignItem(ForeignItem {
                 kind: ForeignItemKind::Fn(fn_decl, _, _, _), ..
             }) => Some(fn_decl),
+            _ => None,
+        }
+    }
+
+    /// Get a `hir::Impl` if the node is an impl block for the given `trait_def_id`.
+    pub fn impl_block_of_trait(self, trait_def_id: DefId) -> Option<&'hir Impl<'hir>> {
+        match self {
+            Node::Item(Item { kind: ItemKind::Impl(impl_block), .. })
+                if impl_block
+                    .of_trait
+                    .and_then(|trait_ref| trait_ref.trait_def_id())
+                    .is_some_and(|trait_id| trait_id == trait_def_id) =>
+            {
+                Some(impl_block)
+            }
             _ => None,
         }
     }

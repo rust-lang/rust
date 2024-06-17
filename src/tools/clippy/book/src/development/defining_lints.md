@@ -163,11 +163,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // example code where clippy issues a warning
+    /// // example code where Clippy issues a warning
     /// ```
     /// Use instead:
     /// ```rust
-    /// // example code which does not raise clippy warning
+    /// // example code which does not raise Clippy warning
     /// ```
     #[clippy::version = "1.70.0"] // <- In which version was this implemented, keep it up to date!
     pub LINT_NAME, // <- The lint name IN_ALL_CAPS

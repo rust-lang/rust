@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
 use crate::core::builder::Builder;
-use crate::utils::helpers::{output, program_out_of_date, t};
+use crate::utils::helpers::{self, output, program_out_of_date, t};
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
@@ -93,7 +93,7 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
         return Ok(None);
     }
 
-    get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &vec!["rs"])
+    get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &["rs"])
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -160,7 +160,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
     }
-    let git_available = match Command::new("git")
+    let git_available = match helpers::git(None)
         .arg("--version")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -172,9 +172,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
 
     let mut adjective = None;
     if git_available {
-        let in_working_tree = match build
-            .config
-            .git()
+        let in_working_tree = match helpers::git(Some(&build.src))
             .arg("rev-parse")
             .arg("--is-inside-work-tree")
             .stdout(Stdio::null())
@@ -186,9 +184,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         };
         if in_working_tree {
             let untracked_paths_output = output(
-                build
-                    .config
-                    .git()
+                helpers::git(Some(&build.src))
                     .arg("status")
                     .arg("--porcelain")
                     .arg("-z")

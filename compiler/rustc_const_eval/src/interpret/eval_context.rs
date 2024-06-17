@@ -4,7 +4,6 @@ use std::{fmt, mem};
 use either::{Either, Left, Right};
 use tracing::{debug, info, info_span, instrument, trace};
 
-use hir::CRATE_HIR_ID;
 use rustc_errors::DiagCtxt;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
@@ -250,7 +249,7 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
 impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
-    /// If this is `Left`, we are not currently executing any particular statement in
+    /// If this is `Right`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     ///
@@ -271,13 +270,18 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
         }
     }
 
-    pub fn lint_root(&self) -> Option<hir::HirId> {
-        self.current_source_info().and_then(|source_info| {
-            match &self.body.source_scopes[source_info.scope].local_data {
+    pub fn lint_root(&self, tcx: TyCtxt<'tcx>) -> Option<hir::HirId> {
+        // We first try to get a HirId via the current source scope,
+        // and fall back to `body.source`.
+        self.current_source_info()
+            .and_then(|source_info| match &self.body.source_scopes[source_info.scope].local_data {
                 mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                 mir::ClearCrossCrate::Clear => None,
-            }
-        })
+            })
+            .or_else(|| {
+                let def_id = self.body.source.def_id().as_local();
+                def_id.map(|def_id| tcx.local_def_id_to_hir_id(def_id))
+            })
     }
 
     /// Returns the address of the buffer where the locals are stored. This is used by `Place` as a
@@ -500,6 +504,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
+    /// Returns the span of the currently executed statement/terminator.
+    /// This is the span typically used for error reporting.
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
@@ -507,16 +513,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
-    #[inline(always)]
-    /// Find the first stack frame that is within the current crate, if any, otherwise return the crate's HirId
-    pub fn best_lint_scope(&self) -> hir::HirId {
-        self.stack()
-            .iter()
-            .find_map(|frame| frame.body.source.def_id().as_local())
-            .map_or(CRATE_HIR_ID, |def_id| self.tcx.local_def_id_to_hir_id(def_id))
-    }
-
-    #[inline(always)]
     pub(crate) fn stack(&self) -> &[Frame<'tcx, M::Provenance, M::FrameExtra>] {
         M::stack(self)
     }
@@ -632,7 +628,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. This is the fancy version of `cur_span`.
+    /// frame which is not `#[track_caller]`. This matches the `caller_location` intrinsic,
+    /// and is primarily intended for the panic machinery.
     pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
         for frame in self.stack().iter().rev() {
             debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
@@ -1057,7 +1054,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
 
-                ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
+                ty::Tuple(tys) => tys.last().is_none_or(|ty| is_very_trivially_sized(*ty)),
 
                 ty::Pat(ty, ..) => is_very_trivially_sized(*ty),
 

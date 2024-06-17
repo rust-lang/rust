@@ -593,7 +593,7 @@ fn check_recursion_limit<'tcx>(
     let recursion_depth = recursion_depths.get(&def_id).cloned().unwrap_or(0);
     debug!(" => recursion depth={}", recursion_depth);
 
-    let adjusted_recursion_depth = if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
+    let adjusted_recursion_depth = if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
         // HACK: drop_in_place creates tight monomorphization loops. Give
         // it more margin.
         recursion_depth / 4
@@ -799,7 +799,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// This does not walk the MIR of the constant as that is not needed for codegen, all we need is
     /// to ensure that the constant evaluates successfully and walk the result.
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
         // No `super_constant` as we don't care about `visit_ty`/`visit_ty_const`.
         let Some(val) = self.eval_constant(constant) else { return };
         collect_const_value(self.tcx, val, self.used_items);
@@ -945,7 +945,7 @@ fn visit_instance_use<'tcx>(
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
             // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
             // codegen a call to that function without generating code for the function itself.
-            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let def_id = tcx.require_lang_item(LangItem::PanicNounwind, None);
             let panic_instance = Instance::mono(tcx, def_id);
             if should_codegen_locally(tcx, panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));

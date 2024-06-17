@@ -71,7 +71,9 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
         if (right == 0) || (left == 0) {
             return;
         }
-        if (left + right < 24) || (mem::size_of::<T>() > mem::size_of::<[usize; 4]>()) {
+        if !cfg!(feature = "optimize_for_size")
+            && ((left + right < 24) || (mem::size_of::<T>() > mem::size_of::<[usize; 4]>()))
+        {
             // Algorithm 1
             // Microbenchmarks indicate that the average performance for random shifts is better all
             // the way until about `left + right == 32`, but the worst case performance breaks even
@@ -158,7 +160,9 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             }
             return;
         // `T` is not a zero-sized type, so it's okay to divide by its size.
-        } else if cmp::min(left, right) <= mem::size_of::<BufType>() / mem::size_of::<T>() {
+        } else if !cfg!(feature = "optimize_for_size")
+            && cmp::min(left, right) <= mem::size_of::<BufType>() / mem::size_of::<T>()
+        {
             // Algorithm 2
             // The `[T; 0]` here is to ensure this is appropriately aligned for T
             let mut rawarray = MaybeUninit::<(BufType, [T; 0])>::uninit();

@@ -23,7 +23,7 @@ fn foo<T: ?Sized, U>(x: <T as Object<U>>::Output) -> U {
 #[allow(dead_code)]
 fn transmute<T, U>(x: T) -> U {
     foo::<dyn Object<U, Output = T>, U>(x)
-    //[next]~^ ERROR type annotations needed: cannot satisfy `<dyn Object<U, Output = T> as Object<U>>::Output == T`
+    //[next]~^ ERROR type annotations needed: cannot normalize `<dyn Object<U, Output = T> as Object<U>>::Output`
 }
 
 fn main() {}

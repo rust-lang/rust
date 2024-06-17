@@ -38,6 +38,11 @@ impl A {
         }
         None
     }
+
+    fn in_closure(a: Option<bool>) -> Option<bool> {
+        let c = || a.unwrap();
+        Some(c())
+    }
 }
 
 fn main() {

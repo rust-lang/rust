@@ -1287,7 +1287,7 @@ fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
 }
 
 impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
-    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
         let ConstOperand { span, user_ty, const_ } = constant;
         if use_verbose(const_.ty(), true) {
             self.push("mir::ConstOperand");
@@ -1415,7 +1415,7 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_constant(&mut self, c: &ConstOperand<'tcx>, _: Location) {
+        fn visit_const_operand(&mut self, c: &ConstOperand<'tcx>, _: Location) {
             match c.const_ {
                 Const::Ty(_, _) | Const::Unevaluated(..) => {}
                 Const::Val(val, _) => {

@@ -11,6 +11,7 @@ pub fn clang() -> Clang {
 
 /// A `clang` invocation builder.
 #[derive(Debug)]
+#[must_use]
 pub struct Clang {
     cmd: Command,
 }

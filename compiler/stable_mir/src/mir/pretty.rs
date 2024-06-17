@@ -310,7 +310,7 @@ fn pretty_operand(operand: &Operand) -> String {
         Operand::Move(mv) => {
             format!("move {:?}", mv)
         }
-        Operand::Constant(cnst) => pretty_mir_const(&cnst.literal),
+        Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
     }
 }
 

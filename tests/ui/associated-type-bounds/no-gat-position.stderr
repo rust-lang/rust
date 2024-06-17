@@ -3,6 +3,11 @@ error[E0229]: associated item constraints are not allowed here
    |
 LL |     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
    |                                                        ^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item constraint
+   |
+LL |     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
+   |                                                      ~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

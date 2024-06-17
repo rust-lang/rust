@@ -32,6 +32,7 @@ pub mod error;
 pub mod fold;
 pub mod inherent;
 pub mod ir_print;
+pub mod lang_items;
 pub mod lift;
 pub mod relate;
 pub mod solve;
@@ -73,6 +74,7 @@ pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;
+pub use Variance::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
