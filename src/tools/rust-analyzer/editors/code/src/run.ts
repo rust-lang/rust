@@ -110,10 +110,13 @@ export function prepareEnv(
     return env;
 }
 
-export async function createTask(runnable: ra.Runnable, config: Config): Promise<vscode.Task> {
+export async function createTaskFromRunnable(
+    runnable: ra.Runnable,
+    config: Config,
+): Promise<vscode.Task> {
     let definition: tasks.RustTargetDefinition;
     if (runnable.kind === "cargo") {
-        const runnableArgs = runnable.args as ra.CargoRunnableArgs;
+        const runnableArgs = runnable.args;
         let args = createCargoArgs(runnableArgs);
 
         let program: string;
@@ -128,17 +131,16 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         }
 
         definition = {
-            type: tasks.TASK_TYPE,
+            type: tasks.CARGO_TASK_TYPE,
             command: program,
             args,
             cwd: runnableArgs.workspaceRoot || ".",
             env: prepareEnv(runnable.label, runnableArgs, config.runnablesExtraEnv),
         };
     } else {
-        const runnableArgs = runnable.args as ra.ShellRunnableArgs;
-
+        const runnableArgs = runnable.args;
         definition = {
-            type: "shell",
+            type: tasks.SHELL_TASK_TYPE,
             command: runnableArgs.program,
             args: runnableArgs.args,
             cwd: runnableArgs.cwd,
@@ -148,13 +150,13 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
+    const exec = await tasks.targetToExecution(definition, config.cargoRunner, true);
     const task = await tasks.buildRustTask(
         target,
         definition,
         runnable.label,
         config.problemMatcher,
-        config.cargoRunner,
-        true,
+        exec,
     );
 
     task.presentationOptions.clear = true;

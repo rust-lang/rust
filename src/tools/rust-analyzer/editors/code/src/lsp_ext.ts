@@ -223,8 +223,16 @@ export type OpenCargoTomlParams = {
 export type Runnable = {
     label: string;
     location?: lc.LocationLink;
-    kind: "cargo" | "shell";
-    args: CargoRunnableArgs | ShellRunnableArgs;
+} & (RunnableCargo | RunnableShell);
+
+type RunnableCargo = {
+    kind: "cargo";
+    args: CargoRunnableArgs;
+};
+
+type RunnableShell = {
+    kind: "shell";
+    args: ShellRunnableArgs;
 };
 
 export type ShellRunnableArgs = {

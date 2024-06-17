@@ -151,6 +151,7 @@ export async function getRustcId(dir: string): Promise<string> {
 }
 
 /** Mirrors `toolchain::cargo()` implementation */
+// FIXME: The server should provide this
 export function cargoPath(): Promise<string> {
     return getPathForExecutable("cargo");
 }
