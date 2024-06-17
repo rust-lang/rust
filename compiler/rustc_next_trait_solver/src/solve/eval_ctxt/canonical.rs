@@ -15,6 +15,7 @@ use rustc_index::IndexVec;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, Interner};
+use tracing::{instrument, trace};
 
 use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use crate::infcx::SolverDelegate;

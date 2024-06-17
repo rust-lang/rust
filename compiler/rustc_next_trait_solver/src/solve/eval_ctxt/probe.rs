@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use rustc_type_ir::Interner;
+use tracing::instrument;
 
 use crate::infcx::SolverDelegate;
 use crate::solve::assembly::Candidate;

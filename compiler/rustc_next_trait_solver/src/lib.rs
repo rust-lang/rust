@@ -6,10 +6,6 @@
 
 #![feature(let_chains)]
 
-// TODO: remove this, use explicit imports.
-#[macro_use]
-extern crate tracing;
-
 pub mod canonicalizer;
 pub mod infcx;
 pub mod resolve;

@@ -4,6 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::Interner;
+use tracing::debug;
 
 use crate::infcx::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};

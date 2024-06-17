@@ -8,6 +8,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{self as ty, Interner, Upcast as _};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+use tracing::instrument;
 
 use crate::infcx::SolverDelegate;
 use crate::solve::{EvalCtxt, Goal, NoSolution};

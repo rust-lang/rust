@@ -6,6 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TraitPredicate, Upcast as _};
+use tracing::{instrument, trace};
 
 use crate::infcx::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};

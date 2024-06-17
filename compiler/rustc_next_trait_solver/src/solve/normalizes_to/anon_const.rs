@@ -1,4 +1,5 @@
 use rustc_type_ir::{self as ty, Interner};
+use tracing::instrument;
 
 use crate::infcx::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};

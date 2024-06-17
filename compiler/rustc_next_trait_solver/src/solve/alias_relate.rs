@@ -17,6 +17,7 @@
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
+use tracing::{instrument, trace};
 
 use crate::infcx::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};

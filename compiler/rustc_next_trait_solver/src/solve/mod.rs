@@ -23,12 +23,12 @@ mod project_goals;
 mod search_graph;
 mod trait_goals;
 
-pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
-pub use rustc_type_ir::solve::*;
-
 use rustc_type_ir::inherent::*;
+pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner};
+use tracing::instrument;
 
+pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
 use crate::infcx::SolverDelegate;
 
 /// How many fixpoint iterations we should attempt inside of the solver before bailing

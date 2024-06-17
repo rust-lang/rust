@@ -7,6 +7,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, Upcast as _};
+use tracing::{debug, instrument};
 
 use crate::infcx::SolverDelegate;
 use crate::solve::inspect::ProbeKind;

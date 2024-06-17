@@ -8,6 +8,7 @@ use rustc_type_ir::relate::Relate;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_type_ir::{self as ty, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use tracing::{instrument, trace};
 
 use crate::infcx::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
