@@ -849,11 +849,7 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(_, ref it, ref captures) => {
-                // FIXME(precise_capturing): Implement formatting.
-                if captures.is_some() {
-                    return None;
-                }
+            ast::TyKind::ImplTrait(_, ref it) => {
                 // Empty trait is not a parser error.
                 if it.is_empty() {
                     return Some("impl".to_owned());
@@ -1120,8 +1116,7 @@ fn join_bounds_inner(
 
 pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
     ty.as_ref().and_then(|t| match &t.kind {
-        // FIXME(precise_capturing): Implement support here
-        ast::TyKind::ImplTrait(_, bounds, _) => Some(bounds),
+        ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
         _ => None,
     })
 }
