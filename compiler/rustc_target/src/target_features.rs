@@ -191,10 +191,36 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sha3", Stable, &["sha2"]),
     // FEAT_SM3 & FEAT_SM4
     ("sm4", Stable, &["neon"]),
+    // FEAT_SME
+    ("sme", Unstable(sym::aarch64_unstable_target_feature), &["bf16"]),
+    // FEAT_SME_F16F16
+    ("sme-f16f16", Unstable(sym::aarch64_unstable_target_feature), &["sme2"]),
+    // FEAT_SME_F64F64
+    ("sme-f64f64", Unstable(sym::aarch64_unstable_target_feature), &["sme"]),
+    // FEAT_SME_F8F16
+    ("sme-f8f16", Unstable(sym::aarch64_unstable_target_feature), &["sme-f8f32"]),
+    // FEAT_SME_F8F32
+    ("sme-f8f32", Unstable(sym::aarch64_unstable_target_feature), &["sme2", "fp8"]),
+    // FEAT_SME_FA64
+    ("sme-fa64", Unstable(sym::aarch64_unstable_target_feature), &["sme", "sve2"]),
+    // FEAT_SME_I16I64
+    ("sme-i16i64", Unstable(sym::aarch64_unstable_target_feature), &["sme"]),
+    // FEAT_SME_LUTv2
+    ("sme-lutv2", Unstable(sym::aarch64_unstable_target_feature), &[]),
+    // FEAT_SME2
+    ("sme2", Unstable(sym::aarch64_unstable_target_feature), &["sme"]),
+    // FEAT_SME2p1
+    ("sme2p1", Unstable(sym::aarch64_unstable_target_feature), &["sme2"]),
     // FEAT_SPE
     ("spe", Stable, &[]),
     // FEAT_SSBS & FEAT_SSBS2
     ("ssbs", Stable, &[]),
+    // FEAT_SSVE_FP8FDOT2
+    ("ssve-fp8dot2", Unstable(sym::aarch64_unstable_target_feature), &["ssve-fp8dot4"]),
+    // FEAT_SSVE_FP8FDOT4
+    ("ssve-fp8dot4", Unstable(sym::aarch64_unstable_target_feature), &["ssve-fp8fma"]),
+    // FEAT_SSVE_FP8FMA
+    ("ssve-fp8fma", Unstable(sym::aarch64_unstable_target_feature), &["sme2", "fp8"]),
     // FEAT_SVE
     // It was decided that SVE requires Neon: https://github.com/rust-lang/rust/pull/91608
     //
