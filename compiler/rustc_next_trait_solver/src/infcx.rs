@@ -9,6 +9,8 @@ pub trait SolverDelegate: Sized {
     type Interner: Interner;
     fn interner(&self) -> Self::Interner;
 
+    type Span: Copy;
+
     fn solver_mode(&self) -> SolverMode;
 
     fn build_with_canonical<V>(
@@ -56,6 +58,12 @@ pub trait SolverDelegate: Sized {
         &self,
         def_id: <Self::Interner as Interner>::DefId,
     ) -> <Self::Interner as Interner>::GenericArgs;
+
+    fn fresh_var_for_kind_with_span(
+        &self,
+        arg: <Self::Interner as Interner>::GenericArg,
+        span: Self::Span,
+    ) -> <Self::Interner as Interner>::GenericArg;
 
     fn instantiate_binder_with_infer<T: TypeFoldable<Self::Interner> + Copy>(
         &self,

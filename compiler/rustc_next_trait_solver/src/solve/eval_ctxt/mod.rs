@@ -127,6 +127,17 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
     ) -> (Result<(bool, Certainty), NoSolution>, Option<inspect::GoalEvaluation<Self::Interner>>);
+
+    // FIXME: This is only exposed because we need to use it in `analyse.rs`
+    // which is not yet uplifted. Once that's done, we should remove this.
+    fn evaluate_root_goal_raw(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        generate_proof_tree: GenerateProofTree,
+    ) -> (
+        Result<(NestedNormalizationGoals<Self::Interner>, bool, Certainty), NoSolution>,
+        Option<inspect::GoalEvaluation<Self::Interner>>,
+    );
 }
 
 impl<Infcx, I> SolverDelegateEvalExt for Infcx
@@ -146,6 +157,20 @@ where
     ) -> (Result<(bool, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
         EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
             ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+        })
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn evaluate_root_goal_raw(
+        &self,
+        goal: Goal<I, I::Predicate>,
+        generate_proof_tree: GenerateProofTree,
+    ) -> (
+        Result<(NestedNormalizationGoals<I>, bool, Certainty), NoSolution>,
+        Option<inspect::GoalEvaluation<I>>,
+    ) {
+        EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
+            ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
     }
 }

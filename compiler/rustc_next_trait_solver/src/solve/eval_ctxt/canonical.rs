@@ -394,3 +394,35 @@ where
         state,
     )
 }
+
+// FIXME: needs to be pub to be accessed by downstream
+// `rustc_trait_selection::solve::inspect::analyse`.
+pub fn instantiate_canonical_state<Infcx, I, T: TypeFoldable<I>>(
+    infcx: &Infcx,
+    span: Infcx::Span,
+    param_env: I::ParamEnv,
+    orig_values: &mut Vec<I::GenericArg>,
+    state: inspect::CanonicalState<I, T>,
+) -> T
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    // In case any fresh inference variables have been created between `state`
+    // and the previous instantiation, extend `orig_values` for it.
+    assert!(orig_values.len() <= state.value.var_values.len());
+    for &arg in &state.value.var_values.var_values[orig_values.len()..state.value.var_values.len()]
+    {
+        // FIXME: This is so ugly.
+        let unconstrained = infcx.fresh_var_for_kind_with_span(arg, span);
+        orig_values.push(unconstrained);
+    }
+
+    let instantiation =
+        EvalCtxt::compute_query_response_instantiation_values(infcx, orig_values, &state);
+
+    let inspect::State { var_values, data } = infcx.instantiate_canonical(state, instantiation);
+
+    EvalCtxt::unify_query_var_values(infcx, param_env, orig_values, var_values);
+    data
+}

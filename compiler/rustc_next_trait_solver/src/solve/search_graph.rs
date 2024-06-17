@@ -12,7 +12,7 @@ use crate::solve::{
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Limit(usize);
+pub struct SolverLimit(usize);
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -35,7 +35,7 @@ bitflags::bitflags! {
 struct StackEntry<I: Interner> {
     input: CanonicalInput<I>,
 
-    available_depth: Limit,
+    available_depth: SolverLimit,
 
     /// The maximum depth reached by this stack entry, only up-to date
     /// for the top of the stack and lazily updated for the rest.
@@ -164,19 +164,19 @@ impl<I: Interner> SearchGraph<I> {
     fn allowed_depth_for_nested(
         tcx: I,
         stack: &IndexVec<StackDepth, StackEntry<I>>,
-    ) -> Option<Limit> {
+    ) -> Option<SolverLimit> {
         if let Some(last) = stack.raw.last() {
             if last.available_depth.0 == 0 {
                 return None;
             }
 
             Some(if last.encountered_overflow {
-                Limit(last.available_depth.0 / 4)
+                SolverLimit(last.available_depth.0 / 4)
             } else {
-                Limit(last.available_depth.0 - 1)
+                SolverLimit(last.available_depth.0 - 1)
             })
         } else {
-            Some(Limit(tcx.recursion_limit()))
+            Some(SolverLimit(tcx.recursion_limit()))
         }
     }
 
@@ -414,12 +414,12 @@ impl<I: Interner> SearchGraph<I> {
         &mut self,
         tcx: I,
         input: CanonicalInput<I>,
-        available_depth: Limit,
+        available_depth: SolverLimit,
         inspect: &mut ProofTreeBuilder<Infcx>,
     ) -> Option<QueryResult<I>> {
         let CacheData { result, proof_tree, additional_depth, encountered_overflow } = self
             .global_cache(tcx)
-            // TODO: Awkward `Limit -> usize -> Limit`.
+            // FIXME: Awkward `Limit -> usize -> Limit`.
             .get(tcx, input, self.stack.iter().map(|e| e.input), available_depth.0)?;
 
         // If we're building a proof tree and the current cache entry does not

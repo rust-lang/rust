@@ -19,7 +19,7 @@ use super::{
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
-use crate::solve::InferCtxtSelectExt;
+use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::normalize_with_depth;
 use crate::traits::normalize::normalize_with_depth_to;
