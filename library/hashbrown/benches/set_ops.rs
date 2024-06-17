@@ -22,63 +22,68 @@ const SMALL_SET_SIZE: usize = 100;
 const OVERLAPP: usize =
     [LARGE_SET_SIZE, SMALL_SET_SIZE][(LARGE_SET_SIZE < SMALL_SET_SIZE) as usize] / 2;
 
+/// Creates a set containing end - start unique string elements.
+fn create_set(start: usize, end: usize) -> HashSet<String> {
+    (start..end).map(|nr| format!("key{}", nr)).collect()
+}
+
 #[bench]
 fn set_ops_bit_or(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| &large_set | &small_set)
 }
 
 #[bench]
 fn set_ops_bit_and(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| &large_set & &small_set)
 }
 
 #[bench]
 fn set_ops_bit_xor(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| &large_set ^ &small_set)
 }
 
 #[bench]
 fn set_ops_sub_large_small(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| &large_set - &small_set)
 }
 
 #[bench]
 fn set_ops_sub_small_large(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| &small_set - &large_set)
 }
 
 #[bench]
 fn set_ops_bit_or_assign(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| {
         let mut set = large_set.clone();
         set |= &small_set;
@@ -88,11 +93,11 @@ fn set_ops_bit_or_assign(b: &mut Bencher) {
 
 #[bench]
 fn set_ops_bit_and_assign(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| {
         let mut set = small_set.clone();
         set &= &large_set;
@@ -102,11 +107,11 @@ fn set_ops_bit_and_assign(b: &mut Bencher) {
 
 #[bench]
 fn set_ops_bit_xor_assign(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| {
         let mut set = large_set.clone();
         set ^= &small_set;
@@ -116,11 +121,11 @@ fn set_ops_bit_xor_assign(b: &mut Bencher) {
 
 #[bench]
 fn set_ops_sub_assign_large_small(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| {
         let mut set = large_set.clone();
         set -= &small_set;
@@ -130,11 +135,11 @@ fn set_ops_sub_assign_large_small(b: &mut Bencher) {
 
 #[bench]
 fn set_ops_sub_assign_small_large(b: &mut Bencher) {
-    let large_set: HashSet<_> = (0..LARGE_SET_SIZE).map(|nr| format!("key{}", nr)).collect();
-    let small_set: HashSet<_> = ((LARGE_SET_SIZE - OVERLAPP)
-        ..(LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP))
-        .map(|nr| format!("key{}", nr))
-        .collect();
+    let large_set = create_set(0, LARGE_SET_SIZE);
+    let small_set = create_set(
+        LARGE_SET_SIZE - OVERLAPP,
+        LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAPP,
+    );
     b.iter(|| {
         let mut set = small_set.clone();
         set -= &large_set;
