@@ -12,7 +12,8 @@ const RESUME_PENALTY: usize = 45;
 pub(crate) struct CostChecker<'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    cost: usize,
+    penalty: usize,
+    bonus: usize,
     callee_body: &'b Body<'tcx>,
     instance: Option<ty::Instance<'tcx>>,
 }
@@ -24,11 +25,11 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
         instance: Option<ty::Instance<'tcx>>,
         callee_body: &'b Body<'tcx>,
     ) -> CostChecker<'b, 'tcx> {
-        CostChecker { tcx, param_env, callee_body, instance, cost: 0 }
+        CostChecker { tcx, param_env, callee_body, instance, penalty: 0, bonus: 0 }
     }
 
     pub fn cost(&self) -> usize {
-        self.cost
+        usize::saturating_sub(self.penalty, self.bonus)
     }
 
     fn instantiate_ty(&self, v: Ty<'tcx>) -> Ty<'tcx> {
@@ -48,7 +49,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             | StatementKind::StorageDead(_)
             | StatementKind::Deinit(_)
             | StatementKind::Nop => {}
-            _ => self.cost += INSTR_COST,
+            _ => self.penalty += INSTR_COST,
         }
     }
 
@@ -59,17 +60,17 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self.instantiate_ty(place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
-                    self.cost += CALL_PENALTY;
+                    self.penalty += CALL_PENALTY;
                     if let UnwindAction::Cleanup(_) = unwind {
-                        self.cost += LANDINGPAD_PENALTY;
+                        self.penalty += LANDINGPAD_PENALTY;
                     }
                 } else {
-                    self.cost += INSTR_COST;
+                    self.penalty += INSTR_COST;
                 }
             }
             TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
                 let fn_ty = self.instantiate_ty(f.const_.ty());
-                self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind()
+                self.penalty += if let ty::FnDef(def_id, _) = *fn_ty.kind()
                     && tcx.intrinsic(def_id).is_some()
                 {
                     // Don't give intrinsics the extra penalty for calls
@@ -78,23 +79,23 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     CALL_PENALTY
                 };
                 if let UnwindAction::Cleanup(_) = unwind {
-                    self.cost += LANDINGPAD_PENALTY;
+                    self.penalty += LANDINGPAD_PENALTY;
                 }
             }
             TerminatorKind::Assert { unwind, .. } => {
-                self.cost += CALL_PENALTY;
+                self.penalty += CALL_PENALTY;
                 if let UnwindAction::Cleanup(_) = unwind {
-                    self.cost += LANDINGPAD_PENALTY;
+                    self.penalty += LANDINGPAD_PENALTY;
                 }
             }
-            TerminatorKind::UnwindResume => self.cost += RESUME_PENALTY,
+            TerminatorKind::UnwindResume => self.penalty += RESUME_PENALTY,
             TerminatorKind::InlineAsm { unwind, .. } => {
-                self.cost += INSTR_COST;
+                self.penalty += INSTR_COST;
                 if let UnwindAction::Cleanup(_) = unwind {
-                    self.cost += LANDINGPAD_PENALTY;
+                    self.penalty += LANDINGPAD_PENALTY;
                 }
             }
-            _ => self.cost += INSTR_COST,
+            _ => self.penalty += INSTR_COST,
         }
     }
 }
