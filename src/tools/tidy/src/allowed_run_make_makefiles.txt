@@ -35,7 +35,6 @@ run-make/emit-shared-files/Makefile
 run-make/emit-stack-sizes/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/env-dep-info/Makefile
-run-make/error-found-staticlib-instead-crate/Makefile
 run-make/error-writing-dependencies/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
@@ -140,8 +139,6 @@ run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
 run-make/native-link-modifier-bundle/Makefile
-run-make/native-link-modifier-verbatim-linker/Makefile
-run-make/native-link-modifier-verbatim-rustc/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
@@ -150,8 +147,6 @@ run-make/no-duplicate-libs/Makefile
 run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
 run-make/optimization-remarks-dir/Makefile
-run-make/output-filename-conflicts-with-directory/Makefile
-run-make/output-filename-overwrites-input/Makefile
 run-make/output-type-permutations/Makefile
 run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
