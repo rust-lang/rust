@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use itertools::Itertools;
+use core::mem::replace;
 use rustc_errors::Applicability;
 use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -56,55 +56,71 @@ impl UpperCaseAcronyms {
 
 impl_lint_pass!(UpperCaseAcronyms => [UPPER_CASE_ACRONYMS]);
 
-fn correct_ident(ident: &str) -> String {
-    let ident = ident.chars().rev().collect::<String>();
-    let fragments = ident
-        .split_inclusive(|x: char| !x.is_ascii_lowercase())
-        .rev()
-        .map(|x| x.chars().rev().collect::<String>());
-
-    let mut ident = fragments.clone().next().unwrap();
-    for (ref prev, ref curr) in fragments.tuple_windows() {
-        if <[&String; 2]>::from((prev, curr))
-            .iter()
-            .all(|s| s.len() == 1 && s.chars().next().unwrap().is_ascii_uppercase())
-        {
-            ident.push_str(&curr.to_ascii_lowercase());
+fn contains_acronym(s: &str) -> bool {
+    let mut count = 0;
+    for c in s.chars() {
+        if c.is_ascii_uppercase() {
+            count += 1;
+            if count == 3 {
+                return true;
+            }
         } else {
-            ident.push_str(curr);
+            count = 0;
         }
     }
-    ident
+    count == 2
 }
 
 fn check_ident(cx: &LateContext<'_>, ident: &Ident, hir_id: HirId, be_aggressive: bool) {
-    let span = ident.span;
-    let ident = ident.as_str();
-    let corrected = correct_ident(ident);
-    // warn if we have pure-uppercase idents
-    // assume that two-letter words are some kind of valid abbreviation like FP for false positive
-    // (and don't warn)
-    if (ident.chars().all(|c| c.is_ascii_uppercase()) && ident.len() > 2)
-    // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive
-    // upper-case-acronyms-aggressive config option enabled
-    || (be_aggressive && ident != corrected)
+    let s = ident.as_str();
+
+    // By default, only warn for upper case identifiers with at least 3 characters.
+    let replacement = if s.len() > 2 && s.bytes().all(|c| c.is_ascii_uppercase()) {
+        let mut r = String::with_capacity(s.len());
+        let mut s = s.chars();
+        r.push(s.next().unwrap());
+        r.extend(s.map(|c| c.to_ascii_lowercase()));
+        r
+    } else if be_aggressive
+        // Only lint if the ident starts with an upper case character.
+        && let unprefixed = s.trim_start_matches('_')
+        && unprefixed.starts_with(|c: char| c.is_ascii_uppercase())
+        && contains_acronym(unprefixed)
     {
-        span_lint_hir_and_then(
-            cx,
-            UPPER_CASE_ACRONYMS,
-            hir_id,
-            span,
-            format!("name `{ident}` contains a capitalized acronym"),
-            |diag| {
-                diag.span_suggestion(
-                    span,
-                    "consider making the acronym lowercase, except the initial letter",
-                    corrected,
-                    Applicability::MaybeIncorrect,
-                );
-            },
-        );
-    }
+        let mut r = String::with_capacity(s.len());
+        let mut s = s.chars();
+        let mut prev_upper = false;
+        while let Some(c) = s.next() {
+            r.push(
+                if replace(&mut prev_upper, c.is_ascii_uppercase())
+                    && s.clone().next().map_or(true, |c| c.is_ascii_uppercase())
+                {
+                    c.to_ascii_lowercase()
+                } else {
+                    c
+                },
+            );
+        }
+        r
+    } else {
+        return;
+    };
+
+    span_lint_hir_and_then(
+        cx,
+        UPPER_CASE_ACRONYMS,
+        hir_id,
+        ident.span,
+        format!("name `{ident}` contains a capitalized acronym"),
+        |diag| {
+            diag.span_suggestion(
+                ident.span,
+                "consider making the acronym lowercase, except the initial letter",
+                replacement,
+                Applicability::MaybeIncorrect,
+            );
+        },
+    );
 }
 
 impl LateLintPass<'_> for UpperCaseAcronyms {
