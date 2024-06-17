@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): std::error::Error` is not satisfied
-  --> $DIR/coerce-issue-49593-box-never.rs:19:5
+  --> $DIR/coerce-issue-49593-box-never.rs:18:5
    |
 LL |     Box::<_ /* ! */>::new(x)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`

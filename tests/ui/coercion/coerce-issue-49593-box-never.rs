@@ -1,5 +1,4 @@
 //@ revisions: nofallback fallback
-//@ ignore-windows - the number of `Error` impls is platform-dependent
 //@check-fail
 
 #![feature(never_type)]
@@ -21,13 +20,14 @@ fn foo(x: !) -> Box<dyn Error> {
 }
 
 fn foo_raw_ptr(x: !) -> *mut dyn Error {
-    /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
+    /* *mut $0 is coerced to *mut Error here */
+    raw_ptr_box::<_ /* ! */>(x)
     //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
 }
 
 fn no_coercion(d: *mut dyn Error) -> *mut dyn Error {
     /* an unsize coercion won't compile here, and it is indeed not used
-       because there is nothing requiring the _ to be Sized */
+    because there is nothing requiring the _ to be Sized */
     d as *mut _
 }
 
@@ -50,10 +50,9 @@ fn foo_no_never() {
         first_iter = true;
     }
 
-    let mut y : Option<S> = None;
+    let mut y: Option<S> = None;
     // assert types are equal
     mem::swap(&mut x, &mut y);
 }
 
-fn main() {
-}
+fn main() {}
