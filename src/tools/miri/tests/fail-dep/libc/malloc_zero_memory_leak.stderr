@@ -9,7 +9,7 @@ LL |         let _ptr = libc::malloc(0);
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-note: the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check
+note: set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check
 
 error: aborting due to 1 previous error
 
