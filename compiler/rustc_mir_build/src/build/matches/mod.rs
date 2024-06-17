@@ -329,6 +329,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &scrutinee_place,
             match_start_span,
             &mut candidates,
+            false,
         );
 
         self.lower_match_arms(
@@ -691,6 +692,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &initializer,
             irrefutable_pat.span,
             &mut [&mut candidate],
+            false,
         );
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
@@ -1215,6 +1217,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Modifies `candidates` to store the bindings and type ascriptions for
     /// that candidate.
+    ///
+    /// `refutable` indicates whether the candidate list is refutable (for `if let` and `let else`)
+    /// or not (for `let` and `match`). In the refutable case we return the block to which we branch
+    /// on failure.
     fn lower_match_tree<'pat>(
         &mut self,
         block: BasicBlock,
@@ -1222,44 +1228,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
-    ) {
-        // See the doc comment on `match_candidates` for why we have an
-        // otherwise block. Match checking will ensure this is actually
-        // unreachable.
+        refutable: bool,
+    ) -> BasicBlock {
+        // See the doc comment on `match_candidates` for why we have an otherwise block.
         let otherwise_block = self.cfg.start_new_block();
 
         // This will generate code to test scrutinee_place and branch to the appropriate arm block
         self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
-
-        let source_info = self.source_info(scrutinee_span);
-
-        // Matching on a `scrutinee_place` with an uninhabited type doesn't
-        // generate any memory reads by itself, and so if the place "expression"
-        // contains unsafe operations like raw pointer dereferences or union
-        // field projections, we wouldn't know to require an `unsafe` block
-        // around a `match` equivalent to `std::intrinsics::unreachable()`.
-        // See issue #47412 for this hole being discovered in the wild.
-        //
-        // HACK(eddyb) Work around the above issue by adding a dummy inspection
-        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
-        //
-        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
-        // This is currently needed to not allow matching on an uninitialized,
-        // uninhabited value. If we get never patterns, those will check that
-        // the place is initialized, and so this read would only be used to
-        // check safety.
-        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
-
-        if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-            self.cfg.push_fake_read(
-                otherwise_block,
-                source_info,
-                cause_matched_place,
-                scrutinee_place,
-            );
-        }
-
-        self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
 
         // Link each leaf candidate to the `false_edge_start_block` of the next one.
         let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
@@ -1272,6 +1247,46 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 previous_candidate = Some(leaf_candidate);
             });
         }
+
+        if refutable {
+            // In refutable cases there's always at least one candidate, and we want a false edge to
+            // the failure block.
+            previous_candidate.as_mut().unwrap().next_candidate_start_block = Some(otherwise_block)
+        } else {
+            // Match checking ensures `otherwise_block` is actually unreachable in irrefutable
+            // cases.
+            let source_info = self.source_info(scrutinee_span);
+
+            // Matching on a `scrutinee_place` with an uninhabited type doesn't
+            // generate any memory reads by itself, and so if the place "expression"
+            // contains unsafe operations like raw pointer dereferences or union
+            // field projections, we wouldn't know to require an `unsafe` block
+            // around a `match` equivalent to `std::intrinsics::unreachable()`.
+            // See issue #47412 for this hole being discovered in the wild.
+            //
+            // HACK(eddyb) Work around the above issue by adding a dummy inspection
+            // of `scrutinee_place`, specifically by applying `ReadForMatch`.
+            //
+            // NOTE: ReadForMatch also checks that the scrutinee is initialized.
+            // This is currently needed to not allow matching on an uninitialized,
+            // uninhabited value. If we get never patterns, those will check that
+            // the place is initialized, and so this read would only be used to
+            // check safety.
+            let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
+
+            if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
+                self.cfg.push_fake_read(
+                    otherwise_block,
+                    source_info,
+                    cause_matched_place,
+                    scrutinee_place,
+                );
+            }
+
+            self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
+        }
+
+        otherwise_block
     }
 
     /// The main match algorithm. It begins with a set of candidates
@@ -1978,21 +1993,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
-        let wildcard = Pat::wildcard_from_ty(pat.ty);
         let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
-        let mut otherwise_candidate =
-            Candidate::new(expr_place_builder.clone(), &wildcard, false, self);
-        self.lower_match_tree(
+        let otherwise_block = self.lower_match_tree(
             block,
             pat.span,
             &expr_place_builder,
             pat.span,
-            &mut [&mut guard_candidate, &mut otherwise_candidate],
+            &mut [&mut guard_candidate],
+            true,
         );
         let expr_place = expr_place_builder.try_to_place(self);
         let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
-        let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
-        self.break_for_else(otherwise_post_guard_block, self.source_info(expr_span));
+        self.break_for_else(otherwise_block, self.source_info(expr_span));
 
         if declare_bindings {
             self.declare_bindings(source_scope, pat.span.to(span), pat, None, opt_expr_place);
@@ -2008,7 +2020,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         // If branch coverage is enabled, record this branch.
-        self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_post_guard_block);
+        self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_block);
 
         post_guard_block.unit()
     }
@@ -2470,15 +2482,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let else_block_span = self.thir[else_block].span;
         let (matching, failure) = self.in_if_then_scope(*let_else_scope, else_block_span, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init_id, initializer_span));
-            let pat = Pat { ty: pattern.ty, span: else_block_span, kind: PatKind::Wild };
-            let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false, this);
             let mut candidate = Candidate::new(scrutinee.clone(), pattern, false, this);
-            this.lower_match_tree(
+            let failure_block = this.lower_match_tree(
                 block,
                 initializer_span,
                 &scrutinee,
                 pattern.span,
-                &mut [&mut candidate, &mut wildcard],
+                &mut [&mut candidate],
+                true,
             );
             // This block is for the matching case
             let matching = this.bind_pattern(
@@ -2489,13 +2500,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 true,
             );
-            // This block is for the failure case
-            let failure = wildcard.pre_binding_block.unwrap();
 
             // If branch coverage is enabled, record this branch.
-            this.visit_coverage_conditional_let(pattern, matching, failure);
+            this.visit_coverage_conditional_let(pattern, matching, failure_block);
 
-            this.break_for_else(failure, this.source_info(initializer_span));
+            this.break_for_else(failure_block, this.source_info(initializer_span));
             matching.unit()
         });
         matching.and(failure)
