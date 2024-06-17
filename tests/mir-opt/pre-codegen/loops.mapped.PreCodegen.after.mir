@@ -7,14 +7,30 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     let mut _3: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
     let mut _4: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
     let mut _5: &mut std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
-    let mut _6: std::option::Option<U>;
-    let mut _7: isize;
-    let _9: ();
+    let mut _13: std::option::Option<U>;
+    let _15: ();
     scope 1 {
         debug iter => _4;
-        let _8: U;
+        let _14: U;
         scope 2 {
-            debug x => _8;
+            debug x => _14;
+        }
+        scope 4 (inlined <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next) {
+            debug self => _5;
+            let mut _6: &mut impl Iterator<Item = T>;
+            let mut _7: std::option::Option<T>;
+            let mut _8: &mut impl Fn(T) -> U;
+            scope 5 (inlined Option::<T>::map::<U, &mut impl Fn(T) -> U>) {
+                debug self => _7;
+                debug f => _8;
+                let mut _9: isize;
+                let _10: T;
+                let mut _11: (T,);
+                let mut _12: U;
+                scope 6 {
+                    debug x => _10;
+                }
+            }
         }
     }
     scope 3 (inlined <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as IntoIterator>::into_iter) {
@@ -32,20 +48,30 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     }
 
     bb2: {
-        StorageLive(_6);
-        StorageLive(_5);
+        StorageLive(_13);
         _5 = &mut _4;
-        _6 = <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next(move _5) -> [return: bb3, unwind: bb9];
+        StorageLive(_8);
+        StorageLive(_7);
+        StorageLive(_6);
+        _6 = &mut (_4.0: impl Iterator<Item = T>);
+        _7 = <impl Iterator<Item = T> as Iterator>::next(move _6) -> [return: bb3, unwind: bb10];
     }
 
     bb3: {
-        StorageDead(_5);
-        _7 = discriminant(_6);
-        switchInt(move _7) -> [0: bb4, 1: bb6, otherwise: bb8];
+        StorageDead(_6);
+        _8 = &mut (_4.1: impl Fn(T) -> U);
+        StorageLive(_9);
+        StorageLive(_10);
+        _9 = discriminant(_7);
+        switchInt(move _9) -> [0: bb4, 1: bb6, otherwise: bb9];
     }
 
     bb4: {
-        StorageDead(_6);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_7);
+        StorageDead(_8);
+        StorageDead(_13);
         drop(_4) -> [return: bb5, unwind continue];
     }
 
@@ -55,24 +81,39 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     }
 
     bb6: {
-        _8 = move ((_6 as Some).0: U);
-        _9 = opaque::<U>(move _8) -> [return: bb7, unwind: bb9];
+        _10 = move ((_7 as Some).0: T);
+        StorageLive(_12);
+        StorageLive(_11);
+        _11 = (_10,);
+        _12 = <&mut impl Fn(T) -> U as FnOnce<(T,)>>::call_once(move _8, move _11) -> [return: bb7, unwind: bb10];
     }
 
     bb7: {
-        StorageDead(_6);
-        goto -> bb2;
+        StorageDead(_11);
+        _13 = Option::<U>::Some(move _12);
+        StorageDead(_12);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_7);
+        StorageDead(_8);
+        _14 = move ((_13 as Some).0: U);
+        _15 = opaque::<U>(move _14) -> [return: bb8, unwind: bb10];
     }
 
     bb8: {
+        StorageDead(_13);
+        goto -> bb2;
+    }
+
+    bb9: {
         unreachable;
     }
 
-    bb9 (cleanup): {
-        drop(_4) -> [return: bb10, unwind terminate(cleanup)];
+    bb10 (cleanup): {
+        drop(_4) -> [return: bb11, unwind terminate(cleanup)];
     }
 
-    bb10 (cleanup): {
+    bb11 (cleanup): {
         resume;
     }
 }
