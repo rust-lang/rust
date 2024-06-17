@@ -949,13 +949,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 was_updated = true;
             }
 
-            if was_updated {
-                if let Some(const_) = self.try_as_constant(fields[0]) {
-                    field_ops[FieldIdx::ZERO] = Operand::Constant(Box::new(const_));
-                } else if let Some(local) = self.try_as_local(fields[0], location) {
-                    field_ops[FieldIdx::ZERO] = Operand::Copy(Place::from(local));
-                    self.reused_locals.insert(local);
-                }
+            if was_updated && let Some(op) = self.try_as_operand(fields[0], location) {
+                field_ops[FieldIdx::ZERO] = op;
             }
         }
 
@@ -965,11 +960,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             let first = fields[0];
             if fields.iter().all(|&v| v == first) {
                 let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
-                if let Some(const_) = self.try_as_constant(first) {
-                    *rvalue = Rvalue::Repeat(Operand::Constant(Box::new(const_)), len);
-                } else if let Some(local) = self.try_as_local(first, location) {
-                    *rvalue = Rvalue::Repeat(Operand::Copy(local.into()), len);
-                    self.reused_locals.insert(local);
+                if let Some(op) = self.try_as_operand(first, location) {
+                    *rvalue = Rvalue::Repeat(op, len);
                 }
                 return Some(self.insert(Value::Repeat(first, len)));
             }
@@ -1174,13 +1166,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        if was_updated {
-            if let Some(const_) = self.try_as_constant(value) {
-                *operand = Operand::Constant(Box::new(const_));
-            } else if let Some(local) = self.try_as_local(value, location) {
-                *operand = Operand::Copy(local.into());
-                self.reused_locals.insert(local);
-            }
+        if was_updated && let Some(op) = self.try_as_operand(value, location) {
+            *operand = op;
         }
 
         Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
@@ -1296,6 +1283,19 @@ fn op_to_prop_const<'tcx>(
 }
 
 impl<'tcx> VnState<'_, 'tcx> {
+    /// If either [`Self::try_as_constant`] as [`Self::try_as_local`] succeeds,
+    /// returns that result as an [`Operand`].
+    fn try_as_operand(&mut self, index: VnIndex, location: Location) -> Option<Operand<'tcx>> {
+        if let Some(const_) = self.try_as_constant(index) {
+            Some(Operand::Constant(Box::new(const_)))
+        } else if let Some(local) = self.try_as_local(index, location) {
+            self.reused_locals.insert(local);
+            Some(Operand::Copy(local.into()))
+        } else {
+            None
+        }
+    }
+
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it.
