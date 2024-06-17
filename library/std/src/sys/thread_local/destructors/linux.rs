@@ -25,7 +25,7 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     #[cfi_encoding = "i"]
     #[repr(transparent)]
     #[allow(non_camel_case_types)]
-    pub struct c_int(#[allow(dead_code)] pub libc::c_int);
+    pub struct c_int(#[allow(dead_code)] pub core::ffi::c_int);
 
     extern "C" {
         #[linkage = "extern_weak"]
