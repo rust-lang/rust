@@ -181,7 +181,7 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
                 //       ^
                 if matches!(
                     p.current(),
-                    T![=] | T![,] | T![:] | T![')'] | T!['}'] | T![']'] | T![if]
+                    T![=] | T![,] | T![:] | T![')'] | T!['}'] | T![']'] | T![if] | EOF
                 ) {
                     // test half_open_range_pat
                     // fn f() {
