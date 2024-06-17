@@ -1,5 +1,5 @@
 error[E0369]: cannot add `&str` to `&str`
-  --> $DIR/non-1-width-unicode-multiline-label.rs:5:260
+  --> $DIR/non-1-width-unicode-multiline-label.rs:7:260
    |
 LL | ...ཽཾཿ྄ཱྀྀྂྃ྅྆྇ྈྉྊྋྌྍྎྏྐྑྒྒྷྔྕྖྗ྘ྙྚྛྜྜྷྞྟྠྡྡྷྣྤྥྦྦྷྨྩྪྫྫྷྭྮྯྰྱྲླྴྵྶྷྸྐྵྺྻྼ྽྾྿࿀࿁࿂࿃࿄࿅࿆࿇...࿋࿌࿍࿎࿏࿐࿑࿒࿓࿔࿕࿖࿗࿘࿙࿚"; let _a = unicode_is_fun + " really fun!";
    |                                                  -------------- ^ -------------- &str

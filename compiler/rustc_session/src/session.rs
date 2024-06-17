@@ -16,7 +16,9 @@ use rustc_data_structures::sync::{
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType, stderr_destination};
+use rustc_errors::emitter::{
+    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
+};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -965,6 +967,11 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
@@ -1468,6 +1475,11 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .short_message(short),
             )
         }
