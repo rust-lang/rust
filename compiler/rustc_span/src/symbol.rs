@@ -1175,6 +1175,7 @@ symbols! {
         mir_assume,
         mir_basic_block,
         mir_call,
+        mir_cast_ptr_to_ptr,
         mir_cast_transmute,
         mir_checked,
         mir_copy_for_deref,
