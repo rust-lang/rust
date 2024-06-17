@@ -2491,14 +2491,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 true,
             );
             // This block is for the failure case
-            let failure = this.bind_pattern(
-                this.source_info(else_block_span),
-                wildcard,
-                &[],
-                initializer_span,
-                None,
-                true,
-            );
+            let failure = wildcard.pre_binding_block.unwrap();
 
             // If branch coverage is enabled, record this branch.
             this.visit_coverage_conditional_let(pattern, matching, failure);
