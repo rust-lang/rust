@@ -756,7 +756,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 || tcx.hir().body_const_context(def_id).is_some()
             {
                 tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
-                tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
+                tcx.ensure().unused_generic_params(ty::InstanceKind::Item(def_id.to_def_id()));
             }
         }
     });

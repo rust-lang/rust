@@ -1693,7 +1693,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
             }
 
-            let instance = ty::InstanceDef::Item(def_id.to_def_id());
+            let instance = ty::InstanceKind::Item(def_id.to_def_id());
             let unused = tcx.unused_generic_params(instance);
             self.tables.unused_generic_params.set(def_id.local_def_index, unused);
         }

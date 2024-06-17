@@ -224,7 +224,7 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
+    self, AssocKind, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
@@ -420,7 +420,7 @@ fn collect_items_rec<'tcx>(
                     used_items.push(respan(
                         starting_item.span,
                         MonoItem::Fn(Instance {
-                            def: InstanceDef::ThreadLocalShim(def_id),
+                            def: InstanceKind::ThreadLocalShim(def_id),
                             args: GenericArgs::empty(),
                         }),
                     ));
@@ -938,7 +938,7 @@ fn visit_instance_use<'tcx>(
     if !should_codegen_locally(tcx, instance) {
         return;
     }
-    if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
+    if let ty::InstanceKind::Intrinsic(def_id) = instance.def {
         let name = tcx.item_name(def_id);
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
             // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
@@ -960,31 +960,31 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(_) => {
+        ty::InstanceKind::Virtual(..) | ty::InstanceKind::Intrinsic(_) => {
             if !is_direct_call {
                 bug!("{:?} being reified", instance);
             }
         }
-        ty::InstanceDef::ThreadLocalShim(..) => {
+        ty::InstanceKind::ThreadLocalShim(..) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) => {
+        ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
-        ty::InstanceDef::DropGlue(_, Some(_))
-        | ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(_))
-        | ty::InstanceDef::VTableShim(..)
-        | ty::InstanceDef::ReifyShim(..)
-        | ty::InstanceDef::ClosureOnceShim { .. }
-        | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceDef::CoroutineKindShim { .. }
-        | ty::InstanceDef::Item(..)
-        | ty::InstanceDef::FnPtrShim(..)
-        | ty::InstanceDef::CloneShim(..)
-        | ty::InstanceDef::FnPtrAddrShim(..) => {
+        ty::InstanceKind::DropGlue(_, Some(_))
+        | ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(_))
+        | ty::InstanceKind::VTableShim(..)
+        | ty::InstanceKind::ReifyShim(..)
+        | ty::InstanceKind::ClosureOnceShim { .. }
+        | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+        | ty::InstanceKind::CoroutineKindShim { .. }
+        | ty::InstanceKind::Item(..)
+        | ty::InstanceKind::FnPtrShim(..)
+        | ty::InstanceKind::CloneShim(..)
+        | ty::InstanceKind::FnPtrAddrShim(..) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }

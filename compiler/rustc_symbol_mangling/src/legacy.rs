@@ -56,8 +56,8 @@ pub(super) fn mangle<'tcx>(
     printer
         .print_def_path(
             def_id,
-            if let ty::InstanceDef::DropGlue(_, _) | ty::InstanceDef::AsyncDropGlueCtorShim(_, _) =
-                instance.def
+            if let ty::InstanceKind::DropGlue(_, _)
+            | ty::InstanceKind::AsyncDropGlueCtorShim(_, _) = instance.def
             {
                 // Add the name of the dropped type to the symbol name
                 &*instance.args
@@ -68,13 +68,13 @@ pub(super) fn mangle<'tcx>(
         .unwrap();
 
     match instance.def {
-        ty::InstanceDef::ThreadLocalShim(..) => {
+        ty::InstanceKind::ThreadLocalShim(..) => {
             printer.write_str("{{tls-shim}}").unwrap();
         }
-        ty::InstanceDef::VTableShim(..) => {
+        ty::InstanceKind::VTableShim(..) => {
             printer.write_str("{{vtable-shim}}").unwrap();
         }
-        ty::InstanceDef::ReifyShim(_, reason) => {
+        ty::InstanceKind::ReifyShim(_, reason) => {
             printer.write_str("{{reify-shim").unwrap();
             match reason {
                 Some(ReifyReason::FnPtr) => printer.write_str("-fnptr").unwrap(),
@@ -85,8 +85,8 @@ pub(super) fn mangle<'tcx>(
         }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceDef::CoroutineKindShim { .. } => {
+        ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+        | ty::InstanceKind::CoroutineKindShim { .. } => {
             printer.write_str("{{fn-once-shim}}").unwrap();
         }
         _ => {}

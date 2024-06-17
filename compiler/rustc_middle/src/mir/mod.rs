@@ -10,7 +10,7 @@ use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, Instance, InstanceDef, UserTypeAnnotationIndex};
+use crate::ty::{AdtDef, Instance, InstanceKind, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, GenericArgsRef};
 
 use rustc_data_structures::captures::Captures;
@@ -233,7 +233,7 @@ impl RuntimePhase {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct MirSource<'tcx> {
-    pub instance: InstanceDef<'tcx>,
+    pub instance: InstanceKind<'tcx>,
 
     /// If `Some`, this is a promoted rvalue within the parent function.
     pub promoted: Option<Promoted>,
@@ -241,10 +241,10 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
+        MirSource { instance: InstanceKind::Item(def_id), promoted: None }
     }
 
-    pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
+    pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
         MirSource { instance, promoted: None }
     }
 

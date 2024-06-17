@@ -1,5 +1,5 @@
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ty::{GenericArgs, Instance, InstanceDef, SymbolName, TyCtxt};
+use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n::BaseNString;
 use rustc_data_structures::base_n::ToBaseN;
@@ -56,7 +56,7 @@ impl<'tcx> MonoItem<'tcx> {
     /// Returns `true` if the mono item is user-defined (i.e. not compiler-generated, like shims).
     pub fn is_user_defined(&self) -> bool {
         match *self {
-            MonoItem::Fn(instance) => matches!(instance.def, InstanceDef::Item(..)),
+            MonoItem::Fn(instance) => matches!(instance.def, InstanceKind::Item(..)),
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => true,
         }
     }
@@ -69,9 +69,9 @@ impl<'tcx> MonoItem<'tcx> {
                 match instance.def {
                     // "Normal" functions size estimate: the number of
                     // statements, plus one for the terminator.
-                    InstanceDef::Item(..)
-                    | InstanceDef::DropGlue(..)
-                    | InstanceDef::AsyncDropGlueCtorShim(..) => {
+                    InstanceKind::Item(..)
+                    | InstanceKind::DropGlue(..)
+                    | InstanceKind::AsyncDropGlueCtorShim(..) => {
                         let mir = tcx.instance_mir(instance.def);
                         mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
                     }
@@ -407,20 +407,20 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => def.as_local().map(Idx::index),
-                            InstanceDef::VTableShim(..)
-                            | InstanceDef::ReifyShim(..)
-                            | InstanceDef::Intrinsic(..)
-                            | InstanceDef::FnPtrShim(..)
-                            | InstanceDef::Virtual(..)
-                            | InstanceDef::ClosureOnceShim { .. }
-                            | InstanceDef::ConstructCoroutineInClosureShim { .. }
-                            | InstanceDef::CoroutineKindShim { .. }
-                            | InstanceDef::DropGlue(..)
-                            | InstanceDef::CloneShim(..)
-                            | InstanceDef::ThreadLocalShim(..)
-                            | InstanceDef::FnPtrAddrShim(..)
-                            | InstanceDef::AsyncDropGlueCtorShim(..) => None,
+                            InstanceKind::Item(def) => def.as_local().map(Idx::index),
+                            InstanceKind::VTableShim(..)
+                            | InstanceKind::ReifyShim(..)
+                            | InstanceKind::Intrinsic(..)
+                            | InstanceKind::FnPtrShim(..)
+                            | InstanceKind::Virtual(..)
+                            | InstanceKind::ClosureOnceShim { .. }
+                            | InstanceKind::ConstructCoroutineInClosureShim { .. }
+                            | InstanceKind::CoroutineKindShim { .. }
+                            | InstanceKind::DropGlue(..)
+                            | InstanceKind::CloneShim(..)
+                            | InstanceKind::ThreadLocalShim(..)
+                            | InstanceKind::FnPtrAddrShim(..)
+                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),

@@ -8,7 +8,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
 use rustc_middle::{
     hir::place::PlaceBase,
     mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
@@ -1020,7 +1020,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn suggest_using_iter_mut(&self, err: &mut Diag<'_>) {
         let source = self.body.source;
         let hir = self.infcx.tcx.hir();
-        if let InstanceDef::Item(def_id) = source.instance
+        if let InstanceKind::Item(def_id) = source.instance
             && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) = hir.get_if_local(def_id)
             && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
             && let Node::Expr(expr) = self.infcx.tcx.parent_hir_node(*hir_id)

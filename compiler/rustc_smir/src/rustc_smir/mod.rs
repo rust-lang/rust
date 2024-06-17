@@ -60,9 +60,9 @@ impl<'tcx> Tables<'tcx> {
         self.item_has_body(def_id)
             || !matches!(
                 instance.def,
-                ty::InstanceDef::Virtual(..)
-                    | ty::InstanceDef::Intrinsic(..)
-                    | ty::InstanceDef::Item(..)
+                ty::InstanceKind::Virtual(..)
+                    | ty::InstanceKind::Intrinsic(..)
+                    | ty::InstanceKind::Item(..)
             )
     }
 
