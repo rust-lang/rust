@@ -103,7 +103,8 @@ macro_rules! iterator {
                 // so this new pointer is inside `self` and thus guaranteed to be non-null.
                 unsafe {
                     if_zst!(mut self,
-                        len => *len = len.unchecked_sub(offset),
+                        // Using the intrinsic directly avoids emitting a UbCheck
+                        len => *len = crate::intrinsics::unchecked_sub(*len, offset),
                         _end => self.ptr = self.ptr.add(offset),
                     );
                 }
@@ -119,7 +120,8 @@ macro_rules! iterator {
                     // SAFETY: By our precondition, `offset` can be at most the
                     // current length, so the subtraction can never overflow.
                     len => unsafe {
-                        *len = len.unchecked_sub(offset);
+                        // Using the intrinsic directly avoids emitting a UbCheck
+                        *len = crate::intrinsics::unchecked_sub(*len, offset);
                         self.ptr
                     },
                     // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
