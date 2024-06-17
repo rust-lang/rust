@@ -218,51 +218,56 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
+    #[allow(clippy::similar_names)]
     pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
-        /// Finds the field named `name` in the field. Always return `Some` for
-        /// convenience.
-        fn get_field<'c>(name: &str, fields: &'c [hir::ExprField<'_>]) -> Option<&'c Expr<'c>> {
-            let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
-            Some(expr)
-        }
-
         match expr.kind {
-            ExprKind::Call(path, args)
+            ExprKind::Call(path, [arg1, arg2])
                 if matches!(
                     path.kind,
                     ExprKind::Path(QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
                 ) =>
             {
                 Some(Range {
-                    start: Some(&args[0]),
-                    end: Some(&args[1]),
+                    start: Some(arg1),
+                    end: Some(arg2),
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            ExprKind::Struct(path, fields, None) => match &path {
-                QPath::LangItem(hir::LangItem::RangeFull, ..) => Some(Range {
+            ExprKind::Struct(path, fields, None) => match (path, fields) {
+                (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 }),
-                QPath::LangItem(hir::LangItem::RangeFrom, ..) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                QPath::LangItem(hir::LangItem::Range, ..) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                QPath::LangItem(hir::LangItem::RangeToInclusive, ..) => Some(Range {
+                (QPath::LangItem(hir::LangItem::RangeFrom, ..), [field]) if field.ident.name == sym::start => {
+                    Some(Range {
+                        start: Some(field.expr),
+                        end: None,
+                        limits: ast::RangeLimits::HalfOpen,
+                    })
+                },
+                (QPath::LangItem(hir::LangItem::Range, ..), [field1, field2]) => {
+                    let (start, end) = match (field1.ident.name, field2.ident.name) {
+                        (sym::start, sym::end) => (field1.expr, field2.expr),
+                        (sym::end, sym::start) => (field2.expr, field1.expr),
+                        _ => return None,
+                    };
+                    Some(Range {
+                        start: Some(start),
+                        end: Some(end),
+                        limits: ast::RangeLimits::HalfOpen,
+                    })
+                },
+                (QPath::LangItem(hir::LangItem::RangeToInclusive, ..), [field]) if field.ident.name == sym::end => {
+                    Some(Range {
+                        start: None,
+                        end: Some(field.expr),
+                        limits: ast::RangeLimits::Closed,
+                    })
+                },
+                (QPath::LangItem(hir::LangItem::RangeTo, ..), [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::Closed,
-                }),
-                QPath::LangItem(hir::LangItem::RangeTo, ..) => Some(Range {
-                    start: None,
-                    end: Some(get_field("end", fields)?),
+                    end: Some(field.expr),
                     limits: ast::RangeLimits::HalfOpen,
                 }),
                 _ => None,
