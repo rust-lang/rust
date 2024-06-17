@@ -2873,6 +2873,8 @@ pub struct AssociatedConstElidedLifetime {
 
     pub code: &'static str,
     pub elided: bool,
+    #[note]
+    pub lifetimes_in_scope: MultiSpan,
 }
 
 #[derive(LintDiagnostic)]

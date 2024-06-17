@@ -14,6 +14,7 @@ lint_associated_const_elided_lifetime = {$elided ->
         *[false] `'_` cannot be used here
     }
     .suggestion = use the `'static` lifetime
+    .note = cannot automatically infer `'static` because of other lifetimes in scope
 
 lint_async_fn_in_trait = use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
     .note = you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
