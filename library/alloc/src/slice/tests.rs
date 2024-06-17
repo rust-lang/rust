@@ -197,7 +197,8 @@ fn panic_safe() {
 
     let mut rng = test_rng();
 
-    let lens = if cfg!(miri) { (1..10).chain(30..36) } else { (1..20).chain(70..MAX_LEN) };
+    // Miri is too slow (but still need to `chain` to make the types match)
+    let lens = if cfg!(miri) { (1..10).chain(0..0) } else { (1..20).chain(70..MAX_LEN) };
     let moduli: &[u32] = if cfg!(miri) { &[5] } else { &[5, 20, 50] };
 
     for len in lens {
