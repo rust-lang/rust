@@ -112,25 +112,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Shift ops can have an RHS with a different numeric type.
         if matches!(bin_op, Shl | ShlUnchecked | Shr | ShrUnchecked) {
-            let size = left.layout.size.bits();
+            let l_bits = left.layout.size.bits();
             // Compute the equivalent shift modulo `size` that is in the range `0..size`. (This is
             // the one MIR operator that does *not* directly map to a single LLVM operation.)
             let (shift_amount, overflow) = if right.layout.abi.is_signed() {
                 let shift_amount = r_signed();
-                let overflow = shift_amount < 0 || shift_amount >= i128::from(size);
-                // Deliberately wrapping `as` casts: shift_amount *can* be negative, but the result
-                // of the `as` will be equal modulo `size` (since it is a power of two).
-                let masked_amount = (shift_amount as u128) % u128::from(size);
-                assert_eq!(overflow, shift_amount != i128::try_from(masked_amount).unwrap());
-                (masked_amount, overflow)
+                let rem = shift_amount.rem_euclid(l_bits.into());
+                // `rem` is guaranteed positive, so the `unwrap` cannot fail
+                (u128::try_from(rem).unwrap(), rem != shift_amount)
             } else {
                 let shift_amount = r_unsigned();
-                let overflow = shift_amount >= u128::from(size);
-                let masked_amount = shift_amount % u128::from(size);
-                assert_eq!(overflow, shift_amount != masked_amount);
-                (masked_amount, overflow)
+                let rem = shift_amount.rem_euclid(l_bits.into());
+                (rem, rem != shift_amount)
             };
-            let shift_amount = u32::try_from(shift_amount).unwrap(); // we masked so this will always fit
+            let shift_amount = u32::try_from(shift_amount).unwrap(); // we brought this in the range `0..size` so this will always fit
             // Compute the shifted result.
             let result = if left.layout.abi.is_signed() {
                 let l = l_signed();
@@ -362,14 +357,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let left = left.to_scalar();
                 let right = right.to_scalar();
                 Ok(match fty {
-                    FloatTy::F16 => unimplemented!("f16_f128"),
+                    FloatTy::F16 => {
+                        self.binary_float_op(bin_op, layout, left.to_f16()?, right.to_f16()?)
+                    }
                     FloatTy::F32 => {
                         self.binary_float_op(bin_op, layout, left.to_f32()?, right.to_f32()?)
                     }
                     FloatTy::F64 => {
                         self.binary_float_op(bin_op, layout, left.to_f64()?, right.to_f64()?)
                     }
-                    FloatTy::F128 => unimplemented!("f16_f128"),
+                    FloatTy::F128 => {
+                        self.binary_float_op(bin_op, layout, left.to_f128()?, right.to_f128()?)
+                    }
                 })
             }
             _ if left.layout.ty.is_integral() => {
@@ -429,11 +428,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             ty::Float(fty) => {
                 let val = val.to_scalar();
+                if un_op != Neg {
+                    span_bug!(self.cur_span(), "Invalid float op {:?}", un_op);
+                }
+
                 // No NaN adjustment here, `-` is a bitwise operation!
-                let res = match (un_op, fty) {
-                    (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
-                    (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
-                    _ => span_bug!(self.cur_span(), "Invalid float op {:?}", un_op),
+                let res = match fty {
+                    FloatTy::F16 => Scalar::from_f16(-val.to_f16()?),
+                    FloatTy::F32 => Scalar::from_f32(-val.to_f32()?),
+                    FloatTy::F64 => Scalar::from_f64(-val.to_f64()?),
+                    FloatTy::F128 => Scalar::from_f128(-val.to_f128()?),
                 };
                 Ok(ImmTy::from_scalar(res, layout))
             }

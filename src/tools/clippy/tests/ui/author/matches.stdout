@@ -1,4 +1,4 @@
-if let StmtKind::Local(local) = stmt.kind
+if let StmtKind::Let(local) = stmt.kind
     && let Some(init) = local.init
     && let ExprKind::Match(scrutinee, arms, MatchSource::Normal) = init.kind
     && let ExprKind::Lit(ref lit) = scrutinee.kind
@@ -16,7 +16,7 @@ if let StmtKind::Local(local) = stmt.kind
     && arms[1].guard.is_none()
     && let ExprKind::Block(block, None) = arms[1].body.kind
     && block.stmts.len() == 1
-    && let StmtKind::Local(local1) = block.stmts[0].kind
+    && let StmtKind::Let(local1) = block.stmts[0].kind
     && let Some(init1) = local1.init
     && let ExprKind::Lit(ref lit4) = init1.kind
     && let LitKind::Int(3, LitIntType::Unsuffixed) = lit4.node

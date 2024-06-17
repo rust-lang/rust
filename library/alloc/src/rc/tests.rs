@@ -606,6 +606,23 @@ fn test_unique_rc_drops_contents() {
     assert!(dropped);
 }
 
+/// Exercise the non-default allocator usage.
+#[test]
+fn test_unique_rc_with_alloc_drops_contents() {
+    let mut dropped = false;
+    struct DropMe<'a>(&'a mut bool);
+    impl Drop for DropMe<'_> {
+        fn drop(&mut self) {
+            *self.0 = true;
+        }
+    }
+    {
+        let rc = UniqueRc::new_in(DropMe(&mut dropped), std::alloc::System);
+        drop(rc);
+    }
+    assert!(dropped);
+}
+
 #[test]
 fn test_unique_rc_weak_clone_holding_ref() {
     let mut v = UniqueRc::new(0u8);
@@ -613,4 +630,13 @@ fn test_unique_rc_weak_clone_holding_ref() {
     let r = &mut *v;
     let _ = w.clone(); // touch weak count
     *r = 123;
+}
+
+#[test]
+fn test_unique_rc_unsizing_coercion() {
+    let mut rc: UniqueRc<[u8]> = UniqueRc::new([0u8; 3]);
+    assert_eq!(rc.len(), 3);
+    rc[0] = 123;
+    let rc: Rc<[u8]> = UniqueRc::into_rc(rc);
+    assert_eq!(*rc, [123, 0, 0]);
 }

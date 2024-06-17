@@ -117,4 +117,17 @@ mod issue_12016 {
     }
 }
 
+fn in_closure() {
+    let v = vec![1, 2, 3];
+    if v.into_iter()
+        .filter(|x| {
+            let y = x + 1;
+            y > 3
+        })
+        .any(|x| x == 5)
+    {
+        println!("contains 4!");
+    }
+}
+
 fn main() {}

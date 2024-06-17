@@ -6,9 +6,9 @@ use crate::session_diagnostics::{
 };
 use rustc_errors::{Applicability, Diag};
 use rustc_errors::{DiagCtxt, MultiSpan};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
+use rustc_hir::{self as hir, LangItem};
 use rustc_index::IndexSlice;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::SelectionError;
@@ -116,7 +116,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             if let ty::FnDef(id, _) = *const_.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-                if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
+                if self.infcx.tcx.is_lang_item(self.infcx.tcx.parent(id), LangItem::FnOnce) {
                     let closure = match args.first() {
                         Some(Spanned {
                             node: Operand::Copy(place) | Operand::Move(place), ..
@@ -767,13 +767,12 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             ty::FnDef(def_id, args) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 
-                let lang_items = tcx.lang_items();
-                if Some(trait_id) == lang_items.deref_trait()
-                    || Some(trait_id) == lang_items.deref_mut_trait()
+                if tcx.is_lang_item(trait_id, LangItem::Deref)
+                    || tcx.is_lang_item(trait_id, LangItem::DerefMut)
                 {
                     Some(BorrowedContentSource::OverloadedDeref(args.type_at(0)))
-                } else if Some(trait_id) == lang_items.index_trait()
-                    || Some(trait_id) == lang_items.index_mut_trait()
+                } else if tcx.is_lang_item(trait_id, LangItem::Index)
+                    || tcx.is_lang_item(trait_id, LangItem::IndexMut)
                 {
                     Some(BorrowedContentSource::OverloadedIndex(args.type_at(0)))
                 } else {
@@ -1041,7 +1040,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .unwrap_or_else(|| "value".to_owned());
             match kind {
                 CallKind::FnCall { fn_trait_id, self_ty }
-                    if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
+                    if self.infcx.tcx.is_lang_item(fn_trait_id, LangItem::FnOnce) =>
                 {
                     err.subdiagnostic(
                         self.dcx(),
@@ -1268,7 +1267,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let ty = moved_place.ty(self.body, tcx).ty;
 
                         if let ty::Adt(def, args) = ty.peel_refs().kind()
-                            && Some(def.did()) == tcx.lang_items().pin_type()
+                            && tcx.is_lang_item(def.did(), LangItem::Pin)
                             && let ty::Ref(_, _, hir::Mutability::Mut) = args.type_at(0).kind()
                             && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,

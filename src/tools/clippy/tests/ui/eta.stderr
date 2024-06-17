@@ -190,5 +190,17 @@ error: redundant closure
 LL |                     test.map(|t| t.method())
    |                              ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `crate::issue_10854::d::Test::method`
 
-error: aborting due to 31 previous errors
+error: redundant closure
+  --> tests/ui/eta.rs:477:38
+   |
+LL |         let x = Box::new(|| None.map(|x| f(x)));
+   |                                      ^^^^^^^^ help: replace the closure with the function itself: `&f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:481:38
+   |
+LL |         let x = Box::new(|| None.map(|x| f(x)));
+   |                                      ^^^^^^^^ help: replace the closure with the function itself: `f`
+
+error: aborting due to 33 previous errors
 

@@ -198,5 +198,5 @@ pub fn exit(code: i32) -> ! {
 }
 
 pub fn getpid() -> u32 {
-    unsafe { hermit_abi::getpid() }
+    unsafe { hermit_abi::getpid() as u32 }
 }

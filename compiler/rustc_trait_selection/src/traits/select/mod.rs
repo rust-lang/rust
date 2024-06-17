@@ -32,7 +32,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::relate::MatchAgainstFreshVars;
+use rustc_hir::LangItem;
 use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
@@ -60,6 +60,7 @@ use std::ops::ControlFlow;
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
+mod _match;
 mod candidate_assembly;
 mod confirmation;
 
@@ -1866,7 +1867,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
         let is_global =
-            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
+            |cand: ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
         // `DiscriminantKindCandidate`, `ConstDestructCandidate`
@@ -1909,7 +1910,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             (
-                ParamCandidate(ref other_cand),
+                ParamCandidate(other_cand),
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
@@ -1934,12 +1935,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 //
                 // Global bounds from the where clause should be ignored
                 // here (see issue #50825).
-                DropVictim::drop_if(!is_global(other_cand))
+                DropVictim::drop_if(!is_global(*other_cand))
             }
-            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref victim_cand)) => {
+            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(victim_cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                if is_global(victim_cand) { DropVictim::Yes } else { DropVictim::No }
+                if is_global(*victim_cand) { DropVictim::Yes } else { DropVictim::No }
             }
             (
                 ImplCandidate(_)
@@ -1957,12 +1958,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate,
-                ParamCandidate(ref victim_cand),
+                ParamCandidate(victim_cand),
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
                 DropVictim::drop_if(
-                    is_global(victim_cand) && other.evaluation.must_apply_modulo_regions(),
+                    is_global(*victim_cand) && other.evaluation.must_apply_modulo_regions(),
                 )
             }
 
@@ -2719,7 +2720,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         previous: ty::PolyTraitPredicate<'tcx>,
         current: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        let mut matcher = MatchAgainstFreshVars::new(self.tcx());
+        let mut matcher = _match::MatchAgainstFreshVars::new(self.tcx());
         matcher.relate(previous, current).is_ok()
     }
 
@@ -2800,19 +2801,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let predicates = predicates.instantiate_own(tcx, args);
         let mut obligations = Vec::with_capacity(predicates.len());
         for (index, (predicate, span)) in predicates.into_iter().enumerate() {
-            let cause =
-                if Some(parent_trait_pred.def_id()) == tcx.lang_items().coerce_unsized_trait() {
-                    cause.clone()
-                } else {
-                    cause.clone().derived_cause(parent_trait_pred, |derived| {
-                        ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
-                            derived,
-                            impl_or_alias_def_id: def_id,
-                            impl_def_predicate_index: Some(index),
-                            span,
-                        }))
-                    })
-                };
+            let cause = if tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
+                cause.clone()
+            } else {
+                cause.clone().derived_cause(parent_trait_pred, |derived| {
+                    ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
+                        derived,
+                        impl_or_alias_def_id: def_id,
+                        impl_def_predicate_index: Some(index),
+                        span,
+                    }))
+                })
+            };
             let clause = normalize_with_depth_to(
                 self,
                 param_env,

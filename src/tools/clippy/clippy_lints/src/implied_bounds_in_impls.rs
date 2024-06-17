@@ -3,8 +3,8 @@ use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier, TyKind, AssocItemConstraint,
-    WherePredicate,
+    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier,
+    TyKind, WherePredicate,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -83,8 +83,8 @@ fn emit_lint(
 
             let mut sugg = vec![(implied_span_extended, String::new())];
 
-            // We also might need to include associated item constraints that were specified in the implied bound,
-            // but omitted in the implied-by bound:
+            // We also might need to include associated item constraints that were specified in the implied
+            // bound, but omitted in the implied-by bound:
             // `fn f() -> impl Deref<Target = u8> + DerefMut`
             // If we're going to suggest removing `Deref<..>`, we'll need to put `<Target = u8>` on `DerefMut`
             let omitted_constraints: Vec<_> = implied_constraints

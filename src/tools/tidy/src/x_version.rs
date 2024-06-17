@@ -52,7 +52,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
             );
         }
     } else {
-        return tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status);
+        tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status)
     }
 }
 

@@ -26,27 +26,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Duplicated in dist-various-2 Dockerfile.
 # FIXME: Move to canonical triple
 ENV \
-    AR_x86_64_fuchsia=x86_64-unknown-fuchsia-ar \
-    CC_x86_64_fuchsia=x86_64-unknown-fuchsia-clang \
-    CFLAGS_x86_64_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
-    CXX_x86_64_fuchsia=x86_64-unknown-fuchsia-clang++ \
-    CXXFLAGS_x86_64_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
-    LDFLAGS_x86_64_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib"
+    AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
+    CC_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang \
+    CFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    CXX_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang++ \
+    CXXFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib"
 
 WORKDIR /tmp
 COPY scripts/shared.sh /tmp/
 COPY scripts/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
 
-ENV CARGO_TARGET_X86_64_FUCHSIA_AR /usr/local/bin/llvm-ar
-ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
+ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_AR /usr/local/bin/llvm-ar
+ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS \
   -C panic=abort \
   -C force-unwind-tables=yes \
   -C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot \
   -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot/lib \
   -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib
 
-ENV TARGETS=x86_64-fuchsia
+ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 
@@ -69,11 +69,11 @@ ENV RUST_CONFIGURE_ARGS \
   --llvm-libunwind=in-tree \
   --enable-extended \
   --disable-docs \
-  --set target.x86_64-fuchsia.cc=/usr/local/bin/clang \
-  --set target.x86_64-fuchsia.cxx=/usr/local/bin/clang++ \
-  --set target.x86_64-fuchsia.ar=/usr/local/bin/llvm-ar \
-  --set target.x86_64-fuchsia.ranlib=/usr/local/bin/llvm-ranlib \
-  --set target.x86_64-fuchsia.linker=/usr/local/bin/ld.lld
+  --set target.x86_64-unknown-fuchsia.cc=/usr/local/bin/clang \
+  --set target.x86_64-unknown-fuchsia.cxx=/usr/local/bin/clang++ \
+  --set target.x86_64-unknown-fuchsia.ar=/usr/local/bin/llvm-ar \
+  --set target.x86_64-unknown-fuchsia.ranlib=/usr/local/bin/llvm-ranlib \
+  --set target.x86_64-unknown-fuchsia.linker=/usr/local/bin/ld.lld
 ENV SCRIPT \
     python3 ../x.py install --target $TARGETS compiler/rustc library/std clippy && \
     bash ../src/ci/docker/host-x86_64/x86_64-gnu-integration/build-fuchsia.sh

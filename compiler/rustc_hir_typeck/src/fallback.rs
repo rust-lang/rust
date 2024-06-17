@@ -14,6 +14,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::DUMMY_SP;
 use rustc_span::{def_id::LocalDefId, Span};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 #[derive(Copy, Clone)]
 pub enum DivergingFallbackBehavior {
@@ -344,6 +345,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // `!`.
         let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
         let unsafe_infer_vars = OnceCell::new();
+
+        self.lint_obligations_broken_by_never_type_fallback_change(behavior, &diverging_vids);
+
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
@@ -465,6 +469,56 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     UnsafeUseReason::Deref => errors::NeverTypeFallbackFlowingIntoUnsafe::Deref,
                 },
             );
+        }
+    }
+
+    fn lint_obligations_broken_by_never_type_fallback_change(
+        &self,
+        behavior: DivergingFallbackBehavior,
+        diverging_vids: &[ty::TyVid],
+    ) {
+        let DivergingFallbackBehavior::ToUnit = behavior else { return };
+
+        // Fallback happens if and only if there are diverging variables
+        if diverging_vids.is_empty() {
+            return;
+        }
+
+        // Returns errors which happen if fallback is set to `fallback`
+        let remaining_errors_if_fallback_to = |fallback| {
+            self.probe(|_| {
+                let obligations = self.fulfillment_cx.borrow().pending_obligations();
+                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
+                ocx.register_obligations(obligations.iter().cloned());
+
+                for &diverging_vid in diverging_vids {
+                    let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
+
+                    ocx.eq(&ObligationCause::dummy(), self.param_env, diverging_ty, fallback)
+                        .expect("expected diverging var to be unconstrained");
+                }
+
+                ocx.select_where_possible()
+            })
+        };
+
+        // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
+        // then this code will be broken by the never type fallback change.qba
+        let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
+        if unit_errors.is_empty()
+            && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
+            && let [ref mut never_error, ..] = never_errors.as_mut_slice()
+        {
+            self.adjust_fulfillment_error_for_expr_obligation(never_error);
+            self.tcx.emit_node_span_lint(
+                lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
+                self.tcx.local_def_id_to_hir_id(self.body_id),
+                self.tcx.def_span(self.body_id),
+                errors::DependencyOnUnitNeverTypeFallback {
+                    obligation_span: never_error.obligation.cause.span,
+                    obligation: never_error.obligation.predicate,
+                },
+            )
         }
     }
 

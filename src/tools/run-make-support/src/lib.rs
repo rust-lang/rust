@@ -37,6 +37,7 @@ pub use rustc::{aux_build, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
 #[track_caller]
+#[must_use]
 pub fn env_var(name: &str) -> String {
     match env::var(name) {
         Ok(v) => v,
@@ -45,6 +46,7 @@ pub fn env_var(name: &str) -> String {
 }
 
 #[track_caller]
+#[must_use]
 pub fn env_var_os(name: &str) -> OsString {
     match env::var_os(name) {
         Some(v) => v,
@@ -53,32 +55,38 @@ pub fn env_var_os(name: &str) -> OsString {
 }
 
 /// `TARGET`
+#[must_use]
 pub fn target() -> String {
     env_var("TARGET")
 }
 
 /// Check if target is windows-like.
+#[must_use]
 pub fn is_windows() -> bool {
     target().contains("windows")
 }
 
 /// Check if target uses msvc.
+#[must_use]
 pub fn is_msvc() -> bool {
     target().contains("msvc")
 }
 
 /// Check if target uses macOS.
+#[must_use]
 pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
 #[track_caller]
+#[must_use]
 pub fn python_command() -> Command {
     let python_path = env_var("PYTHON");
     Command::new(python_path)
 }
 
 #[track_caller]
+#[must_use]
 pub fn htmldocck() -> Command {
     let mut python = python_command();
     python.arg(source_root().join("src/etc/htmldocck.py"));
@@ -91,11 +99,41 @@ pub fn path<P: AsRef<Path>>(p: P) -> PathBuf {
 }
 
 /// Path to the root rust-lang/rust source checkout.
+#[must_use]
 pub fn source_root() -> PathBuf {
     env_var("SOURCE_ROOT").into()
 }
 
+/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
+#[cfg(target_family = "windows")]
+pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    if link.as_ref().exists() {
+        std::fs::remove_dir(link.as_ref()).unwrap();
+    }
+    use std::os::windows::fs;
+    fs::symlink_file(original.as_ref(), link.as_ref()).expect(&format!(
+        "failed to create symlink {:?} for {:?}",
+        link.as_ref().display(),
+        original.as_ref().display(),
+    ));
+}
+
+/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
+#[cfg(target_family = "unix")]
+pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    if link.as_ref().exists() {
+        std::fs::remove_dir(link.as_ref()).unwrap();
+    }
+    use std::os::unix::fs;
+    fs::symlink(original.as_ref(), link.as_ref()).expect(&format!(
+        "failed to create symlink {:?} for {:?}",
+        link.as_ref().display(),
+        original.as_ref().display(),
+    ));
+}
+
 /// Construct the static library name based on the platform.
+#[must_use]
 pub fn static_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
     //
@@ -120,6 +158,7 @@ pub fn static_lib_name(name: &str) -> String {
 }
 
 /// Construct the dynamic library name based on the platform.
+#[must_use]
 pub fn dynamic_lib_name(name: &str) -> String {
     // See tools.mk (irrelevant lines omitted):
     //
@@ -146,6 +185,7 @@ pub fn dynamic_lib_name(name: &str) -> String {
     }
 }
 
+#[must_use]
 pub fn dynamic_lib_extension() -> &'static str {
     if is_darwin() {
         "dylib"
@@ -157,16 +197,19 @@ pub fn dynamic_lib_extension() -> &'static str {
 }
 
 /// Generate the name a rust library (rlib) would have.
+#[must_use]
 pub fn rust_lib_name(name: &str) -> String {
     format!("lib{name}.rlib")
 }
 
 /// Construct the binary name based on platform.
+#[must_use]
 pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
 /// Return the current working directory.
+#[must_use]
 pub fn cwd() -> PathBuf {
     env::current_dir().unwrap()
 }
@@ -174,6 +217,7 @@ pub fn cwd() -> PathBuf {
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]
+#[must_use]
 pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
     let caller = panic::Location::caller();
     let mut cygpath = Command::new("cygpath");
@@ -189,6 +233,7 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
 
 /// Run `uname`. This assumes that `uname` is available on the platform!
 #[track_caller]
+#[must_use]
 pub fn uname() -> String {
     let caller = panic::Location::caller();
     let mut uname = Command::new("uname");
@@ -284,6 +329,18 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
 pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
     for entry in fs_wrapper::read_dir(dir) {
         callback(&entry.unwrap().path());
+    }
+}
+
+/// Check that `haystack` contains `needle`. Panic otherwise.
+#[track_caller]
+pub fn assert_contains(haystack: &str, needle: &str) {
+    if !haystack.contains(needle) {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle was not found in haystack");
     }
 }
 

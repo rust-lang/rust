@@ -17,9 +17,9 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
+    GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -861,7 +861,6 @@ impl core::ops::Add<u32> for EnumValue {
 }
 
 /// Attempts to read the given constant as though it were an enum value.
-#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
         match tcx.type_of(id).instantiate_identity().kind() {
@@ -1313,4 +1312,40 @@ pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>
 /// Checks if the type is `core::mem::ManuallyDrop<_>`
 pub fn is_manually_drop(ty: Ty<'_>) -> bool {
     ty.ty_adt_def().map_or(false, AdtDef::is_manually_drop)
+}
+
+/// Returns the deref chain of a type, starting with the type itself.
+pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'cx {
+    iter::successors(Some(ty), |&ty| {
+        if let Some(deref_did) = cx.tcx.lang_items().deref_trait()
+            && implements_trait(cx, ty, deref_did, &[])
+        {
+            make_normalized_projection(cx.tcx, cx.param_env, deref_did, sym::Target, [ty])
+        } else {
+            None
+        }
+    })
+}
+
+/// Checks if a Ty<'_> has some inherent method Symbol.
+/// This does not look for impls in the type's `Deref::Target` type.
+/// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
+pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<&'a AssocItem> {
+    if let Some(ty_did) = ty.ty_adt_def().map(AdtDef::did) {
+        cx.tcx
+            .inherent_impls(ty_did)
+            .into_iter()
+            .flatten()
+            .map(|&did| {
+                cx.tcx
+                    .associated_items(did)
+                    .filter_by_name_unhygienic(method_name)
+                    .next()
+                    .filter(|item| item.kind == AssocKind::Fn)
+            })
+            .next()
+            .flatten()
+    } else {
+        None
+    }
 }

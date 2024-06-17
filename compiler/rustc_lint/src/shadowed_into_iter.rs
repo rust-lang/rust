@@ -52,7 +52,7 @@ declare_lint! {
     /// Since Rust 1.80.0, boxed slices implement `IntoIterator`. However, to avoid
     /// breakage, `boxed_slice.into_iter()` in Rust 2015, 2018, and 2021 code will still
     /// behave as `(&boxed_slice).into_iter()`, returning an iterator over
-    /// references, just like in Rust 1.80.0 and earlier.
+    /// references, just like in Rust 1.79.0 and earlier.
     /// This only applies to the method call syntax `boxed_slice.into_iter()`, not to
     /// any other syntax such as `for _ in boxed_slice` or `IntoIterator::into_iter(boxed_slice)`.
     pub BOXED_SLICE_INTO_ITER,

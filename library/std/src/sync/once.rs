@@ -10,9 +10,15 @@ use crate::fmt;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sys::sync as sys;
 
-/// A synchronization primitive which can be used to run a one-time global
-/// initialization. Useful for one-time initialization for FFI or related
-/// functionality. This type can only be constructed with [`Once::new()`].
+/// A low-level synchronization primitive for one-time global execution.
+///
+/// Previously this was the only "execute once" synchronization in `std`.
+/// Other libraries implemented novel synchronizing types with `Once`, like
+/// [`OnceLock<T>`] or [`LazyLock<T, F>`], before those were added to `std`.
+/// `OnceLock<T>` in particular supersedes `Once` in functionality and should
+/// be preferred for the common case where the `Once` is associated with data.
+///
+/// This type can only be constructed with [`Once::new()`].
 ///
 /// # Examples
 ///
@@ -25,6 +31,9 @@ use crate::sys::sync as sys;
 ///     // run initialization here
 /// });
 /// ```
+///
+/// [`OnceLock<T>`]: crate::sync::OnceLock
+/// [`LazyLock<T, F>`]: crate::sync::LazyLock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Once {
     inner: sys::Once,

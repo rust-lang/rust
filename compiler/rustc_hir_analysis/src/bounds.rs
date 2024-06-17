@@ -53,7 +53,7 @@ impl<'tcx> Bounds<'tcx> {
             span,
         );
         // FIXME(-Znext-solver): We can likely remove this hack once the new trait solver lands.
-        if tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+        if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
             self.clauses.insert(0, clause);
         } else {
             self.clauses.push(clause);

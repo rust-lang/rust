@@ -440,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             // Given `Result<_, E>`, check our expected ty is `Result<_, &E>` for
             // `as_ref` and `as_deref` compatibility.
-            let error_tys_equate_as_ref = error_tys.map_or(true, |(found, expected)| {
+            let error_tys_equate_as_ref = error_tys.is_none_or(|(found, expected)| {
                 self.can_eq(
                     self.param_env,
                     Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, found),
@@ -489,10 +489,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 return true;
             } else if let ty::Adt(adt, _) = found_ty_inner.peel_refs().kind()
-                && Some(adt.did()) == self.tcx.lang_items().string()
+                && self.tcx.is_lang_item(adt.did(), LangItem::String)
                 && peeled.is_str()
                 // `Result::map`, conversely, does not take ref of the error type.
-                && error_tys.map_or(true, |(found, expected)| {
+                && error_tys.is_none_or(|(found, expected)| {
                     self.can_eq(self.param_env, found, expected)
                 })
             {
@@ -3147,7 +3147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         if let ty::Adt(adt, _) = expected_ty.kind()
-            && self.tcx.lang_items().range_struct() == Some(adt.did())
+            && self.tcx.is_lang_item(adt.did(), LangItem::Range)
         {
             return;
         }

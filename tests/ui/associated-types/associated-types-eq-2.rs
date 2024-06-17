@@ -76,7 +76,6 @@ trait Tr3<const N: i32, T2, T3> {
 impl Tr3<N
 //~^ ERROR associated item constraints are not allowed here
 //~| ERROR associated const equality is incomplete
-//~| ERROR trait takes 3 generic arguments but 0 generic arguments were supplied
 = 42, T2 = Qux, T3 = usize> for Bar {
 }
 
@@ -92,7 +91,6 @@ impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
 // matches the const param ident but the constraint is a type arg
 impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
 //~^ ERROR associated item constraints are not allowed here
-//~| ERROR trait takes 3 generic arguments but 0 generic arguments were supplied
 }
 
 // Test for when equality constraint's ident

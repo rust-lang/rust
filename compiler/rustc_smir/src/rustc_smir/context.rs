@@ -6,6 +6,7 @@
 #![allow(rustc::usage_of_qualified_ty)]
 
 use rustc_abi::HasDataLayout;
+use rustc_hir::LangItem;
 use rustc_middle::ty::layout::{
     FnAbiOf, FnAbiOfHelpers, HasParamEnv, HasTyCtxt, LayoutOf, LayoutOfHelpers,
 };
@@ -63,9 +64,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     }
 
     fn has_body(&self, def: DefId) -> bool {
-        let tables = self.0.borrow();
-        let def_id = tables[def];
-        tables.tcx.is_mir_available(def_id)
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let def_id = def.internal(&mut *tables, tcx);
+        tables.item_has_body(def_id)
     }
 
     fn foreign_modules(&self, crate_num: CrateNum) -> Vec<stable_mir::ty::ForeignModuleDef> {
@@ -295,7 +297,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
-        tables.tcx.lang_items().c_str() == Some(def_id)
+        tables.tcx.is_lang_item(def_id, LangItem::CStr)
     }
 
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
@@ -320,13 +322,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
         tcx.intrinsic(def_id).unwrap().name.to_string()
-    }
-
-    fn intrinsic_must_be_overridden(&self, def: IntrinsicDef) -> bool {
-        let mut tables = self.0.borrow_mut();
-        let tcx = tables.tcx;
-        let def_id = def.0.internal(&mut *tables, tcx);
-        tcx.intrinsic_raw(def_id).unwrap().must_be_overridden
     }
 
     fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
@@ -515,7 +510,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
         tables
-            .has_body(instance)
+            .instance_has_body(instance)
             .then(|| BodyBuilder::new(tables.tcx, instance).build(&mut *tables))
     }
 

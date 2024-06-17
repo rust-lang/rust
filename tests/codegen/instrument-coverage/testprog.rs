@@ -1,5 +1,5 @@
 //@ edition: 2021
-//@ needs-profiler-support
+//@ compile-flags: -Zno-profiler-runtime
 //@ compile-flags: -Cinstrument-coverage -Copt-level=0
 //@ revisions: LINUX DARWIN WINDOWS
 

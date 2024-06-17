@@ -5,8 +5,8 @@ LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
    |              ^^^ the trait `Trait<Bar>` is not implemented for `Foo`
    |
    = help: the following other types implement trait `Trait<T>`:
-             <Foo as Trait<()>>
-             <Foo as Trait<u32>>
+             `Foo` implements `Trait<()>`
+             `Foo` implements `Trait<u32>`
 
 error: aborting due to 1 previous error
 

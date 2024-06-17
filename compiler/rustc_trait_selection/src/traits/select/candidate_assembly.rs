@@ -67,9 +67,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Other bounds. Consider both in-scope bounds from fn decl
             // and applicable impls. There is a certain set of precedence rules here.
             let def_id = obligation.predicate.def_id();
-            let lang_items = self.tcx().lang_items();
+            let tcx = self.tcx();
 
-            if lang_items.copy_trait() == Some(def_id) {
+            if tcx.is_lang_item(def_id, LangItem::Copy) {
                 debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
 
                 // User-defined copy impls are permitted, but only for
@@ -79,16 +79,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // For other types, we'll use the builtin rules.
                 let copy_conditions = self.copy_clone_conditions(obligation);
                 self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
-            } else if lang_items.discriminant_kind_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::DiscriminantKind) {
                 // `DiscriminantKind` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
-            } else if lang_items.async_destruct_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::AsyncDestruct) {
                 // `AsyncDestruct` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
-            } else if lang_items.pointee_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::PointeeTrait) {
                 // `Pointee` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
-            } else if lang_items.sized_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::Sized) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
 
@@ -101,22 +101,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let sized_conditions = self.sized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
-            } else if lang_items.unsize_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-            } else if lang_items.destruct_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
                 self.assemble_const_destruct_candidates(obligation, &mut candidates);
-            } else if lang_items.transmute_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::TransmuteTrait) {
                 // User-defined transmutability impls are permitted.
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
-            } else if lang_items.tuple_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::Tuple) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if lang_items.pointer_like() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::PointerLike) {
                 self.assemble_candidate_for_pointer_like(obligation, &mut candidates);
-            } else if lang_items.fn_ptr_trait() == Some(def_id) {
+            } else if tcx.is_lang_item(def_id, LangItem::FnPtrTrait) {
                 self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
             } else {
-                if lang_items.clone_trait() == Some(def_id) {
+                if tcx.is_lang_item(def_id, LangItem::Clone) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
                     // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
                     // types have builtin support for `Clone`.
@@ -124,17 +124,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
                 }
 
-                if lang_items.coroutine_trait() == Some(def_id) {
+                if tcx.is_lang_item(def_id, LangItem::Coroutine) {
                     self.assemble_coroutine_candidates(obligation, &mut candidates);
-                } else if lang_items.future_trait() == Some(def_id) {
+                } else if tcx.is_lang_item(def_id, LangItem::Future) {
                     self.assemble_future_candidates(obligation, &mut candidates);
-                } else if lang_items.iterator_trait() == Some(def_id) {
+                } else if tcx.is_lang_item(def_id, LangItem::Iterator) {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
-                } else if lang_items.fused_iterator_trait() == Some(def_id) {
+                } else if tcx.is_lang_item(def_id, LangItem::FusedIterator) {
                     self.assemble_fused_iterator_candidates(obligation, &mut candidates);
-                } else if lang_items.async_iterator_trait() == Some(def_id) {
+                } else if tcx.is_lang_item(def_id, LangItem::AsyncIterator) {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
-                } else if lang_items.async_fn_kind_helper() == Some(def_id) {
+                } else if tcx.is_lang_item(def_id, LangItem::AsyncFnKindHelper) {
                     self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
                 }
 
@@ -239,24 +239,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(());
         }
 
-        let all_bounds = stack
+        let bounds = stack
             .obligation
             .param_env
             .caller_bounds()
             .iter()
             .filter(|p| !p.references_error())
-            .filter_map(|p| p.as_trait_clause());
-
-        // Micro-optimization: filter out predicates relating to different traits.
-        let matching_bounds =
-            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
+            .filter_map(|p| p.as_trait_clause())
+            // Micro-optimization: filter out predicates relating to different traits.
+            .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
+            .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
-        for bound in matching_bounds {
-            if bound.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity {
-                continue;
-            }
-
+        for bound in bounds {
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
             let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
@@ -755,7 +750,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.ambiguous = true;
                 }
                 ty::Coroutine(coroutine_def_id, _)
-                    if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
+                    if self.tcx().is_lang_item(def_id, LangItem::Unpin) =>
                 {
                     match self.tcx().coroutine_movability(coroutine_def_id) {
                         hir::Movability::Static => {

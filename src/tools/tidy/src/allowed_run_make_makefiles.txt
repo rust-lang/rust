@@ -1,5 +1,4 @@
 run-make/allocator-shim-circular-deps/Makefile
-run-make/allow-non-lint-warnings-cmdline/Makefile
 run-make/archive-duplicate-names/Makefile
 run-make/atomic-lock-free/Makefile
 run-make/branch-protection-check-IBT/Makefile
@@ -12,13 +11,11 @@ run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
 run-make/cdylib-fewer-symbols/Makefile
-run-make/codegen-options-parsing/Makefile
 run-make/comment-section/Makefile
 run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
 run-make/compressed-debuginfo/Makefile
-run-make/const_fn_mir/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/crate-name-priority/Makefile
 run-make/cross-lang-lto-clang/Makefile
@@ -27,13 +24,11 @@ run-make/cross-lang-lto-upstream-rlibs/Makefile
 run-make/cross-lang-lto/Makefile
 run-make/debug-assertions/Makefile
 run-make/debugger-visualizer-dep-info/Makefile
-run-make/dep-graph/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
-run-make/duplicate-output-flavors/Makefile
 run-make/dylib-chain/Makefile
 run-make/emit-path-unhashed/Makefile
 run-make/emit-shared-files/Makefile
@@ -226,9 +221,6 @@ run-make/std-core-cycle/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
 run-make/symbols-include-type-name/Makefile
-run-make/symlinked-extern/Makefile
-run-make/symlinked-libraries/Makefile
-run-make/symlinked-rlib/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
 run-make/target-cpu-native/Makefile
 run-make/target-specs/Makefile

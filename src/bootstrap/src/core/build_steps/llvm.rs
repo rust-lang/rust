@@ -159,7 +159,7 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
         // in that case.
         let closest_upstream = get_git_merge_base(&config.git_config(), Some(&config.src))
             .unwrap_or_else(|_| "HEAD".into());
-        let mut rev_list = config.git();
+        let mut rev_list = helpers::git(Some(&config.src));
         rev_list.args(&[
             PathBuf::from("rev-list"),
             format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
@@ -252,7 +252,7 @@ pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
-        let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
+        let head_sha = output(helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD"));
         let head_sha = head_sha.trim();
         llvm_sha == head_sha
     }

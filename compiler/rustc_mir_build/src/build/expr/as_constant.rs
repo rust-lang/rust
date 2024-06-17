@@ -2,6 +2,7 @@
 
 use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
+use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
@@ -142,7 +143,7 @@ fn lit_to_mir_constant<'tcx>(
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
         }
-        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
+        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.mk_const_alloc(allocation);

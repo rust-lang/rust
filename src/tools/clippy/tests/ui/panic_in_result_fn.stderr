@@ -34,5 +34,21 @@ note: return Err() instead of panicking
 LL |     panic!("error");
    |     ^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: used `panic!()` or assertion in a function that returns `Result`
+  --> tests/ui/panic_in_result_fn.rs:59:1
+   |
+LL | / fn in_closure() -> Result<bool, String> {
+LL | |     let c = || panic!();
+LL | |     c()
+LL | | }
+   | |_^
+   |
+   = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> tests/ui/panic_in_result_fn.rs:60:16
+   |
+LL |     let c = || panic!();
+   |                ^^^^^^^^
+
+error: aborting due to 3 previous errors
 

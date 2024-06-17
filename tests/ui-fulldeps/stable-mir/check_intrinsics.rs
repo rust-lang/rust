@@ -55,16 +55,19 @@ fn test_intrinsics() -> ControlFlow<()> {
 ///
 /// If by any chance this test breaks because you changed how an intrinsic is implemented, please
 /// update the test to invoke a different intrinsic.
+///
+/// In StableMIR, we only expose intrinsic body if they are not marked with
+/// `rustc_intrinsic_must_be_overridden`.
 fn check_instance(instance: &Instance) {
     assert_eq!(instance.kind, InstanceKind::Intrinsic);
     let name = instance.intrinsic_name().unwrap();
     if instance.has_body() {
         let Some(body) = instance.body() else { unreachable!("Expected a body") };
         assert!(!body.blocks.is_empty());
-        assert_matches!(name.as_str(), "likely" | "vtable_size");
+        assert_eq!(&name, "likely");
     } else {
         assert!(instance.body().is_none());
-        assert_eq!(&name, "size_of_val");
+        assert_matches!(name.as_str(), "size_of_val" | "vtable_size");
     }
 }
 
@@ -75,11 +78,13 @@ fn check_def(fn_def: FnDef) {
 
     let name = intrinsic.fn_name();
     match name.as_str() {
-        "likely" | "size_of_val" => {
+        "likely" => {
             assert!(!intrinsic.must_be_overridden());
+            assert!(fn_def.has_body());
         }
-        "vtable_size" => {
+        "vtable_size" | "size_of_val" => {
             assert!(intrinsic.must_be_overridden());
+            assert!(!fn_def.has_body());
         }
         _ => unreachable!("Unexpected intrinsic: {}", name),
     }
@@ -96,9 +101,9 @@ impl<'a> MirVisitor for CallsVisitor<'a> {
             TerminatorKind::Call { func, .. } => {
                 let TyKind::RigidTy(RigidTy::FnDef(def, args)) =
                     func.ty(self.locals).unwrap().kind()
-                else {
-                    return;
-                };
+                    else {
+                        return;
+                    };
                 self.calls.push((def, args.clone()));
             }
             _ => {}

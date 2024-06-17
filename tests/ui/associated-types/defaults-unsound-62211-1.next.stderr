@@ -31,18 +31,6 @@ help: consider further restricting `Self`
 LL | trait UncheckedCopy: Sized + AddAssign<&'static str> {
    |                            +++++++++++++++++++++++++
 
-error[E0271]: type mismatch resolving `<Self as Deref>::Target == str`
-  --> $DIR/defaults-unsound-62211-1.rs:24:96
-   |
-LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-   |                                                                                                ^^^^ types differ
-   |
-note: required by a bound in `UncheckedCopy::Output`
-  --> $DIR/defaults-unsound-62211-1.rs:24:31
-   |
-LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-   |                               ^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
-
 error[E0277]: the trait bound `Self: Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:24:96
    |
@@ -50,10 +38,10 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
    |                                                                                                ^^^^ the trait `Deref` is not implemented for `Self`
    |
 note: required by a bound in `UncheckedCopy::Output`
-  --> $DIR/defaults-unsound-62211-1.rs:24:25
+  --> $DIR/defaults-unsound-62211-1.rs:24:31
    |
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-   |                         ^^^^^^^^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
+   |                               ^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
 help: consider further restricting `Self`
    |
 LL | trait UncheckedCopy: Sized + Deref {
@@ -75,7 +63,6 @@ help: consider further restricting `Self`
 LL | trait UncheckedCopy: Sized + Copy {
    |                            ++++++
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0277`.

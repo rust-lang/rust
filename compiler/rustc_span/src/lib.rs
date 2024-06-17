@@ -520,6 +520,7 @@ impl SpanData {
     pub fn with_hi(&self, hi: BytePos) -> Span {
         Span::new(self.lo, hi, self.ctxt, self.parent)
     }
+    /// Avoid if possible, `Span::map_ctxt` should be preferred.
     #[inline]
     fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
         Span::new(self.lo, self.hi, ctxt, self.parent)
@@ -576,9 +577,8 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn with_ctxt(mut self, ctxt: SyntaxContext) -> Span {
-        self.update_ctxt(|_| ctxt);
-        self
+    pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
+        self.map_ctxt(|_| ctxt)
     }
     #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
@@ -967,7 +967,7 @@ impl Span {
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
     pub fn with_neighbor(self, neighbor: Span) -> Span {
         match Span::prepare_to_combine(self, neighbor) {
-            Ok((this, ..)) => Span::new(this.lo, this.hi, this.ctxt, this.parent),
+            Ok((this, ..)) => this.span(),
             Err(_) => self,
         }
     }
@@ -1059,40 +1059,47 @@ impl Span {
     }
 
     #[inline]
-    pub fn apply_mark(mut self, expn_id: ExpnId, transparency: Transparency) -> Span {
-        self.update_ctxt(|ctxt| ctxt.apply_mark(expn_id, transparency));
-        self
+    pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
+        self.map_ctxt(|ctxt| ctxt.apply_mark(expn_id, transparency))
     }
 
     #[inline]
     pub fn remove_mark(&mut self) -> ExpnId {
-        let mut span = self.data();
-        let mark = span.ctxt.remove_mark();
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = ExpnId::root();
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.remove_mark();
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.adjust(expn_id);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.glob_adjust(expn_id, glob_span);
+            ctxt
+        });
         mark
     }
 
@@ -1102,22 +1109,22 @@ impl Span {
         expn_id: ExpnId,
         glob_span: Span,
     ) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.reverse_glob_adjust(expn_id, glob_span);
+            ctxt
+        });
         mark
     }
 
     #[inline]
-    pub fn normalize_to_macros_2_0(mut self) -> Span {
-        self.update_ctxt(|ctxt| ctxt.normalize_to_macros_2_0());
-        self
+    pub fn normalize_to_macros_2_0(self) -> Span {
+        self.map_ctxt(|ctxt| ctxt.normalize_to_macros_2_0())
     }
 
     #[inline]
-    pub fn normalize_to_macro_rules(mut self) -> Span {
-        self.update_ctxt(|ctxt| ctxt.normalize_to_macro_rules());
-        self
+    pub fn normalize_to_macro_rules(self) -> Span {
+        self.map_ctxt(|ctxt| ctxt.normalize_to_macro_rules())
     }
 }
 
@@ -1355,7 +1362,7 @@ impl fmt::Debug for Span {
 
 impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&Span::new(self.lo, self.hi, self.ctxt, self.parent), f)
+        fmt::Debug::fmt(&self.span(), f)
     }
 }
 

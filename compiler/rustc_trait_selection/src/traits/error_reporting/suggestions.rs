@@ -794,7 +794,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
             obligation.predicate.kind().skip_binder()
-            && Some(trait_pred.def_id()) == self.tcx.lang_items().sized_trait()
+            && self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Sized)
         {
             // Don't suggest calling to turn an unsized type into a sized type
             return false;
@@ -1106,7 +1106,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             .iter()
                             .find_map(|pred| {
                                 if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && Some(proj.projection_term.def_id) == self.tcx.lang_items().fn_once_output()
+                        && self.tcx.is_lang_item(proj.projection_term.def_id,LangItem::FnOnceOutput)
                         // args tuple will always be args[1]
                         && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                                 {
@@ -1123,7 +1123,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ty::Dynamic(data, _, ty::Dyn) => {
                         data.iter().find_map(|pred| {
                             if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                        && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
+                        && self.tcx.is_lang_item(proj.def_id, LangItem::FnOnceOutput)
                         // for existential projection, args are shifted over by 1
                         && let ty::Tuple(args) = proj.args.type_at(0).kind()
                             {
@@ -1150,7 +1150,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         };
                         param_env.caller_bounds().iter().find_map(|pred| {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && Some(proj.projection_term.def_id) == self.tcx.lang_items().fn_once_output()
+                        && self.tcx.is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
                         && proj.projection_term.self_ty() == found
                         // args tuple will always be args[1]
                         && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
@@ -1822,7 +1822,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && box_path
                     .res
                     .opt_def_id()
-                    .is_some_and(|def_id| Some(def_id) == self.tcx.lang_items().owned_box())
+                    .is_some_and(|def_id| self.tcx.is_lang_item(def_id, LangItem::OwnedBox))
             {
                 // Don't box `Box::new`
                 vec![]
@@ -2737,7 +2737,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::RustCall => {
                 if let Some(pred) = predicate.as_trait_clause()
-                    && Some(pred.def_id()) == tcx.lang_items().sized_trait()
+                    && tcx.is_lang_item(pred.def_id(), LangItem::Sized)
                 {
                     err.note("argument required to be sized due to `extern \"rust-call\"` ABI");
                 }
@@ -2790,7 +2790,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // Check for foreign traits being reachable.
                         tcx.visible_parent_map(()).get(&def_id).is_some()
                     };
-                    if Some(def_id) == tcx.lang_items().sized_trait() {
+                    if tcx.is_lang_item(def_id, LangItem::Sized) {
                         // Check if this is an implicit bound, even in foreign crates.
                         if tcx
                             .generics_of(item_def_id)
@@ -3597,7 +3597,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         let rhs_span = match obligation.cause.code() {
             ObligationCauseCode::BinOp { rhs_span: Some(span), rhs_is_lit, .. } if *rhs_is_lit => {
@@ -4592,7 +4592,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         if ObligationCauseCode::QuestionMark != *obligation.cause.code().peel_derives() {
             return;
@@ -4602,10 +4602,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if let hir::Node::Item(item) = node
             && let hir::ItemKind::Fn(sig, _, body_id) = item.kind
             && let hir::FnRetTy::DefaultReturn(ret_span) = sig.decl.output
-            && self.tcx.is_diagnostic_item(sym::FromResidual, trait_ref.def_id())
-            && let ty::Tuple(l) = trait_ref.skip_binder().args.type_at(0).kind()
-            && l.len() == 0
-            && let ty::Adt(def, _) = trait_ref.skip_binder().args.type_at(1).kind()
+            && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())
+            && trait_pred.skip_binder().trait_ref.args.type_at(0).is_unit()
+            && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
             && self.tcx.is_diagnostic_item(sym::Result, def.did())
         {
             let body = self.tcx.hir().body(body_id);
@@ -4863,14 +4862,13 @@ impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
 pub(super) fn get_explanation_based_on_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-    trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+    trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
 ) -> String {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
         "consider using `()`, or a `Result`".to_owned()
     } else {
-        let ty_desc = match trait_ref.skip_binder().self_ty().kind() {
+        let ty_desc = match trait_predicate.self_ty().skip_binder().kind() {
             ty::FnDef(_, _) => Some("fn item"),
             ty::Closure(_, _) => Some("closure"),
             _ => None,
@@ -4895,7 +4893,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
                 trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
+                tcx.short_ty_string(trait_predicate.self_ty().skip_binder(), &mut None),
             )
         } else {
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is

@@ -114,8 +114,8 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
         // In the old trait solver, we arbitrarily choose lower vtable candidates
         // over higher ones.
         (
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base: a }),
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { vtable_base: b }),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object(a)),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object(b)),
         ) => a >= b,
         // Prefer dyn candidates over non-dyn candidates. This is necessary to
         // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.

@@ -16,7 +16,6 @@ pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeV
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
-pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -487,6 +486,8 @@ pub struct Term<'tcx> {
     ptr: NonNull<()>,
     marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
+
+impl<'tcx> rustc_type_ir::inherent::Term<TyCtxt<'tcx>> for Term<'tcx> {}
 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Term<'tcx> {
     type Kind = TermKind<'tcx>;

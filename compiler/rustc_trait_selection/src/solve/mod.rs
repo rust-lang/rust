@@ -235,17 +235,6 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
 }
 
 impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
-    #[instrument(level = "trace", skip(self, goals))]
-    fn add_goals(
-        &mut self,
-        source: GoalSource,
-        goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) {
-        for goal in goals {
-            self.add_goal(source, goal);
-        }
-    }
-
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.

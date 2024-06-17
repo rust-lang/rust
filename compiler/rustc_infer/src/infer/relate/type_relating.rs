@@ -42,7 +42,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         a_arg: ty::GenericArgsRef<'tcx>,
         b_arg: ty::GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
-        if self.ambient_variance == ty::Variance::Invariant {
+        if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
@@ -325,23 +325,23 @@ impl<'tcx> PredicateEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
 
     fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
+            ty::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),
                 b.into(),
                 ty::AliasRelationDirection::Subtype,
             ),
             // a :> b is b <: a
-            ty::Variance::Contravariant => ty::PredicateKind::AliasRelate(
+            ty::Contravariant => ty::PredicateKind::AliasRelate(
                 b.into(),
                 a.into(),
                 ty::AliasRelationDirection::Subtype,
             ),
-            ty::Variance::Invariant => ty::PredicateKind::AliasRelate(
+            ty::Invariant => ty::PredicateKind::AliasRelate(
                 a.into(),
                 b.into(),
                 ty::AliasRelationDirection::Equate,
             ),
-            ty::Variance::Bivariant => {
+            ty::Bivariant => {
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
         })]);

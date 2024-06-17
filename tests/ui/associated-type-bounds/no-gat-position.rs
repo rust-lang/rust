@@ -5,6 +5,7 @@ pub trait Iter {
 
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
     //~^ ERROR associated item constraints are not allowed here
+    //~| HELP consider removing this associated item constraint
 }
 
 impl Iter for () {

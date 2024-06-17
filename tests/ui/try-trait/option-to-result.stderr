@@ -9,8 +9,8 @@ LL |     a?;
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<(), ()>`
    = help: the following other types implement trait `FromResidual<R>`:
-             <Result<T, F> as FromResidual<Result<Infallible, E>>>
-             <Result<T, F> as FromResidual<Yeet<E>>>
+             `Result<T, F>` implements `FromResidual<Result<Infallible, E>>`
+             `Result<T, F>` implements `FromResidual<Yeet<E>>`
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/option-to-result.rs:11:6
@@ -23,8 +23,8 @@ LL |     a?;
    |
    = help: the trait `FromResidual<Result<Infallible, i32>>` is not implemented for `Option<i32>`
    = help: the following other types implement trait `FromResidual<R>`:
-             <Option<T> as FromResidual<Yeet<()>>>
-             <Option<T> as FromResidual>
+             `Option<T>` implements `FromResidual<Yeet<()>>`
+             `Option<T>` implements `FromResidual`
 
 error: aborting due to 2 previous errors
 

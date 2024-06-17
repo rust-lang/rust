@@ -241,10 +241,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         variant_index: VariantIdx,
     ) -> InterpResult<'tcx, Option<(ScalarInt, usize)>> {
         match self.layout_of(ty)?.variants {
-            abi::Variants::Single { index } => {
-                assert_eq!(index, variant_index);
-                Ok(None)
-            }
+            abi::Variants::Single { .. } => Ok(None),
 
             abi::Variants::Multiple {
                 tag_encoding: TagEncoding::Direct,

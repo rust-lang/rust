@@ -399,13 +399,17 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && let ty::Ref(_, ty, ..) = ty.kind()
             && ty.is_str()
         {
-            span_lint_and_help(
+            let mut applicability = Applicability::MachineApplicable;
+            let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
+
+            span_lint_and_sugg(
                 cx,
                 STR_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `&str`",
-                None,
-                "consider using `.to_owned()`",
+                "try",
+                format!("{snippet}.to_owned()"),
+                applicability,
             );
         }
     }

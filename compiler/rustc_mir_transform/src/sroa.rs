@@ -1,4 +1,5 @@
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_hir::LangItem;
 use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -70,7 +71,7 @@ fn escaping_locals<'tcx>(
                 // Exclude #[repr(simd)] types so that they are not de-optimized into an array
                 return true;
             }
-            if Some(def.did()) == tcx.lang_items().dyn_metadata() {
+            if tcx.is_lang_item(def.did(), LangItem::DynMetadata) {
                 // codegen wants to see the `DynMetadata<T>`,
                 // not the inner reference-to-opaque-type.
                 return true;

@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let my_div = 10 >> 1;
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub INTEGER_DIVISION_REMAINDER_USED,
     restriction,
     "use of disallowed default division and remainder operations"

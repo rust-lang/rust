@@ -79,13 +79,11 @@ pub(crate) fn walk_no_read(
     let walker = walker.filter_entry(move |e| {
         !skip(e.path(), e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
     });
-    for entry in walker.build() {
-        if let Ok(entry) = entry {
-            if entry.file_type().map_or(true, |kind| kind.is_dir() || kind.is_symlink()) {
-                continue;
-            }
-            f(&entry);
+    for entry in walker.build().flatten() {
+        if entry.file_type().map_or(true, |kind| kind.is_dir() || kind.is_symlink()) {
+            continue;
         }
+        f(&entry);
     }
 }
 
@@ -97,11 +95,9 @@ pub(crate) fn walk_dir(
 ) {
     let mut walker = ignore::WalkBuilder::new(path);
     let walker = walker.filter_entry(move |e| !skip(e.path()));
-    for entry in walker.build() {
-        if let Ok(entry) = entry {
-            if entry.path().is_dir() {
-                f(&entry);
-            }
+    for entry in walker.build().flatten() {
+        if entry.path().is_dir() {
+            f(&entry);
         }
     }
 }

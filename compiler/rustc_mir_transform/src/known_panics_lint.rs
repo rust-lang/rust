@@ -706,9 +706,9 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        trace!("visit_constant: {:?}", constant);
-        self.super_constant(constant, location);
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
+        trace!("visit_const_operand: {:?}", constant);
+        self.super_const_operand(constant, location);
         self.eval_constant(constant);
     }
 

@@ -1,3 +1,4 @@
+#![allow(clippy::needless_maybe_sized)]
 #![warn(clippy::type_repetition_in_bounds)]
 
 fn f<T>()

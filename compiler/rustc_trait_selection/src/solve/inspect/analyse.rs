@@ -15,7 +15,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
-use rustc_middle::traits::solve::{Certainty, Goal};
+use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_middle::{bug, ty};
@@ -278,6 +278,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         self.source
     }
 
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+
     fn candidates_recur(
         &'a self,
         candidates: &mut Vec<InspectCandidate<'a, 'tcx>>,
@@ -291,7 +295,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     steps.push(step)
                 }
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
-                    assert_eq!(shallow_certainty.replace(c), None);
+                    assert!(matches!(
+                        shallow_certainty.replace(c),
+                        None | Some(Certainty::Maybe(MaybeCause::Ambiguity))
+                    ));
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     match probe.kind {
@@ -433,8 +440,17 @@ impl<'tcx> InferCtxt<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> V::Result {
+        self.visit_proof_tree_at_depth(goal, 0, visitor)
+    }
+
+    fn visit_proof_tree_at_depth<V: ProofTreeVisitor<'tcx>>(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        depth: usize,
+        visitor: &mut V,
+    ) -> V::Result {
         let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
         let proof_tree = proof_tree.unwrap();
-        visitor.visit_goal(&InspectGoal::new(self, 0, proof_tree, None, GoalSource::Misc))
+        visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }
 }

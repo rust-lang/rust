@@ -48,6 +48,12 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             rhs
         };
 
+        // Add a `make_canonical_response` probe step so that we treat this as
+        // a candidate, even if `try_evaluate_added_goals` bails due to an error.
+        // It's `Certainty::AMBIGUOUS` because this candidate is not "finished",
+        // since equating the normalized terms will lead to additional constraints.
+        self.inspect.make_canonical_response(Certainty::AMBIGUOUS);
+
         // Apply the constraints.
         self.try_evaluate_added_goals()?;
         let lhs = self.resolve_vars_if_possible(lhs);
@@ -55,8 +61,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         trace!(?lhs, ?rhs);
 
         let variance = match direction {
-            ty::AliasRelationDirection::Equate => ty::Variance::Invariant,
-            ty::AliasRelationDirection::Subtype => ty::Variance::Covariant,
+            ty::AliasRelationDirection::Equate => ty::Invariant,
+            ty::AliasRelationDirection::Subtype => ty::Covariant,
         };
         match (lhs.to_alias_term(), rhs.to_alias_term()) {
             (None, None) => {
@@ -72,7 +78,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 self.relate_rigid_alias_non_alias(
                     param_env,
                     alias,
-                    variance.xform(ty::Variance::Contravariant),
+                    variance.xform(ty::Contravariant),
                     lhs,
                 )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
