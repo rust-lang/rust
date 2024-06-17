@@ -1714,6 +1714,9 @@ pub fn parse_error_format(
             Some("human-annotate-rs") => {
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(color))
             }
+            Some("human-unicode") => {
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode(color))
+            }
             Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
             Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
             Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
@@ -1787,6 +1790,9 @@ fn check_error_format_stability(
             error_format
         {
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
+        }
+        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode(_)) = error_format {
+            early_dcx.early_fatal("`--error-format=human-unicode` is unstable");
         }
     }
 }

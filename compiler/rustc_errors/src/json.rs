@@ -346,7 +346,8 @@ impl Diagnostic {
 
         let buf = BufWriter::default();
         let mut dst: Destination = Box::new(buf.clone());
-        let (short, color_config) = je.json_rendered.unzip();
+        let short = matches!(je.json_rendered, HumanReadableErrorType::Short(_));
+        let color_config = je.json_rendered.color_config();
         match color_config {
             ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
             ColorConfig::Never => {}

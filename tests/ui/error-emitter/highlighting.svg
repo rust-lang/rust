@@ -49,7 +49,7 @@
 </tspan>
     <tspan x="10px" y="262px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>   fn query(_: fn(Box&lt;(dyn Any + Send + '_)&gt;) -&gt; Pin&lt;Box&lt;(</tspan>
 </tspan>
-    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>  </tspan><tspan class="fg-ansi256-012 bold">____</tspan><tspan class="fg-ansi256-010 bold">^^^^^</tspan><tspan class="fg-ansi256-012 bold">_-</tspan>
+    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold"> ____</tspan><tspan class="fg-ansi256-010 bold">^^^^^</tspan><tspan class="fg-ansi256-012 bold">_-</tspan>
 </tspan>
     <tspan x="10px" y="298px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>     dyn Future&lt;Output = Result&lt;Box&lt;(dyn Any + 'static)&gt;, String&gt;&gt; + Send + 'static</tspan>
 </tspan>
