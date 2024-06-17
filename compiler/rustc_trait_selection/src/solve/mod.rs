@@ -13,9 +13,10 @@
 //!
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
+
+use self::infcx::SolverDelegate;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_macros::extension;
 use rustc_middle::bug;
@@ -33,6 +34,7 @@ mod alias_relate;
 mod assembly;
 mod eval_ctxt;
 mod fulfill;
+mod infcx;
 pub mod inspect;
 mod normalize;
 mod normalizes_to;
@@ -73,7 +75,7 @@ impl<'tcx> Canonical<'tcx, Response<TyCtxt<'tcx>>> {
     }
 }
 
-impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
+impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
@@ -224,7 +226,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.

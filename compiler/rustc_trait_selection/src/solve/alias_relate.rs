@@ -15,12 +15,12 @@
 //! (3.) Otherwise, if we end with two rigid (non-projection) or infer types,
 //! relate them structurally.
 
+use super::infcx::SolverDelegate;
 use super::EvalCtxt;
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_alias_relate_goal(
         &mut self,

@@ -3,13 +3,14 @@
 //!
 //! Since a weak alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
-use rustc_infer::infer::InferCtxt;
+
+use crate::solve::infcx::SolverDelegate;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, QueryResult};
 use rustc_middle::ty;
 
 use crate::solve::EvalCtxt;
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     pub(super) fn normalize_weak_type(
         &mut self,
         goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,

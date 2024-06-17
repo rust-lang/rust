@@ -1,9 +1,9 @@
+use crate::solve::infcx::SolverDelegate;
 use crate::solve::EvalCtxt;
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn normalize_anon_const(
         &mut self,

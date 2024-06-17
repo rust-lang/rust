@@ -1,9 +1,9 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
+use crate::solve::infcx::SolverDelegate;
 use derivative::Derivative;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
 use rustc_middle::bug;
@@ -51,18 +51,18 @@ pub(super) trait GoalKind<'tcx>:
     /// work, then produce a response (typically by executing
     /// [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
     fn probe_and_match_goal_against_assumption(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         source: CandidateSource<TyCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
-        then: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>) -> QueryResult<'tcx>,
+        then: impl FnOnce(&mut EvalCtxt<'_, SolverDelegate<'tcx>>) -> QueryResult<'tcx>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
     /// goal by equating it with the assumption.
     fn probe_and_consider_implied_clause(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         parent_source: CandidateSource<TyCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
@@ -80,7 +80,7 @@ pub(super) trait GoalKind<'tcx>:
     /// additionally checking all of the supertraits and object bounds to hold,
     /// since they're not implied by the well-formedness of the object type.
     fn probe_and_consider_object_bound_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         source: CandidateSource<TyCtxt<'tcx>>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Clause<'tcx>,
@@ -104,7 +104,7 @@ pub(super) trait GoalKind<'tcx>:
     }
 
     fn consider_impl_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
@@ -116,7 +116,7 @@ pub(super) trait GoalKind<'tcx>:
     /// Trait goals always hold while projection goals never do. This is a bit arbitrary
     /// but prevents incorrect normalization while hiding any trait errors.
     fn consider_error_guaranteed_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         guar: ErrorGuaranteed,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -125,13 +125,13 @@ pub(super) trait GoalKind<'tcx>:
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_auto_trait`].
     fn consider_auto_trait_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// A trait alias holds if the RHS traits and `where` clauses hold.
     fn consider_trait_alias_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -140,7 +140,7 @@ pub(super) trait GoalKind<'tcx>:
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
     fn consider_builtin_sized_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -149,27 +149,27 @@ pub(super) trait GoalKind<'tcx>:
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// A type is `PointerLike` if we can compute its layout, and that layout
     /// matches the layout of `usize`.
     fn consider_builtin_pointer_like_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// A type is a `FnPtr` if it is of `FnPtr` type.
     fn consider_builtin_fn_ptr_trait_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
     /// family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
         kind: ty::ClosureKind,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
@@ -177,7 +177,7 @@ pub(super) trait GoalKind<'tcx>:
     /// An async closure is known to implement the `AsyncFn<A>` family of traits
     /// where `A` is given by the signature of the type.
     fn consider_builtin_async_fn_trait_candidates(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
         kind: ty::ClosureKind,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
@@ -186,13 +186,13 @@ pub(super) trait GoalKind<'tcx>:
     /// is used internally to delay computation for async closures until after
     /// upvar analysis is performed in HIR typeck.
     fn consider_builtin_async_fn_kind_helper_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -202,7 +202,7 @@ pub(super) trait GoalKind<'tcx>:
     /// the built-in types. For structs, the metadata type is given by the struct
     /// tail.
     fn consider_builtin_pointee_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -210,7 +210,7 @@ pub(super) trait GoalKind<'tcx>:
     /// `Future<Output = O>`, where `O` is given by the coroutine's return type
     /// that was computed during type-checking.
     fn consider_builtin_future_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -218,19 +218,19 @@ pub(super) trait GoalKind<'tcx>:
     /// `Iterator<Item = O>`, where `O` is given by the generator's yield type
     /// that was computed during type-checking.
     fn consider_builtin_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     /// A coroutine (that comes from a `gen` desugaring) is known to implement
     /// `FusedIterator`
     fn consider_builtin_fused_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     fn consider_builtin_async_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -238,27 +238,27 @@ pub(super) trait GoalKind<'tcx>:
     /// implement `Coroutine<R, Yield = Y, Return = O>`, given the resume, yield,
     /// and return types of the coroutine computed during type-checking.
     fn consider_builtin_coroutine_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     fn consider_builtin_discriminant_kind_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     fn consider_builtin_async_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     fn consider_builtin_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
     fn consider_builtin_transmute_candidate(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Result<Candidate<TyCtxt<'tcx>>, NoSolution>;
 
@@ -270,12 +270,12 @@ pub(super) trait GoalKind<'tcx>:
     /// otherwise recompute this for codegen. This is a bit of a mess but the
     /// easiest way to maintain the existing behavior for now.
     fn consider_structural_builtin_unsize_candidates(
-        ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>,
+        ecx: &mut EvalCtxt<'_, SolverDelegate<'tcx>>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<Candidate<TyCtxt<'tcx>>>;
 }
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     pub(super) fn assemble_and_evaluate_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,

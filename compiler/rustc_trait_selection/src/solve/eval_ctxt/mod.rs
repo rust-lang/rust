@@ -11,9 +11,8 @@ use rustc_middle::traits::solve::{
 };
 use rustc_middle::ty::AliasRelationDirection;
 use rustc_middle::ty::TypeFolder;
-use rustc_middle::ty::{
-    self, InferCtxtLike, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_next_trait_solver::infcx::SolverDelegate as IrSolverDelegate;
 use rustc_span::DUMMY_SP;
 use rustc_type_ir::fold::TypeSuperFoldable;
 use rustc_type_ir::inherent::*;
@@ -23,6 +22,7 @@ use rustc_type_ir::{self as ir, CanonicalVarValues, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use std::ops::ControlFlow;
 
+use crate::solve::infcx::SolverDelegate;
 use crate::traits::coherence;
 
 use super::inspect::ProofTreeBuilder;
@@ -33,9 +33,9 @@ use super::{GoalSource, SolverMode};
 pub(super) mod canonical;
 mod probe;
 
-pub struct EvalCtxt<'a, Infcx, I = <Infcx as InferCtxtLike>::Interner>
+pub struct EvalCtxt<'a, Infcx, I = <Infcx as IrSolverDelegate>::Interner>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: IrSolverDelegate<Interner = I>,
     I: Interner,
 {
     /// The inference context that backs (mostly) inference and placeholder terms
@@ -152,7 +152,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
+impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     pub(super) fn solver_mode(&self) -> SolverMode {
         self.search_graph.solver_mode()
     }
@@ -167,13 +167,13 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     pub(super) fn enter_root<R>(
         infcx: &InferCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
-        f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>) -> R,
+        f: impl FnOnce(&mut EvalCtxt<'_, SolverDelegate<'tcx>>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<TyCtxt<'tcx>>>) {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(mode);
 
         let mut ecx = EvalCtxt {
-            infcx,
+            infcx: <&SolverDelegate<'tcx>>::from(infcx),
             search_graph: &mut search_graph,
             nested_goals: NestedGoals::new(),
             inspect: ProofTreeBuilder::new_maybe_root(generate_proof_tree),
@@ -213,8 +213,8 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        canonical_goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
-        f: impl FnOnce(&mut EvalCtxt<'_, InferCtxt<'tcx>>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<SolverDelegate<'tcx>>,
+        f: impl FnOnce(&mut EvalCtxt<'_, SolverDelegate<'tcx>>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
     ) -> R {
         let intercrate = match search_graph.solver_mode() {
             SolverMode::Normal => false,
@@ -227,7 +227,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
             .build_with_canonical(DUMMY_SP, &canonical_input);
 
         let mut ecx = EvalCtxt {
-            infcx,
+            infcx: <&SolverDelegate<'tcx>>::from(infcx),
             variables: canonical_input.variables,
             var_values,
             is_normalizes_to_goal: false,
@@ -275,7 +275,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<TyCtxt<'tcx>>,
         canonical_input: CanonicalInput<'tcx>,
-        goal_evaluation: &mut ProofTreeBuilder<InferCtxt<'tcx>>,
+        goal_evaluation: &mut ProofTreeBuilder<SolverDelegate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let mut canonical_goal_evaluation =
             goal_evaluation.new_canonical_goal_evaluation(canonical_input);
@@ -570,7 +570,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
+impl<Infcx: IrSolverDelegate<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
     pub(super) fn interner(&self) -> I {
         self.infcx.interner()
     }
@@ -658,13 +658,13 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
             }
         };
 
-        struct ContainsTermOrNotNameable<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
+        struct ContainsTermOrNotNameable<'a, Infcx: IrSolverDelegate<Interner = I>, I: Interner> {
             term: I::Term,
             universe_of_term: ir::UniverseIndex,
             infcx: &'a Infcx,
         }
 
-        impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, Infcx, I> {
+        impl<Infcx: IrSolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, Infcx, I> {
             fn check_nameable(&self, universe: ir::UniverseIndex) -> ControlFlow<()> {
                 if self.universe_of_term.can_name(universe) {
                     ControlFlow::Continue(())
@@ -674,7 +674,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
             }
         }
 
-        impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
+        impl<Infcx: IrSolverDelegate<Interner = I>, I: Interner> TypeVisitor<I>
             for ContainsTermOrNotNameable<'_, Infcx, I>
         {
             type Result = ControlFlow<()>;
@@ -865,7 +865,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> EvalCtxt<'_, Infcx> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     pub(super) fn register_ty_outlives(&self, ty: Ty<'tcx>, lt: ty::Region<'tcx>) {
         self.infcx.register_region_obligation_with_cause(ty, lt, &ObligationCause::dummy());
     }
@@ -1030,7 +1030,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
 /// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
 struct ReplaceAliasWithInfer<'me, 'a, Infcx, I>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: IrSolverDelegate<Interner = I>,
     I: Interner,
 {
     ecx: &'me mut EvalCtxt<'a, Infcx>,
@@ -1039,7 +1039,7 @@ where
 
 impl<Infcx, I> TypeFolder<I> for ReplaceAliasWithInfer<'_, '_, Infcx, I>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: IrSolverDelegate<Interner = I>,
     I: Interner,
 {
     fn interner(&self) -> I {

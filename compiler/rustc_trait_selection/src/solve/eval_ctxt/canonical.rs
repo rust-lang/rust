@@ -10,6 +10,7 @@
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::eval_ctxt::NestedGoals;
+use crate::solve::infcx::SolverDelegate;
 use crate::solve::{
     inspect, response_no_constraints_raw, CanonicalResponse, QueryResult, Response,
 };
@@ -29,10 +30,11 @@ use rustc_middle::traits::solve::{
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_next_trait_solver::canonicalizer::{CanonicalizeMode, Canonicalizer};
+use rustc_next_trait_solver::infcx::SolverDelegate as IrSolverDelegate;
 use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_type_ir::CanonicalVarValues;
-use rustc_type_ir::{InferCtxtLike, Interner};
+use rustc_type_ir::Interner;
 use std::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Deref;
@@ -53,7 +55,7 @@ impl<'tcx, T> ResponseT<'tcx> for inspect::State<TyCtxt<'tcx>, T> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
     pub(super) fn canonicalize_goal<T: TypeFoldable<TyCtxt<'tcx>>>(
@@ -410,7 +412,7 @@ pub(in crate::solve) fn make_canonical_state<Infcx, T, I>(
     data: T,
 ) -> inspect::CanonicalState<I, T>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: IrSolverDelegate<Interner = I>,
     I: Interner,
     T: TypeFoldable<I>,
 {

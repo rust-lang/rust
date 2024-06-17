@@ -3,11 +3,11 @@ use std::mem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::Idx;
 use rustc_index::IndexVec;
+use rustc_next_trait_solver::infcx::SolverDelegate;
 use rustc_next_trait_solver::solve::CacheData;
 use rustc_next_trait_solver::solve::{CanonicalInput, Certainty, QueryResult};
 use rustc_session::Limit;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::InferCtxtLike;
 use rustc_type_ir::Interner;
 
 use super::inspect;
@@ -250,7 +250,7 @@ impl<I: Interner> SearchGraph<I> {
     ///
     /// Given some goal which is proven via the `prove_goal` closure, this
     /// handles caching, overflow, and coinductive cycles.
-    pub(super) fn with_new_goal<Infcx: InferCtxtLike<Interner = I>>(
+    pub(super) fn with_new_goal<Infcx: SolverDelegate<Interner = I>>(
         &mut self,
         tcx: I,
         input: CanonicalInput<I>,
@@ -411,7 +411,7 @@ impl<I: Interner> SearchGraph<I> {
     /// Try to fetch a previously computed result from the global cache,
     /// making sure to only do so if it would match the result of reevaluating
     /// this goal.
-    fn lookup_global_cache<Infcx: InferCtxtLike<Interner = I>>(
+    fn lookup_global_cache<Infcx: SolverDelegate<Interner = I>>(
         &mut self,
         tcx: I,
         input: CanonicalInput<I>,
@@ -468,7 +468,7 @@ impl<I: Interner> SearchGraph<I> {
         prove_goal: &mut F,
     ) -> StepResult<I>
     where
-        Infcx: InferCtxtLike<Interner = I>,
+        Infcx: SolverDelegate<Interner = I>,
         F: FnMut(&mut Self, &mut ProofTreeBuilder<Infcx>) -> QueryResult<I>,
     {
         let result = prove_goal(self, inspect);
