@@ -1,0 +1,30 @@
+warning: use of a double negation
+  --> $DIR/lint-double-negation.rs:6:5
+   |
+LL |     --x;
+   |     ^^^
+   |
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = help: consider adding parentheses between the negation operators or using the `-=` operator if you meant to decrement the value
+   = note: `#[warn(double_negation)]` on by default
+
+warning: use of a double negation
+  --> $DIR/lint-double-negation.rs:7:6
+   |
+LL |     ---x;
+   |      ^^^
+   |
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = help: consider adding parentheses between the negation operators or using the `-=` operator if you meant to decrement the value
+
+warning: use of a double negation
+  --> $DIR/lint-double-negation.rs:8:14
+   |
+LL |     let _y = --(-x);
+   |              ^^^^^^
+   |
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = help: consider adding parentheses between the negation operators or using the `-=` operator if you meant to decrement the value
+
+warning: 3 warnings emitted
+
