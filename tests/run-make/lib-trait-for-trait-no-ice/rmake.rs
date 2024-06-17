@@ -5,9 +5,9 @@
 // the lib crate-type flag was actually followed.
 // See https://github.com/rust-lang/rust/issues/18943
 
-use run_make_support::{count_rlibs, rustc};
+use run_make_support::{fs_wrapper, rust_lib_name, rustc};
 
 fn main() {
     rustc().input("foo.rs").crate_type("lib").run();
-    assert_eq!(count_rlibs("foo"), 1);
+    fs_wrapper::remove_file(rust_lib_name("foo"));
 }

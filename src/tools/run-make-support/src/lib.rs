@@ -22,7 +22,6 @@ use std::panic;
 use std::path::{Path, PathBuf};
 
 pub use gimli;
-pub use glob;
 pub use object;
 pub use regex;
 pub use wasmparser;
@@ -223,40 +222,33 @@ pub fn bin_name(name: &str) -> String {
     if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
-/// Remove all dynamic libraries possessing a name starting with `paths`.
+/// Browse the directory `path` non-recursively and return all files which respect the parameters
+/// outlined by `closure`.
 #[track_caller]
-pub fn remove_dylibs(paths: &str) {
-    let paths = format!(r"{paths}*");
-    remove_glob(dynamic_lib_name(&paths).as_str());
+pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
+    path: P,
+    closure: F,
+) -> Vec<PathBuf> {
+    let mut matching_files = Vec::new();
+    for entry in fs_wrapper::read_dir(path) {
+        let entry = entry.expect("failed to read directory entry.");
+        let path = entry.path();
+
+        if path.is_file() && closure(&path) {
+            matching_files.push(path);
+        }
+    }
+    matching_files
 }
 
-/// Remove all rust libraries possessing a name starting with `paths`.
-#[track_caller]
-pub fn remove_rlibs(paths: &str) {
-    let paths = format!(r"{paths}*");
-    remove_glob(rust_lib_name(&paths).as_str());
+/// Returns true if the filename at `path` starts with `prefix`.
+pub fn has_prefix<P: AsRef<Path>>(path: P, prefix: &str) -> bool {
+    path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().starts_with(prefix))
 }
 
-#[track_caller]
-fn remove_glob(paths: &str) {
-    let paths = glob::glob(paths).expect(format!("Glob expression {paths} is not valid.").as_str());
-    paths
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.as_path().is_file())
-        .for_each(|file| fs_wrapper::remove_file(&file));
-}
-
-#[track_caller]
-fn count_glob(paths: &str) -> usize {
-    let paths = glob::glob(paths).expect(format!("Glob expression {paths} is not valid.").as_str());
-    paths.filter_map(|entry| entry.ok()).filter(|entry| entry.as_path().is_file()).count()
-}
-
-/// Count the number of rust libraries possessing a name starting with `paths`.
-#[track_caller]
-pub fn count_rlibs(paths: &str) -> usize {
-    let paths = format!(r"{paths}*");
-    count_glob(rust_lib_name(&paths).as_str())
+/// Returns true if the filename at `path` has the extension `extension`.
+pub fn has_extension<P: AsRef<Path>>(path: P, extension: &str) -> bool {
+    path.as_ref().extension().is_some_and(|ext| ext == extension)
 }
 
 /// Return the current working directory.
