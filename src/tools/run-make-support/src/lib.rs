@@ -22,9 +22,9 @@ use std::panic;
 use std::path::{Path, PathBuf};
 
 pub use gimli;
-pub use glob;
 pub use object;
 pub use regex;
+pub use walkdir;
 pub use wasmparser;
 
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
@@ -245,21 +245,37 @@ pub fn uname() -> String {
     output.stdout_utf8()
 }
 
-/// Inside a glob pattern of files (paths), read their contents and count the
+/// Search for all files in the current working directory with the extension `ext`,
+/// read their contents and count the
 /// number of regex matches with a given expression (re).
 #[track_caller]
-pub fn count_regex_matches_in_file_glob(re: &str, paths: &str) -> usize {
-    let re = regex::Regex::new(re).expect(format!("Regex expression {re} is not valid.").as_str());
-    let paths = glob::glob(paths).expect(format!("Glob expression {paths} is not valid.").as_str());
-    use io::BufRead;
-    paths
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.as_path().is_file())
-        .filter_map(|path| fs::File::open(&path).ok())
-        .map(|file| io::BufReader::new(file))
-        .flat_map(|reader| reader.lines().filter_map(|entry| entry.ok()))
-        .filter(|line| re.is_match(line))
-        .count()
+pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str) -> usize {
+    use std::io::BufRead;
+    use walkdir::{DirEntry, WalkDir};
+
+    let walker = WalkDir::new(cwd()).into_iter();
+
+    fn is_hidden(entry: &DirEntry) -> bool {
+        entry.file_name().to_str().map(|s| s.starts_with(".")).unwrap_or(false)
+    }
+
+    let mut count = 0;
+
+    for entry in walker.filter_entry(|e| !is_hidden(e)) {
+        let entry = entry.expect("failed to get DirEntry");
+        if !entry.path().is_file() {
+            continue;
+        }
+
+        if !entry.path().extension().is_some_and(|e| e == ext) {
+            continue;
+        }
+
+        let content = fs_wrapper::read(entry.path());
+        count += content.lines().filter(|line| re.is_match(&line.as_ref().unwrap())).count();
+    }
+
+    count
 }
 
 fn handle_failed_output(cmd: &Command, output: CompletedProcess, caller_line_number: u32) -> ! {

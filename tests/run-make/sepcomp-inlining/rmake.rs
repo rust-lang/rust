@@ -5,15 +5,16 @@
 // in only one compilation unit.
 // See https://github.com/rust-lang/rust/pull/16367
 
-use run_make_support::{count_regex_matches_in_file_glob, glob, regex, rustc};
+use run_make_support::{count_regex_matches_in_files_with_extension, regex, rustc};
 
 fn main() {
     rustc().input("foo.rs").emit("llvm-ir").codegen_units(3).arg("-Zinline-in-all-cgus").run();
-    assert_eq!(count_regex_matches_in_file_glob(r#"define\ i32\ .*inlined"#, "foo.*.ll"), 0);
-    assert_eq!(count_regex_matches_in_file_glob(r#"define\ internal\ .*inlined"#, "foo.*.ll"), 2);
-    assert_eq!(count_regex_matches_in_file_glob(r#"define\ hidden\ i32\ .*normal"#, "foo.*.ll"), 1);
-    assert_eq!(
-        count_regex_matches_in_file_glob(r#"declare\ hidden\ i32\ .*normal"#, "foo.*.ll"),
-        2
-    );
+    let re = regex::Regex::new(r#"define\ i32\ .*inlined"#).unwrap();
+    assert_eq!(count_regex_matches_in_files_with_extension(&re, "ll"), 0);
+    let re = regex::Regex::new(r#"define\ internal\ .*inlined"#).unwrap();
+    assert_eq!(count_regex_matches_in_files_with_extension(&re, "ll"), 2);
+    let re = regex::Regex::new(r#"define\ hidden\ i32\ .*normal"#).unwrap();
+    assert_eq!(count_regex_matches_in_files_with_extension(&re, "ll"), 1);
+    let re = regex::Regex::new(r#"declare\ hidden\ i32\ .*normal"#).unwrap();
+    assert_eq!(count_regex_matches_in_files_with_extension(&re, "ll"), 2);
 }
