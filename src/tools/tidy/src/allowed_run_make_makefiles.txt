@@ -83,7 +83,6 @@ run-make/issue-20626/Makefile
 run-make/issue-22131/Makefile
 run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
-run-make/issue-26092/Makefile
 run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
@@ -109,10 +108,8 @@ run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
-run-make/link-arg/Makefile
 run-make/link-args-order/Makefile
 run-make/link-cfg/Makefile
-run-make/link-dedup/Makefile
 run-make/link-framework/Makefile
 run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
