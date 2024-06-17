@@ -15,6 +15,7 @@ pub(crate) use make::DocTestBuilder;
 pub(crate) use markdown::test as test_markdown;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -520,9 +521,13 @@ fn run_test(
     });
     if let ErrorOutputType::HumanReadable(kind, color_config) = rustdoc_options.error_format {
         let short = kind.short();
+        let unicode = kind == HumanReadableErrorType::Unicode;
 
         if short {
             compiler.arg("--error-format").arg("short");
+        }
+        if unicode {
+            compiler.arg("--error-format").arg("human-unicode");
         }
 
         match color_config {
