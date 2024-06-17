@@ -819,7 +819,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
-    /// Creates a new stack frame, initializes it and pushes it unto the stack.
+    /// Creates a new stack frame, initializes it and pushes it onto the stack.
     /// A private helper for [`push_stack_frame`](InterpCx::push_stack_frame).
     fn push_new_stack_frame(
         &mut self,
@@ -902,8 +902,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(StackPop { jump, target, destination })
     }
 
-    /// A private helper for [`push_stack_frame`](InterpCx::push_stack_frame).
-    /// Returns whatever the cleanup was done.
+    /// A private helper for [`pop_stack_frame`](InterpCx::pop_stack_frame).
+    /// Returns `true` if cleanup has been done, `false` otherwise.
     fn cleanup_current_frame_locals(&mut self) -> InterpResult<'tcx, bool> {
         // Cleanup: deallocate locals.
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.

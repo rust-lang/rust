@@ -977,11 +977,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // which pushes a new stack frame, with the return address from
         // the popped stack frame.
         //
-        // Note that we can't use `pop_stack_frame` as it "executes"
-        // the goto to the return block, but we don't want to,
-        // only the tail called function should return to the current
-        // return block.
-
+        // Note that we are using `pop_stack_frame` and not `return_from_current_stack_frame`,
+        // as the latter "executes" the goto to the return block, but we don't want to,
+        // only the tail called function should return to the current return block.
         M::before_stack_pop(self, self.frame())?;
 
         let StackPop { jump, target, destination } = self.pop_stack_frame(false)?;
