@@ -147,6 +147,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Some(args.variable_source_info.scope),
                 args.variable_source_info.span,
                 args.declare_let_bindings,
+                false,
             ),
             _ => {
                 let mut block = block;
@@ -1981,48 +1982,50 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// If the bindings have already been declared, set `declare_bindings` to
-    /// `false` to avoid duplicated bindings declaration. Used for if-let guards.
+    /// `false` to avoid duplicated bindings declaration; used for if-let guards.
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
         expr_id: ExprId,
         pat: &Pat<'tcx>,
         source_scope: Option<SourceScope>,
-        span: Span,
+        scope_span: Span,
         declare_bindings: bool,
+        storages_alive: bool,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
-        let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
+        let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
+        let mut candidate = Candidate::new(scrutinee.clone(), pat, false, self);
         let otherwise_block = self.lower_match_tree(
             block,
+            expr_span,
+            &scrutinee,
             pat.span,
-            &expr_place_builder,
-            pat.span,
-            &mut [&mut guard_candidate],
+            &mut [&mut candidate],
             true,
         );
-        let expr_place = expr_place_builder.try_to_place(self);
-        let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
+
         self.break_for_else(otherwise_block, self.source_info(expr_span));
 
         if declare_bindings {
-            self.declare_bindings(source_scope, pat.span.to(span), pat, None, opt_expr_place);
+            let expr_place = scrutinee.try_to_place(self);
+            let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
+            self.declare_bindings(source_scope, pat.span.to(scope_span), pat, None, opt_expr_place);
         }
 
-        let post_guard_block = self.bind_pattern(
+        let success = self.bind_pattern(
             self.source_info(pat.span),
-            guard_candidate,
+            candidate,
             &[],
             expr_span,
             None,
-            false,
+            storages_alive,
         );
 
         // If branch coverage is enabled, record this branch.
-        self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_block);
+        self.visit_coverage_conditional_let(pat, success, otherwise_block);
 
-        post_guard_block.unit()
+        success.unit()
     }
 
     /// Initializes each of the bindings from the candidate by
@@ -2468,45 +2471,5 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
         debug!(?locals);
         self.var_indices.insert(var_id, locals);
-    }
-
-    pub(crate) fn ast_let_else(
-        &mut self,
-        mut block: BasicBlock,
-        init_id: ExprId,
-        initializer_span: Span,
-        else_block: BlockId,
-        let_else_scope: &region::Scope,
-        pattern: &Pat<'tcx>,
-    ) -> BlockAnd<BasicBlock> {
-        let else_block_span = self.thir[else_block].span;
-        let (matching, failure) = self.in_if_then_scope(*let_else_scope, else_block_span, |this| {
-            let scrutinee = unpack!(block = this.lower_scrutinee(block, init_id, initializer_span));
-            let mut candidate = Candidate::new(scrutinee.clone(), pattern, false, this);
-            let failure_block = this.lower_match_tree(
-                block,
-                initializer_span,
-                &scrutinee,
-                pattern.span,
-                &mut [&mut candidate],
-                true,
-            );
-            // This block is for the matching case
-            let matching = this.bind_pattern(
-                this.source_info(pattern.span),
-                candidate,
-                &[],
-                initializer_span,
-                None,
-                true,
-            );
-
-            // If branch coverage is enabled, record this branch.
-            this.visit_coverage_conditional_let(pattern, matching, failure_block);
-
-            this.break_for_else(failure_block, this.source_info(initializer_span));
-            matching.unit()
-        });
-        matching.and(failure)
     }
 }
