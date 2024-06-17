@@ -205,6 +205,14 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.did()
     }
 
+    fn is_struct(self) -> bool {
+        self.is_struct()
+    }
+
+    fn struct_tail_ty(self, interner: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        Some(interner.type_of(self.non_enum_variant().tail_opt()?.did))
+    }
+
     fn is_phantom_data(self) -> bool {
         self.is_phantom_data()
     }
@@ -212,7 +220,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     fn all_field_tys(
         self,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<'tcx, impl Iterator<Item = Ty<'tcx>>> {
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = Ty<'tcx>>> {
         ty::EarlyBinder::bind(
             self.all_fields().map(move |field| tcx.type_of(field.did).skip_binder()),
         )

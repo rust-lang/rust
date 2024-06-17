@@ -930,6 +930,22 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     fn new_pat(interner: TyCtxt<'tcx>, ty: Self, pat: ty::Pattern<'tcx>) -> Self {
         Ty::new_pat(interner, ty, pat)
     }
+
+    fn new_unit(interner: TyCtxt<'tcx>) -> Self {
+        interner.types.unit
+    }
+
+    fn new_usize(interner: TyCtxt<'tcx>) -> Self {
+        interner.types.usize
+    }
+
+    fn discriminant_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.discriminant_ty(interner)
+    }
+
+    fn async_destructor_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.async_destructor_ty(interner)
+    }
 }
 
 /// Type utilities

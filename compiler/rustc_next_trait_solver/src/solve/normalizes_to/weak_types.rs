@@ -4,17 +4,20 @@
 //! Since a weak alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
 
-use crate::solve::infcx::SolverDelegate;
-use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, QueryResult};
-use rustc_middle::ty;
+use rustc_type_ir::{self as ty, Interner};
 
-use crate::solve::EvalCtxt;
+use crate::infcx::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
 
-impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     pub(super) fn normalize_weak_type(
         &mut self,
-        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ty::NormalizesTo<I>>,
+    ) -> QueryResult<I> {
         let tcx = self.interner();
         let weak_ty = goal.predicate.alias;
 
@@ -22,13 +25,11 @@ impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
         self.add_goals(
             GoalSource::Misc,
             tcx.predicates_of(weak_ty.def_id)
-                .instantiate(tcx, weak_ty.args)
-                .predicates
-                .into_iter()
+                .iter_instantiated(tcx, &weak_ty.args)
                 .map(|pred| goal.with(tcx, pred)),
         );
 
-        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);
+        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, &weak_ty.args);
         self.instantiate_normalizes_to_term(goal, actual.into());
 
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

@@ -14,40 +14,22 @@
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
 
-use self::infcx::SolverDelegate;
-use rustc_hir::def_id::DefId;
-use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::traits::query::NoSolution;
-use rustc_macros::extension;
-use rustc_middle::bug;
-use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, QueryResult, Response,
-};
-use rustc_middle::ty::{
-    self, AliasRelationDirection, CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, Ty,
-    TyCtxt, TypeOutlivesPredicate, UniverseIndex,
-};
-use rustc_type_ir::solve::SolverMode;
-use rustc_type_ir::{self as ir, Interner};
-
 mod alias_relate;
 mod assembly;
 mod eval_ctxt;
-mod fulfill;
-mod infcx;
 pub mod inspect;
-mod normalize;
 mod normalizes_to;
 mod project_goals;
 mod search_graph;
-mod select;
 mod trait_goals;
 
-pub use eval_ctxt::{EvalCtxt, GenerateProofTree, InferCtxtEvalExt};
-pub use fulfill::{FulfillmentCtxt, NextSolverError};
-pub(crate) use normalize::deeply_normalize_for_diagnostics;
-pub use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
-pub use select::InferCtxtSelectExt;
+pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
+pub use rustc_type_ir::solve::*;
+
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::{self as ty, Interner};
+
+use crate::infcx::SolverDelegate;
 
 /// How many fixpoint iterations we should attempt inside of the solver before bailing
 /// with overflow.
@@ -66,21 +48,24 @@ enum GoalEvaluationKind {
     Nested,
 }
 
-#[extension(trait CanonicalResponseExt)]
-impl<'tcx> Canonical<'tcx, Response<TyCtxt<'tcx>>> {
-    fn has_no_inference_or_external_constraints(&self) -> bool {
-        self.value.external_constraints.region_constraints.is_empty()
-            && self.value.var_values.is_identity()
-            && self.value.external_constraints.opaque_types.is_empty()
-    }
+fn has_no_inference_or_external_constraints<I: Interner>(
+    response: ty::Canonical<I, Response<I>>,
+) -> bool {
+    response.value.external_constraints.region_constraints.is_empty()
+        && response.value.var_values.is_identity()
+        && response.value.external_constraints.opaque_types.is_empty()
 }
 
-impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
+impl<'a, Infcx, I> EvalCtxt<'a, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     #[instrument(level = "trace", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
-        goal: Goal<'tcx, TypeOutlivesPredicate<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
+    ) -> QueryResult<I> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
         self.register_ty_outlives(ty, lt);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -89,21 +74,18 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self))]
     fn compute_region_outlives_goal(
         &mut self,
-        goal: Goal<'tcx, RegionOutlivesPredicate<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ty::OutlivesPredicate<I, I::Region>>,
+    ) -> QueryResult<I> {
         let ty::OutlivesPredicate(a, b) = goal.predicate;
         self.register_region_outlives(a, b);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_coerce_goal(
-        &mut self,
-        goal: Goal<'tcx, CoercePredicate<'tcx>>,
-    ) -> QueryResult<'tcx> {
+    fn compute_coerce_goal(&mut self, goal: Goal<I, ty::CoercePredicate<I>>) -> QueryResult<I> {
         self.compute_subtype_goal(Goal {
             param_env: goal.param_env,
-            predicate: SubtypePredicate {
+            predicate: ty::SubtypePredicate {
                 a_is_expected: false,
                 a: goal.predicate.a,
                 b: goal.predicate.b,
@@ -112,10 +94,7 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_subtype_goal(
-        &mut self,
-        goal: Goal<'tcx, SubtypePredicate<'tcx>>,
-    ) -> QueryResult<'tcx> {
+    fn compute_subtype_goal(&mut self, goal: Goal<I, ty::SubtypePredicate<I>>) -> QueryResult<I> {
         if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
@@ -124,8 +103,8 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
         }
     }
 
-    fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
-        if self.interner().is_object_safe(trait_def_id) {
+    fn compute_object_safe_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
+        if self.interner().trait_is_object_safe(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
@@ -133,10 +112,7 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_well_formed_goal(
-        &mut self,
-        goal: Goal<'tcx, ty::GenericArg<'tcx>>,
-    ) -> QueryResult<'tcx> {
+    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::GenericArg>) -> QueryResult<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
                 self.add_goals(GoalSource::Misc, goals);
@@ -149,8 +125,8 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,
-        Goal { param_env, predicate: ct }: Goal<'tcx, ty::Const<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        Goal { param_env, predicate: ct }: Goal<I, I::Const>,
+    ) -> QueryResult<I> {
         match ct.kind() {
             ty::ConstKind::Unevaluated(uv) => {
                 // We never return `NoSolution` here as `try_const_eval_resolve` emits an
@@ -180,7 +156,7 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
             // - `Bound` cannot exist as we don't have a binder around the self Type
             // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
-                bug!("unexpect const kind: {:?}", ct)
+                panic!("unexpect const kind: {:?}", ct)
             }
         }
     }
@@ -188,8 +164,8 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self), ret)]
     fn compute_const_arg_has_type_goal(
         &mut self,
-        goal: Goal<'tcx, (ty::Const<'tcx>, Ty<'tcx>)>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, (I::Const, I::Ty)>,
+    ) -> QueryResult<I> {
         let (ct, ty) = goal.predicate;
 
         let ct_ty = match ct.kind() {
@@ -206,7 +182,7 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
             ty::ConstKind::Unevaluated(uv) => {
-                self.interner().type_of(uv.def).instantiate(self.interner(), uv.args)
+                self.interner().type_of(uv.def).instantiate(self.interner(), &uv.args)
             }
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
@@ -214,10 +190,10 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
             ty::ConstKind::Param(_) => {
                 unreachable!("`ConstKind::Param` should have been canonicalized to `Placeholder`")
             }
-            ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
+            ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
             ty::ConstKind::Value(ty, _) => ty,
             ty::ConstKind::Placeholder(placeholder) => {
-                placeholder.find_const_ty_from_env(goal.param_env)
+                self.interner().find_const_ty_from_env(goal.param_env, placeholder)
             }
         };
 
@@ -226,15 +202,19 @@ impl<'a, 'tcx> EvalCtxt<'a, SolverDelegate<'tcx>> {
     }
 }
 
-impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
     fn try_merge_responses(
         &mut self,
-        responses: &[CanonicalResponse<'tcx>],
-    ) -> Option<CanonicalResponse<'tcx>> {
+        responses: &[CanonicalResponse<I>],
+    ) -> Option<CanonicalResponse<I>> {
         if responses.is_empty() {
             return None;
         }
@@ -250,14 +230,14 @@ impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
             .iter()
             .find(|response| {
                 response.value.certainty == Certainty::Yes
-                    && response.has_no_inference_or_external_constraints()
+                    && has_no_inference_or_external_constraints(**response)
             })
             .copied()
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
     #[instrument(level = "trace", skip(self), ret)]
-    fn flounder(&mut self, responses: &[CanonicalResponse<'tcx>]) -> QueryResult<'tcx> {
+    fn flounder(&mut self, responses: &[CanonicalResponse<I>]) -> QueryResult<I> {
         if responses.is_empty() {
             return Err(NoSolution);
         }
@@ -267,7 +247,7 @@ impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
                 certainty.unify_with(response.value.certainty)
             })
         else {
-            bug!("expected flounder response to be ambiguous")
+            panic!("expected flounder response to be ambiguous")
         };
 
         Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
@@ -281,9 +261,9 @@ impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
     #[instrument(level = "trace", skip(self, param_env), ret)]
     fn structurally_normalize_ty(
         &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Result<Ty<'tcx>, NoSolution> {
+        param_env: I::ParamEnv,
+        ty: I::Ty,
+    ) -> Result<I::Ty, NoSolution> {
         if let ty::Alias(..) = ty.kind() {
             let normalized_ty = self.next_ty_infer();
             let alias_relate_goal = Goal::new(
@@ -292,7 +272,7 @@ impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
                 ty::PredicateKind::AliasRelate(
                     ty.into(),
                     normalized_ty.into(),
-                    AliasRelationDirection::Equate,
+                    ty::AliasRelationDirection::Equate,
                 ),
             );
             self.add_goal(GoalSource::Misc, alias_relate_goal);
@@ -306,15 +286,15 @@ impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
 
 fn response_no_constraints_raw<I: Interner>(
     tcx: I,
-    max_universe: UniverseIndex,
+    max_universe: ty::UniverseIndex,
     variables: I::CanonicalVars,
     certainty: Certainty,
-) -> ir::solve::CanonicalResponse<I> {
-    ir::Canonical {
+) -> CanonicalResponse<I> {
+    ty::Canonical {
         max_universe,
         variables,
         value: Response {
-            var_values: ir::CanonicalVarValues::make_identity(tcx, variables),
+            var_values: ty::CanonicalVarValues::make_identity(tcx, variables),
             // FIXME: maybe we should store the "no response" version in tcx, like
             // we do for tcx.types and stuff.
             external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),

@@ -990,6 +990,16 @@ pub struct ParamEnv<'tcx> {
     packed: CopyTaggedPtr<Clauses<'tcx>, ParamTag, true>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn reveal(self) -> Reveal {
+        self.reveal()
+    }
+
+    fn caller_bounds(self) -> impl IntoIterator<Item = ty::Clause<'tcx>> {
+        self.caller_bounds()
+    }
+}
+
 #[derive(Copy, Clone)]
 struct ParamTag {
     reveal: traits::Reveal,

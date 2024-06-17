@@ -7,7 +7,7 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 
 use crate::inherent::*;
 use crate::lift::Lift;
-use crate::upcast::Upcast;
+use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
 use crate::{self as ty, Interner};
 
@@ -163,6 +163,12 @@ impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
     #[inline]
     pub fn polarity(self) -> PredicatePolarity {
         self.skip_binder().polarity
+    }
+}
+
+impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
+    fn upcast_from(from: TraitRef<I>, _tcx: I) -> Self {
+        TraitPredicate { trait_ref: from, polarity: PredicatePolarity::Positive }
     }
 }
 

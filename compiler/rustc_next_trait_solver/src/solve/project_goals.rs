@@ -1,16 +1,18 @@
-use crate::solve::GoalSource;
+use rustc_type_ir::{self as ty, Interner, ProjectionPredicate};
 
-use super::infcx::SolverDelegate;
-use super::EvalCtxt;
-use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
-use rustc_middle::ty::{self, ProjectionPredicate};
+use crate::infcx::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
 
-impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_projection_goal(
         &mut self,
-        goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ProjectionPredicate<I>>,
+    ) -> QueryResult<I> {
         let tcx = self.interner();
         let projection_term = goal.predicate.projection_term.to_term(tcx);
         let goal = goal.with(

@@ -15,17 +15,22 @@
 //! (3.) Otherwise, if we end with two rigid (non-projection) or infer types,
 //! relate them structurally.
 
-use super::infcx::SolverDelegate;
-use super::EvalCtxt;
-use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
-use rustc_middle::ty;
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::{self as ty, Interner};
 
-impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
+use crate::infcx::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};
+
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_alias_relate_goal(
         &mut self,
-        goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>, ty::AliasRelationDirection)>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, (I::Term, I::Term, ty::AliasRelationDirection)>,
+    ) -> QueryResult<I> {
         let tcx = self.interner();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
         debug_assert!(lhs.to_alias_term().is_some() || rhs.to_alias_term().is_some());

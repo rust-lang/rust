@@ -1,19 +1,18 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::Idx;
-use rustc_index::IndexVec;
-use rustc_next_trait_solver::infcx::SolverDelegate;
-use rustc_next_trait_solver::solve::CacheData;
-use rustc_next_trait_solver::solve::{CanonicalInput, Certainty, QueryResult};
-use rustc_session::Limit;
+use rustc_index::{Idx, IndexVec};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::Interner;
 
-use super::inspect;
-use super::inspect::ProofTreeBuilder;
-use super::SolverMode;
-use crate::solve::FIXPOINT_STEP_LIMIT;
+use crate::infcx::SolverDelegate;
+use crate::solve::inspect::{self, ProofTreeBuilder};
+use crate::solve::{
+    CacheData, CanonicalInput, Certainty, QueryResult, SolverMode, FIXPOINT_STEP_LIMIT,
+};
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Limit(usize);
 
 rustc_index::newtype_index! {
     #[orderable]

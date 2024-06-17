@@ -1,12 +1,11 @@
-use crate::solve::assembly::Candidate;
-
-use super::EvalCtxt;
-use rustc_next_trait_solver::infcx::SolverDelegate;
-use rustc_next_trait_solver::solve::{
-    inspect, BuiltinImplSource, CandidateSource, NoSolution, QueryResult,
-};
-use rustc_type_ir::Interner;
 use std::marker::PhantomData;
+
+use rustc_type_ir::Interner;
+
+use crate::infcx::SolverDelegate;
+use crate::solve::assembly::Candidate;
+use crate::solve::inspect;
+use crate::solve::{BuiltinImplSource, CandidateSource, EvalCtxt, NoSolution, QueryResult};
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, Infcx, I, F, T>
 where

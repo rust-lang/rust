@@ -1,14 +1,18 @@
-use crate::solve::infcx::SolverDelegate;
-use crate::solve::EvalCtxt;
-use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
-use rustc_middle::ty;
+use rustc_type_ir::{self as ty, Interner};
 
-impl<'tcx> EvalCtxt<'_, SolverDelegate<'tcx>> {
+use crate::infcx::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};
+
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn normalize_anon_const(
         &mut self,
-        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ty::NormalizesTo<I>>,
+    ) -> QueryResult<I> {
         if let Some(normalized_const) = self.try_const_eval_resolve(
             goal.param_env,
             ty::UnevaluatedConst::new(goal.predicate.alias.def_id, goal.predicate.alias.args),
