@@ -121,6 +121,28 @@ fn aarch64_linux() {
     println!("fp8dot4: {}", is_aarch64_feature_detected!("fp8dot4"));
     println!("fp8dot2: {}", is_aarch64_feature_detected!("fp8dot2"));
     println!("wfxt: {}", is_aarch64_feature_detected!("wfxt"));
+    println!("sme: {}", is_aarch64_feature_detected!("sme"));
+    println!("sme-i16i64: {}", is_aarch64_feature_detected!("sme-i16i64"));
+    println!("sme-f64f64: {}", is_aarch64_feature_detected!("sme-f64f64"));
+    println!("sme-fa64: {}", is_aarch64_feature_detected!("sme-fa64"));
+    println!("sme2: {}", is_aarch64_feature_detected!("sme2"));
+    println!("sme2p1: {}", is_aarch64_feature_detected!("sme2p1"));
+    println!("sme-f16f16: {}", is_aarch64_feature_detected!("sme-f16f16"));
+    println!("sme-lutv2: {}", is_aarch64_feature_detected!("sme-lutv2"));
+    println!("sme-f8f16: {}", is_aarch64_feature_detected!("sme-f8f16"));
+    println!("sme-f8f32: {}", is_aarch64_feature_detected!("sme-f8f32"));
+    println!(
+        "ssve-fp8fma: {}",
+        is_aarch64_feature_detected!("ssve-fp8fma")
+    );
+    println!(
+        "ssve-fp8dot4: {}",
+        is_aarch64_feature_detected!("ssve-fp8dot4")
+    );
+    println!(
+        "ssve-fp8dot2: {}",
+        is_aarch64_feature_detected!("ssve-fp8dot2")
+    );
 }
 
 #[test]

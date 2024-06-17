@@ -103,13 +103,26 @@ struct AtHwcap {
     // afp: bool,
     // rpres: bool,
     // mte3: bool,
+    sme: bool,
+    smei16i64: bool,
+    smef64f64: bool,
+    // smei8i32: bool,
+    // smef16f32: bool,
+    // smeb16f32: bool,
+    // smef32f32: bool,
+    smefa64: bool,
     wfxt: bool,
     // ebf16: bool,
     // sveebf16: bool,
     cssc: bool,
     // rprfm: bool,
     sve2p1: bool,
+    sme2: bool,
+    sme2p1: bool,
+    // smei16i32: bool,
+    // smebi32i32: bool,
     smeb16b16: bool,
+    smef16f16: bool,
     mops: bool,
     hbc: bool,
     sveb16b16: bool,
@@ -124,6 +137,12 @@ struct AtHwcap {
     f8dp2: bool,
     f8e4m3: bool,
     f8e5m2: bool,
+    smelutv2: bool,
+    smef8f16: bool,
+    smef8f32: bool,
+    smesf8fma: bool,
+    smesf8dp4: bool,
+    smesf8dp2: bool,
 }
 
 impl From<auxvec::AuxVec> for AtHwcap {
@@ -187,13 +206,26 @@ impl From<auxvec::AuxVec> for AtHwcap {
             // afp: bit::test(auxv.hwcap2, 20),
             // rpres: bit::test(auxv.hwcap2, 21),
             // mte3: bit::test(auxv.hwcap2, 22),
+            sme: bit::test(auxv.hwcap2, 23),
+            smei16i64: bit::test(auxv.hwcap2, 24),
+            smef64f64: bit::test(auxv.hwcap2, 25),
+            // smei8i32: bit::test(auxv.hwcap2, 26),
+            // smef16f32: bit::test(auxv.hwcap2, 27),
+            // smeb16f32: bit::test(auxv.hwcap2, 28),
+            // smef32f32: bit::test(auxv.hwcap2, 29),
+            smefa64: bit::test(auxv.hwcap2, 30),
             wfxt: bit::test(auxv.hwcap2, 31),
             // ebf16: bit::test(auxv.hwcap2, 32),
             // sveebf16: bit::test(auxv.hwcap2, 33),
             cssc: bit::test(auxv.hwcap2, 34),
             // rprfm: bit::test(auxv.hwcap2, 35),
             sve2p1: bit::test(auxv.hwcap2, 36),
+            sme2: bit::test(auxv.hwcap2, 37),
+            sme2p1: bit::test(auxv.hwcap2, 38),
+            // smei16i32: bit::test(auxv.hwcap2, 39),
+            // smebi32i32: bit::test(auxv.hwcap2, 40),
             smeb16b16: bit::test(auxv.hwcap2, 41),
+            smef16f16: bit::test(auxv.hwcap2, 42),
             mops: bit::test(auxv.hwcap2, 43),
             hbc: bit::test(auxv.hwcap2, 44),
             sveb16b16: bit::test(auxv.hwcap2, 45),
@@ -208,6 +240,12 @@ impl From<auxvec::AuxVec> for AtHwcap {
             f8dp2: bit::test(auxv.hwcap2, 54),
             f8e4m3: bit::test(auxv.hwcap2, 55),
             f8e5m2: bit::test(auxv.hwcap2, 56),
+            smelutv2: bit::test(auxv.hwcap2, 57),
+            smef8f16: bit::test(auxv.hwcap2, 58),
+            smef8f32: bit::test(auxv.hwcap2, 59),
+            smesf8fma: bit::test(auxv.hwcap2, 60),
+            smesf8dp4: bit::test(auxv.hwcap2, 61),
+            smesf8dp2: bit::test(auxv.hwcap2, 62),
         }
     }
 }
@@ -278,13 +316,26 @@ impl From<super::cpuinfo::CpuInfo> for AtHwcap {
             // afp: f.has("afp"),
             // rpres: f.has("rpres"),
             // mte3: f.has("mte3"),
+            sme: f.has("sme"),
+            smei16i64: f.has("smei16i64"),
+            smef64f64: f.has("smef64f64"),
+            // smei8i32: f.has("smei8i32"),
+            // smef16f32: f.has("smef16f32"),
+            // smeb16f32: f.has("smeb16f32"),
+            // smef32f32: f.has("smef32f32"),
+            smefa64: f.has("smefa64"),
             wfxt: f.has("wfxt"),
             // ebf16: f.has("ebf16"),
             // sveebf16: f.has("sveebf16"),
             cssc: f.has("cssc"),
             // rprfm: f.has("rprfm"),
             sve2p1: f.has("sve2p1"),
+            sme2: f.has("sme2"),
+            sme2p1: f.has("sme2p1"),
+            // smei16i32: f.has("smei16i32"),
+            // smebi32i32: f.has("smebi32i32"),
             smeb16b16: f.has("smeb16b16"),
+            smef16f16: f.has("smef16f16"),
             mops: f.has("mops"),
             hbc: f.has("hbc"),
             sveb16b16: f.has("sveb16b16"),
@@ -299,6 +350,12 @@ impl From<super::cpuinfo::CpuInfo> for AtHwcap {
             f8dp2: f.has("f8dp2"),
             f8e4m3: f.has("f8e4m3"),
             f8e5m2: f.has("f8e5m2"),
+            smelutv2: f.has("smelutv2"),
+            smef8f16: f.has("smef8f16"),
+            smef8f32: f.has("smef8f32"),
+            smesf8fma: f.has("smesf8fma"),
+            smesf8dp4: f.has("smesf8dp4"),
+            smesf8dp2: f.has("smesf8dp2"),
         }
     }
 }
@@ -431,6 +488,25 @@ impl AtHwcap {
             enable_feature(Feature::fp8dot4, self.f8dp4);
             enable_feature(Feature::fp8dot2, self.f8dp2);
             enable_feature(Feature::wfxt, self.wfxt);
+            enable_feature(Feature::sme, self.sme && self.bf16);
+            enable_feature(Feature::sme_i16i64, self.smei16i64 && self.sme);
+            enable_feature(Feature::sme_f64f64, self.smef64f64 && self.sme);
+            // enable_feature(Feature::sme_i8i32, self.smei8i32);
+            // enable_feature(Feature::sme_f16f32, self.smef16f32);
+            // enable_feature(Feature::sme_b16f32, self.smeb16f32);
+            // enable_feature(Feature::sme_f32f32, self.smef32f32);
+            enable_feature(Feature::sme_fa64, self.smefa64 && self.sme && sve2);
+            enable_feature(Feature::sme2, self.sme2 && self.sme);
+            enable_feature(Feature::sme2p1, self.sme2p1 && self.sme2 && self.sme);
+            // enable_feature(Feature::sme_i16i32, self.smei16i32);
+            // enable_feature(Feature::sme_bi32i32, self.smebi32i32);
+            enable_feature(Feature::sme_f16f16, self.smef16f16);
+            enable_feature(Feature::sme_lutv2, self.smelutv2);
+            enable_feature(Feature::sme_f8f16, self.smef8f16 && self.sme2 && self.f8cvt);
+            enable_feature(Feature::sme_f8f32, self.smef8f32 && self.sme2 && self.f8cvt);
+            enable_feature(Feature::ssve_fp8fma, self.smesf8fma && self.sme2);
+            enable_feature(Feature::ssve_fp8dot4, self.smesf8dp4 && self.sme2);
+            enable_feature(Feature::ssve_fp8dot2, self.smesf8dp2 && self.sme2);
         }
         value
     }

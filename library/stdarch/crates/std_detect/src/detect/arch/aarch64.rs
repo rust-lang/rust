@@ -72,6 +72,19 @@ features! {
     /// * `"fp8dot4"` - FEAT_FP8DOT4
     /// * `"fp8dot2"` - FEAT_FP8DOT2
     /// * `"wfxt"` - FEAT_WFxT
+    /// * `"sme"` - FEAT_SME
+    /// * `"sme-i16i64"` - FEAT_SME_I16I64
+    /// * `"sme-f64f64"` - FEAT_SME_F64F64
+    /// * `"sme-fa64"` - FEAT_SME_FA64
+    /// * `"sme2"` - FEAT_SME2
+    /// * `"sme2p1"` - FEAT_SME2p1
+    /// * `"sme-f16f16"` - FEAT_SME_F16F16
+    /// * `"sme-lutv2"` - FEAT_SME_LUTv2
+    /// * `"sme-f8f16"` - FEAT_SME_F8F16
+    /// * `"sme-f8f32"` - FEAT_SME_F8F32
+    /// * `"ssve-fp8fma"` - FEAT_SSVE_FP8FMA
+    /// * `"ssve-fp8dot4"` - FEAT_SSVE_FP8DOT4
+    /// * `"ssve-fp8dot2"` - FEAT_SSVE_FP8DOT2
     ///
     /// [docs]: https://developer.arm.com/documentation/ddi0487/latest
     #[stable(feature = "simd_aarch64", since = "1.60.0")]
@@ -210,4 +223,30 @@ features! {
     /// FEAT_FP8DOT2 (F8DP2 Instructions)
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] wfxt: "wfxt";
     /// FEAT_WFxT (WFET and WFIT Instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme: "sme";
+    /// FEAT_SME (Scalable Matrix Extension)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_i16i64: "sme-i16i64";
+    /// FEAT_SME_I16I64 (16-bit to 64-bit integer widening outer product instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_f64f64: "sme-f64f64";
+    /// FEAT_SME_F64F64 (Double-precision floating-point outer product instructions)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_fa64: "sme-fa64";
+    /// FEAT_SME_FA64 (Full A64 instruction set support in Streaming SVE mode)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme2: "sme2";
+    /// FEAT_SME2 (SME Version 2)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme2p1: "sme2p1";
+    /// FEAT_SME2p1 (SME Version 2.1)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_f16f16: "sme-f16f16";
+    /// FEAT_SME_F16F16 (Non-widening half-precision FP16 to FP16 arithmetic for SME2)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_lutv2: "sme-lutv2";
+    /// FEAT_SME_LUTv2 (LUTI4 Instruction)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_f8f16: "sme-f8f16";
+    /// FEAT_SME_F8F16
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_f8f32: "sme-f8f32";
+    /// FEAT_SME_F8F32
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] ssve_fp8fma: "ssve-fp8fma";
+    /// FEAT_SSVE_FP8FMA
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] ssve_fp8dot4: "ssve-fp8dot4";
+    /// FEAT_SSVE_FP8DOT4
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] ssve_fp8dot2: "ssve-fp8dot2";
+    /// FEAT_SSVE_FP8DOT2
 }
