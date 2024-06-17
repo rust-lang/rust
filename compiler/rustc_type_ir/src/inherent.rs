@@ -374,6 +374,8 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 
     fn region_at(self, i: usize) -> I::Region;
 
+    fn const_at(self, i: usize) -> I::Const;
+
     fn identity_for_item(interner: I, def_id: I::DefId) -> I::GenericArgs;
 
     fn extend_with_error(

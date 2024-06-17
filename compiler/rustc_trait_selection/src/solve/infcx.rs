@@ -16,7 +16,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_type_ir::relate::Relate;
-use rustc_type_ir::solve::{NoSolution, SolverMode};
+use rustc_type_ir::solve::{Certainty, NoSolution, SolverMode};
 
 use crate::traits::coherence::trait_ref_is_knowable;
 use crate::traits::specialization_graph;
@@ -405,5 +405,31 @@ impl<'tcx> rustc_next_trait_solver::infcx::SolverDelegate for SolverDelegate<'tc
 
         // FIXME: Check for defaultness here may cause diagnostics problems.
         if eligible { Ok(Some(node_item.item.def_id)) } else { Ok(None) }
+    }
+
+    fn is_transmutable(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        dst: Ty<'tcx>,
+        src: Ty<'tcx>,
+        assume: ty::Const<'tcx>,
+    ) -> Result<Certainty, NoSolution> {
+        // Erase regions because we compute layouts in `rustc_transmute`,
+        // which will ICE for region vars.
+        let (dst, src) = self.tcx.erase_regions((dst, src));
+
+        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, param_env, assume) else {
+            return Err(NoSolution);
+        };
+
+        // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
+        match rustc_transmute::TransmuteTypeEnv::new(&self.0).is_transmutable(
+            ObligationCause::dummy(),
+            rustc_transmute::Types { src, dst },
+            assume,
+        ) {
+            rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
+            rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
+        }
     }
 }

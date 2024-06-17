@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::relate::Relate;
-use rustc_type_ir::solve::{Goal, NoSolution, SolverMode};
+use rustc_type_ir::solve::{Certainty, Goal, NoSolution, SolverMode};
 use rustc_type_ir::{self as ty, Interner};
 
 pub trait SolverDelegate: Sized {
@@ -194,4 +194,12 @@ pub trait SolverDelegate: Sized {
         trait_assoc_def_id: <Self::Interner as Interner>::DefId,
         impl_def_id: <Self::Interner as Interner>::DefId,
     ) -> Result<Option<<Self::Interner as Interner>::DefId>, NoSolution>;
+
+    fn is_transmutable(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        dst: <Self::Interner as Interner>::Ty,
+        src: <Self::Interner as Interner>::Ty,
+        assume: <Self::Interner as Interner>::Const,
+    ) -> Result<Certainty, NoSolution>;
 }

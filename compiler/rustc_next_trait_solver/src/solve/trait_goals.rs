@@ -601,12 +601,10 @@ where
     }
 
     fn consider_builtin_transmute_candidate(
-        _ecx: &mut EvalCtxt<'_, Infcx>,
-        _goal: Goal<I, Self>,
+        ecx: &mut EvalCtxt<'_, Infcx>,
+        goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        // TODO:
-        todo!()
-        /* if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
         }
 
@@ -615,26 +613,17 @@ where
             return Err(NoSolution);
         }
 
-        // Erase regions because we compute layouts in `rustc_transmute`,
-        // which will ICE for region vars.
-        let args = ecx.interner().erase_regions(goal.predicate.trait_ref.args);
-
-        let Some(assume) =
-            rustc_transmute::Assume::from_const(ecx.interner(), goal.param_env, args.const_at(2))
-        else {
-            return Err(NoSolution);
-        };
-
         // FIXME: This actually should destructure the `Result` we get from transmutability and
         // register candiates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let certainty = ecx.is_transmutable(
-                rustc_transmute::Types { dst: args.type_at(0), src: args.type_at(1) },
-                assume,
+                goal.param_env,
+                goal.predicate.trait_ref.args.type_at(0),
+                goal.predicate.trait_ref.args.type_at(1),
+                goal.predicate.trait_ref.args.const_at(2),
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(certainty)
         })
-        */
     }
 
     /// ```ignore (builtin impl example)

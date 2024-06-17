@@ -890,25 +890,6 @@ where
         self.infcx.well_formed_goals(param_env, arg)
     }
 
-    /*
-    pub(super) fn is_transmutable(
-        &self,
-        src_and_dst: rustc_transmute::Types<I>,
-        assume: rustc_transmute::Assume,
-    ) -> Result<Certainty, NoSolution> {
-        use rustc_transmute::Answer;
-        // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
-            ObligationCause::dummy(),
-            src_and_dst,
-            assume,
-        ) {
-            Answer::Yes => Ok(Certainty::Yes),
-            Answer::No(_) | Answer::If(_) => Err(NoSolution),
-        }
-    }
-    */
-
     pub(super) fn trait_ref_is_knowable(
         &mut self,
         param_env: I::ParamEnv,
@@ -1015,6 +996,16 @@ where
         unevaluated: ty::UnevaluatedConst<I>,
     ) -> Option<I::Const> {
         self.infcx.try_const_eval_resolve(param_env, unevaluated)
+    }
+
+    pub(super) fn is_transmutable(
+        &mut self,
+        param_env: I::ParamEnv,
+        dst: I::Ty,
+        src: I::Ty,
+        assume: I::Const,
+    ) -> Result<Certainty, NoSolution> {
+        self.infcx.is_transmutable(param_env, dst, src, assume)
     }
 }
 
