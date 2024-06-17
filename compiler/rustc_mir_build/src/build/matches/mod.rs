@@ -380,71 +380,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .collect()
     }
 
-    /// Create the decision tree for the match expression, starting from `block`.
-    ///
-    /// Modifies `candidates` to store the bindings and type ascriptions for
-    /// that candidate.
-    fn lower_match_tree<'pat>(
-        &mut self,
-        block: BasicBlock,
-        scrutinee_span: Span,
-        scrutinee_place_builder: &PlaceBuilder<'tcx>,
-        match_start_span: Span,
-        candidates: &mut [&mut Candidate<'pat, 'tcx>],
-    ) {
-        // See the doc comment on `match_candidates` for why we have an
-        // otherwise block. Match checking will ensure this is actually
-        // unreachable.
-        let otherwise_block = self.cfg.start_new_block();
-
-        // This will generate code to test scrutinee_place and
-        // branch to the appropriate arm block
-        self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
-
-        let source_info = self.source_info(scrutinee_span);
-
-        // Matching on a `scrutinee_place` with an uninhabited type doesn't
-        // generate any memory reads by itself, and so if the place "expression"
-        // contains unsafe operations like raw pointer dereferences or union
-        // field projections, we wouldn't know to require an `unsafe` block
-        // around a `match` equivalent to `std::intrinsics::unreachable()`.
-        // See issue #47412 for this hole being discovered in the wild.
-        //
-        // HACK(eddyb) Work around the above issue by adding a dummy inspection
-        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
-        //
-        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
-        // This is currently needed to not allow matching on an uninitialized,
-        // uninhabited value. If we get never patterns, those will check that
-        // the place is initialized, and so this read would only be used to
-        // check safety.
-        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
-
-        if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-            self.cfg.push_fake_read(
-                otherwise_block,
-                source_info,
-                cause_matched_place,
-                scrutinee_place,
-            );
-        }
-
-        self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
-
-        // Link each leaf candidate to the `pre_binding_block` of the next one.
-        let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
-
-        for candidate in candidates {
-            candidate.visit_leaves(|leaf_candidate| {
-                if let Some(ref mut prev) = previous_candidate {
-                    assert!(leaf_candidate.false_edge_start_block.is_some());
-                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
-                }
-                previous_candidate = Some(leaf_candidate);
-            });
-        }
-    }
-
     /// Lower the bindings, guards and arm bodies of a `match` expression.
     ///
     /// The decision tree should have already been created
@@ -1275,6 +1210,70 @@ pub(crate) struct ArmHasGuard(pub(crate) bool);
 // Main matching algorithm
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// The entrypoint of the matching algorithm. Create the decision tree for the match expression,
+    /// starting from `block`.
+    ///
+    /// Modifies `candidates` to store the bindings and type ascriptions for
+    /// that candidate.
+    fn lower_match_tree<'pat>(
+        &mut self,
+        block: BasicBlock,
+        scrutinee_span: Span,
+        scrutinee_place_builder: &PlaceBuilder<'tcx>,
+        match_start_span: Span,
+        candidates: &mut [&mut Candidate<'pat, 'tcx>],
+    ) {
+        // See the doc comment on `match_candidates` for why we have an
+        // otherwise block. Match checking will ensure this is actually
+        // unreachable.
+        let otherwise_block = self.cfg.start_new_block();
+
+        // This will generate code to test scrutinee_place and branch to the appropriate arm block
+        self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
+
+        let source_info = self.source_info(scrutinee_span);
+
+        // Matching on a `scrutinee_place` with an uninhabited type doesn't
+        // generate any memory reads by itself, and so if the place "expression"
+        // contains unsafe operations like raw pointer dereferences or union
+        // field projections, we wouldn't know to require an `unsafe` block
+        // around a `match` equivalent to `std::intrinsics::unreachable()`.
+        // See issue #47412 for this hole being discovered in the wild.
+        //
+        // HACK(eddyb) Work around the above issue by adding a dummy inspection
+        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
+        //
+        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
+        // This is currently needed to not allow matching on an uninitialized,
+        // uninhabited value. If we get never patterns, those will check that
+        // the place is initialized, and so this read would only be used to
+        // check safety.
+        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
+
+        if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
+            self.cfg.push_fake_read(
+                otherwise_block,
+                source_info,
+                cause_matched_place,
+                scrutinee_place,
+            );
+        }
+
+        self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
+
+        // Link each leaf candidate to the `false_edge_start_block` of the next one.
+        let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
+        for candidate in candidates {
+            candidate.visit_leaves(|leaf_candidate| {
+                if let Some(ref mut prev) = previous_candidate {
+                    assert!(leaf_candidate.false_edge_start_block.is_some());
+                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
+                }
+                previous_candidate = Some(leaf_candidate);
+            });
+        }
+    }
+
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The
