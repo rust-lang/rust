@@ -1,10 +1,9 @@
 use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
-use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
+use rustc_macros::HashStable;
 use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
 
-use crate::infer::canonical::QueryRegionConstraints;
 use crate::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };
@@ -38,34 +37,15 @@ impl<'tcx> std::ops::Deref for PredefinedOpaques<'tcx> {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable)]
-pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);
+pub struct ExternalConstraints<'tcx>(
+    pub(crate) Interned<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
+);
 
 impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
-    type Target = ExternalConstraintsData<'tcx>;
+    type Target = ExternalConstraintsData<TyCtxt<'tcx>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-/// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default, TypeVisitable, TypeFoldable)]
-pub struct ExternalConstraintsData<'tcx> {
-    // FIXME: implement this.
-    pub region_constraints: QueryRegionConstraints<'tcx>,
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
-    pub normalization_nested_goals: NestedNormalizationGoals<'tcx>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default, TypeVisitable, TypeFoldable)]
-pub struct NestedNormalizationGoals<'tcx>(pub Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>);
-impl<'tcx> NestedNormalizationGoals<'tcx> {
-    pub fn empty() -> Self {
-        NestedNormalizationGoals(vec![])
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
     }
 }
 

@@ -29,11 +29,9 @@ use super::inspect::ProofTreeBuilder;
 use super::{search_graph, GoalEvaluationKind, FIXPOINT_STEP_LIMIT};
 use super::{search_graph::SearchGraph, Goal};
 use super::{GoalSource, SolverMode};
-pub use select::InferCtxtSelectExt;
 
 pub(super) mod canonical;
 mod probe;
-mod select;
 
 pub struct EvalCtxt<'a, Infcx, I = <Infcx as InferCtxtLike>::Interner>
 where
@@ -339,7 +337,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         goal_evaluation_kind: GoalEvaluationKind,
         _source: GoalSource,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Result<(NestedNormalizationGoals<'tcx>, bool, Certainty), NoSolution> {
+    ) -> Result<(NestedNormalizationGoals<TyCtxt<'tcx>>, bool, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
@@ -382,7 +380,7 @@ impl<'a, 'tcx> EvalCtxt<'a, InferCtxt<'tcx>> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
-    ) -> (NestedNormalizationGoals<'tcx>, Certainty, bool) {
+    ) -> (NestedNormalizationGoals<TyCtxt<'tcx>>, Certainty, bool) {
         if let Certainty::Maybe(MaybeCause::Overflow { .. }) = response.value.certainty {
             return (NestedNormalizationGoals::empty(), response.value.certainty, false);
         }

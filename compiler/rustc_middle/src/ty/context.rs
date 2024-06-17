@@ -88,6 +88,7 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
+    type LocalDefId = LocalDefId;
     type AdtDef = ty::AdtDef<'tcx>;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -382,7 +383,7 @@ pub struct CtxtInterners<'tcx> {
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
-    external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
+    external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
@@ -2093,7 +2094,7 @@ direct_interners! {
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
-    external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
+    external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<'tcx>):
         PredefinedOpaques -> PredefinedOpaques<'tcx>,

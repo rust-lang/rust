@@ -135,8 +135,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
-            .outlives
-            .retain(|(outlives, _)| outlives.0.as_region().map_or(true, |re| re != outlives.1));
+            .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
 
         let canonical = Canonicalizer::canonicalize(
             self.infcx,
@@ -179,8 +178,8 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
     fn compute_external_query_constraints(
         &self,
         certainty: Certainty,
-        normalization_nested_goals: NestedNormalizationGoals<'tcx>,
-    ) -> ExternalConstraintsData<'tcx> {
+        normalization_nested_goals: NestedNormalizationGoals<TyCtxt<'tcx>>,
+    ) -> ExternalConstraintsData<TyCtxt<'tcx>> {
         // We only return region constraints once the certainty is `Yes`. This
         // is necessary as we may drop nested goals on ambiguity, which may result
         // in unconstrained inference variables in the region constraints. It also
@@ -193,30 +192,40 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             // Cannot use `take_registered_region_obligations` as we may compute the response
             // inside of a `probe` whenever we have multiple choices inside of the solver.
             let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
-            let mut region_constraints = self.infcx.with_region_constraints(|region_constraints| {
-                make_query_region_constraints(
-                    self.interner(),
-                    region_obligations.iter().map(|r_o| {
-                        (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())
-                    }),
-                    region_constraints,
-                )
-            });
-
+            let QueryRegionConstraints { outlives, member_constraints } =
+                self.infcx.with_region_constraints(|region_constraints| {
+                    make_query_region_constraints(
+                        self.interner(),
+                        region_obligations.iter().map(|r_o| {
+                            (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())
+                        }),
+                        region_constraints,
+                    )
+                });
+            assert_eq!(member_constraints, vec![]);
             let mut seen = FxHashSet::default();
-            region_constraints.outlives.retain(|outlives| seen.insert(*outlives));
-            region_constraints
+            outlives
+                .into_iter()
+                .filter(|(outlives, _)| seen.insert(*outlives))
+                .map(|(outlives, _origin)| outlives)
+                .collect()
         } else {
             Default::default()
         };
 
-        let mut opaque_types = self.infcx.clone_opaque_types_for_query_response();
-        // Only return opaque type keys for newly-defined opaques
-        opaque_types.retain(|(a, _)| {
-            self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
-        });
-
-        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
+        ExternalConstraintsData {
+            region_constraints,
+            opaque_types: self
+                .infcx
+                .clone_opaque_types_for_query_response()
+                .into_iter()
+                // Only return *newly defined* opaque types.
+                .filter(|(a, _)| {
+                    self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
+                })
+                .collect(),
+            normalization_nested_goals,
+        }
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -232,7 +241,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
-    ) -> (NestedNormalizationGoals<'tcx>, Certainty) {
+    ) -> (NestedNormalizationGoals<TyCtxt<'tcx>>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
             self.infcx,
             &original_values,
@@ -369,16 +378,17 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         }
     }
 
-    fn register_region_constraints(&mut self, region_constraints: &QueryRegionConstraints<'tcx>) {
-        for &(ty::OutlivesPredicate(lhs, rhs), _) in &region_constraints.outlives {
+    fn register_region_constraints(
+        &mut self,
+        outlives: &[ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>],
+    ) {
+        for &ty::OutlivesPredicate(lhs, rhs) in outlives {
             match lhs.unpack() {
                 GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
                 GenericArgKind::Type(lhs) => self.register_ty_outlives(lhs, rhs),
                 GenericArgKind::Const(_) => bug!("const outlives: {lhs:?}: {rhs:?}"),
             }
         }
-
-        assert!(region_constraints.member_constraints.is_empty());
     }
 
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)]) {
