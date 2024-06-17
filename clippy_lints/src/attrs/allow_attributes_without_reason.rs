@@ -22,7 +22,7 @@ pub(super) fn check<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMet
     }
 
     // Check if the attribute is in an external macro and therefore out of the developer's control
-    if in_external_macro(cx.sess(), attr.span) || is_from_proc_macro(cx, &attr) {
+    if in_external_macro(cx.sess(), attr.span) || is_from_proc_macro(cx, attr) {
         return;
     }
 
