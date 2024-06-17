@@ -761,7 +761,7 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
-    tracked!(coverage_options, CoverageOptions { level: CoverageLevel::Mcdc });
+    tracked!(coverage_options, CoverageOptions { level: CoverageLevel::Mcdc, no_mir_spans: true });
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
