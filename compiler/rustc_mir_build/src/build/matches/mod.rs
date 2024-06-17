@@ -315,12 +315,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let match_start_span = span.shrink_to_lo().to(scrutinee_span);
 
-        let fake_borrow_temps = self.lower_match_tree(
+        // The set of places that we are creating fake borrows of. If there are no match guards then
+        // we don't need any fake borrows, so don't track them.
+        let fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
+            util::collect_fake_borrows(self, &candidates, scrutinee_span, scrutinee_place.base())
+        } else {
+            Vec::new()
+        };
+
+        self.lower_match_tree(
             block,
             scrutinee_span,
             &scrutinee_place,
             match_start_span,
-            match_has_guard,
             &mut candidates,
         );
 
@@ -377,30 +384,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Modifies `candidates` to store the bindings and type ascriptions for
     /// that candidate.
-    ///
-    /// Returns the places that need fake borrows because we bind or test them.
     fn lower_match_tree<'pat>(
         &mut self,
         block: BasicBlock,
         scrutinee_span: Span,
         scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
-        match_has_guard: bool,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
-    ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
-        // The set of places that we are creating fake borrows of. If there are no match guards then
-        // we don't need any fake borrows, so don't track them.
-        let fake_borrows: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
-            util::collect_fake_borrows(
-                self,
-                candidates,
-                scrutinee_span,
-                scrutinee_place_builder.base(),
-            )
-        } else {
-            Vec::new()
-        };
-
+    ) {
         // See the doc comment on `match_candidates` for why we have an
         // otherwise block. Match checking will ensure this is actually
         // unreachable.
@@ -452,8 +443,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 previous_candidate = Some(leaf_candidate);
             });
         }
-
-        fake_borrows
     }
 
     /// Lower the bindings, guards and arm bodies of a `match` expression.
@@ -761,18 +750,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let fake_borrow_temps = self.lower_match_tree(
+        self.lower_match_tree(
             block,
             irrefutable_pat.span,
             &initializer,
             irrefutable_pat.span,
-            false,
             &mut [&mut candidate],
         );
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
             candidate,
-            fake_borrow_temps.as_slice(),
+            &[],
             irrefutable_pat.span,
             None,
             false,
@@ -1995,12 +1983,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
         let mut otherwise_candidate =
             Candidate::new(expr_place_builder.clone(), &wildcard, false, self);
-        let fake_borrow_temps = self.lower_match_tree(
+        self.lower_match_tree(
             block,
             pat.span,
             &expr_place_builder,
             pat.span,
-            false,
             &mut [&mut guard_candidate, &mut otherwise_candidate],
         );
         let expr_place = expr_place_builder.try_to_place(self);
@@ -2015,7 +2002,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let post_guard_block = self.bind_pattern(
             self.source_info(pat.span),
             guard_candidate,
-            fake_borrow_temps.as_slice(),
+            &[],
             expr_span,
             None,
             false,
@@ -2490,19 +2477,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let pat = Pat { ty: pattern.ty, span: else_block_span, kind: PatKind::Wild };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false, this);
             let mut candidate = Candidate::new(scrutinee.clone(), pattern, false, this);
-            let fake_borrow_temps = this.lower_match_tree(
+            this.lower_match_tree(
                 block,
                 initializer_span,
                 &scrutinee,
                 pattern.span,
-                false,
                 &mut [&mut candidate, &mut wildcard],
             );
             // This block is for the matching case
             let matching = this.bind_pattern(
                 this.source_info(pattern.span),
                 candidate,
-                fake_borrow_temps.as_slice(),
+                &[],
                 initializer_span,
                 None,
                 true,
@@ -2511,7 +2497,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let failure = this.bind_pattern(
                 this.source_info(else_block_span),
                 wildcard,
-                fake_borrow_temps.as_slice(),
+                &[],
                 initializer_span,
                 None,
                 true,
