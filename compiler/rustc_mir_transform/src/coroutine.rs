@@ -68,7 +68,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::CoroutineArgs;
-use rustc_middle::ty::InstanceDef;
+use rustc_middle::ty::InstanceKind;
 use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
@@ -1276,7 +1276,7 @@ fn create_coroutine_drop_shim<'tcx>(
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
     let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
-    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(coroutine_ty));
+    let drop_instance = InstanceKind::DropGlue(drop_in_place, Some(coroutine_ty));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.

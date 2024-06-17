@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
-use rustc_middle::ty::{Instance, InstanceDef, TypeVisitableExt};
+use rustc_middle::ty::{Instance, InstanceKind, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -769,7 +769,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                         if let Ok(Some(instance)) =
                             Instance::resolve(tcx, param_env, callee, fn_args)
-                            && let InstanceDef::Item(def) = instance.def
+                            && let InstanceKind::Item(def) = instance.def
                         {
                             // Resolve a trait method call to its concrete implementation, which may be in a
                             // `const` trait impl. This is only used for the const stability check below, since
