@@ -91,7 +91,6 @@ pub(crate) fn fixup_syntax(
             preorder.skip_subtree();
             continue;
         }
-
         // In some other situations, we can fix things by just appending some tokens.
         match_ast! {
             match node {
@@ -273,6 +272,62 @@ pub(crate) fn fixup_syntax(
                                 spacing: Spacing::Alone,
                                 span: fake_span(node_range)
                             }),
+                        ]);
+                    }
+                },
+                ast::RecordExprField(it) => {
+                    if let Some(colon) = it.colon_token() {
+                        if it.name_ref().is_some() {
+                            append.insert(colon.into(), vec![
+                                Leaf::Ident(Ident {
+                                    text: "__ra_fixup".into(),
+                                    span: fake_span(node_range)
+                                })
+                            ]);
+                        }
+                    }
+                },
+                ast::Path(it) => {
+                    if let Some(colon) = it.coloncolon_token() {
+                        if it.segment().is_none() {
+                            append.insert(colon.into(), vec![
+                                Leaf::Ident(Ident {
+                                    text: "__ra_fixup".into(),
+                                    span: fake_span(node_range)
+                                })
+                            ]);
+                        }
+                    }
+                },
+                ast::ArgList(it) => {
+                    if it.r_paren_token().is_none() {
+                        append.insert(node.into(), vec![
+                            Leaf::Punct(Punct {
+                                span: fake_span(node_range),
+                                char: ')',
+                                spacing: Spacing::Alone
+                            })
+                        ]);
+                    }
+                },
+                ast::ArgList(it) => {
+                    if it.r_paren_token().is_none() {
+                        append.insert(node.into(), vec![
+                            Leaf::Punct(Punct {
+                                span: fake_span(node_range),
+                                char: ')',
+                                spacing: Spacing::Alone
+                            })
+                        ]);
+                    }
+                },
+                ast::ClosureExpr(it) => {
+                    if it.body().is_none() {
+                        append.insert(node.into(), vec![
+                            Leaf::Ident(Ident {
+                                text: "__ra_fixup".into(),
+                                span: fake_span(node_range)
+                            })
                         ]);
                     }
                 },
@@ -758,5 +813,71 @@ fn foo() {
 fn foo () {loop { }}
 "#]],
         )
+    }
+
+    #[test]
+    fn fixup_path() {
+        check(
+            r#"
+fn foo() {
+    path::
+}
+"#,
+            expect![[r#"
+fn foo () {path :: __ra_fixup}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_record_ctor_field() {
+        check(
+            r#"
+fn foo() {
+    R { f: }
+}
+"#,
+            expect![[r#"
+fn foo () {R {f : __ra_fixup}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_arg_list() {
+        check(
+            r#"
+fn foo() {
+    foo(a
+}
+"#,
+            expect![[r#"
+fn foo () { foo ( a ) }
+"#]],
+        );
+        check(
+            r#"
+fn foo() {
+    bar.foo(a
+}
+"#,
+            expect![[r#"
+fn foo () { bar . foo ( a ) }
+"#]],
+        );
+    }
+
+    #[test]
+    fn fixup_closure() {
+        check(
+            r#"
+fn foo() {
+    ||
+}
+"#,
+            expect![[r#"
+fn foo () {|| __ra_fixup}
+"#]],
+        );
     }
 }
