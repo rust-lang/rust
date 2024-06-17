@@ -1434,7 +1434,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut InterpCx<'tcx, Self>,
         frame: Frame<'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
-    ) -> InterpResult<'tcx, StackPopJump> {
+    ) -> InterpResult<'tcx, ReturnAction> {
         if frame.extra.is_user_relevant {
             // All that we store is whether or not the frame we just removed is local, so now we
             // have no idea where the next topmost local frame is. So we recompute it.
