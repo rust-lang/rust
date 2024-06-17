@@ -108,10 +108,11 @@ pub(crate) fn format_defaultness(defaultness: ast::Defaultness) -> &'static str 
 }
 
 #[inline]
-pub(crate) fn format_unsafety(unsafety: ast::Unsafe) -> &'static str {
+pub(crate) fn format_safety(unsafety: ast::Safety) -> &'static str {
     match unsafety {
-        ast::Unsafe::Yes(..) => "unsafe ",
-        ast::Unsafe::No => "",
+        ast::Safety::Unsafe(..) => "unsafe ",
+        ast::Safety::Safe(..) => "safe ",
+        ast::Safety::Default => "",
     }
 }
 
@@ -362,7 +363,7 @@ macro_rules! out_of_file_lines_range {
             && !$self
                 .config
                 .file_lines()
-                .intersects(&$self.parse_sess.lookup_line_range($span))
+                .intersects(&$self.psess.lookup_line_range($span))
     };
 }
 
@@ -497,7 +498,8 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Break(..)
         | ast::ExprKind::Cast(..)
         | ast::ExprKind::Continue(..)
-        | ast::ExprKind::Err
+        | ast::ExprKind::Dummy
+        | ast::ExprKind::Err(_)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)

@@ -9,10 +9,10 @@ use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
 
 pub(crate) fn parse_cfg_if<'a>(
-    sess: &'a ParseSess,
+    psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    match catch_unwind(AssertUnwindSafe(|| parse_cfg_if_inner(sess, mac))) {
+    match catch_unwind(AssertUnwindSafe(|| parse_cfg_if_inner(psess, mac))) {
         Ok(Ok(items)) => Ok(items),
         Ok(err @ Err(_)) => err,
         Err(..) => Err("failed to parse cfg_if!"),
@@ -20,11 +20,11 @@ pub(crate) fn parse_cfg_if<'a>(
 }
 
 fn parse_cfg_if_inner<'a>(
-    sess: &'a ParseSess,
+    psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
     let ts = mac.args.tokens.clone();
-    let mut parser = build_stream_parser(sess.inner(), ts);
+    let mut parser = build_stream_parser(psess.inner(), ts);
 
     let mut items = vec![];
     let mut process_if_cfg = true;
@@ -67,7 +67,7 @@ fn parse_cfg_if_inner<'a>(
                 Ok(None) => continue,
                 Err(err) => {
                     err.cancel();
-                    parser.sess.dcx.reset_err_count();
+                    parser.psess.dcx.reset_err_count();
                     return Err(
                         "Expected item inside cfg_if block, but failed to parse it as an item",
                     );

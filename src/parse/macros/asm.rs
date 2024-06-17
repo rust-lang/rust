@@ -7,5 +7,5 @@ use crate::rewrite::RewriteContext;
 pub(crate) fn parse_asm(context: &RewriteContext<'_>, mac: &ast::MacCall) -> Option<AsmArgs> {
     let ts = mac.args.tokens.clone();
     let mut parser = super::build_parser(context, ts);
-    parse_asm_args(&mut parser, context.parse_sess.inner(), mac.span(), false).ok()
+    parse_asm_args(&mut parser, mac.span(), false).ok()
 }

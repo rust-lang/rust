@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 - Updating `dirs 4.0.0 -> 5.0.1` and `cargo_metadata 0.15.4 -> 0.18.0` [#6033] (https://github.com/rust-lang/rustfmt/issues/6033)
+- Bumped bytecount `0.6.4` -> `0.6.8` to fix compilation issues with the `generic-simd` feature. See [bytecount#92] and [bytecount#93]
+
+[bytecount#92]: https://github.com/llogiq/bytecount/pull/92
+[bytecount#93]: https://github.com/llogiq/bytecount/pull/93
+
+- Output correct syntax for type ascription builtin [#6159](https://github.com/rust-lang/rustfmt/issues/6159)
+  ```rust
+  fn main() {
+      builtin # type_ascribe(10, usize)
+  }
+  ```
 
 ## [1.7.0] 2023-10-22
 

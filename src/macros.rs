@@ -137,8 +137,8 @@ fn return_macro_parse_failure_fallback(
     }
 
     context.skipped_range.borrow_mut().push((
-        context.parse_sess.line_of_byte_pos(span.lo()),
-        context.parse_sess.line_of_byte_pos(span.hi()),
+        context.psess.line_of_byte_pos(span.lo()),
+        context.psess.line_of_byte_pos(span.hi()),
     ));
 
     // Return the snippet unmodified if the macro is not block-like
@@ -1092,7 +1092,7 @@ fn next_space(tok: &TokenKind) -> SpaceState {
         | TokenKind::DotDotEq
         | TokenKind::Question => SpaceState::Punctuation,
 
-        TokenKind::ModSep
+        TokenKind::PathSep
         | TokenKind::Pound
         | TokenKind::Dollar
         | TokenKind::OpenDelim(_)

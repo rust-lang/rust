@@ -16,8 +16,8 @@ pub(crate) fn parse_lazy_static(
         ($method:ident $(,)* $($arg:expr),* $(,)*) => {
             match parser.$method($($arg,)*) {
                 Ok(val) => {
-                    if parser.sess.dcx.has_errors().is_some() {
-                        parser.sess.dcx.reset_err_count();
+                    if parser.psess.dcx.has_errors().is_some() {
+                        parser.psess.dcx.reset_err_count();
                         return None;
                     } else {
                         val
@@ -25,7 +25,7 @@ pub(crate) fn parse_lazy_static(
                 }
                 Err(err) => {
                     err.cancel();
-                    parser.sess.dcx.reset_err_count();
+                    parser.psess.dcx.reset_err_count();
                     return None;
                 }
             }

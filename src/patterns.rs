@@ -1,6 +1,4 @@
-use rustc_ast::ast::{
-    self, BindingAnnotation, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax,
-};
+use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
@@ -40,9 +38,11 @@ pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
 
 fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
     match pat.kind {
-        ast::PatKind::Rest | ast::PatKind::Never | ast::PatKind::Wild | ast::PatKind::Lit(_) => {
-            true
-        }
+        ast::PatKind::Rest
+        | ast::PatKind::Never
+        | ast::PatKind::Wild
+        | ast::PatKind::Err(_)
+        | ast::PatKind::Lit(_) => true,
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
         | ast::PatKind::MacCall(..)
@@ -53,9 +53,10 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
-        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
-            is_short_pattern_inner(&*p)
-        }
+        ast::PatKind::Box(ref p)
+        | PatKind::Deref(ref p)
+        | ast::PatKind::Ref(ref p, _)
+        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(&*p),
         PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(p)),
     }
 }
@@ -103,19 +104,20 @@ impl Rewrite for Pat {
                 write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
-            PatKind::Ident(BindingAnnotation(by_ref, mutability), ident, ref sub_pat) => {
-                let prefix = match by_ref {
-                    ByRef::Yes => "ref",
-                    ByRef::No => "",
+            PatKind::Ident(BindingMode(by_ref, mutability), ident, ref sub_pat) => {
+                let mut_prefix = format_mutability(mutability).trim();
+
+                let (ref_kw, mut_infix) = match by_ref {
+                    ByRef::Yes(rmutbl) => ("ref", format_mutability(rmutbl).trim()),
+                    ByRef::No => ("", ""),
                 };
-                let mut_infix = format_mutability(mutability).trim();
                 let id_str = rewrite_ident(context, ident);
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 2 - `@ `.
-                        let width = shape
-                            .width
-                            .checked_sub(prefix.len() + mut_infix.len() + id_str.len() + 2)?;
+                        let width = shape.width.checked_sub(
+                            mut_prefix.len() + ref_kw.len() + mut_infix.len() + id_str.len() + 2,
+                        )?;
                         let lo = context.snippet_provider.span_after(self.span, "@");
                         combine_strs_with_missing_comments(
                             context,
@@ -129,33 +131,55 @@ impl Rewrite for Pat {
                     None => "".to_owned(),
                 };
 
-                // combine prefix and mut
-                let (first_lo, first) = if !prefix.is_empty() && !mut_infix.is_empty() {
-                    let hi = context.snippet_provider.span_before(self.span, "mut");
-                    let lo = context.snippet_provider.span_after(self.span, "ref");
-                    (
+                // combine prefix and ref
+                let (first_lo, first) = match (mut_prefix.is_empty(), ref_kw.is_empty()) {
+                    (false, false) => {
+                        let lo = context.snippet_provider.span_after(self.span, "mut");
+                        let hi = context.snippet_provider.span_before(self.span, "ref");
+                        (
+                            context.snippet_provider.span_after(self.span, "ref"),
+                            combine_strs_with_missing_comments(
+                                context,
+                                mut_prefix,
+                                ref_kw,
+                                mk_sp(lo, hi),
+                                shape,
+                                true,
+                            )?,
+                        )
+                    }
+                    (false, true) => (
                         context.snippet_provider.span_after(self.span, "mut"),
-                        combine_strs_with_missing_comments(
-                            context,
-                            prefix,
-                            mut_infix,
-                            mk_sp(lo, hi),
-                            shape,
-                            true,
-                        )?,
-                    )
-                } else if !prefix.is_empty() {
-                    (
+                        mut_prefix.to_owned(),
+                    ),
+                    (true, false) => (
                         context.snippet_provider.span_after(self.span, "ref"),
-                        prefix.to_owned(),
-                    )
-                } else if !mut_infix.is_empty() {
-                    (
-                        context.snippet_provider.span_after(self.span, "mut"),
-                        mut_infix.to_owned(),
-                    )
-                } else {
-                    (self.span.lo(), "".to_owned())
+                        ref_kw.to_owned(),
+                    ),
+                    (true, true) => (self.span.lo(), "".to_owned()),
+                };
+
+                // combine result of above and mut
+                let (second_lo, second) = match (first.is_empty(), mut_infix.is_empty()) {
+                    (false, false) => {
+                        let lo = context.snippet_provider.span_after(self.span, "ref");
+                        let end_span = mk_sp(first_lo, self.span.hi());
+                        let hi = context.snippet_provider.span_before(end_span, "mut");
+                        (
+                            context.snippet_provider.span_after(end_span, "mut"),
+                            combine_strs_with_missing_comments(
+                                context,
+                                &first,
+                                mut_infix,
+                                mk_sp(lo, hi),
+                                shape,
+                                true,
+                            )?,
+                        )
+                    }
+                    (false, true) => (first_lo, first),
+                    (true, false) => unreachable!("mut_infix necessarily follows a ref"),
+                    (true, true) => (self.span.lo(), "".to_owned()),
                 };
 
                 let next = if !sub_pat.is_empty() {
@@ -174,9 +198,9 @@ impl Rewrite for Pat {
 
                 combine_strs_with_missing_comments(
                     context,
-                    &first,
+                    &second,
                     &next,
-                    mk_sp(first_lo, ident.span.lo()),
+                    mk_sp(second_lo, ident.span.lo()),
                     shape,
                     true,
                 )
@@ -274,6 +298,8 @@ impl Rewrite for Pat {
             PatKind::Paren(ref pat) => pat
                 .rewrite(context, shape.offset_left(1)?.sub_width(1)?)
                 .map(|inner_pat| format!("({})", inner_pat)),
+            PatKind::Err(_) => None,
+            PatKind::Deref(_) => None,
         }
     }
 }

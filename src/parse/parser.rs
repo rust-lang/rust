@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::token::TokenKind;
 use rustc_ast::{ast, attr, ptr};
-use rustc_errors::Diagnostic;
-use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
+use rustc_errors::Diag;
+use rustc_parse::parser::Parser as RawParser;
+use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_span::{sym, Span};
 use thin_vec::ThinVec;
 
@@ -29,7 +30,7 @@ pub(crate) struct Parser<'a> {
 /// A builder for the `Parser`.
 #[derive(Default)]
 pub(crate) struct ParserBuilder<'a> {
-    sess: Option<&'a ParseSess>,
+    psess: Option<&'a ParseSess>,
     input: Option<Input>,
 }
 
@@ -39,23 +40,20 @@ impl<'a> ParserBuilder<'a> {
         self
     }
 
-    pub(crate) fn sess(mut self, sess: &'a ParseSess) -> ParserBuilder<'a> {
-        self.sess = Some(sess);
+    pub(crate) fn psess(mut self, psess: &'a ParseSess) -> ParserBuilder<'a> {
+        self.psess = Some(psess);
         self
     }
 
     pub(crate) fn build(self) -> Result<Parser<'a>, ParserError> {
-        let sess = self.sess.ok_or(ParserError::NoParseSess)?;
+        let psess = self.psess.ok_or(ParserError::NoParseSess)?;
         let input = self.input.ok_or(ParserError::NoInput)?;
 
-        let parser = match Self::parser(sess.inner(), input) {
+        let parser = match Self::parser(psess.inner(), input) {
             Ok(p) => p,
-            Err(db) => {
-                if let Some(diagnostics) = db {
-                    sess.emit_diagnostics(diagnostics);
-                    return Err(ParserError::ParserCreationError);
-                }
-                return Err(ParserError::ParsePanicError);
+            Err(diagnostics) => {
+                psess.emit_diagnostics(diagnostics);
+                return Err(ParserError::ParserCreationError);
             }
         };
 
@@ -63,20 +61,16 @@ impl<'a> ParserBuilder<'a> {
     }
 
     fn parser(
-        sess: &'a rustc_session::parse::ParseSess,
+        psess: &'a rustc_session::parse::ParseSess,
         input: Input,
-    ) -> Result<rustc_parse::parser::Parser<'a>, Option<Vec<Diagnostic>>> {
+    ) -> Result<RawParser<'a>, Vec<Diag<'a>>> {
         match input {
-            Input::File(ref file) => catch_unwind(AssertUnwindSafe(move || {
-                new_parser_from_file(sess, file, None)
-            }))
-            .map_err(|_| None),
-            Input::Text(text) => rustc_parse::maybe_new_parser_from_source_str(
-                sess,
+            Input::File(ref file) => new_parser_from_file(psess, file, None),
+            Input::Text(text) => new_parser_from_source_str(
+                psess,
                 rustc_span::FileName::Custom("stdin".to_owned()),
                 text,
-            )
-            .map_err(Some),
+            ),
         }
     }
 }
@@ -106,27 +100,28 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_file_as_module(
-        sess: &'a ParseSess,
+        psess: &'a ParseSess,
         path: &Path,
         span: Span,
     ) -> Result<(ast::AttrVec, ThinVec<ptr::P<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
-            let mut parser = new_parser_from_file(sess.inner(), path, Some(span));
+            let mut parser =
+                unwrap_or_emit_fatal(new_parser_from_file(psess.inner(), path, Some(span)));
             match parser.parse_mod(&TokenKind::Eof) {
                 Ok((a, i, spans)) => Some((a, i, spans.inner_span)),
-                Err(mut e) => {
+                Err(e) => {
                     e.emit();
-                    if sess.can_reset_errors() {
-                        sess.reset_errors();
+                    if psess.can_reset_errors() {
+                        psess.reset_errors();
                     }
                     None
                 }
             }
         }));
         match result {
-            Ok(Some(m)) if !sess.has_errors() => Ok(m),
-            Ok(Some(m)) if sess.can_reset_errors() => {
-                sess.reset_errors();
+            Ok(Some(m)) if !psess.has_errors() => Ok(m),
+            Ok(Some(m)) if psess.can_reset_errors() => {
+                psess.reset_errors();
                 Ok(m)
             }
             Ok(_) => Err(ParserError::ParseError),
@@ -137,39 +132,39 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_crate(
         input: Input,
-        sess: &'a ParseSess,
+        psess: &'a ParseSess,
     ) -> Result<ast::Crate, ParserError> {
-        let krate = Parser::parse_crate_inner(input, sess)?;
-        if !sess.has_errors() {
+        let krate = Parser::parse_crate_inner(input, psess)?;
+        if !psess.has_errors() {
             return Ok(krate);
         }
 
-        if sess.can_reset_errors() {
-            sess.reset_errors();
+        if psess.can_reset_errors() {
+            psess.reset_errors();
             return Ok(krate);
         }
 
         Err(ParserError::ParseError)
     }
 
-    fn parse_crate_inner(input: Input, sess: &'a ParseSess) -> Result<ast::Crate, ParserError> {
+    fn parse_crate_inner(input: Input, psess: &'a ParseSess) -> Result<ast::Crate, ParserError> {
         ParserBuilder::default()
             .input(input)
-            .sess(sess)
+            .psess(psess)
             .build()?
             .parse_crate_mod()
     }
 
     fn parse_crate_mod(&mut self) -> Result<ast::Crate, ParserError> {
         let mut parser = AssertUnwindSafe(&mut self.parser);
-
+        let err = Err(ParserError::ParsePanicError);
         match catch_unwind(move || parser.parse_crate_mod()) {
             Ok(Ok(k)) => Ok(k),
-            Ok(Err(mut db)) => {
+            Ok(Err(db)) => {
                 db.emit();
-                Err(ParserError::ParseError)
+                err
             }
-            Err(_) => Err(ParserError::ParsePanicError),
+            Err(_) => err,
         }
     }
 }

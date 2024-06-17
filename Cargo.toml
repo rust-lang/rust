@@ -35,7 +35,7 @@ generic-simd = ["bytecount/generic-simd"]
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0"
-bytecount = "0.6.4"
+bytecount = "0.6.8"
 cargo_metadata = "0.18"
 clap = { version = "4.4.2", features = ["derive"] }
 clap-cargo = "0.12.0"

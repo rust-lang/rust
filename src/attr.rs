@@ -26,7 +26,7 @@ pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
 
 pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
     match stmt.kind {
-        ast::StmtKind::Local(ref local) => local.span,
+        ast::StmtKind::Let(ref local) => local.span,
         ast::StmtKind::Item(ref item) => item.span,
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => expr.span,
         ast::StmtKind::MacCall(ref mac_stmt) => mac_stmt.mac.span(),
@@ -353,10 +353,18 @@ impl Rewrite for ast::Attribute {
 
                 // 1 = `[`
                 let shape = shape.offset_left(prefix.len() + 1)?;
-                Some(
-                    meta.rewrite(context, shape)
-                        .map_or_else(|| snippet.to_owned(), |rw| format!("{}[{}]", prefix, rw)),
-                )
+                Some(meta.rewrite(context, shape).map_or_else(
+                    || snippet.to_owned(),
+                    |rw| match &self.kind {
+                        ast::AttrKind::Normal(normal_attr) => match normal_attr.item.unsafety {
+                            // For #![feature(unsafe_attributes)]
+                            // See https://github.com/rust-lang/rust/issues/123757
+                            ast::Safety::Unsafe(_) => format!("{}[unsafe({})]", prefix, rw),
+                            _ => format!("{}[{}]", prefix, rw),
+                        },
+                        _ => format!("{}[{}]", prefix, rw),
+                    },
+                ))
             } else {
                 Some(snippet.to_owned())
             }
