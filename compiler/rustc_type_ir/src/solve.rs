@@ -156,6 +156,22 @@ pub struct QueryInput<I: Interner, P> {
     pub predefined_opaques_in_body: I::PredefinedOpaques,
 }
 
+/// Opaques that are defined in the inference context before a query is called.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct PredefinedOpaquesData<I: Interner> {
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+}
+
 /// Possible ways the given goal can be proven.
 #[derive(derivative::Derivative)]
 #[derivative(
