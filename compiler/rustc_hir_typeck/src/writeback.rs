@@ -793,7 +793,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
-        if let Some(guar) = self.fcx.dcx().has_errors() {
+        if let Some(guar) = self.fcx.tainted_by_errors() {
             guar
         } else {
             self.fcx

@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `TryFrom<Ty>` for type `u8`
-  --> $DIR/conflicting-impls.rs:12:1
+  --> $DIR/conflicting-impls.rs:13:1
    |
 LL | impl TryFrom<Ty> for u8 {
    | ----------------------- first implementation here
@@ -7,6 +7,27 @@ LL | impl TryFrom<Ty> for u8 {
 LL | impl TryFrom<Ty> for u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/conflicting-impls.rs:7:53
+   |
+LL |       fn try_from(_: Ty) -> Result<Self, Self::Error> {
+   |  _____________________________________________________^
+LL | |
+LL | |         loop {}
+LL | |     }
+   | |_____^ cannot infer type for enum `Result<u8, _>`
 
-For more information about this error, try `rustc --explain E0119`.
+error[E0282]: type annotations needed
+  --> $DIR/conflicting-impls.rs:16:53
+   |
+LL |       fn try_from(_: Ty) -> Result<Self, Self::Error> {
+   |  _____________________________________________________^
+LL | |
+LL | |         loop {}
+LL | |     }
+   | |_____^ cannot infer type for enum `Result<u8, _>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0282.
+For more information about an error, try `rustc --explain E0119`.
