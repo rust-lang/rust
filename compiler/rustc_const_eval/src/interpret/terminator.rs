@@ -992,6 +992,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             bug!("can't tailcall as root");
         };
 
+        // FIXME(explicit_tail_calls):
+        //   we should check if both caller&callee can/n't unwind,
+        //   see <https://github.com/rust-lang/rust/pull/113128#issuecomment-1614979803>
+
         self.eval_fn_call(
             fn_val,
             (caller_abi, caller_fn_abi),
