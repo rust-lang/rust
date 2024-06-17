@@ -4,9 +4,8 @@ use either::Either;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
-use rustc_middle::span_bug;
 use rustc_middle::{
-    mir,
+    bug, mir, span_bug,
     ty::{
         self,
         layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
