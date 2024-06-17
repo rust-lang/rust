@@ -42,28 +42,23 @@ cfg_if::cfg_if! {
 
 /// This module maintains a list of TLS destructors for the current thread,
 /// all of which will be run on thread exit.
+#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics")))))]
 pub(crate) mod destructors {
     cfg_if::cfg_if! {
-        if #[cfg(all(
-            target_thread_local,
-            any(
-                target_os = "linux",
-                target_os = "android",
-                target_os = "fuchsia",
-                target_os = "redox",
-                target_os = "hurd",
-                target_os = "netbsd",
-                target_os = "dragonfly"
-            )
+        if #[cfg(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "fuchsia",
+            target_os = "redox",
+            target_os = "hurd",
+            target_os = "netbsd",
+            target_os = "dragonfly"
         ))] {
             mod linux;
             mod list;
             pub(super) use linux::register;
             pub(super) use list::run;
-        } else if #[cfg(all(
-            target_thread_local,
-            not(all(target_family = "wasm", not(target_feature = "atomics")))
-        ))] {
+        } else {
             mod list;
             pub(super) use list::register;
             pub(crate) use list::run;
