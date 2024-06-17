@@ -608,7 +608,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
         }
         // FIXME(gen_blocks): emit a similar error for `gen fn()`
-        let decl_span = span_start.to(self.token.span);
+        let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, safety, generic_params: params, decl, decl_span })))
     }
 
