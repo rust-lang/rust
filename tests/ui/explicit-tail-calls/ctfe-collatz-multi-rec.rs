@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
-/// A very unnecessarily complicated "implementation" of the callatz conjecture.
+/// A very unnecessarily complicated "implementation" of the Collatz conjecture.
 /// Returns the number of steps to reach `1`.
 ///
 /// This is just a test for tail calls, which involves multiple functions calling each other.
