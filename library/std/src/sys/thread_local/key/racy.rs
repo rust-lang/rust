@@ -1,14 +1,10 @@
-//! An implementation of `const`-creatable TLS keys for non-Windows platforms.
+//! A `StaticKey` implementation using racy initialization.
 //!
-//! Most OSs without native TLS will provide a library-based way to create TLS
-//! storage. For each TLS variable, we create a key, which can then be used to
-//! reference an entry in a thread-local table. This then associates each key
-//! with a pointer which we can get and set to store our data.
-//!
-//! Unfortunately, none of these platforms allows creating the key at compile-time,
-//! which means we need a way to lazily create keys (`StaticKey`). Instead of
-//! blocking API like `OnceLock`, we use racy initialization, which should be
-//! more lightweight and avoids circular dependencies with the rest of `std`.
+//! Unfortunately, none of the platforms currently supported by `std` allows
+//! creating TLS keys at compile-time. Thus we need a way to lazily create keys.
+//! Instead of blocking API like `OnceLock`, we use racy initialization, which
+//! should be more lightweight and avoids circular dependencies with the rest of
+//! `std`.
 
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
 

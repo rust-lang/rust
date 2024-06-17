@@ -1,6 +1,6 @@
-//! A lot of UNIX platforms don't have a way to register TLS destructors.
-//! Instead, we use one TLS key to register a callback which will run
-//! iterate through the destructor list.
+//! A lot of UNIX platforms don't have a specialized way to register TLS
+//! destructors for native TLS. Instead, we use one TLS key with a destructor
+//! that will run all native TLS destructors in the destructor list.
 
 use crate::ptr;
 use crate::sys::thread_local::destructors;

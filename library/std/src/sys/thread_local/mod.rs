@@ -40,8 +40,13 @@ cfg_if::cfg_if! {
     }
 }
 
-/// This module maintains a list of TLS destructors for the current thread,
-/// all of which will be run on thread exit.
+/// The native TLS implementation needs a way to register destructors for its data.
+/// This module contains platform-specific implementations of that register.
+///
+/// It turns out however that most platforms don't have a way to register a
+/// destructor for each variable. On these platforms, we keep track of the
+/// destructors ourselves and register (through the [`guard`] module) only a
+/// single callback that runs all of the destructors in the list.
 #[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics")))))]
 pub(crate) mod destructors {
     cfg_if::cfg_if! {
@@ -91,7 +96,12 @@ mod guard {
     }
 }
 
-/// This module provides the `StaticKey` abstraction over OS TLS keys.
+/// `const`-creatable TLS keys.
+///
+/// Most OSs without native TLS will provide a library-based way to create TLS
+/// storage. For each TLS variable, we create a key, which can then be used to
+/// reference an entry in a thread-local table. This then associates each key
+/// with a pointer which we can get and set to store our data.
 pub(crate) mod key {
     cfg_if::cfg_if! {
         if #[cfg(any(
