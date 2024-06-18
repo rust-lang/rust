@@ -5,7 +5,7 @@ use alloc::borrow::ToOwned;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
-use core::ops::{BitAnd, BitOr, BitXor, Sub};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
@@ -1410,9 +1410,9 @@ impl<T, S, A> BitOr<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the union of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1434,7 +1434,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.union(rhs).cloned().collect()
     }
 }
@@ -1443,9 +1443,9 @@ impl<T, S, A> BitAnd<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1467,17 +1467,18 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
+    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.intersection(rhs).cloned().collect()
     }
 }
 
-impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
+impl<T, S, A> BitXor<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1499,17 +1500,18 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitxor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+    fn bitxor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.symmetric_difference(rhs).cloned().collect()
     }
 }
 
-impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
+impl<T, S, A> Sub<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
+    A: Allocator + Default,
 {
-    type Output = HashSet<T, S>;
+    type Output = HashSet<T, S, A>;
 
     /// Returns the difference of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1531,8 +1533,152 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn sub(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
+    fn sub(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
         self.difference(rhs).cloned().collect()
+    }
+}
+
+impl<T, S, A> BitOrAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher,
+    A: Allocator,
+{
+    /// Modifies this set to contain the union of `self` and `rhs`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// a |= &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2, 3, 4, 5];
+    /// for x in &a {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn bitor_assign(&mut self, rhs: &HashSet<T, S, A>) {
+        for item in rhs {
+            if !self.contains(item) {
+                self.insert(item.clone());
+            }
+        }
+    }
+}
+
+impl<T, S, A> BitAndAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher,
+    A: Allocator,
+{
+    /// Modifies this set to contain the intersection of `self` and `rhs`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<_> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// a &= &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [2, 3];
+    /// for x in &a {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn bitand_assign(&mut self, rhs: &HashSet<T, S, A>) {
+        self.retain(|item| rhs.contains(item));
+    }
+}
+
+impl<T, S, A> BitXorAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher,
+    A: Allocator,
+{
+    /// Modifies this set to contain the symmetric difference of `self` and `rhs`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// a ^= &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2, 4, 5];
+    /// for x in &a {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
+        for item in rhs {
+            let entry = self.map.raw_entry_mut().from_key(item);
+            match entry {
+                map::RawEntryMut::Occupied(e) => {
+                    e.remove();
+                }
+                map::RawEntryMut::Vacant(e) => {
+                    e.insert(item.to_owned(), ());
+                }
+            };
+        }
+    }
+}
+
+impl<T, S, A> SubAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
+where
+    T: Eq + Hash + Clone,
+    S: BuildHasher,
+    A: Allocator,
+{
+    /// Modifies this set to contain the difference of `self` and `rhs`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// a -= &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2];
+    /// for x in &a {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn sub_assign(&mut self, rhs: &HashSet<T, S, A>) {
+        if rhs.len() < self.len() {
+            for item in rhs {
+                self.remove(item);
+            }
+        } else {
+            self.retain(|item| !rhs.contains(item));
+        }
     }
 }
 
