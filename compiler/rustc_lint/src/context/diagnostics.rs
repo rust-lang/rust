@@ -434,5 +434,8 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             lints::InnerAttributeUnstable::CustomInnerAttribute
         }
         .decorate_lint(diag),
+        BuiltinLintDiag::OutOfScopeMacroCalls { path } => {
+            lints::OutOfScopeMacroCalls { path }.decorate_lint(diag)
+        }
     }
 }
