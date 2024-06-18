@@ -996,7 +996,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         ty: Ty<'tcx>,
-        expr: &'cx hir::Expr<'cx>,
+        expr: &hir::Expr<'_>,
     ) {
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         let hir::ExprKind::Struct(struct_qpath, fields, Some(base)) = expr.kind else { return };
@@ -1084,8 +1084,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         ty: Ty<'tcx>,
-        mut expr: &'cx hir::Expr<'cx>,
-        mut other_expr: Option<&'cx hir::Expr<'cx>>,
+        mut expr: &'tcx hir::Expr<'tcx>,
+        mut other_expr: Option<&'tcx hir::Expr<'tcx>>,
         use_spans: Option<UseSpans<'tcx>>,
     ) {
         if let hir::ExprKind::Struct(_, _, Some(_)) = expr.kind {
@@ -2016,7 +2016,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
     }
 
-    pub(crate) fn find_expr(&self, span: Span) -> Option<&hir::Expr<'_>> {
+    pub(crate) fn find_expr(&self, span: Span) -> Option<&'tcx hir::Expr<'tcx>> {
         let tcx = self.infcx.tcx;
         let body_id = tcx.hir_node(self.mir_hir_id()).body_id()?;
         let mut expr_finder = FindExprBySpan::new(span, tcx);
