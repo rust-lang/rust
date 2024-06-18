@@ -48,6 +48,16 @@
       builtin # type_ascribe(10, usize)
   }
   ```
+- rustfmt no longer removes inner attributes from inline const blocks [#6158](https://github.com/rust-lang/rustfmt/issues/6158)
+  ```rust
+  fn main() {
+      const {
+          #![allow(clippy::assertions_on_constants)]
+
+          assert!(1 < 2);
+      }
+  }
+  ```
 
 
 ### Changed
