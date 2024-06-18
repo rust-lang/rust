@@ -73,7 +73,7 @@ pub fn new_parser_from_file<'a>(
 ) -> Result<Parser<'a>, Vec<Diag<'a>>> {
     let source_file = psess.source_map().load_file(path).unwrap_or_else(|e| {
         let msg = format!("couldn't read {}: {}", path.display(), e);
-        let mut err = psess.dcx.struct_fatal(msg);
+        let mut err = psess.dcx().struct_fatal(msg);
         if let Some(sp) = sp {
             err.span(sp);
         }
@@ -115,7 +115,7 @@ fn source_file_to_stream<'psess>(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
-        psess.dcx.bug(format!(
+        psess.dcx().bug(format!(
             "cannot lex `source_file` without source: {}",
             psess.source_map().filename_for_diagnostics(&source_file.name)
         ));
@@ -179,7 +179,7 @@ pub fn parse_cfg_attr(
             }
         }
         _ => {
-            psess.dcx.emit_err(errors::MalformedCfgAttr {
+            psess.dcx().emit_err(errors::MalformedCfgAttr {
                 span: attr.span,
                 sugg: CFG_ATTR_GRAMMAR_HELP,
             });

@@ -92,7 +92,7 @@ impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
 
 impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn dcx(&self) -> &'tcx DiagCtxt {
-        &self.tcx.dcx()
+        self.tcx.dcx()
     }
 }
 

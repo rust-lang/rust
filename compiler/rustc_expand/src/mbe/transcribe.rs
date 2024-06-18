@@ -141,7 +141,7 @@ pub(super) fn transcribe<'a>(
     let mut result_stack = Vec::new();
     let mut marker = Marker(expand_id, transparency, Default::default());
 
-    let dcx = &psess.dcx;
+    let dcx = psess.dcx();
     loop {
         // Look at the last frame on the stack.
         // If it still has a TokenTree we have not looked at yet, use that tree.

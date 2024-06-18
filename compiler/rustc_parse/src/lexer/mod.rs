@@ -114,7 +114,7 @@ struct StringReader<'psess, 'src> {
 
 impl<'psess, 'src> StringReader<'psess, 'src> {
     fn dcx(&self) -> &'psess DiagCtxt {
-        &self.psess.dcx
+        self.psess.dcx()
     }
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
@@ -248,8 +248,8 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
-                            self.psess
-                                .dcx
+                            self
+                                .dcx()
                                 .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
                             None
                         } else {
@@ -597,8 +597,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
     }
 
     fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
-        self.psess
-            .dcx
+        self.dcx()
             .struct_span_fatal(
                 self.mk_sp(start, self.pos),
                 format!(

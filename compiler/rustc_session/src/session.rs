@@ -329,7 +329,7 @@ impl Session {
 
     #[inline]
     pub fn dcx(&self) -> &DiagCtxt {
-        &self.psess.dcx
+        self.psess.dcx()
     }
 
     #[inline]

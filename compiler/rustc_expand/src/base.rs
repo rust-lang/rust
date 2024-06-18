@@ -1358,7 +1358,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
         if crate_matches {
             // FIXME: make this translatable
             #[allow(rustc::untranslatable_diagnostic)]
-            sess.psess.dcx.emit_fatal(errors::ProcMacroBackCompat {
+            sess.dcx().emit_fatal(errors::ProcMacroBackCompat {
                 crate_name: "rental".to_string(),
                 fixed_version: "0.5.6".to_string(),
             });

@@ -146,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
-        self.tcx.dcx()
+        self.infcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {

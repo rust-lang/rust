@@ -241,7 +241,7 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn dcx(&self) -> &'a DiagCtxt {
-        &self.psess.dcx
+        self.psess.dcx()
     }
 
     /// Replace `self` with `snapshot.parser`.
