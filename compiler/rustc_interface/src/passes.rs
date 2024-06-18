@@ -972,7 +972,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         tcx.ensure().check_mod_privacy(module);
                     });
                 });
-            }
+            } // { sess.time("mir_checking", || { tcx.hir().mir_for }) }
         );
 
         // This check has to be run after all lints are done processing. We don't

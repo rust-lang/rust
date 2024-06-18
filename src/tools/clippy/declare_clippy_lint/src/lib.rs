@@ -1,6 +1,7 @@
 #![feature(let_chains, proc_macro_span)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(warnings)]
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};

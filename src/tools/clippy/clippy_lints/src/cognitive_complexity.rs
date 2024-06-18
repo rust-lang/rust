@@ -8,30 +8,44 @@ use core::ops::ControlFlow;
 use rustc_ast::ast::Attribute;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, FnDecl};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::Level::Allow;
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for methods with high cognitive complexity.
-    ///
-    /// ### Why is this bad?
-    /// Methods of high cognitive complexity tend to be hard to
-    /// both read and maintain. Also LLVM will tend to optimize small methods better.
-    ///
-    /// ### Known problems
-    /// Sometimes it's hard to find a way to reduce the
-    /// complexity.
-    ///
-    /// ### Example
-    /// You'll see it when you get the warning.
-    #[clippy::version = "1.35.0"]
-    pub COGNITIVE_COMPLEXITY,
-    nursery,
-    "functions that should be split up into multiple functions"
-}
+use crate::LintInfo;
+
+pub static COGNITIVE_COMPLEXITY: &Lint = &Lint {
+    name: &"clippy::COGNITIVE_COMPLEXITY",
+    default_level: Allow,
+    desc: "functions that should be split up into multiple functions",
+    edition_lint_opts: None,
+    report_in_external_macro: true,
+    future_incompatible: None,
+    is_externally_loaded: true,
+    crate_level_only: false,
+    loadbearing: true,
+    ..Lint::default_fields_for_macro()
+};
+pub(crate) static COGNITIVE_COMPLEXITY_INFO: &'static LintInfo = &LintInfo {
+    lint: &COGNITIVE_COMPLEXITY,
+    category: crate::LintCategory::Nursery,
+    explanation: r"### What it does
+Checks for methods with high cognitive complexity.
+
+### Why is this bad?
+Methods of high cognitive complexity tend to be hard to both read and maintain.
+Also LLVM will tend to optimize small methods better.
+
+### Known problems
+Sometimes it's hard to find a way to reduce the complexity.
+
+### Example
+You'll see it when you get the warning.",
+    version: Some("1.35.0"),
+    location: "#L0",
+};
 
 pub struct CognitiveComplexity {
     limit: LimitStack,

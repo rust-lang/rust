@@ -12,7 +12,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
 use std::fmt::{Display, Formatter, Write as _};
 
-declare_clippy_lint!{
+declare_lint_pass!(
     /// ### What it does
     /// Generates clippy code that detects the offending pattern
     ///
@@ -44,13 +44,8 @@ declare_clippy_lint!{
     ///     // report your lint here
     /// }
     /// ```
-    #[clippy::version = "1.0.0"]
-    pub AUTHOR,
-    internal,
-    "The author lint, see documentation at <https://doc.rust-lang.org/nightly/clippy/development/adding_lints.html#author-lint>"
-};
-
-declare_lint_pass! { Author => [AUTHOR] }
+    Author => []
+);
 
 /// Writes a line of output with indentation added
 macro_rules! out {
@@ -803,3 +798,4 @@ fn path_to_string(path: &QPath<'_>) -> Result<String, ()> {
     inner(&mut s, path)?;
     Ok(s)
 }
+
