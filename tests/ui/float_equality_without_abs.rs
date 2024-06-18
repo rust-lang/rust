@@ -1,5 +1,8 @@
 #![warn(clippy::float_equality_without_abs)]
 //@no-rustfix
+
+// FIXME(f16_f128): add tests for these types when abs is available
+
 pub fn is_roughly_equal(a: f32, b: f32) -> bool {
     (a - b) < f32::EPSILON
     //~^ ERROR: float equality check without `.abs()`

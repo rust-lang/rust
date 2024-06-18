@@ -11,6 +11,8 @@
     unconditional_panic
 )]
 #![feature(const_mut_refs)]
+#![feature(f128)]
+#![feature(f16)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;
@@ -162,8 +164,10 @@ pub fn association_with_structures_should_not_trigger_the_lint() {
 }
 
 pub fn hard_coded_allowed() {
+    let _ = 1f16 + 1f16;
     let _ = 1f32 + 1f32;
     let _ = 1f64 + 1f64;
+    let _ = 1f128 + 1f128;
 
     let _ = Saturating(0u32) + Saturating(0u32);
     let _ = String::new() + "";
