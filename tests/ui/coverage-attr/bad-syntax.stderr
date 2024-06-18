@@ -1,0 +1,78 @@
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:23:1
+   |
+LL | #[coverage = true]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   |
+LL | #[coverage]
+   |
+
+error: expected identifier, found `,`
+  --> $DIR/bad-syntax.rs:52:12
+   |
+LL | #[coverage(,off)]
+   |            ^
+   |            |
+   |            expected identifier
+   |            help: remove this comma
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:18:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:23:1
+   |
+LL | #[coverage = true]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:30:1
+   |
+LL | #[coverage()]
+   | ^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:33:1
+   |
+LL | #[coverage(off, off)]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:36:1
+   |
+LL | #[coverage(off, on)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:39:1
+   |
+LL | #[coverage(bogus)]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:42:1
+   |
+LL | #[coverage(bogus, off)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:45:1
+   |
+LL | #[coverage(off, bogus)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/bad-syntax.rs:52:1
+   |
+LL | #[coverage(,off)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+
