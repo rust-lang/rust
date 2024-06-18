@@ -495,7 +495,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     "rust_eh_personality"
                 };
                 let func = self.declare_func(name, self.type_i32(), &[], true);
-                unsafe { std::mem::transmute(func) }
+                unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) }
             }
         };
         // TODO(antoyo): apply target cpu attributes.

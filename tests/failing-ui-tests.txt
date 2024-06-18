@@ -14,7 +14,6 @@ tests/ui/sepcomp/sepcomp-fns-backwards.rs
 tests/ui/sepcomp/sepcomp-fns.rs
 tests/ui/sepcomp/sepcomp-statics.rs
 tests/ui/asm/x86_64/may_unwind.rs
-tests/ui/backtrace.rs
 tests/ui/catch-unwind-bang.rs
 tests/ui/cfg/cfg-panic-abort.rs
 tests/ui/drop/dynamic-drop-async.rs

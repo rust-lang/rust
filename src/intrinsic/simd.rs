@@ -13,6 +13,7 @@ use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
+#[cfg(feature = "master")]
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
 use rustc_middle::span_bug;

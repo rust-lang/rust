@@ -1004,7 +1004,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
         }
 
-        let val = if let Some(_) = place.val.llextra {
+        let val = if place.val.llextra.is_some() {
             // FIXME: Merge with the `else` below?
             OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
@@ -1672,7 +1672,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
         // FIXME(antoyo): remove when having a proper API.
-        let gcc_func = unsafe { std::mem::transmute(func) };
+        let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             self.function_call(func, args, funclet)
         } else {

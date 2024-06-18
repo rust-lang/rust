@@ -125,7 +125,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let llval = match name {
             _ if simple.is_some() => {
                 // FIXME(antoyo): remove this cast when the API supports function.
-                let func = unsafe { std::mem::transmute(simple.expect("simple")) };
+                let func = unsafe {
+                    std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(simple.expect("simple"))
+                };
                 self.call(
                     self.type_void(),
                     None,
@@ -670,7 +672,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let step3 = self.or(left, right);
 
                 // Fourth step.
-                if width == 8 { step3 } else { self.gcc_bswap(step3, width) }
+                if width == 8 {
+                    step3
+                } else {
+                    self.gcc_bswap(step3, width)
+                }
             }
             128 => {
                 // TODO(antoyo): find a more efficient implementation?
@@ -1189,7 +1195,7 @@ fn codegen_gnu_try<'gcc>(
         bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
     });
 
-    let func = unsafe { std::mem::transmute(func) };
+    let func = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
@@ -1263,7 +1269,7 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
-    let func_val = unsafe { std::mem::transmute(func) };
+    let func_val = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
     cx.set_frame_pointer_type(func_val);
     cx.apply_target_cpu_attr(func_val);
     let block = Builder::append_block(cx, func_val, "entry-block");
