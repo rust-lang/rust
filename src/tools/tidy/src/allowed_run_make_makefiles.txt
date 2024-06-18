@@ -49,7 +49,6 @@ run-make/extern-fn-with-packed-struct/Makefile
 run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
-run-make/extern-overrides-distribution/Makefile
 run-make/extra-filename-with-temp-outputs/Makefile
 run-make/fmt-write-bloat/Makefile
 run-make/forced-unwind-terminate-pof/Makefile
