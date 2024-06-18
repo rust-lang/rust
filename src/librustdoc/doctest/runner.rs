@@ -137,6 +137,7 @@ fn main() -> std::process::ExitCode {{
 const TESTS: [test::TestDescAndFn; {nb_tests}] = [{ids}];
 let bin_marker = std::ffi::OsStr::new(__doctest_mod::BIN_OPTION);
 let test_marker = std::ffi::OsStr::new(__doctest_mod::RUN_OPTION);
+let test_args = &[{test_args}];
 
 let mut args = std::env::args_os().skip(1);
 while let Some(arg) = args.next() {{
@@ -145,11 +146,7 @@ while let Some(arg) = args.next() {{
             panic!(\"missing argument after `{{}}`\", __doctest_mod::BIN_OPTION);
         }};
         unsafe {{ crate::__doctest_mod::BINARY_PATH = Some(binary.into()); }}
-        return std::process::Termination::report(test::test_main(
-            &[{test_args}],
-            Vec::from(TESTS),
-            None,
-        ));
+        return std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), None));
     }} else if arg == test_marker {{
         let Some(nb_test) = args.next() else {{
             panic!(\"missing argument after `{{}}`\", __doctest_mod::RUN_OPTION);
@@ -165,7 +162,8 @@ while let Some(arg) = args.next() {{
     }}
 }}
 
-panic!(\"missing argument for merged doctest binary\");
+eprintln!(\"WARNING: No argument provided so doctests will be run in the same process\");
+std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), None))
 }}",
             nb_tests = self.nb_tests,
             output = self.output,
