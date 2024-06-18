@@ -2,6 +2,7 @@
 
 use std::ops::Add;
 
+#[allow(dead_code)]
 struct A<B>(B);
 
 impl<B> Add for A<B> where B: Add<Output = B> {
@@ -12,6 +13,7 @@ impl<B> Add for A<B> where B: Add<Output = B> {
     }
 }
 
+#[allow(dead_code)]
 struct C<B>(B);
 
 impl<B: Add<Output = B>> Add for C<B> {
@@ -22,6 +24,7 @@ impl<B: Add<Output = B>> Add for C<B> {
     }
 }
 
+#[allow(dead_code)]
 struct D<B>(B);
 
 impl<B: std::ops::Add<Output = B>> Add for D<B> {
@@ -32,6 +35,7 @@ impl<B: std::ops::Add<Output = B>> Add for D<B> {
     }
 }
 
+#[allow(dead_code)]
 struct E<B>(B);
 
 impl<B: Add<Output = B>> Add for E<B> where B: Add<Output = B> {
