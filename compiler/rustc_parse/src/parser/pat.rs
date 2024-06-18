@@ -398,7 +398,7 @@ impl<'a> Parser<'a> {
 
             // Parse an associative expression such as `+ expr`, `% expr`, ...
             // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
-            let lhs = LhsExpr::AlreadyParsed { expr, starts_statement: false };
+            let lhs = LhsExpr::Parsed { expr, starts_statement: false };
             if let Ok(expr) = snapshot.parse_expr_assoc_with(0, lhs).map_err(|err| err.cancel()) {
                 // We got a valid expression.
                 self.restore_snapshot(snapshot);

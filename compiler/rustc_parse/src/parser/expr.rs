@@ -70,9 +70,10 @@ macro_rules! maybe_whole_expr {
 
 #[derive(Debug)]
 pub(super) enum LhsExpr {
-    NotYetParsed,
-    AttributesParsed(AttrWrapper),
-    AlreadyParsed { expr: P<Expr>, starts_statement: bool },
+    // Already parsed either (a) nothing or (b) just the outer attributes.
+    Unparsed { attrs: Option<AttrWrapper> },
+    // Already parsed the expression.
+    Parsed { expr: P<Expr>, starts_statement: bool },
 }
 
 #[derive(Debug)]
@@ -133,9 +134,9 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_res(
         &mut self,
         r: Restrictions,
-        already_parsed_attrs: Option<AttrWrapper>,
+        attrs: Option<AttrWrapper>,
     ) -> PResult<'a, P<Expr>> {
-        self.with_res(r, |this| this.parse_expr_assoc(already_parsed_attrs))
+        self.with_res(r, |this| this.parse_expr_assoc(attrs))
     }
 
     /// Parses an associative expression.
@@ -143,15 +144,8 @@ impl<'a> Parser<'a> {
     /// This parses an expression accounting for associativity and precedence of the operators in
     /// the expression.
     #[inline]
-    fn parse_expr_assoc(
-        &mut self,
-        already_parsed_attrs: Option<AttrWrapper>,
-    ) -> PResult<'a, P<Expr>> {
-        let lhs = match already_parsed_attrs {
-            Some(attrs) => LhsExpr::AttributesParsed(attrs),
-            None => LhsExpr::NotYetParsed,
-        };
-        self.parse_expr_assoc_with(0, lhs)
+    fn parse_expr_assoc(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
+        self.parse_expr_assoc_with(0, LhsExpr::Unparsed { attrs })
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
@@ -161,18 +155,17 @@ impl<'a> Parser<'a> {
         lhs: LhsExpr,
     ) -> PResult<'a, P<Expr>> {
         let mut starts_stmt = false;
-        let mut lhs = if let LhsExpr::AlreadyParsed { expr, starts_statement } = lhs {
-            starts_stmt = starts_statement;
-            expr
-        } else {
-            let attrs = match lhs {
-                LhsExpr::AttributesParsed(attrs) => Some(attrs),
-                _ => None,
-            };
-            if self.token.is_range_separator() {
-                return self.parse_expr_prefix_range(attrs);
-            } else {
-                self.parse_expr_prefix(attrs)?
+        let mut lhs = match lhs {
+            LhsExpr::Parsed { expr, starts_statement } => {
+                starts_stmt = starts_statement;
+                expr
+            }
+            LhsExpr::Unparsed { attrs } => {
+                if self.token.is_range_separator() {
+                    return self.parse_expr_prefix_range(attrs);
+                } else {
+                    self.parse_expr_prefix(attrs)?
+                }
             }
         };
 
@@ -310,7 +303,10 @@ impl<'a> Parser<'a> {
                 Fixity::None => 1,
             };
             let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
+                this.parse_expr_assoc_with(
+                    prec + prec_adjustment,
+                    LhsExpr::Unparsed { attrs: None },
+                )
             })?;
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
@@ -484,7 +480,7 @@ impl<'a> Parser<'a> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
             let maybe_lt = self.token.clone();
             Some(
-                self.parse_expr_assoc_with(prec + 1, LhsExpr::NotYetParsed)
+                self.parse_expr_assoc_with(prec + 1, LhsExpr::Unparsed { attrs: None })
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
@@ -539,9 +535,12 @@ impl<'a> Parser<'a> {
             this.bump();
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
-                this.parse_expr_assoc_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
-                    .map(|x| (lo.to(x.span), Some(x)))
-                    .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
+                this.parse_expr_assoc_with(
+                    op.unwrap().precedence() + 1,
+                    LhsExpr::Unparsed { attrs: None },
+                )
+                .map(|x| (lo.to(x.span), Some(x)))
+                .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
             } else {
                 (lo, None)
             };
@@ -2645,8 +2644,10 @@ impl<'a> Parser<'a> {
         } else {
             self.expect(&token::Eq)?;
         }
-        let expr =
-            self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), LhsExpr::NotYetParsed)?;
+        let expr = self.parse_expr_assoc_with(
+            1 + prec_let_scrutinee_needs_par(),
+            LhsExpr::Unparsed { attrs: None },
+        )?;
         let span = lo.to(expr.span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }

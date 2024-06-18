@@ -174,10 +174,7 @@ impl<'a> Parser<'a> {
             // Perform this outside of the `collect_tokens_trailing_token` closure,
             // since our outer attributes do not apply to this part of the expression
             let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_with(
-                    0,
-                    LhsExpr::AlreadyParsed { expr, starts_statement: true },
-                )
+                this.parse_expr_assoc_with(0, LhsExpr::Parsed { expr, starts_statement: true })
             })?;
             Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
         } else {
@@ -210,10 +207,8 @@ impl<'a> Parser<'a> {
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
             let e = self.parse_expr_dot_or_call_with(e, lo, attrs)?;
-            let e = self.parse_expr_assoc_with(
-                0,
-                LhsExpr::AlreadyParsed { expr: e, starts_statement: false },
-            )?;
+            let e = self
+                .parse_expr_assoc_with(0, LhsExpr::Parsed { expr: e, starts_statement: false })?;
             StmtKind::Expr(e)
         };
         Ok(self.mk_stmt(lo.to(hi), kind))
