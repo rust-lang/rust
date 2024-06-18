@@ -1,4 +1,3 @@
-run-make/allocator-shim-circular-deps/Makefile
 run-make/archive-duplicate-names/Makefile
 run-make/atomic-lock-free/Makefile
 run-make/branch-protection-check-IBT/Makefile
@@ -185,8 +184,6 @@ run-make/rustdoc-io-error/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
-run-make/separate-link-fail/Makefile
-run-make/separate-link/Makefile
 run-make/sepcomp-cci-copies/Makefile
 run-make/sepcomp-inlining/Makefile
 run-make/sepcomp-separate/Makefile
