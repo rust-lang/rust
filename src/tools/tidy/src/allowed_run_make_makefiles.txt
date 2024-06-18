@@ -68,7 +68,6 @@ run-make/interdependent-c-libraries/Makefile
 run-make/intrinsic-unreachable/Makefile
 run-make/invalid-library/Makefile
 run-make/invalid-so/Makefile
-run-make/invalid-staticlib/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
@@ -87,7 +86,6 @@ run-make/issue-40535/Makefile
 run-make/issue-47384/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-51671/Makefile
-run-make/issue-64153/Makefile
 run-make/issue-68794-textrel-on-minimal-lib/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile
@@ -137,7 +135,6 @@ run-make/native-link-modifier-verbatim-rustc/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
-run-make/no-builtins-lto/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
