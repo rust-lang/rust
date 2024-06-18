@@ -70,7 +70,18 @@ macro_rules! declare_late_lint_pass {
 // for all the `check_*` methods.
 late_lint_methods!(declare_late_lint_pass, []);
 
-impl LateLintPass<'_> for HardwiredLints {}
+impl LateLintPass<'_> for HardwiredLints {
+    fn check_fn(
+        &mut self,
+        _: &LateContext<'_>,
+        _: rustc_hir::intravisit::FnKind<'_>,
+        _: &'_ rustc_hir::FnDecl<'_>,
+        _: &'_ rustc_hir::Body<'_>,
+        _: rustc_span::Span,
+        _: rustc_span::def_id::LocalDefId,
+    ) {
+    }
+}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {

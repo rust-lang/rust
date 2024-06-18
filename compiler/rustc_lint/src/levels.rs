@@ -1,5 +1,5 @@
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::{fx::FxIndexMap, fx::FxIndexSet, sync::Lrc};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
@@ -31,7 +31,7 @@ use crate::errors::{
     OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
 };
 use crate::fluent_generated as fluent;
-use crate::late::{unerased_lint_store, name_without_tool};
+use crate::late::{unerased_lint_store /*name_without_tool*/};
 use crate::lints::{
     DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
     OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
@@ -115,34 +115,41 @@ impl LintLevelSets {
     }
 }
 
-/// Walk the whole crate collecting nodes where lint levels change
-/// (e.g. `#[allow]` attributes), and joins that list with the warn-by-default
-/// (and not allowed in the crate) and CLI lints. The returned value is a tuple
-/// of 1. The lints that will emit (or at least, should run), and 2.
-/// The lints that are allowed at the crate level and will not emit.
-pub fn lints_that_can_emit(tcx: TyCtxt<'_>, (): ()) -> Lrc<(FxIndexSet<String>, FxIndexSet<String>)> {
-    let mut visitor = LintLevelMinimum::new(tcx);
+fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
+    let store = unerased_lint_store(&tcx.sess);
+
+    let dont_need_to_run: FxIndexSet<LintId> = store
+        .get_lints()
+        .into_iter()
+        .filter_map(|lint| {
+            if !lint.loadbearing && lint.default_level(tcx.sess.edition()) == Level::Allow {
+                Some(LintId::of(lint))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mut visitor = LintLevelMaximum { tcx, dont_need_to_run };
     visitor.process_opts();
     tcx.hir().walk_attributes(&mut visitor);
 
-    let store = unerased_lint_store(&tcx.sess);
+    // let lint_groups = store.get_lint_groups();
+    // for group in lint_groups {
+    //     let binding = group.0.to_lowercase();
+    //     let group_name = name_without_tool(&binding).to_string();
+    //     if visitor.lints_that_actually_run.contains(&group_name) {
+    //         for lint in group.1 {
+    //             visitor.lints_that_actually_run.insert(name_without_tool(&lint.to_string()).to_string());
+    //         }
+    //     } else if visitor.lints_allowed.contains(&group_name) {
+    //         for lint in &group.1 {
+    //             visitor.lints_allowed.insert(name_without_tool(&lint.to_string()).to_string());
+    //         }
+    //     }
+    // }
 
-    let lint_groups = store.get_lint_groups();
-    for group in lint_groups {
-        let binding = group.0.to_lowercase();
-        let group_name = name_without_tool(&binding).to_string();
-        if visitor.lints_that_actually_run.contains(&group_name) {
-            for lint in group.1 {
-                visitor.lints_that_actually_run.insert(name_without_tool(&lint.to_string()).to_string());
-            }
-        } else if visitor.lints_allowed.contains(&group_name) {
-            for lint in &group.1 {
-                visitor.lints_allowed.insert(name_without_tool(&lint.to_string()).to_string());
-            }
-        }
-    }
-
-    Lrc::new((visitor.lints_that_actually_run, visitor.lints_allowed))
+    visitor.dont_need_to_run
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -336,39 +343,29 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
 ///
 /// E.g., if a crate has a global #![allow(lint)] attribute, but a single item
 /// uses #[warn(lint)], this visitor will set that lint level as `Warn`
-struct LintLevelMinimum<'tcx> {
+struct LintLevelMaximum<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// The actual list of detected lints.
-    lints_that_actually_run: FxIndexSet<String>,
-    lints_allowed: FxIndexSet<String>,
+    dont_need_to_run: FxIndexSet<LintId>,
 }
 
-impl<'tcx> LintLevelMinimum<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        let mut lints_that_actually_run = FxIndexSet::default();
-        lints_that_actually_run.reserve(230);
-        let mut lints_allowed = FxIndexSet::default();
-        lints_allowed.reserve(100);
-        Self {
-            tcx,
-            // That magic number is the current number of lints + some more for possible future lints
-            lints_that_actually_run,
-            lints_allowed,
-        }
-    }
-
+impl<'tcx> LintLevelMaximum<'tcx> {
     fn process_opts(&mut self) {
-        for (lint, level) in &self.tcx.sess.opts.lint_opts {
-            if *level == Level::Allow {
-                self.lints_allowed.insert(lint.clone());
-            } else {
-                self.lints_that_actually_run.insert(lint.to_string());
+        let store = unerased_lint_store(self.tcx.sess);
+        for (lint_group, level) in &self.tcx.sess.opts.lint_opts {
+            if *level != Level::Allow {
+                let Ok(lints) = store.find_lints(lint_group) else {
+                    return;
+                };
+                for lint in lints {
+                    self.dont_need_to_run.swap_remove(&lint);
+                }
             }
         }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for LintLevelMinimum<'tcx> {
+impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -376,42 +373,82 @@ impl<'tcx> Visitor<'tcx> for LintLevelMinimum<'tcx> {
     }
 
     fn visit_attribute(&mut self, attribute: &'tcx ast::Attribute) {
-        if let Some(meta) = attribute.meta() {
-            if [sym::warn, sym::deny, sym::forbid, sym::expect]
-                .iter()
-                .any(|kind| meta.has_name(*kind))
-            {
+        match Level::from_attr(attribute) {
+            Some(
+                Level::Warn
+                | Level::Deny
+                | Level::Forbid
+                | Level::Expect(..)
+                | Level::ForceWarn(..),
+            ) => {
+                let store = unerased_lint_store(self.tcx.sess);
+                let Some(meta) = attribute.meta() else { return };
                 // SAFETY: Lint attributes are always a metalist inside a
                 // metalist (even with just one lint).
-                for meta_list in meta.meta_item_list().unwrap() {
-                    // If it's a tool lint (e.g. clippy::my_clippy_lint)
-                    if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
-                        if meta_item.path.segments.len() == 1 {
-                            self.lints_that_actually_run.insert(
-                                // SAFETY: Lint attributes can only have literals
-                                meta_list.ident().unwrap().name.as_str().to_string(),
-                            );
-                        } else {
-                            self.lints_that_actually_run
-                                .insert(meta_item.path.segments[1].ident.name.as_str().to_string());
-                        }
+                let Some(meta_item_list) = meta.meta_item_list() else { return };
+
+                for meta_list in meta_item_list {
+                    // Convert Path to String
+                    let Some(meta_item) = meta_list.meta_item() else { return };
+                    let ident: &str = &meta_item
+                        .path
+                        .segments
+                        .iter()
+                        .map(|segment| segment.ident.as_str())
+                        .collect::<Vec<&str>>()
+                        .join("::");
+                    let Ok(lints) = store.find_lints(
+                        // SAFETY: Lint attributes can only have literals
+                        ident,
+                    ) else {
+                        return;
+                    };
+                    for lint in lints {
+                        self.dont_need_to_run.swap_remove(&lint);
                     }
+                    // // If it's a tool lint (e.g. clippy::my_clippy_lint)
+                    // if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
+                    //     if meta_item.path.segments.len() == 1 {
+                    //         let Ok(lints) = store.find_lints(
+                    //             // SAFETY: Lint attributes can only have literals
+                    //             meta_list.ident().unwrap().name.as_str(),
+                    //         ) else {
+                    //             return;
+                    //         };
+                    //         for lint in lints {
+                    //             dbg!("LINT REMOVED", &lint);
+                    //             self.dont_need_to_run.swap_remove(&lint);
+                    //         }
+                    //     } else {
+                    //         let Ok(lints) = store.find_lints(
+                    //             // SAFETY: Lint attributes can only have literals
+                    //             meta_item.path.segments[1].ident.name.as_str(),
+                    //         ) else {
+                    //             return;
+                    //         };
+                    //         for lint in lints {
+                    //             dbg!("LINT REMOVED", &lint);
+                    //             self.dont_need_to_run.swap_remove(&lint);
+                    //         }
+                    //     }
                 }
-            // We handle #![allow]s differently, as these remove checking rather than adding.
-            } else if meta.has_name(sym::allow)
-                && let ast::AttrStyle::Inner = attribute.style
-            {
-                for meta_list in meta.meta_item_list().unwrap() {
-                    // If it's a tool lint (e.g. clippy::my_clippy_lint)
-                    if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
-                        if meta_item.path.segments.len() == 1 {
-                            self.lints_allowed.insert(meta_list.name_or_empty().as_str().to_string());
-                        } else {
-                            self.lints_allowed
-                                .insert(meta_item.path.segments[1].ident.name.as_str().to_string());
-                        }
-                    }
-                }
+                // We handle #![allow]s differently, as these remove checking rather than adding.
+            } // Some(Level::Allow) if ast::AttrStyle::Inner == attribute.style => {
+            //     for meta_list in meta.meta_item_list().unwrap() {
+            //         // If it's a tool lint (e.g. clippy::my_clippy_lint)
+            //         if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
+            //             if meta_item.path.segments.len() == 1 {
+            //                 self.lints_allowed
+            //                     .insert(meta_list.name_or_empty().as_str().to_string());
+            //             } else {
+            //                 self.lints_allowed
+            //                     .insert(meta_item.path.segments[1].ident.name.as_str().to_string());
+            //             }
+            //         }
+            //     }
+            // }
+            _ => {
+                return;
             }
         }
     }
@@ -1047,8 +1084,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { shallow_lint_levels_on, lints_that_can_emit, ..*providers };
+    *providers = Providers { shallow_lint_levels_on, lints_that_dont_need_to_run, ..*providers };
 }
 
 pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

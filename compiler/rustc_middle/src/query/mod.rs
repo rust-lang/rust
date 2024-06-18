@@ -29,6 +29,7 @@ use rustc_hir::def_id::{
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
+use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{QueryCache, QueryMode, QueryState, try_get_cached};
@@ -422,7 +423,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_can_emit(_: ()) -> &'tcx Lrc<(FxIndexSet<String>, FxIndexSet<String>)> {
+    query lints_that_dont_need_to_run(_: ()) -> &'tcx FxIndexSet<LintId> {
         arena_cache
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
     }

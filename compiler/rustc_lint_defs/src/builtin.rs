@@ -12,8 +12,6 @@ use rustc_span::edition::Edition;
 use crate::{FutureIncompatibilityReason, declare_lint, declare_lint_pass};
 
 declare_lint_pass! {
-    /// Does nothing as a lint pass, but registers some `Lint`s
-    /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
@@ -403,7 +401,8 @@ declare_lint! {
     /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
-    "operation will cause a panic at runtime"
+    "operation will cause a panic at runtime",
+    [loadbearing: true]
 }
 
 declare_lint! {

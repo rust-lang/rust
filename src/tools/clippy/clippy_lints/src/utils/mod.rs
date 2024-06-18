@@ -1,3 +1,4 @@
+pub mod author;
 pub mod dump_hir;
 pub mod format_args_collector;
 #[cfg(feature = "internal")]
