@@ -1,0 +1,14 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/non-consecutive-shorthand-projections.rs:16:12
+   |
+LL |     let _: Identity<T::Project>::Project;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Project` implemented for `Identity<<T as Trait>::Project>`, you could use the fully-qualified path
+   |
+LL |     let _: <Identity<<T as Trait>::Project> as Example>::Project;
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

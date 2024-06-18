@@ -1,6 +1,5 @@
 // Check that qualified paths with type parameters
 // fail during type checking and not during parsing
-
 struct S;
 
 trait Tr {
@@ -15,7 +14,6 @@ impl S {
     fn f<T>() {}
 }
 
-type A = <S as Tr>::A::f<u8>;
-//~^ ERROR ambiguous associated type
+type A = <S as Tr>::A::f<u8>; //~ ERROR associated type `f` not found for `<S as Tr>::A`
 
 fn main() {}

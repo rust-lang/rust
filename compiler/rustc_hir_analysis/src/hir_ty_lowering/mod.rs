@@ -1064,13 +1064,44 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )?
             }
             (
-                &ty::Param(_),
-                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
+                ty::Param(_),
+                Res::SelfTyParam { trait_: param_def_id }
+                | Res::Def(DefKind::TyParam, param_def_id),
             ) => self.probe_single_ty_param_bound_for_assoc_ty(
-                param_did.expect_local(),
+                param_def_id.expect_local(),
                 assoc_ident,
                 span,
             )?,
+            // FIXME(fmease):
+            // Require the pre-lowered projectee (the HIR QSelf) to have `DefKind::AssocTy`. Rephrased,
+            // `T::Assoc::Assoc` typeck'ing shouldn't imply `Identity<T::Assoc>::Assoc` typeck'ing where
+            // `Identity` is an eager (i.e., non-lazy) type alias. We should do this
+            // * for consistency with lazy type aliases (`ty::Weak`)
+            // * for consistency with the fact that `T::Assoc` typeck'ing doesn't imply `Identity<T>::Assoc`
+            //   typeck'ing
+            (ty::Alias(ty::Projection, alias_ty), _ /* Res::Def(DefKind::AssocTy, _) */) => {
+                // FIXME: Utilizing `item_bounds` for this is cycle-prone.
+                let predicates = tcx.item_bounds(alias_ty.def_id).instantiate(tcx, alias_ty.args);
+
+                self.probe_single_bound_for_assoc_item(
+                    || {
+                        let trait_refs = predicates.iter().filter_map(|pred| {
+                            pred.as_trait_clause().map(|t| t.map_bound(|t| t.trait_ref))
+                        });
+                        traits::transitive_bounds_that_define_assoc_item(
+                            tcx,
+                            trait_refs,
+                            assoc_ident,
+                        )
+                    },
+                    qself_ty,
+                    None,
+                    ty::AssocKind::Type,
+                    assoc_ident,
+                    span,
+                    None,
+                )?
+            }
             _ => {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
@@ -1227,6 +1258,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
             });
         }
+
         Ok((ty, DefKind::AssocTy, assoc_ty.def_id))
     }
 
