@@ -327,43 +327,24 @@ impl Span {
     // interner and can fall back to `Span::new`.
     #[inline]
     pub fn map_ctxt(self, update: impl FnOnce(SyntaxContext) -> SyntaxContext) -> Span {
-        let (updated_ctxt32, data);
         match_span_kind! {
             self,
             InlineCtxt(span) => {
-                updated_ctxt32 = update(SyntaxContext::from_u16(span.ctxt)).as_u32();
+                let updated_ctxt32 = update(SyntaxContext::from_u16(span.ctxt)).as_u32();
                 // Any small new context including zero will preserve the format.
-                if updated_ctxt32 <= MAX_CTXT {
-                    return InlineCtxt::span(span.lo, span.len, updated_ctxt32 as u16);
-                }
-                data = span.data();
+                return if updated_ctxt32 <= MAX_CTXT {
+                    InlineCtxt::span(span.lo, span.len, updated_ctxt32 as u16)
+                } else {
+                    span.data().with_ctxt(SyntaxContext::from_u32(updated_ctxt32))
+                };
             },
-            InlineParent(span) => {
-                updated_ctxt32 = update(SyntaxContext::root()).as_u32();
-                // Only if the new context is zero the format will be preserved.
-                if updated_ctxt32 == 0 {
-                    // Do nothing.
-                    return self;
-                }
-                data = span.data();
-            },
-            PartiallyInterned(span) => {
-                updated_ctxt32 = update(SyntaxContext::from_u16(span.ctxt)).as_u32();
-                // Any small new context excluding zero will preserve the format.
-                // Zero may change the format to `InlineParent` if parent and len are small enough.
-                if updated_ctxt32 <= MAX_CTXT && updated_ctxt32 != 0 {
-                    return PartiallyInterned::span(span.index, updated_ctxt32 as u16);
-                }
-                data = span.data();
-            },
-            Interned(span) => {
-                data = span.data();
-                updated_ctxt32 = update(data.ctxt).as_u32();
-            },
+            InlineParent(_span) => {},
+            PartiallyInterned(_span) => {},
+            Interned(_span) => {},
         }
 
-        // We could not keep the span in the same inline format, fall back to the complete logic.
-        data.with_ctxt(SyntaxContext::from_u32(updated_ctxt32))
+        let data = self.data_untracked();
+        data.with_ctxt(update(data.ctxt))
     }
 
     // Returns either syntactic context, if it can be retrieved without taking the interner lock,
