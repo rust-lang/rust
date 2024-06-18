@@ -104,6 +104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             IsSuggestion(true),
             self_ty,
             call_expr_id,
+            None,
             ProbeScope::TraitsInScope,
         ) {
             Ok(pick) => {
@@ -182,8 +183,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
-        let pick =
-            self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
+        let pick = self.lookup_probe(
+            segment.ident,
+            self_ty,
+            call_expr,
+            segment.res.opt_def_id(),
+            ProbeScope::TraitsInScope,
+        )?;
 
         self.lint_edition_dependent_dot_call(
             self_ty, segment, span, call_expr, self_expr, &pick, args,
@@ -208,6 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     segment.ident,
                     trait_type,
                     call_expr,
+                    None,
                     ProbeScope::TraitsInScope,
                 ) {
                     Ok(ref new_pick) if pick.differs_from(new_pick) => {
@@ -276,6 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
+        expected_def_id: Option<DefId>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
         let pick = self.probe_for_name(
@@ -285,6 +293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             IsSuggestion(false),
             self_ty,
             call_expr.hir_id,
+            expected_def_id,
             scope,
         )?;
         pick.maybe_emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr.hir_id);
@@ -306,6 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             IsSuggestion(true),
             self_ty,
             call_expr.hir_id,
+            None,
             scope,
         )?;
         Ok(pick)
@@ -516,6 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             IsSuggestion(false),
             self_ty,
             expr_id,
+            None,
             ProbeScope::TraitsInScope,
         );
         let pick = match (pick, struct_variant) {

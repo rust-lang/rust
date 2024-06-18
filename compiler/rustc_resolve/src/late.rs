@@ -3316,14 +3316,32 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             self.visit_ty(&qself.ty);
         }
         self.visit_path(&delegation.path, delegation.id);
+        let last_ident = delegation.path.segments.last().unwrap().ident;
+
+        // Saving traits for a `MethodCall` that has not yet been generated.
+        // Traits found in the path are also considered visible:
+        //
+        // impl Trait for Type {
+        //    reuse inner::TraitFoo::*; // OK, even `TraitFoo` is not in scope.
+        // }
+        let mut traits = self.traits_in_scope(last_ident, ValueNS);
+        for segment in &delegation.path.segments {
+            if let Some(partial_res) = self.r.partial_res_map.get(&segment.id)
+                && let Some(def_id) = partial_res.full_res().and_then(|res| res.opt_def_id())
+                && self.r.tcx.def_kind(def_id) == DefKind::Trait
+            {
+                traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
+            }
+        }
+        self.r.trait_map.insert(delegation.id, traits);
+
         if let Some(body) = &delegation.body {
             self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
                 // `PatBoundCtx` is not necessary in this context
                 let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
 
-                let span = delegation.path.segments.last().unwrap().ident.span;
                 this.fresh_binding(
-                    Ident::new(kw::SelfLower, span),
+                    Ident::new(kw::SelfLower, last_ident.span),
                     delegation.id,
                     PatternSource::FnParam,
                     &mut bindings,
