@@ -47,8 +47,9 @@ use rustc_index::{Idx, IndexVec};
 use std::fmt;
 use std::ops::ControlFlow;
 
+use crate::data_structures::Lrc;
 use crate::inherent::*;
-use crate::{self as ty, Interner, Lrc, TypeFlags};
+use crate::{self as ty, Interner, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.

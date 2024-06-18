@@ -5,14 +5,16 @@ use std::ops::{ControlFlow, Deref};
 
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+#[cfg(feature = "nightly")]
 use rustc_serialize::Decodable;
 use tracing::debug;
 
+use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, Interner, SsoHashSet};
+use crate::{self as ty, Interner};
 
 /// Binder is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -55,6 +57,7 @@ where
     }
 }
 
+#[cfg(feature = "nightly")]
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
@@ -82,6 +85,7 @@ macro_rules! impl_binder_encode_decode {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl_binder_encode_decode! {
     ty::FnSig<I>,
     ty::TraitPredicate<I>,

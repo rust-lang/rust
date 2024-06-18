@@ -1,11 +1,12 @@
 use std::iter;
 
 use rustc_ast_ir::Mutability;
-use rustc_type_ir::error::{ExpectedFound, TypeError};
-use rustc_type_ir::fold::TypeFoldable;
-use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Interner};
 use tracing::{debug, instrument};
+
+use crate::error::{ExpectedFound, TypeError};
+use crate::fold::TypeFoldable;
+use crate::inherent::*;
+use crate::{self as ty, Interner};
 
 pub type RelateResult<I, T> = Result<T, TypeError<I>>;
 
