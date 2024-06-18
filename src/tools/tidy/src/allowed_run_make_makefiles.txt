@@ -15,7 +15,6 @@ run-make/comment-section/Makefile
 run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
-run-make/compressed-debuginfo/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/crate-name-priority/Makefile
 run-make/cross-lang-lto-clang/Makefile
