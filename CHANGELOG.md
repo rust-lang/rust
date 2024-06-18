@@ -84,6 +84,7 @@
 
   [bytecount#92]: https://github.com/llogiq/bytecount/pull/92
   [bytecount#93]: https://github.com/llogiq/bytecount/pull/93
+- Replace the `lazy_static` dependency with `std::sync::OnceLock` [#6154](https://github.com/rust-lang/rustfmt/pull/6154)
 
 ## [1.7.0] 2023-10-22
 
