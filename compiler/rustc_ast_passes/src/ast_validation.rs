@@ -12,6 +12,7 @@ use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor}
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -269,7 +270,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn dcx(&self) -> &rustc_errors::DiagCtxt {
+    fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.session.dcx()
     }
 
@@ -809,11 +810,7 @@ impl<'a> AstValidator<'a> {
 
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
-fn validate_generic_param_order(
-    dcx: &rustc_errors::DiagCtxt,
-    generics: &[GenericParam],
-    span: Span,
-) {
+fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericParam], span: Span) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxIndexMap::default();
     let mut param_idents = Vec::with_capacity(generics.len());

@@ -4,8 +4,8 @@ use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
 };
-use rustc_errors::{Applicability, Diag};
-use rustc_errors::{DiagCtxt, MultiSpan};
+use rustc_errors::MultiSpan;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
 use rustc_hir::{self as hir, LangItem};
@@ -593,7 +593,7 @@ impl UseSpans<'_> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn args_subdiag(
         self,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         err: &mut Diag<'_>,
         f: impl FnOnce(Span) -> CaptureArgLabel,
     ) {
@@ -607,7 +607,7 @@ impl UseSpans<'_> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_path_only_subdiag(
         self,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         err: &mut Diag<'_>,
         action: crate::InitializationRequiringAction,
     ) {
@@ -645,7 +645,7 @@ impl UseSpans<'_> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub(super) fn var_subdiag(
         self,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         err: &mut Diag<'_>,
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(hir::ClosureKind, Span) -> CaptureVarCause,

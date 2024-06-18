@@ -891,9 +891,10 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let dcx = cgcx.create_dcx();
+    let dcx = dcx.handle();
 
     unsafe {
-        B::optimize(cgcx, &dcx, &module, module_config)?;
+        B::optimize(cgcx, dcx, &module, module_config)?;
     }
 
     // After we've done the initial round of optimizations we need to
@@ -954,7 +955,11 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         match link_or_copy(&source_file, &output_path) {
             Ok(_) => Some(output_path),
             Err(error) => {
-                cgcx.create_dcx().emit_err(errors::CopyPathBuf { source_file, output_path, error });
+                cgcx.create_dcx().handle().emit_err(errors::CopyPathBuf {
+                    source_file,
+                    output_path,
+                    error,
+                });
                 None
             }
         }
@@ -987,7 +992,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     let bytecode = load_from_incr_cache(module_config.emit_bc, OutputType::Bitcode);
     let object = load_from_incr_cache(should_emit_obj, OutputType::Object);
     if should_emit_obj && object.is_none() {
-        cgcx.create_dcx().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
+        cgcx.create_dcx().handle().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
     }
 
     WorkItemResult::Finished(CompiledModule {
@@ -1016,12 +1021,13 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let dcx = cgcx.create_dcx();
+    let dcx = dcx.handle();
 
     if !cgcx.opts.unstable_opts.combine_cgu
         || module.kind == ModuleKind::Metadata
         || module.kind == ModuleKind::Allocator
     {
-        let module = unsafe { B::codegen(cgcx, &dcx, module, module_config)? };
+        let module = unsafe { B::codegen(cgcx, dcx, module, module_config)? };
         Ok(WorkItemResult::Finished(module))
     } else {
         Ok(WorkItemResult::NeedsLink(module))
@@ -1692,9 +1698,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
         if !needs_link.is_empty() {
             assert!(compiled_modules.is_empty());
             let dcx = cgcx.create_dcx();
-            let module = B::run_link(&cgcx, &dcx, needs_link).map_err(|_| ())?;
+            let dcx = dcx.handle();
+            let module = B::run_link(&cgcx, dcx, needs_link).map_err(|_| ())?;
             let module = unsafe {
-                B::codegen(&cgcx, &dcx, module, cgcx.config(ModuleKind::Regular)).map_err(|_| ())?
+                B::codegen(&cgcx, dcx, module, cgcx.config(ModuleKind::Regular)).map_err(|_| ())?
             };
             compiled_modules.push(module);
         }

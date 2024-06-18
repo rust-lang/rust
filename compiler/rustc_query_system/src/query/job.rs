@@ -4,7 +4,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Diag, DiagCtxt};
+use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -600,7 +600,7 @@ pub fn report_cycle<'a>(
 pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     num_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {

@@ -61,8 +61,8 @@ use crate::traits::{
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
-    ErrorGuaranteed, IntoDiagArg, StringPart,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
+    DiagStyledString, ErrorGuaranteed, IntoDiagArg, StringPart,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -139,7 +139,7 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    pub fn dcx(&self) -> &'tcx DiagCtxt {
+    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.infcx.dcx()
     }
 

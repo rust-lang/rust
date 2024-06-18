@@ -1405,7 +1405,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     diag.note(fluent::lint_macro_to_change);
                 }
                 if let Some(cargo_update) = cargo_update {
-                    diag.subdiagnostic(&diag.dcx, cargo_update);
+                    diag.subdiagnostic(diag.dcx, cargo_update);
                 }
 
                 if has_trait {
@@ -1471,7 +1471,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 diag.note(fluent::lint_non_local_definitions_deprecation);
 
                 if let Some(cargo_update) = cargo_update {
-                    diag.subdiagnostic(&diag.dcx, cargo_update);
+                    diag.subdiagnostic(diag.dcx, cargo_update);
                 }
             }
         }

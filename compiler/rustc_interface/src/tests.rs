@@ -70,7 +70,7 @@ where
             Arc::default(),
             Default::default(),
         );
-        let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
+        let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));
         let cfg = build_configuration(&sess, cfg);
         f(sess, cfg)
     });

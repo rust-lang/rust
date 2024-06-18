@@ -567,7 +567,7 @@ impl Emitter for SilentEmitter {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
-            self.fatal_dcx.emit_diagnostic(diag);
+            self.fatal_dcx.handle().emit_diagnostic(diag);
         }
     }
 }

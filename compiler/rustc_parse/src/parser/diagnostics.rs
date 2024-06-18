@@ -34,7 +34,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, Applicability, Diag, DiagCtxt, ErrorGuaranteed, FatalError, PErr, PResult,
+    pluralize, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult,
     Subdiagnostic,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -240,7 +240,7 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn dcx(&self) -> &'a DiagCtxt {
+    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.psess.dcx()
     }
 

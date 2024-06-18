@@ -7,7 +7,7 @@ use crate::mbe::{
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, DiagCtxt, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
@@ -324,7 +324,12 @@ enum ExplainDocComment {
     },
 }
 
-pub(super) fn annotate_doc_comment(dcx: &DiagCtxt, err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
+pub(super) fn annotate_doc_comment(
+    dcx: DiagCtxtHandle<'_>,
+    err: &mut Diag<'_>,
+    sm: &SourceMap,
+    span: Span,
+) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
             err.subdiagnostic(dcx, ExplainDocComment::Outer { span });

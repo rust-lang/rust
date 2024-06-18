@@ -15,8 +15,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, EmissionGuarantee, MultiSpan,
-    StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage,
+    EmissionGuarantee, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -327,7 +327,7 @@ impl ParseSess {
         self.proc_macro_quoted_spans.iter_enumerated()
     }
 
-    pub fn dcx(&self) -> &DiagCtxt {
-        &self.dcx
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.dcx.handle()
     }
 }

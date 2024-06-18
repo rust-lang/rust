@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
@@ -383,9 +384,10 @@ impl Options {
         };
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
+        let dcx = dcx.handle();
 
         // check for deprecated options
-        check_deprecated_options(matches, &dcx);
+        check_deprecated_options(matches, dcx);
 
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
@@ -458,7 +460,7 @@ impl Options {
             println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
             for theme_file in to_check.iter() {
                 print!(" - Checking \"{theme_file}\"...");
-                let (success, differences) = theme::test_theme_against(theme_file, &paths, &dcx);
+                let (success, differences) = theme::test_theme_against(theme_file, &paths, dcx);
                 if !differences.is_empty() || !success {
                     println!(" FAILED");
                     errors += 1;
@@ -603,7 +605,7 @@ impl Options {
                         .with_help("arguments to --theme must have a .css extension")
                         .emit();
                 }
-                let (success, ret) = theme::test_theme_against(&theme_file, &paths, &dcx);
+                let (success, ret) = theme::test_theme_against(&theme_file, &paths, dcx);
                 if !success {
                     dcx.fatal(format!("error loading theme file: \"{theme_s}\""));
                 } else if !ret.is_empty() {
@@ -630,7 +632,7 @@ impl Options {
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
             nightly_options::match_is_nightly_build(matches),
-            &dcx,
+            dcx,
             &mut id_map,
             edition,
             &None,
@@ -741,9 +743,9 @@ impl Options {
             );
         }
 
-        let scrape_examples_options = ScrapeExamplesOptions::new(matches, &dcx);
+        let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &dcx);
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
@@ -847,7 +849,7 @@ fn parse_remap_path_prefix(
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, dcx: &rustc_errors::DiagCtxt) {
+fn check_deprecated_options(matches: &getopts::Matches, dcx: DiagCtxtHandle<'_>) {
     let deprecated_flags = [];
 
     for &flag in deprecated_flags.iter() {
