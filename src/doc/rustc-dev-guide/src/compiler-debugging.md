@@ -46,6 +46,12 @@ new-symbol-mangling = false
 
 You will need to rebuild the compiler after changing any configuration option.
 
+## Suppressing the ICE file
+
+By default, if rustc encounters an Internal Compiler Error (ICE) it will dump the ICE contents to an
+ICE file within the current working directory named `rustc-ice-<timestamp>-<pid>.txt`. If this is
+not desirable, you can prevent the ICE file from being created with `RUSTC_ICE=0`.
+
 ## `-Z` flags
 
 The compiler has a bunch of `-Z` flags. These are unstable flags that are only
