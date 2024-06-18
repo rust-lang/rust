@@ -47,6 +47,9 @@ mod macros;
 pub mod float;
 pub mod int;
 
+// Disabled on x86 without sse2 due to ABI issues
+// <https://github.com/rust-lang/rust/issues/114479>
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse2"))))]
 pub mod math;
 pub mod mem;
 
