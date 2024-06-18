@@ -493,6 +493,17 @@ impl<'tcx> Inliner<'tcx> {
         let mut checker =
             CostChecker::new(self.tcx, self.param_env, Some(callsite.callee), callee_body);
 
+        checker.before_body(callee_body);
+
+        let baseline_cost = checker.cost();
+        if baseline_cost > threshold {
+            debug!(
+                "NOT inlining {:?} [baseline_cost={} > threshold={}]",
+                callsite, baseline_cost, threshold
+            );
+            return Err("baseline_cost above threshold");
+        }
+
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
         let mut visited = BitSet::new_empty(callee_body.basic_blocks.len());
