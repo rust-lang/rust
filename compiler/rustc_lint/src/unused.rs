@@ -1018,7 +1018,7 @@ pub(crate) struct UnusedParens {
 }
 
 impl Default for UnusedParens {
-    fpub(crate) fn default() -> Self {
+    fn default() -> Self {
         Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
     }
 }

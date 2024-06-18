@@ -20,6 +20,7 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
+use std::default::Default;
 use std::fmt::Write;
 
 use ast::token::TokenKind;
@@ -73,12 +74,10 @@ use crate::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
     fluent_generated as fluent,
 };
-
-use std::default::Default;
-use std::fmt::Write;
+// use std::fmt::Write;
 
 // hardwired lints from rustc_lint_defs
-pub use rustc_session::lint::builtin::*;
+// pub use rustc_session::lint::builtin::*;
 
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
