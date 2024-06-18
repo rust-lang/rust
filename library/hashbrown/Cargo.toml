@@ -22,6 +22,7 @@ serde = { version = "1.0.25", default-features = false, optional = true }
 rkyv = { version = "0.7.42", optional = true, default-features = false, features = [
     "alloc",
 ] }
+borsh = { version = "1.5.0", default-features = false, optional = true, features = ["derive"]}
 
 # When built as part of libstd
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
@@ -36,9 +37,6 @@ allocator-api2 = { version = "0.2.9", optional = true, default-features = false,
 # Equivalent trait which can be shared with other hash table implementations.
 equivalent = { version = "1.0", optional = true, default-features = false }
 
-# borsh serde
-borsh = { version = "1.5.0", default-features = false, optional = true, features = ["derive"]}
-
 [dev-dependencies]
 lazy_static = "1.4"
 rand = { version = "0.8.3", features = ["small_rng"] }
@@ -50,11 +48,16 @@ bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
 rkyv = { version = "0.7.42", features = ["validation"] }
 
 [features]
-default = ["ahash", "inline-more", "allocator-api2", "equivalent"]
+default = ["default-hasher", "inline-more", "allocator-api2", "equivalent"]
 
+# Enables use of nightly features. This is only guaranteed to work on the latest
+# version of nightly Rust.
 nightly = ["allocator-api2?/nightly", "bumpalo/allocator_api"]
 
+# Enables the RustcEntry API used to provide the standard library's Entry API.
 rustc-internal-api = []
+
+# Internal feature used when building as part of the standard library.
 rustc-dep-of-std = [
     "nightly",
     "core",
@@ -62,14 +65,19 @@ rustc-dep-of-std = [
     "alloc",
     "rustc-internal-api",
 ]
+
+# Enables the RawTable API.
 raw = []
+
+# Provides a default hasher. Currently this is AHash but this is subject to
+# change in the future. Note that the default hasher does *not* provide HashDoS
+# resistance, unlike the one in the standard library.
+default-hasher = ["dep:ahash"]
 
 # Enables usage of `#[inline]` on far more functions than by default in this
 # crate. This may lead to a performance increase but often comes at a compile
 # time cost.
 inline-more = []
-
-borsh = ["dep:borsh"]
 
 [package.metadata.docs.rs]
 features = ["nightly", "rayon", "serde", "raw"]

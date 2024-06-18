@@ -101,12 +101,14 @@ This crate has the following Cargo features:
 
 - `nightly`: Enables nightly-only features including: `#[may_dangle]`.
 - `serde`: Enables serde serialization support.
+- `borsh`: Enables borsh serialization support.
 - `rkyv`: Enables rkyv serialization support.
 - `rayon`: Enables rayon parallel iterator support.
+- `equivalent`: Allows comparisons to be customized with the `Equivalent` trait.
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
   of compilation time. (enabled by default)
-- `ahash`: Compiles with ahash as default hasher. (enabled by default)
+- `default-hasher`: Compiles with ahash as default hasher. (enabled by default)
 - `allocator-api2`: Enables support for allocators that support `allocator-api2`. (enabled by default)
 
 ## License
