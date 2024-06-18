@@ -24,6 +24,20 @@ function takeFromArray(array, count) {
     return result;
 }
 
+function onEachBtwn(arr, func, funcBtwn) {
+    let i = 0;
+    for (const value of arr) {
+        if (i !== 0) {
+            funcBtwn(value, i);
+        }
+        if (func(value, i)) {
+            return true;
+        }
+        i += 1;
+    }
+    return false;
+}
+
 (function() {
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
@@ -1576,6 +1590,49 @@ function initSearch(rawSearchIndex) {
                 }
             }
             /**
+             * Write a primitive type with special syntax, like `!` or `[T]`.
+             * Returns `false` if the supplied type isn't special.
+             *
+             * @param {FunctionType} fnType
+             * @param {[string]} result
+             */
+            function writeSpecialPrimitive(fnType, result) {
+                if (fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ||
+                    fnType.id === typeNameIdOfTuple || fnType.id === typeNameIdOfUnit) {
+                    const [ob, sb] =
+                        fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ?
+                        ["[", "]"] :
+                        ["(", ")"];
+                    pushText({ name: ob, highlighted: fnType.highlighted }, result);
+                    onEachBtwn(
+                        fnType.generics,
+                        nested => writeFn(nested, result),
+                        () => pushText({ name: ", ", highlighted: false }, result),
+                    );
+                    pushText({ name: sb, highlighted: fnType.highlighted }, result);
+                    return true;
+                } else if (fnType.id === typeNameIdOfReference) {
+                    pushText({ name: "&", highlighted: fnType.highlighted }, result);
+                    let prevHighlighted = false;
+                    onEachBtwn(
+                        fnType.generics,
+                        value => {
+                            prevHighlighted = value.highlighted;
+                            writeFn(value, result);
+                        },
+                        value => pushText({
+                            name: " ",
+                            highlighted: prevHighlighted && value.highlighted,
+                        }, result),
+                    );
+                    return true;
+                } else if (fnType.id === typeNameIdOfFn) {
+                    writeHof(fnType, result);
+                    return true;
+                }
+                return false;
+            }
+            /**
              * Write a type. This function checks for special types,
              * like slices, with their own formatting. It also handles
              * updating the where clause and generic type param map.
@@ -1602,55 +1659,17 @@ function initSearch(rawSearchIndex) {
                         highlighted: !!fnType.highlighted,
                     }, result);
                     const where = [];
-                    let first = true;
-                    for (const nested of fnType.generics) {
-                        if (first) {
-                            first = false;
-                        } else {
-                            pushText({ name: " + ", highlighted: false }, where);
-                        }
-                        writeFn(nested, where);
-                    }
+                    onEachBtwn(
+                        fnType.generics,
+                        nested => writeFn(nested, where),
+                        () => pushText({ name: " + ", highlighted: false }, where),
+                    );
                     if (where.length > 0) {
                         whereClause.set(fnParamNames[-1 - fnType.id], where);
                     }
                 } else {
                     if (fnType.ty === TY_PRIMITIVE) {
-                        if (fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ||
-                            fnType.id === typeNameIdOfTuple || fnType.id === typeNameIdOfUnit) {
-                            const [ob, sb] =
-                                fnType.id === typeNameIdOfArray || fnType.id === typeNameIdOfSlice ?
-                                ["[", "]"] :
-                                ["(", ")"];
-                            pushText({ name: ob, highlighted: fnType.highlighted }, result);
-                            let needsComma = false;
-                            for (const value of fnType.generics) {
-                                if (needsComma) {
-                                    pushText({ name: ", ", highlighted: false }, result);
-                                }
-                                needsComma = true;
-                                writeFn(value, result);
-                            }
-                            pushText({ name: sb, highlighted: fnType.highlighted }, result);
-                            return;
-                        } else if (fnType.id === typeNameIdOfReference) {
-                            pushText({ name: "&", highlighted: fnType.highlighted }, result);
-                            let needsSpace = false;
-                            let prevHighlighted = false;
-                            for (const value of fnType.generics) {
-                                if (needsSpace) {
-                                    pushText({
-                                        name: " ",
-                                        highlighted: prevHighlighted && value.highlighted,
-                                    }, result);
-                                }
-                                needsSpace = true;
-                                prevHighlighted = value.highlighted;
-                                writeFn(value, result);
-                            }
-                            return;
-                        } else if (fnType.id === typeNameIdOfFn) {
-                            writeHof(fnType, result);
+                        if (writeSpecialPrimitive(fnType, result)) {
                             return;
                         }
                     } else if (fnType.ty === TY_TRAIT &&
@@ -1661,66 +1680,55 @@ function initSearch(rawSearchIndex) {
                         return;
                     }
                     pushText(fnType, result);
-                    if (fnType.bindings.length > 0 || fnType.generics.length > 0) {
+                    if (fnType.bindings.size > 0 || fnType.generics.length > 0) {
                         pushText({ name: "<", highlighted: false }, result);
                     }
-                    let needsComma = false;
-                    if (fnType.bindings.length > 0) {
-                        for (const [key, values] of fnType.bindings) {
-                            if (needsComma) {
-                                pushText({ name: ", ", highlighted: false }, result);
-                            }
-                            needsComma = true;
-                            writeFn(key, result);
-                            pushText({
-                                name: values.length > 1 ? "=(" : "=",
-                                highlighted: false,
-                            }, result);
-                            let needsPlus = false;
-                            for (const value of values) {
-                                if (needsPlus) {
-                                    pushText({ name: " + ", highlighted: false }, result);
+                    if (fnType.bindings.size > 0) {
+                        onEachBtwn(
+                            fnType.bindings,
+                            ([key, values]) => {
+                                pushText(key, result);
+                                pushText({
+                                    name: values.length > 1 ? "=(" : "=",
+                                    highlighted: false,
+                                }, result);
+                                onEachBtwn(
+                                    values,
+                                    value => writeFn(value, result),
+                                    () => pushText({ name: " + ",  highlighted: false }, result),
+                                );
+                                if (values.length > 1) {
+                                    pushText({ name: ")", highlighted: false }, result);
                                 }
-                                needsPlus = true;
-                                writeFn(value, result);
-                            }
-                            if (values.length > 1) {
-                                pushText({ name: ")", highlighted: false }, result);
-                            }
-                        }
+                            },
+                            () => pushText({ name: ", ",  highlighted: false }, result),
+                        );
                     }
-                    if (fnType.generics.length > 0) {
-                        for (const value of fnType.generics) {
-                            if (needsComma) {
-                                pushText({ name: ", ", highlighted: false }, result);
-                            }
-                            needsComma = true;
-                            writeFn(value, result);
-                        }
+                    if (fnType.bindings.size > 0 && fnType.generics.length > 0) {
+                        pushText({ name: ", ", highlighted: false }, result);
                     }
-                    if (fnType.bindings.length > 0 || fnType.generics.length > 0) {
+                    onEachBtwn(
+                        fnType.generics,
+                        value => writeFn(value, result),
+                        () => pushText({ name: ", ",  highlighted: false }, result),
+                    );
+                    if (fnType.bindings.size > 0 || fnType.generics.length > 0) {
                         pushText({ name: ">", highlighted: false }, result);
                     }
                 }
             }
             const type = [];
-            let needsComma = false;
-            for (const fnType of fnInputs) {
-                if (needsComma) {
-                    pushText({ name: ", ", highlighted: false }, type);
-                }
-                needsComma = true;
-                writeFn(fnType, type);
-            }
+            onEachBtwn(
+                fnInputs,
+                fnType => writeFn(fnType, type),
+                () => pushText({ name: ", ",  highlighted: false }, type),
+            );
             pushText({ name: " -> ", highlighted: false }, type);
-            needsComma = false;
-            for (const fnType of fnOutput) {
-                if (needsComma) {
-                    pushText({ name: ", ", highlighted: false }, type);
-                }
-                needsComma = true;
-                writeFn(fnType, type);
-            }
+            onEachBtwn(
+                fnOutput,
+                fnType => writeFn(fnType, type),
+                () => pushText({ name: ", ",  highlighted: false }, type),
+            );
 
             return {type, mappedNames, whereClause};
         }
@@ -3074,7 +3082,9 @@ function initSearch(rawSearchIndex) {
     async function addTab(array, query, display) {
         const extraClass = display ? " active" : "";
 
-        let output = document.createElement("ul");
+        const output = document.createElement(
+            array.length === 0 && query.error === null ? "div" : "ul",
+        );
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
@@ -3193,7 +3203,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 }
             });
         } else if (query.error === null) {
-            output = document.createElement("div");
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
