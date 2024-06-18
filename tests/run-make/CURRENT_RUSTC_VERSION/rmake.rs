@@ -12,7 +12,6 @@ fn main() {
 
     let output =
         rustc().input("main.rs").emit("metadata").extern_("stable", "libstable.rmeta").run();
-
     let version = fs_wrapper::read_to_string(source_root().join("src/version"));
     let expected_string = format!("stable since {}", version.trim());
     output.assert_stderr_contains(expected_string);

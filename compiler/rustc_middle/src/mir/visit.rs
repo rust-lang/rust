@@ -337,27 +337,27 @@ macro_rules! make_mir_visitor {
 
                     let ty::Instance { def: callee_def, args: callee_args } = callee;
                     match callee_def {
-                        ty::InstanceDef::Item(_def_id) => {}
+                        ty::InstanceKind::Item(_def_id) => {}
 
-                        ty::InstanceDef::Intrinsic(_def_id) |
-                        ty::InstanceDef::VTableShim(_def_id) |
-                        ty::InstanceDef::ReifyShim(_def_id, _) |
-                        ty::InstanceDef::Virtual(_def_id, _) |
-                        ty::InstanceDef::ThreadLocalShim(_def_id) |
-                        ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
-                        ty::InstanceDef::ConstructCoroutineInClosureShim {
+                        ty::InstanceKind::Intrinsic(_def_id) |
+                        ty::InstanceKind::VTableShim(_def_id) |
+                        ty::InstanceKind::ReifyShim(_def_id, _) |
+                        ty::InstanceKind::Virtual(_def_id, _) |
+                        ty::InstanceKind::ThreadLocalShim(_def_id) |
+                        ty::InstanceKind::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
+                        ty::InstanceKind::ConstructCoroutineInClosureShim {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
                         } |
-                        ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id } |
-                        ty::InstanceDef::AsyncDropGlueCtorShim(_def_id, None) |
-                        ty::InstanceDef::DropGlue(_def_id, None) => {}
+                        ty::InstanceKind::CoroutineKindShim { coroutine_def_id: _def_id } |
+                        ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, None) |
+                        ty::InstanceKind::DropGlue(_def_id, None) => {}
 
-                        ty::InstanceDef::FnPtrShim(_def_id, ty) |
-                        ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
-                        ty::InstanceDef::CloneShim(_def_id, ty) |
-                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) |
-                        ty::InstanceDef::AsyncDropGlueCtorShim(_def_id, Some(ty)) => {
+                        ty::InstanceKind::FnPtrShim(_def_id, ty) |
+                        ty::InstanceKind::DropGlue(_def_id, Some(ty)) |
+                        ty::InstanceKind::CloneShim(_def_id, ty) |
+                        ty::InstanceKind::FnPtrAddrShim(_def_id, ty) |
+                        ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, Some(ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }

@@ -177,7 +177,7 @@ pub trait Machine<'tcx>: Sized {
     /// constants, ...
     fn load_mir(
         ecx: &InterpCx<'tcx, Self>,
-        instance: ty::InstanceDef<'tcx>,
+        instance: ty::InstanceKind<'tcx>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         Ok(ecx.tcx.instance_mir(instance))
     }

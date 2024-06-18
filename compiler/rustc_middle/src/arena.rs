@@ -110,7 +110,7 @@ macro_rules! arena_types {
                     rustc_hir::def_id::DefId,
                     rustc_middle::ty::EarlyBinder<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
-            [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
+            [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<rustc_middle::ty::TyCtxt<'tcx>>,
             [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
             [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,

@@ -398,10 +398,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn load_mir(
         ecx: &InterpCx<'tcx, Self>,
-        instance: ty::InstanceDef<'tcx>,
+        instance: ty::InstanceKind<'tcx>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         match instance {
-            ty::InstanceDef::Item(def) => Ok(ecx.tcx.mir_for_ctfe(def)),
+            ty::InstanceKind::Item(def) => Ok(ecx.tcx.mir_for_ctfe(def)),
             _ => Ok(ecx.tcx.instance_mir(instance)),
         }
     }
@@ -424,7 +424,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         };
 
         // Only check non-glue functions
-        if let ty::InstanceDef::Item(def) = instance.def {
+        if let ty::InstanceKind::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a trait marked with
@@ -540,7 +540,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     );
                 }
                 return Ok(Some(ty::Instance {
-                    def: ty::InstanceDef::Item(instance.def_id()),
+                    def: ty::InstanceKind::Item(instance.def_id()),
                     args: instance.args,
                 }));
             }

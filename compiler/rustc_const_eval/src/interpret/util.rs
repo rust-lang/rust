@@ -44,7 +44,7 @@ where
                 | ty::CoroutineClosure(def_id, args, ..)
                 | ty::Coroutine(def_id, args, ..)
                 | ty::FnDef(def_id, args) => {
-                    let instance = ty::InstanceDef::Item(def_id);
+                    let instance = ty::InstanceKind::Item(def_id);
                     let unused_params = self.tcx.unused_generic_params(instance);
                     for (index, arg) in args.into_iter().enumerate() {
                         let index = index

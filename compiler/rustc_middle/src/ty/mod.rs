@@ -92,8 +92,9 @@ pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
     TyCtxt, TyCtxtFeed,
 };
-pub use self::instance::{Instance, InstanceDef, ReifyReason, ShortInstance, UnusedGenericParams};
+pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
+pub use self::opaque_types::OpaqueTypeKey;
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
@@ -755,45 +756,6 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
         std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct OpaqueTypeKey<'tcx> {
-    pub def_id: LocalDefId,
-    pub args: GenericArgsRef<'tcx>,
-}
-
-impl<'tcx> OpaqueTypeKey<'tcx> {
-    pub fn iter_captured_args(
-        self,
-        tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (usize, GenericArg<'tcx>)> {
-        std::iter::zip(self.args, tcx.variances_of(self.def_id)).enumerate().filter_map(
-            |(i, (arg, v))| match (arg.unpack(), v) {
-                (_, ty::Invariant) => Some((i, arg)),
-                (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => None,
-                _ => bug!("unexpected opaque type arg variance"),
-            },
-        )
-    }
-
-    pub fn fold_captured_lifetime_args(
-        self,
-        tcx: TyCtxt<'tcx>,
-        mut f: impl FnMut(Region<'tcx>) -> Region<'tcx>,
-    ) -> Self {
-        let Self { def_id, args } = self;
-        let args = std::iter::zip(args, tcx.variances_of(def_id)).map(|(arg, v)| {
-            match (arg.unpack(), v) {
-                (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => arg,
-                (ty::GenericArgKind::Lifetime(lt), _) => f(lt).into(),
-                _ => arg,
-            }
-        });
-        let args = tcx.mk_args_from_iter(args);
-        Self { def_id, args }
     }
 }
 
@@ -1731,11 +1693,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns the possibly-auto-generated MIR of a [`ty::InstanceDef`].
+    /// Returns the possibly-auto-generated MIR of a [`ty::InstanceKind`].
     #[instrument(skip(self), level = "debug")]
-    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
+    pub fn instance_mir(self, instance: ty::InstanceKind<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(def) => {
+            ty::InstanceKind::Item(def) => {
                 debug!("calling def_kind on def: {:?}", def);
                 let def_kind = self.def_kind(def);
                 debug!("returned from def_kind: {:?}", def_kind);
@@ -1751,19 +1713,19 @@ impl<'tcx> TyCtxt<'tcx> {
                     _ => self.optimized_mir(def),
                 }
             }
-            ty::InstanceDef::VTableShim(..)
-            | ty::InstanceDef::ReifyShim(..)
-            | ty::InstanceDef::Intrinsic(..)
-            | ty::InstanceDef::FnPtrShim(..)
-            | ty::InstanceDef::Virtual(..)
-            | ty::InstanceDef::ClosureOnceShim { .. }
-            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceDef::CoroutineKindShim { .. }
-            | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..)
-            | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..)
-            | ty::InstanceDef::AsyncDropGlueCtorShim(..) => self.mir_shims(instance),
+            ty::InstanceKind::VTableShim(..)
+            | ty::InstanceKind::ReifyShim(..)
+            | ty::InstanceKind::Intrinsic(..)
+            | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::Virtual(..)
+            | ty::InstanceKind::ClosureOnceShim { .. }
+            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceKind::CoroutineKindShim { .. }
+            | ty::InstanceKind::DropGlue(..)
+            | ty::InstanceKind::CloneShim(..)
+            | ty::InstanceKind::ThreadLocalShim(..)
+            | ty::InstanceKind::FnPtrAddrShim(..)
+            | ty::InstanceKind::AsyncDropGlueCtorShim(..) => self.mir_shims(instance),
         }
     }
 

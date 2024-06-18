@@ -7,6 +7,8 @@ use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
+pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
+
 /// Converts generic params of a TypeFoldable from one
 /// item's generics to another. Usually from a function's generics
 /// list to the opaque type's own generics.

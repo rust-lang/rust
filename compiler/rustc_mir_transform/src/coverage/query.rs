@@ -49,7 +49,7 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Query implementation for `coverage_ids_info`.
 fn coverage_ids_info<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance_def: ty::InstanceDef<'tcx>,
+    instance_def: ty::InstanceKind<'tcx>,
 ) -> CoverageIdsInfo {
     let mir_body = tcx.instance_mir(instance_def);
 

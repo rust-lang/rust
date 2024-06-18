@@ -1,9 +1,9 @@
-//@ known-bug: #122736
 fn main_ref() {
     let array = [(); {
         let mut x = &0;
         let mut n = 0;
         while n < 5 {
+            //~^ ERROR constant evaluation is taking a long time
             x = &0;
         }
         0

@@ -399,7 +399,6 @@ const_eval_unwind_past_top =
 
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
-const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 
 const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`
@@ -454,7 +453,6 @@ const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but 
 const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
 const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
 const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
-const_eval_validation_ref_to_static = {$front_matter}: encountered a reference pointing to a static variable in a constant
 const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
 const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
 const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})

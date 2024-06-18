@@ -966,7 +966,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for single_import in &resolution.single_imports {
             let Some(import_vis) = single_import.vis.get() else {
                 // This branch handles a cycle in single imports, which occurs
-                // when we've previously captured the `vis` value during an import
+                // when we've previously **steal** the `vis` value during an import
                 // process.
                 //
                 // For example:
@@ -998,21 +998,28 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let Some(module) = single_import.imported_module.get() else {
                 return Err((Undetermined, Weak::No));
             };
-            let ImportKind::Single { source: ident, target, target_bindings, .. } =
-                &single_import.kind
+            let ImportKind::Single { source, target, target_bindings, .. } = &single_import.kind
             else {
                 unreachable!();
             };
-            if (ident != target) && target_bindings.iter().all(|binding| binding.get().is_none()) {
+            if source != target {
                 // This branch allows the binding to be defined or updated later if the target name
-                // can hide the source but these bindings are not obtained.
-                // avoiding module inconsistency between the resolve process and the finalize process.
-                // See more details in #124840
-                return Err((Undetermined, Weak::No));
+                // can hide the source.
+                if target_bindings.iter().all(|binding| binding.get().is_none()) {
+                    // None of the target bindings are available, so we can't determine
+                    // if this binding is correct or not.
+                    // See more details in #124840
+                    return Err((Undetermined, Weak::No));
+                } else if target_bindings[ns].get().is_none() && binding.is_some() {
+                    // `binding.is_some()` avoids the condition where the binding
+                    // truly doesn't exist in this namespace and should return `Err(Determined)`.
+                    return Err((Undetermined, Weak::No));
+                }
             }
+
             match self.resolve_ident_in_module(
                 module,
-                *ident,
+                *source,
                 ns,
                 &single_import.parent_scope,
                 None,
