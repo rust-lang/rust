@@ -1192,11 +1192,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
     /// interpolated variables).
     #[rustc_lint_diagnostics]
-    pub fn subdiagnostic(
-        &mut self,
-        dcx: DiagCtxtHandle<'_>,
-        subdiagnostic: impl Subdiagnostic,
-    ) -> &mut Self {
+    pub fn subdiagnostic(&mut self, subdiagnostic: impl Subdiagnostic) -> &mut Self {
+        let dcx = self.dcx;
         subdiagnostic.add_to_diag_with(self, &|diag, msg| {
             let args = diag.args.iter();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);

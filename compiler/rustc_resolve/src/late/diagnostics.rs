@@ -1109,14 +1109,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 Side::Start => (segment.ident.span.between(range.span), " @ ".into()),
                 Side::End => (range.span.to(segment.ident.span), format!("{} @ ..", segment.ident)),
             };
-            err.subdiagnostic(
-                self.r.dcx(),
-                errors::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
-                    span,
-                    ident: segment.ident,
-                    snippet,
-                },
-            );
+            err.subdiagnostic(errors::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+                span,
+                ident: segment.ident,
+                snippet,
+            });
         }
 
         enum Side {
@@ -1208,13 +1205,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         });
 
         if let Some(param) = param {
-            err.subdiagnostic(
-                self.r.dcx(),
-                errors::UnexpectedResChangeTyToConstParamSugg {
-                    span: param.shrink_to_lo(),
-                    applicability,
-                },
-            );
+            err.subdiagnostic(errors::UnexpectedResChangeTyToConstParamSugg {
+                span: param.shrink_to_lo(),
+                applicability,
+            });
         }
     }
 

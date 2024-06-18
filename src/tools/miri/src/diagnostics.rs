@@ -566,7 +566,7 @@ pub fn report_msg<'tcx>(
         let is_local = machine.is_local(frame_info);
         // No span for non-local frames and the first frame (which is the error site).
         if is_local && idx > 0 {
-            err.subdiagnostic(err.dcx, frame_info.as_note(machine.tcx));
+            err.subdiagnostic(frame_info.as_note(machine.tcx));
         } else {
             let sm = sess.source_map();
             let span = sm.span_to_embeddable_string(frame_info.span);

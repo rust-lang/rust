@@ -892,7 +892,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         arm_ty,
                         arm_span,
                     ) {
-                        err.subdiagnostic(self.dcx(), subdiag);
+                        err.subdiagnostic(subdiag);
                     }
                 }
             },
@@ -918,7 +918,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     else_ty,
                     else_span,
                 ) {
-                    err.subdiagnostic(self.dcx(), subdiag);
+                    err.subdiagnostic(subdiag);
                 }
             }
             ObligationCauseCode::LetElse => {

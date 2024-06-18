@@ -138,7 +138,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         // FIXME(effects) revisit this
                         if !tcx.is_const_trait_impl_raw(data.impl_def_id) {
                             let span = tcx.def_span(data.impl_def_id);
-                            err.subdiagnostic(tcx.dcx(), errors::NonConstImplNote { span });
+                            err.subdiagnostic(errors::NonConstImplNote { span });
                         }
                     }
                 }

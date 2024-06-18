@@ -579,15 +579,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span), None);
                     }
 
-                    err.subdiagnostic(
-                        self.dcx(),
-                        crate::session_diagnostics::TypeNoCopy::Label {
-                            is_partial_move: false,
-                            ty: place_ty,
-                            place: &place_desc,
-                            span,
-                        },
-                    );
+                    err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                        is_partial_move: false,
+                        ty: place_ty,
+                        place: &place_desc,
+                        span,
+                    });
                 } else {
                     binds_to.sort();
                     binds_to.dedup();
@@ -620,17 +617,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     );
                 }
 
-                err.subdiagnostic(
-                    self.dcx(),
-                    crate::session_diagnostics::TypeNoCopy::Label {
-                        is_partial_move: false,
-                        ty: place_ty,
-                        place: &place_desc,
-                        span: use_span,
-                    },
-                );
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                    is_partial_move: false,
+                    ty: place_ty,
+                    place: &place_desc,
+                    span: use_span,
+                });
 
-                use_spans.args_subdiag(self.dcx(), err, |args_span| {
+                use_spans.args_subdiag(err, |args_span| {
                     crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
                         place: place_desc,
                         args_span,
@@ -733,15 +727,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     self.suggest_cloning(err, bind_to.ty, expr, None, None);
                 }
 
-                err.subdiagnostic(
-                    self.dcx(),
-                    crate::session_diagnostics::TypeNoCopy::Label {
-                        is_partial_move: false,
-                        ty: bind_to.ty,
-                        place: place_desc,
-                        span: binding_span,
-                    },
-                );
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                    is_partial_move: false,
+                    ty: bind_to.ty,
+                    place: place_desc,
+                    span: binding_span,
+                });
             }
         }
 

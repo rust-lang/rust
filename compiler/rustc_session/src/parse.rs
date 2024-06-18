@@ -178,23 +178,23 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     inject_span: Option<Span>,
 ) {
     if let Some(n) = find_feature_issue(feature, issue) {
-        err.subdiagnostic(sess.dcx(), FeatureDiagnosticForIssue { n });
+        err.subdiagnostic(FeatureDiagnosticForIssue { n });
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.psess.unstable_features.is_nightly_build() {
         if feature_from_cli {
-            err.subdiagnostic(sess.dcx(), CliFeatureDiagnosticHelp { feature });
+            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
         } else if let Some(span) = inject_span {
-            err.subdiagnostic(sess.dcx(), FeatureDiagnosticSuggestion { feature, span });
+            err.subdiagnostic(FeatureDiagnosticSuggestion { feature, span });
         } else {
-            err.subdiagnostic(sess.dcx(), FeatureDiagnosticHelp { feature });
+            err.subdiagnostic(FeatureDiagnosticHelp { feature });
         }
 
         if sess.opts.unstable_opts.ui_testing {
-            err.subdiagnostic(sess.dcx(), SuggestUpgradeCompiler::ui_testing());
+            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
         } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
-            err.subdiagnostic(sess.dcx(), suggestion);
+            err.subdiagnostic(suggestion);
         }
     }
 }

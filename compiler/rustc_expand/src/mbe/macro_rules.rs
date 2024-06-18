@@ -463,7 +463,7 @@ pub fn compile_declarative_macro(
                 let sp = token.span.substitute_dummy(def.span);
                 let mut err = sess.dcx().struct_span_err(sp, s);
                 err.span_label(sp, msg);
-                annotate_doc_comment(sess.dcx(), &mut err, sess.source_map(), sp);
+                annotate_doc_comment(&mut err, sess.source_map(), sp);
                 let guar = err.emit();
                 return dummy_syn_ext(guar);
             }
