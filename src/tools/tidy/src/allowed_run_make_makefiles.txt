@@ -51,7 +51,6 @@ run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
 run-make/extra-filename-with-temp-outputs/Makefile
 run-make/fmt-write-bloat/Makefile
-run-make/forced-unwind-terminate-pof/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile

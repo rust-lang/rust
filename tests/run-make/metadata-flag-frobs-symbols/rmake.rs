@@ -15,7 +15,6 @@ fn main() {
         .input("bar.rs")
         .extern_("foo1", rust_lib_name("foo-a"))
         .extern_("foo2", rust_lib_name("foo-b"))
-        .print("link-args")
         .run();
     run("bar");
 }
