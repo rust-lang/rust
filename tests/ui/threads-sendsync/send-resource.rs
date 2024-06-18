@@ -26,7 +26,7 @@ fn test(f: isize) -> test {
 pub fn main() {
     let (tx, rx) = channel();
 
-    let t = thread::spawn(move|| {
+    let t = thread::spawn(move || {
         let (tx2, rx2) = channel();
         tx.send(tx2).unwrap();
 

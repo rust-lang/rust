@@ -17,7 +17,7 @@ impl Drop for WithDtor {
 }
 
 pub fn main() {
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let _e: WithDtor = WithDtor::Val;
         panic!("fail");
     }).join().unwrap_err();

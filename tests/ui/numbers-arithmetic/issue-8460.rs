@@ -21,7 +21,7 @@ doit! { i8 i16 i32 i64 isize }
 macro_rules! check {
     ($($e:expr),*) => {
         $(assert!(thread::spawn({
-            move|| { $e; }
+            move || { $e; }
         }).join().is_err());)*
     }
 }

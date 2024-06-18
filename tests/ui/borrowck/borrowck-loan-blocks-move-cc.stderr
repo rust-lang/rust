@@ -5,8 +5,8 @@ LL |     let v: Box<_> = Box::new(3);
    |         - binding `v` declared here
 LL |     let w = &v;
    |             -- borrow of `v` occurs here
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ move out of `v` occurs here
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ move out of `v` occurs here
 LL |
 LL |         println!("v={}", *v);
    |                          -- move occurs due to use in closure
@@ -27,8 +27,8 @@ LL |     let v: Box<_> = Box::new(3);
    |         - binding `v` declared here
 LL |     let w = &v;
    |             -- borrow of `v` occurs here
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ move out of `v` occurs here
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ move out of `v` occurs here
 LL |
 LL |         println!("v={}", *v);
    |                          -- move occurs due to use in closure

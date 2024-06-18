@@ -4,7 +4,7 @@
 use std::thread;
 
 pub fn main() {
-    let t = thread::spawn(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
+    let t = thread::spawn(move || child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
     t.join().ok().unwrap(); // forget Err value, since it doesn't implement Debug
 }
 

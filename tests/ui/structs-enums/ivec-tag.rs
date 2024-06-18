@@ -13,7 +13,7 @@ fn producer(tx: &Sender<Vec<u8>>) {
 
 pub fn main() {
     let (tx, rx) = channel::<Vec<u8>>();
-    let prod = thread::spawn(move|| {
+    let prod = thread::spawn(move || {
         producer(&tx)
     });
 

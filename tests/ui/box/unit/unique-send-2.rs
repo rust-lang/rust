@@ -16,7 +16,7 @@ pub fn main() {
     let ts = (0..n).map(|i| {
         expected += i;
         let tx = tx.clone();
-        thread::spawn(move|| {
+        thread::spawn(move || {
             child(&tx, i)
         })
     }).collect::<Vec<_>>();

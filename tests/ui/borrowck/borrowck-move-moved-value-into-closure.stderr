@@ -4,12 +4,12 @@ error[E0382]: use of moved value: `t`
 LL |     let t: Box<_> = Box::new(3);
    |         - move occurs because `t` has type `Box<isize>`, which does not implement the `Copy` trait
 LL |
-LL |     call_f(move|| { *t + 1 });
-   |            ------   -- variable moved due to use in closure
+LL |     call_f(move || { *t + 1 });
+   |            -------   -- variable moved due to use in closure
    |            |
    |            value moved into closure here
-LL |     call_f(move|| { *t + 1 });
-   |            ^^^^^^   -- use occurs due to use in closure
+LL |     call_f(move || { *t + 1 });
+   |            ^^^^^^^   -- use occurs due to use in closure
    |            |
    |            value used here after move
 

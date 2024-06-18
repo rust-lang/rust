@@ -6,8 +6,8 @@ LL |     let x1: Box<_> = Box::new(1);
 LL |     let p1 = &x1;
    |              --- borrow of `x1` occurs here
 ...
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ move out of `x1` occurs here
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ move out of `x1` occurs here
 ...
 LL |         drop(x1);
    |              -- move occurs due to use in closure
@@ -28,8 +28,8 @@ LL |     let x2: Box<_> = Box::new(2);
    |         -- binding `x2` declared here
 LL |     let p2 = &x2;
    |              --- borrow of `x2` occurs here
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ move out of `x2` occurs here
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ move out of `x2` occurs here
 ...
 LL |         drop(x2);
    |              -- move occurs due to use in closure
@@ -51,8 +51,8 @@ LL |     let x1: Box<_> = Box::new(1);
 LL |     drop(x1);
    |          -- value moved here
 ...
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ value used here after move
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ value used here after move
 ...
 LL |         drop(x1);
    |              -- use occurs due to use in closure
@@ -69,8 +69,8 @@ LL |     let x2: Box<_> = Box::new(2);
    |         -- move occurs because `x2` has type `Box<i32>`, which does not implement the `Copy` trait
 LL |     drop(x2);
    |          -- value moved here
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ value used here after move
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ value used here after move
 ...
 LL |         drop(x2);
    |              -- use occurs due to use in closure
@@ -97,8 +97,8 @@ LL |     let x: Box<_> = Box::new(1);
    |         - binding `x` declared here
 LL |     let p = &x;
    |             -- borrow of `x` occurs here
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ move out of `x` occurs here
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ move out of `x` occurs here
 LL |
 LL |         drop(x);
    |              - move occurs due to use in closure
@@ -129,8 +129,8 @@ LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 LL |     drop(x);
    |          - value moved here
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^ value used here after move
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^ value used here after move
 LL |
 LL |         drop(x);
    |              - use occurs due to use in closure

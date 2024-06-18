@@ -8,7 +8,7 @@ macro_rules! expr { ($e: expr) => { $e } }
 
 macro_rules! spawn {
     ($($code: tt)*) => {
-        expr!(thread::spawn(move|| {$($code)*}).join())
+        expr!(thread::spawn(move || {$($code)*}).join())
     }
 }
 

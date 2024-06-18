@@ -18,7 +18,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: isize = 10;
 
-    let result = thread::spawn(move|| {
+    let result = thread::spawn(move || {
         test00_start(&tx, number_of_messages);
     });
 

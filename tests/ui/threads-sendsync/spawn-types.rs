@@ -20,6 +20,6 @@ fn iotask(_tx: &ctx, ip: String) {
 
 pub fn main() {
     let (tx, _rx) = channel::<isize>();
-    let t = thread::spawn(move|| iotask(&tx, "localhost".to_string()) );
+    let t = thread::spawn(move || iotask(&tx, "localhost".to_string()) );
     t.join().ok().unwrap();
 }

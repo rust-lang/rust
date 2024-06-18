@@ -6,7 +6,7 @@ use std::sync::mpsc::{channel, Receiver};
 
 fn periodical(n: isize) -> Receiver<bool> {
     let (chan, port) = channel();
-    thread::spawn(move|| {
+    thread::spawn(move || {
         loop {
             for _ in 1..n {
                 match chan.send(false) {
@@ -25,7 +25,7 @@ fn periodical(n: isize) -> Receiver<bool> {
 
 fn integers() -> Receiver<isize> {
     let (chan, port) = channel();
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let mut i = 1;
         loop {
             match chan.send(i) {

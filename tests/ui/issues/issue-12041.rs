@@ -3,7 +3,7 @@ use std::thread;
 
 fn main() {
     let (tx, rx) = channel();
-    let _t = thread::spawn(move|| -> () {
+    let _t = thread::spawn(move || -> () {
         loop {
             let tx = tx;
             //~^ ERROR: use of moved value: `tx`

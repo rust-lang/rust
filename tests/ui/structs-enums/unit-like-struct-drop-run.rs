@@ -15,7 +15,7 @@ impl Drop for Foo {
 }
 
 pub fn main() {
-    let x = thread::spawn(move|| {
+    let x = thread::spawn(move || {
         let _b = Foo;
     }).join();
 

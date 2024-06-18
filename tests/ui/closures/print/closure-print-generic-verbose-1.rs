@@ -9,7 +9,7 @@ fn f<T: std::fmt::Display>(y: T) {
 
     let foo =  Foo{ x: "x" };
 
-    let c = to_fn_once(move|| {
+    let c = to_fn_once(move || {
         println!("{} {}", foo.x, y);
     });
 

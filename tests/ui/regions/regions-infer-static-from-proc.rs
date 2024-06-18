@@ -12,7 +12,7 @@ fn foo<F:FnOnce()+'static>(_: F) {}
 fn read(_: usize) { }
 pub fn main() {
     let x = &i;
-    foo(move|| {
+    foo(move || {
         read(*x);
     });
 }

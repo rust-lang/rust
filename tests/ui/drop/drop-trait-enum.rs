@@ -63,7 +63,7 @@ pub fn main() {
     assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
-    let t = thread::spawn(move|| {
+    let t = thread::spawn(move || {
         let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
@@ -72,7 +72,7 @@ pub fn main() {
 
     let (sender, receiver) = channel();
     let t = {
-        thread::spawn(move|| {
+        thread::spawn(move || {
             let mut v = Foo::NestedVariant(Box::new(42), SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());

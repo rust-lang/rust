@@ -6,7 +6,7 @@ use std::thread;
 
 pub fn main() {
     let x = "Hello world!".to_string();
-    thread::spawn(move|| {
+    thread::spawn(move || {
         println!("{}", x);
     }).join();
 }

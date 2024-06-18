@@ -34,7 +34,7 @@ fn test00() {
         let tx = tx.clone();
         results.push(thread::spawn({
             let i = i;
-            move|| {
+            move || {
                 test00_start(&tx, i, number_of_messages)
             }
         }));

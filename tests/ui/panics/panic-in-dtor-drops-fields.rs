@@ -30,7 +30,7 @@ impl Drop for B {
 }
 
 pub fn main() {
-    let ret = thread::spawn(move|| {
+    let ret = thread::spawn(move || {
         let _a = A { b: B { foo: 3 } };
     }).join();
     assert!(ret.is_err());

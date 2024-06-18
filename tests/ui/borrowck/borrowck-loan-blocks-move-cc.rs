@@ -11,7 +11,7 @@ fn borrow<F>(v: &isize, f: F) where F: FnOnce(&isize) {
 fn box_imm() {
     let v: Box<_> = Box::new(3);
     let w = &v;
-    thread::spawn(move|| {
+    thread::spawn(move || {
     //~^ ERROR cannot move out of `v` because it is borrowed
         println!("v={}", *v);
     });
@@ -21,7 +21,7 @@ fn box_imm() {
 fn box_imm_explicit() {
     let v: Box<_> = Box::new(3);
     let w = &v;
-    thread::spawn(move|| {
+    thread::spawn(move || {
     //~^ ERROR cannot move
         println!("v={}", *v);
     });

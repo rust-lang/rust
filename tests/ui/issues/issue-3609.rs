@@ -14,7 +14,7 @@ enum Msg
 }
 
 fn foo(name: String, samples_chan: Sender<Msg>) {
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let mut samples_chan = samples_chan;
 
         let callback: SamplesFn = Box::new(move |buffer| {

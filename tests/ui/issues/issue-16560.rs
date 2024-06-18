@@ -12,7 +12,7 @@ fn main() {
     // Check that both closures are capturing by value
     assert_eq!(1, mem::size_of_val(&closure));
 
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let ok = closure;
     }).join().ok().unwrap();
 }

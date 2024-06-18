@@ -22,7 +22,7 @@ fn main() {
 
     let x = foo(Port(Rc::new(())));
 
-    thread::spawn(move|| {
+    thread::spawn(move || {
         //~^ ERROR `Rc<()>` cannot be sent between threads safely
         let y = x;
         println!("{:?}", y);

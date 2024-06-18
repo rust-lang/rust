@@ -13,7 +13,7 @@ pub fn main() {
     while (i > 0) {
         println!("{}", i);
         let tx = tx.clone();
-        thread::spawn({let i = i; move|| { child(i, &tx) }});
+        thread::spawn({let i = i; move || { child(i, &tx) }});
         i = i - 1;
     }
 

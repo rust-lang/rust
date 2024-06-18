@@ -9,5 +9,5 @@ fn foo<F:FnOnce()>(_: F) {}
 
 pub fn main() {
   let a = Box::new(1);
-  foo(move|| { foo(move|| { work(a) }) })
+  foo(move || { foo(move || { work(a) }) })
 }

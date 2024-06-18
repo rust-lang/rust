@@ -5,7 +5,7 @@ fn main() {
     let v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let arc_v = Arc::new(v);
 
-    thread::spawn(move|| {
+    thread::spawn(move || {
         assert_eq!((*arc_v)[3], 4);
     });
 

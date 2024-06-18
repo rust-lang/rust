@@ -26,6 +26,6 @@ fn foo() {
 }
 
 fn main() {
-    let _ = thread::spawn(move|| foo()).join();
+    let _ = thread::spawn(move || foo()).join();
     unsafe { assert_eq!(DTOR_COUNT, 2); }
 }

@@ -68,7 +68,7 @@ fn test_destroy_actually_kills() {
 
     // Don't let this test time out, this should be quick
     let (tx, rx) = channel();
-    thread::spawn(move|| {
+    thread::spawn(move || {
         thread::sleep_ms(1000);
         if rx.try_recv().is_err() {
             process::exit(1);

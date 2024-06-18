@@ -13,5 +13,5 @@ fn f() {
 }
 
 pub fn main() {
-    thread::spawn(move|| f() ).join();
+    thread::spawn(move || f() ).join();
 }

@@ -10,7 +10,7 @@ fn foo<F:FnOnce()>(blk: F) {
 
 fn main() {
     let x = Arc::new(true);
-    foo(move|| {
+    foo(move || {
         assert!(*x);
         drop(x);
     });

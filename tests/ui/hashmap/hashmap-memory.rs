@@ -32,7 +32,7 @@ mod map_reduce {
         for i in &inputs {
             let ctrl = ctrl.clone();
             let i = i.clone();
-            thread::spawn(move|| map_task(ctrl.clone(), i.clone()) );
+            thread::spawn(move || map_task(ctrl.clone(), i.clone()) );
         }
     }
 

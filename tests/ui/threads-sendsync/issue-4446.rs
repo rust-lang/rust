@@ -9,7 +9,7 @@ pub fn main() {
 
     tx.send("hello, world").unwrap();
 
-    thread::spawn(move|| {
+    thread::spawn(move || {
         println!("{}", rx.recv().unwrap());
     }).join().ok().unwrap();
 }

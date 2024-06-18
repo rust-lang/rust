@@ -8,7 +8,7 @@ use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let t = thread::spawn(move||{
+    let t = thread::spawn(move ||{
         thread::sleep_ms(10);
         tx.send(()).unwrap();
     });

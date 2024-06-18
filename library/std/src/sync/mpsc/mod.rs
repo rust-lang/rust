@@ -51,7 +51,7 @@
 //!
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
-//! thread::spawn(move|| {
+//! thread::spawn(move || {
 //!     tx.send(10).unwrap();
 //! });
 //! assert_eq!(rx.recv().unwrap(), 10);
@@ -69,7 +69,7 @@
 //! let (tx, rx) = channel();
 //! for i in 0..10 {
 //!     let tx = tx.clone();
-//!     thread::spawn(move|| {
+//!     thread::spawn(move || {
 //!         tx.send(i).unwrap();
 //!     });
 //! }
@@ -99,7 +99,7 @@
 //! use std::sync::mpsc::sync_channel;
 //!
 //! let (tx, rx) = sync_channel::<i32>(0);
-//! thread::spawn(move|| {
+//! thread::spawn(move || {
 //!     // This will wait for the parent thread to start receiving
 //!     tx.send(53).unwrap();
 //! });
@@ -510,7 +510,7 @@ pub enum TrySendError<T> {
 /// let (sender, receiver) = channel();
 ///
 /// // Spawn off an expensive computation
-/// thread::spawn(move|| {
+/// thread::spawn(move || {
 /// #   fn expensive_computation() {}
 ///     sender.send(expensive_computation()).unwrap();
 /// });
@@ -561,7 +561,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// // this returns immediately
 /// sender.send(1).unwrap();
 ///
-/// thread::spawn(move|| {
+/// thread::spawn(move || {
 ///     // this will block until the previous message has been received
 ///     sender.send(2).unwrap();
 /// });

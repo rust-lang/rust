@@ -9,7 +9,7 @@ fn different_vars_after_borrows() {
     let p1 = &x1;
     let x2: Box<_> = Box::new(2);
     let p2 = &x2;
-    thread::spawn(move|| {
+    thread::spawn(move || {
         //~^ ERROR cannot move out of `x1` because it is borrowed
         //~| ERROR cannot move out of `x2` because it is borrowed
         drop(x1);
@@ -24,7 +24,7 @@ fn different_vars_after_moves() {
     drop(x1);
     let x2: Box<_> = Box::new(2);
     drop(x2);
-    thread::spawn(move|| {
+    thread::spawn(move || {
         //~^ ERROR use of moved value: `x1`
         //~| ERROR use of moved value: `x2`
         drop(x1);
@@ -35,7 +35,7 @@ fn different_vars_after_moves() {
 fn same_var_after_borrow() {
     let x: Box<_> = Box::new(1);
     let p = &x;
-    thread::spawn(move|| {
+    thread::spawn(move || {
         //~^ ERROR cannot move out of `x` because it is borrowed
         drop(x);
         drop(x); //~ ERROR use of moved value: `x`
@@ -46,7 +46,7 @@ fn same_var_after_borrow() {
 fn same_var_after_move() {
     let x: Box<_> = Box::new(1);
     drop(x);
-    thread::spawn(move|| {
+    thread::spawn(move || {
         //~^ ERROR use of moved value: `x`
         drop(x);
         drop(x); //~ ERROR use of moved value: `x`
