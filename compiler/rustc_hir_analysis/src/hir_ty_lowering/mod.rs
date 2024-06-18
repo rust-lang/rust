@@ -236,18 +236,20 @@ pub trait HirTyLowerer<'tcx> {
 /// The "qualified self" of an associated item path.
 ///
 /// For diagnostic purposes only.
-enum AssocItemQSelf {
+enum AssocItemQSelf<'tcx> {
     Trait(DefId),
     TyParam(LocalDefId, Span),
     SelfTyAlias,
+    AssocTy(Ty<'tcx>),
 }
 
-impl AssocItemQSelf {
-    fn to_string(&self, tcx: TyCtxt<'_>) -> String {
+impl<'tcx> AssocItemQSelf<'tcx> {
+    fn to_string(&self, tcx: TyCtxt<'tcx>) -> String {
         match *self {
             Self::Trait(def_id) => tcx.def_path_str(def_id),
             Self::TyParam(def_id, _) => tcx.hir_ty_param_name(def_id).to_string(),
             Self::SelfTyAlias => kw::SelfUpper.to_string(),
+            Self::AssocTy(ty) => ty.to_string(),
         }
     }
 }
@@ -1091,7 +1093,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn probe_single_bound_for_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        qself: AssocItemQSelf,
+        qself: AssocItemQSelf<'tcx>,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
@@ -1442,15 +1444,45 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )?
             }
             (
-                &ty::Param(_),
-                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
+                ty::Param(_),
+                Res::SelfTyParam { trait_: param_def_id }
+                | Res::Def(DefKind::TyParam, param_def_id),
             ) => self.probe_single_ty_param_bound_for_assoc_item(
-                param_did.expect_local(),
+                param_def_id.expect_local(),
                 hir_self_ty.span,
                 assoc_tag,
                 segment.ident,
                 span,
             )?,
+            // FIXME(fmease):
+            // Require the pre-lowered projectee (the HIR QSelf) to have `DefKind::AssocTy`. Rephrased,
+            // `T::Assoc::Assoc` typeck'ing shouldn't imply `Identity<T::Assoc>::Assoc` typeck'ing where
+            // `Identity` is an eager (i.e., non-lazy) type alias. We should do this
+            // * for consistency with lazy type aliases (`ty::Weak`)
+            // * for consistency with the fact that `T::Assoc` typeck'ing doesn't imply `Identity<T>::Assoc`
+            //   typeck'ing
+            (ty::Alias(ty::Projection, alias_ty), _ /* Res::Def(DefKind::AssocTy, _) */) => {
+                // FIXME: Utilizing `item_bounds` for this is cycle-prone.
+                let predicates = tcx.item_bounds(alias_ty.def_id).instantiate(tcx, alias_ty.args);
+
+                self.probe_single_bound_for_assoc_item(
+                    || {
+                        let trait_refs = predicates.iter().filter_map(|pred| {
+                            pred.as_trait_clause().map(|t| t.map_bound(|t| t.trait_ref))
+                        });
+                        traits::transitive_bounds_that_define_assoc_item(
+                            tcx,
+                            trait_refs,
+                            segment.ident,
+                        )
+                    },
+                    AssocItemQSelf::AssocTy(self_ty),
+                    assoc_tag,
+                    segment.ident,
+                    span,
+                    None,
+                )?
+            }
             _ => {
                 return Err(self.report_unresolved_type_relative_path(
                     self_ty,

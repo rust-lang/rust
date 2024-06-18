@@ -15,9 +15,6 @@ impl S {
     fn f<T>() {}
 }
 
-type A = <S as Tr>::A::f<u8>;
-//~^ ERROR ambiguous associated type
-
 fn main() {
     match 10 {
         <S as Tr>::A::f::<u8> => {}
