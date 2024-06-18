@@ -363,6 +363,11 @@ impl Session {
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
     }
 
+    /// True if `-Zcoverage-options=no-mir-spans` was passed.
+    pub fn coverage_no_mir_spans(&self) -> bool {
+        self.opts.unstable_opts.coverage_options.no_mir_spans
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
