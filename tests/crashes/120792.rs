@@ -1,5 +1,5 @@
 //@ known-bug: #120792
-//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes
+//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes -Zinline-mir-threshold=200
 
 impl Trait<()> for () {
     fn foo<'a, K>(self, _: (), _: K) {
