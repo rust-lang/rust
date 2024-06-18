@@ -7,7 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 derivative = "2.2.0"
-rustc_ast_ir = { path = "../rustc_ast_ir" }
+rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }

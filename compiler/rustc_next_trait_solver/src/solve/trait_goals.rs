@@ -1,7 +1,7 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
 use rustc_ast_ir::Movability;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
@@ -821,7 +821,7 @@ where
         // We may upcast to auto traits that are either explicitly listed in
         // the object type's bounds, or implied by the principal trait ref's
         // supertraits.
-        let a_auto_traits: FxIndexSet<I::DefId> = a_data
+        let a_auto_traits: IndexSet<I::DefId> = a_data
             .auto_traits()
             .into_iter()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
