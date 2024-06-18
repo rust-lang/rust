@@ -23,7 +23,6 @@ run-make/cross-lang-lto-pgo-smoketest/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
 run-make/cross-lang-lto/Makefile
 run-make/debug-assertions/Makefile
-run-make/debugger-visualizer-dep-info/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
