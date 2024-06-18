@@ -5,14 +5,13 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 use hir::def_id::CRATE_DEF_ID;
-use rustc_errors::DiagCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
@@ -145,8 +144,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
-        self.tcx.dcx()
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+        self.infcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {

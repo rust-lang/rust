@@ -10,7 +10,7 @@ use rustc_ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, Diag, DiagCtxt, PResult};
+use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
@@ -141,7 +141,7 @@ pub(super) fn transcribe<'a>(
     let mut result_stack = Vec::new();
     let mut marker = Marker(expand_id, transparency, Default::default());
 
-    let dcx = &psess.dcx;
+    let dcx = psess.dcx();
     loop {
         // Look at the last frame on the stack.
         // If it still has a TokenTree we have not looked at yet, use that tree.
@@ -571,7 +571,7 @@ fn lockstep_iter_size(
 /// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
 ///   declared inside a single repetition and the index `1` implies two nested repetitions.
 fn count_repetitions<'a>(
-    dcx: &'a DiagCtxt,
+    dcx: DiagCtxtHandle<'a>,
     depth_user: usize,
     mut matched: &NamedMatch,
     repeats: &[(usize, usize)],
@@ -632,7 +632,7 @@ fn count_repetitions<'a>(
 
 /// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
 fn matched_from_ident<'ctx, 'interp, 'rslt>(
-    dcx: &'ctx DiagCtxt,
+    dcx: DiagCtxtHandle<'ctx>,
     ident: Ident,
     interp: &'interp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'ctx, &'rslt NamedMatch>
@@ -646,7 +646,7 @@ where
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
 /// example, index(999999) in an repetition of only three elements.
-fn out_of_bounds_err<'a>(dcx: &'a DiagCtxt, max: usize, span: Span, ty: &str) -> Diag<'a> {
+fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &str) -> Diag<'a> {
     let msg = if max == 0 {
         format!(
             "meta-variable expression `{ty}` with depth parameter \
@@ -662,7 +662,7 @@ fn out_of_bounds_err<'a>(dcx: &'a DiagCtxt, max: usize, span: Span, ty: &str) ->
 }
 
 fn transcribe_metavar_expr<'a>(
-    dcx: &'a DiagCtxt,
+    dcx: DiagCtxtHandle<'a>,
     expr: &MetaVarExpr,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     marker: &mut Marker,
@@ -730,7 +730,7 @@ fn transcribe_metavar_expr<'a>(
 
 /// Extracts an identifier that can be originated from a `$var:ident` variable or from a token tree.
 fn extract_ident<'a>(
-    dcx: &'a DiagCtxt,
+    dcx: DiagCtxtHandle<'a>,
     ident: Ident,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'a, String> {

@@ -47,7 +47,9 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, RwLock, Work
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, LintDiagnostic, MultiSpan};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -1415,7 +1417,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn dcx(self) -> &'tcx DiagCtxt {
+    pub fn dcx(self) -> DiagCtxtHandle<'tcx> {
         self.sess.dcx()
     }
 }

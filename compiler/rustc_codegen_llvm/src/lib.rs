@@ -31,7 +31,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagCtxt, ErrorGuaranteed, FatalError};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -191,7 +191,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_link(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
@@ -212,7 +212,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
@@ -223,7 +223,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &mut ModuleCodegen<Self::Module>,
     ) -> Result<(), FatalError> {
         let dcx = cgcx.create_dcx();
-        back::lto::run_pass_manager(cgcx, &dcx, module, false)
+        let dcx = dcx.handle();
+        back::lto::run_pass_manager(cgcx, dcx, module, false)
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
@@ -233,7 +234,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
@@ -441,7 +442,7 @@ impl ModuleLlvm {
         cgcx: &CodegenContext<LlvmCodegenBackend>,
         name: &CStr,
         buffer: &[u8],
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
     ) -> Result<Self, FatalError> {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);

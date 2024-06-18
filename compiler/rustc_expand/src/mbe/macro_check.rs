@@ -206,7 +206,7 @@ pub(super) fn check_meta_variables(
     rhses: &[TokenTree],
 ) -> Result<(), ErrorGuaranteed> {
     if lhses.len() != rhses.len() {
-        psess.dcx.span_bug(span, "length mismatch between LHSes and RHSes")
+        psess.dcx().span_bug(span, "length mismatch between LHSes and RHSes")
     }
     let mut guar = None;
     for (lhs, rhs) in iter::zip(lhses, rhses) {
@@ -245,7 +245,7 @@ fn check_binders(
         // MetaVar(fragment) and not as MetaVarDecl(y, fragment).
         TokenTree::MetaVar(span, name) => {
             if macros.is_empty() {
-                psess.dcx.span_bug(span, "unexpected MetaVar in lhs");
+                psess.dcx().span_bug(span, "unexpected MetaVar in lhs");
             }
             let name = MacroRulesNormalizedIdent::new(name);
             // There are 3 possibilities:
@@ -276,7 +276,7 @@ fn check_binders(
                 );
             }
             if !macros.is_empty() {
-                psess.dcx.span_bug(span, "unexpected MetaVarDecl in nested lhs");
+                psess.dcx().span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
             let name = MacroRulesNormalizedIdent::new(name);
             if let Some(prev_info) = get_binder_info(macros, binders, name) {
@@ -284,7 +284,7 @@ fn check_binders(
                 // for nested macro definitions.
                 *guar = Some(
                     psess
-                        .dcx
+                        .dcx()
                         .emit_err(errors::DuplicateMatcherBinding { span, prev: prev_info.span }),
                 );
             } else {
@@ -344,7 +344,7 @@ fn check_occurrences(
     match *rhs {
         TokenTree::Token(..) => {}
         TokenTree::MetaVarDecl(span, _name, _kind) => {
-            psess.dcx.span_bug(span, "unexpected MetaVarDecl in rhs")
+            psess.dcx().span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {
             let name = MacroRulesNormalizedIdent::new(name);

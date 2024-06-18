@@ -403,74 +403,56 @@ fn emit_orphan_check_error<'tcx>(
                 match *ty.kind() {
                     ty::Slice(_) => {
                         if is_foreign {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsForeign { span },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsForeign { span });
                         } else {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsName { span, name: "slices" },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsName {
+                                span,
+                                name: "slices",
+                            });
                         }
                     }
                     ty::Array(..) => {
                         if is_foreign {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsForeign { span },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsForeign { span });
                         } else {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsName { span, name: "arrays" },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsName {
+                                span,
+                                name: "arrays",
+                            });
                         }
                     }
                     ty::Tuple(..) => {
                         if is_foreign {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsForeign { span },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsForeign { span });
                         } else {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsName { span, name: "tuples" },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsName {
+                                span,
+                                name: "tuples",
+                            });
                         }
                     }
                     ty::Alias(ty::Opaque, ..) => {
-                        diag.subdiagnostic(tcx.dcx(), errors::OnlyCurrentTraitsOpaque { span });
+                        diag.subdiagnostic(errors::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {
                         if !trait_ref.self_ty().has_param() {
-                            diag.subdiagnostic(
-                                tcx.dcx(),
-                                errors::OnlyCurrentTraitsPointerSugg {
-                                    wrapper_span: impl_.self_ty.span,
-                                    struct_span: item.span.shrink_to_lo(),
-                                    mut_key: mutbl.prefix_str(),
-                                    ptr_ty,
-                                },
-                            );
+                            diag.subdiagnostic(errors::OnlyCurrentTraitsPointerSugg {
+                                wrapper_span: impl_.self_ty.span,
+                                struct_span: item.span.shrink_to_lo(),
+                                mut_key: mutbl.prefix_str(),
+                                ptr_ty,
+                            });
                         }
-                        diag.subdiagnostic(
-                            tcx.dcx(),
-                            errors::OnlyCurrentTraitsPointer { span, pointer: ty },
-                        );
+                        diag.subdiagnostic(errors::OnlyCurrentTraitsPointer { span, pointer: ty });
                     }
                     ty::Adt(adt_def, _) => {
-                        diag.subdiagnostic(
-                            tcx.dcx(),
-                            errors::OnlyCurrentTraitsAdt {
-                                span,
-                                name: tcx.def_path_str(adt_def.did()),
-                            },
-                        );
+                        diag.subdiagnostic(errors::OnlyCurrentTraitsAdt {
+                            span,
+                            name: tcx.def_path_str(adt_def.did()),
+                        });
                     }
                     _ => {
-                        diag.subdiagnostic(tcx.dcx(), errors::OnlyCurrentTraitsTy { span, ty });
+                        diag.subdiagnostic(errors::OnlyCurrentTraitsTy { span, ty });
                     }
                 }
             }

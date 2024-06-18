@@ -63,7 +63,7 @@ fn handle_static_mut_ref(
         } else {
             (errors::StaticMutRefSugg::Shared { span, var }, "shared")
         };
-        tcx.sess.psess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
+        tcx.dcx().emit_err(errors::StaticMutRef { span, sugg, shared });
     } else {
         let (sugg, shared) = if mutable == Mutability::Mut {
             (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")

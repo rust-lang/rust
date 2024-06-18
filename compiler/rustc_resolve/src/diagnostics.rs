@@ -6,7 +6,7 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    codes::*, report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxt,
+    codes::*, report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
     ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -120,7 +120,7 @@ fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
 }
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
-    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
 
@@ -334,12 +334,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some((import, _, true)) if should_remove_import && !import.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
-                err.subdiagnostic(
-                    self.tcx.dcx(),
-                    errors::ToolOnlyRemoveUnnecessaryImport {
-                        span: import.use_span_with_attributes,
-                    },
-                );
+                err.subdiagnostic(errors::ToolOnlyRemoveUnnecessaryImport {
+                    span: import.use_span_with_attributes,
+                });
             }
             Some((import, span, _)) => {
                 self.add_suggestion_for_rename_of_use(&mut err, name, import, span);
@@ -405,12 +402,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if let Some(suggestion) = suggestion {
-            err.subdiagnostic(
-                self.dcx(),
-                ChangeImportBindingSuggestion { span: binding_span, suggestion },
-            );
+            err.subdiagnostic(ChangeImportBindingSuggestion { span: binding_span, suggestion });
         } else {
-            err.subdiagnostic(self.dcx(), ChangeImportBinding { span: binding_span });
+            err.subdiagnostic(ChangeImportBinding { span: binding_span });
         }
     }
 
@@ -458,20 +452,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // previous imports.
         if found_closing_brace {
             if let Some(span) = extend_span_to_previous_binding(self.tcx.sess, span) {
-                err.subdiagnostic(self.dcx(), errors::ToolOnlyRemoveUnnecessaryImport { span });
+                err.subdiagnostic(errors::ToolOnlyRemoveUnnecessaryImport { span });
             } else {
                 // Remove the entire line if we cannot extend the span back, this indicates an
                 // `issue_52891::{self}` case.
-                err.subdiagnostic(
-                    self.dcx(),
-                    errors::RemoveUnnecessaryImport { span: import.use_span_with_attributes },
-                );
+                err.subdiagnostic(errors::RemoveUnnecessaryImport {
+                    span: import.use_span_with_attributes,
+                });
             }
 
             return;
         }
 
-        err.subdiagnostic(self.dcx(), errors::RemoveUnnecessaryImport { span });
+        err.subdiagnostic(errors::RemoveUnnecessaryImport { span });
     }
 
     pub(crate) fn lint_if_path_starts_with_module(
@@ -682,10 +675,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     .dcx()
                     .create_err(errors::VariableIsNotBoundInAllPatterns { multispan: msp, name });
                 for sp in target_sp {
-                    err.subdiagnostic(self.dcx(), errors::PatternDoesntBindName { span: sp, name });
+                    err.subdiagnostic(errors::PatternDoesntBindName { span: sp, name });
                 }
                 for sp in origin_sp {
-                    err.subdiagnostic(self.dcx(), errors::VariableNotInAllPatterns { span: sp });
+                    err.subdiagnostic(errors::VariableNotInAllPatterns { span: sp });
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
@@ -1446,12 +1439,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         );
 
         if macro_kind == MacroKind::Bang && ident.name == sym::macro_rules {
-            err.subdiagnostic(self.dcx(), MaybeMissingMacroRulesName { span: ident.span });
+            err.subdiagnostic(MaybeMissingMacroRulesName { span: ident.span });
             return;
         }
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
-            err.subdiagnostic(self.dcx(), ExplicitUnsafeTraits { span: ident.span, ident });
+            err.subdiagnostic(ExplicitUnsafeTraits { span: ident.span, ident });
             return;
         }
 
@@ -1467,14 +1460,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let scope = self.local_macro_def_scopes[&def_id];
             let parent_nearest = parent_scope.module.nearest_parent_mod();
             if Some(parent_nearest) == scope.opt_def_id() {
-                err.subdiagnostic(self.dcx(), MacroDefinedLater { span: unused_ident.span });
-                err.subdiagnostic(self.dcx(), MacroSuggMovePosition { span: ident.span, ident });
+                err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
+                err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
                 return;
             }
         }
 
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
-            err.subdiagnostic(self.dcx(), AddedMacroUse);
+            err.subdiagnostic(AddedMacroUse);
             return;
         }
 
@@ -1484,13 +1477,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let span = self.def_span(def_id);
             let source_map = self.tcx.sess.source_map();
             let head_span = source_map.guess_head_span(span);
-            err.subdiagnostic(
-                self.dcx(),
-                ConsiderAddingADerive {
-                    span: head_span.shrink_to_lo(),
-                    suggestion: "#[derive(Default)]\n".to_string(),
-                },
-            );
+            err.subdiagnostic(ConsiderAddingADerive {
+                span: head_span.shrink_to_lo(),
+                suggestion: "#[derive(Default)]\n".to_string(),
+            });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
@@ -1533,7 +1523,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             imported_ident: ident,
                             imported_ident_desc: &desc,
                         };
-                        err.subdiagnostic(self.tcx.dcx(), note);
+                        err.subdiagnostic(note);
                         // Silence the 'unused import' warning we might get,
                         // since this diagnostic already covers that import.
                         self.record_use(ident, binding, Used::Other);
@@ -1544,7 +1534,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     imported_ident: ident,
                     imported_ident_desc: &desc,
                 };
-                err.subdiagnostic(self.tcx.dcx(), note);
+                err.subdiagnostic(note);
                 return;
             }
         }
@@ -1599,7 +1589,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             };
             did_label_def_span = true;
-            err.subdiagnostic(self.tcx.dcx(), label);
+            err.subdiagnostic(label);
         }
 
         let (span, msg, sugg) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
@@ -1790,7 +1780,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     outer_ident_descr: this_res.descr(),
                     outer_ident,
                 };
-                err.subdiagnostic(self.tcx.dcx(), label);
+                err.subdiagnostic(label);
             }
         }
 
@@ -1805,14 +1795,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             non_exhaustive = Some(attr.span);
         } else if let Some(span) = ctor_fields_span {
             let label = errors::ConstructorPrivateIfAnyFieldPrivate { span };
-            err.subdiagnostic(self.tcx.dcx(), label);
+            err.subdiagnostic(label);
             if let Res::Def(_, d) = res
                 && let Some(fields) = self.field_visibility_spans.get(&d)
             {
                 let spans = fields.iter().map(|span| *span).collect();
                 let sugg =
                     errors::ConsiderMakingTheFieldPublic { spans, number_of_fields: fields.len() };
-                err.subdiagnostic(self.tcx.dcx(), sugg);
+                err.subdiagnostic(sugg);
             }
         }
 
@@ -1921,7 +1911,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 first,
                 dots: next_binding.is_some(),
             };
-            err.subdiagnostic(self.tcx.dcx(), note);
+            err.subdiagnostic(note);
         }
         // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
         sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0] == "core", *reexport));
@@ -1940,7 +1930,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 errors::ImportIdent::Directly { span: dedup_span, ident, path }
             };
-            err.subdiagnostic(self.tcx.dcx(), sugg);
+            err.subdiagnostic(sugg);
             break;
         }
 
@@ -2521,14 +2511,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             let note = errors::FoundItemConfigureOut { span: name.span };
-            err.subdiagnostic(self.tcx.dcx(), note);
+            err.subdiagnostic(note);
 
             if let MetaItemKind::List(nested) = &cfg.kind
                 && let NestedMetaItem::MetaItem(meta_item) = &nested[0]
                 && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
             {
                 let note = errors::ItemWasBehindFeature { feature: feature_name.symbol };
-                err.subdiagnostic(self.tcx.dcx(), note);
+                err.subdiagnostic(note);
             }
         }
     }

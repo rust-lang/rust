@@ -1,9 +1,9 @@
 use crate::fluent_generated as fluent;
-use rustc_errors::DiagArgValue;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    codes::*, Applicability, Diag, Diagnostic, EmissionGuarantee, Level, MultiSpan,
     SubdiagMessageOp, Subdiagnostic,
 };
+use rustc_errors::{DiagArgValue, DiagCtxtHandle};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::{errors::Uncovered, rustc::RustcPatCtxt};
@@ -492,7 +492,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'_, G> {
         let mut diag =
             Diag::new(dcx, level, fluent::mir_build_non_exhaustive_patterns_type_not_empty);
         diag.span(self.scrut_span);

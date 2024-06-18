@@ -61,7 +61,7 @@ where
 {
     let mut p = string_to_parser(&psess, s);
     let x = f(&mut p).unwrap();
-    p.psess.dcx.abort_if_errors();
+    p.dcx().abort_if_errors();
     x
 }
 
@@ -193,7 +193,7 @@ impl<T: Write> Write for Shared<T> {
 #[allow(rustc::untranslatable_diagnostic)] // no translation needed for tests
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
     create_default_session_globals_then(|| {
-        let (handler, source_map, output) = create_test_handler();
+        let (dcx, source_map, output) = create_test_handler();
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
         let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
@@ -205,7 +205,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
-        handler.span_err(msp, "foo");
+        dcx.handle().span_err(msp, "foo");
 
         assert!(
             expected_output.chars().next() == Some('\n'),

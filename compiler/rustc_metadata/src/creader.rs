@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
@@ -91,8 +91,8 @@ impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
-    fn dcx(&self) -> &'tcx DiagCtxt {
-        &self.tcx.dcx()
+    fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+        self.tcx.dcx()
     }
 }
 

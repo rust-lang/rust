@@ -4,6 +4,7 @@ pub use lexical_region_resolve::RegionResolutionError;
 pub use relate::combine::CombineFields;
 pub use relate::combine::PredicateEmittingRelation;
 pub use relate::StructurallyRelateAliases;
+use rustc_errors::DiagCtxtHandle;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 pub use rustc_middle::ty::IntVarValue;
 pub use BoundRegionConversionTime::*;
@@ -23,7 +24,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::{Diag, DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
@@ -826,7 +827,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    pub fn dcx(&self) -> &'tcx DiagCtxt {
+    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
 

@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
@@ -11,7 +11,7 @@ use tracing::debug;
 use crate::errors::{MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError};
 
 pub(crate) fn emit_unescape_error(
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     // interior part of the literal, between quotes
     lit: &str,
     // full span of the literal, including quotes and any prefix

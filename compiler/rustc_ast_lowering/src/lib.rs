@@ -50,7 +50,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagArgFromDisplay, DiagCtxt, StashKey};
+use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{self as hir};
@@ -188,7 +188,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    pub(crate) fn dcx(&self) -> &'hir DiagCtxt {
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
     }
 }

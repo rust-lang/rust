@@ -1435,7 +1435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // The user provided `ptr::null()`, but the function expects
             // `ptr::null_mut()`.
-            err.subdiagnostic(self.dcx(), SuggestPtrNullMut { span: arg.span });
+            err.subdiagnostic(SuggestPtrNullMut { span: arg.span });
         }
     }
 

@@ -5,7 +5,7 @@
 //! it finds operations that are invalid in a certain context.
 
 use rustc_attr as attr;
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
@@ -46,7 +46,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
         ConstCx { body, tcx, param_env, const_kind }
     }
 
-    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
 
