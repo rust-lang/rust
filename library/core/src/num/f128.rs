@@ -221,8 +221,22 @@ impl f128 {
     pub const MAX_10_EXP: i32 = 4_932;
 
     /// Returns `true` if this value is NaN.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// # // FIXME(f16_f128): remove when `unordtf2` is available
+    /// # #[cfg(target_arch = "x86_64", target_os = "linux")] {
+    ///
+    /// let nan = f128::NAN;
+    /// let f = 7.0_f128;
+    ///
+    /// assert!(nan.is_nan());
+    /// assert!(!f.is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[must_use]
+    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
@@ -234,7 +248,7 @@ impl f128 {
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// See [explanation of NaN as a special value](f128) for more info.
     ///
     /// ```
     /// #![feature(f128)]
@@ -257,7 +271,7 @@ impl f128 {
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// See [explanation of NaN as a special value](f128) for more info.
     ///
     /// ```
     /// #![feature(f128)]
@@ -287,6 +301,14 @@ impl f128 {
     ///
     /// Note that this function is distinct from `as` casting, which attempts to
     /// preserve the *numeric* value, and not the bitwise value.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    ///
+    /// # // FIXME(f16_f128): enable this once const casting works
+    /// # // assert_ne!((1f128).to_bits(), 1f128 as u128); // to_bits() is not casting!
+    /// assert_eq!((12.5f128).to_bits(), 0x40029000000000000000000000000000);
+    /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
@@ -326,6 +348,16 @@ impl f128 {
     ///
     /// Note that this function is distinct from `as` casting, which attempts to
     /// preserve the *numeric* value, and not the bitwise value.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #  // FIXME(f16_f128): remove when `eqtf2` is available
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    ///
+    /// let v = f128::from_bits(0x40029000000000000000000000000000);
+    /// assert_eq!(v, 12.5);
+    /// # }
+    /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
