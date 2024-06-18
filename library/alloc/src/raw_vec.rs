@@ -4,7 +4,7 @@ use core::alloc::LayoutError;
 use core::cmp;
 use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, Alignment, NonNull, Unique};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -306,9 +306,9 @@ impl<T, A: Allocator> RawVec<T, A> {
             // support such types. So we can do better by skipping some checks and avoid an unwrap.
             const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
             unsafe {
-                let align = mem::align_of::<T>();
+                let align = Alignment::of::<T>();
                 let size = mem::size_of::<T>().unchecked_mul(self.cap.0);
-                let layout = Layout::from_size_align_unchecked(size, align);
+                let layout = Layout::from_size_alignment(size, align).unwrap_unchecked();
                 Some((self.ptr.cast().into(), layout))
             }
         }
