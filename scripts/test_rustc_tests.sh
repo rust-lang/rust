@@ -128,7 +128,6 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
-rm -r tests/run-make/const_fn_mir # needs-unwind directive accidentally dropped
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
