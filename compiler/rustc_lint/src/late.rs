@@ -30,7 +30,7 @@ use rustc_span::Span;
 use tracing::debug;
 
 use crate::passes::LateLintPassObject;
-use crate::{LateContext, LateLintPass, LintStore};
+use crate::{LateContext, LateLintPass, LintStore, LintId};
 
 /// Extract the [`LintStore`] from [`Session`].
 ///
@@ -372,27 +372,16 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     } else {
         let passes: Vec<_> =
             store.late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-
         // Filter unused lints
-        let (lints_that_actually_run, lints_allowed) = &**tcx.lints_that_can_emit(());
-        // let lints_that_actually_run = &lints_that_can_emit.0;
-        // let lints_allowed = &lints_that_can_emit.1;
-
-        // Now, we'll filtered passes in a way that discards any lint that won't trigger.
-        // If any lint is a given pass is detected to be emitted, we will keep that pass.
-        // Otherwise, we don't
+        let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
         let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
             .into_iter()
             .filter(|pass| {
-                let pass = LintPass::get_lints(pass);
-                pass.iter().any(|&lint| {
-                    let lint_name = name_without_tool(&lint.name.to_lowercase()).to_string();
-                    lints_that_actually_run.contains(&lint_name)
-                        || (!lints_allowed.contains(&lint_name)
-                            && lint.default_level != crate::Level::Allow)
-                })
-            })
-            .collect();
+                let lints = LintPass::get_lints(pass);
+                lints.iter()
+                    .any(|lint|
+                        !lints_that_dont_need_to_run.contains(&LintId::of(lint)))
+        }).collect();
 
         filtered_passes.push(Box::new(builtin_lints));
 
@@ -427,7 +416,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     // Note: `passes` is often empty.
-    let mut passes: Vec<_> =
+    let passes: Vec<_> =
         unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
 
     if passes.is_empty() {
@@ -445,7 +434,29 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         only_module: false,
     };
 
-    let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+    let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
+
+    // dbg!(&lints_that_dont_need_to_run);
+    let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
+    .into_iter()
+    .filter(|pass|{
+        let lints = LintPass::get_lints(pass);
+        // dbg!(&lints);
+        lints.iter()
+            .any(|lint|
+                !lints_that_dont_need_to_run.contains(&LintId::of(lint)))
+    }).collect();
+
+    // let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
+    // .into_iter()
+    // .filter(|pass| {
+    //     let lints = LintPass::get_lints(pass);
+    //     lints.iter()
+    //         .any(|lint|
+    //             !lints_that_dont_need_to_run.contains(&LintId::of(lint)))
+    // }).collect();
+
+    let pass = RuntimeCombinedLateLintPass { passes: &mut filtered_passes[..] };
     late_lint_crate_inner(tcx, context, pass);
 }
 
@@ -482,11 +493,4 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
             });
         },
     );
-}
-
-/// Format name ignoring the name, useful for filtering non-used lints.
-/// For example, 'clippy::my_lint' will turn into 'my_lint'
-pub(crate) fn name_without_tool(name: &str) -> &str {
-    // Doing some calculations here to account for those separators
-    name.rsplit("::").next().unwrap_or(name)
 }
