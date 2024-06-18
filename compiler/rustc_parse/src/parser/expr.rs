@@ -75,25 +75,6 @@ pub(super) enum LhsExpr {
     AlreadyParsed { expr: P<Expr>, starts_statement: bool },
 }
 
-impl From<Option<AttrWrapper>> for LhsExpr {
-    /// Converts `Some(attrs)` into `LhsExpr::AttributesParsed(attrs)`
-    /// and `None` into `LhsExpr::NotYetParsed`.
-    ///
-    /// This conversion does not allocate.
-    fn from(o: Option<AttrWrapper>) -> Self {
-        if let Some(attrs) = o { LhsExpr::AttributesParsed(attrs) } else { LhsExpr::NotYetParsed }
-    }
-}
-
-impl From<P<Expr>> for LhsExpr {
-    /// Converts the `expr: P<Expr>` into `LhsExpr::AlreadyParsed { expr, starts_statement: false }`.
-    ///
-    /// This conversion does not allocate.
-    fn from(expr: P<Expr>) -> Self {
-        LhsExpr::AlreadyParsed { expr, starts_statement: false }
-    }
-}
-
 #[derive(Debug)]
 enum DestructuredFloat {
     /// 1e2
@@ -166,7 +147,11 @@ impl<'a> Parser<'a> {
         &mut self,
         already_parsed_attrs: Option<AttrWrapper>,
     ) -> PResult<'a, P<Expr>> {
-        self.parse_expr_assoc_with(0, already_parsed_attrs.into())
+        let lhs = match already_parsed_attrs {
+            Some(attrs) => LhsExpr::AttributesParsed(attrs),
+            None => LhsExpr::NotYetParsed,
+        };
+        self.parse_expr_assoc_with(0, lhs)
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
@@ -2660,7 +2645,8 @@ impl<'a> Parser<'a> {
         } else {
             self.expect(&token::Eq)?;
         }
-        let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), None.into())?;
+        let expr =
+            self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), LhsExpr::NotYetParsed)?;
         let span = lo.to(expr.span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }
