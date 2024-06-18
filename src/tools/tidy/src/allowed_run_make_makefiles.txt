@@ -119,7 +119,6 @@ run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
 run-make/many-crates-but-no-match/Makefile
 run-make/metadata-dep-info/Makefile
-run-make/metadata-flag-frobs-symbols/Makefile
 run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile

@@ -73,6 +73,12 @@ impl Rustc {
         self
     }
 
+    /// Incorporate a hashed string to mangled symbols.
+    pub fn metadata(&mut self, meta: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cmetadata={meta}"));
+        self
+    }
+
     /// Add a suffix in each output filename.
     pub fn extra_filename(&mut self, suffix: &str) -> &mut Self {
         self.cmd.arg(format!("-Cextra-filename={suffix}"));
