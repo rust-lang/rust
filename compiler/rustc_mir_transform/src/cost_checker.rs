@@ -1,11 +1,65 @@
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, ParamEnv, Ty, TyCtxt};
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;
+
+pub fn basic_inline_cost<'tcx>(tcx: TyCtxt<'tcx>, instance: InstanceKind<'tcx>) -> usize {
+    let body = tcx.instance_mir(instance);
+    let mut checker = BasicCostChecker { cost: 0 };
+    checker.visit_body(body);
+    checker.cost
+}
+
+// Basic cost is allowed to under-estimate but never over-estimate. Something that fails basic cost
+// checking must fail full cost checking, so that we can ensure we never accidentally reject
+// something early.
+#[derive(Clone)]
+pub(crate) struct BasicCostChecker {
+    cost: usize,
+}
+
+impl<'tcx> Visitor<'tcx> for BasicCostChecker {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
+        // Don't count StorageLive/StorageDead in the inlining cost.
+        match statement.kind {
+            StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::Deinit(_)
+            | StatementKind::Nop => {}
+            _ => self.cost += INSTR_COST,
+        }
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _: Location) {
+        match terminator.kind {
+            TerminatorKind::Drop { .. } => {}
+            TerminatorKind::Call { unwind, .. } => {
+                self.cost += INSTR_COST;
+                if let UnwindAction::Cleanup(_) = unwind {
+                    self.cost += LANDINGPAD_PENALTY;
+                }
+            }
+            TerminatorKind::Assert { unwind, .. } => {
+                self.cost += CALL_PENALTY;
+                if let UnwindAction::Cleanup(_) = unwind {
+                    self.cost += LANDINGPAD_PENALTY;
+                }
+            }
+            TerminatorKind::UnwindResume => self.cost += RESUME_PENALTY,
+            TerminatorKind::InlineAsm { unwind, .. } => {
+                self.cost += INSTR_COST;
+                if let UnwindAction::Cleanup(_) = unwind {
+                    self.cost += LANDINGPAD_PENALTY;
+                }
+            }
+            _ => self.cost += INSTR_COST,
+        }
+    }
+}
 
 /// Verify that the callee body is compatible with the caller.
 #[derive(Clone)]

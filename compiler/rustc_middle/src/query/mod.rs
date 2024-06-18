@@ -2240,6 +2240,10 @@ rustc_queries! {
     query find_field((def_id, ident): (DefId, rustc_span::symbol::Ident)) -> Option<rustc_target::abi::FieldIdx> {
         desc { |tcx| "find the index of maybe nested field `{ident}` in `{}`", tcx.def_path_str(def_id) }
     }
+
+    query basic_inline_cost(instance: ty::InstanceKind<'tcx>) -> usize {
+        desc { |tcx| "computing the basic inline cost of `{}`", tcx.def_path_str(instance.def_id()) }
+    }
 }
 
 rustc_query_append! { define_callbacks! }

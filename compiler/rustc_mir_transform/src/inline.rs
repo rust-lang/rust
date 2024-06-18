@@ -190,7 +190,21 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
+        if is_polymorphic(self.tcx, callsite.callee.def) {
+            return Err("cannot build drop shim for polymorphic type");
+        }
+
+        let mut threshold = if cross_crate_inlinable {
+            self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
+        } else {
+            self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
+        };
+        threshold += threshold / 4;
+
+        if self.tcx.basic_inline_cost(callsite.callee.def) > threshold {
+            return Err("basic threshold exceeded");
+        }
+        let callee_body = self.tcx.instance_mir(callsite.callee.def);
         self.check_mir_body(callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
 
         if !self.tcx.consider_optimizing(|| {
@@ -1061,10 +1075,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 }
 
 #[instrument(skip(tcx), level = "debug")]
-fn try_instance_mir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: InstanceKind<'tcx>,
-) -> Result<&'tcx Body<'tcx>, &'static str> {
+fn is_polymorphic<'tcx>(tcx: TyCtxt<'tcx>, instance: InstanceKind<'tcx>) -> bool {
     if let ty::InstanceKind::DropGlue(_, Some(ty))
     | ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) = instance
         && let ty::Adt(def, args) = ty.kind()
@@ -1073,9 +1084,9 @@ fn try_instance_mir<'tcx>(
         for field in fields {
             let field_ty = field.ty(tcx, args);
             if field_ty.has_param() && field_ty.has_aliases() {
-                return Err("cannot build drop shim for polymorphic type");
+                return true;
             }
         }
     }
-    Ok(tcx.instance_mir(instance))
+    false
 }

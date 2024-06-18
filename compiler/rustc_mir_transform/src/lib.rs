@@ -138,6 +138,7 @@ pub fn provide(providers: &mut Providers) {
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
+        basic_inline_cost: cost_checker::basic_inline_cost,
         ..providers.queries
     };
 }
