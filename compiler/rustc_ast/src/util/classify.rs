@@ -184,7 +184,7 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
                 None => break None,
             },
 
-            ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds, _) => {
+            ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
                 match bounds.last() {
                     Some(ast::GenericBound::Trait(bound, _)) => {
                         match path_return_type(&bound.trait_ref.path) {
@@ -192,7 +192,9 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
                             None => break None,
                         }
                     }
-                    Some(ast::GenericBound::Outlives(_)) | None => break None,
+                    Some(ast::GenericBound::Outlives(_) | ast::GenericBound::Use(..)) | None => {
+                        break None;
+                    }
                 }
             }
 

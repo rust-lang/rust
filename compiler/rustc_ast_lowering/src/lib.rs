@@ -51,9 +51,9 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxt, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::{self as hir};
 use rustc_hir::{
     ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
 };
@@ -1384,6 +1384,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 }
                                 None
                             }
+                            // Ignore `use` syntax since that is not valid in objects.
+                            GenericBound::Use(_, span) => {
+                                this.dcx()
+                                    .span_delayed_bug(*span, "use<> not allowed in dyn types");
+                                None
+                            }
                         }));
                     let lifetime_bound =
                         lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
@@ -1391,7 +1397,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 });
                 hir::TyKind::TraitObject(bounds, lifetime_bound, *kind)
             }
-            TyKind::ImplTrait(def_node_id, bounds, precise_capturing) => {
+            TyKind::ImplTrait(def_node_id, bounds) => {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::OpaqueTy { origin, fn_kind } => self.lower_opaque_impl_trait(
@@ -1401,12 +1407,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         bounds,
                         fn_kind,
                         itctx,
-                        precise_capturing.as_deref().map(|(args, span)| (args.as_slice(), *span)),
                     ),
                     ImplTraitContext::Universal => {
-                        if let Some(&(_, span)) = precise_capturing.as_deref() {
+                        if let Some(span) = bounds.iter().find_map(|bound| match *bound {
+                            ast::GenericBound::Use(_, span) => Some(span),
+                            _ => None,
+                        }) {
                             self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnApit { span });
-                        };
+                        }
+
                         let span = t.span;
 
                         // HACK: pprust breaks strings with newlines when the type
@@ -1517,7 +1526,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds: &GenericBounds,
         fn_kind: Option<FnDeclKind>,
         itctx: ImplTraitContext,
-        precise_capturing_args: Option<(&[PreciseCapturingArg], Span)>,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1526,59 +1534,64 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let captured_lifetimes_to_duplicate =
-            if let Some((precise_capturing, _)) = precise_capturing_args {
-                // We'll actually validate these later on; all we need is the list of
-                // lifetimes to duplicate during this portion of lowering.
-                precise_capturing
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        PreciseCapturingArg::Lifetime(lt) => Some(*lt),
-                        PreciseCapturingArg::Arg(..) => None,
-                    })
-                    // Add in all the lifetimes mentioned in the bounds. We will error
-                    // them out later, but capturing them here is important to make sure
-                    // they actually get resolved in resolve_bound_vars.
-                    .chain(lifetime_collector::lifetimes_in_bounds(self.resolver, bounds))
-                    .collect()
-            } else {
-                match origin {
-                    hir::OpaqueTyOrigin::TyAlias { .. } => {
-                        // type alias impl trait and associated type position impl trait were
-                        // decided to capture all in-scope lifetimes, which we collect for
-                        // all opaques during resolution.
+        let captured_lifetimes_to_duplicate = if let Some(args) =
+            // We only look for one `use<...>` syntax since we syntactially reject more than one.
+            bounds.iter().find_map(
+                |bound| match bound {
+                    ast::GenericBound::Use(a, _) => Some(a),
+                    _ => None,
+                },
+            ) {
+            // We'll actually validate these later on; all we need is the list of
+            // lifetimes to duplicate during this portion of lowering.
+            args.iter()
+                .filter_map(|arg| match arg {
+                    PreciseCapturingArg::Lifetime(lt) => Some(*lt),
+                    PreciseCapturingArg::Arg(..) => None,
+                })
+                // Add in all the lifetimes mentioned in the bounds. We will error
+                // them out later, but capturing them here is important to make sure
+                // they actually get resolved in resolve_bound_vars.
+                .chain(lifetime_collector::lifetimes_in_bounds(self.resolver, bounds))
+                .collect()
+        } else {
+            match origin {
+                hir::OpaqueTyOrigin::TyAlias { .. } => {
+                    // type alias impl trait and associated type position impl trait were
+                    // decided to capture all in-scope lifetimes, which we collect for
+                    // all opaques during resolution.
+                    self.resolver
+                        .take_extra_lifetime_params(opaque_ty_node_id)
+                        .into_iter()
+                        .map(|(ident, id, _)| Lifetime { id, ident })
+                        .collect()
+                }
+                hir::OpaqueTyOrigin::FnReturn(..) => {
+                    if matches!(
+                        fn_kind.expect("expected RPITs to be lowered with a FnKind"),
+                        FnDeclKind::Impl | FnDeclKind::Trait
+                    ) || self.tcx.features().lifetime_capture_rules_2024
+                        || span.at_least_rust_2024()
+                    {
+                        // return-position impl trait in trait was decided to capture all
+                        // in-scope lifetimes, which we collect for all opaques during resolution.
                         self.resolver
                             .take_extra_lifetime_params(opaque_ty_node_id)
                             .into_iter()
                             .map(|(ident, id, _)| Lifetime { id, ident })
                             .collect()
-                    }
-                    hir::OpaqueTyOrigin::FnReturn(..) => {
-                        if matches!(
-                            fn_kind.expect("expected RPITs to be lowered with a FnKind"),
-                            FnDeclKind::Impl | FnDeclKind::Trait
-                        ) || self.tcx.features().lifetime_capture_rules_2024
-                            || span.at_least_rust_2024()
-                        {
-                            // return-position impl trait in trait was decided to capture all
-                            // in-scope lifetimes, which we collect for all opaques during resolution.
-                            self.resolver
-                                .take_extra_lifetime_params(opaque_ty_node_id)
-                                .into_iter()
-                                .map(|(ident, id, _)| Lifetime { id, ident })
-                                .collect()
-                        } else {
-                            // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
-                            // example, we only need to duplicate lifetimes that appear in the
-                            // bounds, since those are the only ones that are captured by the opaque.
-                            lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
-                        }
-                    }
-                    hir::OpaqueTyOrigin::AsyncFn(..) => {
-                        unreachable!("should be using `lower_async_fn_ret_ty`")
+                    } else {
+                        // in fn return position, like the `fn test<'a>() -> impl Debug + 'a`
+                        // example, we only need to duplicate lifetimes that appear in the
+                        // bounds, since those are the only ones that are captured by the opaque.
+                        lifetime_collector::lifetimes_in_bounds(self.resolver, bounds)
                     }
                 }
-            };
+                hir::OpaqueTyOrigin::AsyncFn(..) => {
+                    unreachable!("should be using `lower_async_fn_ret_ty`")
+                }
+            }
+        };
         debug!(?captured_lifetimes_to_duplicate);
 
         self.lower_opaque_inner(
@@ -1588,7 +1601,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             captured_lifetimes_to_duplicate,
             span,
             opaque_ty_span,
-            precise_capturing_args,
             |this| this.lower_param_bounds(bounds, itctx),
         )
     }
@@ -1601,7 +1613,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         captured_lifetimes_to_duplicate: FxIndexSet<Lifetime>,
         span: Span,
         opaque_ty_span: Span,
-        precise_capturing_args: Option<(&[PreciseCapturingArg], Span)>,
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.create_def(
@@ -1688,18 +1699,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Install the remapping from old to new (if any). This makes sure that
             // any lifetimes that would have resolved to the def-id of captured
             // lifetimes are remapped to the new *synthetic* lifetimes of the opaque.
-            let (bounds, precise_capturing_args) =
-                this.with_remapping(captured_to_synthesized_mapping, |this| {
-                    (
-                        lower_item_bounds(this),
-                        precise_capturing_args.map(|(precise_capturing, span)| {
-                            (
-                                this.lower_precise_capturing_args(precise_capturing),
-                                this.lower_span(span),
-                            )
-                        }),
-                    )
-                });
+            let bounds = this
+                .with_remapping(captured_to_synthesized_mapping, |this| lower_item_bounds(this));
 
             let generic_params =
                 this.arena.alloc_from_iter(synthesized_lifetime_definitions.iter().map(
@@ -1744,7 +1745,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 origin,
                 lifetime_mapping,
                 in_trait,
-                precise_capturing_args,
             };
 
             // Generate an `type Foo = impl Trait;` declaration.
@@ -1955,7 +1955,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             captured_lifetimes,
             span,
             opaque_ty_span,
-            None,
             |this| {
                 let bound = this.lower_coroutine_fn_output_type_to_bound(
                     output,
@@ -2038,6 +2037,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericBound::Outlives(lifetime) => {
                 hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
             }
+            GenericBound::Use(args, span) => hir::GenericBound::Use(
+                self.lower_precise_capturing_args(args),
+                self.lower_span(*span),
+            ),
         }
     }
 

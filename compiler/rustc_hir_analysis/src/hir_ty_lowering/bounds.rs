@@ -178,6 +178,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         lifetime.ident.span,
                     );
                 }
+                hir::GenericBound::Use(..) => {
+                    // We don't actually lower `use` into the type layer.
+                }
             }
         }
     }

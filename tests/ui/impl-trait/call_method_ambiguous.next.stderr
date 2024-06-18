@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/call_method_ambiguous.rs:29:13
+  --> $DIR/call_method_ambiguous.rs:28:13
    |
 LL |         let mut iter = foo(n - 1, m);
    |             ^^^^^^^^
