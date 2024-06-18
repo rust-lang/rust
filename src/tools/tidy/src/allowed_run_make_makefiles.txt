@@ -40,7 +40,6 @@ run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
 run-make/extern-flag-pathless/Makefile
-run-make/extern-flag-rename-transitive/Makefile
 run-make/extern-fn-explicit-align/Makefile
 run-make/extern-fn-generic/Makefile
 run-make/extern-fn-mangle/Makefile
