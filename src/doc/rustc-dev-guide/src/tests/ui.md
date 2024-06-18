@@ -500,8 +500,8 @@ automatically with the `x test --bless` option.
 
 The `run-rustfix` header will cause *all* suggestions to be applied, even
 if they are not [`MachineApplicable`](../diagnostics.md#suggestions).
-If this is a problem, then you can instead use the `rustfix-only-machine-applicable`
-header.
+If this is a problem, then you can add the `rustfix-only-machine-applicable`
+header in addition to `run-rustfix`.
 This should be used if there is a mixture of different suggestion levels, and
 some of the non-machine-applicable ones do not apply cleanly.
 
