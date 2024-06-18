@@ -1,12 +1,12 @@
 use rustc_type_ir::{self as ty, Interner, ProjectionPredicate};
 use tracing::instrument;
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     #[instrument(level = "trace", skip(self), ret)]
@@ -14,7 +14,7 @@ where
         &mut self,
         goal: Goal<I, ProjectionPredicate<I>>,
     ) -> QueryResult<I> {
-        let tcx = self.interner();
+        let tcx = self.cx();
         let projection_term = goal.predicate.projection_term.to_term(tcx);
         let goal = goal.with(
             tcx,

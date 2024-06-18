@@ -521,7 +521,7 @@ struct FoldEscapingRegions<I: Interner> {
 }
 
 impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
-    fn interner(&self) -> I {
+    fn cx(&self) -> I {
         self.interner
     }
 

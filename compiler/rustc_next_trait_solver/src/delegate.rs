@@ -7,14 +7,14 @@ use rustc_type_ir::{self as ty, Interner};
 
 pub trait SolverDelegate: Sized {
     type Interner: Interner;
-    fn interner(&self) -> Self::Interner;
+    fn cx(&self) -> Self::Interner;
 
     type Span: Copy;
 
     fn solver_mode(&self) -> SolverMode;
 
     fn build_with_canonical<V>(
-        interner: Self::Interner,
+        cx: Self::Interner,
         solver_mode: SolverMode,
         canonical: &ty::Canonical<Self::Interner, V>,
     ) -> (Self, V, ty::CanonicalVarValues<Self::Interner>)
@@ -102,7 +102,7 @@ pub trait SolverDelegate: Sized {
 
     // FIXME: This is only here because elaboration lives in `rustc_infer`!
     fn elaborate_supertraits(
-        interner: Self::Interner,
+        cx: Self::Interner,
         trait_ref: ty::Binder<Self::Interner, ty::TraitRef<Self::Interner>>,
     ) -> impl Iterator<Item = ty::Binder<Self::Interner, ty::TraitRef<Self::Interner>>>;
 

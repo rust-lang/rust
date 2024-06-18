@@ -28,7 +28,7 @@ where
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
     H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
 {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -99,7 +99,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -176,7 +176,7 @@ impl<'tcx, D> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx, D>
 where
     D: BoundVarReplacerDelegate<'tcx>,
 {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
