@@ -23,7 +23,7 @@ fn check<S: BuildHasher + Default>() {
 /// Use hashbrown's default hasher.
 #[test]
 fn default() {
-    check::<hashbrown::hash_map::DefaultHashBuilder>();
+    check::<hashbrown::DefaultHashBuilder>();
 }
 
 /// Use std's default hasher.

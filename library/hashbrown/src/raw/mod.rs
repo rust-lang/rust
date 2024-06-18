@@ -483,7 +483,7 @@ impl<T> Bucket<T> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::raw::{Bucket, RawTable};
     ///
-    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    /// type NewHashBuilder = hashbrown::DefaultHashBuilder;
     ///
     /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
     ///     use core::hash::Hasher;
@@ -649,7 +649,7 @@ impl<T> Bucket<T> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::raw::{Bucket, RawTable};
     ///
-    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    /// type NewHashBuilder = hashbrown::DefaultHashBuilder;
     ///
     /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
     ///     use core::hash::Hasher;
@@ -708,7 +708,7 @@ impl<T> Bucket<T> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::raw::{Bucket, RawTable};
     ///
-    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    /// type NewHashBuilder = hashbrown::DefaultHashBuilder;
     ///
     /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
     ///     use core::hash::Hasher;

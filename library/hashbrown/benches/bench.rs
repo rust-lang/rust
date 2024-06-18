@@ -8,7 +8,7 @@ extern crate test;
 
 use test::{black_box, Bencher};
 
-use hashbrown::hash_map::DefaultHashBuilder;
+use hashbrown::DefaultHashBuilder;
 use hashbrown::{HashMap, HashSet};
 use std::{
     collections::hash_map::RandomState,

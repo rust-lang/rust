@@ -1,7 +1,7 @@
 use crate::raw::{
     Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawTable,
 };
-use crate::{Equivalent, TryReserveError};
+use crate::{DefaultHashBuilder, Equivalent, TryReserveError};
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -9,14 +9,6 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
-
-/// Default hasher for `HashMap`.
-#[cfg(feature = "default-hasher")]
-pub type DefaultHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
-
-/// Dummy default hasher for `HashMap`.
-#[cfg(not(feature = "default-hasher"))]
-pub enum DefaultHashBuilder {}
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
@@ -447,7 +439,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_hasher(s);
@@ -489,7 +481,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
@@ -535,7 +527,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_hasher(s);
@@ -570,7 +562,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
@@ -592,7 +584,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let hasher = DefaultHashBuilder::default();
     /// let map: HashMap<i32, i32> = HashMap::with_hasher(hasher);

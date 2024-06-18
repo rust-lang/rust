@@ -7,8 +7,9 @@ use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use super::map::{self, DefaultHashBuilder, HashMap, Keys};
+use super::map::{self, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
+use crate::DefaultHashBuilder;
 
 // Future Optimization (FIXME!)
 // =============================
@@ -459,7 +460,7 @@ impl<T, S> HashSet<T, S, Global> {
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_hasher(s);
@@ -497,7 +498,7 @@ impl<T, S> HashSet<T, S, Global> {
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
@@ -546,7 +547,7 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_hasher(s);
@@ -584,7 +585,7 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
@@ -605,7 +606,7 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let hasher = DefaultHashBuilder::default();
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
@@ -2497,8 +2498,8 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::super::map::DefaultHashBuilder;
     use super::HashSet;
+    use crate::DefaultHashBuilder;
     use std::vec::Vec;
 
     #[test]
