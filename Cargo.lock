@@ -709,6 +709,7 @@ dependencies = [
  "clippy_config",
  "itertools 0.12.1",
  "rustc-semver",
+ "rustc_apfloat",
 ]
 
 [[package]]
