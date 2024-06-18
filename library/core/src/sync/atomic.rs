@@ -183,7 +183,7 @@
 //!
 //!     let spinlock_clone = Arc::clone(&spinlock);
 //!
-//!     let thread = thread::spawn(move|| {
+//!     let thread = thread::spawn(move || {
 //!         spinlock_clone.store(0, Ordering::Release);
 //!     });
 //!
