@@ -161,5 +161,8 @@ fn lang_start<T: crate::process::Termination + 'static>(
         argv,
         sigpipe,
     );
+    // Guard against multple threads calling `libc::exit` concurrently.
+    // See the documentation for `unique_thread_exit` for more information.
+    crate::sys::common::exit_guard::unique_thread_exit();
     v
 }
