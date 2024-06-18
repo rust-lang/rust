@@ -245,16 +245,11 @@ LL |     let _: <u8 as Dr>::Z::N;
    |                        |
    |                        help: an associated type with a similar name exists: `X`
 
-error[E0223]: ambiguous associated type
-  --> $DIR/ufcs-partially-resolved.rs:36:12
+error[E0220]: associated type `NN` not found for `<u8 as Tr>::Y`
+  --> $DIR/ufcs-partially-resolved.rs:36:27
    |
 LL |     let _: <u8 as Tr>::Y::NN;
-   |            ^^^^^^^^^^^^^^^^^
-   |
-help: if there were a trait named `Example` with associated type `NN` implemented for `<u8 as Tr>::Y`, you could use the fully-qualified path
-   |
-LL |     let _: <<u8 as Tr>::Y as Example>::NN;
-   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                           ^^ associated type `NN` not found
 
 error[E0599]: no associated item named `NN` found for type `u16` in the current scope
   --> $DIR/ufcs-partially-resolved.rs:38:20
@@ -270,5 +265,5 @@ LL |     <u8 as Dr>::X::N;
 
 error: aborting due to 32 previous errors
 
-Some errors have detailed explanations: E0223, E0404, E0405, E0575, E0576, E0599.
-For more information about an error, try `rustc --explain E0223`.
+Some errors have detailed explanations: E0220, E0404, E0405, E0575, E0576, E0599.
+For more information about an error, try `rustc --explain E0220`.
