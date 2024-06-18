@@ -62,7 +62,7 @@ use crate::fmt;
 /// FOO.set(2);
 ///
 /// // each thread starts out with the initial value of 1
-/// let t = thread::spawn(move|| {
+/// let t = thread::spawn(move || {
 ///     assert_eq!(FOO.get(), 1);
 ///     FOO.set(3);
 /// });
