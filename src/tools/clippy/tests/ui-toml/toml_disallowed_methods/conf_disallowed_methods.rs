@@ -40,6 +40,7 @@ fn main() {
 
     a.sort_unstable();
 
+    // FIXME(f16_f128): add a clamp test once the function is available
     let _ = 2.0f32.clamp(3.0f32, 4.0f32);
     let _ = 2.0f64.clamp(3.0f64, 4.0f64);
 
