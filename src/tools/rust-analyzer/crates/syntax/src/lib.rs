@@ -442,7 +442,7 @@ fn api_walkthrough() {
     assert!(expr_syntax.siblings_with_tokens(Direction::Next).any(|it| it.kind() == T!['}']));
     assert_eq!(
         expr_syntax.descendants_with_tokens().count(),
-        8, // 5 tokens `1`, ` `, `+`, ` `, `!`
+        8, // 5 tokens `1`, ` `, `+`, ` `, `1`
            // 2 child literal expressions: `1`, `1`
            // 1 the node itself: `1 + 1`
     );
