@@ -76,6 +76,11 @@ features! {
     /// * `"avx512bf16"`
     /// * `"avx512vp2intersect"`
     /// * `"avx512fp16"`
+    /// * `"avxvnni"`
+    /// * `"avxifma"`
+    /// * `"avxneconvert"`
+    /// * `"avxvnniint8"`
+    /// * `"avxvnniint16"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -172,6 +177,16 @@ features! {
     /// AVX-512 P2INTERSECT
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512fp16: "avx512fp16";
     /// AVX-512 FP16 (FLOAT16 instructions)
+    @FEATURE: #[unstable(feature = "avx512_target_feature", issue = "44839")] avxifma: "avxifma";
+    /// AVX-IFMA (Integer Fused Multiply Add)
+    @FEATURE: #[unstable(feature = "avx512_target_feature", issue = "44839")] avxneconvert: "avxneconvert";
+    /// AVX-NE-CONVERT (Exceptionless Convert)
+    @FEATURE: #[unstable(feature = "avx512_target_feature", issue = "44839")] avxvnni: "avxvnni";
+    /// AVX-VNNI (Vector Neural Network Instructions)
+    @FEATURE: #[unstable(feature = "avx512_target_feature", issue = "44839")] avxvnniint16: "avxvnniint16";
+    /// AVX-VNNI_INT8 (VNNI with 16-bit Integers)
+    @FEATURE: #[unstable(feature = "avx512_target_feature", issue = "44839")] avxvnniint8: "avxvnniint8";
+    /// AVX-VNNI_INT16 (VNNI with 8-bit integers)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";

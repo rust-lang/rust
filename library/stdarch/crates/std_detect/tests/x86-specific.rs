@@ -1,6 +1,6 @@
 #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #![allow(internal_features)]
-#![feature(stdarch_internal)]
+#![feature(stdarch_internal, avx512_target_feature)]
 
 extern crate cupid;
 #[macro_use]
@@ -68,6 +68,17 @@ fn dump() {
     println!("adx: {:?}", is_x86_feature_detected!("adx"));
     println!("rtm: {:?}", is_x86_feature_detected!("rtm"));
     println!("movbe: {:?}", is_x86_feature_detected!("movbe"));
+    println!("avxvnni: {:?}", is_x86_feature_detected!("avxvnni"));
+    println!("avxvnniint8: {:?}", is_x86_feature_detected!("avxvnniint8"));
+    println!(
+        "avxneconvert: {:?}",
+        is_x86_feature_detected!("avxneconvert")
+    );
+    println!("avxifma: {:?}", is_x86_feature_detected!("avxifma"));
+    println!(
+        "avxvnniint16: {:?}",
+        is_x86_feature_detected!("avxvnniint16")
+    );
 }
 
 #[cfg(feature = "std_detect_env_override")]

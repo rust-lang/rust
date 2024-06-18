@@ -9,30 +9,30 @@ use core::sync::atomic::AtomicUsize;
 
 /// Sets the `bit` of `x`.
 #[inline]
-const fn set_bit(x: u64, bit: u32) -> u64 {
+const fn set_bit(x: u128, bit: u32) -> u128 {
     x | 1 << bit
 }
 
 /// Tests the `bit` of `x`.
 #[inline]
-const fn test_bit(x: u64, bit: u32) -> bool {
+const fn test_bit(x: u128, bit: u32) -> bool {
     x & (1 << bit) != 0
 }
 
 /// Unset the `bit of `x`.
 #[inline]
-const fn unset_bit(x: u64, bit: u32) -> u64 {
+const fn unset_bit(x: u128, bit: u32) -> u128 {
     x & !(1 << bit)
 }
 
 /// Maximum number of features that can be cached.
-const CACHE_CAPACITY: u32 = 62;
+const CACHE_CAPACITY: u32 = 93;
 
 /// This type is used to initialize the cache
 // The derived `Default` implementation will initialize the field to zero,
 // which is what we want.
 #[derive(Copy, Clone, Default)]
-pub(crate) struct Initializer(u64);
+pub(crate) struct Initializer(u128);
 
 // NOTE: the `debug_assert!` would catch that we do not add more Features than
 // the one fitting our cache.
@@ -71,10 +71,15 @@ impl Initializer {
 }
 
 /// This global variable is a cache of the features supported by the CPU.
-// Note: on x64, we only use the first slot
-static CACHE: [Cache; 2] = [Cache::uninitialized(), Cache::uninitialized()];
+// Note: the third slot is only used in x86
+// Another Slot can be added if needed without any change to `Initializer`
+static CACHE: [Cache; 3] = [
+    Cache::uninitialized(),
+    Cache::uninitialized(),
+    Cache::uninitialized(),
+];
 
-/// Feature cache with capacity for `size_of::<usize::MAX>() * 8 - 1` features.
+/// Feature cache with capacity for `size_of::<usize>() * 8 - 1` features.
 ///
 /// Note: 0 is used to represent an uninitialized cache, and (at least) the most
 /// significant bit is set on any cache which has been initialized.
@@ -102,7 +107,7 @@ impl Cache {
         if cached == 0 {
             None
         } else {
-            Some(test_bit(cached as u64, bit))
+            Some(test_bit(cached as u128, bit))
         }
     }
 
@@ -173,6 +178,7 @@ cfg_if::cfg_if! {
 fn do_initialize(value: Initializer) {
     CACHE[0].initialize((value.0) as usize & Cache::MASK);
     CACHE[1].initialize((value.0 >> Cache::CAPACITY) as usize & Cache::MASK);
+    CACHE[2].initialize((value.0 >> 2 * Cache::CAPACITY) as usize & Cache::MASK);
 }
 
 // We only have to detect features once, and it's fairly costly, so hint to LLVM
@@ -205,8 +211,10 @@ fn detect_and_initialize() -> Initializer {
 pub(crate) fn test(bit: u32) -> bool {
     let (relative_bit, idx) = if bit < Cache::CAPACITY {
         (bit, 0)
-    } else {
+    } else if bit < 2 * Cache::CAPACITY {
         (bit - Cache::CAPACITY, 1)
+    } else {
+        (bit - 2 * Cache::CAPACITY, 2)
     };
     CACHE[idx]
         .test(relative_bit)
