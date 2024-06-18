@@ -13,6 +13,7 @@
   // It NFC-normalizes to ó, U+00F3 LATIN SMALL LETTER O WITH ACUTE.
   trait Foó: Bar {}
   ```
+  [unicode normalization form]: https://unicode.org/reports/tr15/
 - Ensure a space is added to a range expression, when the right hand side of the range expression is a binary expression that ends with a trailing period [#6059](https://github.com/rust-lang/rustfmt/issues/6059)
   ```rust
   let range = 3. / 2. ..4.;
@@ -41,9 +42,12 @@
       }
   }
   ```
-
-[log crate]: https://crates.io/crates/log
-[unicode normalization form]: https://unicode.org/reports/tr15/
+- Output correct syntax for type ascription builtin [#6159](https://github.com/rust-lang/rustfmt/issues/6159)
+  ```rust
+  fn main() {
+      builtin # type_ascribe(10, usize)
+  }
+  ```
 
 
 ### Changed
@@ -51,6 +55,8 @@
 - `hide_parse_errors` has been soft deprecated and it's been renamed to `show_parse_errors` [#5961](https://github.com/rust-lang/rustfmt/pull/5961).
 - The diff output produced by `rustfmt --check` is more compatable with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
 - When using `version=Two`, the `trace!` macro from the [log crate] is now formatted similarly to `debug!`, `info!`, `warn!`, and `error!` [#5987](https://github.com/rust-lang/rustfmt/issues/5987).
+
+  [log crate]: https://crates.io/crates/log
 
 
 ### Added
@@ -66,15 +72,8 @@
 - Addressed clap deprecations output when running `cargo check --features clap/deprecated` [#6101](https://github.com/rust-lang/rustfmt/pull/6101)
 - Bumped bytecount `0.6.4` -> `0.6.8` to fix compilation issues with the `generic-simd` feature. See [bytecount#92] and [bytecount#93]
 
-[bytecount#92]: https://github.com/llogiq/bytecount/pull/92
-[bytecount#93]: https://github.com/llogiq/bytecount/pull/93
-
-- Output correct syntax for type ascription builtin [#6159](https://github.com/rust-lang/rustfmt/issues/6159)
-  ```rust
-  fn main() {
-      builtin # type_ascribe(10, usize)
-  }
-  ```
+  [bytecount#92]: https://github.com/llogiq/bytecount/pull/92
+  [bytecount#93]: https://github.com/llogiq/bytecount/pull/93
 
 ## [1.7.0] 2023-10-22
 
