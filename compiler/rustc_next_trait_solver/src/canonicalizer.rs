@@ -7,7 +7,7 @@ use rustc_type_ir::{
     self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Interner,
 };
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 
 /// Whether we're canonicalizing a query input or the query response.
 ///
@@ -38,8 +38,8 @@ pub enum CanonicalizeMode {
     },
 }
 
-pub struct Canonicalizer<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
-    infcx: &'a Infcx,
+pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
+    delegate: &'a D,
     canonicalize_mode: CanonicalizeMode,
 
     variables: &'a mut Vec<I::GenericArg>,
@@ -47,15 +47,15 @@ pub struct Canonicalizer<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Infcx, I> {
+impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub fn canonicalize<T: TypeFoldable<I>>(
-        infcx: &'a Infcx,
+        delegate: &'a D,
         canonicalize_mode: CanonicalizeMode,
         variables: &'a mut Vec<I::GenericArg>,
         value: T,
     ) -> ty::Canonical<I, T> {
         let mut canonicalizer = Canonicalizer {
-            infcx,
+            delegate,
             canonicalize_mode,
 
             variables,
@@ -70,7 +70,7 @@ impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Inf
 
         let (max_universe, variables) = canonicalizer.finalize();
 
-        let defining_opaque_types = infcx.defining_opaque_types();
+        let defining_opaque_types = delegate.defining_opaque_types();
         Canonical { defining_opaque_types, max_universe, variables, value }
     }
 
@@ -102,7 +102,7 @@ impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Inf
                     .max()
                     .unwrap_or(ty::UniverseIndex::ROOT);
 
-                let var_infos = self.infcx.interner().mk_canonical_var_infos(&var_infos);
+                let var_infos = self.delegate.cx().mk_canonical_var_infos(&var_infos);
                 return (max_universe, var_infos);
             }
         }
@@ -206,16 +206,14 @@ impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Inf
             }
         }
 
-        let var_infos = self.infcx.interner().mk_canonical_var_infos(&var_infos);
+        let var_infos = self.delegate.cx().mk_canonical_var_infos(&var_infos);
         (curr_compressed_uv, var_infos)
     }
 }
 
-impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
-    for Canonicalizer<'_, Infcx, I>
-{
-    fn interner(&self) -> I {
-        self.infcx.interner()
+impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicalizer<'_, D, I> {
+    fn cx(&self) -> I {
+        self.delegate.cx()
     }
 
     fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
@@ -267,14 +265,14 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
 
             ty::ReVar(vid) => {
                 assert_eq!(
-                    self.infcx.opportunistic_resolve_lt_var(vid),
+                    self.delegate.opportunistic_resolve_lt_var(vid),
                     r,
                     "region vid should have been resolved fully before canonicalization"
                 );
                 match self.canonicalize_mode {
                     CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                     CanonicalizeMode::Response { .. } => {
-                        CanonicalVarKind::Region(self.infcx.universe_of_lt(vid).unwrap())
+                        CanonicalVarKind::Region(self.delegate.universe_of_lt(vid).unwrap())
                     }
                 }
             }
@@ -294,7 +292,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             var
         });
 
-        Region::new_anon_bound(self.interner(), self.binder_index, var)
+        Region::new_anon_bound(self.cx(), self.binder_index, var)
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
@@ -302,20 +300,20 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
                     assert_eq!(
-                        self.infcx.opportunistic_resolve_ty_var(vid),
+                        self.delegate.opportunistic_resolve_ty_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
                     );
 
                     CanonicalVarKind::Ty(CanonicalTyVarKind::General(
-                        self.infcx
+                        self.delegate
                             .universe_of_ty(vid)
                             .unwrap_or_else(|| panic!("ty var should have been resolved: {t:?}")),
                     ))
                 }
                 ty::IntVar(vid) => {
                     assert_eq!(
-                        self.infcx.opportunistic_resolve_int_var(vid),
+                        self.delegate.opportunistic_resolve_int_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
                     );
@@ -323,7 +321,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
                 }
                 ty::FloatVar(vid) => {
                     assert_eq!(
-                        self.infcx.opportunistic_resolve_float_var(vid),
+                        self.delegate.opportunistic_resolve_float_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
                     );
@@ -383,7 +381,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             }),
         );
 
-        Ty::new_anon_bound(self.interner(), self.binder_index, var)
+        Ty::new_anon_bound(self.cx(), self.binder_index, var)
     }
 
     fn fold_const(&mut self, c: I::Const) -> I::Const {
@@ -391,11 +389,11 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             ty::ConstKind::Infer(i) => match i {
                 ty::InferConst::Var(vid) => {
                     assert_eq!(
-                        self.infcx.opportunistic_resolve_ct_var(vid),
+                        self.delegate.opportunistic_resolve_ct_var(vid),
                         c,
                         "const vid should have been resolved fully before canonicalization"
                     );
-                    CanonicalVarKind::Const(self.infcx.universe_of_ct(vid).unwrap())
+                    CanonicalVarKind::Const(self.delegate.universe_of_ct(vid).unwrap())
                 }
                 ty::InferConst::EffectVar(_) => CanonicalVarKind::Effect,
                 ty::InferConst::Fresh(_) => todo!(),
@@ -431,6 +429,6 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             }),
         );
 
-        Const::new_anon_bound(self.interner(), self.binder_index, var)
+        Const::new_anon_bound(self.cx(), self.binder_index, var)
     }
 }

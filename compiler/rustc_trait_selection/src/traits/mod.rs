@@ -350,7 +350,7 @@ pub fn normalize_param_env_or_error<'tcx>(
             struct ConstNormalizer<'tcx>(TyCtxt<'tcx>);
 
             impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ConstNormalizer<'tcx> {
-                fn interner(&self) -> TyCtxt<'tcx> {
+                fn cx(&self) -> TyCtxt<'tcx> {
                     self.0
                 }
 

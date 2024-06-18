@@ -19,12 +19,12 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 use tracing::{instrument, trace};
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     #[instrument(level = "trace", skip(self), ret)]
@@ -32,7 +32,7 @@ where
         &mut self,
         goal: Goal<I, (I::Term, I::Term, ty::AliasRelationDirection)>,
     ) -> QueryResult<I> {
-        let tcx = self.interner();
+        let tcx = self.cx();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
         debug_assert!(lhs.to_alias_term().is_some() || rhs.to_alias_term().is_some());
 

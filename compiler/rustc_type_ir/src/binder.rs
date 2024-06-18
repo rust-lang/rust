@@ -620,7 +620,7 @@ struct ArgFolder<'a, I: Interner> {
 
 impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
     #[inline]
-    fn interner(&self) -> I {
+    fn cx(&self) -> I {
         self.tcx
     }
 
@@ -840,7 +840,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
             return val;
         }
 
-        let result = ty::fold::shift_vars(TypeFolder::interner(self), val, self.binders_passed);
+        let result = ty::fold::shift_vars(TypeFolder::cx(self), val, self.binders_passed);
         debug!("shift_vars: shifted result = {:?}", result);
 
         result

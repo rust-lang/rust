@@ -7,19 +7,19 @@
 
 use rustc_type_ir::{self as ty, Interner};
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     pub(super) fn normalize_inherent_associated_type(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        let tcx = self.interner();
+        let tcx = self.cx();
         let inherent = goal.predicate.alias.expect_ty(tcx);
 
         let impl_def_id = tcx.parent(inherent.def_id);

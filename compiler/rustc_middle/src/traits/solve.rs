@@ -53,7 +53,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(FallibleTypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
+        Ok(FallibleTypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().try_fold_with(folder)?,
             opaque_types: self
                 .opaque_types
@@ -68,7 +68,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        TypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
+        TypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().fold_with(folder),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
             normalization_nested_goals: self.normalization_nested_goals.clone().fold_with(folder),
@@ -94,19 +94,17 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(FallibleTypeFolder::interner(folder).mk_predefined_opaques_in_body(
-            PredefinedOpaquesData {
-                opaque_types: self
-                    .opaque_types
-                    .iter()
-                    .map(|opaque| opaque.try_fold_with(folder))
-                    .collect::<Result<_, F::Error>>()?,
-            },
-        ))
+        Ok(FallibleTypeFolder::cx(folder).mk_predefined_opaques_in_body(PredefinedOpaquesData {
+            opaque_types: self
+                .opaque_types
+                .iter()
+                .map(|opaque| opaque.try_fold_with(folder))
+                .collect::<Result<_, F::Error>>()?,
+        }))
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        TypeFolder::interner(folder).mk_predefined_opaques_in_body(PredefinedOpaquesData {
+        TypeFolder::cx(folder).mk_predefined_opaques_in_body(PredefinedOpaquesData {
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
         })
     }
