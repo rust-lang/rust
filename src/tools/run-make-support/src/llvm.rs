@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use crate::{env_var, Command};
 
-/// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
-/// at `$LLVM_BIN_DIR/llvm-readobj`.
+/// Construct a new `llvm-readobj` invocation with the `GNU` output style.
+/// This assumes that `llvm-readobj` is available at `$LLVM_BIN_DIR/llvm-readobj`.
 #[track_caller]
 pub fn llvm_readobj() -> LlvmReadobj {
     LlvmReadobj::new()
@@ -70,13 +70,24 @@ pub fn llvm_bin_dir() -> PathBuf {
 }
 
 impl LlvmReadobj {
-    /// Construct a new `llvm-readobj` invocation. This assumes that `llvm-readobj` is available
-    /// at `$LLVM_BIN_DIR/llvm-readobj`.
+    /// Construct a new `llvm-readobj` invocation with the `GNU` output style.
+    /// This assumes that `llvm-readobj` is available at `$LLVM_BIN_DIR/llvm-readobj`.
     #[track_caller]
     pub fn new() -> Self {
         let llvm_readobj = llvm_bin_dir().join("llvm-readobj");
         let cmd = Command::new(llvm_readobj);
-        Self { cmd }
+        let mut readobj = Self { cmd };
+        readobj.elf_output_style("GNU");
+        readobj
+    }
+
+    /// Specify the format of the ELF information.
+    ///
+    /// Valid options are `LLVM` (default), `GNU`, and `JSON`.
+    pub fn elf_output_style(&mut self, style: &str) -> &mut Self {
+        self.cmd.arg("--elf-output-style");
+        self.cmd.arg(style);
+        self
     }
 
     /// Provide an input file.
@@ -88,6 +99,13 @@ impl LlvmReadobj {
     /// Pass `--file-header` to display file headers.
     pub fn file_header(&mut self) -> &mut Self {
         self.cmd.arg("--file-header");
+        self
+    }
+
+    /// Specify the section to display.
+    pub fn section(&mut self, section: &str) -> &mut Self {
+        self.cmd.arg("--string-dump");
+        self.cmd.arg(section);
         self
     }
 }

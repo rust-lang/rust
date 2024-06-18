@@ -5,15 +5,12 @@
 // emitted inside the object files.
 // See https://github.com/rust-lang/rust/issues/51671
 
-use run_make_support::{nm, rustc, tmp_dir};
+use run_make_support::{llvm_readobj, rustc};
 
 fn main() {
     rustc().emit("obj").input("app.rs").run();
-    //FIXME(Oneirical): This should eventually be rmake_out_path
-    let nm = nm(tmp_dir().join("app.o"));
-    assert!(
-        nm.contains("rust_begin_unwind")
-            && nm.contains("rust_eh_personality")
-            && nm.contains("__rg_oom")
-    );
+    let out = llvm_readobj().input("app.o").arg("--symbols").run();
+    out.assert_stdout_contains("rust_begin_unwind");
+    out.assert_stdout_contains("rust_eh_personality");
+    out.assert_stdout_contains("__rg_oom");
 }
