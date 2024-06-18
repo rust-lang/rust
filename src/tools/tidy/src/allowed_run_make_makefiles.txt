@@ -64,7 +64,6 @@ run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
 run-make/inline-always-many-cgu/Makefile
 run-make/interdependent-c-libraries/Makefile
-run-make/intrinsic-unreachable/Makefile
 run-make/invalid-library/Makefile
 run-make/invalid-so/Makefile
 run-make/issue-107094/Makefile
@@ -187,9 +186,6 @@ run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
 run-make/separate-link-fail/Makefile
 run-make/separate-link/Makefile
-run-make/sepcomp-cci-copies/Makefile
-run-make/sepcomp-inlining/Makefile
-run-make/sepcomp-separate/Makefile
 run-make/share-generics-dylib/Makefile
 run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile

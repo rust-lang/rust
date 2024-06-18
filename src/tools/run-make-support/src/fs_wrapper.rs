@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-/// A wrapper around [`std::fs::remove_file`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::remove_file`] which includes the file path in the panic message.
 #[track_caller]
 pub fn remove_file<P: AsRef<Path>>(path: P) {
     fs::remove_file(path.as_ref())
@@ -18,21 +18,28 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) {
     ));
 }
 
-/// A wrapper around [`std::fs::File::create`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::File::create`] which includes the file path in the panic message.
 #[track_caller]
 pub fn create_file<P: AsRef<Path>>(path: P) {
     fs::File::create(path.as_ref())
         .expect(&format!("the file in path \"{}\" could not be created", path.as_ref().display()));
 }
 
-/// A wrapper around [`std::fs::read`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::File::open`] which includes the file path in the panic message.
+#[track_caller]
+pub fn open_file<P: AsRef<Path>>(path: P) -> fs::File {
+    fs::File::open(path.as_ref())
+        .expect(&format!("the file in path \"{}\" could not be opened", path.as_ref().display()))
+}
+
+/// A wrapper around [`std::fs::read`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read<P: AsRef<Path>>(path: P) -> Vec<u8> {
     fs::read(path.as_ref())
         .expect(&format!("the file in path \"{}\" could not be read", path.as_ref().display()))
 }
 
-/// A wrapper around [`std::fs::read_to_string`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::read_to_string`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> String {
     fs::read_to_string(path.as_ref()).expect(&format!(
@@ -41,14 +48,14 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> String {
     ))
 }
 
-/// A wrapper around [`std::fs::read_dir`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::read_dir`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> fs::ReadDir {
     fs::read_dir(path.as_ref())
         .expect(&format!("the directory in path \"{}\" could not be read", path.as_ref().display()))
 }
 
-/// A wrapper around [`std::fs::write`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::write`] which includes the file path in the panic message.
 #[track_caller]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) {
     fs::write(path.as_ref(), contents.as_ref()).expect(&format!(
@@ -57,7 +64,7 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) {
     ));
 }
 
-/// A wrapper around [`std::fs::remove_dir_all`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::remove_dir_all`] which includes the file path in the panic message.
 #[track_caller]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) {
     fs::remove_dir_all(path.as_ref()).expect(&format!(
@@ -66,7 +73,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) {
     ));
 }
 
-/// A wrapper around [`std::fs::create_dir`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::create_dir`] which includes the file path in the panic message.
 #[track_caller]
 pub fn create_dir<P: AsRef<Path>>(path: P) {
     fs::create_dir(path.as_ref()).expect(&format!(
@@ -75,7 +82,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) {
     ));
 }
 
-/// A wrapper around [`std::fs::create_dir_all`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::create_dir_all`] which includes the file path in the panic message.
 #[track_caller]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) {
     fs::create_dir_all(path.as_ref()).expect(&format!(
@@ -84,7 +91,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) {
     ));
 }
 
-/// A wrapper around [`std::fs::metadata`] which includes the file path in the panic message..
+/// A wrapper around [`std::fs::metadata`] which includes the file path in the panic message.
 #[track_caller]
 pub fn metadata<P: AsRef<Path>>(path: P) -> fs::Metadata {
     fs::metadata(path.as_ref()).expect(&format!(

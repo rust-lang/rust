@@ -3476,6 +3476,7 @@ dependencies = [
  "object 0.34.0",
  "regex",
  "similar",
+ "walkdir",
  "wasmparser",
 ]
 
