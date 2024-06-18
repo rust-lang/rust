@@ -61,7 +61,6 @@ run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile
 run-make/glibc-staticlib-args/Makefile
-run-make/inaccessible-temp-dir/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
@@ -74,7 +73,6 @@ run-make/invalid-library/Makefile
 run-make/invalid-so/Makefile
 run-make/invalid-staticlib/Makefile
 run-make/issue-107094/Makefile
-run-make/issue-10971-temps-dir/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
@@ -83,7 +81,6 @@ run-make/issue-20626/Makefile
 run-make/issue-22131/Makefile
 run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
-run-make/issue-26092/Makefile
 run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
@@ -109,10 +106,8 @@ run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
-run-make/link-arg/Makefile
 run-make/link-args-order/Makefile
 run-make/link-cfg/Makefile
-run-make/link-dedup/Makefile
 run-make/link-framework/Makefile
 run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
@@ -153,7 +148,6 @@ run-make/optimization-remarks-dir/Makefile
 run-make/output-filename-conflicts-with-directory/Makefile
 run-make/output-filename-overwrites-input/Makefile
 run-make/output-type-permutations/Makefile
-run-make/output-with-hyphens/Makefile
 run-make/override-aliased-flags/Makefile
 run-make/overwrite-input/Makefile
 run-make/panic-abort-eh_frame/Makefile

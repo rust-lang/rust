@@ -24,7 +24,6 @@
 //! globals is comparatively simpler. The easiest way is to wrap the test in a closure argument
 //! to: `rustc_span::create_default_session_globals_then(|| { test_here(); })`.
 
-use super::counters;
 use super::graph::{self, BasicCoverageBlock};
 
 use itertools::Itertools;
@@ -550,109 +549,4 @@ fn test_covgraph_switchint_loop_then_inner_loop_else_break() {
     assert_successors(&basic_coverage_blocks, bcb(4), &[bcb(5), bcb(6)]);
     assert_successors(&basic_coverage_blocks, bcb(5), &[bcb(1)]);
     assert_successors(&basic_coverage_blocks, bcb(6), &[bcb(4)]);
-}
-
-#[test]
-fn test_find_loop_backedges_none() {
-    let mir_body = goto_switchint();
-    let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
-    if false {
-        eprintln!(
-            "basic_coverage_blocks = {:?}",
-            basic_coverage_blocks.iter_enumerated().collect::<Vec<_>>()
-        );
-        eprintln!("successors = {:?}", basic_coverage_blocks.successors);
-    }
-    let backedges = graph::find_loop_backedges(&basic_coverage_blocks);
-    assert_eq!(
-        backedges.iter_enumerated().map(|(_bcb, backedges)| backedges.len()).sum::<usize>(),
-        0,
-        "backedges: {:?}",
-        backedges
-    );
-}
-
-#[test]
-fn test_find_loop_backedges_one() {
-    let mir_body = switchint_then_loop_else_return();
-    let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
-    let backedges = graph::find_loop_backedges(&basic_coverage_blocks);
-    assert_eq!(
-        backedges.iter_enumerated().map(|(_bcb, backedges)| backedges.len()).sum::<usize>(),
-        1,
-        "backedges: {:?}",
-        backedges
-    );
-
-    assert_eq!(backedges[bcb(1)], &[bcb(3)]);
-}
-
-#[test]
-fn test_find_loop_backedges_two() {
-    let mir_body = switchint_loop_then_inner_loop_else_break();
-    let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
-    let backedges = graph::find_loop_backedges(&basic_coverage_blocks);
-    assert_eq!(
-        backedges.iter_enumerated().map(|(_bcb, backedges)| backedges.len()).sum::<usize>(),
-        2,
-        "backedges: {:?}",
-        backedges
-    );
-
-    assert_eq!(backedges[bcb(1)], &[bcb(5)]);
-    assert_eq!(backedges[bcb(4)], &[bcb(6)]);
-}
-
-#[test]
-fn test_traverse_coverage_with_loops() {
-    let mir_body = switchint_loop_then_inner_loop_else_break();
-    let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
-    let mut traversed_in_order = Vec::new();
-    let mut traversal = graph::TraverseCoverageGraphWithLoops::new(&basic_coverage_blocks);
-    while let Some(bcb) = traversal.next() {
-        traversed_in_order.push(bcb);
-    }
-
-    // bcb0 is visited first. Then bcb1 starts the first loop, and all remaining nodes, *except*
-    // bcb6 are inside the first loop.
-    assert_eq!(
-        *traversed_in_order.last().expect("should have elements"),
-        bcb(6),
-        "bcb6 should not be visited until all nodes inside the first loop have been visited"
-    );
-}
-
-#[test]
-fn test_make_bcb_counters() {
-    rustc_span::create_default_session_globals_then(|| {
-        let mir_body = goto_switchint();
-        let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
-        // Historically this test would use `spans` internals to set up fake
-        // coverage spans for BCBs 1 and 2. Now we skip that step and just tell
-        // BCB counter construction that those BCBs have spans.
-        let bcb_has_coverage_spans = |bcb: BasicCoverageBlock| (1..=2).contains(&bcb.as_usize());
-        let coverage_counters = counters::CoverageCounters::make_bcb_counters(
-            &basic_coverage_blocks,
-            bcb_has_coverage_spans,
-        );
-        assert_eq!(coverage_counters.num_expressions(), 0);
-
-        assert_eq!(
-            0, // bcb1 has a `Counter` with id = 0
-            match coverage_counters.bcb_counter(bcb(1)).expect("should have a counter") {
-                counters::BcbCounter::Counter { id, .. } => id,
-                _ => panic!("expected a Counter"),
-            }
-            .as_u32()
-        );
-
-        assert_eq!(
-            1, // bcb2 has a `Counter` with id = 1
-            match coverage_counters.bcb_counter(bcb(2)).expect("should have a counter") {
-                counters::BcbCounter::Counter { id, .. } => id,
-                _ => panic!("expected a Counter"),
-            }
-            .as_u32()
-        );
-    });
 }

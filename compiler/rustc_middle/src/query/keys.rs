@@ -62,7 +62,7 @@ impl Key for () {
     }
 }
 
-impl<'tcx> Key for ty::InstanceDef<'tcx> {
+impl<'tcx> Key for ty::InstanceKind<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -70,7 +70,7 @@ impl<'tcx> Key for ty::InstanceDef<'tcx> {
     }
 }
 
-impl<'tcx> AsLocalKey for ty::InstanceDef<'tcx> {
+impl<'tcx> AsLocalKey for ty::InstanceKind<'tcx> {
     type LocalKey = Self;
 
     #[inline(always)]

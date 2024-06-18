@@ -175,7 +175,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Drop { place, target, unwind, replace: _ } => {
                 let place = self.eval_place(place)?;
                 let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
-                if let ty::InstanceDef::DropGlue(_, None) = instance.def {
+                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves
@@ -550,7 +550,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         match instance.def {
-            ty::InstanceDef::Intrinsic(def_id) => {
+            ty::InstanceKind::Intrinsic(def_id) => {
                 assert!(self.tcx.intrinsic(def_id).is_some());
                 // FIXME: Should `InPlace` arguments be reset to uninit?
                 if let Some(fallback) = M::call_intrinsic(
@@ -562,7 +562,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     unwind,
                 )? {
                     assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
-                    assert!(matches!(fallback.def, ty::InstanceDef::Item(_)));
+                    assert!(matches!(fallback.def, ty::InstanceKind::Item(_)));
                     return self.eval_fn_call(
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),
@@ -576,18 +576,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     Ok(())
                 }
             }
-            ty::InstanceDef::VTableShim(..)
-            | ty::InstanceDef::ReifyShim(..)
-            | ty::InstanceDef::ClosureOnceShim { .. }
-            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceDef::CoroutineKindShim { .. }
-            | ty::InstanceDef::FnPtrShim(..)
-            | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..)
-            | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::AsyncDropGlueCtorShim(..)
-            | ty::InstanceDef::Item(_) => {
+            ty::InstanceKind::VTableShim(..)
+            | ty::InstanceKind::ReifyShim(..)
+            | ty::InstanceKind::ClosureOnceShim { .. }
+            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceKind::CoroutineKindShim { .. }
+            | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::DropGlue(..)
+            | ty::InstanceKind::CloneShim(..)
+            | ty::InstanceKind::FnPtrAddrShim(..)
+            | ty::InstanceKind::ThreadLocalShim(..)
+            | ty::InstanceKind::AsyncDropGlueCtorShim(..)
+            | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
@@ -786,9 +786,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     Ok(()) => Ok(()),
                 }
             }
-            // `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
+            // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
             // codegen'd / interpreted as virtual calls through the vtable.
-            ty::InstanceDef::Virtual(def_id, idx) => {
+            ty::InstanceKind::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
                 // We have to implement all "object safe receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
@@ -965,7 +965,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let place = self.force_allocation(place)?;
 
         // We behave a bit different from codegen here.
-        // Codegen creates an `InstanceDef::Virtual` with index 0 (the slot of the drop method) and
+        // Codegen creates an `InstanceKind::Virtual` with index 0 (the slot of the drop method) and
         // then dispatches that to the normal call machinery. However, our call machinery currently
         // only supports calling `VtblEntry::Method`; it would choke on a `MetadataDropInPlace`. So
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`

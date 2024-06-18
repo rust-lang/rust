@@ -10,13 +10,13 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::MaybeCause;
 use rustc_infer::traits::Reveal;
+use rustc_middle::bug;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal, QueryResult};
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::NormalizesTo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeVisitableExt, Upcast};
-use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 
 mod anon_const;
@@ -200,14 +200,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
             let error_response = |ecx: &mut EvalCtxt<'_, InferCtxt<'tcx>>, reason| {
                 let guar = tcx.dcx().span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
-                let error_term = match assoc_def.item.kind {
-                    ty::AssocKind::Const => ty::Const::new_error(tcx, guar).into(),
-                    ty::AssocKind::Type => Ty::new_error(tcx, guar).into(),
-                    // This makes no sense...
-                    ty::AssocKind::Fn => span_bug!(
-                        tcx.def_span(assoc_def.item.def_id),
-                        "cannot project to an associated function"
-                    ),
+                let error_term = match goal.predicate.alias.kind(tcx) {
+                    ty::AliasTermKind::ProjectionTy => Ty::new_error(tcx, guar).into(),
+                    ty::AliasTermKind::ProjectionConst => ty::Const::new_error(tcx, guar).into(),
+                    kind => bug!("expected projection, found {kind:?}"),
                 };
                 ecx.instantiate_normalizes_to_term(goal, error_term);
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -238,9 +234,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             }
 
             // Finally we construct the actual value of the associated type.
-            let term = match assoc_def.item.kind {
-                ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
-                ty::AssocKind::Const => {
+            let term = match goal.predicate.alias.kind(tcx) {
+                ty::AliasTermKind::ProjectionTy => {
+                    tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into())
+                }
+                ty::AliasTermKind::ProjectionConst => {
                     if tcx.features().associated_const_equality {
                         bug!("associated const projection is not supported yet")
                     } else {
@@ -254,7 +252,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                         )
                     }
                 }
-                ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
+                kind => bug!("expected projection, found {kind:?}"),
             };
 
             ecx.instantiate_normalizes_to_term(goal, term.instantiate(tcx, associated_item_args));

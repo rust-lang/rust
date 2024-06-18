@@ -5,7 +5,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
-use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
@@ -33,7 +33,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     instance: ty::Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> ty::PolyFnSig<'tcx> {
-    if let InstanceDef::ThreadLocalShim(..) = instance.def {
+    if let InstanceKind::ThreadLocalShim(..) = instance.def {
         return ty::Binder::dummy(tcx.mk_fn_sig(
             [],
             tcx.thread_local_ptr_ty(instance.def_id()),
@@ -63,7 +63,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 _ => unreachable!(),
             };
 
-            if let ty::InstanceDef::VTableShim(..) = instance.def {
+            if let ty::InstanceKind::VTableShim(..) = instance.def {
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                 sig = sig.map_bound(|mut sig| {
                     let mut inputs_and_output = sig.inputs_and_output.to_vec();
@@ -121,7 +121,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             let mut coroutine_kind = args.as_coroutine_closure().kind();
 
             let env_ty =
-                if let InstanceDef::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
+                if let InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
                     instance.def
                 {
                     coroutine_kind = ty::ClosureKind::FnOnce;
@@ -174,7 +174,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // make sure we respect the `target_kind` in that shim.
             // FIXME(async_closures): This shouldn't be needed, and we should be populating
             // a separate def-id for these bodies.
-            if let InstanceDef::CoroutineKindShim { .. } = instance.def {
+            if let InstanceKind::CoroutineKindShim { .. } = instance.def {
                 // Grab the parent coroutine-closure. It has the same args for the purposes
                 // of instantiation, so this will be okay to do.
                 let ty::CoroutineClosure(_, coroutine_closure_args) = *tcx
@@ -386,7 +386,7 @@ fn fn_abi_of_instance<'tcx>(
         extra_args,
         caller_location,
         Some(instance.def_id()),
-        matches!(instance.def, ty::InstanceDef::Virtual(..)),
+        matches!(instance.def, ty::InstanceKind::Virtual(..)),
     )
 }
 

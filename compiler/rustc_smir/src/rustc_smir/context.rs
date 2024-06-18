@@ -60,7 +60,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn mir_body(&self, item: stable_mir::DefId) -> stable_mir::mir::Body {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[item];
-        tables.tcx.instance_mir(rustc_middle::ty::InstanceDef::Item(def_id)).stable(&mut tables)
+        tables.tcx.instance_mir(rustc_middle::ty::InstanceKind::Item(def_id)).stable(&mut tables)
     }
 
     fn has_body(&self, def: DefId) -> bool {
@@ -548,13 +548,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn is_empty_drop_shim(&self, def: InstanceDef) -> bool {
         let tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        matches!(instance.def, ty::InstanceDef::DropGlue(_, None))
+        matches!(instance.def, ty::InstanceKind::DropGlue(_, None))
     }
 
     fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool {
         let tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        matches!(instance.def, ty::InstanceDef::AsyncDropGlueCtorShim(_, None))
+        matches!(instance.def, ty::InstanceKind::AsyncDropGlueCtorShim(_, None))
     }
 
     fn mono_instance(&self, def_id: stable_mir::DefId) -> stable_mir::mir::mono::Instance {
