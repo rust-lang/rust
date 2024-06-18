@@ -542,9 +542,11 @@ fn run_test(
             return Err(TestFailure::CompileError);
         }
         compiler.arg(input_file);
-        // FIXME: Remove once done fixing bugs.
-        // FIXME: Should this call only be done if `nocapture` is not set?
-        // compiler.stderr(Stdio::null());
+        if !rustdoc_options.nocapture {
+            // If `nocapture` is disabled, then we don't display rustc's output when compiling
+            // the merged doctests.
+            compiler.stderr(Stdio::null());
+        }
     } else {
         compiler.arg("-");
         compiler.stdin(Stdio::piped());
