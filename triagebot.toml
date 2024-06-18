@@ -22,7 +22,6 @@ contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIB
 users_on_vacation = [
     "matthiaskrgr",
     "giraffate",
-    "Centri3",
 ]
 
 [assign.owners]
@@ -37,4 +36,5 @@ users_on_vacation = [
     "@Jarcho",
     "@blyxyas",
     "@y21",
+    "@Centri3",
 ]
