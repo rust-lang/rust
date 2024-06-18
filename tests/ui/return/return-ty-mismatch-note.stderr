@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/return-ty-mismatch-note.rs:4:6
+  --> $DIR/return-ty-mismatch-note.rs:5:6
    |
 LL | fn f<T>() -> (T,) {
    |      - expected this type parameter
@@ -10,7 +10,7 @@ LL |     (0,)
                         found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/return-ty-mismatch-note.rs:8:6
+  --> $DIR/return-ty-mismatch-note.rs:9:6
    |
 LL | fn g<U, V>() -> (U, V) {
    |      - expected this type parameter
@@ -21,7 +21,7 @@ LL |     (0, "foo")
                         found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/return-ty-mismatch-note.rs:8:9
+  --> $DIR/return-ty-mismatch-note.rs:9:9
    |
 LL | fn g<U, V>() -> (U, V) {
    |         - expected this type parameter
@@ -31,6 +31,19 @@ LL |     (0, "foo")
    = note: expected type parameter `V`
                    found reference `&'static str`
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/return-ty-mismatch-note.rs:22:5
+   |
+LL | fn k<T>(_t: &T) -> T {
+   |      -             - expected `T` because of return type
+   |      |
+   |      expected this type parameter
+LL |     _t
+   |     ^^ expected type parameter `T`, found `&T`
+   |
+   = note: expected type parameter `_`
+                   found reference `&_`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
