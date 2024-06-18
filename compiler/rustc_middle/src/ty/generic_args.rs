@@ -44,8 +44,25 @@ pub struct GenericArg<'tcx> {
 impl<'tcx> rustc_type_ir::inherent::GenericArg<TyCtxt<'tcx>> for GenericArg<'tcx> {}
 
 impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
+    fn rebase_onto(
+        self,
+        tcx: TyCtxt<'tcx>,
+        source_ancestor: DefId,
+        target_args: GenericArgsRef<'tcx>,
+    ) -> GenericArgsRef<'tcx> {
+        self.rebase_onto(tcx, source_ancestor, target_args)
+    }
+
     fn type_at(self, i: usize) -> Ty<'tcx> {
         self.type_at(i)
+    }
+
+    fn region_at(self, i: usize) -> ty::Region<'tcx> {
+        self.region_at(i)
+    }
+
+    fn const_at(self, i: usize) -> ty::Const<'tcx> {
+        self.const_at(i)
     }
 
     fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
@@ -281,6 +298,7 @@ impl<'tcx> GenericArg<'tcx> {
     pub fn is_non_region_infer(self) -> bool {
         match self.unpack() {
             GenericArgKind::Lifetime(_) => false,
+            // FIXME: This shouldn't return numerical/float.
             GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }

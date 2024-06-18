@@ -16,8 +16,8 @@ mod valtree;
 
 pub use int::*;
 pub use kind::*;
-use rustc_span::Span;
 use rustc_span::DUMMY_SP;
+use rustc_span::{ErrorGuaranteed, Span};
 pub use valtree::*;
 
 pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
@@ -175,6 +175,10 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
 
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {
         Const::new_expr(interner, expr)
+    }
+
+    fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
+        Const::new_error(interner, guar)
     }
 }
 

@@ -1,27 +1,28 @@
+use crate::infcx::SolverDelegate;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
+use rustc_type_ir::{self as ty, Interner};
 
 ///////////////////////////////////////////////////////////////////////////
 // EAGER RESOLUTION
 
 /// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub struct EagerResolver<'a, Infcx, I = <Infcx as InferCtxtLike>::Interner>
+pub struct EagerResolver<'a, Infcx, I = <Infcx as SolverDelegate>::Interner>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     infcx: &'a Infcx,
 }
 
-impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
+impl<'a, Infcx: SolverDelegate> EagerResolver<'a, Infcx> {
     pub fn new(infcx: &'a Infcx) -> Self {
         EagerResolver { infcx }
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
+impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
     fn interner(&self) -> I {
         self.infcx.interner()
     }

@@ -3,26 +3,24 @@
 
 use rustc_ast_ir::{Movability, Mutability};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_next_trait_solver::solve::{Goal, NoSolution};
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner, Upcast};
+use rustc_type_ir::{self as ty, Interner, Upcast as _};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+use tracing::instrument;
 
-use crate::solve::EvalCtxt;
+use crate::infcx::SolverDelegate;
+use crate::solve::{EvalCtxt, Goal, NoSolution};
 
 // Calculates the constituent types of a type for `auto trait` purposes.
-//
-// For types with an "existential" binder, i.e. coroutine witnesses, we also
-// instantiate the binder with placeholders eagerly.
 #[instrument(level = "trace", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<Infcx, I>(
     ecx: &EvalCtxt<'_, Infcx>,
     ty: I::Ty,
 ) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     let tcx = ecx.interner();
@@ -108,7 +106,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<Infcx, I>(
     ty: I::Ty,
 ) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     match ty.kind() {
@@ -176,7 +174,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<Infcx, 
     ty: I::Ty,
 ) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     match ty.kind() {
@@ -663,7 +661,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<Infcx, I>(
     object_bounds: I::BoundExistentialPredicates,
 ) -> Vec<Goal<I, I::Predicate>>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     let tcx = ecx.interner();
@@ -712,14 +710,14 @@ where
         .collect()
 }
 
-struct ReplaceProjectionWith<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
+struct ReplaceProjectionWith<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a EvalCtxt<'a, Infcx>,
     param_env: I::ParamEnv,
     mapping: FxHashMap<I::DefId, ty::Binder<I, ty::ProjectionPredicate<I>>>,
     nested: Vec<Goal<I, I::Predicate>>,
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
     for ReplaceProjectionWith<'_, Infcx, I>
 {
     fn interner(&self) -> I {
@@ -744,7 +742,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
                     )
                     .expect("expected to be able to unify goal projection with dyn's projection"),
             );
-            proj.term.expect_type()
+            proj.term.expect_ty()
         } else {
             ty.super_fold_with(self)
         }

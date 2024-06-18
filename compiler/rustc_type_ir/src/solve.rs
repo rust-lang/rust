@@ -57,6 +57,19 @@ pub enum Reveal {
     All,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum SolverMode {
+    /// Ordinary trait solving, using everywhere except for coherence.
+    Normal,
+    /// Trait solving during coherence. There are a few notable differences
+    /// between coherence and ordinary trait solving.
+    ///
+    /// Most importantly, trait solving during coherence must not be incomplete,
+    /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
+    /// This means that we must not make any guesses or arbitrary choices.
+    Coherence,
+}
+
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> = Canonical<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
@@ -141,6 +154,22 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
+}
+
+/// Opaques that are defined in the inference context before a query is called.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct PredefinedOpaquesData<I: Interner> {
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
 }
 
 /// Possible ways the given goal can be proven.
@@ -355,4 +384,13 @@ impl MaybeCause {
             ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
         }
     }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+pub struct CacheData<I: Interner> {
+    pub result: QueryResult<I>,
+    pub proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
+    pub additional_depth: usize,
+    pub encountered_overflow: bool,
 }

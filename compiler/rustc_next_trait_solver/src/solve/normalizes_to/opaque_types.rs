@@ -1,20 +1,23 @@
 //! Computes a normalizes-to (projection) goal for opaque types. This goal
 //! behaves differently depending on the param-env's reveal mode and whether
 //! the opaque is in a defining scope.
-use rustc_infer::infer::InferCtxt;
-use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
-use rustc_middle::traits::Reveal;
-use rustc_middle::ty;
-use rustc_middle::ty::util::NotUniqueParam;
 
-use crate::solve::{EvalCtxt, SolverMode};
+use rustc_index::bit_set::GrowableBitSet;
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::{self as ty, Interner};
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+use crate::infcx::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, QueryResult, Reveal, SolverMode};
+
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     pub(super) fn normalize_opaque_type(
         &mut self,
-        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ty::NormalizesTo<I>>,
+    ) -> QueryResult<I> {
         let tcx = self.interner();
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
@@ -31,7 +34,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                     return Err(NoSolution);
                 }
                 // FIXME: This may have issues when the args contain aliases...
-                match self.interner().uses_unique_placeholders_ignoring_regions(opaque_ty.args) {
+                match uses_unique_placeholders_ignoring_regions(self.interner(), opaque_ty.args) {
                     Err(NotUniqueParam::NotParam(param)) if param.is_non_region_infer() => {
                         return self.evaluate_added_goals_and_make_canonical_response(
                             Certainty::AMBIGUOUS,
@@ -60,6 +63,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
                 }
 
                 // Otherwise, define a new opaque type
+                // FIXME: should we use `inject_hidden_type_unchecked` here?
                 self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
                 self.add_item_bounds_for_hidden_type(
                     opaque_ty.def_id,
@@ -82,10 +86,51 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
             }
             (Reveal::All, _) => {
                 // FIXME: Add an assertion that opaque type storage is empty.
-                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, opaque_ty.args);
+                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, &opaque_ty.args);
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }
     }
+}
+
+/// Checks whether each generic argument is simply a unique generic placeholder.
+///
+/// FIXME: Interner argument is needed to constrain the `I` parameter.
+pub fn uses_unique_placeholders_ignoring_regions<I: Interner>(
+    _interner: I,
+    args: I::GenericArgs,
+) -> Result<(), NotUniqueParam<I>> {
+    let mut seen = GrowableBitSet::default();
+    for arg in args {
+        match arg.kind() {
+            // Ignore regions, since we can't resolve those in a canonicalized
+            // query in the trait solver.
+            ty::GenericArgKind::Lifetime(_) => {}
+            ty::GenericArgKind::Type(t) => match t.kind() {
+                ty::Placeholder(p) => {
+                    if !seen.insert(p.var()) {
+                        return Err(NotUniqueParam::DuplicateParam(t.into()));
+                    }
+                }
+                _ => return Err(NotUniqueParam::NotParam(t.into())),
+            },
+            ty::GenericArgKind::Const(c) => match c.kind() {
+                ty::ConstKind::Placeholder(p) => {
+                    if !seen.insert(p.var()) {
+                        return Err(NotUniqueParam::DuplicateParam(c.into()));
+                    }
+                }
+                _ => return Err(NotUniqueParam::NotParam(c.into())),
+            },
+        }
+    }
+
+    Ok(())
+}
+
+// FIXME: This should check for dupes and non-params first, then infer vars.
+pub enum NotUniqueParam<I: Interner> {
+    DuplicateParam(I::GenericArg),
+    NotParam(I::GenericArg),
 }

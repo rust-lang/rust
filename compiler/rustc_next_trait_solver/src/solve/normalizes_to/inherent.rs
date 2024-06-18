@@ -4,17 +4,21 @@
 //! 1. instantiate generic parameters,
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
-use rustc_infer::infer::InferCtxt;
-use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, QueryResult};
-use rustc_middle::ty;
 
-use crate::solve::EvalCtxt;
+use rustc_type_ir::{self as ty, Interner};
 
-impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
+use crate::infcx::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
+
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     pub(super) fn normalize_inherent_associated_type(
         &mut self,
-        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
-    ) -> QueryResult<'tcx> {
+        goal: Goal<I, ty::NormalizesTo<I>>,
+    ) -> QueryResult<I> {
         let tcx = self.interner();
         let inherent = goal.predicate.alias.expect_ty(tcx);
 
@@ -25,7 +29,7 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         self.eq(
             goal.param_env,
             inherent.self_ty(),
-            tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
+            tcx.type_of(impl_def_id).instantiate(tcx, &impl_args),
         )?;
 
         // Equate IAT with the RHS of the project goal
@@ -40,12 +44,11 @@ impl<'tcx> EvalCtxt<'_, InferCtxt<'tcx>> {
         self.add_goals(
             GoalSource::Misc,
             tcx.predicates_of(inherent.def_id)
-                .instantiate(tcx, inherent_args)
-                .into_iter()
-                .map(|(pred, _)| goal.with(tcx, pred)),
+                .iter_instantiated(tcx, &inherent_args)
+                .map(|pred| goal.with(tcx, pred)),
         );
 
-        let normalized = tcx.type_of(inherent.def_id).instantiate(tcx, inherent_args);
+        let normalized = tcx.type_of(inherent.def_id).instantiate(tcx, &inherent_args);
         self.instantiate_normalizes_to_term(goal, normalized.into());
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

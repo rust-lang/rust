@@ -3,16 +3,19 @@
 //! This code is *a bit* of a mess and can hopefully be
 //! mostly ignored. For a general overview of how it works,
 //! see the comment on [ProofTreeBuilder].
+
 use std::marker::PhantomData;
 use std::mem;
 
+use rustc_type_ir::{self as ty, Interner};
+
+use crate::infcx::SolverDelegate;
 use crate::solve::eval_ctxt::canonical;
-use crate::solve::{self, inspect, GenerateProofTree};
-use rustc_middle::bug;
-use rustc_next_trait_solver::solve::{
-    CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
+use crate::solve::inspect;
+use crate::solve::{
+    CanonicalInput, Certainty, GenerateProofTree, Goal, GoalEvaluationKind, GoalSource, QueryInput,
+    QueryResult,
 };
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 
 /// The core data structure when building proof trees.
 ///
@@ -34,9 +37,9 @@ use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 /// trees. At the end of trait solving `ProofTreeBuilder::finalize`
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
-pub(in crate::solve) struct ProofTreeBuilder<Infcx, I = <Infcx as InferCtxtLike>::Interner>
+pub(in crate::solve) struct ProofTreeBuilder<Infcx, I = <Infcx as SolverDelegate>::Interner>
 where
-    Infcx: InferCtxtLike<Interner = I>,
+    Infcx: SolverDelegate<Interner = I>,
     I: Interner,
 {
     _infcx: PhantomData<Infcx>,
@@ -170,7 +173,7 @@ impl<I: Interner> WipCanonicalGoalEvaluationStep<I> {
         for _ in 0..self.probe_depth {
             match current.steps.last_mut() {
                 Some(WipProbeStep::NestedProbe(p)) => current = p,
-                _ => bug!(),
+                _ => panic!(),
             }
         }
         current
@@ -232,7 +235,7 @@ impl<I: Interner> WipProbeStep<I> {
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
+impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
     fn new(state: impl Into<DebugSolver<I>>) -> ProofTreeBuilder<Infcx> {
         ProofTreeBuilder { state: Some(Box::new(state.into())), _infcx: PhantomData }
     }
@@ -293,15 +296,15 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         &mut self,
         goal: Goal<I, I::Predicate>,
         orig_values: &[I::GenericArg],
-        kind: solve::GoalEvaluationKind,
+        kind: GoalEvaluationKind,
     ) -> ProofTreeBuilder<Infcx> {
         self.opt_nested(|| match kind {
-            solve::GoalEvaluationKind::Root => Some(WipGoalEvaluation {
+            GoalEvaluationKind::Root => Some(WipGoalEvaluation {
                 uncanonicalized_goal: goal,
                 orig_values: orig_values.to_vec(),
                 evaluation: None,
             }),
-            solve::GoalEvaluationKind::Nested => None,
+            GoalEvaluationKind::Nested => None,
         })
     }
 
@@ -413,7 +416,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
                 state.var_values.push(arg.into());
             }
-            Some(s) => bug!("tried to add var values to {s:?}"),
+            Some(s) => panic!("tried to add var values to {s:?}"),
         }
     }
 
@@ -430,7 +433,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                 }));
                 state.probe_depth += 1;
             }
-            Some(s) => bug!("tried to start probe to {s:?}"),
+            Some(s) => panic!("tried to start probe to {s:?}"),
         }
     }
 
@@ -441,7 +444,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                 let prev = state.current_evaluation_scope().kind.replace(probe_kind);
                 assert_eq!(prev, None);
             }
-            _ => bug!(),
+            _ => panic!(),
         }
     }
 
@@ -458,7 +461,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                 let prev = state.current_evaluation_scope().final_state.replace(final_state);
                 assert_eq!(prev, None);
             }
-            _ => bug!(),
+            _ => panic!(),
         }
     }
 
@@ -494,7 +497,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                 );
                 state.current_evaluation_scope().steps.push(WipProbeStep::AddGoal(source, goal))
             }
-            _ => bug!(),
+            _ => panic!(),
         }
     }
 
@@ -518,7 +521,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                     .push(WipProbeStep::RecordImplArgs { impl_args });
             }
             None => {}
-            _ => bug!(),
+            _ => panic!(),
         }
     }
 
@@ -531,7 +534,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                     .push(WipProbeStep::MakeCanonicalResponse { shallow_certainty });
             }
             None => {}
-            _ => bug!(),
+            _ => panic!(),
         }
     }
 
@@ -544,7 +547,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
                 state.var_values.truncate(num_var_values);
                 state.probe_depth -= 1;
             }
-            _ => bug!(),
+            _ => panic!(),
         }
 
         self
