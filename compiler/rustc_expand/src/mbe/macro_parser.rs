@@ -398,8 +398,10 @@ pub(crate) enum NamedMatch {
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) = (t1.ident(), t2.ident()) {
         ident1.name == ident2.name && is_raw1 == is_raw2
-    } else if let (Some(ident1), Some(ident2)) = (t1.lifetime(), t2.lifetime()) {
-        ident1.name == ident2.name
+    } else if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) =
+        (t1.lifetime(), t2.lifetime())
+    {
+        ident1.name == ident2.name && is_raw1 == is_raw2
     } else {
         t1.kind == t2.kind
     }

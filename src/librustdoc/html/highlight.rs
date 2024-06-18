@@ -880,7 +880,7 @@ impl<'src> Classifier<'src> {
             | TokenKind::UnknownPrefix
             | TokenKind::InvalidPrefix
             | TokenKind::InvalidIdent => Class::Ident(self.new_span(before, text)),
-            TokenKind::Lifetime { .. } => Class::Lifetime,
+            TokenKind::Lifetime { .. } | TokenKind::RawLifetime => Class::Lifetime,
             TokenKind::Eof => panic!("Eof in advance"),
         };
         // Anything that didn't return above is the simple case where we the
