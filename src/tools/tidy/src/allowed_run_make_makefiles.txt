@@ -212,7 +212,6 @@ run-make/track-path-dep-info/Makefile
 run-make/track-pgo-dep-info/Makefile
 run-make/translation/Makefile
 run-make/type-mismatch-same-crate-name/Makefile
-run-make/unknown-mod-stdin/Makefile
 run-make/unstable-flag-required/Makefile
 run-make/use-suggestions-rust-2018/Makefile
 run-make/used-cdylib-macos/Makefile
