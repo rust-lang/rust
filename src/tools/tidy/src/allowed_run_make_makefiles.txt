@@ -34,7 +34,6 @@ run-make/emit-shared-files/Makefile
 run-make/emit-stack-sizes/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/env-dep-info/Makefile
-run-make/error-writing-dependencies/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
