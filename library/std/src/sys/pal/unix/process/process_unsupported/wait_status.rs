@@ -1,6 +1,7 @@
 //! Emulated wait status for non-Unix #[cfg(unix) platforms
 //!
 //! Separate module to facilitate testing against a real Unix implementation.
+
 use crate::ffi::c_int;
 use crate::fmt;
 use crate::num::NonZero;

@@ -3,6 +3,7 @@
 //!
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
+
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;

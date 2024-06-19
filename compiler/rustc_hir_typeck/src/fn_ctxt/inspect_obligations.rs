@@ -1,4 +1,5 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
+
 use crate::FnCtxt;
 use rustc_infer::traits::{self, ObligationCause};
 use rustc_middle::traits::solve::Goal;
