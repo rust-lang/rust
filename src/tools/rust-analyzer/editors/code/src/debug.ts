@@ -6,8 +6,7 @@ import type * as ra from "./lsp_ext";
 import { Cargo, getRustcId, getSysroot } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
-import { unwrapUndefinable } from "./undefinable";
-import { isCargoRunnableArgs } from "./util";
+import { isCargoRunnableArgs, unwrapUndefinable } from "./util";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
 type DebugConfigProvider = (
@@ -136,7 +135,7 @@ async function getDebugConfiguration(
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : "";
     function simplifyPath(p: string): string {
         // see https://github.com/rust-lang/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
-        return path.normalize(p).replace(wsFolder, "${workspaceFolder" + workspaceQualifier + "}");
+        return path.normalize(p).replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
     }
 
     const env = prepareEnv(runnable.label, runnableArgs, ctx.config.runnablesExtraEnv);

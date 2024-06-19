@@ -6,9 +6,8 @@ import * as tasks from "./tasks";
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
-import { unwrapUndefinable } from "./undefinable";
 import type { LanguageClient } from "vscode-languageclient/node";
-import type { RustEditor } from "./util";
+import { unwrapUndefinable, type RustEditor } from "./util";
 import * as toolchain from "./toolchain";
 
 const quickPickButtons = [
@@ -148,8 +147,7 @@ export async function createTaskFromRunnable(
         };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
+    const target = vscode.workspace.workspaceFolders?.[0];
     const exec = await tasks.targetToExecution(definition, config.cargoRunner, true);
     const task = await tasks.buildRustTask(
         target,

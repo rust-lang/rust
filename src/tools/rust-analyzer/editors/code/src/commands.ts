@@ -24,12 +24,12 @@ import {
     isRustEditor,
     type RustEditor,
     type RustDocument,
+    unwrapUndefinable,
 } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import type { LanguageClient } from "vscode-languageclient/node";
-import { LINKED_COMMANDS } from "./client";
+import { HOVER_REFERENCE_COMMAND } from "./client";
 import type { DependencyId } from "./dependencies_provider";
-import { unwrapUndefinable } from "./undefinable";
 import { log } from "./util";
 
 export * from "./ast_inspector";
@@ -1196,11 +1196,10 @@ export function newDebugConfig(ctx: CtxInit): Cmd {
     };
 }
 
-export function linkToCommand(_: Ctx): Cmd {
-    return async (commandId: string) => {
-        const link = LINKED_COMMANDS.get(commandId);
-        if (link) {
-            const { command, arguments: args = [] } = link;
+export function hoverRefCommandProxy(_: Ctx): Cmd {
+    return async () => {
+        if (HOVER_REFERENCE_COMMAND) {
+            const { command, arguments: args = [] } = HOVER_REFERENCE_COMMAND;
             await vscode.commands.executeCommand(command, ...args);
         }
     };
