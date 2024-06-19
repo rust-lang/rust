@@ -11,7 +11,7 @@ use ide_db::{
 use paths::Utf8Component;
 use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
-    AstNode,
+    AstNode, TextRange,
 };
 use text_edit::TextEdit;
 
@@ -35,7 +35,27 @@ pub(crate) fn unlinked_file(
         "file not included in module tree"
     };
 
-    let range = ctx.sema.db.parse(file_id).syntax_node().text_range();
+    let mut range = ctx.sema.db.parse(file_id).syntax_node().text_range();
+    let mut unused = true;
+
+    if fixes.is_none() {
+        // If we don't have a fix, the unlinked-file diagnostic is not
+        // actionable. This generally means that rust-analyzer hasn't
+        // finished startup, or we couldn't find the Cargo.toml.
+        //
+        // Only show this diagnostic on the first three characters of
+        // the file, to avoid overwhelming the user during startup.
+        range = FileLoader::file_text(ctx.sema.db, file_id)
+            .char_indices()
+            .take(3)
+            .last()
+            .map(|(i, _)| i)
+            .map(|i| TextRange::up_to(i.try_into().unwrap()))
+            .unwrap_or(range);
+        // Prefer a diagnostic underline over graying out the text,
+        // since we're only highlighting a small region.
+        unused = false;
+    }
 
     acc.push(
         Diagnostic::new(
@@ -43,7 +63,7 @@ pub(crate) fn unlinked_file(
             message,
             FileRange { file_id, range },
         )
-        .with_unused(true)
+        .with_unused(unused)
         .with_fixes(fixes),
     );
 }
