@@ -45,8 +45,8 @@ use std::ops::Bound;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
 use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
-pub use type_of::test_opaque_hidden_types;
 
+pub(crate) mod dump;
 mod generics_of;
 mod item_bounds;
 mod predicates_of;
