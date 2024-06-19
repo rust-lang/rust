@@ -48,7 +48,7 @@ bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
 rkyv = { version = "0.7.42", features = ["validation"] }
 
 [features]
-default = ["default-hasher", "inline-more", "allocator-api2", "equivalent"]
+default = ["default-hasher", "inline-more", "allocator-api2", "equivalent", "raw-entry"]
 
 # Enables use of nightly features. This is only guaranteed to work on the latest
 # version of nightly Rust.
@@ -64,10 +64,14 @@ rustc-dep-of-std = [
     "compiler_builtins",
     "alloc",
     "rustc-internal-api",
+    "raw-entry",
 ]
 
-# Enables the RawTable API.
+# Enables the experimental and unsafe RawTable API.
 raw = []
+
+# Enables the deprecated RawEntry API.
+raw-entry = []
 
 # Provides a default hasher. Currently this is AHash but this is subject to
 # change in the future. Note that the default hasher does *not* provide HashDoS
