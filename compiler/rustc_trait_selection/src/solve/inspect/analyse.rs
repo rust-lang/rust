@@ -22,7 +22,7 @@ use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state}
 use rustc_next_trait_solver::solve::{GenerateProofTree, MaybeCause, SolverDelegateEvalExt as _};
 use rustc_span::{Span, DUMMY_SP};
 
-use crate::solve::infcx::SolverDelegate;
+use crate::solve::delegate::SolverDelegate;
 use crate::traits::ObligationCtxt;
 
 pub struct InspectConfig {

@@ -394,7 +394,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -509,7 +509,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -550,7 +550,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        ty::Region::new_bound(self.interner(), db, *replace_var)
+                        ty::Region::new_bound(self.cx(), db, *replace_var)
                     }
                     None => r1,
                 }

@@ -18,7 +18,7 @@ use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, Interner};
 use tracing::{instrument, trace};
 
 use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
 use crate::solve::inspect;
@@ -44,9 +44,9 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
     }
 }
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// Canonicalizes the goal remembering the original values
@@ -55,19 +55,19 @@ where
         &self,
         goal: Goal<I, T>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
-        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        let opaque_types = self.delegate.clone_opaque_types_for_query_response();
         let (goal, opaque_types) =
-            (goal, opaque_types).fold_with(&mut EagerResolver::new(self.infcx));
+            (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
         let canonical_goal = Canonicalizer::canonicalize(
-            self.infcx,
+            self.delegate,
             CanonicalizeMode::Input,
             &mut orig_values,
             QueryInput {
                 goal,
                 predefined_opaques_in_body: self
-                    .interner()
+                    .cx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
@@ -97,7 +97,7 @@ where
 
         // We only check for leaks from universes which were entered inside
         // of the query.
-        self.infcx.leak_check(self.max_input_universe).map_err(|NoSolution| {
+        self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
             trace!("failed the leak check");
             NoSolution
         })?;
@@ -125,21 +125,21 @@ where
 
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
-        let (var_values, mut external_constraints) =
-            (self.var_values, external_constraints).fold_with(&mut EagerResolver::new(self.infcx));
+        let (var_values, mut external_constraints) = (self.var_values, external_constraints)
+            .fold_with(&mut EagerResolver::new(self.delegate));
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
             .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
 
         let canonical = Canonicalizer::canonicalize(
-            self.infcx,
+            self.delegate,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
             &mut Default::default(),
             Response {
                 var_values,
                 certainty,
-                external_constraints: self.interner().mk_external_constraints(external_constraints),
+                external_constraints: self.cx().mk_external_constraints(external_constraints),
             },
         );
 
@@ -155,7 +155,7 @@ where
         maybe_cause: MaybeCause,
     ) -> CanonicalResponse<I> {
         response_no_constraints_raw(
-            self.interner(),
+            self.cx(),
             self.max_input_universe,
             self.variables,
             Certainty::Maybe(maybe_cause),
@@ -184,7 +184,7 @@ where
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
         let region_constraints = if certainty == Certainty::Yes {
-            self.infcx.make_deduplicated_outlives_constraints()
+            self.delegate.make_deduplicated_outlives_constraints()
         } else {
             Default::default()
         };
@@ -192,7 +192,7 @@ where
         ExternalConstraintsData {
             region_constraints,
             opaque_types: self
-                .infcx
+                .delegate
                 .clone_opaque_types_for_query_response()
                 .into_iter()
                 // Only return *newly defined* opaque types.
@@ -219,15 +219,15 @@ where
         response: CanonicalResponse<I>,
     ) -> (NestedNormalizationGoals<I>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
-            self.infcx,
+            self.delegate,
             &original_values,
             &response,
         );
 
         let Response { var_values, external_constraints, certainty } =
-            self.infcx.instantiate_canonical(response, instantiation);
+            self.delegate.instantiate_canonical(response, instantiation);
 
-        Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values);
+        Self::unify_query_var_values(self.delegate, param_env, &original_values, var_values);
 
         let ExternalConstraintsData {
             region_constraints,
@@ -243,17 +243,17 @@ where
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
     fn compute_query_response_instantiation_values<T: ResponseT<I>>(
-        infcx: &Infcx,
+        delegate: &D,
         original_values: &[I::GenericArg],
         response: &Canonical<I, T>,
     ) -> CanonicalVarValues<I> {
         // FIXME: Longterm canonical queries should deal with all placeholders
         // created inside of the query directly instead of returning them to the
         // caller.
-        let prev_universe = infcx.universe();
+        let prev_universe = delegate.universe();
         let universes_created_in_query = response.max_universe.index();
         for _ in 0..universes_created_in_query {
-            infcx.create_next_universe();
+            delegate.create_next_universe();
         }
 
         let var_values = response.value.var_values();
@@ -290,13 +290,13 @@ where
             }
         }
 
-        let var_values = infcx.interner().mk_args_from_iter(
+        let var_values = delegate.cx().mk_args_from_iter(
             response.variables.into_iter().enumerate().map(|(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
-                    infcx.instantiate_canonical_var_with_infer(info, |idx| {
+                    delegate.instantiate_canonical_var_with_infer(info, |idx| {
                         ty::UniverseIndex::from(prev_universe.index() + idx.index())
                     })
                 } else if info.is_existential() {
@@ -310,7 +310,7 @@ where
                     if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
                         v
                     } else {
-                        infcx.instantiate_canonical_var_with_infer(info, |_| prev_universe)
+                        delegate.instantiate_canonical_var_with_infer(info, |_| prev_universe)
                     }
                 } else {
                     // For placeholders which were already part of the input, we simply map this
@@ -335,9 +335,9 @@ where
     /// whether an alias is rigid by using the trait solver. When instantiating a response
     /// from the solver we assume that the solver correctly handled aliases and therefore
     /// always relate them structurally here.
-    #[instrument(level = "trace", skip(infcx))]
+    #[instrument(level = "trace", skip(delegate))]
     fn unify_query_var_values(
-        infcx: &Infcx,
+        delegate: &D,
         param_env: I::ParamEnv,
         original_values: &[I::GenericArg],
         var_values: CanonicalVarValues<I>,
@@ -345,7 +345,8 @@ where
         assert_eq!(original_values.len(), var_values.len());
 
         for (&orig, response) in iter::zip(original_values, var_values.var_values) {
-            let goals = infcx.eq_structurally_relating_aliases(param_env, orig, response).unwrap();
+            let goals =
+                delegate.eq_structurally_relating_aliases(param_env, orig, response).unwrap();
             assert!(goals.is_empty());
         }
     }
@@ -365,7 +366,7 @@ where
 
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
-            self.infcx.inject_new_hidden_type_unchecked(key, ty);
+            self.delegate.inject_new_hidden_type_unchecked(key, ty);
         }
     }
 }
@@ -374,22 +375,22 @@ where
 /// evaluating a goal. The `var_values` not only include the bound variables
 /// of the query input, but also contain all unconstrained inference vars
 /// created while evaluating this goal.
-pub(in crate::solve) fn make_canonical_state<Infcx, T, I>(
-    infcx: &Infcx,
+pub(in crate::solve) fn make_canonical_state<D, T, I>(
+    delegate: &D,
     var_values: &[I::GenericArg],
     max_input_universe: ty::UniverseIndex,
     data: T,
 ) -> inspect::CanonicalState<I, T>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
     T: TypeFoldable<I>,
 {
-    let var_values = CanonicalVarValues { var_values: infcx.interner().mk_args(var_values) };
+    let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
-    let state = state.fold_with(&mut EagerResolver::new(infcx));
+    let state = state.fold_with(&mut EagerResolver::new(delegate));
     Canonicalizer::canonicalize(
-        infcx,
+        delegate,
         CanonicalizeMode::Response { max_input_universe },
         &mut vec![],
         state,
@@ -398,15 +399,15 @@ where
 
 // FIXME: needs to be pub to be accessed by downstream
 // `rustc_trait_selection::solve::inspect::analyse`.
-pub fn instantiate_canonical_state<Infcx, I, T: TypeFoldable<I>>(
-    infcx: &Infcx,
-    span: Infcx::Span,
+pub fn instantiate_canonical_state<D, I, T: TypeFoldable<I>>(
+    delegate: &D,
+    span: D::Span,
     param_env: I::ParamEnv,
     orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
 ) -> T
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     // In case any fresh inference variables have been created between `state`
@@ -415,15 +416,15 @@ where
     for &arg in &state.value.var_values.var_values[orig_values.len()..state.value.var_values.len()]
     {
         // FIXME: This is so ugly.
-        let unconstrained = infcx.fresh_var_for_kind_with_span(arg, span);
+        let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);
         orig_values.push(unconstrained);
     }
 
     let instantiation =
-        EvalCtxt::compute_query_response_instantiation_values(infcx, orig_values, &state);
+        EvalCtxt::compute_query_response_instantiation_values(delegate, orig_values, &state);
 
-    let inspect::State { var_values, data } = infcx.instantiate_canonical(state, instantiation);
+    let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 
-    EvalCtxt::unify_query_var_values(infcx, param_env, orig_values, var_values);
+    EvalCtxt::unify_query_var_values(delegate, param_env, orig_values, var_values);
     data
 }
