@@ -23,7 +23,6 @@ pub(crate) enum OverlayKind {
     Clippy,
     Miri,
     Rustfmt,
-    RustDemangler,
     Rls,
     RustAnalyzer,
     RustcCodegenCranelift,
@@ -58,9 +57,6 @@ impl OverlayKind {
                 "src/tools/rustfmt/LICENSE-APACHE",
                 "src/tools/rustfmt/LICENSE-MIT",
             ],
-            OverlayKind::RustDemangler => {
-                &["src/tools/rust-demangler/README.md", "LICENSE-APACHE", "LICENSE-MIT"]
-            }
             OverlayKind::Rls => &["src/tools/rls/README.md", "LICENSE-APACHE", "LICENSE-MIT"],
             OverlayKind::RustAnalyzer => &[
                 "src/tools/rust-analyzer/README.md",
@@ -85,7 +81,6 @@ impl OverlayKind {
         match self {
             OverlayKind::Rust => builder.rust_version(),
             OverlayKind::Llvm => builder.rust_version(),
-            OverlayKind::RustDemangler => builder.release_num("rust-demangler"),
             OverlayKind::Cargo => {
                 builder.cargo_info.version(builder, &builder.release_num("cargo"))
             }
