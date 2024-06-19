@@ -1,6 +1,7 @@
+//! The expansion from a test function to the appropriate test struct for libtest
+//! Ideally, this code would be in libtest but for efficiency and error messages it lives here.
+
 use crate::errors;
-/// The expansion from a test function to the appropriate test struct for libtest
-/// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, attr, GenericParamKind};
