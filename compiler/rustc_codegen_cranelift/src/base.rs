@@ -677,20 +677,21 @@ fn codegen_stmt<'tcx>(
                     CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),
                     ref operand,
                     to_ty,
-                )
-                | Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer),
-                    ref operand,
-                    to_ty,
-                )
-                | Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer),
-                    ref operand,
-                    to_ty,
                 ) => {
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
+                }
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                    ),
+                    ..,
+                ) => {
+                    bug!(
+                        "{:?} is for borrowck, and should never appear in codegen",
+                        to_place_and_rval.1
+                    );
                 }
                 Rvalue::Cast(
                     CastKind::IntToInt

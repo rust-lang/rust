@@ -41,7 +41,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageLive(_9);
         StorageLive(_7);
         StorageLive(_6);
-        _6 = _5 as *const [u32] (PointerCoercion(MutToConstPointer));
+        _6 = _5 as *const [u32] (PtrToPtr);
         _7 = PtrMetadata(_6);
         StorageDead(_6);
         _8 = <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::precondition_check(_3, _4, move _7) -> [return: bb1, unwind unreachable];
