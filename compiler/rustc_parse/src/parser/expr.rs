@@ -155,6 +155,7 @@ impl<'a> Parser<'a> {
                 if self.token.is_range_separator() {
                     return self.parse_expr_prefix_range(attrs);
                 } else {
+                    let attrs = self.parse_or_use_outer_attributes(attrs)?;
                     self.parse_expr_prefix(attrs)?
                 }
             }
@@ -541,8 +542,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a prefix-unary-operator expr.
-    fn parse_expr_prefix(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
-        let attrs = self.parse_or_use_outer_attributes(attrs)?;
+    fn parse_expr_prefix(&mut self, attrs: AttrWrapper) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
         macro_rules! make_it {
@@ -591,7 +591,8 @@ impl<'a> Parser<'a> {
                 this.dcx().emit_err(err);
 
                 this.bump();
-                this.parse_expr_prefix(None)
+                let attrs = this.parse_outer_attributes()?;
+                this.parse_expr_prefix(attrs)
             }
             // Recover from `++x`:
             token::BinOp(token::Plus)
@@ -619,7 +620,8 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
-        let expr = self.parse_expr_prefix(None)?;
+        let attrs = self.parse_outer_attributes()?;
+        let expr = self.parse_expr_prefix(attrs)?;
         let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
@@ -872,7 +874,8 @@ impl<'a> Parser<'a> {
         let expr = if self.token.is_range_separator() {
             self.parse_expr_prefix_range(None)
         } else {
-            self.parse_expr_prefix(None)
+            let attrs = self.parse_outer_attributes()?;
+            self.parse_expr_prefix(attrs)
         }?;
         let hi = self.interpolated_or_expr_span(&expr);
         let span = lo.to(hi);
