@@ -42,7 +42,7 @@ impl MetaVarExpr {
         let ident = parse_ident(&mut tts, psess, outer_span)?;
         let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = tts.next() else {
             let msg = "meta-variable expression parameter must be wrapped in parentheses";
-            return Err(psess.dcx.struct_span_err(ident.span, msg));
+            return Err(psess.dcx().struct_span_err(ident.span, msg));
         };
         check_trailing_token(&mut tts, psess)?;
         let mut iter = args.trees();
@@ -62,12 +62,12 @@ impl MetaVarExpr {
                         break;
                     }
                     if !try_eat_comma(&mut iter) {
-                        return Err(psess.dcx.struct_span_err(outer_span, "expected comma"));
+                        return Err(psess.dcx().struct_span_err(outer_span, "expected comma"));
                     }
                 }
                 if result.len() < 2 {
                     return Err(psess
-                        .dcx
+                        .dcx()
                         .struct_span_err(ident.span, "`concat` must have at least two elements"));
                 }
                 MetaVarExpr::Concat(result.into())
@@ -81,7 +81,7 @@ impl MetaVarExpr {
             "len" => MetaVarExpr::Len(parse_depth(&mut iter, psess, ident.span)?),
             _ => {
                 let err_msg = "unrecognized meta-variable expression";
-                let mut err = psess.dcx.struct_span_err(ident.span, err_msg);
+                let mut err = psess.dcx().struct_span_err(ident.span, err_msg);
                 err.span_suggestion(
                     ident.span,
                     "supported expressions are count, ignore, index and len",
@@ -120,7 +120,7 @@ fn check_trailing_token<'psess>(
 ) -> PResult<'psess, ()> {
     if let Some(tt) = iter.next() {
         let mut diag = psess
-            .dcx
+            .dcx()
             .struct_span_err(tt.span(), format!("unexpected token: {}", pprust::tt_to_string(tt)));
         diag.span_note(tt.span(), "meta-variable expression must not have trailing tokens");
         Err(diag)
@@ -139,7 +139,7 @@ fn parse_count<'psess>(
     let ident = parse_ident(iter, psess, span)?;
     let depth = if try_eat_comma(iter) {
         if iter.look_ahead(0).is_none() {
-            return Err(psess.dcx.struct_span_err(
+            return Err(psess.dcx().struct_span_err(
                 span,
                 "`count` followed by a comma must have an associated index indicating its depth",
             ));
@@ -160,7 +160,7 @@ fn parse_depth<'psess>(
     let Some(tt) = iter.next() else { return Ok(0) };
     let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _) = tt else {
         return Err(psess
-            .dcx
+            .dcx()
             .struct_span_err(span, "meta-variable expression depth must be a literal"));
     };
     if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
@@ -170,7 +170,7 @@ fn parse_depth<'psess>(
         Ok(n_usize)
     } else {
         let msg = "only unsuffixes integer literals are supported in meta-variable expressions";
-        Err(psess.dcx.struct_span_err(span, msg))
+        Err(psess.dcx().struct_span_err(span, msg))
     }
 }
 
@@ -181,20 +181,21 @@ fn parse_ident<'psess>(
     fallback_span: Span,
 ) -> PResult<'psess, Ident> {
     let Some(tt) = iter.next() else {
-        return Err(psess.dcx.struct_span_err(fallback_span, "expected identifier"));
+        return Err(psess.dcx().struct_span_err(fallback_span, "expected identifier"));
     };
     let TokenTree::Token(token, _) = tt else {
-        return Err(psess.dcx.struct_span_err(tt.span(), "expected identifier"));
+        return Err(psess.dcx().struct_span_err(tt.span(), "expected identifier"));
     };
     if let Some((elem, is_raw)) = token.ident() {
         if let IdentIsRaw::Yes = is_raw {
-            return Err(psess.dcx.struct_span_err(elem.span, RAW_IDENT_ERR));
+            return Err(psess.dcx().struct_span_err(elem.span, RAW_IDENT_ERR));
         }
         return Ok(elem);
     }
     let token_str = pprust::token_to_string(token);
-    let mut err =
-        psess.dcx.struct_span_err(token.span, format!("expected identifier, found `{token_str}`"));
+    let mut err = psess
+        .dcx()
+        .struct_span_err(token.span, format!("expected identifier, found `{token_str}`"));
     err.span_suggestion(
         token.span,
         format!("try removing `{token_str}`"),
@@ -236,7 +237,7 @@ fn eat_dollar<'psess>(
         let _ = iter.next();
         return Ok(());
     }
-    Err(psess.dcx.struct_span_err(
+    Err(psess.dcx().struct_span_err(
         span,
         "meta-variables within meta-variable expressions must be referenced using a dollar sign",
     ))

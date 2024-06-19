@@ -1,4 +1,4 @@
-use crate::fmt;
+use crate::fmt::{self, Display};
 use crate::panic::Location;
 
 /// A struct providing information about a panic.
@@ -18,6 +18,17 @@ pub struct PanicInfo<'a> {
     force_no_backtrace: bool,
 }
 
+/// A message that was given to the `panic!()` macro.
+///
+/// The [`Display`] implementation of this type will format the message with the arguments
+/// that were given to the `panic!()` macro.
+///
+/// See [`PanicInfo::message`].
+#[unstable(feature = "panic_info_message", issue = "66745")]
+pub struct PanicMessage<'a> {
+    message: fmt::Arguments<'a>,
+}
+
 impl<'a> PanicInfo<'a> {
     #[inline]
     pub(crate) fn new(
@@ -29,12 +40,26 @@ impl<'a> PanicInfo<'a> {
         PanicInfo { location, message, can_unwind, force_no_backtrace }
     }
 
-    /// The message that was given to the `panic!` macro,
-    /// ready to be formatted with e.g. [`fmt::write`].
+    /// The message that was given to the `panic!` macro.
+    ///
+    /// # Example
+    ///
+    /// The type returned by this method implements `Display`, so it can
+    /// be passed directly to [`write!()`] and similar macros.
+    ///
+    /// [`write!()`]: core::write
+    ///
+    /// ```ignore (no_std)
+    /// #[panic_handler]
+    /// fn panic_handler(panic_info: &PanicInfo<'_>) -> ! {
+    ///     write!(DEBUG_OUTPUT, "panicked: {}", panic_info.message());
+    ///     loop {}
+    /// }
+    /// ```
     #[must_use]
     #[unstable(feature = "panic_info_message", issue = "66745")]
-    pub fn message(&self) -> fmt::Arguments<'_> {
-        self.message
+    pub fn message(&self) -> PanicMessage<'_> {
+        PanicMessage { message: self.message }
     }
 
     /// Returns information about the location from which the panic originated,
@@ -116,12 +141,50 @@ impl<'a> PanicInfo<'a> {
 }
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
-impl fmt::Display for PanicInfo<'_> {
+impl Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
         formatter.write_str(":\n")?;
         formatter.write_fmt(self.message)?;
         Ok(())
+    }
+}
+
+impl<'a> PanicMessage<'a> {
+    /// Get the formatted message, if it has no arguments to be formatted at runtime.
+    ///
+    /// This can be used to avoid allocations in some cases.
+    ///
+    /// # Guarantees
+    ///
+    /// For `panic!("just a literal")`, this function is guaranteed to
+    /// return `Some("just a literal")`.
+    ///
+    /// For most cases with placeholders, this function will return `None`.
+    ///
+    /// See [`fmt::Arguments::as_str`] for details.
+    #[unstable(feature = "panic_info_message", issue = "66745")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
+    #[must_use]
+    #[inline]
+    pub const fn as_str(&self) -> Option<&'static str> {
+        self.message.as_str()
+    }
+}
+
+#[unstable(feature = "panic_info_message", issue = "66745")]
+impl Display for PanicMessage<'_> {
+    #[inline]
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_fmt(self.message)
+    }
+}
+
+#[unstable(feature = "panic_info_message", issue = "66745")]
+impl fmt::Debug for PanicMessage<'_> {
+    #[inline]
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_fmt(self.message)
     }
 }

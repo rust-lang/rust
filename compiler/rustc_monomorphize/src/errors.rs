@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::fluent_generated as fluent;
-use rustc_errors::{Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -48,7 +48,7 @@ pub struct UnusedGenericParamsHint {
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for UnusedGenericParamsHint {
     #[track_caller]
-    fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::monomorphize_unused_generic_params);
         diag.span(self.span);
         for (span, name) in self.param_spans.into_iter().zip(self.param_names) {

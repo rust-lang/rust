@@ -65,7 +65,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
-                                let mut err = psess.dcx.struct_span_err(
+                                let mut err = psess.dcx().struct_span_err(
                                     expr.span,
                                     "suffixed literals are not allowed in attributes",
                                 );
@@ -98,7 +98,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     //   the error because an earlier error will have already
                     //   been reported.
                     let msg = "attribute value must be a literal";
-                    let mut err = psess.dcx.struct_span_err(expr.span, msg);
+                    let mut err = psess.dcx().struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err(_) = expr.kind {
                         err.downgrade_to_delayed_bug();
                     }
@@ -114,7 +114,7 @@ fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    psess.dcx.emit_err(errors::MetaBadDelim {
+    psess.dcx().emit_err(errors::MetaBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -124,7 +124,7 @@ pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    psess.dcx.emit_err(errors::CfgAttrBadDelim {
+    psess.dcx().emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -191,7 +191,7 @@ fn emit_malformed_attribute(
     } else {
         suggestions.sort();
         psess
-            .dcx
+            .dcx()
             .struct_span_err(span, error_msg)
             .with_span_suggestions(
                 span,

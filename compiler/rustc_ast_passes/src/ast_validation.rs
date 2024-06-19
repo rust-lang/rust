@@ -12,6 +12,7 @@ use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor}
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -193,8 +194,24 @@ impl<'a> AstValidator<'a> {
     // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
         match &t.kind {
-            TyKind::ImplTrait(..) => {
-                self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
+            TyKind::ImplTrait(_, bounds) => {
+                self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t));
+
+                // FIXME(precise_capturing): If we were to allow `use` in other positions
+                // (e.g. GATs), then we must validate those as well. However, we don't have
+                // a good way of doing this with the current `Visitor` structure.
+                let mut use_bounds = bounds
+                    .iter()
+                    .filter_map(|bound| match bound {
+                        GenericBound::Use(_, span) => Some(span),
+                        _ => None,
+                    })
+                    .copied();
+                if let Some(bound1) = use_bounds.next()
+                    && let Some(bound2) = use_bounds.next()
+                {
+                    self.dcx().emit_err(errors::DuplicatePreciseCapturing { bound1, bound2 });
+                }
             }
             TyKind::TraitObject(..) => self
                 .with_tilde_const(Some(DisallowTildeConstContext::TraitObject), |this| {
@@ -253,7 +270,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn dcx(&self) -> &rustc_errors::DiagCtxt {
+    fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.session.dcx()
     }
 
@@ -751,7 +768,7 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::ImplTrait(_, bounds, _) => {
+            TyKind::ImplTrait(_, bounds) => {
                 if self.is_impl_trait_banned {
                     self.dcx().emit_err(errors::ImplTraitPath { span: ty.span });
                 }
@@ -793,11 +810,7 @@ impl<'a> AstValidator<'a> {
 
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
-fn validate_generic_param_order(
-    dcx: &rustc_errors::DiagCtxt,
-    generics: &[GenericParam],
-    span: Span,
-) {
+fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericParam], span: Span) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxIndexMap::default();
     let mut param_idents = Vec::with_capacity(generics.len());
@@ -1304,6 +1317,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                     }
                                 }
                                 GenericBound::Outlives(_) => {}
+                                GenericBound::Use(..) => {}
                             }
                         }
                     }
@@ -1322,95 +1336,110 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
-        if let GenericBound::Trait(poly, modifiers) = bound {
-            match (ctxt, modifiers.constness, modifiers.polarity) {
-                (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
-                    self.dcx().emit_err(errors::OptionalTraitSupertrait {
-                        span: poly.span,
-                        path_str: pprust::path_to_string(&poly.trait_ref.path),
-                    });
+        match bound {
+            GenericBound::Trait(trait_ref, modifiers) => {
+                match (ctxt, modifiers.constness, modifiers.polarity) {
+                    (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
+                        self.dcx().emit_err(errors::OptionalTraitSupertrait {
+                            span: trait_ref.span,
+                            path_str: pprust::path_to_string(&trait_ref.trait_ref.path),
+                        });
+                    }
+                    (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
+                        self.dcx().emit_err(errors::OptionalTraitObject { span: trait_ref.span });
+                    }
+                    (
+                        BoundKind::TraitObject,
+                        BoundConstness::Always(_),
+                        BoundPolarity::Positive,
+                    ) => {
+                        self.dcx().emit_err(errors::ConstBoundTraitObject { span: trait_ref.span });
+                    }
+                    (_, BoundConstness::Maybe(span), BoundPolarity::Positive)
+                        if let Some(reason) = &self.disallow_tilde_const =>
+                    {
+                        let reason = match reason {
+                            DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
+                                errors::TildeConstReason::Closure
+                            }
+                            DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
+                                errors::TildeConstReason::Function { ident: ident.span }
+                            }
+                            &DisallowTildeConstContext::Trait(span) => {
+                                errors::TildeConstReason::Trait { span }
+                            }
+                            &DisallowTildeConstContext::TraitImpl(span) => {
+                                errors::TildeConstReason::TraitImpl { span }
+                            }
+                            &DisallowTildeConstContext::Impl(span) => {
+                                // FIXME(effects): Consider providing a help message or even a structured
+                                // suggestion for moving such bounds to the assoc const fns if available.
+                                errors::TildeConstReason::Impl { span }
+                            }
+                            &DisallowTildeConstContext::TraitAssocTy(span) => {
+                                errors::TildeConstReason::TraitAssocTy { span }
+                            }
+                            &DisallowTildeConstContext::TraitImplAssocTy(span) => {
+                                errors::TildeConstReason::TraitImplAssocTy { span }
+                            }
+                            &DisallowTildeConstContext::InherentAssocTy(span) => {
+                                errors::TildeConstReason::InherentAssocTy { span }
+                            }
+                            DisallowTildeConstContext::TraitObject => {
+                                errors::TildeConstReason::TraitObject
+                            }
+                            DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
+                        };
+                        self.dcx().emit_err(errors::TildeConstDisallowed { span, reason });
+                    }
+                    (
+                        _,
+                        BoundConstness::Always(_) | BoundConstness::Maybe(_),
+                        BoundPolarity::Negative(_) | BoundPolarity::Maybe(_),
+                    ) => {
+                        self.dcx().emit_err(errors::IncompatibleTraitBoundModifiers {
+                            span: bound.span(),
+                            left: modifiers.constness.as_str(),
+                            right: modifiers.polarity.as_str(),
+                        });
+                    }
+                    _ => {}
                 }
-                (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
-                    self.dcx().emit_err(errors::OptionalTraitObject { span: poly.span });
-                }
-                (BoundKind::TraitObject, BoundConstness::Always(_), BoundPolarity::Positive) => {
-                    self.dcx().emit_err(errors::ConstBoundTraitObject { span: poly.span });
-                }
-                (_, BoundConstness::Maybe(span), BoundPolarity::Positive)
-                    if let Some(reason) = &self.disallow_tilde_const =>
-                {
-                    let reason = match reason {
-                        DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
-                            errors::TildeConstReason::Closure
-                        }
-                        DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
-                            errors::TildeConstReason::Function { ident: ident.span }
-                        }
-                        &DisallowTildeConstContext::Trait(span) => {
-                            errors::TildeConstReason::Trait { span }
-                        }
-                        &DisallowTildeConstContext::TraitImpl(span) => {
-                            errors::TildeConstReason::TraitImpl { span }
-                        }
-                        &DisallowTildeConstContext::Impl(span) => {
-                            // FIXME(effects): Consider providing a help message or even a structured
-                            // suggestion for moving such bounds to the assoc const fns if available.
-                            errors::TildeConstReason::Impl { span }
-                        }
-                        &DisallowTildeConstContext::TraitAssocTy(span) => {
-                            errors::TildeConstReason::TraitAssocTy { span }
-                        }
-                        &DisallowTildeConstContext::TraitImplAssocTy(span) => {
-                            errors::TildeConstReason::TraitImplAssocTy { span }
-                        }
-                        &DisallowTildeConstContext::InherentAssocTy(span) => {
-                            errors::TildeConstReason::InherentAssocTy { span }
-                        }
-                        DisallowTildeConstContext::TraitObject => {
-                            errors::TildeConstReason::TraitObject
-                        }
-                        DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
-                    };
-                    self.dcx().emit_err(errors::TildeConstDisallowed { span, reason });
-                }
-                (
-                    _,
-                    BoundConstness::Always(_) | BoundConstness::Maybe(_),
-                    BoundPolarity::Negative(_) | BoundPolarity::Maybe(_),
-                ) => {
-                    self.dcx().emit_err(errors::IncompatibleTraitBoundModifiers {
-                        span: bound.span(),
-                        left: modifiers.constness.as_str(),
-                        right: modifiers.polarity.as_str(),
-                    });
-                }
-                _ => {}
-            }
-        }
 
-        // Negative trait bounds are not allowed to have associated constraints
-        if let GenericBound::Trait(trait_ref, modifiers) = bound
-            && let BoundPolarity::Negative(_) = modifiers.polarity
-            && let Some(segment) = trait_ref.trait_ref.path.segments.last()
-        {
-            match segment.args.as_deref() {
-                Some(ast::GenericArgs::AngleBracketed(args)) => {
-                    for arg in &args.args {
-                        if let ast::AngleBracketedArg::Constraint(constraint) = arg {
-                            self.dcx().emit_err(errors::ConstraintOnNegativeBound {
-                                span: constraint.span,
+                // Negative trait bounds are not allowed to have associated constraints
+                if let BoundPolarity::Negative(_) = modifiers.polarity
+                    && let Some(segment) = trait_ref.trait_ref.path.segments.last()
+                {
+                    match segment.args.as_deref() {
+                        Some(ast::GenericArgs::AngleBracketed(args)) => {
+                            for arg in &args.args {
+                                if let ast::AngleBracketedArg::Constraint(constraint) = arg {
+                                    self.dcx().emit_err(errors::ConstraintOnNegativeBound {
+                                        span: constraint.span,
+                                    });
+                                }
+                            }
+                        }
+                        // The lowered form of parenthesized generic args contains an associated type binding.
+                        Some(ast::GenericArgs::Parenthesized(args)) => {
+                            self.dcx().emit_err(errors::NegativeBoundWithParentheticalNotation {
+                                span: args.span,
                             });
                         }
+                        None => {}
                     }
                 }
-                // The lowered form of parenthesized generic args contains an associated type binding.
-                Some(ast::GenericArgs::Parenthesized(args)) => {
-                    self.dcx().emit_err(errors::NegativeBoundWithParentheticalNotation {
-                        span: args.span,
+            }
+            GenericBound::Outlives(_) => {}
+            GenericBound::Use(_, span) => match ctxt {
+                BoundKind::Impl => {}
+                BoundKind::Bound | BoundKind::TraitObject | BoundKind::SuperTraits => {
+                    self.dcx().emit_err(errors::PreciseCapturingNotAllowedHere {
+                        loc: ctxt.descr(),
+                        span: *span,
                     });
                 }
-                None => {}
-            }
+            },
         }
 
         visit::walk_param_bound(self, bound)

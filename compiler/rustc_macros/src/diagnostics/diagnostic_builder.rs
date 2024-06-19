@@ -335,7 +335,7 @@ impl DiagnosticDeriveVariantBuilder {
                 }
             }
             (Meta::Path(_), "subdiagnostic") => {
-                return Ok(quote! { diag.subdiagnostic(diag.dcx, #binding); });
+                return Ok(quote! { diag.subdiagnostic(#binding); });
             }
             _ => (),
         }

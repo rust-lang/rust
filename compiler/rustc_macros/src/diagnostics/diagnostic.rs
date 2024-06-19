@@ -78,7 +78,7 @@ impl<'a> DiagnosticDerive<'a> {
                 #[track_caller]
                 fn into_diag(
                     self,
-                    dcx: &'_sess rustc_errors::DiagCtxt,
+                    dcx: rustc_errors::DiagCtxtHandle<'_sess>,
                     level: rustc_errors::Level
                 ) -> rustc_errors::Diag<'_sess, G> {
                     #implementation

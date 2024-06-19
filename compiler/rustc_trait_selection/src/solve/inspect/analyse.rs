@@ -13,18 +13,16 @@ use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
-use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{inspect, QueryResult};
-use rustc_middle::traits::solve::{Certainty, Goal, MaybeCause};
+use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::resolve::EagerResolver;
+use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
+use rustc_next_trait_solver::solve::{GenerateProofTree, MaybeCause, SolverDelegateEvalExt as _};
 use rustc_span::{Span, DUMMY_SP};
 
-use crate::solve::eval_ctxt::canonical;
-use crate::solve::{EvalCtxt, GoalEvaluationKind, GoalSource};
-use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
+use crate::solve::infcx::SolverDelegate;
 use crate::traits::ObligationCtxt;
 
 pub struct InspectConfig {
@@ -32,7 +30,7 @@ pub struct InspectConfig {
 }
 
 pub struct InspectGoal<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+    infcx: &'a SolverDelegate<'tcx>,
     depth: usize,
     orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -162,16 +160,10 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             match **step {
                 inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
                     source,
-                    canonical::instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        &mut orig_values,
-                        goal,
-                    ),
+                    instantiate_canonical_state(infcx, span, param_env, &mut orig_values, goal),
                 )),
                 inspect::ProbeStep::RecordImplArgs { impl_args } => {
-                    opt_impl_args = Some(canonical::instantiate_canonical_state(
+                    opt_impl_args = Some(instantiate_canonical_state(
                         infcx,
                         span,
                         param_env,
@@ -184,13 +176,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             }
         }
 
-        let () = canonical::instantiate_canonical_state(
-            infcx,
-            span,
-            param_env,
-            &mut orig_values,
-            self.final_state,
-        );
+        let () =
+            instantiate_canonical_state(infcx, span, param_env, &mut orig_values, self.final_state);
 
         if let Some(term_hack) = self.goal.normalizes_to_term_hack {
             // FIXME: We ignore the expected term of `NormalizesTo` goals
@@ -219,16 +206,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                     // instantiating the candidate it is already constrained to the result of another
                     // candidate.
                     let proof_tree = infcx
-                        .probe(|_| {
-                            EvalCtxt::enter_root(infcx, GenerateProofTree::Yes, |ecx| {
-                                ecx.evaluate_goal_raw(
-                                    GoalEvaluationKind::Root,
-                                    GoalSource::Misc,
-                                    goal,
-                                )
-                            })
-                        })
-                        .1;
+                        .probe(|_| infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes).1);
                     InspectGoal::new(
                         infcx,
                         self.goal.depth + 1,
@@ -388,6 +366,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
         source: GoalSource,
     ) -> Self {
+        let infcx = <&SolverDelegate<'tcx>>::from(infcx);
+
         let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, evaluation } = root;
         let result = evaluation.result.and_then(|ok| {
             if let Some(term_hack) = normalizes_to_term_hack {
@@ -449,7 +429,8 @@ impl<'tcx> InferCtxt<'tcx> {
         depth: usize,
         visitor: &mut V,
     ) -> V::Result {
-        let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
+        let (_, proof_tree) =
+            <&SolverDelegate<'tcx>>::from(self).evaluate_root_goal(goal, GenerateProofTree::Yes);
         let proof_tree = proof_tree.unwrap();
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }

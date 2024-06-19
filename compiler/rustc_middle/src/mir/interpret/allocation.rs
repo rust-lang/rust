@@ -52,7 +52,7 @@ impl AllocBytes for Box<[u8]> {
     }
 
     fn zeroed(size: Size, _align: Align) -> Option<Self> {
-        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).ok()?;
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes().try_into().ok()?).ok()?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
         Some(bytes)
@@ -323,7 +323,10 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// first call this function and then call write_scalar to fill in the right data.
     pub fn uninit(size: Size, align: Align) -> Self {
         match Self::uninit_inner(size, align, || {
-            panic!("Allocation::uninit called with panic_on_fail had allocation failure");
+            panic!(
+                "interpreter ran out of memory: cannot create allocation of {} bytes",
+                size.bytes()
+            );
         }) {
             Ok(x) => x,
             Err(x) => x,

@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let semi = expr.span.shrink_to_hi().with_hi(semi_span.hi());
         let sugg = crate::errors::RemoveSemiForCoerce { expr: expr.span, ret, semi };
-        diag.subdiagnostic(self.dcx(), sugg);
+        diag.subdiagnostic(sugg);
     }
 
     /// When the previously checked expression (the scrutinee) diverges,

@@ -8,9 +8,11 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Mutability;
+use rustc_data_structures::fx::FxHashSet;
 
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
+use crate::solve::{CacheData, CanonicalInput, QueryResult, Reveal};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -27,9 +29,13 @@ pub trait Ty<I: Interner<Ty = Self>>:
     + Relate<I>
     + Flags
 {
+    fn new_unit(interner: I) -> Self;
+
     fn new_bool(interner: I) -> Self;
 
     fn new_u8(interner: I) -> Self;
+
+    fn new_usize(interner: I) -> Self;
 
     fn new_infer(interner: I, var: ty::InferTy) -> Self;
 
@@ -107,6 +113,10 @@ pub trait Ty<I: Interner<Ty = Self>>:
         matches!(self.kind(), ty::Infer(ty::TyVar(_)))
     }
 
+    fn is_fn_ptr(self) -> bool {
+        matches!(self.kind(), ty::FnPtr(_))
+    }
+
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
             ty::FnPtr(sig) => sig,
@@ -124,6 +134,49 @@ pub trait Ty<I: Interner<Ty = Self>>:
                 "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
             ),
             _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self),
+        }
+    }
+
+    fn discriminant_ty(self, interner: I) -> I::Ty;
+
+    fn async_destructor_ty(self, interner: I) -> I::Ty;
+
+    /// Returns `true` when the outermost type cannot be further normalized,
+    /// resolved, or instantiated. This includes all primitive types, but also
+    /// things like ADTs and trait objects, sice even if their arguments or
+    /// nested types may be further simplified, the outermost [`ty::TyKind`] or
+    /// type constructor remains the same.
+    fn is_known_rigid(self) -> bool {
+        match self.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Pat(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Tuple(_) => true,
+
+            ty::Error(_)
+            | ty::Infer(_)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_) => false,
         }
     }
 }
@@ -200,6 +253,12 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
+    fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self;
+
+    fn new_error_with_message(interner: I, msg: impl ToString) -> Self {
+        Self::new_error(interner, interner.delay_bug(msg))
+    }
+
     fn is_ct_var(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(ty::InferConst::Var(_)))
     }
@@ -221,6 +280,37 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + From<I::Region>
     + From<I::Const>
 {
+    fn as_type(&self) -> Option<I::Ty> {
+        if let ty::GenericArgKind::Type(ty) = self.kind() { Some(ty) } else { None }
+    }
+
+    fn expect_ty(&self) -> I::Ty {
+        self.as_type().expect("expected a type")
+    }
+
+    fn as_const(&self) -> Option<I::Const> {
+        if let ty::GenericArgKind::Const(c) = self.kind() { Some(c) } else { None }
+    }
+
+    fn expect_const(&self) -> I::Const {
+        self.as_const().expect("expected a const")
+    }
+
+    fn as_region(&self) -> Option<I::Region> {
+        if let ty::GenericArgKind::Lifetime(c) = self.kind() { Some(c) } else { None }
+    }
+
+    fn expect_region(&self) -> I::Region {
+        self.as_region().expect("expected a const")
+    }
+
+    fn is_non_region_infer(self) -> bool {
+        match self.kind() {
+            ty::GenericArgKind::Lifetime(_) => false,
+            ty::GenericArgKind::Type(ty) => ty.is_ty_var(),
+            ty::GenericArgKind::Const(ct) => ct.is_ct_var(),
+        }
+    }
 }
 
 pub trait Term<I: Interner<Term = Self>>:
@@ -230,7 +320,7 @@ pub trait Term<I: Interner<Term = Self>>:
         if let ty::TermKind::Ty(ty) = self.kind() { Some(ty) } else { None }
     }
 
-    fn expect_type(&self) -> I::Ty {
+    fn expect_ty(&self) -> I::Ty {
         self.as_type().expect("expected a type, but found a const")
     }
 
@@ -248,6 +338,19 @@ pub trait Term<I: Interner<Term = Self>>:
             ty::TermKind::Const(ct) => ct.is_ct_var(),
         }
     }
+
+    fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
+                _ => None,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => Some(uv.into()),
+                _ => None,
+            },
+        }
+    }
 }
 
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
@@ -260,7 +363,18 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     + Default
     + Relate<I>
 {
+    fn rebase_onto(
+        self,
+        interner: I,
+        source_def_id: I::DefId,
+        target: I::GenericArgs,
+    ) -> I::GenericArgs;
+
     fn type_at(self, i: usize) -> I::Ty;
+
+    fn region_at(self, i: usize) -> I::Region;
+
+    fn const_at(self, i: usize) -> I::Const;
 
     fn identity_for_item(interner: I, def_id: I::DefId) -> I::GenericArgs;
 
@@ -301,6 +415,9 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::NormalizesTo<I>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
+    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
 {
     fn is_coinductive(self, interner: I) -> bool;
@@ -316,9 +433,34 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + Eq
     + TypeFoldable<I>
     // FIXME: Remove these, uplift the `Upcast` impls.
+    + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
+    + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
 {
+    fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
+        self.kind()
+            .map_bound(|clause| {
+                if let ty::ClauseKind::Trait(t) = clause {
+                    Some(t)
+                } else {
+                    None
+                }
+            })
+            .transpose()
+    }
+    fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
+        self.kind()
+            .map_bound(|clause| {
+                if let ty::ClauseKind::Projection(p) = clause {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+            .transpose()
+    }
 }
 
 /// Common capabilities of placeholder kinds
@@ -350,16 +492,81 @@ pub trait ParamLike {
 pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn def_id(self) -> I::DefId;
 
+    fn is_struct(self) -> bool;
+
+    /// Returns the type of the struct tail.
+    ///
+    /// Expects the `AdtDef` to be a struct. If it is not, then this will panic.
+    fn struct_tail_ty(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+
     fn is_phantom_data(self) -> bool;
 
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
-    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl Iterator<Item = I::Ty>>;
+    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+}
+
+pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn reveal(self) -> Reveal;
+
+    fn caller_bounds(self) -> impl IntoIterator<Item = I::Clause>;
 }
 
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
+
+    fn associated_const_equality(self) -> bool;
+}
+
+pub trait EvaluationCache<I: Interner> {
+    /// Insert a final result into the global cache.
+    fn insert(
+        &self,
+        tcx: I,
+        key: CanonicalInput<I>,
+        proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
+        additional_depth: usize,
+        encountered_overflow: bool,
+        cycle_participants: FxHashSet<CanonicalInput<I>>,
+        dep_node: I::DepNodeIndex,
+        result: QueryResult<I>,
+    );
+
+    /// Try to fetch a cached result, checking the recursion limit
+    /// and handling root goals of coinductive cycles.
+    ///
+    /// If this returns `Some` the cache result can be used.
+    fn get(
+        &self,
+        tcx: I,
+        key: CanonicalInput<I>,
+        stack_entries: impl IntoIterator<Item = CanonicalInput<I>>,
+        available_depth: usize,
+    ) -> Option<CacheData<I>>;
+}
+
+pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn as_local(self) -> Option<I::LocalDefId>;
+}
+
+pub trait BoundExistentialPredicates<I: Interner>:
+    Copy
+    + Debug
+    + Hash
+    + Eq
+    + Relate<I>
+    + IntoIterator<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
+{
+    fn principal_def_id(self) -> Option<I::DefId>;
+
+    fn principal(self) -> Option<ty::Binder<I, ty::ExistentialTraitRef<I>>>;
+
+    fn auto_traits(self) -> impl IntoIterator<Item = I::DefId>;
+
+    fn projection_bounds(
+        self,
+    ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
 }

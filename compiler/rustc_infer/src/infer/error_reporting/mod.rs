@@ -61,8 +61,8 @@ use crate::traits::{
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
-    ErrorGuaranteed, IntoDiagArg, StringPart,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
+    DiagStyledString, ErrorGuaranteed, IntoDiagArg, StringPart,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -139,8 +139,8 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    pub fn dcx(&self) -> &'tcx DiagCtxt {
-        self.infcx.tcx.dcx()
+    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+        self.infcx.dcx()
     }
 
     /// This is just to avoid a potential footgun of accidentally
@@ -892,7 +892,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         arm_ty,
                         arm_span,
                     ) {
-                        err.subdiagnostic(self.dcx(), subdiag);
+                        err.subdiagnostic(subdiag);
                     }
                 }
             },
@@ -918,7 +918,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     else_ty,
                     else_span,
                 ) {
-                    err.subdiagnostic(self.dcx(), subdiag);
+                    err.subdiagnostic(subdiag);
                 }
             }
             ObligationCauseCode::LetElse => {

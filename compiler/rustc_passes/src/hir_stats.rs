@@ -429,7 +429,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) {
         record_variants!(
             (self, b, b, Id::None, hir, GenericBound, GenericBound),
-            [Trait, Outlives]
+            [Trait, Outlives, Use]
         );
         hir_visit::walk_param_bound(self, b)
     }
@@ -659,7 +659,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_param_bound(&mut self, b: &'v ast::GenericBound, _ctxt: BoundKind) {
         record_variants!(
             (self, b, b, Id::None, ast, GenericBound, GenericBound),
-            [Trait, Outlives]
+            [Trait, Outlives, Use]
         );
         ast_visit::walk_param_bound(self, b)
     }

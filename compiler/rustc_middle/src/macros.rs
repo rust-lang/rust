@@ -4,10 +4,10 @@
 ///
 /// If you have a span available, you should use [`span_bug`] instead.
 ///
-/// If the bug should only be emitted when compilation didn't fail, [`DiagCtxt::span_delayed_bug`]
+/// If the bug should only be emitted when compilation didn't fail, [`DiagCtxtHandle::span_delayed_bug`]
 /// may be useful.
 ///
-/// [`DiagCtxt::span_delayed_bug`]: rustc_errors::DiagCtxt::span_delayed_bug
+/// [`DiagCtxtHandle::span_delayed_bug`]: rustc_errors::DiagCtxtHandle::span_delayed_bug
 /// [`span_bug`]: crate::span_bug
 #[macro_export]
 macro_rules! bug {
@@ -30,10 +30,10 @@ macro_rules! bug {
 /// at the code the compiler was compiling when it ICEd. This is the preferred way to trigger
 /// ICEs.
 ///
-/// If the bug should only be emitted when compilation didn't fail, [`DiagCtxt::span_delayed_bug`]
+/// If the bug should only be emitted when compilation didn't fail, [`DiagCtxtHandle::span_delayed_bug`]
 /// may be useful.
 ///
-/// [`DiagCtxt::span_delayed_bug`]: rustc_errors::DiagCtxt::span_delayed_bug
+/// [`DiagCtxtHandle::span_delayed_bug`]: rustc_errors::DiagCtxtHandle::span_delayed_bug
 #[macro_export]
 macro_rules! span_bug {
     ($span:expr, $msg:expr) => (

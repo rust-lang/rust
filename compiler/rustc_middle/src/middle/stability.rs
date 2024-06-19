@@ -176,7 +176,7 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
             diag.arg("has_note", false);
         }
         if let Some(sub) = self.sub {
-            diag.subdiagnostic(diag.dcx, sub);
+            diag.subdiagnostic(sub);
         }
     }
 }

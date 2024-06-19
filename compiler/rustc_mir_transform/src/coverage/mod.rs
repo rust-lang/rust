@@ -71,8 +71,12 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
-    let extracted_mappings =
-        mappings::extract_all_mapping_info_from_mir(mir_body, &hir_info, &basic_coverage_blocks);
+    let extracted_mappings = mappings::extract_all_mapping_info_from_mir(
+        tcx,
+        mir_body,
+        &hir_info,
+        &basic_coverage_blocks,
+    );
 
     ////////////////////////////////////////////////////
     // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure

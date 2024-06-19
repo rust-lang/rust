@@ -633,7 +633,7 @@ impl<'a> Parser<'a> {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
                     other => {
-                        if let TyKind::ImplTrait(_, bounds, None) = other
+                        if let TyKind::ImplTrait(_, bounds) = other
                             && let [bound] = bounds.as_slice()
                         {
                             // Suggest removing extra `impl` keyword:
@@ -1966,7 +1966,7 @@ impl<'a> Parser<'a> {
         if self.token.kind == token::Not {
             if let Err(mut err) = self.unexpected() {
                 // Encounter the macro invocation
-                err.subdiagnostic(self.dcx(), MacroExpandsToAdtField { adt_ty });
+                err.subdiagnostic(MacroExpandsToAdtField { adt_ty });
                 return Err(err);
             }
         }
@@ -2382,13 +2382,10 @@ impl<'a> Parser<'a> {
                             .into_iter()
                             .any(|s| self.prev_token.is_ident_named(s));
 
-                        err.subdiagnostic(
-                            self.dcx(),
-                            errors::FnTraitMissingParen {
-                                span: self.prev_token.span,
-                                machine_applicable,
-                            },
-                        );
+                        err.subdiagnostic(errors::FnTraitMissingParen {
+                            span: self.prev_token.span,
+                            machine_applicable,
+                        });
                     }
                     return Err(err);
                 }
