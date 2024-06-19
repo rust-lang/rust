@@ -70,8 +70,8 @@ macro_rules! maybe_whole_expr {
 
 #[derive(Debug)]
 pub(super) enum LhsExpr {
-    // Already parsed either (a) nothing or (b) just the outer attributes.
-    Unparsed { attrs: Option<AttrWrapper> },
+    // Already parsed just the outer attributes.
+    Unparsed { attrs: AttrWrapper },
     // Already parsed the expression.
     Parsed { expr: P<Expr>, starts_statement: bool },
 }
@@ -136,6 +136,7 @@ impl<'a> Parser<'a> {
         r: Restrictions,
         attrs: Option<AttrWrapper>,
     ) -> PResult<'a, P<Expr>> {
+        let attrs = self.parse_or_use_outer_attributes(attrs)?;
         self.with_res(r, |this| this.parse_expr_assoc_with(0, LhsExpr::Unparsed { attrs }))
     }
 
@@ -152,7 +153,6 @@ impl<'a> Parser<'a> {
                 expr
             }
             LhsExpr::Unparsed { attrs } => {
-                let attrs = self.parse_or_use_outer_attributes(attrs)?;
                 if self.token.is_range_separator() {
                     return self.parse_expr_prefix_range(attrs);
                 } else {
@@ -295,10 +295,8 @@ impl<'a> Parser<'a> {
                 Fixity::None => 1,
             };
             let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_with(
-                    prec + prec_adjustment,
-                    LhsExpr::Unparsed { attrs: None },
-                )
+                let attrs = this.parse_outer_attributes()?;
+                this.parse_expr_assoc_with(prec + prec_adjustment, LhsExpr::Unparsed { attrs })
             })?;
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
@@ -471,8 +469,9 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
             let maybe_lt = self.token.clone();
+            let attrs = self.parse_outer_attributes()?;
             Some(
-                self.parse_expr_assoc_with(prec + 1, LhsExpr::Unparsed { attrs: None })
+                self.parse_expr_assoc_with(prec + 1, LhsExpr::Unparsed { attrs })
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
@@ -528,9 +527,10 @@ impl<'a> Parser<'a> {
             this.bump();
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
+                let attrs = this.parse_outer_attributes()?;
                 this.parse_expr_assoc_with(
                     op.unwrap().precedence() + 1,
-                    LhsExpr::Unparsed { attrs: None },
+                    LhsExpr::Unparsed { attrs },
                 )
                 .map(|x| (lo.to(x.span), Some(x)))
                 .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
@@ -2639,9 +2639,10 @@ impl<'a> Parser<'a> {
         } else {
             self.expect(&token::Eq)?;
         }
+        let attrs = self.parse_outer_attributes()?;
         let expr = self.parse_expr_assoc_with(
             1 + prec_let_scrutinee_needs_par(),
-            LhsExpr::Unparsed { attrs: None },
+            LhsExpr::Unparsed { attrs },
         )?;
         let span = lo.to(expr.span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
