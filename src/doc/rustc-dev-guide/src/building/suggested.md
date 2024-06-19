@@ -285,6 +285,10 @@ pkgs.mkShell {
   ];
   # Avoid creating text files for ICEs.
   RUSTC_ICE = "0";
+  # Provide `libstdc++.so.6` for the self-contained lld.
+  LD_LIBRARY_PATH = "${with pkgs; lib.makeLibraryPath [
+    stdenv.cc.cc.lib
+  ]}";
 }
 ```
 
