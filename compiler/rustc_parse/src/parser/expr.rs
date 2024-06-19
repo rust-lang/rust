@@ -152,10 +152,10 @@ impl<'a> Parser<'a> {
                 expr
             }
             LhsExpr::Unparsed { attrs } => {
+                let attrs = self.parse_or_use_outer_attributes(attrs)?;
                 if self.token.is_range_separator() {
                     return self.parse_expr_prefix_range(attrs);
                 } else {
-                    let attrs = self.parse_or_use_outer_attributes(attrs)?;
                     self.parse_expr_prefix(attrs)?
                 }
             }
@@ -499,7 +499,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
-    fn parse_expr_prefix_range(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
+    fn parse_expr_prefix_range(&mut self, attrs: AttrWrapper) -> PResult<'a, P<Expr>> {
+        if !attrs.is_empty() {
+            let err = errors::DotDotRangeAttribute { span: self.token.span };
+            self.dcx().emit_err(err);
+        }
+
         // Check for deprecated `...` syntax.
         if self.token == token::DotDotDot {
             self.err_dotdotdot_syntax(self.token.span);
@@ -516,11 +521,7 @@ impl<'a> Parser<'a> {
             _ => RangeLimits::Closed,
         };
         let op = AssocOp::from_token(&self.token);
-        // FIXME: `parse_prefix_range_expr` is called when the current
-        // token is `DotDot`, `DotDotDot`, or `DotDotEq`. If we haven't already
-        // parsed attributes, then trying to parse them here will always fail.
-        // We should figure out how we want attributes on range expressions to work.
-        let attrs = self.parse_or_use_outer_attributes(attrs)?;
+        let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_for_expr(attrs, |this, attrs| {
             let lo = this.token.span;
             let maybe_lt = this.look_ahead(1, |t| t.clone());
@@ -871,10 +872,10 @@ impl<'a> Parser<'a> {
         let has_lifetime = self.token.is_lifetime() && self.look_ahead(1, |t| t != &token::Colon);
         let lifetime = has_lifetime.then(|| self.expect_lifetime()); // For recovery, see below.
         let (borrow_kind, mutbl) = self.parse_borrow_modifiers(lo);
+        let attrs = self.parse_outer_attributes()?;
         let expr = if self.token.is_range_separator() {
-            self.parse_expr_prefix_range(None)
+            self.parse_expr_prefix_range(attrs)
         } else {
-            let attrs = self.parse_outer_attributes()?;
             self.parse_expr_prefix(attrs)
         }?;
         let hi = self.interpolated_or_expr_span(&expr);
