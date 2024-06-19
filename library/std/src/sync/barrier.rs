@@ -20,7 +20,7 @@ use crate::sync::{Condvar, Mutex};
 ///     let c = Arc::clone(&barrier);
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
-///     handles.push(thread::spawn(move|| {
+///     handles.push(thread::spawn(move || {
 ///         println!("before wait");
 ///         c.wait();
 ///         println!("after wait");
@@ -115,7 +115,7 @@ impl Barrier {
     ///     let c = Arc::clone(&barrier);
     ///     // The same messages will be printed together.
     ///     // You will NOT see any interleaving.
-    ///     handles.push(thread::spawn(move|| {
+    ///     handles.push(thread::spawn(move || {
     ///         println!("before wait");
     ///         c.wait();
     ///         println!("after wait");
