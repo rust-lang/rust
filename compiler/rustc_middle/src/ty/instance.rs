@@ -873,7 +873,7 @@ fn polymorphize<'tcx>(
     }
 
     impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
-        fn interner(&self) -> TyCtxt<'tcx> {
+        fn cx(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 

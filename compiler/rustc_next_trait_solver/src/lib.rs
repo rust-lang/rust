@@ -7,6 +7,6 @@
 #![feature(let_chains)]
 
 pub mod canonicalizer;
-pub mod infcx;
+pub mod delegate;
 pub mod resolve;
 pub mod solve;

@@ -17,7 +17,7 @@ use rustc_span::symbol::sym;
 
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
-use super::infcx::SolverDelegate;
+use super::delegate::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::Certainty;
 
