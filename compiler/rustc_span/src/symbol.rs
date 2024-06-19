@@ -1592,8 +1592,6 @@ symbols! {
         rustc_do_not_const_check,
         rustc_doc_primitive,
         rustc_dummy,
-        rustc_dump_env_program_clauses,
-        rustc_dump_program_clauses,
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
