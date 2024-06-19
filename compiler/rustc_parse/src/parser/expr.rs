@@ -98,9 +98,12 @@ impl<'a> Parser<'a> {
         self.parse_expr_res(Restrictions::empty(), attrs)
     }
 
-    /// Parses an expression, forcing tokens to be collected
+    /// Parses an expression, forcing tokens to be collected.
     pub fn parse_expr_force_collect(&mut self) -> PResult<'a, P<Expr>> {
-        self.collect_tokens_no_attrs(|this| this.parse_expr())
+        self.current_closure.take();
+
+        let attrs = self.parse_outer_attributes()?;
+        self.collect_tokens_no_attrs(|this| this.parse_expr_res(Restrictions::empty(), attrs))
     }
 
     pub fn parse_expr_anon_const(&mut self) -> PResult<'a, AnonConst> {
