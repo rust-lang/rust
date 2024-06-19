@@ -4,11 +4,11 @@ error[E0284]: type annotations needed for `[usize; _]`
 LL |     let _ = foo("foo");
    |         ^   ---------- type must be known at this point
    |
-note: required by a bound in `foo`
+note: required by a const generic parameter in `foo`
   --> $DIR/issue-83606.rs:3:8
    |
 LL | fn foo<const N: usize>(_: impl std::fmt::Display) -> [usize; N] {
-   |        ^^^^^^^^^^^^^^ required by this bound in `foo`
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 help: consider giving this pattern a type, where the value of const parameter `N` is specified
    |
 LL |     let _: [usize; N] = foo("foo");

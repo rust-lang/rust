@@ -4,11 +4,11 @@ error[E0284]: type annotations needed
 LL |     use_dyn(&());
    |     ^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `use_dyn`
    |
-note: required by a bound in `use_dyn`
+note: required by a const generic parameter in `use_dyn`
   --> $DIR/object-safety-ok-infer-err.rs:14:12
    |
 LL | fn use_dyn<const N: usize>(v: &dyn Foo<N>) where [u8; N + 1]: Sized {
-   |            ^^^^^^^^^^^^^^ required by this bound in `use_dyn`
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `use_dyn`
 help: consider specifying the generic argument
    |
 LL |     use_dyn::<N>(&());

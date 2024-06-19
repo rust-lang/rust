@@ -4,11 +4,11 @@ error[E0284]: type annotations needed
 LL |     foo();
    |     ^^^ cannot infer the value of the const parameter `X` declared on the function `foo`
    |
-note: required by a bound in `foo`
+note: required by a const generic parameter in `foo`
   --> $DIR/cannot-infer-const-args.rs:1:8
    |
 LL | fn foo<const X: usize>() -> usize {
-   |        ^^^^^^^^^^^^^^ required by this bound in `foo`
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 help: consider specifying the generic argument
    |
 LL |     foo::<X>();

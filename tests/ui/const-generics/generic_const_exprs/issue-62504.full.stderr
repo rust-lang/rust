@@ -24,11 +24,11 @@ error[E0284]: type annotations needed for `ArrayHolder<_>`
 LL |     let mut array = ArrayHolder::new();
    |         ^^^^^^^^^   ------------------ type must be known at this point
    |
-note: required by a bound in `ArrayHolder::<X>::new`
+note: required by a const generic parameter in `ArrayHolder::<X>::new`
   --> $DIR/issue-62504.rs:16:6
    |
 LL | impl<const X: usize> ArrayHolder<X> {
-   |      ^^^^^^^^^^^^^^ required by this bound in `ArrayHolder::<X>::new`
+   |      ^^^^^^^^^^^^^^ required by this const generic parameter in `ArrayHolder::<X>::new`
 LL |     pub const fn new() -> Self {
    |                  --- required by a bound in this associated function
 help: consider giving `array` an explicit type, where the value of const parameter `X` is specified
@@ -42,11 +42,11 @@ error[E0284]: type annotations needed for `ArrayHolder<_>`
 LL |     let mut array = ArrayHolder::new();
    |         ^^^^^^^^^   ----------- type must be known at this point
    |
-note: required by a bound in `ArrayHolder`
+note: required by a const generic parameter in `ArrayHolder`
   --> $DIR/issue-62504.rs:14:20
    |
 LL | struct ArrayHolder<const X: usize>([u32; X]);
-   |                    ^^^^^^^^^^^^^^ required by this bound in `ArrayHolder`
+   |                    ^^^^^^^^^^^^^^ required by this const generic parameter in `ArrayHolder`
 help: consider giving `array` an explicit type, where the value of const parameter `X` is specified
    |
 LL |     let mut array: ArrayHolder<X> = ArrayHolder::new();

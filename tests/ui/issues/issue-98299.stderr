@@ -6,11 +6,11 @@ LL |     SmallCString::try_from(p).map(|cstr| cstr);
    |     |
    |     type must be known at this point
    |
-note: required by a bound in `SmallCString`
+note: required by a const generic parameter in `SmallCString`
   --> $DIR/issue-98299.rs:10:25
    |
 LL | pub struct SmallCString<const N: usize> {}
-   |                         ^^^^^^^^^^^^^^ required by this bound in `SmallCString`
+   |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `SmallCString`
 help: consider giving this closure parameter an explicit type, where the value of const parameter `N` is specified
    |
 LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);

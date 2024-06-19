@@ -4,11 +4,11 @@ error[E0284]: type annotations needed for `Foo<_>`
 LL |     let foo = Foo::foo();
    |         ^^^   ---------- type must be known at this point
    |
-note: required by a bound in `Foo::<N>::foo`
+note: required by a const generic parameter in `Foo::<N>::foo`
   --> $DIR/doesnt_infer.rs:5:6
    |
 LL | impl<const N: u32> Foo<N> {
-   |      ^^^^^^^^^^^^ required by this bound in `Foo::<N>::foo`
+   |      ^^^^^^^^^^^^ required by this const generic parameter in `Foo::<N>::foo`
 LL |     fn foo() -> Self {
    |        --- required by a bound in this associated function
 help: consider giving `foo` an explicit type, where the value of const parameter `N` is specified
@@ -22,11 +22,11 @@ error[E0284]: type annotations needed for `Foo<_>`
 LL |     let foo = Foo::foo();
    |         ^^^   --- type must be known at this point
    |
-note: required by a bound in `Foo`
+note: required by a const generic parameter in `Foo`
   --> $DIR/doesnt_infer.rs:3:12
    |
 LL | struct Foo<const N: u32 = 2>;
-   |            ^^^^^^^^^^^^^^^^ required by this bound in `Foo`
+   |            ^^^^^^^^^^^^^^^^ required by this const generic parameter in `Foo`
 help: consider giving `foo` an explicit type, where the value of const parameter `N` is specified
    |
 LL |     let foo: Foo<N> = Foo::foo();
