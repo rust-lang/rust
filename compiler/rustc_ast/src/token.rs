@@ -558,9 +558,10 @@ impl Token {
     /// Returns `true` if the token can appear at the start of a const param.
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
-            OpenDelim(Delimiter::Brace) => true,
+            OpenDelim(Delimiter::Brace) | Literal(..) | BinOp(Minus) => true,
+            Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
             Interpolated(ref nt) => matches!(&**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
-            _ => self.can_begin_literal_maybe_minus(),
+            _ => false,
         }
     }
 
@@ -612,6 +613,21 @@ impl Token {
                     ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
                         matches!(&e.kind, ast::ExprKind::Lit(_))
                     }
+                    _ => false,
+                },
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn can_begin_string_literal(&self) -> bool {
+        match self.uninterpolate().kind {
+            Literal(..) => true,
+            Interpolated(ref nt) => match &**nt {
+                NtLiteral(_) => true,
+                NtExpr(e) => match &e.kind {
+                    ast::ExprKind::Lit(_) => true,
                     _ => false,
                 },
                 _ => false,
