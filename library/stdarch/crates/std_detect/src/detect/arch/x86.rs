@@ -57,6 +57,9 @@ features! {
     /// * `"sha"`
     /// * `"avx"`
     /// * `"avx2"`
+    /// * `"sha512"`
+    /// * `"sm3"`
+    /// * `"sm4"`
     /// * `"avx512f"`
     /// * `"avx512cd"`
     /// * `"avx512er"`
@@ -138,6 +141,12 @@ features! {
     /// AVX (Advanced Vector Extensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx2: "avx2";
     /// AVX2 (Advanced Vector Extensions 2)
+    @FEATURE: #[unstable(feature = "sha512_sm_x86", issue = "126624")] sha512: "sha512";
+    /// SHA512
+    @FEATURE: #[unstable(feature = "sha512_sm_x86", issue = "126624")] sm3: "sm3";
+    /// SM3
+    @FEATURE: #[unstable(feature = "sha512_sm_x86", issue = "126624")] sm4: "sm4";
+    /// SM4
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512f: "avx512f" ;
     /// AVX-512 F (Foundation)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512cd: "avx512cd" ;

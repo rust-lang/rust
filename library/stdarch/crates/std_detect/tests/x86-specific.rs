@@ -1,6 +1,6 @@
 #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #![allow(internal_features)]
-#![feature(stdarch_internal, avx512_target_feature)]
+#![feature(stdarch_internal, avx512_target_feature, sha512_sm_x86)]
 
 extern crate cupid;
 #[macro_use]
@@ -24,6 +24,9 @@ fn dump() {
     println!("f16c: {:?}", is_x86_feature_detected!("f16c"));
     println!("avx: {:?}", is_x86_feature_detected!("avx"));
     println!("avx2: {:?}", is_x86_feature_detected!("avx2"));
+    println!("sha512: {:?}", is_x86_feature_detected!("sha512"));
+    println!("sm3: {:?}", is_x86_feature_detected!("sm3"));
+    println!("sm4: {:?}", is_x86_feature_detected!("sm4"));
     println!("avx512f {:?}", is_x86_feature_detected!("avx512f"));
     println!("avx512cd {:?}", is_x86_feature_detected!("avx512cd"));
     println!("avx512er {:?}", is_x86_feature_detected!("avx512er"));

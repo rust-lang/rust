@@ -3,6 +3,10 @@
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_feature_detection))]
 #![cfg_attr(target_arch = "powerpc", feature(stdarch_powerpc_feature_detection))]
 #![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
+#![cfg_attr(
+    any(target_arch = "x86", target_arch = "x86_64"),
+    feature(sha512_sm_x86)
+)]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
 #[cfg_attr(
@@ -210,6 +214,9 @@ fn x86_all() {
     println!("sha: {:?}", is_x86_feature_detected!("sha"));
     println!("avx: {:?}", is_x86_feature_detected!("avx"));
     println!("avx2: {:?}", is_x86_feature_detected!("avx2"));
+    println!("sha512: {:?}", is_x86_feature_detected!("sha512"));
+    println!("sm3: {:?}", is_x86_feature_detected!("sm3"));
+    println!("sm4: {:?}", is_x86_feature_detected!("sm4"));
     println!("avx512f: {:?}", is_x86_feature_detected!("avx512f"));
     println!("avx512cd: {:?}", is_x86_feature_detected!("avx512cd"));
     println!("avx512er: {:?}", is_x86_feature_detected!("avx512er"));

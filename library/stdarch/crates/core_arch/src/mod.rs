@@ -325,3 +325,15 @@ mod nvptx;
 #[cfg(any(target_arch = "loongarch64", doc))]
 #[doc(cfg(target_arch = "loongarch64"))]
 mod loongarch64;
+
+// TODO: remove after merge of rustc #126704
+#[unstable(feature = "sha512_sm_x86", issue = "126624")]
+unsafe fn dummy() {
+    // This has to be here until PR #126704 gets merged into rustc,
+    // because otherwise rustc cannot compile because aarch64 also has
+    // a target feature named sm4, and that is stable. For `doc` env this
+    // gets compiled also in x86, but in x86 the feature sm4 is unstable
+    // So we need `feature(sha512_sm_x86)` somewhere, but if we place it without
+    // any unstable attr, rustc cannot compile stage0, because it doesn't know about
+    // this feature yet.
+}

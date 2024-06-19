@@ -217,6 +217,10 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     enable(extended_features_edx_leaf_1, 5, Feature::avxneconvert);
                     enable(extended_features_edx_leaf_1, 10, Feature::avxvnniint16);
 
+                    enable(extended_features_eax_leaf_1, 0, Feature::sha512);
+                    enable(extended_features_eax_leaf_1, 1, Feature::sm3);
+                    enable(extended_features_eax_leaf_1, 2, Feature::sm4);
+
                     // For AVX-512 the OS also needs to support saving/restoring
                     // the extended state, only then we enable AVX-512 support:
                     if os_avx512_support {
