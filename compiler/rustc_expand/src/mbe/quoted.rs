@@ -113,7 +113,8 @@ pub(super) fn parse(
                                                 );
                                                 token::NonterminalKind::Ident
                                             });
-                                    if kind == token::NonterminalKind::Expr2021
+                                    if kind
+                                        == (token::NonterminalKind::Expr2021 { inferred: false })
                                         && !features.expr_fragment_specifier_2024
                                     {
                                         rustc_session::parse::feature_err(

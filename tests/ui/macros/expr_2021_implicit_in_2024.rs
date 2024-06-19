@@ -1,6 +1,8 @@
 //@ compile-flags: --edition=2024 -Zunstable-options
 //@ aux-build:expr_2021_implicit.rs
 
+//@ check-pass
+
 extern crate expr_2021_implicit;
 
 // Makes sure that a `:expr` fragment matcher defined in a edition 2021 crate
