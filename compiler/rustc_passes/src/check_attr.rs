@@ -122,7 +122,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_diagnostic_on_unimplemented(attr.span, hir_id, target)
                 }
                 [sym::inline] => self.check_inline(hir_id, attr, span, target),
-                [sym::coverage] => self.check_coverage(hir_id, attr, span, target),
+                [sym::coverage] => self.check_coverage(attr, span, target),
                 [sym::non_exhaustive] => self.check_non_exhaustive(hir_id, attr, span, target),
                 [sym::marker] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature] => {
@@ -369,47 +369,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if a `#[coverage]` is applied directly to a function
-    fn check_coverage(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
+    /// Checks that `#[coverage(..)]` is applied to a function or closure.
+    fn check_coverage(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
-            // #[coverage] on function is fine
+            // #[coverage(..)] on function is fine
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
-
-            // function prototypes can't be covered
-            Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredCoverageFnProto,
-                );
-                true
-            }
-
-            Target::Mod | Target::ForeignMod | Target::Impl | Target::Trait => {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredCoveragePropagate,
-                );
-                true
-            }
-
-            Target::Expression | Target::Statement | Target::Arm => {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredCoverageFnDefn,
-                );
-                true
-            }
-
             _ => {
-                self.dcx().emit_err(errors::IgnoredCoverageNotCoverable {
+                self.dcx().emit_err(errors::CoverageNotFnOrClosure {
                     attr_span: attr.span,
                     defn_span: span,
                 });
