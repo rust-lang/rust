@@ -2699,12 +2699,13 @@ pub(crate) struct SingleColonImportPath {
 
 #[derive(Diagnostic)]
 #[diag(parse_bad_item_kind)]
-#[help]
 pub(crate) struct BadItemKind {
     #[primary_span]
     pub span: Span,
     pub descr: &'static str,
     pub ctx: &'static str,
+    #[help]
+    pub help: Option<()>,
 }
 
 #[derive(Diagnostic)]
