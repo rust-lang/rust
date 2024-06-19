@@ -3,6 +3,8 @@ use std::convert::TryFrom;
 pub fn test_usage(p: ()) {
     SmallCString::try_from(p).map(|cstr| cstr);
     //~^ ERROR: type annotations needed
+    //~| ERROR: type annotations needed
+    //~| ERROR: type annotations needed
 }
 
 pub struct SmallCString<const N: usize> {}

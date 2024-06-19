@@ -1,4 +1,6 @@
-//@ known-bug: rust-lang/rust#123276
+//! This test used to ICE: rust-lang/rust#123276 because we did
+//! not taint when failing to find the `Foo` type and then tried
+//! to normalize it.
 //@ edition:2021
 
 async fn create_task() {
@@ -19,7 +21,9 @@ struct AndThen;
 
 impl Filter for AndThen
 where
-    Foo: Filter,
+    Foo: Filter, //~ ERROR: cannot find type `Foo`
 {
     type Future = ();
 }
+
+fn main() {}
