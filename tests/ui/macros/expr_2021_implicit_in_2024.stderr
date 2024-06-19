@@ -1,0 +1,10 @@
+error: did not expect an expression to be parsed
+  --> $DIR/expr_2021_implicit_in_2024.rs:8:1
+   |
+LL | expr_2021_implicit::m!(const {});
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `expr_2021_implicit::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
