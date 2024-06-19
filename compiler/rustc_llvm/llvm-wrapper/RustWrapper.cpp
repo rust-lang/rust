@@ -1539,23 +1539,21 @@ LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(19, 0)
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
+#else
+  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
+#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(19, 0)
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-}
-
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_LT(19, 0)
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
 #else
-  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
+  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
 #endif
 }
 
